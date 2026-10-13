@@ -478,6 +478,21 @@ python-unit-check: python-venv-check
 	PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python -m unittest discover -s packages/orm-python/tests -p 'test_*.py'
 python-interface-unit-check: python-venv-check
 	cd tests/interfaces && PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python -m unittest discover -p 'test_*.py'
+# python-coverage-case-check is the check of the helper coverage-runner-python (contracts/features.json): the unit test of
+# the case runner that the Python coverage tests share.
+.PHONY: python-coverage-case-check
+python-coverage-case-check: python-venv-check
+	$(PYTHON_VENV)/bin/python packages/orm-python/tests/coverage_case_test.py
+# dbspec-python-check is the Python verification of schema_definition (contracts/features.json schema-python): the shared
+# vectors of tests/dbspec (cases.json and its files, ddl.json, plans.json, mermaid.json, syntax.json, show-create.json and
+# set-files.json) and the unit tests of syntax analysis, formatting and the set reader.
+.PHONY: dbspec-python-check
+dbspec-python-check: python-venv-check
+	PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/dbspec_cases.py
+	PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/dbspec_ddl.py
+	PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/dbspec_plans.py
+	PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/dbspec_mermaid.py
+	PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python -m unittest discover -s packages/orm-python/tests -p 'test_dbspec_*.py'
 dbspec-compare-check/prepare: cargo-downloads-check lease-tool python-venv-check
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_COMPARE_DOCUMENT))
@@ -736,7 +751,7 @@ test-servers-leases-clear:
 # pre-push hook의 설치를 확인한다.
 .PHONY: feature-owner-check
 feature-owner-check: hooks-check
-	$(WITH_TEST_ENV) node scripts/features/owners.mjs $(PATHS)
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python PYTHONPATH=$(PYTHON_PATH) node scripts/features/owners.mjs $(PATHS)
 
 feature-unit-check: feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select
 feature-unit-check/docs:
@@ -756,8 +771,9 @@ feature-check: feature-coverage feature-verify-rust feature-verify-other
 feature-check/build: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
-feature-coverage: feature-check/build
-	$(WITH_TEST_ENV) node scripts/features/coverage.mjs
+# The Python owners of the coverage run on the client's venv (ORM_PYTHON) with its PYTHONPATH (scripts/features/coverage.mjs).
+feature-coverage: feature-check/build python-venv-check
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python PYTHONPATH=$(PYTHON_PATH) node scripts/features/coverage.mjs
 feature-verify-rust: feature-check/build
 	$(WITH_TEST_ENV) node scripts/features/check.mjs --run --features --shard rust
 feature-verify-other: feature-check/build

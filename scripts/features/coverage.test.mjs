@@ -13,7 +13,7 @@ import { checkCoverage, databases, executeCoverage, languages, selectFeatures } 
 delete process.env.ORM_RUST_TEST_FEATURES;
 
 const ownerTests = {
-  go: 'packages/orm-go/orm/dsn_test.go', php: 'packages/orm-php/tests/dsn.php',
+  go: 'packages/orm-go/orm/dsn_test.go', php: 'packages/orm-php/tests/dsn.php', python: 'packages/orm-python/tests/test_utils.py',
   rust: 'packages/orm-rust/orm/tests/zone.rs', typescript: 'packages/orm-npm/tests/typecheck.ts',
 };
 const dependentTest = 'packages/orm-go/model/model_test.go';
@@ -125,9 +125,18 @@ async function negative(manifest, root, timeoutMs) {
   };
 }
 
-caseTest('owner and dependent cases execute in four languages and three databases', 1000, () => {
+caseTest('owner and dependent cases execute in five languages and three databases', 1000, () => {
   assert.deepEqual(checkCoverage(contract(), complete()), []);
   assert.deepEqual(checkCoverage(contract('independent'), complete('independent')), []);
+});
+
+caseTest('an implemented feature with Python planned requires no Python owner', 1000, () => {
+  assert.deepEqual(mutation((m, r) => {
+    m.features[0].clients.python = 'planned';
+    delete m.features[0].coverage.owners.python;
+    for (const database of databases) delete r[`sample/owner/python/${database}`];
+  }), '');
+  assert.match(mutation((m) => { m.features[0].clients.python = 'planned'; }), /sample\/owner\/python: undeclared owning client/);
 });
 
 caseTest('missing owner, dependent, database, case, and repeat are RED', 1000, () => {
@@ -143,7 +152,7 @@ caseTest('missing owner, dependent, database, case, and repeat are RED', 1000, (
   assert.match(mutation((m) => { m.features[0].coverage.dependents[0].tests = [ownerTests.go]; }), /invalid dependent part, tests, or cases/);
   assert.match(mutation((m) => { m.features[0].coverage.dependents[0].tests = ['tests/conformance/check/main_test.go']; }), /invalid dependent part, tests, or cases/);
   assert.match(mutation((m) => { m.features[0].coverage.dependents[0].part = 'tests/conformance'; m.features[0].coverage.dependents[0].tests = ['tests/conformance/check/main_test.go']; }), /invalid dependent part, tests, or cases/);
-  assert.match(mutation((m) => { m.features[0].coverage.owners.python = { part: 'packages/orm-python', tests: [], commands: {} }; }), /undeclared owning client/);
+  assert.match(mutation((m) => { m.features[0].coverage.owners.cobol = { part: 'packages/orm-cobol', tests: [], commands: {} }; }), /undeclared owning client/);
   assert.match(mutation((_, r) => { r['sample/dependent/service/go/sqlite'][0].cases = []; }), /executed case IDs differ/);
   assert.match(mutation((_, r) => { r['sample/owner/typescript/postgres'].pop(); }), /exactly two executions required/);
 });
@@ -436,6 +445,37 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', 12
       failures: [`FAIL sample/owner/go/none run 1 elapsed=<t>: ${message}`],
     });
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+// A Python owner runs on the interpreter that make names in ORM_PYTHON, with the test file and its case IDs. The
+// interpreter here is a stand-in that checks those arguments, so the checker's part is tested without a Python.
+caseTest('Python cases execute on the interpreter of ORM_PYTHON', 8000, async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-python-')));
+  const owner = 'packages/orm-python/tests/owner.py';
+  const interpreter = join(root, 'bin/python');
+  const previous = process.env.ORM_PYTHON;
+  const manifest = { features: [{ id: 'sample', status: 'partial', clients: { python: 'partial' },
+    coverage: { kind: 'independent', cases: ['first'], dependents: [],
+      owners: { python: { part: 'packages/orm-python/tests', tests: [owner],
+        commands: { none: [{ runner: 'python', test: owner, cases: ['first'] }] } } } } }] };
+  try {
+    await mkdir(join(root, 'packages/orm-python/tests'), { recursive: true });
+    await mkdir(join(root, 'bin'));
+    await writeFile(join(root, owner), '');
+    await writeFile(interpreter, `#!/bin/sh\n[ "$#" = 2 ] && [ "$1" = ${JSON.stringify(join(root, owner))} ] && [ "$2" = first ] || exit 2\necho 'CASE first PASS'\n`);
+    await chmod(interpreter, 0o755);
+    process.env.ORM_PYTHON = interpreter;
+    assert.deepEqual(await executeCoverage(manifest, root, 4000), []);
+    manifest.features[0].coverage.owners.python.commands.none[0].runner = 'node';
+    assert.match((await executeCoverage(manifest, root, 4000)).join('\n'), /invalid native test command/);
+    manifest.features[0].coverage.owners.python.commands.none[0].runner = 'python';
+    delete process.env.ORM_PYTHON;
+    assert.match((await executeCoverage(manifest, root, 4000)).join('\n'), /ORM_PYTHON is unset; run this through make, which exports it/);
+  } finally {
+    if (previous === undefined) delete process.env.ORM_PYTHON;
+    else process.env.ORM_PYTHON = previous;
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 // executeCoverage는 실행마다 하나의 case로 시작, 실행하는 native 명령, 결과와 경과 시간을

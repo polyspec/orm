@@ -12,7 +12,10 @@ import { DATABASE, runCase, runLong, stepLines } from '../../tests/testcase.mjs'
 const cargoTestScript = new URL('../../tests/cargo-test.mjs', import.meta.url).pathname;
 const { programEnvironment } = await import(cargoTestScript);
 
-export const languages = ['go', 'php', 'rust', 'typescript'];
+export const languages = ['go', 'php', 'python', 'rust', 'typescript'];
+// implementedLanguages are the clients that an implemented feature passes in. Python declares its support feature by
+// feature (contracts/features.json), so a Python owner is required only where the feature declares Python pass or partial.
+export const implementedLanguages = ['go', 'php', 'rust', 'typescript'];
 export const databases = ['mysql', 'postgres', 'sqlite'];
 
 const validPart = part => typeof part === 'string' && part !== '' &&
@@ -146,7 +149,7 @@ export function checkCoverage(manifest, reports) {
         if (coverage.kind === 'database' && executions[0]?.state_before !== executions[1]?.state_before)
           errors.push(`${key}: database state changed between executions`);
     }
-    if (feature.status === 'implemented' && languages.some(language => feature.clients?.[language] !== 'pass'))
+    if (feature.status === 'implemented' && implementedLanguages.some(language => feature.clients?.[language] !== 'pass'))
       errors.push(`${feature.id}: implemented feature lacks a passing client`);
   }
   for (const key of Object.keys(reports)) {
@@ -223,9 +226,10 @@ async function nativeTest(item, command, root) {
       !item.tests.includes(command.test) || !Array.isArray(command.cases) ||
       command.cases.length === 0 || new Set(command.cases).size !== command.cases.length ||
       command.cases.some(id => !item.cases.includes(id)) ||
-      !['node', 'php', 'go', 'cargo'].includes(command.runner) ||
+      !['node', 'php', 'python', 'go', 'cargo'].includes(command.runner) ||
       (item.language === 'typescript' && command.runner !== 'node') ||
       (item.language === 'php' && command.runner !== 'php') ||
+      (item.language === 'python' && command.runner !== 'python') ||
       (item.language === 'go' && command.runner !== 'go') ||
       (item.language === 'rust' && command.runner !== 'cargo') ||
       (item.database !== 'none' && (typeof command.dsn_env !== 'string' ||
@@ -239,11 +243,18 @@ async function nativeTest(item, command, root) {
   const extension = extname(testPath);
   if ((command.runner === 'node' && extension !== '.mjs') ||
       (command.runner === 'php' && extension !== '.php') ||
+      (command.runner === 'python' && extension !== '.py') ||
       (command.runner === 'go' && extension !== '.go') ||
       (command.runner === 'cargo' && extension !== '.rs'))
     throw new Error('invalid native test file extension');
   if (command.runner === 'node' || command.runner === 'php')
     return { format: 'case', program: command.runner, args: [testPath, ...command.cases] };
+  // Python runs on the interpreter of the client's venv, which make names in ORM_PYTHON with the PYTHONPATH of the client
+  // (Makefile PYTHON_VENV, PYTHON_PATH); a python of PATH is not that interpreter.
+  if (command.runner === 'python') {
+    if (!process.env.ORM_PYTHON) throw new Error('ORM_PYTHON is unset; run this through make, which exports it');
+    return { format: 'case', program: process.env.ORM_PYTHON, args: [testPath, ...command.cases] };
+  }
   const source = await readFile(testPath, 'utf8');
   const nativeSymbols = command.cases.map(id => symbols[id]);
   for (const symbol of nativeSymbols) {

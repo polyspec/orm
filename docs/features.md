@@ -11,7 +11,7 @@ The executable source is the repository feature manifest. Read the manifest, the
 | transactions | Transactions | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
 | statement_events | Statement events | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
 | model_generation | Model generation | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
-| schema_definition | Schema definition and migration | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| schema_definition | Schema definition and migration | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: pass |
 | schema_install | Schema installation | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
 | planner | In-process planner | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
 | composite_keys | Composite keys | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
