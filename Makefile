@@ -529,8 +529,8 @@ dbspec-stress-bench/rust: dbspec-stress-bench/prepare cargo-downloads-check
 .PHONY: dbspec-rust-check/documents dbspec-rust-check/apply-cleanup dbspec-rust-check/unicode dbspec-rust-check/show-create
 dbspec-rust-check: dbspec-rust-check/documents dbspec-rust-check/apply-cleanup dbspec-rust-check/unicode dbspec-rust-check/show-create
 dbspec-rust-check/documents: cargo-downloads-check
-	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
-	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
+	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_analyze --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
+	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_analyze --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
 # dbspec-rust-check/unicode는 Go가 쓴 Unicode word rune 표(unicode_word.rs)가 모든 code point에서 구간과 같은지 본다.
 dbspec-rust-check/unicode: cargo-downloads-check
 	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --lib dbspec::unicode_word -- --nocapture

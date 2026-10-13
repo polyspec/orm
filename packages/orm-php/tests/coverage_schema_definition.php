@@ -2,13 +2,17 @@
 declare(strict_types=1);
 // schema_definition feature coverage: contracts/fixtures/schema_definition.json의
 // 각 case를 PHP dbspec 구현(Polyspec\Orm\Dbspec\Dbspec)으로 실행한다: parse 후 emit의
-// byte 단위 재현, document set의 manifest hash, dialect별 rendered statement.
+// byte 단위 재현, document set의 manifest hash, dialect별 rendered statement, the tokens of syntax analysis,
+// formatting and its refusal, and the declaration positions of a parse.
 
 require dirname(__DIR__, 3) . '/vendor-php/autoload.php';
 require __DIR__ . '/coverage_cases.php';
 
 use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Dbspec\Diagnostic;
 use Polyspec\Orm\Dbspec\Document;
+use Polyspec\Orm\Dbspec\Position;
+use Polyspec\Orm\Dbspec\Token;
 
 $root = dirname(__DIR__, 3);
 $fixture = coverageJson("$root/contracts/fixtures/schema_definition.json");
@@ -77,6 +81,43 @@ runCoverageCases($argv, [
         foreach ($case['expected'] as $dialect => $statements) {
             $result = Dbspec::render($documents, $dialect);
             coverageWant($result->statements === $statements, "$dialect statements " . json_encode($result->statements));
+        }
+    },
+    'dbspec_analyze_tokens' => function () use ($root, $fixture): void {
+        $case = fixtureCase($fixture, 'dbspec_analyze_tokens', 'analyze');
+        [$texts, $documents] = fixtureDocuments($root, $case['input']['documents']);
+        foreach (array_keys($texts) as $i => $path) {
+            $analysis = Dbspec::analyze($texts[$path], []);
+            $parsed = Dbspec::parse($texts[$path], []);
+            coverageWant($analysis->diagnostics === [], "$path analysis diagnostics " . json_encode($analysis->diagnostics));
+            coverageWant(Dbspec::emit($analysis->document) === Dbspec::emit($documents[$i]), "$path: the analysis differs from the parsed document");
+            coverageWant($analysis->positions == $parsed->positions, "$path: the analysis differs from the positions of the parse");
+            $tokens = array_map(static fn(Token $t): array => [$t->line, $t->start, $t->end, $t->class], $analysis->tokens);
+            coverageWant($case['expected']['tokens'] !== [] && $tokens === $case['expected']['tokens'], "$path tokens " . json_encode($tokens));
+        }
+    },
+    'dbspec_format' => function () use ($fixture): void {
+        $case = fixtureCase($fixture, 'dbspec_format', 'format');
+        $result = Dbspec::format(implode("\n", $case['input']['text']) . "\n", []);
+        coverageWant($result->diagnostics === [], 'format diagnostics ' . json_encode($result->diagnostics));
+        coverageWant($result->text === implode("\n", $case['expected']['text']) . "\n", "formatted text {$result->text}");
+        coverageWant(Dbspec::format($result->text, [])->text === $result->text, 'the formatted text is not its own format');
+    },
+    'dbspec_format_refusal' => function () use ($fixture): void {
+        $case = fixtureCase($fixture, 'dbspec_format_refusal', 'format');
+        $result = Dbspec::format(implode("\n", $case['input']['text']) . "\n", []);
+        coverageWant($result->text === null, "a document with a diagnostic was rewritten: {$result->text}");
+        $diagnostics = array_map(static fn(Diagnostic $d): array => ['rule' => $d->rule, 'line' => $d->line, 'column' => $d->column], $result->diagnostics);
+        coverageWant($case['expected']['diagnostics'] !== [] && $diagnostics === $case['expected']['diagnostics'], 'diagnostics ' . json_encode($diagnostics));
+    },
+    'dbspec_parse_positions' => function () use ($root, $fixture): void {
+        $case = fixtureCase($fixture, 'dbspec_parse_positions', 'parse_positions');
+        [$texts] = fixtureDocuments($root, $case['input']['documents']);
+        foreach ($texts as $path => $text) {
+            $parsed = Dbspec::parse($text, []);
+            coverageWant($parsed->positions !== null, "$path parse diagnostics " . json_encode($parsed->diagnostics));
+            $positions = array_map(static fn(Position $p): array => ['kind' => $p->kind, 'path' => $p->path, 'line' => $p->line, 'column' => $p->column], $parsed->positions);
+            coverageWant($case['expected']['positions'] !== [] && $positions === $case['expected']['positions'], "$path positions " . json_encode($positions));
         }
     },
 ]);
