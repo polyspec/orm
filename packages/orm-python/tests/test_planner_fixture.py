@@ -1,4 +1,4 @@
-# planner fixture: contracts/fixtures/planner.json의 request를 schema/bench.dbs의 manifest hash와
+# planner fixture: contracts/fixtures/planner.json의 request를 그 case의 schema 문서의 manifest hash와
 # 함께 dialect마다 검사하고 compile해서, statement(role, sql, bind slot의 출처, param 번호, type,
 # table)나 오류 code가 기대값과 같은지 본다. Go, PHP, Rust, TypeScript의 planner coverage가 같은
 # 파일을 읽는다.
@@ -33,25 +33,33 @@ class PlannerFixtureTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.fixture = json.loads((ROOT / 'contracts' / 'fixtures' / 'planner.json').read_text())
-        cls.model = model_of_documents(parse_document_set(
-            [(ROOT / 'schema' / 'bench.dbs').read_text()]))
+        # The runtime model of each schema document that a case names, by repository path.
+        cls.models = {}
+        for case in cls.fixture['cases']:
+            schema = case.get('schema') or ''
+            if schema == '':
+                raise AssertionError(f'case {case["id"]} names no schema; give it the repository path of its '
+                                     f'dbspec document')
+            if schema not in cls.models:
+                cls.models[schema] = model_of_documents(parse_document_set([(ROOT / schema).read_text()]))
 
     def test_every_case(self):
         self.assertEqual(self.fixture['feature'], 'planner')
         for case in self.fixture['cases']:
             with self.subTest(case['id']):
                 self.assertEqual(case['operation'], 'compile')
-                request = dict(case['input'], manifest_hash=self.model.manifest_hash)
+                model = self.models[case['schema']]
+                request = dict(case['input'], manifest_hash=model.manifest_hash)
                 for dialect in ('mysql', 'postgres', 'sqlite'):
-                    planner = Planner(self.model, dialect_of(dialect)())
+                    planner = Planner(model, dialect_of(dialect)())
                     if 'error' in case['expected']:
                         with self.assertRaises(OrmError) as raised:
-                            validate(self.model, request)
+                            validate(model, request)
                             planner.compile(request)
                         self.assertEqual(raised.exception.code, case['expected']['error'],
                                          f'{dialect}: {raised.exception}')
                         continue
-                    validate(self.model, request)
+                    validate(model, request)
                     plan = planner.compile(request)
                     statements = [{'role': step['role'], 'slots': [_slot(s) for s in step['bind_slots']],
                                    'sql': step['sql'], 'tables': step['tables']}

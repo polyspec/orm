@@ -4,7 +4,7 @@
 pub(crate) mod dialect;
 mod params;
 mod planner;
-mod validate;
+pub(crate) mod validate;
 
 pub use dialect::Dialect;
 pub(crate) use params::{function_type, param_uses, ParamUse};
@@ -243,8 +243,8 @@ mod tests {
         r
     }
 
-    // restore는 primary key나 unique key 하나의 eq 조건으로 soft delete column을 NULL로 되돌리는 update
-    // 하나다. 지워진 행만 고치고, audit table이면 audit column도 쓴다.
+    // restore는 set 값과 and로 이은 where의 eq 조건이 덮는 primary key나 unique key 하나로 soft delete
+    // column을 NULL로 되돌리는 update 하나다. 지워진 행만 고치고, audit table이면 audit column도 쓴다.
     #[test]
     fn restore_plans_guarded_update() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -276,15 +276,33 @@ mod tests {
             ),
             (
                 Dialect::Sqlite,
-                with_set(restore_request(&m, "link", &[("", "team_id", "eq"), ("and", "member_id", "eq")]), &["team_id"]),
-                r#"UPDATE "link" SET "team_id" = ?, "deleted_at" = NULL, "audit_seq" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL"#,
-                vec!["param 2", "audit", "param 0", "param 1"],
+                with_set(restore_request(&m, "link", &[("", "team_id", "eq")]), &["member_id"]),
+                r#"UPDATE "link" SET "deleted_at" = NULL, "audit_seq" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL"#,
+                vec!["audit", "param 0", "param 1"],
+            ),
+            (
+                Dialect::Postgres,
+                with_set(restore_request(&m, "tag", &[("", "name", "eq")]), &["id", "label"]),
+                r#"UPDATE "tag" SET "label" = $1, "deleted_at" = NULL WHERE "tag"."name" = $2 AND "tag"."id" = $3 AND "tag"."deleted_at" IS NOT NULL"#,
+                vec!["param 2", "param 0", "param 1"],
             ),
             (
                 Dialect::Postgres,
                 with_set(restore_request(&m, "tag", &[("", "name", "eq")]), &["label"]),
                 r#"UPDATE "tag" SET "label" = $1, "deleted_at" = NULL WHERE "tag"."name" = $2 AND "tag"."deleted_at" IS NOT NULL"#,
                 vec!["param 1", "param 0"],
+            ),
+            (
+                Dialect::MySql,
+                restore_request(&m, "tag", &[("", "name", "eq"), ("and", "label", "gt")]),
+                "UPDATE `tag` SET `deleted_at` = NULL WHERE `tag`.`name` = ? AND `tag`.`label` > ? AND `tag`.`deleted_at` IS NOT NULL",
+                vec!["param 0", "param 1"],
+            ),
+            (
+                Dialect::MySql,
+                restore_request(&m, "tag", &[("", "name", "eq"), ("and", "name", "eq")]),
+                "UPDATE `tag` SET `deleted_at` = NULL WHERE `tag`.`name` = ? AND `tag`.`name` = ? AND `tag`.`deleted_at` IS NOT NULL",
+                vec!["param 0", "param 1"],
             ),
         ];
         for (dialect, request, sql, slots) in cases {
@@ -298,7 +316,8 @@ mod tests {
         }
     }
 
-    // key 하나를 eq 값으로 정확히 이름하지 않는 restore와 soft_delete가 없는 table의 restore는 IR_INVALID다.
+    // set 값과 and로 이은 where의 eq 조건이 key를 덮지 않는 restore, or로 이은 where, key 밖의 key, soft
+    // delete, audit column assignment와 soft_delete가 없는 table의 restore는 IR_INVALID다.
     #[test]
     fn restore_rejects_other_requests() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -316,18 +335,20 @@ mod tests {
         });
         let mut optimistic = restore_request(&m, "tag", &[("", "name", "eq")]);
         optimistic.optimistic = Some(ir::Optimist { column: "label".into(), p: 0 });
+        let mut null_key = restore_request(&m, "tag", &[("", "name", "eq")]);
+        null_key.set.push(ir::Assign { column: "id".into(), null: true, ..Default::default() });
         let cases = [
             ("part of a unique key", restore_request(&m, "link", &[("", "team_id", "eq")])),
             ("a column that is no key", restore_request(&m, "tag", &[("", "label", "eq")])),
-            ("a key and another column", restore_request(&m, "tag", &[("", "name", "eq"), ("and", "label", "eq")])),
-            ("a repeated column", restore_request(&m, "tag", &[("", "name", "eq"), ("and", "name", "eq")])),
+            ("part of a unique key in set", with_set(restore_request(&m, "link", &[]), &["member_id"])),
+            ("an or connector with a key in set", with_set(restore_request(&m, "tag", &[("", "label", "eq"), ("or", "label", "eq")]), &["name"])),
             ("another operator", restore_request(&m, "tag", &[("", "name", "gt")])),
             ("an or connector", restore_request(&m, "link", &[("", "team_id", "eq"), ("or", "member_id", "eq")])),
             ("a null test", restore_request(&m, "tag", &[("", "name", "is_null")])),
             ("no condition", restore_request(&m, "tag", &[])),
             ("a group", group),
             ("an assignment of the soft delete column", with_set(restore_request(&m, "tag", &[("", "name", "eq")]), &["deleted_at"])),
-            ("an assignment of the primary key", with_set(restore_request(&m, "tag", &[("", "name", "eq")]), &["id"])),
+            ("a null assignment of the primary key", null_key),
             ("an assignment of the audit column", with_set(restore_request(&m, "link", &[("", "id", "eq")]), &["audit_seq"])),
             ("an optimistic check", optimistic),
             ("a table without soft_delete", restore_request(&m, "plain", &[("", "id", "eq")])),

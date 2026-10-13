@@ -197,10 +197,10 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
             if r.kind == "insert" && (a.plus_p.is_some() || a.minus_p.is_some()) {
                 return Err(err(codes::IR_INVALID, format!("insert cannot assign {} by plus or minus", a.column)));
             }
-            // The key and the soft delete column are the table's own: a restore clears the latter itself.
-            if r.kind == "update" || r.kind == "restore" {
+            // The key is the table's own. A restore checks its set with its key below.
+            if r.kind == "update" {
                 let c = ent.field(&a.column).ok_or_else(|| unknown_column(&r.query.entity, &a.column))?;
-                if c.primary_key || c.identity || (r.kind == "restore" && ent.soft_delete.as_deref() == Some(a.column.as_str())) {
+                if c.primary_key || c.identity {
                     return Err(err(codes::IR_INVALID, format!("cannot update {}", a.column)));
                 }
             }
@@ -241,14 +241,94 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
         }
         v.params(&[o.p])?;
     }
-    if (r.kind == "update" || r.kind == "delete" || r.kind == "restore") && q.where_.as_ref().map(|g| g.items.is_empty()).unwrap_or(true) {
+    if (r.kind == "update" || r.kind == "delete") && q.where_.as_ref().map(|g| g.items.is_empty()).unwrap_or(true) {
         return Err(err(codes::IR_INVALID, format!("{} without where", r.kind)));
     }
-    // restore는 지워진 행만 고치므로 읽은 version과 비교할 것이 없다.
-    if r.kind == "restore" && r.optimistic.is_some() {
-        return Err(err(codes::IR_INVALID, "restore takes no optimistic"));
+    if r.kind == "restore" {
+        // restore는 지워진 행만 고치므로 읽은 version과 비교할 것이 없다.
+        if r.optimistic.is_some() {
+            return Err(err(codes::IR_INVALID, "restore takes no optimistic"));
+        }
+        restore_key(ent, r)?;
     }
     Ok(())
+}
+
+/// The parts of the statement of a restore request: the key that names its row, the conditions and the new values.
+pub(crate) struct RestoreParts {
+    /// The primary key, or the unique key, whose columns the request gives values.
+    pub key: Vec<String>,
+    /// The where of the request with an eq condition for each set value of a key column.
+    pub where_: ir::Group,
+    /// The set values of the columns outside the key: the new values of the row.
+    pub set: Vec<ir::Assign>,
+    /// The soft delete column that the restore clears.
+    pub soft_delete: String,
+}
+
+/// Picks the key of a restore request (docs/protocol.md 1.5) after the request hook. The set values with a parameter
+/// and the eq conditions with a parameter that the where joins with and give columns their values; the key is the
+/// primary key when they cover it, otherwise the first unique key in name order that they cover. A set value of a key
+/// column becomes a condition, every other set value is a new value, and the where keeps its other conditions, which
+/// narrow the restore further; the key still names at most one row.
+pub(crate) fn restore_key(ent: &Entity, r: &ir::Request) -> Result<RestoreParts> {
+    let Some(soft_delete) = ent.soft_delete.as_deref() else {
+        return Err(err(codes::IR_INVALID, format!("restore of {}, which has no soft_delete setting", ent.name)));
+    };
+    let items: &[ir::Item] = r.query.where_.as_ref().map(|g| g.items.as_slice()).unwrap_or(&[]);
+    let mut valued: Vec<&str> = Vec::new();
+    for (i, item) in items.iter().enumerate() {
+        let conn = match item {
+            ir::Item::Pred { pred } => &pred.conn,
+            ir::Item::Group { group } => &group.conn,
+            ir::Item::Joined { joined } => &joined.conn,
+        };
+        if i > 0 && conn == "or" {
+            return Err(err(codes::IR_INVALID, format!("restore of {} joins the conditions of its where with and", ent.name)));
+        }
+        if let ir::Item::Pred { pred } = item {
+            if pred.op == "eq" && pred.p.is_some() && pred.r#fn.is_none() && pred.value.is_none() && pred.r#ref.is_none() && pred.sub.is_none() {
+                valued.push(&pred.column);
+            }
+        }
+    }
+    for a in &r.set {
+        if a.p.is_some() {
+            valued.push(&a.column);
+        }
+    }
+    let covered = |columns: &[String]| !columns.is_empty() && columns.iter().all(|c| valued.contains(&c.as_str()));
+    let mut uniques: Vec<_> = ent.uniques.iter().collect();
+    uniques.sort_by(|a, b| a.name.cmp(&b.name));
+    let key = if covered(&ent.primary_key) {
+        ent.primary_key.clone()
+    } else {
+        match uniques.into_iter().find(|u| covered(&u.columns)) {
+            Some(unique) => unique.columns.clone(),
+            None => {
+                return Err(err(
+                    codes::IR_INVALID,
+                    format!("restore of {} gives no primary key or unique key a value in its set or in an eq condition of its where", ent.name),
+                ))
+            }
+        }
+    };
+    let mut where_items = items.to_vec();
+    let mut set = Vec::new();
+    for a in &r.set {
+        if let Some(p) = a.p.filter(|_| key.contains(&a.column)) {
+            let conn = if where_items.is_empty() { String::new() } else { "and".to_owned() };
+            where_items.push(ir::Item::Pred { pred: Box::new(ir::Pred { conn, column: a.column.clone(), op: "eq".into(), p: Some(p), ..Default::default() }) });
+            continue;
+        }
+        // The key and the soft delete column are the table's own: a restore clears the latter itself.
+        let c = ent.field(&a.column).ok_or_else(|| unknown_column(&r.query.entity, &a.column))?;
+        if c.primary_key || c.identity || a.column == soft_delete {
+            return Err(err(codes::IR_INVALID, format!("restore cannot assign {}", a.column)));
+        }
+        set.push(a.clone());
+    }
+    Ok(RestoreParts { key, where_: ir::Group { items: where_items, ..Default::default() }, set, soft_delete: soft_delete.to_owned() })
 }
 
 impl<'m> Validator<'m> {

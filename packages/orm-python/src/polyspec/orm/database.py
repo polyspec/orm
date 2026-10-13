@@ -1635,9 +1635,9 @@ def paginate(ex: Executor, request: dict, params):
 
 
 def write(ex: Executor, request: dict, params):
-    """insert, update, delete를 실행하고 id와 영향 줄 수를 낸다."""
-    """insert, update, delete를 실행하고 insert한 행의 key와 영향 줄 수를 낸다: SQL database에서는 생성된
-    identity, markdown executor에서는 그 답의 첫 key다."""
+    """insert, update, delete, restore를 실행하고 insert한 행의 key와 영향 줄 수를 낸다: SQL database에서는 생성된
+    identity, markdown executor에서는 그 답의 첫 key다. 'request'와 'params'는 request hook이 남긴 실행한 request와 그
+    parameter다."""
     request, params = _hooked(ex.db, request, params)
 
     def work():
@@ -1660,7 +1660,7 @@ def write(ex: Executor, request: dict, params):
         upsert = request['kind'] == 'insert' and bool(request.get('on_duplicate'))
         return {'id': identity_id, 'affected': 1 if upsert else result['affected']}
 
-    return _guarded(ex, work)
+    return {**_guarded(ex, work), 'request': request, 'params': params}
 
 
 def statement(ex: Executor, request: dict, params):

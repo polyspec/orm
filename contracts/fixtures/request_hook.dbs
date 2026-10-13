@@ -6,3 +6,16 @@ table hook_item {
   label varchar(32)
   primary key (id)
 }
+
+table hook_entry {
+  id i64 identity
+  part varchar(16)
+  label varchar(32)
+  note varchar(32) null
+  deleted_at datetime(6) null
+  primary key (id)
+  unique uq_hook_entry_label (part, label)
+  settings {
+    soft_delete deleted_at
+  }
+}

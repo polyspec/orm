@@ -1364,21 +1364,19 @@ func (p *Planner) deleteStep(r *ir.Request) (*plan.Step, error) {
 	return &plan.Step{Role: "main", SQL: sql, Tables: b.tableList(), BindSlots: b.binds}, nil
 }
 
-// restoreStep은 soft delete한 행 하나를 되돌리는 update다. where는 primary key나
-// unique key 하나의 모든 column을 eq 값으로 한 번씩 이름한다. 지워진 행만
-// 고치므로 지워지지 않은 행과 없는 행은 아무것도 바꾸지 않는다. set은 되돌리는
-// 행에 함께 쓰는 새 값이며 update의 assignment와 같은 규칙을 따른다. 그 뒤에
-// soft delete column을 비우고, audit table이면 audit column을 쓴다. updated
-// column은 soft delete처럼 쓰지 않는다.
+// restoreStep은 soft delete한 행 하나를 되돌리는 update다. ir.RestoreKey가 request의 set과
+// where에서 primary key나 unique key 하나를 고르고, 그 key column의 set 값은 조건이 되며 다른
+// set 값은 되돌리는 행에 함께 쓰는 새 값으로 update의 assignment와 같은 규칙을 따른다. where의
+// 다른 조건은 restore를 더 좁힌다. 지워진 행만 고치므로 지워지지 않은 행과 없는 행은 아무것도
+// 바꾸지 않는다. 그 뒤에 soft delete column을 비우고, audit table이면 audit column을 쓴다.
+// updated column은 soft delete처럼 쓰지 않는다.
 func (p *Planner) restoreStep(r *ir.Request) (*plan.Step, error) {
 	ent := p.M.Entities[r.Entity]
-	if ent.SoftDelete == "" {
-		return nil, &ir.Error{Code: "IR_INVALID", Msg: "restore of " + ent.Name + ", which has no soft_delete setting"}
-	}
-	if err := restoreKey(ent, r.Where); err != nil {
+	parts, err := ir.RestoreKey(ent, r)
+	if err != nil {
 		return nil, err
 	}
-	set := addBlindIndexAssignments(ent, slices.Clone(r.Set))
+	set := addBlindIndexAssignments(ent, parts.Set)
 	if err := validateAESAssignments(ent, set, true); err != nil {
 		return nil, err
 	}
@@ -1389,11 +1387,7 @@ func (p *Planner) restoreStep(r *ir.Request) (*plan.Step, error) {
 	root := p.buildScopes(&r.Query, ent.Table, nil)
 	var sets []string
 	for _, a := range set {
-		col := ent.Field(a.Column)
-		if col.PrimaryKey || col.Identity || col.Name == ent.SoftDelete {
-			return nil, &ir.Error{Code: "IR_INVALID", Msg: "restore cannot assign " + a.Column}
-		}
-		v, err := p.renderAssign(b, ent, col, &a)
+		v, err := p.renderAssign(b, ent, ent.Field(a.Column), &a)
 		if err != nil {
 			return nil, err
 		}
@@ -1406,7 +1400,7 @@ func (p *Planner) restoreStep(r *ir.Request) (*plan.Step, error) {
 	if ent.Audit != nil {
 		sets = append(sets, p.D.Quote(ent.Audit.Column)+" = "+b.audit(ent))
 	}
-	where, err := p.renderGroup(b, root, r.Where, true)
+	where, err := p.renderGroup(b, root, &parts.Where, true)
 	if err != nil {
 		return nil, err
 	}
@@ -1428,27 +1422,6 @@ func (p *Planner) restartIdentityStep(r *ir.Request) (*plan.Step, error) {
 	b := &builder{p: p}
 	b.table(ent)
 	return &plan.Step{Role: "main", SQL: p.D.RestartIdentity(ent.Table, ent.Identity), Tables: b.tableList(), BindSlots: []plan.BindSlot{}}, nil
-}
-
-// restoreKey는 restore의 where가 primary key나 unique key 하나의 모든 column을
-// and로 이은 eq 값 조건으로 한 번씩 이름하는지 확인한다.
-func restoreKey(ent *runtimemodel.Entity, where *ir.Group) error {
-	invalid := &ir.Error{Code: "IR_INVALID", Msg: "restore of " + ent.Name + " names every column of its primary key or of one unique key once with an eq value"}
-	var columns []string
-	for i, item := range where.Items {
-		pr := item.Pred
-		if pr == nil || pr.Op != "eq" || pr.P == nil || pr.Fn != nil || pr.Value != nil || pr.Ref != nil || pr.Sub != nil || (i > 0 && pr.Conn != "and") || slices.Contains(columns, pr.Column) {
-			return invalid
-		}
-		columns = append(columns, pr.Column)
-	}
-	sameColumns := func(key []string) bool {
-		return len(key) == len(columns) && !slices.ContainsFunc(key, func(c string) bool { return !slices.Contains(columns, c) })
-	}
-	if sameColumns(ent.PK) || slices.ContainsFunc(ent.Uniques, func(k runtimemodel.Key) bool { return sameColumns(k.Columns) }) {
-		return nil
-	}
-	return invalid
 }
 
 func (p *Planner) qcol(s *scope, col string) string {

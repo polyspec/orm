@@ -1247,53 +1247,72 @@ pub(crate) async fn insert_audit(ex: &Executor, a: &crate::tx::AuditInsert) -> R
     Ok(crate::tx::AuditKey { table: ent.table.clone(), key })
 }
 
-/// Restores the soft-deleted row that the set values name by its primary key or
-/// one unique key, and returns the restored row. The other set values are new
-/// values of the restored row. It clears the soft delete column with an update
-/// that, on an audited table, writes the audit of the transaction like any other update. A
-/// row that is not deleted is returned unchanged and nothing is written; a
-/// missing row returns NO_ROWS. Reads never return a soft-deleted row: restore
-/// names it explicitly.
+/// Restores the soft-deleted row that the set values name and returns the
+/// restored row. It sends the set values as the restore request's set; the
+/// planner picks the key after the request hook from the set values and the eq
+/// conditions of the where (docs/protocol.md 1.5): the primary key when they
+/// cover it, otherwise the first unique key in name order. A set value of a key
+/// column is a condition and every other set value is a new value of the
+/// restored row. It clears the soft delete column with an update that, on an
+/// audited table, writes the audit of the transaction like any other update,
+/// and then reads the row by the values of that key. A row that is not deleted
+/// is returned unchanged and nothing is written; a missing row returns NO_ROWS.
+/// Reads never return a soft-deleted row: restore names it explicitly.
 pub async fn restore<M: Model>(m: &M) -> Result<M> {
     let c = m.core();
     let ex = terminal(c)?;
     let ent = c.ent.entity_schema()?;
-    // key는 모든 column에 값이 정해진 primary key, 아니면 이름 순서로 처음 그런 unique key다.
-    let value = |column: &str| {
-        c.sets.iter().rev().filter(|s| s.column == column).find_map(|s| match &s.value {
-            SetValue::Value(v) => Some(v.clone()),
-            _ => None,
-        })
-    };
-    let covered = |columns: &[String]| columns.iter().all(|column| value(column).is_some());
-    let mut uniques: Vec<&dbspec::Key> = ent.uniques.iter().collect();
-    uniques.sort_by(|a, b| a.name.cmp(&b.name));
-    let key: &[String] = if covered(&ent.primary_key) {
-        &ent.primary_key
-    } else {
-        match uniques.into_iter().find(|u| covered(&u.columns)) {
-            Some(unique) => &unique.columns,
-            None => return Err(config(format!("restore requires the set values of the primary key or a unique key of {}", ent.name))),
-        }
-    };
-    // key 조건은 read와 같은 방법으로 만들므로 restore update와 그 뒤의 read가 같은 행을 같은 값 변환으로 찾는다.
-    let mut q = Core::new(c.ent);
-    q.conn = c.conn.clone();
-    for (i, column) in key.iter().enumerate() {
-        q.add_eq(if i == 0 { "" } else { "and" }, column, value(column).expect("covered key column"));
-    }
-    let mut req = build(&q, "restore");
-    // key 밖의 set 값은 되돌리는 행에 함께 쓰는 새 값이다.
+    let mut req = build(&Core::new(c.ent), "restore");
+    // own maps the parameter of each value the model sets to that set value; the hook adds parameters after them.
+    let mut own: HashMap<usize, &SetSpec> = HashMap::new();
     for s in &c.sets {
-        if key.contains(&s.column) {
-            continue;
-        }
         let a = assign(&mut req, &ent, s)?;
+        if let Some(p) = a.p {
+            own.insert(p, s);
+        }
         req.ir.set.push(a);
     }
     req.ir.n_params = req.params.len();
     write(&ex, &c.conn, &mut req).await?;
+    // req is the request as the hook left it, so its key is the key the planner picked.
+    let key = crate::engine::validate::restore_key(&ent, &req.ir)?.key;
+    let mut q = Core::new(c.ent);
+    q.conn = c.conn.clone();
+    for (i, column) in key.iter().enumerate() {
+        q.add_eq(if i == 0 { "" } else { "and" }, column, restore_key_value(&own, &req, column)?);
+    }
     get_core(&q).await
+}
+
+/// The value of a key column of the restore request `req` as the hook left it.
+/// A set item whose parameter is one the model added for that same column takes
+/// the model's own value, which the read converts as any condition value; any
+/// other set item or eq condition of the where on the column takes its
+/// parameter, as the hook left it.
+fn restore_key_value(own: &HashMap<usize, &SetSpec>, req: &Req, column: &str) -> Result<Param> {
+    if let Some(p) = req.ir.set.iter().find(|a| a.column == column && a.p.is_some()).and_then(|a| a.p) {
+        let Some(s) = own.get(&p).filter(|s| s.column == column) else {
+            return Ok(req.params[p].clone());
+        };
+        return match &s.value {
+            SetValue::Value(v) => Ok(v.clone()),
+            // A codec value has no plain form: the read compares the stored form the set item binds.
+            SetValue::Json(_) | SetValue::Ordered(_) => Ok(req.params[p].clone()),
+            SetValue::Null | SetValue::Plus(_) | SetValue::Minus(_) => {
+                Err(Error::internal(format!("restore key column {column} binds a parameter for a set value that is not a value")))
+            }
+        };
+    }
+    for item in req.ir.query.where_.iter().flat_map(|g| g.items.iter()) {
+        if let ir::Item::Pred { pred } = item {
+            if pred.column == column && pred.op == "eq" && pred.r#fn.is_none() && pred.value.is_none() && pred.r#ref.is_none() && pred.sub.is_none() {
+                if let Some(p) = pred.p {
+                    return Ok(req.params[p].clone());
+                }
+            }
+        }
+    }
+    Err(Error::internal(format!("restore key column {column} has no value in the request")))
 }
 
 /// Deletes the row; `delete(true)` first deletes loaded related rows that

@@ -19,8 +19,8 @@ func runRequestHookCoverage(t *testing.T, id string) {
 	}
 	for _, c := range requestHookCases {
 		if c.id == id {
-			db, e := hookFixture(t, newDatabase(t, driver))
-			c.run(t, db, e)
+			db, e, entry := hookFixture(t, newDatabase(t, driver))
+			c.run(t, db, e, entry)
 			return
 		}
 	}
@@ -50,4 +50,29 @@ func TestCoverageRequestHookLoadedRowWrites(t *testing.T) {
 func TestCoverageRequestHookInvalidParam(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	runRequestHookCoverage(t, "invalid_param")
+}
+
+func TestCoverageRequestHookRestoreKey(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	runRequestHookCoverage(t, "restore_key")
+}
+
+func TestCoverageRequestHookRestoreCondition(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	runRequestHookCoverage(t, "restore_condition")
+}
+
+func TestCoverageRequestHookRestoreNoKey(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	runRequestHookCoverage(t, "restore_no_key")
+}
+
+func TestCoverageRequestHookRestoreRewrittenKey(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	runRequestHookCoverage(t, "restore_rewritten_key")
+}
+
+func TestCoverageRequestHookRestoreHookSetKey(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	runRequestHookCoverage(t, "restore_hook_set_key")
 }

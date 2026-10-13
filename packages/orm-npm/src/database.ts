@@ -1298,13 +1298,17 @@ export async function paginate(ex: Executor, given: Request, givenParams: readon
   });
 }
 
+/** A write's key, affected row count, and the request with its parameters as the request hook of the handle left them. */
+export interface Written extends Hooked { key: number | string | null; affected: number; }
+
 /**
  * Runs an insert, update, delete, or restore and returns the key of the inserted row and the affected row count:
- * the generated identity on a SQL database, the first key the markdown executor answers.
+ * the generated identity on a SQL database, the first key the markdown executor answers. It also returns the
+ * request it ran, as the request hook left it.
  */
-export async function write(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<{ key: number | string | null; affected: number }> {
+export async function write(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<Written> {
   const { request, params } = hooked(ex, given, givenParams);
-  return guarded(ex, async () => {
+  const { key, affected } = await guarded(ex, async (): Promise<{ key: number | string | null; affected: number }> => {
     const db = ex.db;
     if (db.md !== undefined) {
       const { keys, affected } = await markdownWrite(ex, request, params);
@@ -1320,6 +1324,7 @@ export async function write(ex: Executor, given: Request, givenParams: readonly 
     const upsert = request.kind === 'insert' && (request.on_duplicate?.length ?? 0) > 0;
     return { key, affected: upsert ? 1 : result.affected };
   });
+  return { key, affected, request, params };
 }
 
 /** Returns the statement of a select request without executing it. */

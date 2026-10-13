@@ -126,7 +126,7 @@ foreach ($engines as $d => $engine) {
     expect(str_starts_with($delete, 'UPDATE ') && str_contains($delete, $mark) && str_contains($delete, $q('soft_record') . '.' . $q('deleted_at') . ' IS NULL'), "$d soft-delete guarded update: $delete");
 }
 
-// restore 는 primary key 나 unique key 하나의 eq 조건으로 soft delete column 을 NULL 로
+// restore 는 set 값과 and 로 이은 where 의 eq 조건이 덮는 primary key 나 unique key 하나로 soft delete column 을 NULL 로
 // 되돌리는 update 하나다(engine/planner/restore_test.go 와 같은 case). 지워진 행만 고치고,
 // audit table 이면 audit 기록 entity 를 이름한 audit slot 으로 audit column 도 쓴다.
 $restoreDocument = <<<'DBS'
@@ -218,12 +218,21 @@ foreach ([
     'without audit' => ['mysql', $restoreRequest('tag', ['column' => 'name', 'op' => 'eq']),
         'UPDATE `tag` SET `deleted_at` = NULL WHERE `tag`.`name` = ? AND `tag`.`deleted_at` IS NOT NULL',
         ['param 0']],
-    'new values' => ['sqlite', $withSet($restoreRequest('link', ['column' => 'team_id', 'op' => 'eq'], ['conn' => 'and', 'column' => 'member_id', 'op' => 'eq']), 'team_id'),
-        'UPDATE "link" SET "team_id" = ?, "deleted_at" = NULL, "audit_seq" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL',
-        ['param 2', 'audit', 'param 0', 'param 1']],
+    'key from set and where' => ['sqlite', $withSet($restoreRequest('link', ['column' => 'team_id', 'op' => 'eq']), 'member_id'),
+        'UPDATE "link" SET "deleted_at" = NULL, "audit_seq" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL',
+        ['audit', 'param 0', 'param 1']],
+    'primary key of set before a unique key of where' => ['postgres', $withSet($restoreRequest('tag', ['column' => 'name', 'op' => 'eq']), 'id', 'label'),
+        'UPDATE "tag" SET "label" = $1, "deleted_at" = NULL WHERE "tag"."name" = $2 AND "tag"."id" = $3 AND "tag"."deleted_at" IS NOT NULL',
+        ['param 2', 'param 0', 'param 1']],
     'new value and null' => ['postgres', $withSet($restoreRequest('tag', ['column' => 'name', 'op' => 'eq']), 'label'),
         'UPDATE "tag" SET "label" = $1, "deleted_at" = NULL WHERE "tag"."name" = $2 AND "tag"."deleted_at" IS NOT NULL',
         ['param 1', 'param 0']],
+    'a key and another condition' => ['mysql', $restoreRequest('tag', ['column' => 'name', 'op' => 'eq'], ['conn' => 'and', 'column' => 'label', 'op' => 'gt']),
+        'UPDATE `tag` SET `deleted_at` = NULL WHERE `tag`.`name` = ? AND `tag`.`label` > ? AND `tag`.`deleted_at` IS NOT NULL',
+        ['param 0', 'param 1']],
+    'a repeated column' => ['mysql', $restoreRequest('tag', ['column' => 'name', 'op' => 'eq'], ['conn' => 'and', 'column' => 'name', 'op' => 'eq']),
+        'UPDATE `tag` SET `deleted_at` = NULL WHERE `tag`.`name` = ? AND `tag`.`name` = ? AND `tag`.`deleted_at` IS NOT NULL',
+        ['param 0', 'param 1']],
 ] as $name => [$d, $ir, $sql, $slots]) {
     try {
         $plan = (new Engine($restoreModel, $d, 8))->compile($ir);
@@ -240,15 +249,15 @@ $restoreEngine = new Engine($restoreModel, 'sqlite', 8);
 foreach ([
     'part of a unique key' => $restoreRequest('link', ['column' => 'team_id', 'op' => 'eq']),
     'a column that is no key' => $restoreRequest('tag', ['column' => 'label', 'op' => 'eq']),
-    'a key and another column' => $restoreRequest('tag', ['column' => 'name', 'op' => 'eq'], ['conn' => 'and', 'column' => 'label', 'op' => 'eq']),
-    'a repeated column' => $restoreRequest('tag', ['column' => 'name', 'op' => 'eq'], ['conn' => 'and', 'column' => 'name', 'op' => 'eq']),
+    'part of a unique key in set' => $withSet($restoreRequest('link'), 'member_id'),
+    'an or connector with a key in set' => $withSet($restoreRequest('tag', ['column' => 'label', 'op' => 'eq'], ['conn' => 'or', 'column' => 'label', 'op' => 'eq']), 'name'),
     'another operator' => $restoreRequest('tag', ['column' => 'name', 'op' => 'gt']),
     'an or connector' => $restoreRequest('link', ['column' => 'team_id', 'op' => 'eq'], ['conn' => 'or', 'column' => 'member_id', 'op' => 'eq']),
     'a null test' => $restoreRequest('tag', ['column' => 'name', 'op' => 'is_null']),
     'no condition' => $restoreRequest('tag'),
     'a group' => ['where' => ['items' => [['group' => ['items' => [['pred' => ['column' => 'name', 'op' => 'eq', 'p' => 0]]]]]]], 'n_params' => 1] + $restoreRequest('tag'),
     'an assignment of the soft delete column' => $withSet($restoreRequest('tag', ['column' => 'name', 'op' => 'eq']), 'deleted_at'),
-    'an assignment of the primary key' => $withSet($restoreRequest('tag', ['column' => 'name', 'op' => 'eq']), 'id'),
+    'a null assignment of the primary key' => ['set' => [['column' => 'id', 'null' => true]]] + $restoreRequest('tag', ['column' => 'name', 'op' => 'eq']),
     'an assignment of the audit column' => $withSet($restoreRequest('link', ['column' => 'id', 'op' => 'eq']), 'audit_seq'),
     'an optimistic check' => ['optimistic' => ['column' => 'label', 'p' => 0]] + $restoreRequest('tag', ['column' => 'name', 'op' => 'eq']),
     'a table without soft_delete' => $restoreRequest('plain', ['column' => 'id', 'op' => 'eq']),

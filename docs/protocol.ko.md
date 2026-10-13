@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 52a61928fdf5fd37e7c64499cdfb448faf3dc404d68223f55d39e40fbaac3262 -->
+<!-- source-sha256: f2131c0cd480dc2799047969e42aa87534754c92e8365ea17c1896c3dddc99a8 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `engine/ir/ir.go`와 `engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -126,13 +126,13 @@ default가 있는 컬럼을 빼먹은 `insert`는 database default를 받으며 
 
 ### 1.5 Restore
 
-`restore` 요청은 `soft_delete` setting이 있는 테이블([dbspec](dbspec.ko.md#settings))에서 soft delete한 행 하나를 지정한다. `where`에는 매개변수를 가진 `eq` predicate만 `and`로 이어지며, 이 predicate들은 primary key나 unique key 하나의 모든 컬럼을 순서와 상관없이 한 번씩 지정한다. `set`은 restore와 함께 쓰는 새 값이며 `update` 할당과 같은 규칙을 따른다. primary key, identity, soft delete 컬럼의 할당은 `IR_INVALID`로 실패한다. `optimistic`은 없다. plan은 `main` step 하나다:
+`restore` 요청은 `soft_delete` setting이 있는 테이블([dbspec](dbspec.ko.md#settings))에서 soft delete한 행 하나를 지정한다. `set`은 그 행의 값이며 `update` 할당과 같은 규칙을 따르고, `where`는 `and`로 이은 조건이다. `where`의 두 item 사이의 `or`는 `IR_INVALID`로 실패한다. planner는 request hook 뒤에 key를 고른다: 매개변수(`p`)를 가진 `set` 값과 `where` item 중 함수, 값 함수, ref, subquery 없이 매개변수를 가진 컬럼의 `eq` predicate가 컬럼의 값을 주며, 그 값들이 primary key의 모든 컬럼을 덮으면 primary key가, 아니면 컬럼을 모두 덮는 첫 unique key(이름 순서)가 key다. key 컬럼의 `set` 값은 `where` 뒤에 `set`의 순서로 그 컬럼의 `eq` 조건이 되고, 다른 `set` 값은 restore와 함께 쓰는 새 값이다. `where`의 다른 조건은 restore를 더 좁히며, key가 여전히 행을 많아야 하나로 정하므로 request hook은 `update`처럼 restore에 조건을 더할 수 있다. 값이 어떤 key도 덮지 않는 요청은 `IR_INVALID`로 실패하며, primary key, identity, soft delete 컬럼의 새 값도 그렇다. `optimistic`은 없다. plan은 `main` step 하나다. unique key (`team_id`, `member_id`)에서 `team_id`, `member_id`, `note`의 `set`이면:
 
 ```sql
 UPDATE `link` SET `note` = ?, `deleted_at` = NULL, `audit_seq` = ? WHERE `link`.`team_id` = ? AND `link`.`member_id` = ? AND `link`.`deleted_at` IS NOT NULL
 ```
 
-이 step은 새 값을 쓰고, soft delete 컬럼을 비우며, `audit` setting이 있는 테이블에서는 audit 컬럼을 쓴다. soft delete처럼 `updated` 컬럼은 할당하지 않는다. 지워지지 않은 행과 없는 행은 어떤 행과도 맞지 않으므로 문장은 새 값을 포함해 아무것도 바꾸지 않는다. `soft_delete`가 없는 테이블의 요청, 다른 형태의 predicate, key 밖의 컬럼, key의 일부만 지정한 요청은 `IR_INVALID`로 실패한다. 읽기는 언제나 soft delete한 행을 빼며, soft delete한 행과 맞는 요청은 `restore`뿐이다. 모델 메서드 `restore`는 이 step을 실행한 뒤 같은 key로 행을 읽는다([사용법](usage.ko.md#restore-a-soft-deleted-row)).
+이 step은 새 값을 쓰고, soft delete 컬럼을 비우며, `audit` setting이 있는 테이블에서는 audit 컬럼을 쓴다. soft delete처럼 `updated` 컬럼은 할당하지 않는다. 지워지지 않은 행과 없는 행은 어떤 행과도 맞지 않으므로 문장은 새 값을 포함해 아무것도 바꾸지 않는다. `soft_delete`가 없는 테이블의 요청은 `IR_INVALID`로 실패한다. 읽기는 언제나 soft delete한 행을 빼며, soft delete한 행과 맞는 요청은 `restore`뿐이다. 모델 메서드 `restore`는 set 값을 `set`으로 보내고 `where`는 보내지 않으며, 이 step을 실행한 뒤 hook이 남긴 요청에서 planner가 고른 key의 값으로 행을 읽는다([사용법](usage.ko.md#restore-a-soft-deleted-row)).
 
 ### 1.6 적재 {#_1-6-load}
 

@@ -16,6 +16,8 @@ type fixtureCase struct {
 	Operation string          `json:"operation"`
 	Input     json.RawMessage `json:"input"`
 	Expected  json.RawMessage `json:"expected"`
+	// Schema is the repository path of the dbspec document a planner case compiles against.
+	Schema string `json:"schema"`
 }
 
 // featureFixture는 feature fixture에서 id의 case를 읽고, case의 operation이

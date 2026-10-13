@@ -5,7 +5,7 @@ import type { Assemble, Assignment, BindSlot, Child, Group, KeyReference, OrmFun
 import { OrmError } from '../runtime_error.js';
 import { type Dialect, valueFunctionUnits } from './dialect.js';
 import { entityOf, fieldOf as columnOf, type Entity, type Field as Column, type RuntimeModel } from './model.js';
-import { conflictKey } from './validate.js';
+import { conflictKey, restoreKey } from './validate.js';
 
 /** One entity occurrence in a statement (root or join) with its alias. */
 interface Scope {
@@ -832,31 +832,27 @@ export class Planner {
   }
 
   /**
-   * soft delete 한 행 하나를 되돌리는 update 다. where 는 primary key 나 unique key 하나의 모든 column 을 eq 값으로
-   * 한 번씩 이름한다. 지워진 행만 고치므로 지워지지 않은 행과 없는 행은 아무것도 바꾸지 않는다. set 은 되돌리는 행에
-   * 함께 쓰는 새 값이며 update 처럼 쓴다. primary key, identity, soft delete column 은 쓸 수 없다. SET 순서는 새 값,
-   * AES key version, soft delete column, audit table 의 audit column 이다. updated column 은 쓰지 않는다.
+   * soft delete 한 행 하나를 되돌리는 update 다. restoreKey 가 request 의 set 과 where 에서 primary key 나 unique key
+   * 하나를 고르고, 그 key column 의 set 값은 조건이 되며 다른 set 값은 되돌리는 행에 함께 쓰는 새 값으로 update 처럼
+   * 쓴다. where 의 다른 조건은 restore 를 더 좁힌다. 지워진 행만 고치므로 지워지지 않은 행과 없는 행은 아무것도 바꾸지
+   * 않는다. SET 순서는 새 값, AES key version, soft delete column, audit table 의 audit column 이다. updated column 은
+   * 쓰지 않는다.
    */
   private restoreStep(r: Request): Omit<PlanStep, 'id'> {
     const ent = this.entity(r.entity);
-    if (ent.softDelete === '') fail('IR_INVALID', `restore of ${ent.name}, which has no soft_delete setting`);
-    restoreKey(ent, r.where!);
-    const set = addBlindIndexAssignments(ent, [...r.set ?? []]);
+    const parts = restoreKey(ent, r);
+    const set = addBlindIndexAssignments(ent, [...parts.set]);
     validateAESAssignments(ent, set, true);
     const b = new Builder(this.d);
     const root = this.buildScopes(r, ent.table, undefined);
     const sets: string[] = [];
-    for (const a of set) {
-      const col = columnOf(ent, a.column)!;
-      if (col.primary || col.identity || col.name === ent.softDelete) fail('IR_INVALID', `restore cannot assign ${a.column}`);
-      sets.push(`${this.d.quote(a.column)} = ${this.renderAssign(b, ent, col, a)}`);
-    }
+    for (const a of set) sets.push(`${this.d.quote(a.column)} = ${this.renderAssign(b, ent, columnOf(ent, a.column)!, a)}`);
     const version = aesVersionColumn(ent);
     if (version !== '' && assignsAES(ent, set)) sets.push(`${this.d.quote(version)} = ${b.config('aes_version', columnOf(ent, version)!.type)}`);
     sets.push(`${this.d.quote(ent.softDelete)} = NULL`);
     const op = this.auditAssignment(b, ent);
     if (op !== undefined) sets.push(op);
-    const where = `${this.renderGroup(b, root, r.where!, true)} AND ${this.qcol(root, ent.softDelete)} IS NOT NULL`;
+    const where = `${this.renderGroup(b, root, parts.where, true)} AND ${this.qcol(root, ent.softDelete)} IS NOT NULL`;
     return { role: 'main', sql: `UPDATE ${b.table(ent)} SET ${sets.join(', ')} WHERE ${where}`, tables: b.tables(), bind_slots: b.binds };
   }
 
@@ -873,16 +869,3 @@ export class Planner {
   }
 }
 
-/** restore 의 where 가 primary key 나 unique key 하나의 모든 column 을 and 로 이은 eq 값 조건으로 한 번씩 이름하는지 확인한다. */
-function restoreKey(ent: Entity, where: Group): void {
-  const invalid = (): never => fail('IR_INVALID', `restore of ${ent.name} names every column of its primary key or of one unique key once with an eq value`);
-  const columns: string[] = [];
-  where.items.forEach((item, i) => {
-    const p = item.pred;
-    if (p === undefined || p.op !== 'eq' || p.p === undefined || p.fn !== undefined || p.value !== undefined || p.ref !== undefined
-      || p.sub !== undefined || (i > 0 && p.conn !== 'and') || columns.includes(p.column ?? '')) invalid();
-    columns.push(p!.column ?? '');
-  });
-  const same = (key: readonly string[]) => key.length === columns.length && key.every(c => columns.includes(c));
-  if (!same(ent.primaryKey) && !ent.uniques.some(same)) invalid();
-}

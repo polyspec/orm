@@ -3,7 +3,7 @@
 # (docs/protocol.md).
 from polyspec.orm.engine.dialect import value_function_units
 from polyspec.orm.engine.model import Entity, Field, RuntimeModel, entity_of, field_of
-from polyspec.orm.engine.validate import conflict_key
+from polyspec.orm.engine.validate import conflict_key, restore_key
 from polyspec.orm.errors import OrmError
 
 __all__ = ['Planner']
@@ -963,25 +963,21 @@ class Planner:
                 'tables': b.tables(), 'bind_slots': [s.as_dict() for s in b.binds]}
 
     def _restore_step(self, r: dict) -> dict:
-        """soft delete 한 행 하나를 되돌리는 update다. where는 primary key나 unique
-        key 하나의 모든 column을 eq 값으로 한 번씩 이름한다. 지워진 행만 고치므로
-        지워지지 않은 행과 없는 행은 아무것도 바꾸지 않는다. set은 되돌리는 행에
-        함께 쓰는 새 값이며 update처럼 쓴다. primary key, identity, soft delete
-        column은 쓸 수 없다. SET 순서는 새 값, AES key version, soft delete column,
-        audit table의 audit column이다. updated column은 쓰지 않는다."""
+        """soft delete 한 행 하나를 되돌리는 update다. restore_key가 request의 set과 where에서
+        primary key나 unique key 하나를 고르고, 그 key column의 set 값은 조건이 되며 다른 set
+        값은 되돌리는 행에 함께 쓰는 새 값으로 update처럼 쓴다. where의 다른 조건은 restore를
+        더 좁힌다. 지워진 행만 고치므로 지워지지 않은 행과 없는 행은 아무것도 바꾸지 않는다.
+        SET 순서는 새 값, AES key version, soft delete column, audit table의 audit column이다.
+        updated column은 쓰지 않는다."""
         ent = self._entity(r['entity'])
-        if ent.soft_delete == '':
-            _fail('IR_INVALID', f'restore of {ent.name}, which has no soft_delete setting')
-        self._restore_key(ent, r['where'])
-        assignments = _add_blind_index_assignments(ent, r.get('set') or [])
+        parts = restore_key(ent, r)
+        assignments = _add_blind_index_assignments(ent, parts['set'])
         _validate_aes_assignments(ent, assignments, True)
         b = _Builder(self.d)
         root = self._build_scopes(r, ent.table, None)
         sets = []
         for a in assignments:
             col = field_of(ent, a['column'])
-            if col.primary or col.identity or col.name == ent.soft_delete:
-                _fail('IR_INVALID', f'restore cannot assign {a["column"]}')
             sets.append(f'{self.d.quote(a["column"])} = {self._render_assign(b, ent, col, a)}')
         version = ent.aes_version
         if version != '' and _assigns_aes(ent, assignments):
@@ -991,7 +987,7 @@ class Planner:
         operation = self._audit_assignment(b, ent)
         if operation is not None:
             sets.append(operation)
-        where = f'{self._render_group(b, root, r["where"], True)} AND {self._qcol(root, ent.soft_delete)} IS NOT NULL'
+        where = f'{self._render_group(b, root, parts["where"], True)} AND {self._qcol(root, ent.soft_delete)} IS NOT NULL'
         return {'role': 'main', 'sql': f'UPDATE {b.table(ent)} SET {", ".join(sets)} WHERE {where}',
                 'tables': b.tables(), 'bind_slots': [s.as_dict() for s in b.binds]}
 
@@ -1006,26 +1002,3 @@ class Planner:
         b.table(ent)
         return {'role': 'main', 'sql': self.d.restart_identity(ent.table, ent.identity),
                 'tables': b.tables(), 'bind_slots': []}
-
-    @staticmethod
-    def _restore_key(ent: Entity, where: dict) -> None:
-        """restore의 where가 primary key나 unique key 하나의 모든 column을 and로 이은
-        eq 값 조건으로 한 번씩 이름하는지 확인한다."""
-        def invalid():
-            _fail('IR_INVALID', f'restore of {ent.name} names every column of its primary '
-                                f'key or of one unique key once with an eq value')
-
-        columns: list[str] = []
-        for i, item in enumerate(where['items']):
-            p = item.get('pred')
-            if p is None or p.get('op') != 'eq' or 'p' not in p or 'fn' in p \
-                    or 'value' in p or 'ref' in p or 'sub' in p \
-                    or (i > 0 and p.get('conn') != 'and') or p.get('column') in columns:
-                invalid()
-            columns.append(p.get('column') or '')
-
-        def same(key) -> bool:
-            return len(key) == len(columns) and all(c in columns for c in key)
-
-        if not same(ent.primary_key) and not any(same(unique) for unique in ent.uniques):
-            invalid()

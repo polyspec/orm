@@ -351,7 +351,7 @@ await master.transaction(async () => {
 
 ### Restore a soft-deleted row
 
-A delete of a table with a `soft_delete` setting keeps the row and its unique key values, and reads never return it, so inserting the same key again fails with `DUPLICATE_KEY`. `restore()` brings such a row back: set the values of the primary key or of one unique key on a new model, and any new values of other columns, and call `restore()`. It writes the new values and clears the soft delete column with one `UPDATE` ([protocol](protocol.md#_1-5-restore)), reads the row by the same key with the default select set and returns it as a loaded model.
+A delete of a table with a `soft_delete` setting keeps the row and its unique key values, and reads never return it, so inserting the same key again fails with `DUPLICATE_KEY`. `restore()` brings such a row back: set the values of the primary key or of one unique key on a new model, and any new values of other columns, and call `restore()`. It sends the set values as the request's `set`; the planner picks the key after the request hook, which may add conditions to the restore as to an `update`. It writes the new values and clears the soft delete column with one `UPDATE` ([protocol](protocol.md#_1-5-restore)), reads the row by the values of that key with the default select set and returns it as a loaded model.
 
 ```go
 row, err := model.Membership().Connect(master).SetTeamId(1).SetMemberId(2).SetRole("owner").Restore()
@@ -366,7 +366,7 @@ let row = Membership::new().connect(&master).set_team_id(1).set_member_id(2).set
 const row = await new Membership().connect(master).setTeamId(1).setMemberId(2).setRole('owner').restore();
 ```
 
-- The key is the primary key when every primary key column has a set value, otherwise the first unique key, in name order, whose columns all have set values; a key value is a plain value, not null, raw, plus or minus. Every other set value is a new value, assigned as in `update`. Without the values of a key restore fails with `CONFIG`; an assignment of a primary key or soft delete column, or a table without `soft_delete`, fails with `IR_INVALID`.
+- The key is the primary key when the set values and the `eq` conditions of a column of the request after the hook, without a function, value function, ref or subquery, give every primary key column a value, otherwise the first unique key, in name order, whose columns they all give a value; a key value is a plain value, not null, raw, plus or minus. A set value of a key column is a condition; every other set value is a new value, assigned as in `update`. A condition the hook adds narrows the restore further. Without the values of a key restore fails with `IR_INVALID` before any statement, and so does a new value of a primary key or soft delete column, or a table without `soft_delete`.
 - A row that is not deleted is returned unchanged and nothing is written, the new values included. A key that no row has fails with `NO_ROWS`.
 - On a table with an `audit` setting the restore is an update like any other: it runs in a transaction with audit values, writes the audit record's key into the audit column, and the triggers record the version in the history table. Without an audit it fails with `CONFIG`.
 - Like a soft delete, restore does not assign the `updated` column. The update and the read are two statements; inside a transaction they see one state.
@@ -489,7 +489,7 @@ A program that compiles requests itself, such as a load that writes rows with th
 - A model runs through the handle it is connected to; inside a transaction, a model without a connection runs through the handle that began the transaction. A row read or created through a hooked handle keeps that handle, so its later `update`, `delete` and `restore` pass the hook. A transaction that begins on a hooked handle keeps the hook for the models of its callback, and a model connected to another handle of the connection inside it runs with the hook of that handle.
 - A created row holds the values its caller assigned; a value the hook assigned is written but not read back into the row.
 - A handle without a hook plans each request as the model built it, without a copy or a call.
-- The shared cases `contracts/fixtures/request_hook.dbs` run in every client on SQLite: a predicate the hook adds filters a read, a count and a page; an assignment it adds is written by a single and a bulk insert; the update and the delete of a loaded row pass the hook; a parameter index outside the parameters fails with `IR_INVALID` before any statement; a handle without a hook reads every row.
+- The shared cases `contracts/fixtures/request_hook.dbs` run in every client on SQLite: a predicate the hook adds filters a read, a count and a page; an assignment it adds is written by a single and a bulk insert; the update and the delete of a loaded row pass the hook; a parameter index outside the parameters fails with `IR_INVALID` before any statement; a handle without a hook reads every row; a restore takes its key from its set values and the condition the hook adds, a condition the hook adds keeps a restore from a row outside it, and a restore whose values and conditions cover no key fails with `IR_INVALID` before any statement.
 
 ## 11. Common errors
 

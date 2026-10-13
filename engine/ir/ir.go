@@ -358,9 +358,9 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 			if r.Kind == "insert" && (a.PlusP != nil || a.MinusP != nil) {
 				return errf("IR_INVALID", "insert cannot assign %s by plus or minus", a.Column)
 			}
-			// The key and the soft delete column are the table's own: a restore clears the latter itself.
-			if r.Kind == "update" || r.Kind == "restore" {
-				if c := ent.Field(a.Column); c.PrimaryKey || c.Identity || r.Kind == "restore" && a.Column == ent.SoftDelete {
+			// The key is the table's own. A restore checks its set with its key below.
+			if r.Kind == "update" {
+				if c := ent.Field(a.Column); c.PrimaryKey || c.Identity {
 					return errf("IR_INVALID", "cannot update %s", a.Column)
 				}
 			}
@@ -408,12 +408,17 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 			return err
 		}
 	}
-	if (r.Kind == "update" || r.Kind == "delete" || r.Kind == "restore") && (r.Where == nil || len(r.Where.Items) == 0) {
+	if (r.Kind == "update" || r.Kind == "delete") && (r.Where == nil || len(r.Where.Items) == 0) {
 		return errf("IR_INVALID", "%s without where", r.Kind)
 	}
-	// restore는 지워진 행만 고치므로 읽은 version과 비교할 것이 없다.
-	if r.Kind == "restore" && r.Optimistic != nil {
-		return errf("IR_INVALID", "restore takes no optimistic")
+	if r.Kind == "restore" {
+		// restore는 지워진 행만 고치므로 읽은 version과 비교할 것이 없다.
+		if r.Optimistic != nil {
+			return errf("IR_INVALID", "restore takes no optimistic")
+		}
+		if _, err := RestoreKey(ent, r); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -523,6 +528,90 @@ func ConflictKey(ent *runtimemodel.Entity, set []Assign) (runtimemodel.Key, erro
 		}
 	}
 	return candidates[0], nil
+}
+
+// RestoreParts are the parts of the statement of a restore request: the key that names its row, the
+// conditions and the new values.
+type RestoreParts struct {
+	// Key is the primary key, or the unique key, whose columns the request gives values.
+	Key []string
+	// Where is the where of the request with an eq condition for each set value of a key column.
+	Where Group
+	// Set holds the set values of the columns outside the key: the new values of the row.
+	Set []Assign
+}
+
+// RestoreKey picks the key of a restore request (docs/protocol.md 1.5) after the request hook. The set
+// values with a parameter and the eq conditions with a parameter that the where joins with and give
+// columns their values; the key is the primary key when they cover it, otherwise the first unique key
+// in name order that they cover. A set value of a key column becomes a condition, every other set value
+// is a new value, and the where keeps its other conditions, which narrow the restore further; the key
+// still names at most one row.
+func RestoreKey(ent *runtimemodel.Entity, r *Request) (RestoreParts, error) {
+	if ent.SoftDelete == "" {
+		return RestoreParts{}, errf("IR_INVALID", "restore of %s, which has no soft_delete setting", ent.Name)
+	}
+	var items []Item
+	if r.Where != nil {
+		items = r.Where.Items
+	}
+	valued := map[string]bool{}
+	for i, item := range items {
+		if i > 0 && itemConn(item) == "or" {
+			return RestoreParts{}, errf("IR_INVALID", "restore of %s joins the conditions of its where with and", ent.Name)
+		}
+		if pr := item.Pred; pr != nil && pr.Op == "eq" && pr.P != nil && pr.Fn == nil && pr.Value == nil && pr.Ref == nil && pr.Sub == nil {
+			valued[pr.Column] = true
+		}
+	}
+	for _, a := range r.Set {
+		if a.P != nil {
+			valued[a.Column] = true
+		}
+	}
+	covered := func(columns []string) bool {
+		return len(columns) > 0 && !slices.ContainsFunc(columns, func(c string) bool { return !valued[c] })
+	}
+	var key []string
+	if covered(ent.PK) {
+		key = ent.PK
+	} else if i := slices.IndexFunc(ent.Uniques, func(k runtimemodel.Key) bool { return covered(k.Columns) }); i >= 0 {
+		key = ent.Uniques[i].Columns
+	}
+	if key == nil {
+		return RestoreParts{}, errf("IR_INVALID", "restore of %s gives no primary key or unique key a value in its set or in an eq condition of its where", ent.Name)
+	}
+	parts := RestoreParts{Key: key, Where: Group{Items: slices.Clone(items)}}
+	for _, a := range r.Set {
+		if a.P != nil && slices.Contains(key, a.Column) {
+			p := *a.P
+			pred := &Pred{Column: a.Column, Op: "eq", P: &p}
+			if len(parts.Where.Items) > 0 {
+				pred.Conn = "and"
+			}
+			parts.Where.Items = append(parts.Where.Items, Item{Pred: pred})
+			continue
+		}
+		// The key and the soft delete column are the table's own: a restore clears the latter itself.
+		if c := ent.Field(a.Column); c.PrimaryKey || c.Identity || a.Column == ent.SoftDelete {
+			return RestoreParts{}, errf("IR_INVALID", "restore cannot assign %s", a.Column)
+		}
+		parts.Set = append(parts.Set, a)
+	}
+	return parts, nil
+}
+
+// itemConn is the connector that joins an item to the item before it.
+func itemConn(item Item) string {
+	switch {
+	case item.Pred != nil:
+		return item.Pred.Conn
+	case item.Group != nil:
+		return item.Group.Conn
+	case item.Joined != nil:
+		return item.Joined.Conn
+	}
+	return ""
 }
 
 // meets reports whether two columns compare alike on the three databases, as dbspec's check operands do: integers with

@@ -537,10 +537,10 @@ def validate(m: RuntimeModel, r: dict) -> None:
             # A VALUES list has no current row for plus_p or minus_p to read; on_duplicate does.
             if r['kind'] == 'insert' and (a.get('plus_p') is not None or a.get('minus_p') is not None):
                 _fail('IR_INVALID', f'insert cannot assign {a["column"]} by plus or minus')
-            # The key and the soft delete column are the table's own: a restore clears the latter itself.
-            if r['kind'] in ('update', 'restore'):
+            # The key is the table's own. A restore checks its set with its key below.
+            if r['kind'] == 'update':
                 col = field_of(ent, a['column'])
-                if col.primary or col.identity or (r['kind'] == 'restore' and a['column'] == ent.soft_delete):
+                if col.primary or col.identity:
                     _fail('IR_INVALID', f'cannot update {a["column"]}')
     if r.get('rows'):
         if r['kind'] != 'insert' or r.get('on_duplicate'):
@@ -567,9 +567,61 @@ def validate(m: RuntimeModel, r: dict) -> None:
         if field_of(ent, r['optimistic']['column']) is None:
             _fail('COLUMN_UNKNOWN', f'{r["entity"]}.{r["optimistic"]["column"]}')
         v.params([r['optimistic']['p']])
-    if r['kind'] in ('update', 'delete', 'restore') \
+    if r['kind'] in ('update', 'delete') \
             and not (r.get('where') or {}).get('items'):
         _fail('IR_INVALID', f'{r["kind"]} without where')
-    # restore는 지워진 행만 고치므로 읽은 version과 비교할 것이 없다.
-    if r['kind'] == 'restore' and r.get('optimistic') is not None:
-        _fail('IR_INVALID', 'restore takes no optimistic')
+    if r['kind'] == 'restore':
+        # restore는 지워진 행만 고치므로 읽은 version과 비교할 것이 없다.
+        if r.get('optimistic') is not None:
+            _fail('IR_INVALID', 'restore takes no optimistic')
+        restore_key(ent, r)
+
+
+def restore_key(ent: Entity, r: dict) -> dict:
+    """The parts of the statement of a restore request (docs/protocol.md 1.5), picked after the request
+    hook. The set values with a parameter and the eq conditions with a parameter that the where joins with
+    and give columns their values; the key is the primary key when they cover it, otherwise the first unique
+    key in name order that they cover. A set value of a key column becomes a condition, every other set value
+    is a new value, and the where keeps its other conditions, which narrow the restore further; the key still
+    names at most one row. It returns {'key': the key, 'where': the where with an eq condition for each set
+    value of a key column, 'set': the new values}."""
+    if ent.soft_delete == '':
+        _fail('IR_INVALID', f'restore of {ent.name}, which has no soft_delete setting')
+    items = list((r.get('where') or {}).get('items') or [])
+    valued = set()
+    for i, item in enumerate(items):
+        conn = (item.get('pred') or item.get('group') or item.get('joined') or {}).get('conn') or ''
+        if i > 0 and conn == 'or':
+            _fail('IR_INVALID', f'restore of {ent.name} joins the conditions of its where with and')
+        p = item.get('pred')
+        if p is not None and p.get('op') == 'eq' and p.get('p') is not None \
+                and not any(p.get(k) is not None for k in ('fn', 'value', 'ref', 'sub')):
+            valued.add(p.get('column') or '')
+    for a in r.get('set') or []:
+        if a.get('p') is not None:
+            valued.add(a['column'])
+
+    def covered(columns) -> bool:
+        return len(columns) > 0 and all(c in valued for c in columns)
+
+    # indexes의 앞부분이 uniques와 같은 순서의 unique key 이름이다.
+    uniques = sorted(((ent.indexes[i], list(columns)) for i, columns in enumerate(ent.uniques)),
+                     key=lambda u: u[0])
+    key = list(ent.primary_key) if covered(ent.primary_key) \
+        else next((columns for _, columns in uniques if covered(columns)), None)
+    if key is None:
+        _fail('IR_INVALID', f'restore of {ent.name} gives no primary key or unique key a value in its '
+                            f'set or in an eq condition of its where')
+    where = list(items)
+    assignments = []
+    for a in r.get('set') or []:
+        if a.get('p') is not None and a['column'] in key:
+            where.append({'pred': {**({'conn': 'and'} if where else {}),
+                                   'column': a['column'], 'op': 'eq', 'p': a['p']}})
+            continue
+        # The key and the soft delete column are the table's own: a restore clears the latter itself.
+        col = field_of(ent, a['column'])
+        if col.primary or col.identity or a['column'] == ent.soft_delete:
+            _fail('IR_INVALID', f'restore cannot assign {a["column"]}')
+        assignments.append(a)
+    return {'key': key, 'where': {'items': where}, 'set': assignments}

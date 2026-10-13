@@ -1,4 +1,4 @@
-//! planner: contracts/fixtures/planner.json의 `input`에 schema/bench.dbs의 manifest hash를 더해
+//! planner: contracts/fixtures/planner.json의 `input`에 그 case의 schema 문서의 manifest hash를 더해
 //! 이 client의 engine으로 각 dialect에서 compile한다. statement(role, sql, bind slot의 param
 //! 순서(parent slot은 -1), table)가 `expected[dialect]`와 같거나 error code가 `expected.error`와 같아야 한다.
 //! engine의 compile은 crate 안에서만 보이므로 src/engine/mod.rs가 이 file을 unit test module로 둔다.
@@ -20,7 +20,12 @@ fn repository() -> PathBuf {
 }
 
 pub(super) fn bench() -> Manifest {
-    let path = repository().join("schema/bench.dbs");
+    schema("schema/bench.dbs")
+}
+
+/// The manifest of the dbspec document at the repository path `at`.
+fn schema(at: &str) -> Manifest {
+    let path = repository().join(at);
     let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     let document =
         crate::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("{}: {errors:?}", path.display()));
@@ -28,8 +33,8 @@ pub(super) fn bench() -> Manifest {
     Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
 }
 
-/// fixture에서 `id` case 하나를 찾아 input과 expected를 돌려준다.
-fn case(id: &str) -> (Value, Value) {
+/// fixture에서 `id` case 하나를 찾아 그 schema 문서의 경로, input과 expected를 돌려준다.
+fn case(id: &str) -> (String, Value, Value) {
     let path = repository().join("contracts/fixtures/planner.json");
     let fixture: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display())))
         .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
@@ -37,7 +42,11 @@ fn case(id: &str) -> (Value, Value) {
     let cases: Vec<&Value> = fixture["cases"].as_array().expect("fixture cases").iter().filter(|c| c["id"] == id).collect();
     let [case] = cases.as_slice() else { panic!("{}: case {id} appears {} times", path.display(), cases.len()) };
     assert_eq!(case["operation"], "compile", "{id}: operation");
-    (case["input"].clone(), case["expected"].clone())
+    let schema = case["schema"]
+        .as_str()
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| panic!("{id}: the case names no schema; give it the repository path of its dbspec document"));
+    (schema.to_owned(), case["input"].clone(), case["expected"].clone())
 }
 
 /// An object whose members are all the same kind, such as the `sub` map of `columns`: its member names are free.
@@ -394,8 +403,8 @@ pub(super) fn request(input: &Value, manifest_hash: &str) -> ir::Request {
 fn run(id: &str) {
     let clock = CaseClock::start();
     polyspec_orm_testcase::step(format_args!("start {id}"));
-    let manifest = bench();
-    let (input, expected) = case(id);
+    let (at, input, expected) = case(id);
+    let manifest = schema(&at);
     let request = request(&input, &manifest.manifest_hash);
     for (name, dialect) in DIALECTS {
         let got = match compile(&manifest, dialect, &request) {
@@ -478,6 +487,34 @@ fn coverage_planner_restore() {
 fn coverage_planner_restore_rejects_non_key() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_restore_rejects_non_key");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_restore_key_from_set() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_restore_key_from_set");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_restore_extra_condition() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_restore_extra_condition");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_restore_primary_key_first() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_restore_primary_key_first");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_restore_first_unique_by_name() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_restore_first_unique_by_name");
 }
 
 #[test]

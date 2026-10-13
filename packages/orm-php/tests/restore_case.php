@@ -30,11 +30,11 @@ function restoreWant(bool $ok, string $message): void
  * soft delete한 행을 restore로 되돌린다. membership은 unique key (team_id, member_id)와 exclude (note)를
  * 가진 audit table이고 label은 unique key (name)를 가진 audit 없는 table이다. 확인하는 것:
  * soft delete한 행의 unique key 값은 남아 같은 key의 insert는 DUPLICATE_KEY다. 기본 read는 지운 행을
- * 읽지 않는다. restore는 primary key나 unique key 하나의 set 값으로 지운 행을 찾아 soft delete column을
+ * 읽지 않는다. restore는 set 값만 보내고, planner가 고른 primary key나 unique key 하나의 set 값으로 지운 행을 찾아 soft delete column을
  * NULL로 쓰는 update를 하고 되돌린 행을 돌려준다. key 밖의 set 값은 그 update가 함께 쓰는 새 값이다. audit table이면 transaction의 audit 기록 key를 쓰고
  * trigger가 그 update를 기록하며, audit이 없으면 CONFIG다. 지워지지 않은 행의 restore는 아무것도
  * 쓰지 않고(새 값도 쓰지 않는다) 그 행을 돌려주고, 없는 행의 restore는 NO_ROWS다. key의 값이 없는
- * restore는 CONFIG다.
+ * restore는 statement 없이 IR_INVALID다.
  */
 function restoreCase(Db $db, string $namespace): void
 {
@@ -87,9 +87,9 @@ function restoreCase(Db $db, string $namespace): void
     $missing = restoreErrorCode(fn() => $label()->setName('blue')->restore());
     restoreWant($missing === Code::NO_ROWS, "restore of an absent row = $missing, want NO_ROWS");
     $nonKey = restoreErrorCode(fn() => $label()->setColor('x')->restore());
-    restoreWant($nonKey === Code::CONFIG, "restore without the values of a key = $nonKey, want CONFIG");
+    restoreWant($nonKey === Code::IR_INVALID, "restore without the values of a key = $nonKey, want IR_INVALID");
     $empty = restoreErrorCode(fn() => $label()->restore());
-    restoreWant($empty === Code::CONFIG, "restore without key values = $empty, want CONFIG");
+    restoreWant($empty === Code::IR_INVALID, "restore without key values = $empty, want IR_INVALID");
 
     $change = $db->driver() === 'mysql' ? '`change`' : '"change"';
     $rows = $db->pdo()->query("SELECT $change, previous_audit_seq, seq, team_id, member_id, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM membership_history ORDER BY history_id")->fetchAll(PDO::FETCH_NUM);

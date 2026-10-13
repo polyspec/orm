@@ -138,10 +138,10 @@ final class Validator
                 if ($kind === 'insert' && (isset($a['plus_p']) || isset($a['minus_p']))) {
                     throw self::err(Code::IR_INVALID, "insert cannot assign {$a['column']} by plus or minus");
                 }
-                // The key and the soft delete column are the table's own: a restore clears the latter itself.
-                if ($kind === 'update' || $kind === 'restore') {
+                // The key is the table's own. A restore checks its set with its key below.
+                if ($kind === 'update') {
                     $c = RuntimeModel::column($ent, $a['column']);
-                    if ($c['pk'] || $ent['identity'] === $a['column'] || ($kind === 'restore' && $a['column'] === $ent['soft_delete'])) {
+                    if ($c['pk'] || $ent['identity'] === $a['column']) {
                         throw self::err(Code::IR_INVALID, 'cannot update ' . $a['column']);
                     }
                 }
@@ -184,13 +184,90 @@ final class Validator
             }
             $this->params([$r['optimistic']['p'] ?? 0]);
         }
-        if (($kind === 'update' || $kind === 'delete' || $kind === 'restore') && ($r['where']['items'] ?? []) === []) {
+        if (($kind === 'update' || $kind === 'delete') && ($r['where']['items'] ?? []) === []) {
             throw self::err(Code::IR_INVALID, "$kind without where");
         }
-        // restore는 지워진 행만 고치므로 읽은 version과 비교할 것이 없다.
-        if ($kind === 'restore' && isset($r['optimistic'])) {
-            throw self::err(Code::IR_INVALID, 'restore takes no optimistic');
+        if ($kind === 'restore') {
+            // restore는 지워진 행만 고치므로 읽은 version과 비교할 것이 없다.
+            if (isset($r['optimistic'])) {
+                throw self::err(Code::IR_INVALID, 'restore takes no optimistic');
+            }
+            self::restoreKey($ent, $r);
         }
+    }
+
+    /**
+     * The parts of the statement of a restore request (docs/protocol.md 1.5), picked after the request hook. The set
+     * values with a parameter and the eq conditions with a parameter that the where joins with and give columns their
+     * values; the key is the primary key when they cover it, otherwise the first unique key in name order that they
+     * cover. A set value of a key column becomes a condition, every other set value is a new value, and the where
+     * keeps its other conditions, which narrow the restore further; the key still names at most one row.
+     *
+     * @return array{key: list<string>, where: array{items: list<array<string, mixed>>}, set: list<array<string, mixed>>}
+     *     the key, the where with an eq condition for each set value of a key column, and the new values
+     */
+    public static function restoreKey(array $ent, array $r): array
+    {
+        if ($ent['soft_delete'] === '') {
+            throw self::err(Code::IR_INVALID, "restore of {$ent['entity']}, which has no soft_delete setting");
+        }
+        $items = $r['where']['items'] ?? [];
+        $valued = [];
+        foreach ($items as $i => $item) {
+            $conn = ($item['pred'] ?? $item['group'] ?? $item['joined'] ?? [])['conn'] ?? '';
+            if ($i > 0 && $conn === 'or') {
+                throw self::err(Code::IR_INVALID, "restore of {$ent['entity']} joins the conditions of its where with and");
+            }
+            $pr = $item['pred'] ?? null;
+            if ($pr !== null && ($pr['op'] ?? '') === 'eq' && isset($pr['p']) && !isset($pr['fn']) && !isset($pr['value']) && !isset($pr['ref']) && !isset($pr['sub'])) {
+                $valued[$pr['column']] = true;
+            }
+        }
+        $set = $r['set'] ?? [];
+        foreach ($set as $a) {
+            if (isset($a['p'])) {
+                $valued[$a['column']] = true;
+            }
+        }
+        $covered = static function (array $columns) use ($valued): bool {
+            foreach ($columns as $column) {
+                if (!isset($valued[$column])) {
+                    return false;
+                }
+            }
+            return $columns !== [];
+        };
+        $key = null;
+        if ($covered($ent['pk'])) {
+            $key = $ent['pk'];
+        } else {
+            $unique = $ent['unique'];
+            ksort($unique, SORT_STRING);
+            foreach ($unique as $columns) {
+                if ($covered($columns)) {
+                    $key = $columns;
+                    break;
+                }
+            }
+        }
+        if ($key === null) {
+            throw self::err(Code::IR_INVALID, "restore of {$ent['entity']} gives no primary key or unique key a value in its set or in an eq condition of its where");
+        }
+        $parts = ['key' => $key, 'where' => ['items' => $items], 'set' => []];
+        foreach ($set as $a) {
+            if (isset($a['p']) && in_array($a['column'], $key, true)) {
+                $pred = ['column' => $a['column'], 'op' => 'eq', 'p' => $a['p']];
+                $parts['where']['items'][] = ['pred' => ($parts['where']['items'] === [] ? [] : ['conn' => 'and']) + $pred];
+                continue;
+            }
+            // The key and the soft delete column are the table's own: a restore clears the latter itself.
+            $c = RuntimeModel::column($ent, $a['column']);
+            if ($c['pk'] || $ent['identity'] === $a['column'] || $a['column'] === $ent['soft_delete']) {
+                throw self::err(Code::IR_INVALID, 'restore cannot assign ' . $a['column']);
+            }
+            $parts['set'][] = $a;
+        }
+        return $parts;
     }
 
     /**

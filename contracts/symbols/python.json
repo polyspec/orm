@@ -550,6 +550,7 @@
   "packages/orm-python/src/polyspec/orm/engine/planner.py::Planner": "class Planner",
   "packages/orm-python/src/polyspec/orm/engine/planner.py::Planner.compile": "def compile(self, r: dict) -\u003e dict",
   "packages/orm-python/src/polyspec/orm/engine/validate.py::conflict_key": "def conflict_key(ent: Entity, assignments) -\u003e list",
+  "packages/orm-python/src/polyspec/orm/engine/validate.py::restore_key": "def restore_key(ent: Entity, r: dict) -\u003e dict",
   "packages/orm-python/src/polyspec/orm/engine/validate.py::validate": "def validate(m: RuntimeModel, r: dict) -\u003e None",
   "packages/orm-python/src/polyspec/orm/errors.py::OrmError": "class OrmError(Exception)",
   "packages/orm-python/src/polyspec/orm/errors.py::joined_errors": "def joined_errors(errors: list) -\u003e object",

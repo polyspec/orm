@@ -1,8 +1,9 @@
 //! 연결 handle의 request hook (docs/usage.md "Request hook"): `Db::with_request_hook`이 돌려준 handle은
 //! 같은 연결을 쓰고, 그 hook은 handle의 request마다 plan 직전에 request와 `RequestParams`를 받는다.
-//! contracts/fixtures/request_hook.dbs의 공유 case 다섯 개를 SQLite case database(polyspec-orm-case-database,
+//! contracts/fixtures/request_hook.dbs의 공유 case 열 개를 SQLite case database(polyspec-orm-case-database,
 //! 끝나거나 panic하면 file을 지운다)에서 실행한다: without_hook, read_filter, insert_assign,
-//! loaded_row_writes, invalid_param. `coverage_request_hook_<case>`는 같은 case를 feature-check가 고른
+//! loaded_row_writes, invalid_param, restore_key, restore_condition, restore_no_key, restore_rewritten_key,
+//! restore_hook_set_key. `coverage_request_hook_<case>`는 같은 case를 feature-check가 고른
 //! database의 case database에서 실행한다(docs/feature-coverage.md).
 //!
 //! `cargo test -p polyspec-orm --test request_hook`
@@ -15,7 +16,7 @@ use polyspec_orm::{Core, Db, Entity, Model, Param, RequestParams, Schema, Val};
 use polyspec_orm_case_database::CaseDatabase;
 
 static HOOK_SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/request_hook.dbs"), "sha256:7c6bde698909203534632b3a0c8c27c34f2f48068788710382bd739664ba4193");
+    Schema::new(include_str!("../../../../contracts/fixtures/request_hook.dbs"), "sha256:77d6d7c8afbfeac561a6f4b29f203b0b0b10553a72a9514d3f00496c53aaba65");
 static HOOK_ITEM: Entity = Entity {
     name: "hook_item",
     schema: &HOOK_SCHEMA,
@@ -55,6 +56,100 @@ impl Model for HookItem {
     }
     fn value(&self, name: &str) -> Option<Val> {
         self.values.get(name).cloned()
+    }
+}
+
+static HOOK_ENTRY: Entity = Entity {
+    name: "hook_entry",
+    schema: &HOOK_SCHEMA,
+    new: polyspec_orm::model::new_boxed::<HookEntry>,
+    collect: polyspec_orm::model::collect_boxed::<HookEntry>,
+};
+const ENTRY_COLUMNS: [&str; 4] = ["id", "part", "label", "note"];
+
+/// A row of the soft delete table hook_entry, whose unique key is (part, label).
+#[derive(Clone)]
+struct HookEntry {
+    core: Core,
+    values: BTreeMap<String, Val>,
+}
+
+impl Model for HookEntry {
+    fn entity() -> &'static Entity {
+        &HOOK_ENTRY
+    }
+    fn core(&self) -> &Core {
+        &self.core
+    }
+    fn core_mut(&mut self) -> &mut Core {
+        &mut self.core
+    }
+    fn from_core(core: Core) -> Self {
+        HookEntry { core, values: BTreeMap::new() }
+    }
+    fn into_core(self) -> Core {
+        self.core
+    }
+    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
+        if !ENTRY_COLUMNS.contains(&name) {
+            return Ok(false);
+        }
+        self.values.insert(name.to_owned(), v);
+        Ok(true)
+    }
+    fn value(&self, name: &str) -> Option<Val> {
+        self.values.get(name).cloned()
+    }
+}
+
+/// A hook_entry model connected to db with values set.
+fn entry(db: &Db, values: &[(&str, Param)]) -> HookEntry {
+    let mut core = Core::new(&HOOK_ENTRY);
+    core.connect(db);
+    let mut m = HookEntry::from_core(core);
+    for (column, value) in values {
+        m.core_mut().set(column, value.clone());
+    }
+    m
+}
+
+/// The text value of column in row.
+fn text_of<M: Model>(row: &M, column: &str) -> String {
+    row.value(column).unwrap_or_else(|| panic!("{column}")).as_string().unwrap_or_else(|e| panic!("{column}: {e}"))
+}
+
+/// The id value of row.
+fn id_of<M: Model>(row: &M) -> i64 {
+    row.value("id").expect("id").as_i64().expect("id integer")
+}
+
+/// Creates the hook_entry rows (a, x), (b, x) and (a, y) with note n0 through db, soft deletes each and returns
+/// their ids by part and label.
+async fn seed_deleted_entries(db: &Db) -> BTreeMap<String, i64> {
+    let mut ids = BTreeMap::new();
+    for (part, label) in [("a", "x"), ("b", "x"), ("a", "y")] {
+        let mut m = entry(db, &[("part", Param::from(part)), ("label", Param::from(label)), ("note", Param::from("n0"))]);
+        let row = polyspec_orm::model::create(&mut m).await.expect("create entry");
+        ids.insert(format!("{part}{label}"), id_of(&row));
+        polyspec_orm::model::delete(&row, false).await.expect("delete entry");
+    }
+    ids
+}
+
+/// The (id, note) of every hook_entry row that db reads, which are the rows not deleted.
+async fn entry_rows(db: &Db) -> Vec<(i64, String)> {
+    let rows = polyspec_orm::model::gets(&entry(db, &[])).await.expect("gets entries");
+    rows.models().map(|m| (id_of(m), text_of(m, "note"))).collect()
+}
+
+/// Adds `part = value` to the where of every read and restore.
+fn part_scope_hook(value: &'static str) -> impl Fn(&mut Request, &mut RequestParams) -> polyspec_orm::Result<()> + Send + Sync + 'static {
+    move |request: &mut Request, params: &mut RequestParams| {
+        if request.kind == "restore" || READS.contains(&request.kind.as_str()) {
+            let p = params.add(value);
+            and_where(request, part_eq(p));
+        }
+        Ok(())
     }
 }
 
@@ -257,6 +352,97 @@ async fn invalid_param_case(driver: &str) {
     database.drop().await;
 }
 
+/// The set names label and the hook's condition names part: together they cover the unique key.
+async fn restore_key_case(driver: &str) {
+    let database = CaseDatabase::create(driver).await;
+    let db = installed(&database).await;
+    let ids = seed_deleted_entries(&db).await;
+    let hooked = db.with_request_hook(part_scope_hook("a"));
+    let row = polyspec_orm::model::restore(&entry(&hooked, &[("label", Param::from("x")), ("note", Param::from("n1"))])).await.expect("restore");
+    assert_eq!((id_of(&row), text_of(&row, "part"), text_of(&row, "label"), text_of(&row, "note")), (ids["ax"], "a".into(), "x".into(), "n1".into()));
+    assert_eq!(entry_rows(&db).await, vec![(ids["ax"], "n1".to_owned())], "the connection reads only (a, x)");
+    db.close().await;
+    database.drop().await;
+}
+
+/// The set names the primary key; the hook's condition narrows the restore to the rows of its part.
+async fn restore_condition_case(driver: &str) {
+    let database = CaseDatabase::create(driver).await;
+    let db = installed(&database).await;
+    let ids = seed_deleted_entries(&db).await;
+    let values = [("id", Param::I64(ids["ay"])), ("note", Param::from("n2"))];
+    let outside = db.with_request_hook(part_scope_hook("b"));
+    let error = polyspec_orm::model::restore(&entry(&outside, &values)).await.err().expect("a restore outside the hook condition");
+    assert_eq!(error.code(), polyspec_orm::codes::NO_ROWS, "{error}");
+    assert_eq!(entry_rows(&db).await, vec![], "the restore outside the hook condition restores no row");
+    let inside = db.with_request_hook(part_scope_hook("a"));
+    let row = polyspec_orm::model::restore(&entry(&inside, &values)).await.expect("restore");
+    assert_eq!((id_of(&row), text_of(&row, "label"), text_of(&row, "note")), (ids["ay"], "y".into(), "n2".into()));
+    db.close().await;
+    database.drop().await;
+}
+
+/// Part from the hook and no label cover no key: IR_INVALID before any statement.
+async fn restore_no_key_case(driver: &str) {
+    let database = CaseDatabase::create(driver).await;
+    let db = installed(&database).await;
+    seed_deleted_entries(&db).await;
+    let statements = Arc::new(Mutex::new(0usize));
+    let counted = statements.clone();
+    let _subscription = db
+        .subscribe(move |_: &polyspec_orm::StatementEvent<'_>| {
+            *counted.lock().unwrap() += 1;
+            Ok(())
+        })
+        .expect("subscribe");
+    let hooked = db.with_request_hook(part_scope_hook("a"));
+    let error = polyspec_orm::model::restore(&entry(&hooked, &[("note", Param::from("n3"))])).await.err().expect("a restore without a key");
+    assert_eq!(error.code(), polyspec_orm::codes::IR_INVALID, "{error}");
+    assert_eq!(*statements.lock().unwrap(), 0, "no statement runs");
+    db.close().await;
+    database.drop().await;
+}
+
+/// The hook scopes the restore to part a and gives the model's label its own value y.
+async fn restore_rewritten_key_case(driver: &str) {
+    let database = CaseDatabase::create(driver).await;
+    let db = installed(&database).await;
+    let ids = seed_deleted_entries(&db).await;
+    let scope = part_scope_hook("a");
+    let hooked = db.with_request_hook(move |request: &mut Request, params: &mut RequestParams| {
+        if request.kind == "restore" {
+            for a in request.set.iter_mut().filter(|a| a.column == "label") {
+                a.p = Some(params.add("y"));
+            }
+        }
+        scope(request, params)
+    });
+    let row = polyspec_orm::model::restore(&entry(&hooked, &[("label", Param::from("x")), ("note", Param::from("n4"))])).await.expect("restore");
+    assert_eq!((id_of(&row), text_of(&row, "label"), text_of(&row, "note")), (ids["ay"], "y".into(), "n4".into()));
+    assert_eq!(entry_rows(&db).await, vec![(ids["ay"], "n4".to_owned())], "the connection reads only (a, y)");
+    db.close().await;
+    database.drop().await;
+}
+
+/// The hook puts part a first in the set; the model's label completes the unique key.
+async fn restore_hook_set_key_case(driver: &str) {
+    let database = CaseDatabase::create(driver).await;
+    let db = installed(&database).await;
+    let ids = seed_deleted_entries(&db).await;
+    let hooked = db.with_request_hook(|request: &mut Request, params: &mut RequestParams| {
+        if request.kind == "restore" {
+            let p = params.add("a");
+            request.set.insert(0, Assign { column: "part".into(), p: Some(p), ..Default::default() });
+        }
+        Ok(())
+    });
+    let row = polyspec_orm::model::restore(&entry(&hooked, &[("label", Param::from("x")), ("note", Param::from("n5"))])).await.expect("restore");
+    assert_eq!((id_of(&row), text_of(&row, "part"), text_of(&row, "note")), (ids["ax"], "a".into(), "n5".into()));
+    assert_eq!(entry_rows(&db).await, vec![(ids["ax"], "n5".to_owned())], "the connection reads only (a, x)");
+    db.close().await;
+    database.drop().await;
+}
+
 /// feature-check가 고른 database(ORM_FEATURE_DATABASE)다. coverage case는 그 database에 자기 case database를
 /// 만들고 지우며, ORM_FEATURE_DSN의 database는 읽거나 쓰지 않는다.
 fn feature_database() -> &'static str {
@@ -331,4 +517,69 @@ async fn invalid_param() {
 async fn coverage_request_hook_invalid_param() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     invalid_param_case(feature_database()).await;
+}
+
+#[tokio::test]
+async fn restore_key() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    restore_key_case("sqlite").await;
+}
+
+#[tokio::test]
+#[ignore = "run by feature-check"]
+async fn coverage_request_hook_restore_key() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    restore_key_case(feature_database()).await;
+}
+
+#[tokio::test]
+async fn restore_condition() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    restore_condition_case("sqlite").await;
+}
+
+#[tokio::test]
+#[ignore = "run by feature-check"]
+async fn coverage_request_hook_restore_condition() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    restore_condition_case(feature_database()).await;
+}
+
+#[tokio::test]
+async fn restore_no_key() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    restore_no_key_case("sqlite").await;
+}
+
+#[tokio::test]
+#[ignore = "run by feature-check"]
+async fn coverage_request_hook_restore_no_key() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    restore_no_key_case(feature_database()).await;
+}
+
+#[tokio::test]
+async fn restore_rewritten_key() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    restore_rewritten_key_case("sqlite").await;
+}
+
+#[tokio::test]
+#[ignore = "run by feature-check"]
+async fn coverage_request_hook_restore_rewritten_key() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    restore_rewritten_key_case(feature_database()).await;
+}
+
+#[tokio::test]
+async fn restore_hook_set_key() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    restore_hook_set_key_case("sqlite").await;
+}
+
+#[tokio::test]
+#[ignore = "run by feature-check"]
+async fn coverage_request_hook_restore_hook_set_key() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    restore_hook_set_key_case(feature_database()).await;
 }
