@@ -29,46 +29,46 @@ export function recognizeTriggers(c: Catalog, dialect: DbspecDialect, triggers: 
       for (const tr of list) c.report('trigger', table, tr.name, 'the table is not read');
       continue;
     }
-    const setting = triggerSetting(dialect, t, list);
-    if (setting === null) {
+    const lines = triggerSetting(dialect, t, list);
+    if (lines === null) {
       for (const tr of list) c.report('trigger', table, tr.name, 'the trigger is not the renderer output of immutable or audit');
       continue;
     }
-    t.settings.push(setting);
+    t.settings.push(...lines);
   }
 }
 
-/** trigger 집합이 같은 renderer 출력을 주는 setting 줄을 돌려준다. 없으면 null이다. */
-function triggerSetting(dialect: DbspecDialect, t: ITable, list: readonly ITrigger[]): string | null {
+/**
+ * 각 setting을 자기 trigger 이름(재계산한 renderer 이름)으로 알아보고, trigger 집합이 알아본 setting들의
+ * renderer 출력과 이름과 내용이 모두 같을 때만 그 setting 줄들을 돌려준다. 아니면 null이다(docs/dialects.md
+ * "Triggers"). 두 setting을 함께 쓴 table은 두 출력의 합이며 개수로 판단하지 않는다.
+ */
+function triggerSetting(dialect: DbspecDialect, t: ITable, list: readonly ITrigger[]): string[] | null {
   const names = new Map(list.map(tr => [tr.name, tr]));
-  const candidates: DbspecSetting[] = [];
-  if (list.length === 2) candidates.push({ comments: [], kind: 'immutable' });
+  const settings: DbspecSetting[] = [];
+  if (['immutable_update', 'immutable_delete'].some(event => names.has(rendererName(t.name, event)))) {
+    settings.push({ comments: [], kind: 'immutable' });
+  }
   const insert = names.get(rendererName(t.name, 'audit_insert'));
-  if (insert !== undefined && list.length === 3) {
+  if (insert !== undefined) {
     const update = names.get(rendererName(t.name, 'audit_update'));
     const m = AUDIT_INSERT_PATTERN.exec(statementBody(insert.statements));
     const u = AUDIT_UPDATE_PATTERN.exec(statementBody(update?.statements ?? []));
     const audit = m !== null && u !== null ? auditOf(t, m[1]!, m[2]!.split(', '), u[1]!) : null;
-    if (audit !== null) candidates.push(audit);
+    if (audit !== null) settings.push(audit);
   }
-  const r = new Renderer(dialect);
-  for (const setting of candidates) {
-    const want = r.triggers(triggerModel(t, setting));
-    const got: string[] = [];
-    let complete = true;
-    for (const name of triggerOrder(want)) {
-      const tr = names.get(name);
-      if (tr === undefined) {
-        complete = false;
-        break;
-      }
-      got.push(...tr.statements);
-    }
-    if (!complete || got.length !== want.length || got.some((s, i) => s !== want[i])) continue;
-    if (setting.kind === 'immutable') return 'immutable';
-    if (setting.kind === 'audit') return auditLine(setting, 'exclude', setting.exclude);
+  if (settings.length === 0) return null;
+  const want = new Renderer(dialect).triggers(triggerModel(t, settings));
+  const wanted = triggerOrder(want);
+  if (wanted.length !== list.length) return null;
+  const got: string[] = [];
+  for (const name of wanted) {
+    const tr = names.get(name);
+    if (tr === undefined) return null;
+    got.push(...tr.statements);
   }
-  return null;
+  if (got.length !== want.length || got.some((s, i) => s !== want[i])) return null;
+  return settings.map(setting => (setting.kind === 'audit' ? auditLine(setting, 'exclude', setting.exclude) : 'immutable'));
 }
 
 /**
@@ -97,7 +97,7 @@ function auditOf(t: ITable, into: string, quoted: readonly string[], column: str
 }
 
 /** renderer가 trigger를 쓰는 데 필요한 table: 이름, column 이름과 type, setting 하나다. */
-function triggerModel(t: ITable, setting: DbspecSetting): DbspecTable {
+function triggerModel(t: ITable, settings: readonly DbspecSetting[]): DbspecTable {
   return {
     comments: [],
     name: t.name,
@@ -107,7 +107,7 @@ function triggerModel(t: ITable, setting: DbspecSetting): DbspecTable {
     indexes: [],
     foreignKeys: [],
     checks: [],
-    settings: { comments: [], settings: [setting], closingComments: [] },
+    settings: { comments: [], settings: [...settings], closingComments: [] },
     closingComments: [],
   };
 }
