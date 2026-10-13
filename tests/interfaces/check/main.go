@@ -257,10 +257,7 @@ func run() (code int) {
 	var s *runtimemodel.Model
 	if err := testcase.Run("interfaces/manifest", manifestDeadline, func(*testcase.Case) error {
 		readJSON(filepath.Join(abs, "contracts/interfaces.json"), &m)
-		if m.Version != 1 || len(m.Languages) != 5 || len(m.SymbolHashes) != 5 || len(m.ProhibitedSymbols) == 0 || len(m.Components) == 0 || len(m.Sequences) == 0 {
-			return errors.New("invalid interface manifest")
-		}
-		if err := validateProhibitions(m.ProhibitedSymbols); err != nil {
+		if err := validateManifest(m); err != nil {
 			return err
 		}
 		codes, err := readErrorCatalog(abs)
@@ -515,6 +512,46 @@ func checkProhibitedSymbols(lang string, actual Symbols, prohibited []string) []
 	}
 	sort.Strings(errors)
 	return errors
+}
+
+// validateManifest checks the manifest's own structure, before any language or file is read.
+func validateManifest(m Manifest) error {
+	if m.Version != 1 || len(m.Languages) != 5 || len(m.SymbolHashes) != 5 || len(m.ProhibitedSymbols) == 0 || len(m.Components) == 0 || len(m.Sequences) == 0 {
+		return errors.New("invalid interface manifest")
+	}
+	if err := validateProhibitions(m.ProhibitedSymbols); err != nil {
+		return err
+	}
+	return checkComponentMethods(m)
+}
+
+// checkComponentMethods refuses a component method that no rule declares: a method of the component diagram
+// (docs/interfaces-model.md) is common API only through its rule, so a method without one would never be compared
+// with any language.
+func checkComponentMethods(m Manifest) error {
+	declared := map[string]bool{}
+	for _, r := range append(append([]Rule{}, m.Rules...), m.Storage...) {
+		declared[r.ID] = true
+	}
+	var missing []string
+	for _, raw := range m.Components {
+		var c struct {
+			ID      string   `json:"id"`
+			Methods []string `json:"methods"`
+		}
+		if err := decodeJSON(raw, &c); err != nil {
+			return fmt.Errorf("component %s: %v", raw, err)
+		}
+		for _, method := range c.Methods {
+			if id := c.ID + "." + method; !declared[id] {
+				missing = append(missing, id)
+			}
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("component methods without an interface rule in contracts/interfaces.json: %s", strings.Join(missing, ", "))
+	}
+	return nil
 }
 
 func validateProhibitions(prohibited []string) error {
