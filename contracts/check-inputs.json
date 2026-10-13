@@ -36,7 +36,7 @@
     "rust-driver-check": {"scope": "owner", "needs": ["go", "rust", "databases"], "inputs": ["bench/rust/**"]},
     "example-check": {"scope": "owner", "needs": ["go", "rust", "php", "composer", "databases"], "inputs": ["examples/**"]},
     "client-db-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "python", "node-modules", "databases"]},
-    "codec-check": {"scope": "owner", "needs": ["go", "rust", "php", "composer", "node-modules"], "inputs": ["tests/codec/**"]},
+    "codec-check": {"scope": "owner", "needs": ["go", "rust", "php", "composer", "python", "node-modules"], "inputs": ["tests/codec/**"]},
     "fuzz-check": {"scope": "owner", "needs": ["go"], "inputs": ["packages/orm-go/orm/fuzz_test.go", "engine/ir/fuzz_test.go"]},
     "client-pooler-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "databases"]},
     "case-database-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "databases"]},
