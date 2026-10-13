@@ -1,7 +1,8 @@
 # 모든 공유 case, stress 문서, statement vector, plan vector, Mermaid vector의 Python
-# dbspec 결과를 tests/dbspec/compare/check.mjs의 줄 형식으로 출력한다.
+# dbspec 결과를 tests/dbspec/compare/check.mjs의 줄 형식으로 출력한다. It then prints the positions cases of
+# cases.json and the analysis and format of each case of syntax.json.
 #
-# Usage: python3 tests/dbspec/compare/python.py <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
+# Usage: python3 tests/dbspec/compare/python.py <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
 import json
 import os
 import sys
@@ -13,7 +14,8 @@ sys.path.insert(0, os.path.join(ROOT, '..', 'ordered-json', 'python', 'src'))
 
 try:
     from polyspec.orm.dbspec import (  # noqa: E402
-        dbspec_manifest, emit_dbspec, parse_dbspec, read_dbspec_bytes, read_dbspec_file, render_dbspec,
+        analyze_dbspec, dbspec_manifest, emit_dbspec, format_dbspec, parse_dbspec, read_dbspec_bytes, read_dbspec_file,
+        render_dbspec,
     )
     from polyspec.orm.dbspec.mermaid import export_mermaid, import_mermaid  # noqa: E402
     from polyspec.orm.dbspec.plan import chain_plans, emit_plan, parse_plan  # noqa: E402
@@ -25,10 +27,10 @@ except ImportError as error:
           'and set ORM_PYTHON to the interpreter it creates (packages/orm-python/.venv/bin/python)', file=sys.stderr)
     sys.exit(1)
 
-if len(sys.argv) != 6:
-    print('usage: python3 tests/dbspec/compare/python.py <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>', file=sys.stderr)
+if len(sys.argv) != 7:
+    print('usage: python3 tests/dbspec/compare/python.py <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>', file=sys.stderr)
     sys.exit(2)
-cases_path, stress_path, ddl_path, plans_path, mermaid_path = sys.argv[1:]
+cases_path, stress_path, ddl_path, plans_path, mermaid_path, syntax_path = sys.argv[1:]
 
 out = []
 
@@ -134,6 +136,40 @@ def check_cases(path, v):
         cases(path, v, kind, check)
     cases(path, v, 'hashes', lambda c, at: documents(path, c, at, 'documents'))
     cases(path, v, 'files', lambda c, at: field(path, c, at, 'path', 'string'))
+
+    def check_set(c, at):
+        named_documents(path, c, at, 'documents')
+        documents(path, c, at, 'parsing')
+        if 'external' in c:
+            named_documents(path, c, at, 'external')
+    cases(path, v, 'sets', check_set)
+
+    def check_position(c, at):
+        main = field(path, c, at, 'main', 'string')
+        if main not in documents(path, c, at, 'documents'):
+            fail(path, f'{at}.documents.{main}', 'is missing')
+    cases(path, v, 'positions', check_position)
+
+
+# header_name is the third word of the first line, the document name of a dbspec header, split at single spaces.
+def header_name(ls):
+    words = ls[0].split(' ') if ls else []
+    return words[2] if len(words) >= 3 else None
+
+
+# named_documents checks an array of documents, each a line array whose first line is a header that names it.
+def named_documents(path, obj, location, key):
+    for i, ls in enumerate(field(path, obj, location, key, 'array')):
+        at = f'{location}.{key}[{i}]'
+        check_lines(path, ls, at)
+        if header_name(ls) is None:
+            fail(path, f'{at}[0]', 'has no document name')
+
+
+# check_syntax checks tests/dbspec/syntax.json: the id of each case. The expected tokens are the runtime tests' to
+# check; this runner compares what each client gives.
+def check_syntax(path, v):
+    cases(path, v, 'cases', lambda c, at: None)
 
 
 def check_ddl(path, v):
@@ -475,5 +511,60 @@ for c in mermaid['round_trip']:
     exported = write_export(document)
     out.append(f'mermaid/round_trip/{c["id"]}/import')
     write_import(exported)
+
+# The declaration positions of the main document of each positions case, as "| kind<TAB>line<TAB>column<TAB>path..."
+# lines, or its diagnostics.
+for c in shared['positions']:
+    out.append(f'positions/{c["id"]}')
+    docs = {name: join(ls, False, False) for name, ls in c['documents'].items() if name != c['main']}
+    _document, positions, diagnostics = parse_dbspec(join(c['documents'][c['main']], False, False), docs)
+    out.extend(diagnostic_line(d) for d in diagnostics)
+    out.extend('| ' + '\t'.join([p.kind, str(p.line), str(p.column), *p.path]) for p in positions or [])
+
+
+# syntax_inputs gives the input of every analysis that syntax.json names, by its id, as
+# scripts/dbspec/syntax-vectors.mjs derives it from cases.json: the main document of each canonical, normalize and
+# invalid case ("<section>/<id>"), each document of a sets case with the parsing documents and the other documents of
+# the case by header name ("sets/<id>/<place>", 1-based), and each document of a hashes case with the others
+# ("hashes/<id>/<name>").
+def syntax_inputs():
+    inputs = {}
+    for kind in ['canonical', 'normalize', 'invalid']:
+        for c in shared[kind]:
+            crlf = c.get('crlf') is True
+            mixed = c.get('mixed') is True
+            docs = {name: join(ls, crlf, mixed) for name, ls in c['documents'].items() if name != c['main']}
+            inputs[f'{kind}/{c["id"]}'] = (join(c['documents'][c['main']], crlf, mixed), docs)
+    for c in shared['sets']:
+        every = c['documents'] + c.get('external', [])
+        for i, ls in enumerate(c['documents']):
+            docs = {name: join(other, False, False) for name, other in c['parsing'].items()}
+            for j, other in enumerate(every):
+                if j != i:
+                    docs[header_name(other)] = join(other, False, False)
+            inputs[f'sets/{c["id"]}/{i + 1}'] = (join(ls, False, False), docs)
+    for c in shared['hashes']:
+        for name, ls in c['documents'].items():
+            docs = {other: join(o, False, False) for other, o in c['documents'].items() if other != name}
+            inputs[f'hashes/{c["id"]}/{name}'] = (join(ls, False, False), docs)
+    return inputs
+
+
+# Each case of syntax.json prints its tokens ("| line start end class") and the diagnostics of its analysis, then
+# "syntax/<id>/format" and the formatted text or the diagnostics of the refusal.
+inputs = syntax_inputs()
+for i, c in enumerate(read_vectors(syntax_path, check_syntax)['cases']):
+    if c['id'] not in inputs:
+        fail(syntax_path, f'cases[{i}].id', 'names no input of the shared cases')
+    text, docs = inputs[c['id']]
+    out.append(f'syntax/{c["id"]}')
+    analysis = analyze_dbspec(text, docs)
+    out.extend(f'| {t.line} {t.start} {t.end} {t.token_class}' for t in analysis.tokens)
+    out.extend(diagnostic_line(d) for d in analysis.diagnostics)
+    out.append(f'syntax/{c["id"]}/format')
+    formatted, diagnostics = format_dbspec(text, docs)
+    out.extend(diagnostic_line(d) for d in diagnostics)
+    if formatted is not None:
+        out.extend(f'| {line}' for line in formatted.split('\n'))
 
 sys.stdout.buffer.write(('\n'.join(out) + '\n').encode('utf-8'))

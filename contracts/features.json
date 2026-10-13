@@ -2943,6 +2943,7 @@
             "tests/dbspec/ddl.json",
             "tests/dbspec/plans.json",
             "tests/dbspec/mermaid.json",
+            "tests/dbspec/syntax.json",
             "tests/dbspec/compare/**",
             "packages/orm-rust/orm-schema/examples/dbspec_compare.rs",
             "packages/orm-rust/orm-schema/examples/dbspec_stress.rs",

@@ -258,12 +258,45 @@ function dbspec_write_render(string $dbspec, array $case): void
     }
 }
 
+/** The third word of the first line, the document name of a dbspec header split at single spaces, or null. @param list<string> $lines */
+function dbspec_header_name(array $lines): ?string
+{
+    return $lines === [] ? null : (explode(' ', $lines[0])[2] ?? null);
+}
+
+/**
+ * An array of documents, each a line array whose first line is a header that names it.
+ *
+ * @return list<array{name: string, lines: list<string>}>
+ */
+function dbspec_vector_named_documents(string $path, stdClass $object, string $location, string $key): array
+{
+    $value = dbspec_vector_field($path, $object, $location, $key);
+    if (!is_array($value)) {
+        dbspec_vector_fail($path, "$location.$key", 'is not an array');
+    }
+    $documents = [];
+    foreach ($value as $i => $lines) {
+        $at = "$location.{$key}[$i]";
+        $lines = dbspec_vector_check_lines($path, $lines, $at);
+        $name = dbspec_header_name($lines);
+        if ($name === null) {
+            dbspec_vector_fail($path, "{$at}[0]", 'has no document name');
+        }
+        $documents[] = ['name' => $name, 'lines' => $lines];
+    }
+    return $documents;
+}
+
 /**
  * $dbspec으로 tests/dbspec/cases.json의 canonical, normalize, invalid case, stress 문서, files case,
  * hashes case와 tests/dbspec/ddl.json의 rendering을 이 순서로 출력한다. vector file은 출력하기 전에
- * 모양을 확인하고, 잘못된 vector는 위치를 밝혀 stderr에 쓰고 1로 끝난다.
+ * 모양을 확인하고, 잘못된 vector는 위치를 밝혀 stderr에 쓰고 1로 끝난다. It returns the cases it read, which
+ * dbspec_write_positions and dbspec_write_syntax print.
+ *
+ * @return array<string, list<array<string, mixed>>>
  */
-function dbspec_write_interface(string $dbspec, string $casesPath, string $stressPath, string $ddlPath): void
+function dbspec_write_interface(string $dbspec, string $casesPath, string $stressPath, string $ddlPath): array
 {
     $cases = dbspec_read_vectors($casesPath, static function (string $path, stdClass $v): array {
         $cases = [];
@@ -288,6 +321,19 @@ function dbspec_write_interface(string $dbspec, string $casesPath, string $stres
         $cases['files'] = dbspec_vector_cases($path, $v, 'files', static fn(stdClass $case, string $at): array => [
             'path' => dbspec_vector_string($path, $case, $at, 'path'),
         ]);
+        $cases['sets'] = dbspec_vector_cases($path, $v, 'sets', static fn(stdClass $case, string $at): array => [
+            'documents' => dbspec_vector_named_documents($path, $case, $at, 'documents'),
+            'parsing' => dbspec_vector_documents($path, $case, $at, 'parsing'),
+            'external' => property_exists($case, 'external') ? dbspec_vector_named_documents($path, $case, $at, 'external') : [],
+        ]);
+        $cases['positions'] = dbspec_vector_cases($path, $v, 'positions', static function (stdClass $case, string $at) use ($path): array {
+            $main = dbspec_vector_string($path, $case, $at, 'main');
+            $documents = dbspec_vector_documents($path, $case, $at, 'documents');
+            if (!array_key_exists($main, $documents)) {
+                dbspec_vector_fail($path, "$at.documents.$main", 'is missing');
+            }
+            return ['main' => $main, 'documents' => $documents];
+        });
         return $cases;
     });
 
@@ -348,6 +394,123 @@ function dbspec_write_interface(string $dbspec, string $casesPath, string $stres
     ));
     foreach ($ddl as $case) {
         dbspec_write_render($dbspec, $case);
+    }
+    return $cases;
+}
+
+/**
+ * Prints the declaration positions of the main document of each positions case, as
+ * "| kind<TAB>line<TAB>column<TAB>path..." lines, or its diagnostics.
+ *
+ * @param array<string, list<array<string, mixed>>> $cases
+ */
+function dbspec_write_positions(string $dbspec, array $cases): void
+{
+    foreach ($cases['positions'] as $case) {
+        echo "positions/{$case['id']}\n";
+        $set = [];
+        foreach ($case['documents'] as $name => $lines) {
+            if ($name !== $case['main']) {
+                $set[$name] = dbspec_join($lines, false, false);
+            }
+        }
+        $result = $dbspec::parse(dbspec_join($case['documents'][$case['main']], false, false), $set);
+        dbspec_diagnostics($result->diagnostics);
+        foreach ($result->positions ?? [] as $p) {
+            echo '| ' . implode("\t", [$p->kind, $p->line, $p->column, ...$p->path]) . "\n";
+        }
+    }
+}
+
+/**
+ * The input of every analysis that syntax.json names, by its id, as scripts/dbspec/syntax-vectors.mjs derives it from
+ * cases.json: the main document of each canonical, normalize and invalid case ("<section>/<id>"), each document of a
+ * sets case with the parsing documents and the other documents of the case by header name ("sets/<id>/<place>",
+ * 1-based), and each document of a hashes case with the others ("hashes/<id>/<name>").
+ *
+ * @param array<string, list<array<string, mixed>>> $cases
+ * @return array<string, array{0: string, 1: array<string, string>}>
+ */
+function dbspec_syntax_inputs(array $cases): array
+{
+    $inputs = [];
+    foreach (['canonical', 'normalize', 'invalid'] as $kind) {
+        foreach ($cases[$kind] as $case) {
+            $set = [];
+            foreach ($case['documents'] as $name => $lines) {
+                if ($name !== $case['main']) {
+                    $set[$name] = dbspec_join($lines, $case['crlf'], $case['mixed']);
+                }
+            }
+            $inputs["$kind/{$case['id']}"] = [dbspec_join($case['documents'][$case['main']], $case['crlf'], $case['mixed']), $set];
+        }
+    }
+    foreach ($cases['sets'] as $case) {
+        $every = [...$case['documents'], ...$case['external']];
+        foreach ($case['documents'] as $i => $document) {
+            $set = [];
+            foreach ($case['parsing'] as $name => $lines) {
+                $set[$name] = dbspec_join($lines, false, false);
+            }
+            foreach ($every as $j => $other) {
+                if ($j !== $i) {
+                    $set[$other['name']] = dbspec_join($other['lines'], false, false);
+                }
+            }
+            $inputs["sets/{$case['id']}/" . ($i + 1)] = [dbspec_join($document['lines'], false, false), $set];
+        }
+    }
+    foreach ($cases['hashes'] as $case) {
+        foreach ($case['documents'] as $name => $lines) {
+            $set = [];
+            foreach ($case['documents'] as $other => $otherLines) {
+                if ($other !== $name) {
+                    $set[$other] = dbspec_join($otherLines, false, false);
+                }
+            }
+            $inputs["hashes/{$case['id']}/$name"] = [dbspec_join($lines, false, false), $set];
+        }
+    }
+    return $inputs;
+}
+
+/**
+ * Prints each case of syntax.json: its tokens ("| line start end class") and the diagnostics of its analysis, then
+ * "syntax/<id>/format" and the formatted text or the diagnostics of the refusal. The expected tokens of the file are
+ * the runtime tests' to check; this runner compares what each client gives.
+ *
+ * @param array<string, list<array<string, mixed>>> $cases
+ */
+function dbspec_write_syntax(string $dbspec, array $cases, string $syntaxPath): void
+{
+    $ids = dbspec_read_vectors($syntaxPath, static fn(string $path, stdClass $v): array => dbspec_vector_cases(
+        $path,
+        $v,
+        'cases',
+        static fn(stdClass $case, string $at): array => [],
+    ));
+    $inputs = dbspec_syntax_inputs($cases);
+    foreach ($ids as $i => ['id' => $id]) {
+        if (!array_key_exists($id, $inputs)) {
+            dbspec_vector_fail($syntaxPath, "cases[$i].id", 'names no input of the shared cases');
+        }
+    }
+    foreach ($ids as ['id' => $id]) {
+        [$text, $set] = $inputs[$id];
+        echo "syntax/$id\n";
+        $analysis = $dbspec::analyze($text, $set);
+        foreach ($analysis->tokens as $t) {
+            echo "| {$t->line} {$t->start} {$t->end} {$t->class}\n";
+        }
+        dbspec_diagnostics($analysis->diagnostics);
+        echo "syntax/$id/format\n";
+        $formatted = $dbspec::format($text, $set);
+        dbspec_diagnostics($formatted->diagnostics);
+        if ($formatted->text !== null) {
+            foreach (explode("\n", $formatted->text) as $line) {
+                echo "| $line\n";
+            }
+        }
     }
 }
 

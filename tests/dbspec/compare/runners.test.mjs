@@ -17,7 +17,7 @@ const TIMEOUT = 120000;
 const stress = process.env.DBSPEC_STRESS_DOCUMENT;
 if (stress === undefined || stress === '') throw new Error('DBSPEC_STRESS_DOCUMENT is required; run it through make dbspec-compare-check, which writes the stress document');
 
-const files = ['cases', 'ddl', 'plans', 'mermaid'];
+const files = ['cases', 'ddl', 'plans', 'mermaid', 'syntax'];
 const vectors = Object.fromEntries(files.map(name => [name, readFileSync(join(root, `tests/dbspec/${name}.json`), 'utf8')]));
 const directory = mkdtempSync(join(tmpdir(), 'dbspec-compare-runners-'));
 after(() => rmSync(directory, { recursive: true, force: true }));
@@ -42,6 +42,24 @@ const mutations = [
   },
   { file: 'cases', location: 'normalize[0].crlf', problem: 'is not a boolean', change: v => (v.normalize[0].crlf = 'true') },
   { file: 'cases', location: 'hashes[0].documents', problem: 'is missing', change: v => delete v.hashes[0].documents },
+  { file: 'cases', location: 'sets', problem: 'is missing', change: v => delete v.sets },
+  { file: 'cases', location: 'sets[0].documents[1]', problem: 'is not an array', change: v => (v.sets[0].documents[1] = 'dbspec 1 shop') },
+  { file: 'cases', location: 'sets[0].documents[0][0]', problem: 'has no document name', change: v => (v.sets[0].documents[0][0] = 'dbspec 1') },
+  { file: 'cases', location: 'sets[0].parsing', problem: 'is missing', change: v => delete v.sets[0].parsing },
+  {
+    file: 'cases',
+    location: v => `sets[${v.sets.findIndex(c => Object.hasOwn(c, 'external'))}].external`,
+    problem: 'is not an array',
+    change: v => (v.sets.find(c => Object.hasOwn(c, 'external')).external = {}),
+  },
+  { file: 'cases', location: 'positions', problem: 'is missing', change: v => delete v.positions },
+  { file: 'cases', location: 'positions[0].main', problem: 'is not a string', change: v => (v.positions[0].main = 1) },
+  {
+    file: 'cases',
+    location: v => `positions[0].documents.${v.positions[0].main}`,
+    problem: 'is missing',
+    change: v => delete v.positions[0].documents[v.positions[0].main],
+  },
   { file: 'ddl', location: 'cases', problem: 'is missing', change: v => delete v.cases },
   { file: 'ddl', location: 'cases[0].id', problem: 'is missing', change: v => delete v.cases[0].id },
   { file: 'plans', location: 'chains', problem: 'is missing', change: v => delete v.chains },
@@ -55,6 +73,10 @@ const mutations = [
   { file: 'mermaid', location: 'export[0].documents', problem: 'is missing', change: v => delete v.export[0].documents },
   { file: 'mermaid', location: 'import[0].mermaid', problem: 'is missing', change: v => delete v.import[0].mermaid },
   { file: 'mermaid', location: 'invalid[0].mermaid[0]', problem: 'is not a string', change: v => (v.invalid[0].mermaid[0] = 0) },
+  { file: 'syntax', location: 'cases', problem: 'is missing', change: v => delete v.cases },
+  { file: 'syntax', location: 'cases[0]', problem: 'is not an object', change: v => (v.cases[0] = 'canonical/x') },
+  { file: 'syntax', location: 'cases[0].id', problem: 'is not a string', change: v => (v.cases[0].id = 1) },
+  { file: 'syntax', location: 'cases[1].id', problem: 'names no input of the shared cases', change: v => (v.cases[1].id = 'canonical/no-such-case') },
 ];
 
 // inputsWith는 바뀐 vector file을 쓰고, 그 file과 나머지 원래 vector file의 경로를 runner 인자 순서로 돌려준다.
@@ -65,11 +87,11 @@ function inputsWith(index, mutation) {
   const path = join(directory, `${index}-${mutation.file}.json`);
   writeFileSync(path, JSON.stringify(value, null, 2));
   const paths = Object.fromEntries(files.map(name => [name, name === mutation.file ? path : join(root, `tests/dbspec/${name}.json`)]));
-  return { path, location, inputs: [paths.cases, stress, paths.ddl, paths.plans, paths.mermaid] };
+  return { path, location, inputs: [paths.cases, stress, paths.ddl, paths.plans, paths.mermaid, paths.syntax] };
 }
 
 caseTest('the unchanged vectors run in every runner', TIMEOUT, async () => {
-  const inputs = [join(root, 'tests/dbspec/cases.json'), stress, ...['ddl', 'plans', 'mermaid'].map(name => join(root, `tests/dbspec/${name}.json`))];
+  const inputs = [join(root, 'tests/dbspec/cases.json'), stress, ...['ddl', 'plans', 'mermaid', 'syntax'].map(name => join(root, `tests/dbspec/${name}.json`))];
   for (const runner of runners) {
     const result = await runRunner(runner, inputs, TIMEOUT);
     assert.equal(result.code, 0, `${runner.name}: ${result.stderr}`);

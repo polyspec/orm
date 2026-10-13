@@ -1,12 +1,14 @@
 // 모든 공유 case, stress 문서, statement vector, plan vector, Mermaid vector의 TypeScript
-// dbspec 결과를 tests/dbspec/compare/check.mjs의 줄 형식으로 출력한다.
+// dbspec 결과를 tests/dbspec/compare/check.mjs의 줄 형식으로 출력한다. It then prints the positions cases of
+// cases.json and the analysis and format of each case of syntax.json.
 //
-// Usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
+// Usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
 // (TypeScript build 뒤)
 import { readFileSync } from 'node:fs';
 import { dirname, join as joinPath } from 'node:path';
 import { readInput } from '../input.mjs';
 import {
+  analyzeDbspec,
   chainPlans,
   compareSchemas,
   dbspecManifest,
@@ -14,6 +16,7 @@ import {
   emitDbspec,
   emitPlan,
   exportMermaid,
+  formatDbspec,
   importMermaid,
   parseDbspec,
   parsePlan,
@@ -24,9 +27,9 @@ import {
   renderDbspec,
 } from '../../../packages/orm-npm/dist/dbspec/index.js';
 
-const [casesPath, stressPath, ddlPath, plansPath, mermaidPath] = process.argv.slice(2);
-if (casesPath === undefined || stressPath === undefined || ddlPath === undefined || plansPath === undefined || mermaidPath === undefined) {
-  console.error('usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>');
+const [casesPath, stressPath, ddlPath, plansPath, mermaidPath, syntaxPath] = process.argv.slice(2);
+if (casesPath === undefined || stressPath === undefined || ddlPath === undefined || plansPath === undefined || mermaidPath === undefined || syntaxPath === undefined) {
+  console.error('usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>');
   process.exit(2);
 }
 
@@ -113,6 +116,36 @@ function checkCases(path, v) {
   }
   cases(path, v, 'hashes', (c, at) => documents(path, c, at, 'documents'));
   cases(path, v, 'files', (c, at) => field(path, c, at, 'path', 'string'));
+  cases(path, v, 'sets', (c, at) => {
+    namedDocuments(path, c, at, 'documents');
+    documents(path, c, at, 'parsing');
+    if (Object.hasOwn(c, 'external')) namedDocuments(path, c, at, 'external');
+  });
+  cases(path, v, 'positions', (c, at) => {
+    const main = field(path, c, at, 'main', 'string');
+    const set = documents(path, c, at, 'documents');
+    if (!Object.hasOwn(set, main)) fail(path, `${at}.documents.${main}`, 'is missing');
+  });
+}
+
+// headerName is the third word of the first line, the document name of a dbspec header, split at single spaces.
+function headerName(lines) {
+  return lines.length === 0 ? undefined : lines[0].split(' ')[2];
+}
+
+// namedDocuments checks an array of documents, each a line array whose first line is a header that names it.
+function namedDocuments(path, object, location, key) {
+  field(path, object, location, key, 'array').forEach((lines, i) => {
+    const at = `${location}.${key}[${i}]`;
+    checkLines(path, lines, at);
+    if (headerName(lines) === undefined) fail(path, `${at}[0]`, 'has no document name');
+  });
+}
+
+// checkSyntax checks tests/dbspec/syntax.json: the id of each case. The expected tokens are the runtime tests' to
+// check; this runner compares what each client gives.
+function checkSyntax(path, v) {
+  cases(path, v, 'cases', () => {});
 }
 
 function checkDdl(path, v) {
@@ -438,4 +471,67 @@ for (const c of mermaid.round_trip) {
   out.push(`mermaid/round_trip/${c.id}/import`);
   writeImport(text);
 }
+// The declaration positions of the main document of each positions case, as "| kind<TAB>line<TAB>column<TAB>path..."
+// lines, or its diagnostics.
+for (const c of shared.positions) {
+  out.push(`positions/${c.id}`);
+  const set = {};
+  for (const [name, lines] of Object.entries(c.documents)) if (name !== c.main) set[name] = join(lines, false, false);
+  const result = parseDbspec(join(c.documents[c.main], false, false), set);
+  for (const d of result.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
+  for (const p of result.positions ?? []) out.push(`| ${[p.kind, p.line, p.column, ...p.path].join('\t')}`);
+}
+
+// syntaxInputs gives the input of every analysis that syntax.json names, by its id, as
+// scripts/dbspec/syntax-vectors.mjs derives it from cases.json: the main document of each canonical, normalize and
+// invalid case ("<section>/<id>"), each document of a sets case with the parsing documents and the other documents of
+// the case by header name ("sets/<id>/<place>", 1-based), and each document of a hashes case with the others
+// ("hashes/<id>/<name>").
+function syntaxInputs() {
+  const inputs = new Map();
+  for (const kind of ['canonical', 'normalize', 'invalid']) {
+    for (const c of shared[kind]) {
+      const crlf = c.crlf === true;
+      const mixed = c.mixed === true;
+      const set = {};
+      for (const [name, lines] of Object.entries(c.documents)) if (name !== c.main) set[name] = join(lines, crlf, mixed);
+      inputs.set(`${kind}/${c.id}`, { text: join(c.documents[c.main], crlf, mixed), documents: set });
+    }
+  }
+  for (const c of shared.sets) {
+    const every = [...c.documents, ...(c.external ?? [])];
+    c.documents.forEach((lines, i) => {
+      const set = {};
+      for (const [name, other] of Object.entries(c.parsing)) set[name] = join(other, false, false);
+      every.forEach((other, j) => {
+        if (j !== i) set[headerName(other)] = join(other, false, false);
+      });
+      inputs.set(`sets/${c.id}/${i + 1}`, { text: join(lines, false, false), documents: set });
+    });
+  }
+  for (const c of shared.hashes) {
+    for (const name of Object.keys(c.documents)) {
+      const set = {};
+      for (const [other, lines] of Object.entries(c.documents)) if (other !== name) set[other] = join(lines, false, false);
+      inputs.set(`hashes/${c.id}/${name}`, { text: join(c.documents[name], false, false), documents: set });
+    }
+  }
+  return inputs;
+}
+
+// Each case of syntax.json prints its tokens ("| line start end class") and the diagnostics of its analysis, then
+// "syntax/<id>/format" and the formatted text or the diagnostics of the refusal.
+const inputs = syntaxInputs();
+readVectors(syntaxPath, checkSyntax).cases.forEach((c, i) => {
+  const input = inputs.get(c.id);
+  if (input === undefined) fail(syntaxPath, `cases[${i}].id`, 'names no input of the shared cases');
+  out.push(`syntax/${c.id}`);
+  const analysis = analyzeDbspec(input.text, input.documents);
+  for (const t of analysis.tokens) out.push(`| ${t.line} ${t.start} ${t.end} ${t.class}`);
+  for (const d of analysis.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
+  out.push(`syntax/${c.id}/format`);
+  const formatted = formatDbspec(input.text, input.documents);
+  for (const d of formatted.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
+  if (formatted.text !== null) for (const line of formatted.text.split('\n')) out.push(`| ${line}`);
+});
 process.stdout.write(out.join('\n') + '\n');

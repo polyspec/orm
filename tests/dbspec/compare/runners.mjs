@@ -1,5 +1,5 @@
 // 여섯 dbspec compare runner. Go, PHP, TypeScript, Python, Rust, PHP 확장 runner는 모두 <cases.json> <stress document>
-// <ddl.json> <plans.json> <mermaid.json>을 받는다(reads). 각 runner는 tests/dbspec/compare/check.mjs의
+// <ddl.json> <plans.json> <mermaid.json> <syntax.json>을 받는다(reads). 각 runner는 tests/dbspec/compare/check.mjs의
 // line format을 출력하고, input을 읽을 수 없거나 vector가 없거나 type이 다르면 stderr에 위치를 밝힌
 // error를 쓰고 nonzero로 끝난다. TypeScript runner는 TypeScript build를, Rust runner는 dbspec_compare
 // example의 debug build를, PHP 확장 runner는 make가 build한 확장 orm_dbspec(ORM_DBSPEC_EXTENSION)을 요구한다.
@@ -11,7 +11,7 @@ import { cargoTarget } from '../../cargo-target.mjs';
 export const root = fileURLToPath(new URL('../../../', import.meta.url));
 
 // INPUTS는 runRunner가 받는 input의 이름과 순서다.
-export const INPUTS = ['cases', 'stress', 'ddl', 'plans', 'mermaid'];
+export const INPUTS = ['cases', 'stress', 'ddl', 'plans', 'mermaid', 'syntax'];
 
 // phpExtension은 make dbspec-compare-check가 그 실행의 directory에 build한 확장 orm_dbspec의 경로다.
 function phpExtension() {
@@ -55,7 +55,7 @@ export const runners = [
 // reject한다. reads를 선언한 compare runner에는 inputs(INPUTS 순서의 경로) 가운데 그것이 읽는 것을 주고, reads가 없는
 // runner(tests/dbspec/inputs.test.mjs의 apply runner와 stress harness)에는 inputs를 그대로 준다.
 export function runRunner(runner, inputs, timeout) {
-  if (runner.reads && inputs.length !== INPUTS.length) throw new Error(`runRunner gives a compare runner the ${INPUTS.length} inputs ${INPUTS.join(', ')}; given ${inputs.length}; pass all five, and the runner takes those its reads names`);
+  if (runner.reads && inputs.length !== INPUTS.length) throw new Error(`runRunner gives a compare runner the ${INPUTS.length} inputs ${INPUTS.join(', ')}; given ${inputs.length}; pass all six, and the runner takes those its reads names`);
   const args = runner.reads ? runner.reads.map(name => inputs[INPUTS.indexOf(name)]) : inputs;
   return new Promise((resolve, reject) => {
     const child = spawn(runner.command, [...runner.args, ...args], { cwd: root, timeout });
