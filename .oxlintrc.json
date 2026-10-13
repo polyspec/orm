@@ -1,0 +1,11 @@
+// The oxlint configuration of every polyspec repository, copied by kit; change it in kit, never in a copy. make lint-ts runs
+// oxlint with -c of this file, --type-aware (oxlint-tsgolint, which reads the TypeScript 7 project) and --deny-warnings. The
+// correctness rules fail, and so does a promise that is neither awaited nor handled: it lets a test end before its work does.
+{
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "typescript/no-floating-promises": "error"
+  }
+}

@@ -6,8 +6,7 @@
   "exclude": [
     "docs/.vitepress/**",
     "**/node_modules/**",
-    "**/vendor/**",
-    "tests/kit/**"
+    "**/vendor/**"
   ],
   "siteLinks": true,
   "changelogs": [

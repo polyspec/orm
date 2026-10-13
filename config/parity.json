@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "comment": "The implementations of orm, the one source of its language set, and the shared vector suites and the error catalog that each of them holds, as the tree stands. scripts/kit/parity.mjs reads it (make parity-declarations-check, make parity-check; docs/tool-inventory of kit, Language parity). A missing binding stays missing so that the check reports it.",
+  "comment": "The implementations of orm, the one source of its language set, and the shared vector suites and the error catalog that each of them holds, as the tree stands. The parity tool of @polyspec/kit reads it (make parity-declarations-check, make parity-check; docs/tool-inventory of kit, Language parity). A missing binding stays missing so that the check reports it.",
   "implementations": [
     {
       "name": "go",
@@ -52,7 +52,8 @@
     {
       "name": "client",
       "implementations": ["go", "php", "typescript", "python", "rust"],
-      "reason": "The PHP extension orm_dbspec implements only the dbspec surface of the PHP client (Polyspec\\Orm\\Dbspec\\Native): it has no query client, codec, DSN, statement events or error codes."
+      "reason": "The PHP extension orm_dbspec implements only the dbspec surface of the PHP client (Polyspec\\Orm\\Dbspec\\Native): it has no query client, codec, DSN, statement events or error codes.",
+      "spec": ["contracts/interfaces.json#/extensions/php-extension/description"]
     }
   ],
   "suites": [

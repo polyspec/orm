@@ -70,6 +70,17 @@ jobs:
         with:
           node-version-file: .node-version
           cache: npm
+      # make reads the kit.mk of @polyspec/kit, so the package is installed
+      # before any other make target runs: the npm of packageManager into
+      # var/tools, then package-lock.json with that npm.
+      - name: npm of packageManager
+        id: npm
+        if: ${{ !cancelled() }}
+        run: make install-tools TOOLS=npm
+      - name: install Node dependencies
+        id: node-modules
+        if: ${{ !cancelled() }}
+        run: make install-packages
       - name: setup of the CI group
         id: group-needs
         if: ${{ !cancelled() }}
@@ -94,10 +105,6 @@ jobs:
         id: flowmark
         if: ${{ !cancelled() && steps.group-needs.outputs.flowmark == 'true' }}
         run: make install-flowmark
-      - name: install Node dependencies
-        id: node-modules
-        if: ${{ !cancelled() && steps.group-needs.outputs.node-modules == 'true' }}
-        run: make install-node
       - name: lowest Node release of the TypeScript client
         id: node-min
         if: ${{ !cancelled() && steps.group-needs.outputs.node-modules == 'true' }}
@@ -232,9 +239,17 @@ jobs:
         with:
           node-version-file: .node-version
           cache: npm
-      - id: node-modules
+      # make reads the kit.mk of @polyspec/kit, so the package is installed
+      # before any other make target runs: the npm of packageManager into
+      # var/tools, then package-lock.json with that npm.
+      - name: npm of packageManager
+        id: npm
         if: ${{ !cancelled() }}
-        run: make install-node
+        run: make install-tools TOOLS=npm
+      - name: install Node dependencies
+        id: node-modules
+        if: ${{ !cancelled() }}
+        run: make install-packages
       # docs-verify-idempotent builds docs/.vitepress/dist twice and compares
       # every byte, and docs-check builds it and reads its pages and links
       # with Node. make docs-ci runs the two through the runner of make check,
@@ -270,6 +285,14 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
+      - name: npm of packageManager
+        id: npm
+        if: ${{ !cancelled() }}
+        run: make install-tools TOOLS=npm
+      - name: install Node dependencies
+        id: node-modules
+        if: ${{ !cancelled() }}
+        run: make install-packages
       - name: every job passed
         if: ${{ !cancelled() }}
         env:

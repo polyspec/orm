@@ -3,10 +3,11 @@
 .PHONY: version-check/unit version-check/run repo-check/unit repo-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select testcase-check/go testcase-check/node testcase-check/runners testcase-check/php testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/model-methods client-unit-check/perf-extensions
 .NOTPARALLEL: check check-run docs-check docs-verify-idempotent
 
-# git은 core.hooksPath가 `.githooks`일 때만 추적하는 hook(`.githooks/commit-msg`, `.githooks/pre-push`)을 실행하고, 그 설정은
-# clone마다 따로 있다. scripts/kit/kit.mk가 make 실행마다 parse 때 그 설정을 둔다. commit-msg hook은 커밋하려는 message를
-# scripts/kit/check-commits.mjs(config/commits.json)로 검사하고 어기면 커밋을 거부한다. pre-push hook은 kit의 push gate를
-# 실행하고, gate는 checklist 항목이 `[~]`인 push를 거부한다(AGENTS.md). make hooks는 설정을 두고 hooks-check로 확인한다.
+# git runs the tracked hooks (.githooks/commit-msg, .githooks/pre-push) only when core.hooksPath is .githooks, a setting of
+# each clone, which the kit.mk of @polyspec/kit sets at parse time on every make run. Each hook runs a make target: the
+# commit-msg hook runs commit-msg-check, which checks the message being committed against config/commits.json and refuses
+# a commit that breaks it, and the pre-push hook runs push-gate-hook, the push gate of kit, which refuses a push while a
+# checklist item is [~] (AGENTS.md). make hooks sets the setting and hooks-check checks it.
 
 # make test-servers starts the MySQL and PostgreSQL primaries, their replicas,
 # and the ProxySQL and PgBouncer poolers of the database checks on free ports that it chooses
@@ -61,8 +62,17 @@ export GOPROXY := off
 export npm_config_offline := true
 export COMPOSER_DISABLE_NETWORK := 1
 ONLINE := env -u CARGO_NET_OFFLINE -u GOPROXY -u npm_config_offline -u COMPOSER_DISABLE_NETWORK
-# The targets of the shared tools (polyspec/kit) come from the vendored scripts/kit/kit.mk; they are never edited here.
-include scripts/kit/kit.mk
+# The targets of the shared tools come from the npm package @polyspec/kit: scripts/kit/kit-bootstrap.mk, a copy that make
+# kit-sync writes, includes the kit.mk of the installed package, whose tools run as node $(KIT)/<tool>.$(KIT_EXT). A fresh
+# checkout first runs make install-tools TOOLS=npm and make install-packages, the two targets that run before the package
+# is installed.
+include scripts/kit/kit-bootstrap.mk
+
+# commit-msg-check is the commit-msg hook: it checks the message file MESSAGE that git is about to commit.
+.PHONY: commit-msg-check
+commit-msg-check:
+	@test -n "$(MESSAGE)" || { echo "commit-msg-check: MESSAGE is missing; git gives the hook .githooks/commit-msg the message file, which passes it as MESSAGE"; exit 2; }
+	node $(KIT)/check-commits.$(KIT_EXT) --message "$(MESSAGE)"
 # WITH_TEST_ENV는 TEST_ENV를 읽는다. pooler를 거치지 않는 server DSN ORM_TEST_MYSQL_SERVER_DSN과
 # ORM_TEST_POSTGRES_SERVER_DSN도 TEST_ENV가 정의한다(make 밖의 go test도 같은 file을 읽는다).
 # client-pooler-check가 ORM_TEST_*_DSN을 pooler DSN으로 바꾸어도 rollback 실패 case는 이 DSN으로
@@ -143,7 +153,7 @@ TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mjs
 # dbspec-rust-check, dbspec-ts-check, dbspec-compare-check)은 feature-verify-rust나 feature-verify-other 안에서 한 번
 # 실행되므로 목록에 다시 넣지 않는다. contracts/check-inputs.json은 target마다 scope를 선언한다: owner target은
 # make owner-check도 고르고, suite target은 이 전체 suite에서만 실행한다.
-CHECK_TARGETS = runner-check documents-check commits-check release-coverage kit-check kit-test owner-validate dependency-policy-check dependency-policy-mutation-check version-check testcase-check repo-check test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check install-cli-check markdown-table-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check markdown-conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-language-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-coverage feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check python-check
+CHECK_TARGETS = runner-check documents-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check testcase-check repo-check test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check install-cli-check markdown-table-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check markdown-conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-language-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-coverage feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check python-check
 # CI는 make check를 CI group마다 job 하나로 나눠 동시에 실행한다(.github/workflows/ci.yml의 job test, matrix group).
 # job마다 `make check GROUP=<group>`이 CI_TARGETS_<group>을 실행하고, group은 함께 CHECK_TARGETS의 모든 target을 한
 # 번씩 실행한다(make repo-check가 확인한다). group은 CI 실행에서 잰 target의 시간으로 job마다 setup과 함께 10분 안에
@@ -161,7 +171,7 @@ CHECK_TARGETS = runner-check documents-check commits-check release-coverage kit-
 #   stress_mysql: 2000 table plan의 MySQL 적용(feature-stress-mysql-check)
 #   stress_pg_sqlite: stress 문서의 bench와 PostgreSQL, SQLite 적용(feature-stress-pg-sqlite-check)
 CI_GROUPS = static clients_db clients_pooler conformance dbspec dbspec_apply feature_coverage feature_verify_rust feature_verify_other feature_helpers stress_mysql stress_pg_sqlite python
-CI_TARGETS_static = runner-check documents-check commits-check release-coverage kit-check kit-test owner-validate dependency-policy-check dependency-policy-mutation-check version-check testcase-check repo-check test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check install-cli-check markdown-table-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check codec-check fuzz-check package-check ts-model-check dbspec-language-check feature-unit-check
+CI_TARGETS_static = runner-check documents-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check testcase-check repo-check test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check install-cli-check markdown-table-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check codec-check fuzz-check package-check ts-model-check dbspec-language-check feature-unit-check
 CI_TARGETS_clients_db = rust-driver-check example-check client-db-check dialect-facts-check go-test-check
 CI_TARGETS_clients_pooler = client-pooler-check
 CI_TARGETS_conformance = ts-check ts-min-check conformance-check markdown-conformance-check
@@ -180,19 +190,20 @@ CI_TARGETS_stress_pg_sqlite = feature-stress-pg-sqlite-check
 run-databases:
 	$(BUILD_LEASE) && node scripts/check/run.mjs --job-summary $(abspath $(TEST_ENV)) $(TARGETS)
 
-# check는 전체 suite의 guard(scripts/kit/full-run.mjs)다: 진행 중 항목(`[~]`)이 있는 동안, 추적하는 file에 commit하지 않은
-# 변경이 있는 동안, 같은 tree의 전체 실행이 var/full-run.json에 기록되어 있을 때 이유를 출력하고 거부하며, 허용하면 target
-# check-run을 `make -k`로 실행해 그 결과를 기록한다. make rerun-failed(scripts/kit/kit.mk)는 통과하지 못한 target을 같은
-# tree에서 다시 실행한다. 전체 suite는 push 뒤 GitHub CI에서 실행되고(.github/workflows/ci.yml), 로컬 check는 push 전에 필요한
-# 단계가 아니다. check-run은 runner(scripts/check/run.mjs)를 실행한다: 실행마다 자기 bench database와 decimal database를
-# 만들고, target을 하나씩 실행하며, 실행의 기록을 .runtime/check/<id>/record.json에 쓴다. runner는 TEST_ENV를 setup 단계
-# servers로 읽고 그 server의 shared lease를 잡는다: file이 없으면(make test-servers가 실패했다) database가 필요한 target만
-# not-run으로 기록하고 나머지는 실행한다.
+# check is the guard of the full suite, the full-run tool of @polyspec/kit: it prints the reason and refuses while a checklist
+# item is [~], while tracked files have uncommitted changes, or when var/full-run.json records a full run of the same tree;
+# otherwise it runs the target check-run with `make -k` and records the result. make rerun-failed (the kit.mk of
+# @polyspec/kit) reruns on the same tree the targets that did not pass. The full suite runs on GitHub CI after a push
+# (.github/workflows/ci.yml), and a local check is no step required before a push. check-run runs the runner
+# (scripts/check/run.mjs): each run creates its own bench and decimal databases, runs the targets one by one and writes the
+# record of the run to .runtime/check/<id>/record.json. The runner reads TEST_ENV as the setup step servers and holds the
+# shared lease of those servers: when the file is missing (make test-servers failed), it records only the targets that need
+# a database as not-run and runs the rest.
 # GROUP은 CI group 하나(CI_TARGETS_<group>)만 실행한다. 그 실행은 GitHub Actions의 job 하나가 하는 전체 suite의 한
 # 부분이므로 GITHUB_ACTIONS가 true일 때만 받는다.
 CHECK_RUN_TARGETS = $(if $(GROUP),$(CI_TARGETS_$(GROUP)),$(CHECK_TARGETS))
 check:
-	node scripts/kit/full-run.mjs run check-run
+	node $(KIT)/full-run.$(KIT_EXT) run check-run
 check-run:
 	$(if $(GROUP),$(if $(filter $(GROUP),$(CI_GROUPS)),,$(error GROUP $(GROUP) names no CI group; give one of CI_GROUPS: $(CI_GROUPS))))
 	$(if $(GROUP),$(if $(filter true,$(GITHUB_ACTIONS)),,$(error GROUP runs one CI group of make check-run on GitHub Actions only; run make check without GROUP, which runs every target of CHECK_TARGETS)))
@@ -753,9 +764,9 @@ test-servers-leases-clear:
 # 실행한다(test 환경 아래에서, owner-check가 하듯이).
 # feature-owner-check는 바뀐 file(PATHS, 없으면 HEAD에서 바뀐 file과 추적하지 않는 file)을 입력으로 선언한
 # 기능의 검증 명령과 coverage만, 그리고 contracts/check-inputs.json이 scope owner로 선언한 target만
-# 실행한다(AGENTS.md "Owner checks"). 실행은 자기 test server 환경과 database를 쓴다. make owner-check
-# (scripts/kit/kit.mk)는 config/owner-checks.json의 규칙으로 바뀐 path를 이 target에 넘긴다. 그 전에 hooks-check가
-# pre-push hook의 설치를 확인한다.
+# 실행한다(AGENTS.md "Owner checks"). 실행은 자기 test server 환경과 database를 쓴다.
+# make owner-check, a target of the kit.mk of @polyspec/kit, passes this target the paths that changed under the rules of
+# config/owner-checks.json; hooks-check first checks that the pre-push hook is installed.
 .PHONY: feature-owner-check
 feature-owner-check: hooks-check
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python node scripts/features/owners.mjs $(PATHS)
@@ -1224,16 +1235,15 @@ rust-check/clippy-live-db: lease-tool
 rust-check/clippy-test-faults: lease-tool
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy-test-faults --cwd packages/rust -- $(CARGO_LEASED) cargo clippy --locked -p polyspec-orm --all-targets --features test-faults -- -D warnings
 
-# install은 check가 읽는 것을 download한다: npm package(root와 TypeScript client), Composer package, Rust
-# toolchain과 Cargo.lock마다의 crate, Go module, ts-min-check의 가장 낮은 Node, PHP 확장의 gen_stub.php와 PHP-Parser.
-# 이미 받은 것은 다시 받지 않는다.
-# 부분은 서로 독립이다(make -k).
+# install downloads what the checks read: the Composer packages, the Rust toolchain and the crates of every Cargo.lock, the
+# Go modules, the lowest Node of ts-min-check, and the gen_stub.php and PHP-Parser of the PHP extension. The npm packages
+# (the root, the TypeScript client and @polyspec/kit) come first, from make install-tools TOOLS=npm and make
+# install-packages, because make reads the kit.mk of the installed package. What is downloaded is not downloaded again,
+# and the parts are independent (make -k).
 
 .PHONY: docs-ci
-.PHONY: install install-node install-php install-rust install-go install-node-min install-server-programs install-php-extension-tools ci-php-min-version ci-php-sqlite downloads-check
-install: install-node install-php install-rust install-go install-node-min install-php-extension-tools install-python install-flowmark
-install-node:
-	$(ONLINE) npm ci
+.PHONY: install install-php install-rust install-go install-node-min install-server-programs install-php-extension-tools ci-php-min-version ci-php-sqlite downloads-check
+install: install-php install-rust install-go install-node-min install-php-extension-tools install-python install-flowmark
 install-php:
 	$(ONLINE) composer install --no-interaction --no-progress --prefer-dist
 install-rust:
@@ -1271,8 +1281,8 @@ ci-php-sqlite:
 
 # downloads-check는 check가 읽는 download가 모두 있는지 network 없이 확인하고, 빠진 것을 `run make install`과
 # 함께 적는다(scripts/check/downloads.mjs). runner(scripts/check/run.mjs)는 같은 확인을 setup 단계 downloads로 실행한다.
-# crate는 scripts/kit/check-cargo-downloads.mjs가 확인한다: cargo를 --offline으로 실행하는 target은 cargo-downloads-check
-# (scripts/kit/kit.mk)를 먼저 실행하므로, 빠진 crate는 cargo의 "retry without --offline" 대신 fix를 적고 실패한다.
+# The crates are checked by cargo-downloads-check of the kit.mk of @polyspec/kit, which every target that runs cargo
+# --offline runs first, so a missing crate fails with its fix instead of cargo's "retry without --offline".
 downloads-check:
 	node scripts/check/downloads.mjs
 
@@ -1313,7 +1323,7 @@ typescript-build: lease-tool
 # installation and no remote package enters the tree (the same setting as hyper, H13.5-14 of hyper).
 release-consumer release-proof: export npm_config_allow_remote := root
 
-# The archive of the npm package holds the build of the TypeScript client (scripts/kit/release.mjs packs the tree as it is).
-# release-assets는 자신이 선언한 설치 위에서 build한다: lease tool의 Go module과 TypeScript build의 node module.
-# release runner에는 둘 다 없고, 검사는 offline(GOPROXY=off)으로 실행된다.
-release-assets: install-go install-node typescript-build
+# The archive of the npm package holds the build of the TypeScript client (the release tool of @polyspec/kit packs the tree as it is).
+# release-assets builds on the installs it declares, the Go modules of the lease tool; the release workflow installs the npm
+# packages of the TypeScript build first with make install-packages. The checks run offline (GOPROXY=off).
+release-assets: install-go typescript-build

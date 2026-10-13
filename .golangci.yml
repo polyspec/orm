@@ -1,0 +1,18 @@
+# The golangci-lint configuration of every polyspec repository, copied by kit; change it in kit, never in a copy. make lint-go
+# runs golangci-lint with --config of this file in each Go module of the repository.
+version: "2"
+linters:
+  # The standard set: errcheck, govet, ineffassign, staticcheck and unused.
+  default: standard
+  enable:
+    - gomoddirectives
+  settings:
+    gomoddirectives:
+      # The modules of a repository resolve each other through its go.work; a released go.mod never names a replace,
+      # which its consumers would not see.
+      replace-local: false
+      retract-allow-no-explanation: false
+      exclude-forbidden: true
+      # The Go of a module is its go directive at the pin of kit (S4); a toolchain line equal to it is removed by go mod tidy.
+      toolchain-forbidden: true
+      go-debug-forbidden: true

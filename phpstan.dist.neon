@@ -1,0 +1,14 @@
+# The PHPStan configuration of every polyspec repository, copied by kit; change it in kit, never in a copy. make lint-php runs
+# PHPStan with this file on each Composer package, with the autoloader of the package. It runs the disallowed calls of S2
+# only: customRulesetUsed loads no rule level, so the result depends on no level a package may later choose for itself.
+# spaze/phpstan-disallowed-calls is loaded by phpstan/extension-installer (config/php-lint).
+parameters:
+    customRulesetUsed: true
+    disallowedFunctionCalls:
+        -
+            function: 'spl_autoload_register()'
+            message: 'S2: classes load through the PSR-4 autoloader of Composer; never register an autoloader'
+    disallowedMethodCalls:
+        -
+            method: 'Composer\Autoload\ClassLoader::*()'
+            message: 'S2: classes load through the PSR-4 autoloader of Composer; never change a ClassLoader at run time'

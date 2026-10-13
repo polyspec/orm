@@ -58,7 +58,7 @@ caseTest('install-python builds its venv with the pinned interpreter, never the 
     assert.equal(result.status, 0, result.stdout + result.stderr);
     assert.doesNotMatch(result.stdout, /(^|[\s/])python3 -m venv/m);
     // install-tools installs uv before the Python that uv installs (T136).
-    assert.match(result.stdout, /scripts\/kit\/install-tools\.mjs uv python/);
+    assert.match(result.stdout, /install-tools\.mjs uv python/);
     assert.match(result.stdout, /python-venv DIR=/);
     assert.match(result.stdout, /var\/tools\/bin\/python3 -m pip --python /);
   } finally {

@@ -1,9 +1,11 @@
-# Release workflow of a repository that adopts kit. kit-sync copies this file to .github/workflows/release.yml, records it in
-# .kit/kit.lock.json, and kit-check fails when the checkout differs from it; a repository never edits it.
+# Release workflow of a repository that adopts kit. kit-sync copies this file from the installed package @polyspec/kit to
+# .github/workflows/release.yml, and kit-check fails when the checkout differs from it; a repository never edits it.
 #
 # A tag push creates the GitHub Release of the tag as a draft, proves the draft from outside the checkout, and makes it public
 # only after the proof passes. The steps run in order and stop at the first failure; each step runs one make target of
-# scripts/kit/kit.mk with TAG from the environment:
+# kit with TAG from the environment. The first two install the package in the bootstrap order of a repository:
+#   install-tools TOOLS=npm installs the npm of packageManager with the copied installer of scripts/kit/bootstrap
+#   install-packages installs package-lock.json with that npm, @polyspec/kit included, whose kit.mk has the targets below
 #   release-tools    installs the tools that config/release.json needs for the packages and proof of this repository
 #   release-tools-path puts var/tools/bin on the PATH of the steps that follow, through GITHUB_PATH
 #   release-verify   the tagged commit is on origin/main and its check runs concluded success, without running the tests again
@@ -33,8 +35,8 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           fetch-depth: 0
-      # actions/setup-node v6.5.0: the Node.js of .node-version runs the tools of scripts/kit. The repository installs no npm
-      # package, so the cache of setup-node is off.
+      # actions/setup-node v6.5.0: the Node.js of .node-version runs the bootstrap and the tools of @polyspec/kit. The pinned
+      # npm of var/tools installs the packages, so the cache of setup-node is off.
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version-file: .node-version
@@ -47,6 +49,10 @@ jobs:
           php-version-file: .php-version
           # The proof runs with no debugger or coverage driver, as the checks do.
           coverage: none
+      - name: install npm
+        run: make install-tools TOOLS=npm
+      - name: install packages
+        run: make install-packages
       - name: make release-tools
         run: make release-tools
       # The tools of var/tools/bin — the Go of .go-version the release builds with, and whatever else the packages

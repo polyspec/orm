@@ -12,14 +12,15 @@ import { connectProbeErrors } from './probes.mjs';
 import { composerVersionErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { CI_SETUP, expandNeeds, GROUP_OUTPUTS, groupOutputs, groupSetupErrors, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mjs';
+import { kitCopies } from './kit-copies.mts';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
 import { callerPathErrors, deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mjs';
 import { callerEnvironmentErrors, generateRuns, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 
-// The files of polyspec/kit (kit.json lists the vendored directories) are checked by make kit-check and make kit-test, and they are
-// never edited here, so the rules of this repository do not read them.
-const vendored = JSON.parse(readFileSync(new URL('../../kit.json', import.meta.url), 'utf8')).vendored.map(directory => `${directory}/`);
-const notVendored = path => !vendored.some(directory => path.startsWith(directory));
+// The copies of @polyspec/kit (kit.copies of its package.json) are checked by make kit-check and never edited here, so the
+// rules of this repository do not read them.
+const copies = kitCopies(new URL('../..', import.meta.url).pathname);
+const notVendored = path => !Object.hasOwn(copies, path);
 const tracked = ['scripts/docs/rules.mjs', 'packages/ts/package.json', 'scripts/typescript/sqlite-test.sh'];
 
 caseTest('a script path must be a tracked file or directory', COMPUTE, () => {
@@ -453,8 +454,10 @@ caseTest('a CI group job runs each setup step under its declared condition and r
 // workflow에서 빠진 job, 마지막이 아닌 job, always()가 아닌 조건, 다른 step을 거부한다.
 caseTest('the job ci-passed runs last under always() and needs every other job', COMPUTE, () => {
   assert.deepEqual(ciPassedErrors(workflow), []);
-  const step = `    steps:\n      ${CI_PASSED_STEPS[0][0]}\n      ${CI_PASSED_STEPS[1][0]}\n        ${CI_PASSED_STEPS[1][1]}\n          ${CI_PASSED_STEPS[1][2]}\n`
-    + `      ${CI_PASSED_STEP[0]}\n        ${CI_PASSED_STEP[1]}\n        ${CI_PASSED_STEP[2]}\n          ${CI_PASSED_STEP[3]}\n        ${CI_PASSED_STEP[4]}\n`;
+  // A step is written as in ci.yml: its first line under the job's steps, its keys below it, and the entries of with: and env:
+  // below those.
+  const render = lines => lines.map((line, index) => `${' '.repeat(index === 0 ? 6 : /^(with|env):$/.test(lines[index - 1]) ? 10 : 8)}${line}\n`).join('');
+  const step = `    steps:\n${CI_PASSED_STEPS.map(render).join('')}`;
   const job = (condition, needs) => `  ci-passed:\n    if: ${condition}\n    needs: [${needs}]\n    runs-on: ubuntu-26.04-arm\n${step}`;
   const others = '  test:\n    steps:\n      - run: make check\n  docs:\n    steps:\n      - run: make docs-ci\n';
   assert.deepEqual(ciPassedErrors(`jobs:\n${others}${job('${{ always() }}', 'test, docs')}`), []);
@@ -561,17 +564,30 @@ caseTest('every variable a helper make command reads is exported by the Makefile
 });
 
 // runner case는 저장소의 .github/runner와 workflow, 그리고 최소 workflow를 검사한다.
-// kit.json의 vendoredFiles가 나열한 workflow는 kit가 소유하고 make kit-check가 byte 단위로 지키므로, 이 저장소의 workflow 규칙은
-// 그 file을 검사하지 않는다(T115). 이 저장소가 kit의 release.yml과 다른 runner를 원하면 그것은 kit의 변경이다.
-const vendoredFiles = JSON.parse(text('kit.json')).vendoredFiles;
+// A workflow among the copies of @polyspec/kit is kit's and make kit-check holds it byte for byte, so the workflow rules of this
+// repository do not check it (T115). A runner other than that of kit's release.yml is a change of kit.
+const vendoredFiles = copies;
 
-caseTest('the workflow rules skip the workflows that kit.json vendors', COMPUTE, () => {
-  // kit vendors one workflow, release.yml; its other vendored files (PRINCIPLES.md and its twin) are no workflows.
+caseTest('the workflow rules skip the workflows that @polyspec/kit copies', COMPUTE, () => {
+  // kit copies one workflow, release.yml; its other copies (PRINCIPLES.md, the lint configurations, the bootstrap) are no workflows.
   assert.deepEqual(Object.keys(vendoredFiles).filter(file => file.startsWith('.github/workflows/')), ['.github/workflows/release.yml']);
   const all = { '.github/workflows/ci.yml': 'a', '.github/workflows/release.yml': 'b' };
   assert.deepEqual(ownWorkflows(all, vendoredFiles), { '.github/workflows/ci.yml': 'a' });
   assert.deepEqual(ownWorkflows({ 'ci.yml': 'a', 'release.yml': 'b' }, vendoredFiles), { 'ci.yml': 'a' });
-  assert.throws(() => ownWorkflows(all, undefined), /kit.json declares no vendoredFiles/);
+  assert.throws(() => ownWorkflows(all, undefined), /no copies of @polyspec\/kit/);
+});
+
+caseTest('the copies of @polyspec/kit are read from the installed package', COMPUTE, () => {
+  const root = mkdtempSync(join(tmpdir(), 'orm-kit-copies-'));
+  try {
+    writeFileSync(join(root, 'package.json'), '{"name":"x","private":true}');
+    assert.throws(() => kitCopies(root), /@polyspec\/kit is not installed .*; run make install-tools TOOLS=npm, then make install-packages/);
+    mkdirSync(join(root, 'node_modules', '@polyspec', 'kit'), { recursive: true });
+    writeFileSync(join(root, 'node_modules', '@polyspec', 'kit', 'package.json'), '{"name":"@polyspec/kit","kit":{"copies":{"ruff.toml":"ruff.toml"}}}');
+    assert.deepEqual(kitCopies(root), { 'ruff.toml': 'ruff.toml' });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 caseTest('every workflow job runs on the runner of .github/runner', COMPUTE, () => {

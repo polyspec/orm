@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- T137 (breaking): orm은 kit을 vendored 사본 대신 npm package `@polyspec/kit`으로 받고(`make install-tools TOOLS=npm`, `make install-packages`) 그 PRINCIPLES.md를 link한다. client folder는 runtime 이름이다: `packages/go`, `packages/ts`, `packages/php`, `packages/php-ext`, `packages/python`(Python client의 subdirectory), `packages/rust`이며 그 crate는 `build/`와 `schema/`에 있다. Go import path는 `github.com/polyspec/orm/packages/go/...`다. toolchain 하한은 kit의 pin이다: Node.js 26.11.1, PHP 8.5, Python 3.14, Go 1.27.2, Rust 1.99.0, TypeScript 7.0.2. TypeScript client의 `orm-gen --scan`은 oxc-parser로 parse하므로 `@polyspec/orm`은 더는 TypeScript compiler에 의존하지 않는다.
+
 ## 0.0.14
 
 - T163: Python `RuntimeModel.load_set`과 TypeScript `loadSet`이 PHP, Go, Rust처럼 generated schema 값의 parse된 문서를 돌려준다.
