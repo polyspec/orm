@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 19c82e7175ed7abdc9a69c7b99d5ffd4b1674dc9183bd7317f0b934c80eb9b6f -->
+<!-- source-sha256: 41aa0b020d5a7673013cb143cd3116a1246c1edd242e14f257fe641f1c2756d4 -->
 # 변경 이력
 
 ## Unreleased
+
+## 0.0.10
 
 - T144: PHP `orm-gen`이 Composer의 조회로 autoloader를 얻고 없는 autoloader를 적는다; 문서는 `vendor-php/bin/orm-gen`을 실행한다.
 - T126-2-1: workflow test가 vendor 파일 중 workflow만 판정한다.

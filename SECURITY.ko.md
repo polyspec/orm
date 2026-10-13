@@ -1,5 +1,5 @@
 <!-- doc-id: security -->
-<!-- source-sha256: 2c2acc98b94436df9e167c03bda582c47802c9c435ebb2522da665cfc1f34429 -->
+<!-- source-sha256: ffd43df37230a6e103c0d56777fbdde3bec147092fcf458c2ef82c55453abdb8 -->
 # 보안 정책
 
 ## 신고 방법
@@ -8,7 +8,7 @@
 
 ## 지원 version
 
-개발 version은 `0.0.9`이다. 보안 수정은 현재 source tree를 기준으로 검토한다.
+개발 version은 `0.0.10`이다. 보안 수정은 현재 source tree를 기준으로 검토한다.
 
 ## 범위
 
