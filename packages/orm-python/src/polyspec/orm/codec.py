@@ -421,7 +421,7 @@ def _common_value(value, style: str):
 
 import yaml  # noqa: E402
 
-_YAML_INT = re.compile(r'[-+]?(?:[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+)\Z')
+_YAML_INT = re.compile(r'(?:[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+)\Z')
 _YAML_FLOAT = re.compile(
     r'(?:[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?'
     r'|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))\Z')
@@ -431,11 +431,11 @@ def _yaml_scalar_int(loader, node):
     text = loader.construct_scalar(node)
     if _YAML_INT.fullmatch(text) is None:
         raise yaml.YAMLError(f'not a core integer: {text}')
-    digits = text.lstrip('+-')
-    if digits.startswith('0x'):
-        return int(digits, 16)
-    if digits.startswith('0o'):
-        return int(digits, 8)
+    # core는 부호를 10진수에만 허용한다 (YAML 1.2.2, 10.3.2).
+    if text.startswith('0x'):
+        return int(text[2:], 16)
+    if text.startswith('0o'):
+        return int(text[2:], 8)
     return int(text, 10)
 
 
@@ -476,7 +476,7 @@ _resolvers = []
 for first, resolvers in yaml.SafeLoader.yaml_implicit_resolvers.items():
     kept = [(tag, regexp) for tag, regexp in resolvers
             if tag not in ('tag:yaml.org,2002:bool', 'tag:yaml.org,2002:int',
-                           'tag:yaml.org,2002:float')]
+                           'tag:yaml.org,2002:float', 'tag:yaml.org,2002:timestamp')]
     _resolvers.append((first, kept))
 _CoreLoader.yaml_implicit_resolvers = dict(_resolvers)
 _CoreLoader.add_implicit_resolver('tag:yaml.org,2002:bool',

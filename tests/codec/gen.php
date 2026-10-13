@@ -72,4 +72,28 @@ foreach ($styles as $name => $chain) {
         ];
     }
 }
+// Plain scalars read by the YAML 1.2 core schema (YAML 1.2.2, 10.3.2): stored text and value.
+// The text is given, not dumped, since an encoder quotes these strings.
+$yamlCore = [
+    'binary_like' => ["0b101", '0b101'],
+    'signed_hex_like' => ["+0x1", '+0x1'],
+    'underscore_int_like' => ["1_000", '1_000'],
+    'date_like' => ["2014-12-31", '2014-12-31'],
+    'timestamp_like' => ["2001-12-14t21:59:43.10-05:00", '2001-12-14t21:59:43.10-05:00'],
+    'next_line' => ["a\u{85}b", "a\u{85}b"],
+    'leading_zero_int' => ["0777", 777],
+    'octal' => ["0o17", 15],
+    'hex' => ["0x1F", 31],
+    'signed_int' => ["+12", 12],
+    'map' => ["a: 1_000\nb: 0b101\nc: 2014-12-31\n", ['a' => '1_000', 'b' => '0b101', 'c' => '2014-12-31']],
+];
+foreach ($yamlCore as $vname => [$text, $v]) {
+    $out[] = [
+        'name' => "yaml_core/$vname",
+        'styles' => ['yaml'],
+        'value' => $v,
+        'encoded_b64' => base64_encode($text),
+        'deterministic' => false,
+    ];
+}
 echo json_encode(['vectors' => $out], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), "\n";
