@@ -199,7 +199,7 @@ const rows = await new Author().connect(slave1)
 ```
 
 - Conditions: the first condition has no prefix, following conditions use `and<Chain>`, `or<Chain>`, or `and()` and `or()`, groups use `and(fn)` and `or(fn)`, and negated groups `not(fn)`, `andNot(fn)` and `orNot(fn)`. Operator prefixes, value shapes, and chain rules are in [dsl.md](dsl.md).
-- Finders: `getBy<Chain>`, `getsBy<Chain>`, and `getCountBy<Chain>` accept any column chain, such as `getsByServiceSeqAndIsClose(7, false)`.
+- Finders: `getBy<Chain>`, `getsBy<Chain>`, and `getCountBy<Chain>` accept any column chain, such as `getsByServiceSeqAndIsClose(7, false)`. PHP resolves a chain when the call runs. In TypeScript a chain works after model generation scans the code that calls it: generation declares a finder for each chain that a scanned call names, so a chain that no scanned code calls has no method until the code calls it and the models are generated again.
 - Columns: `addColumn<Col>()`, `removeColumn<Col>()`, `removeAllColumns()`, and `addAllColumns()`. `text`, `blob`, and styled columns are excluded from the default SELECT and added with `addColumn<Col>()`.
 - Rust generated model fields are private. Reading a column that was neither selected nor assigned returns `COLUMN_UNSELECTED`; an omitted value is never presented as SQL NULL or a default.
 - PHP generated model getters also return `COLUMN_UNSELECTED` when a non-styled column was neither selected nor assigned; selected SQL NULL and explicitly assigned values remain readable.
