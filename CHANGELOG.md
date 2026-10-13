@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T134-1: the checkout wrapper packages/orm-python/bin/orm-gen is removed; the docs name the installed `orm-gen`.
 - T142-6: `interface-check` checks the PHP vendor first.
 - T142-5: `codec-check` checks the PHP vendor first and names `make install-php` when it is missing.
 - T158-4: the dbspec-vscode integration names `make dbspec-vscode-integration` when `--vscode` is missing.
