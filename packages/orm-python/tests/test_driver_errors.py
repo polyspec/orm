@@ -14,7 +14,7 @@ from pathlib import Path
 import psycopg
 import pymysql
 
-from test_sqlite import generate
+from test_sqlite import generate_document
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
@@ -50,7 +50,7 @@ class SqliteDriverErrorTest(unittest.TestCase):
         cls.dir = tmp.name
         schema = Path(tmp.name) / 'refusal.dbs'
         schema.write_text(DOCUMENT, encoding='utf-8')
-        cls.models = generate(os.path.join(tmp.name, 'models'), schema)
+        cls.models = generate_document(os.path.join(tmp.name, 'models'), schema)
 
     def setUp(self):
         self.path = os.path.join(self.dir, f'{self._testMethodName}.sqlite3')

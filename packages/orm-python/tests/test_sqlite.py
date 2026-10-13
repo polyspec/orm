@@ -1,6 +1,7 @@
 # SQLite e2e: 생성된 model로 row를 만들고 읽고 고치고 지운다 (docs/usage.md).
 # conformance runner가 세 database를 검사하므로 여기서는 SQLite만 확인한다.
 import importlib.util
+import json
 import os
 import subprocess
 import sys
@@ -84,6 +85,16 @@ table audited_row {
   }
 }
 """
+
+
+def generate_document(out: str, document: Path):
+    """Generates the models of one document alone: the document is copied beside its own set file, in a directory
+    next to `out`, since a set file lists the documents of its own directory tree (docs/dbspec.md "Document sets")."""
+    root = Path(f'{out}-set')
+    root.mkdir(parents=True)
+    (root / document.name).write_bytes(document.read_bytes())
+    (root / 'dbspec-set.json').write_text(json.dumps({'schema': 1, 'documents': [document.name]}) + '\n', encoding='utf-8')
+    return generate(out, root / 'dbspec-set.json')
 
 
 def generate(out: str, set_file: Path):

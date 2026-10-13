@@ -20,7 +20,7 @@ from urllib.parse import unquote, urlsplit, urlunsplit
 import psycopg
 import pymysql
 
-from test_sqlite import generate
+from test_sqlite import generate_document
 
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = Path(__file__).resolve().parents[1]
@@ -46,7 +46,7 @@ def fail_next_statement(db, code, message) -> None:
 def setUpModule():
     tmp = tempfile.TemporaryDirectory(prefix='orm-statement-fault-')
     MODELS['dir'] = tmp
-    MODELS['models'] = generate(os.path.join(tmp.name, 'models'), ROOT / 'contracts' / 'fixtures' / 'rollback.dbs')
+    MODELS['models'] = generate_document(os.path.join(tmp.name, 'models'), ROOT / 'contracts' / 'fixtures' / 'rollback.dbs')
 
 
 def tearDownModule():

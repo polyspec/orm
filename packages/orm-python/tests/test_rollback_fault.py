@@ -12,7 +12,7 @@ import tomllib
 import unittest
 from pathlib import Path
 
-from test_sqlite import generate
+from test_sqlite import generate_document
 
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = Path(__file__).resolve().parents[1]
@@ -35,7 +35,7 @@ class RollbackFaultTest(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory(prefix='orm-rollback-')
         cls.addClassCleanup(tmp.cleanup)
         cls.dir = tmp.name
-        cls.models = generate(os.path.join(tmp.name, 'models'), ROOT / 'contracts' / 'fixtures' / 'rollback.dbs')
+        cls.models = generate_document(os.path.join(tmp.name, 'models'), ROOT / 'contracts' / 'fixtures' / 'rollback.dbs')
 
     def setUp(self):
         self.path = os.path.join(self.dir, f'{self._testMethodName}.sqlite3')
