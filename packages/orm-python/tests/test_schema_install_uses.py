@@ -37,7 +37,7 @@ class SchemaInstallUsesTest(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
 
     def test_a_schema_text_with_use_lines_is_a_schema_text(self):
-        document, diagnostics = parse_dbspec(
+        document, _positions, diagnostics = parse_dbspec(
             'dbspec 1 schema\n\nuse audit { audit }\n\n'
             'table ip_block {\n  seq i64 identity\n  primary key (seq)\n}\n', {'audit': AUDIT})
         self.assertEqual(list(diagnostics), [])

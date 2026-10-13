@@ -1,6 +1,7 @@
 # 공유 dbspec 사례 검사: tests/dbspec/cases.json의 canonical, normalize, invalid,
 # hashes, sets, files 사례를 전부 실행한다 (다른 client의 dbspec test와 같은 검사).
 # 실행: python packages/orm-python/tests/dbspec_cases.py
+import dataclasses
 import json
 import sys
 import unittest
@@ -8,8 +9,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
-from polyspec.orm.dbspec import (check_set, dbspec_manifest, emit_dbspec, parse_dbspec,
-                                 read_dbspec_file)
+from polyspec.orm.dbspec import (DbspecPosition, check_set, dbspec_manifest, emit_dbspec,
+                                 parse_dbspec, read_dbspec_file)
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -28,6 +29,29 @@ def error_lines(diagnostics) -> str:
     return '; '.join(f'{d.rule} {d.line}:{d.column} {d.message}' for d in diagnostics)
 
 
+POSITION_CASE_KEYS = {'id', 'documents', 'main', 'positions'}
+POSITION_KEYS = {'kind', 'path', 'line', 'column'}
+
+
+def read_position_case(case):
+    """positions 사례를 엄격하게 읽는다: 모르는 field나 빠진 field, 틀린 type은 오류다."""
+    if set(case) != POSITION_CASE_KEYS:
+        raise ValueError(f'positions case {case.get("id")} has fields {sorted(case)}, '
+                         f'want {sorted(POSITION_CASE_KEYS)}')
+    expected = []
+    for position in case['positions']:
+        if set(position) != POSITION_KEYS:
+            raise ValueError(f'positions case {case["id"]} position has fields {sorted(position)}, '
+                             f'want {sorted(POSITION_KEYS)}')
+        if not isinstance(position['kind'], str) or not isinstance(position['path'], list) \
+                or not all(isinstance(name, str) for name in position['path']):
+            raise ValueError(f'positions case {case["id"]} position kind or path has the wrong type')
+        if type(position['line']) is not int or type(position['column']) is not int:
+            raise ValueError(f'positions case {case["id"]} position line or column is not an integer')
+        expected.append((position['kind'], tuple(position['path']), position['line'], position['column']))
+    return expected
+
+
 class DbspecCaseTest(unittest.TestCase):
     maxDiff = None
 
@@ -41,7 +65,7 @@ class DbspecCaseTest(unittest.TestCase):
         for case in self.cases['canonical']:
             documents = {name: text_of(case, lines)
                          for name, lines in case['documents'].items()}
-            document, diagnostics = parse_dbspec(documents[case['main']],
+            document, _positions, diagnostics = parse_dbspec(documents[case['main']],
                                                  {k: v for k, v in documents.items()
                                                   if k != case['main']})
             if document is None:
@@ -61,7 +85,7 @@ class DbspecCaseTest(unittest.TestCase):
         for case in self.cases['normalize']:
             documents = {name: text_of(case, lines)
                          for name, lines in case['documents'].items()}
-            document, diagnostics = parse_dbspec(documents[case['main']],
+            document, _positions, diagnostics = parse_dbspec(documents[case['main']],
                                                  {k: v for k, v in documents.items()
                                                   if k != case['main']})
             if document is None:
@@ -80,7 +104,7 @@ class DbspecCaseTest(unittest.TestCase):
         for case in self.cases['invalid']:
             documents = {name: text_of(case, lines)
                          for name, lines in case['documents'].items()}
-            document, diagnostics = parse_dbspec(documents[case['main']],
+            document, _positions, diagnostics = parse_dbspec(documents[case['main']],
                                                  {k: v for k, v in documents.items()
                                                   if k != case['main']})
             if document is not None:
@@ -102,7 +126,7 @@ class DbspecCaseTest(unittest.TestCase):
             parsed = []
             for name, text in documents.items():
                 others = {k: v for k, v in documents.items() if k != name}
-                document, diagnostics = parse_dbspec(text, others)
+                document, _positions, diagnostics = parse_dbspec(text, others)
                 if document is None:
                     failures.append(f"{case['id']}/{name}: parse {error_lines(diagnostics)}")
                     parsed = None
@@ -130,7 +154,6 @@ class DbspecCaseTest(unittest.TestCase):
 
     def test_sets(self):
         failures = []
-        import dataclasses
         for case in self.cases['sets']:
             owned = len(case['documents'])
             every = list(case['documents']) + list(case.get('external', []))
@@ -147,7 +170,7 @@ class DbspecCaseTest(unittest.TestCase):
                 for other_index, other in enumerate(every):
                     if other_index != index:
                         set_texts[name_of(other)] = '\n'.join(other) + '\n'
-                document, diagnostics = parse_dbspec('\n'.join(lines) + '\n', set_texts)
+                document, _positions, diagnostics = parse_dbspec('\n'.join(lines) + '\n', set_texts)
                 if document is None:
                     failures.append(f"{case['id']}/{name_of(lines)}: parse "
                                     f"{error_lines(diagnostics)}")
@@ -181,6 +204,23 @@ class DbspecCaseTest(unittest.TestCase):
         if failures:
             self.fail('\n'.join(failures))
 
+    def test_positions(self):
+        failures = []
+        for case in self.cases['positions']:
+            want = read_position_case(case)
+            documents = {name: text_of(case, lines) for name, lines in case['documents'].items()}
+            document, positions, diagnostics = parse_dbspec(
+                documents[case['main']],
+                {k: v for k, v in documents.items() if k != case['main']})
+            if document is None:
+                failures.append(f"{case['id']}: parse {error_lines(diagnostics)}")
+                continue
+            found = [(p.kind, p.path, p.line, p.column) for p in positions]
+            if found != want:
+                failures.append(f"{case['id']}: positions want\n{want}\n--- got\n{found}")
+        if failures:
+            self.fail('\n'.join(failures))
+
     def test_files(self):
         failures = []
         for case in self.cases['files']:
@@ -191,6 +231,52 @@ class DbspecCaseTest(unittest.TestCase):
                 failures.append(f"{case['id']}: want {expected} got {found}")
         if failures:
             self.fail('\n'.join(failures))
+
+
+class DbspecPositionTest(unittest.TestCase):
+    def test_position_is_frozen_with_tuple_path(self):
+        position = DbspecPosition('table', ('orders',), 5, 7)
+        self.assertEqual((position.kind, position.path, position.line, position.column),
+                         ('table', ('orders',), 5, 7))
+        with self.assertRaises(dataclasses.FrozenInstanceError):
+            position.line = 6
+
+    def test_failed_parse_returns_no_positions(self):
+        for text in ('dbspec 1 bad\n\ntable orders {\n',
+                     'dbspec 1 bad\n\ntable orders {\n  id i64\n}\n  x\n'):
+            with self.subTest(text=text):
+                document, positions, diagnostics = parse_dbspec(text, {})
+                self.assertIsNone(document)
+                self.assertIsNone(positions)
+                self.assertTrue(diagnostics)
+
+    def test_successful_parse_returns_positions_in_source_order(self):
+        document, positions, diagnostics = parse_dbspec(
+            'dbspec 1 shop\n\ntable orders {\n  id i64 identity\n  primary key (id)\n}\n', {})
+        self.assertIsNotNone(document)
+        self.assertEqual(list(diagnostics), [])
+        self.assertEqual([(p.kind, p.path, p.line, p.column) for p in positions], [
+            ('document', ('shop',), 1, 10),
+            ('table', ('orders',), 3, 7),
+            ('column', ('orders', 'id'), 4, 3),
+            ('constraint', ('orders', 'primary key'), 5, 3),
+        ])
+
+    def test_strict_reader_rejects_bad_fields(self):
+        good = {'id': 'x', 'documents': {}, 'main': 'x',
+                'positions': [{'kind': 'document', 'path': ['x'], 'line': 1, 'column': 10}]}
+        self.assertEqual(read_position_case(good), [('document', ('x',), 1, 10)])
+        for name, bad in (
+                ('extra case field', dict(good, extra=1)),
+                ('missing case field', {k: v for k, v in good.items() if k != 'main'}),
+                ('extra position field', dict(good, positions=[dict(good['positions'][0], extra=1)])),
+                ('missing position field', dict(good, positions=[{'kind': 'document', 'path': ['x'],
+                                                                  'line': 1}])),
+                ('bool line', dict(good, positions=[dict(good['positions'][0], line=True)])),
+                ('non-string path', dict(good, positions=[dict(good['positions'][0], path=[1])]))):
+            with self.subTest(name=name):
+                with self.assertRaises(ValueError):
+                    read_position_case(bad)
 
 
 if __name__ == '__main__':

@@ -7,13 +7,25 @@ from dataclasses import dataclass, field
 from typing import TypedDict
 
 __all__ = ['DbspecColumn', 'DbspecCheck', 'DbspecDefault', 'DbspecDiagnostic', 'DbspecDiagram',
-           'DbspecDocument', 'DbspecForeignKey', 'DbspecIndex', 'DbspecIndexColumn',
+           'DbspecDocument', 'DbspecPosition', 'DbspecForeignKey', 'DbspecIndex', 'DbspecIndexColumn',
            'DbspecPlacement', 'DbspecPrimaryKey', 'DbspecSetting', 'DbspecStoreShard', 'DbspecTable', 'DbspecType',
            'DbspecUnique', 'DbspecUse', 'RULES']
 
 RULES = ('signature', 'header', 'syntax', 'order', 'name.format', 'name.length',
          'name.duplicate', 'type', 'column', 'key', 'foreign_key', 'check', 'setting',
          'use', 'diagram', 'limit', 'encoding', 'plan', 'chain', 'compare', 'mermaid')
+
+
+@dataclass(frozen=True)
+class DbspecPosition:
+    """One declaration position (docs/dbspec.md "Declaration positions"): its kind, its path of enclosing
+    names and its own name, and the 1-based line and column (the column counts code points). Positions are
+    never part of the document model."""
+
+    kind: str
+    path: tuple[str, ...]
+    line: int
+    column: int
 
 
 @dataclass(frozen=True)

@@ -182,7 +182,7 @@ def diagnostic_line(d):
 
 # write는 text의 diagnostic을, 없으면 그 emission을 출력한다.
 def write(text, docs, stress):
-    document, diagnostics = parse_dbspec(text, docs)
+    document, _positions, diagnostics = parse_dbspec(text, docs)
     if diagnostics:
         out.extend(diagnostic_line(d) for d in diagnostics)
         return
@@ -246,7 +246,7 @@ def parse_set(c, print_diagnostics):
     parsed = []
     for name in sorted(c['documents']):
         docs = {other: join(ls, False, False) for other, ls in c['documents'].items() if other != name}
-        document, diagnostics = parse_dbspec(join(c['documents'][name], False, False), docs)
+        document, _positions, diagnostics = parse_dbspec(join(c['documents'][name], False, False), docs)
         if diagnostics:
             print_diagnostics(diagnostics)
             return None
@@ -334,7 +334,7 @@ UNDEFINED = object()
 def plan_source(ls):
     if ls is None:
         return None
-    document, diagnostics = parse_dbspec(join(ls, False, False), {})
+    document, _positions, diagnostics = parse_dbspec(join(ls, False, False), {})
     if document is None:
         write_plan_diagnostics(diagnostics)
         return UNDEFINED
@@ -407,9 +407,9 @@ for c in plans['parse']:
 
 for c in plans['comparisons']:
     out.append(f'plans/comparisons/{c["id"]}')
-    source, source_diagnostics = parse_dbspec(join(c['source'], False, False), {})
+    source, _positions, source_diagnostics = parse_dbspec(join(c['source'], False, False), {})
     write_plan_diagnostics(source_diagnostics)
-    target, target_diagnostics = parse_dbspec(join(c['target'], False, False), {})
+    target, _positions, target_diagnostics = parse_dbspec(join(c['target'], False, False), {})
     write_plan_diagnostics(target_diagnostics)
     if source is None or target is None:
         continue
@@ -447,7 +447,7 @@ mermaid = read_vectors(mermaid_path, check_mermaid)
 for c in mermaid['export']:
     out.append(f'mermaid/export/{c["id"]}')
     docs = {name: join(ls, False, False) for name, ls in c['documents'].items()}
-    document, diagnostics = parse_dbspec(join(c['document'], False, False), docs)
+    document, _positions, diagnostics = parse_dbspec(join(c['document'], False, False), docs)
     if document is None:
         write_plan_diagnostics(diagnostics)
     else:
@@ -468,7 +468,7 @@ for c in mermaid['round_trip']:
     if text is None:
         write_plan_diagnostics(diagnostics)
         continue
-    document, diagnostics = parse_dbspec(text, {})
+    document, _positions, diagnostics = parse_dbspec(text, {})
     if document is None:
         write_plan_diagnostics(diagnostics)
         continue

@@ -219,7 +219,7 @@ def parse_document_set(texts, external_texts=()) -> list:
     for index, text in enumerate(every):
         others = {name: source for name, source in named.items()
                   if name != _header_name(text)}
-        document, diagnostics = parse_dbspec(text, others)
+        document, _positions, diagnostics = parse_dbspec(text, others)
         if document is None:
             d = diagnostics[0]
             raise OrmError('SCHEMA_INVALID',

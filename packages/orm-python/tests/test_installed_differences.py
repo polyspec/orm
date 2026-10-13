@@ -10,7 +10,7 @@ from polyspec.orm.dbspec import installed_differences, parse_dbspec  # noqa: E40
 
 
 def document(columns: str):
-    parsed, diagnostics = parse_dbspec(
+    parsed, _positions, diagnostics = parse_dbspec(
         f'dbspec 1 schema\n\ntable users {{\n{columns}  primary key (id)\n}}\n', {})
     assert not diagnostics, diagnostics
     return parsed
