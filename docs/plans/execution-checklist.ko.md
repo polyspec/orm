@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 0f5673ce8a95313761346438f8ddf9845d6cb54c710ca9a62fb5f3c4ed4fa8da -->
+<!-- source-sha256: 610ae9248bb6941a9da822a927aa0c8cc379b261f1c64775601b23e68648d4c1 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -941,4 +941,8 @@
   - [ ] T131-5 Python 주석을 영어로.
   - [ ] T131-6 Rust 주석을 영어로.
   - [ ] T131-7 Makefile, script, 나머지 파일을 영어로; T131-1의 검사가 통과하고 check target에 들어간다.
+- [ ] T133 모든 runtime에서 공유 dbspec vector의 모든 절을 엄격하게 읽는다. 원인: tests/dbspec/cases.json의 TypeScript, Python, Rust reader는 새 `positions` 절만 엄격하게 읽고, 다른 절은 모르는 field를 무시하고 위치로 읽으므로, 철자가 틀린 field가 조용히 버려진다(T128-3p agent들이 찾음). 인수 조건: 각 runtime의 reader가 모든 절에서 모르는 field와 없는 field를 이름을 대며 거부하고, runtime마다 거부 test가 있다; Go의 reader가 기준이다.
+- [ ] T134 Python test를 설치된 package에 대해 실행한다. 원인: test 파일 54개가 `src`를 `sys.path`에 넣는데, S3는 이를 금지한다(test는 설치된 package를 대상으로 하며 경로를 바꾸지 않는다). 인수 조건: test는 venv에 설치된 package를 import하고, `sys.path` 변경이 남지 않으며, 검사가 그것을 거부한다.
+- [ ] T135 test 서버 socket을 Unix socket 경로 한도 안에 둔다. 원인: scripts/test-servers.sh가 socket을 checkout 아래에 두어, 긴 worktree 경로에서 `proxysql-admin-pgsql.sock`이 104 byte로 macOS 한도 103을 넘어 database test가 시작되지 못했다(T128-3p Python agent가 찾음). 인수 조건: socket 경로는 길이를 검사하는 짧은 선언된 장소에서 오며 넘으면 이름을 댄 오류를 내고, 긴 경로로 red를 먼저 본다.
+- [ ] T136 새 worktree에서 `make install`을 재현하고 고친다. 원인: T128-3p agent가 새 worktree에서 `make install`이 Python 도구에서 실패하며 uv가 선언되지 않았다고 보고했다; uv는 선언되어 있으므로(config/toolchain.json) 보고된 원인은 틀렸고 진짜 원인은 모른다. 인수 조건: 새 worktree에서 실패를 정확한 출력과 함께 재현하고, 원인을 고치거나 보고가 틀렸음을 보이며, red를 먼저 본다.
 - [ ] T69 Release 0.0.9. 원인: T61, T62와 markdown IR executor인 T62-1, T63부터 T67까지는 polyspec/flowmark가 요구하는 protocol section, markdown 저장 setting과 executor를 추가하며, flowmark는 pseudo-version 대신 released tag를 요구한다. 완료 기준: 0.0.9의 release 절차를 이전 release 항목(T52, T56)과 같이 밟고 tag로 끝난다. T62-1, T63, T64, T65, T66, T67이 필요하다.
