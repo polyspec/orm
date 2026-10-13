@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b23c4642e887be7c9c4d36f38ae344de0e0a26101a6d31eca9982d702a1c95cc -->
+<!-- source-sha256: 686563eb080fc345863aca5470c6c1c0b8c6080f4f964bbc5454b52e5a0149cf -->
 # 변경 이력
 
 ## Unreleased
 
+- T147-2: Python이 Db.stats, Utils.privileges, Utils.stats, SchemaUtils.exists, installed, empty를, PHP가 Db::stats를 가지며, 그 interface rule이 선언된다.
 - T147-3: interface manifest가 internal component를 표시하고, rule 검사는 공개 component를 덮는다.
 - T147-4: manifest 검사가 component에 없는 method의 rule을 거부하고, SchemaUtils가 addTablesAndColumns를 적는다.
 - T147-1: interface rule이 Db.close, Collection의 get, first, keys, connect, delete, toArray, Utils.setLocal과 local을 선언한다.
