@@ -230,6 +230,8 @@ interface IDiagram {
 
 interface IDocument {
   name: string;
+  /** The document name token of the header line, set when the header is valid. */
+  nameTok: Tk | null;
   readonly uses: IUse[];
   readonly tables: ITable[];
   readonly diagrams: IDiagram[];
@@ -282,6 +284,41 @@ function utf8Length(text: string): number {
     } else n += 3;
   }
   return n;
+}
+
+/** A declaration position as the parser reads it (index.ts maps it to DbspecPosition). */
+export interface RawPosition {
+  readonly kind: string;
+  readonly path: string[];
+  readonly line: number;
+  readonly column: number;
+}
+
+/** A successful parse with its positions, or a failed one with its diagnostics. */
+export type ParsedDocument =
+  | { readonly document: DbspecDocument; readonly positions: RawPosition[]; readonly diagnostics: [] }
+  | { readonly document: null; readonly positions: null; readonly diagnostics: RawDiagnostic[] };
+
+/** The identity of a setting that its repeat rule makes unique (docs/dbspec.md "Settings"), beside its keyword. */
+function settingIdentity(s: ISetting): string[] {
+  switch (s.kind) {
+    case 'codec':
+    case 'markdown':
+    case 'blind_index':
+      return [s.column.t];
+    case 'navigation':
+      return [s.foreignKey.t];
+    case 'checkbox':
+      return [s.column.t, s.state.t];
+    case 'state_machine': {
+      const line = s.line;
+      if (line.form === 'transition') return ['transition', line.from.t, line.to.t];
+      if (line.form === 'history') return ['history'];
+      return [line.form, line.state.t];
+    }
+    default:
+      return [];
+  }
 }
 
 /** The 1-based column of a UTF-16 index: one column per Unicode code point. */
@@ -620,7 +657,7 @@ class ExpressionSyntax {
 
 class DocumentParser {
   readonly diagnostics: RawDiagnostic[] = [];
-  readonly document: IDocument = { name: '', uses: [], tables: [], diagrams: [], closing: [], failed: new Set(), constraints: new Map() };
+  readonly document: IDocument = { name: '', nameTok: null, uses: [], tables: [], diagrams: [], closing: [], failed: new Set(), constraints: new Map() };
   private stopped = false;
   /** 줄을 읽는 settings block: 표의 첫 block이거나, 반복된 block이면 유지하지 않는 block이다. */
   private settingsBlock: ISettings | null = null;
@@ -835,6 +872,7 @@ class DocumentParser {
     const name = lexLine(text, 1).toks[2]!;
     this.name(name);
     this.document.name = name.t;
+    this.document.nameTok = name;
     return true;
   }
 
@@ -2605,6 +2643,44 @@ class DocumentParser {
     }
   }
 
+  /**
+   * The declaration positions of the document in source order (docs/dbspec.md "Declaration positions"), read from the
+   * tokens before build() drops them. A successful parse has every name that a position needs; a missing one is an
+   * internal error, never a skipped position.
+   */
+  positions(): RawPosition[] {
+    const doc = this.document;
+    const out: RawPosition[] = [];
+    const add = (kind: string, at: Tk, path: string[]): void => {
+      out.push({ kind, path, line: at.line, column: columnOf(this.lines[at.line - 1]!, at.s) });
+    };
+    const keyName = (k: IKey): Tk => {
+      if (k.name === null) throw new Error('a unique or index of a successful parse has no name');
+      return k.name;
+    };
+    if (doc.nameTok === null) throw new Error('a successful parse has no header name token');
+    add('document', doc.nameTok, [doc.name]);
+    for (const u of doc.uses) {
+      add('use', u.doc, [u.doc.t]);
+      for (const t of u.tables) add('use_table', t, [u.doc.t, t.t]);
+    }
+    for (const t of doc.tables) {
+      const table = t.name.t;
+      add('table', t.name, [table]);
+      for (const c of t.columns) add('column', c.name, [table, c.name.t]);
+      for (const k of t.pks) add('constraint', k.kw, [table, 'primary key']);
+      for (const k of [...t.uniques, ...t.indexes]) add('constraint', keyName(k), [table, keyName(k).t]);
+      for (const f of t.fks) add('constraint', f.name, [table, f.name.t]);
+      for (const c of t.checks) add('constraint', c.name, [table, c.name.t]);
+      for (const s of t.settings?.entries ?? []) add('setting', s.kw, [table, s.kw.t, ...settingIdentity(s)]);
+    }
+    for (const g of doc.diagrams) {
+      add('diagram', g.name, [g.name.t]);
+      for (const e of g.entries) add('diagram_entry', e.table, [g.name.t, e.table.t]);
+    }
+    return out.sort((a, b) => a.line - b.line || a.column - b.column);
+  }
+
   build(): DbspecDocument {
     const doc = this.document;
     const freeze = Object.freeze;
@@ -2815,7 +2891,7 @@ function encodingError(lines: string[]): RawDiagnostic | null {
 
 /** Parses and validates one document text; parents are the names of the documents that use it. */
 function parseText(text: string, context: ParseContext, parents: readonly string[]): Parsed {
-  const empty: IDocument = { name: '', uses: [], tables: [], diagrams: [], closing: [], failed: new Set(), constraints: new Map() };
+  const empty: IDocument = { name: '', nameTok: null, uses: [], tables: [], diagrams: [], closing: [], failed: new Set(), constraints: new Map() };
   if (utf8Length(text) > MAX_BYTES) {
     const diagnostics: RawDiagnostic[] = [{ rule: 'limit', line: 1, column: 1, message: 'a document has at most 32 MiB' }];
     return { diagnostics, document: empty, parser: null };
@@ -2841,11 +2917,10 @@ function parseText(text: string, context: ParseContext, parents: readonly string
 }
 
 /** The document of a text and its declared document set, or every diagnostic in source order. */
-export function parseDocument(
-  text: string,
-  documents: Readonly<Record<string, string>>,
-): { document: DbspecDocument | null; diagnostics: RawDiagnostic[] } {
+export function parseDocument(text: string, documents: Readonly<Record<string, string>>): ParsedDocument {
   const parsed = parseText(text, { documents, cache: new Map() }, []);
-  if (parsed.diagnostics.length > 0 || parsed.parser === null) return { document: null, diagnostics: parsed.diagnostics };
-  return { document: parsed.parser.build(), diagnostics: [] };
+  if (parsed.diagnostics.length > 0 || parsed.parser === null) {
+    return { document: null, positions: null, diagnostics: parsed.diagnostics };
+  }
+  return { document: parsed.parser.build(), positions: parsed.parser.positions(), diagnostics: [] };
 }

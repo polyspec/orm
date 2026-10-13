@@ -61,10 +61,25 @@ export { planSteps, effectText, type DbspecPlanStepsResult, type DbspecPlanStep,
 
 export type * from './model.js';
 
-/** The document and no diagnostic, or every diagnostic in source order and no document. */
+/**
+ * A declaration of a parsed document (docs/dbspec.md "Declaration positions"): its kind, its path of enclosing names
+ * and its own name, and the 1-based line and column, in Unicode code points, of its name token (of the keyword for a
+ * setting and the primary key).
+ */
+export interface DbspecPosition {
+  readonly kind: string;
+  readonly path: readonly string[];
+  readonly line: number;
+  readonly column: number;
+}
+
+/**
+ * The document with its positions in source order and no diagnostic, or every diagnostic in source order with no
+ * document and no positions.
+ */
 export type DbspecParseResult =
-  | { readonly document: DbspecDocument; readonly diagnostics: readonly [] }
-  | { readonly document: null; readonly diagnostics: readonly DbspecDiagnostic[] };
+  | { readonly document: DbspecDocument; readonly positions: readonly DbspecPosition[]; readonly diagnostics: readonly [] }
+  | { readonly document: null; readonly positions: null; readonly diagnostics: readonly DbspecDiagnostic[] };
 
 /**
  * Parses and validates a dbspec document. `documents` maps each other document
@@ -84,12 +99,15 @@ export function parseDbspec(text: string, documents: Readonly<Record<string, str
   }
   const parsed = parseDocument(text, Object.freeze(set));
   if (parsed.document !== null) {
-    return Object.freeze({ document: parsed.document, diagnostics: Object.freeze([]) as readonly [] });
+    const positions = parsed.positions.map(p =>
+      Object.freeze({ kind: p.kind, path: Object.freeze([...p.path]), line: p.line, column: p.column }),
+    );
+    return Object.freeze({ document: parsed.document, positions: Object.freeze(positions), diagnostics: Object.freeze([]) as readonly [] });
   }
   const diagnostics = parsed.diagnostics.map(d =>
     Object.freeze({ rule: d.rule, line: d.line, column: d.column, message: d.message }),
   );
-  return Object.freeze({ document: null, diagnostics: Object.freeze(diagnostics) });
+  return Object.freeze({ document: null, positions: null, diagnostics: Object.freeze(diagnostics) });
 }
 
 /** Writes a document in canonical form: emitting a parsed canonical text returns the same text. */
