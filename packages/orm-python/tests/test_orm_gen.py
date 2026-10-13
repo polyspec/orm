@@ -1,4 +1,4 @@
-# orm-gen 생성기 검사: schema/bench.dbs 문서 집합에서 models.py를 만들고,
+# orm-gen 생성기 검사: schema/dbspec-set.json 문서 집합에서 models.py를 만들고,
 # 생성 module이 chain 문법을 해석하는지 확인한다 (unittest).
 import os
 import subprocess
@@ -26,8 +26,8 @@ class OrmGenTest(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory(prefix='orm-gen-')
         cls.addClassCleanup(tmp.cleanup)
         cls.out = tmp.name
-        result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + ['gen', '--schema',
-                                           str(ROOT / 'schema' / 'bench.dbs'),
+        result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + ['gen', '--set',
+                                           str(ROOT / 'schema' / 'dbspec-set.json'),
                                            '--out', cls.out],
                                 capture_output=True, text=True, check=True)
         sys.path.insert(0, cls.out)
@@ -93,8 +93,8 @@ class OrmGenTest(unittest.TestCase):
         source.write_text('from models import Author\n'
                           'author = Author()\n'
                           'author.not_a_model_method()\n', encoding='utf-8')
-        result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + ['gen', '--schema',
-                                           str(ROOT / 'schema' / 'bench.dbs'),
+        result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + ['gen', '--set',
+                                           str(ROOT / 'schema' / 'dbspec-set.json'),
                                            '--out', self.out, '--scan', str(source)],
                                 capture_output=True, text=True)
         source.unlink()
@@ -103,17 +103,56 @@ class OrmGenTest(unittest.TestCase):
 
     def test_check_reports_a_missing_or_differing_file(self):
         with tempfile.TemporaryDirectory(prefix='orm-gen-missing-') as missing:
-            result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + ['gen', '--schema',
-                                               str(ROOT / 'schema' / 'bench.dbs'),
+            result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + ['gen', '--set',
+                                               str(ROOT / 'schema' / 'dbspec-set.json'),
                                                '--out', missing, '--check'],
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 1)
             self.assertIn('missing:', result.stdout)
-        result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + ['gen', '--schema',
-                                           str(ROOT / 'schema' / 'bench.dbs'),
+        result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + ['gen', '--set',
+                                           str(ROOT / 'schema' / 'dbspec-set.json'),
                                            '--out', self.out, '--check'],
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_the_removed_document_flags_are_usage_errors(self):
+        for flag in ('--schema', '--use'):
+            result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + [
+                'gen', '--set', str(ROOT / 'schema' / 'dbspec-set.json'),
+                flag, str(ROOT / 'schema' / 'bench.dbs'), '--out', self.out],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 2, result.stderr)
+            self.assertIn(flag, result.stderr)
+
+    def test_set_errors_print_every_error_and_write_nothing(self):
+        with tempfile.TemporaryDirectory(prefix='orm-gen-set-') as tree:
+            root = Path(tree)
+            (root / 'dbspec-set.json').write_text(
+                '{"schema": 1, "documents": ["gone.dbs", "also-gone.dbs"]}', encoding='utf-8')
+            out = root / 'out'
+            result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + [
+                'gen', '--set', str(root / 'dbspec-set.json'), '--out', str(out)],
+                capture_output=True, text=True)
+            self.assertEqual(result.returncode, 1, result.stderr)
+            self.assertIn(f'set.file: {root}/gone.dbs', result.stderr)
+            self.assertIn(f'set.file: {root}/also-gone.dbs', result.stderr)
+            self.assertFalse(out.exists())
+
+    def test_document_diagnostics_print_every_diagnostic_and_write_nothing(self):
+        with tempfile.TemporaryDirectory(prefix='orm-gen-set-') as tree:
+            root = Path(tree)
+            (root / 'a.dbs').write_text('<?xml version="1.0"?>\n', encoding='utf-8')
+            (root / 'b.dbs').write_bytes(b'dbspec 1 b\n\xff\n')
+            (root / 'dbspec-set.json').write_text(
+                '{"schema": 1, "documents": ["a.dbs", "b.dbs"]}', encoding='utf-8')
+            out = root / 'out'
+            result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + [
+                'gen', '--set', str(root / 'dbspec-set.json'), '--out', str(out)],
+                capture_output=True, text=True)
+            self.assertEqual(result.returncode, 1, result.stderr)
+            self.assertIn(f'{root}/a.dbs:1:1: signature:', result.stderr)
+            self.assertIn(f'{root}/b.dbs:2:1: encoding:', result.stderr)
+            self.assertFalse(out.exists())
 
 
 if __name__ == '__main__':

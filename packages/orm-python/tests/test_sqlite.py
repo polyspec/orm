@@ -86,8 +86,8 @@ table audited_row {
 """
 
 
-def generate(out: str, schema: Path):
-    subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + ['gen', '--schema', str(schema), '--out', out],
+def generate(out: str, set_file: Path):
+    subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + ['gen', '--set', str(set_file), '--out', out],
                    capture_output=True, text=True, check=True)
     spec = importlib.util.spec_from_file_location(f'orm_models_{Path(out).name}',
                                                   str(Path(out) / 'models.py'))
@@ -110,7 +110,7 @@ class SqliteEndToEndTest(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory(prefix='orm-sqlite-')
         cls.addClassCleanup(tmp.cleanup)
         cls.out = tmp.name
-        cls.models = generate(cls.out, ROOT / 'schema' / 'bench.dbs')
+        cls.models = generate(cls.out, ROOT / 'schema' / 'dbspec-set.json')
         cls.db = cls.models.connect(f'sqlite://{cls.out}/bench.sqlite3')
         run_script(cls.db, DDL)
         cls.db._connection.execute('INSERT INTO "user" ("name") VALUES (?)', ['u1'])
@@ -300,7 +300,9 @@ class SqliteAuditTest(unittest.TestCase):
         cls.out = tmp.name
         document = Path(cls.out) / 'audit.dbs'
         document.write_text(AUDIT_DOCS)
-        cls.models = generate(cls.out, document)
+        set_file = Path(cls.out) / 'dbspec-set.json'
+        set_file.write_text('{"schema": 1, "documents": ["audit.dbs"]}', encoding='utf-8')
+        cls.models = generate(cls.out, set_file)
         cls.db = cls.models.connect(f'sqlite://{cls.out}/audit.sqlite3')
         run_script(cls.db, 'CREATE TABLE "change_log" ("id" INTEGER PRIMARY KEY '
                            'AUTOINCREMENT, "actor" TEXT NOT NULL); '
