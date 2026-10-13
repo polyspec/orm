@@ -402,10 +402,10 @@ final class PlanSteps
             $col = self::column($t, $c);
             $hiddenAdded[] = new Column($this->hold("+$name.$c"), $col->type, $col->nullable, $col->identity, $col->default);
         }
-        $newCreate = fn(string $as): string => $this->r->createTable($t, $as, static fn(string $c): string => $t->name . '$' . $c, $hiddenDropped);
+        $newCreate = fn(string $as): string => $this->r->createTable($t, $as, static fn(string $c): string => Names::render($t->name, $c), $hiddenDropped);
         // sourceColumn 은 옛 정의 column 의 source 이름이다. 지우는 column 은 이름이 그대로다.
         $sourceColumn = static fn(string $c): string => $d->columnOf[$name][$c] ?? $c;
-        $oldCreate = $this->r->createTable($old, $name, static fn(string $c): string => $src->name . '$' . $sourceColumn($c), $hiddenAdded);
+        $oldCreate = $this->r->createTable($old, $name, static fn(string $c): string => Names::render($src->name, $sourceColumn($c)), $hiddenAdded);
         $newColumns = [];
         foreach ($t->columns as $c) {
             $newColumns[] = $c->name;
@@ -793,7 +793,7 @@ final class PlanSteps
         foreach ($t->columns as $c) {
             $check = $this->r->typeCheck($c);
             if ($check !== '') {
-                $out[$t->name . '$' . $c->name] = $check;
+                $out[Names::render($t->name, $c->name)] = $check;
             }
         }
         return $out;

@@ -142,9 +142,9 @@ WHERE NOT t.tgisinternal AND c.relnamespace = current_schema()::regnamespace ORD
                 $t->foreignKeys[] = ['name' => $name, 'columns' => $list, 'table' => $refTable, 'refs' => explode(',', $refs), 'onDelete' => $delete, 'onUpdate' => $update];
             } elseif ($kind === 'c') {
                 if (str_contains($name, '$')) {
-                    [$owner, $column] = explode('$', $name, 2);
-                    $want = 'CHECK ((' . ($quoted[$table][$column] ?? '') . " < '24:00:00'::time without time zone))";
-                    if ($owner !== $table || !isset($pending[$table][$column]) || $definition !== $want) {
+                    $column = Names::column($table, $name, array_keys($pending[$table] ?? []));
+                    $want = 'CHECK ((' . ($column === null ? '' : ($quoted[$table][$column] ?? '')) . " < '24:00:00'::time without time zone))";
+                    if ($column === null || $definition !== $want) {
                         $c->report('check', $table, $name, "the check $definition is not the renderer CHECK");
                         continue;
                     }

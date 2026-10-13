@@ -205,12 +205,6 @@ final class Catalog
         };
     }
 
-    /** renderer CHECK 의 이름 <table>$<column>. */
-    public static function rendererCheckName(string $table, string $column): string
-    {
-        return $table . '$' . $column;
-    }
-
     /** 10^scale 을 곱한 정수 text 를 scale 자리 소수로 쓴다. */
     public static function unscaledDecimal(string $text, int $scale): string
     {

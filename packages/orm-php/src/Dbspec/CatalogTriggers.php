@@ -64,9 +64,9 @@ final class CatalogTriggers
         if (count($list) === 2) {
             $candidates[] = new Setting('immutable', []);
         }
-        $insert = $names[$t->name . '$audit_insert'] ?? null;
+        $insert = $names[Names::render($t->name, 'audit_insert')] ?? null;
         if ($insert !== null && count($list) === 3) {
-            $update = $names[$t->name . '$audit_update'] ?? null;
+            $update = $names[Names::render($t->name, 'audit_update')] ?? null;
             if (preg_match(self::AUDIT_INSERT, self::body($insert['statements']), $m)
                 && preg_match(self::AUDIT_UPDATE, self::body($update['statements'] ?? []), $u)) {
                 $audit = self::audit($t, $m[1], explode(', ', $m[2]), $u[1]);

@@ -83,7 +83,7 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
                 continue;
             }
             $column = ['name' => $name, 'null' => $notNull === 0, 'identity' => false, 'default' => ''];
-            $checkName = Catalog::rendererCheckName($table, $name);
+            $checkName = Names::render($table, $name);
             $hasCheck = array_key_exists($checkName, $parsed[$table]['checks']);
             $check = $parsed[$table]['checks'][$checkName] ?? '';
             if ($parsed[$table]['identity'] === $name) {
