@@ -1,7 +1,7 @@
 //! Generation from scanned source: the methods the source calls are
 //! generated, and a call the schema does not allow fails with its position.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn schema() -> PathBuf {
     polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/zone.dbs")
@@ -13,6 +13,22 @@ fn bench() -> PathBuf {
 
 static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
 
+/// Writes a set under `dir`: each of `documents` copied into `dir/set`, each of `external` into
+/// `dir/external`, and the set file `dir/set/dbspec-set.json` listing them. Returns the set file.
+fn set_file(dir: &Path, documents: &[PathBuf], external: &[PathBuf]) -> PathBuf {
+    let copy = |into: &str, path: &PathBuf| {
+        let name = path.file_name().expect("a document has a file name").to_str().expect("a UTF-8 name").to_owned();
+        std::fs::create_dir_all(dir.join(into)).unwrap();
+        std::fs::copy(path, dir.join(into).join(&name)).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+        name
+    };
+    let documents: Vec<String> = documents.iter().map(|p| copy("set", p)).collect();
+    let external: Vec<String> = external.iter().map(|p| format!("../external/{}", copy("external", p))).collect();
+    let set = dir.join("set/dbspec-set.json");
+    std::fs::write(&set, serde_json::json!({"schema": 1, "documents": documents, "external": external}).to_string()).unwrap();
+    set
+}
+
 fn generate(source: &str) -> Result<String, String> {
     generate_with_schema(schema(), source)
 }
@@ -23,7 +39,7 @@ fn generate_with_schema(schema: PathBuf, source: &str) -> Result<String, String>
     let src = dir.join("src");
     std::fs::create_dir_all(&src).unwrap();
     std::fs::write(src.join("main.rs"), source).unwrap();
-    let out = polyspec_orm_build::Builder::new([schema]).scan(&src).out_dir(dir.join("out")).try_generate();
+    let out = polyspec_orm_build::Builder::set(set_file(&dir, &[schema], &[])).scan(&src).out_dir(dir.join("out")).try_generate();
     let text = out.map(|p| std::fs::read_to_string(p).unwrap());
     let _ = std::fs::remove_dir_all(&dir);
     text
@@ -129,23 +145,55 @@ fn rejects_an_invalid_document() {
     std::fs::create_dir_all(&dir).unwrap();
     let text = std::fs::read_to_string(schema()).unwrap().replace("start_dt datetime(6)", "start_dt datetime(9)");
     std::fs::write(dir.join("zone.dbs"), text).unwrap();
-    let err = polyspec_orm_build::Builder::new([dir.join("zone.dbs")]).out_dir(dir.join("out")).try_generate().unwrap_err();
+    let err = polyspec_orm_build::Builder::set(set_file(&dir, &[dir.join("zone.dbs")], &[])).out_dir(dir.join("out")).try_generate().unwrap_err();
     let _ = std::fs::remove_dir_all(&dir);
     assert!(err.contains("zone.dbs: SCHEMA_INVALID 5:"), "{err}");
 }
 
-/// dbspec::read_file이 parse 전에 DbSchema project XML과 빈 파일을 signature로 거부한다.
+/// dbspec::read_bytes가 parse 전에 DbSchema project XML과 빈 파일을 그 joined path의 signature로 거부한다.
 #[test]
 fn rejects_a_file_without_the_signature() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     for name in ["dbschema.dbs", "empty.dbs"] {
         let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/files").join(name);
-        let out = std::env::temp_dir().join(format!("orm-build-signature-{}-{name}", std::process::id()));
-        let err = polyspec_orm_build::Builder::new([path.clone()]).out_dir(out.clone()).try_generate().unwrap_err();
-        assert!(!out.exists(), "{name}: generation wrote {}", out.display());
-        let display = path.display();
+        let dir = std::env::temp_dir().join(format!("orm-build-signature-{}-{name}", std::process::id()));
+        let set = set_file(&dir, &[path], &[]);
+        let out = dir.join("out");
+        let err = polyspec_orm_build::Builder::set(&set).out_dir(out.clone()).try_generate().unwrap_err();
+        let wrote = out.exists();
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(!wrote, "{name}: generation wrote {}", out.display());
+        let display = format!("{}/{name}", dir.join("set").display());
         assert_eq!(err, format!("{display}: SCHEMA_INVALID 1:1 signature: {display} is not a dbspec document"), "{name}");
     }
+}
+
+/// A set file with errors, or documents with diagnostics, fail the generation with every error and
+/// every diagnostic, and nothing is written.
+#[test]
+fn reports_every_error_of_the_set_and_writes_nothing() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("orm-build-set-{}-{n}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("dbspec-set.json"), r#"{"schema": 1, "documents": ["gone.dbs", "Zone.dbs", "/abs.dbs"]}"#).unwrap();
+    let set_errors = polyspec_orm_build::Builder::set(dir.join("dbspec-set.json")).out_dir(dir.join("out")).try_generate().unwrap_err();
+    let wrote_after_set = dir.join("out").exists();
+    let signature = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/files/empty.dbs");
+    let invalid = dir.join("zone.dbs");
+    std::fs::write(&invalid, std::fs::read_to_string(schema()).unwrap().replace("start_dt datetime(6)", "start_dt datetime(9)")).unwrap();
+    let set = set_file(&dir, &[signature, invalid], &[]);
+    let diagnostics = polyspec_orm_build::Builder::set(&set).out_dir(dir.join("out")).try_generate().unwrap_err();
+    let wrote_after_documents = dir.join("out").exists();
+    let _ = std::fs::remove_dir_all(&dir);
+    let lines: Vec<&str> = set_errors.lines().collect();
+    assert_eq!(lines.len(), 3, "{set_errors}");
+    assert!(lines[0].starts_with("set.file: ") && lines[0].contains("gone.dbs"), "{set_errors}");
+    assert!(lines[1].starts_with("set.file: ") && lines[1].contains("Zone.dbs"), "{set_errors}");
+    assert!(lines[2].starts_with("set.path: ") && lines[2].contains("\"/abs.dbs\""), "{set_errors}");
+    assert!(!wrote_after_set, "a set file with errors wrote the output");
+    assert!(diagnostics.contains("empty.dbs is not a dbspec document") && diagnostics.contains("zone.dbs: SCHEMA_INVALID 5:"), "{diagnostics}");
+    assert!(!wrote_after_documents, "documents with diagnostics wrote the output");
 }
 
 #[test]
@@ -156,7 +204,7 @@ fn manifest_text_is_embedded_with_its_hash() {
     std::fs::create_dir_all(dir.join("src")).unwrap();
     std::fs::write(dir.join("src/main.rs"), "fn main() {}").unwrap();
     let audit = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/audit.dbs");
-    polyspec_orm_build::Builder::new([schema(), audit.clone()]).scan(dir.join("src")).out_dir(dir.join("out")).try_generate().unwrap();
+    polyspec_orm_build::Builder::set(set_file(&dir, &[schema(), audit.clone()], &[])).scan(dir.join("src")).out_dir(dir.join("out")).try_generate().unwrap();
     let embedded = std::fs::read_to_string(dir.join("out").join(polyspec_orm_build::MANIFEST_FILE)).unwrap();
     let zone = std::fs::read_to_string(schema()).unwrap();
     let audit = std::fs::read_to_string(audit).unwrap();
@@ -284,7 +332,8 @@ fn generation_leaves_external_tables_out() {
     let fixtures = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/external");
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
-    let out = polyspec_orm_build::Builder::new([fixtures.join("member.dbs")]).uses([fixtures.join("core.dbs")]).out_dir(dir.join("out")).try_generate();
+    let set = set_file(&dir, &[fixtures.join("member.dbs")], &[fixtures.join("core.dbs")]);
+    let out = polyspec_orm_build::Builder::set(&set).out_dir(dir.join("out")).try_generate();
     let text = out.map(|p| std::fs::read_to_string(p).unwrap());
     let external = std::fs::read_to_string(dir.join("out").join("orm_external.dbs"));
     let _ = std::fs::remove_dir_all(&dir);
@@ -320,10 +369,11 @@ fn scan_path_spelling_keeps_the_generated_source() {
         ("dot", [dot("src"), dot("tests"), dot("out")]),
         ("trailing_slash", [slash("src"), slash("tests"), slash("out")]),
     ];
+    let set = set_file(&dir, &[schema()], &[]);
     let mut texts = Vec::new();
     for (name, [src, tests, out]) in &spellings {
         let _ = std::fs::remove_dir_all(dir.join("out"));
-        let text = polyspec_orm_build::Builder::new([schema()]).scan(src).scan(tests).out_dir(out).try_generate().map(|p| std::fs::read_to_string(p).unwrap());
+        let text = polyspec_orm_build::Builder::set(&set).scan(src).scan(tests).out_dir(out).try_generate().map(|p| std::fs::read_to_string(p).unwrap());
         texts.push((*name, text.unwrap_or_else(|e| panic!("generate {name}: {e}"))));
     }
     let _ = std::fs::remove_dir_all(&dir);

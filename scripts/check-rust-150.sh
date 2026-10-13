@@ -23,6 +23,7 @@ awk 'BEGIN {
     print "}"
   }
 }' > "$WORK/rust-150.dbs"
+printf '%s\n' '{"schema": 1, "documents": ["rust-150.dbs"]}' > "$WORK/dbspec-set.json"
 
 cd "$ROOT"
 mkdir -p "$WORK/crate/src"
@@ -43,7 +44,7 @@ polyspec-orm-build = { path = "$ROOT/packages/orm-rust/orm-build" }
 TOML
 cat > "$WORK/crate/build.rs" <<'RS'
 fn main() {
-    polyspec_orm_build::Builder::new(["../rust-150.dbs"]).scan("src").generate();
+    polyspec_orm_build::Builder::set("../dbspec-set.json").scan("src").generate();
 }
 RS
 {
