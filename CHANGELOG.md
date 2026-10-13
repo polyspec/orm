@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T158-2: the socket refusal test lengthens the socket folder, as T135 placed it.
 - T158-1: the Go symbol records hold the YAML core functions of T142.
 - T134: the Python tests import the package installed editable into the venv; no test changes `sys.path` or `PYTHONPATH`, and a check refuses one.
 - T142-3: `codec-check` runs the Python codec vectors.

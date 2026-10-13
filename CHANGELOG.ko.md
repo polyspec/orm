@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 411b7857319794e81204830533ee63501dbe388cde5e9798ca8d059e1afb438d -->
+<!-- source-sha256: 1951a32908ee620af37b21db268d437ad46b8b7b9ff7bd49067cdb4d6c63e7eb -->
 # 변경 이력
 
 ## Unreleased
 
+- T158-2: socket 거부 테스트는 T135가 둔 socket 폴더를 길게 만든다.
 - T158-1: Go symbol 기록이 T142의 YAML core 함수를 담는다.
 - T134: Python 테스트는 venv에 editable로 설치된 package를 import한다. 어떤 테스트도 `sys.path`나 `PYTHONPATH`를 바꾸지 않고, 검사가 이를 거부한다.
 - T142-3: `codec-check`가 Python codec vector를 실행한다.
