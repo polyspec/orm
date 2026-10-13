@@ -6,6 +6,7 @@ from __future__ import annotations
 import re
 
 from polyspec.orm.dbspec.emit import CANONICAL, emit_document, type_text
+from polyspec.orm.dbspec.names import generated_names
 from polyspec.orm.dbspec.model import (DbspecAnalysis, DbspecCheck, DbspecColumn, DbspecDefault,
     DbspecToken,
                                        DbspecDiagnostic, DbspecDiagram, DbspecDocument, DbspecPosition,
@@ -838,19 +839,6 @@ class DocumentParser:
         if utf8_length(tok.t) > MAX_NAME_BYTES:
             self._at('name.length', tok, f'{tok.t} is longer than 63 bytes')
         return formed
-
-    def _generated_name(self, table: _Table, tok: Tk, suffix: str, column: bool) -> None:
-        # renderer가 table 이름과 suffix로 만드는 이름이 63 byte를 넘으면 tok에 보고한다.
-        def resolved(name: str) -> bool:
-            return well_formed(name) and utf8_length(name) <= MAX_NAME_BYTES
-
-        if not resolved(table.name.t) or (column and not resolved(suffix)):
-            return
-        name = f'{table.name.t}${suffix}'
-        byte_count = utf8_length(name)
-        if byte_count > MAX_NAME_BYTES:
-            self._at('name.length', tok, f'the generated name {name} has {byte_count} bytes, '
-                                         f'more than {MAX_NAME_BYTES}')
 
     def _constraint_name(self, tok: Tk) -> None:
         if not self._name(tok):
@@ -1743,6 +1731,7 @@ class DocumentParser:
                 self._at('name.duplicate', tok, f'{name} repeats a name of a used document')
         for t in doc.tables:
             self._validate_table(t, available)
+        self._generated_names_unique(doc, available)
         for d in doc.diagrams:
             placed = set()
             for p in d.entries:
@@ -1815,14 +1804,23 @@ class DocumentParser:
             self._at('key', at, f'the varchar columns total {varchar} characters, more than '
                                 f'{MAX_KEY_VARCHAR}')
 
-    def _validate_table(self, table: _Table, available) -> None:
-        # renderer가 type CHECK를 쓰는 열(text, bytes, identity 제외)은 <table>$<column>
-        # 이름을 만든다.
-        for column in table.columns:
-            if column.identity is not None or column.type is None \
-                    or column.type.kind in ('text', 'bytes'):
+    def _generated_names_unique(self, doc, available) -> None:
+        """Refuses a renderer name of a table of the document that an earlier table or a used
+        table of the document already writes, at the later token (docs/dbspec.md "Names")."""
+        local = {id(t) for t in doc.tables}
+        seen = set()
+        for table in available.values():
+            if table is not None and id(table) not in local:
+                seen.update(name for name, _ in generated_names(table))
+        for t in doc.tables:
+            if not t.named or available.get(t.name.t) is not t or t.header_failed:
                 continue
-            self._generated_name(table, column.name, column.name.t, True)
+            for name, tok in generated_names(t):
+                if name in seen:
+                    self._at('name.duplicate', tok, f'generated name {name} repeats in the schema')
+                seen.add(name)
+
+    def _validate_table(self, table: _Table, available) -> None:
         if len(table.columns) == 0 and table.failed_lines == 0:
             self._at('column', table.name, 'a table has at least one column')
         if len(table.pks) == 0 and not table.failed_primary:
@@ -2312,11 +2310,8 @@ class DocumentParser:
             if action_child:
                 self._at('setting', s.kw,
                          'immutable is rejected on a child of a cascade or set_null foreign key')
-            # 가장 긴 trigger 이름이 설정의 모든 이름을 대신한다.
-            self._generated_name(table, s.kw, 'immutable_update', False)
         elif kind == 'audit':
             self._audit(table, s, available, action_child)
-            self._generated_name(table, s.kw, 'audit_insert', False)
         elif kind == 'markdown':
             c = self._column_ref(table, s.args[0])
             if c is not None and c.type is not None and c.type.kind not in ('varchar', 'text'):

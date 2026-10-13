@@ -5,8 +5,7 @@ from polyspec.orm.dbspec.emit import type_text
 from polyspec.orm.dbspec.model import DbspecType
 from polyspec.orm.dbspec.parse import parse_document
 
-__all__ = ['Catalog', 'CatalogRow', 'action_name', 'cut', 'quote',
-           'renderer_check_name', 'table_types']
+__all__ = ['Catalog', 'CatalogRow', 'action_name', 'quote', 'table_types']
 
 
 def _byte_key(value: str) -> bytes:
@@ -30,22 +29,9 @@ def action_name(rule: str):
     return None
 
 
-def renderer_check_name(table: str, column: str) -> str:
-    """renderer CHECK의 이름 <table>$<column>이다."""
-    return f'{table}${column}'
-
-
 def table_types(t) -> dict:
     """table의 column 이름마다 type이다."""
     return {c['name']: c['type'] for c in t['columns']}
-
-
-def cut(s: str, sep: str):
-    """s를 처음 sep 앞과 뒤로 자른다; sep이 있었는지도 돌려준다."""
-    i = s.find(sep)
-    if i < 0:
-        return s, '', False
-    return s[:i], s[i + len(sep):], True
 
 
 def _first_field(s: str) -> str:

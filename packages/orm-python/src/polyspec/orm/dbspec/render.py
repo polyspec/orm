@@ -6,6 +6,7 @@ from __future__ import annotations
 from polyspec.orm.dbspec.audit import audit_records
 from polyspec.orm.dbspec.check import read_check
 from polyspec.orm.dbspec.manifest import check_set
+from polyspec.orm.dbspec.names import renderer_name
 from polyspec.orm.dbspec.model import DbspecColumn, DbspecDocument, DbspecTable, \
     DbspecType
 
@@ -52,7 +53,7 @@ class Renderer:
         return ', '.join(self.q(n) for n in names)
 
     def table(self, t: DbspecTable) -> list:
-        out = [self.create_table(t, t.name, lambda c: f'{t.name}${c}', ())]
+        out = [self.create_table(t, t.name, lambda c: renderer_name(t.name, c), ())]
         if self.d == 'sqlite':
             for u in sorted(t.uniques, key=lambda u: u.name):
                 out.append(f'CREATE UNIQUE INDEX {self.q(u.name)} ON {self.q(t.name)} '
@@ -275,7 +276,7 @@ class Renderer:
                 rejects: bool) -> list:
         """몸통이 statement 하나인 trigger <table>$<event>. PostgreSQL은 같은
         이름의 function으로 감싼다."""
-        name = self.q(f'{t.name}${event}')
+        name = self.q(renderer_name(t.name, event))
         on = f' {timing} ON {self.q(t.name)} FOR EACH ROW '
         if self.d == 'mysql':
             return [f'CREATE TRIGGER {name}{on}{body}']
