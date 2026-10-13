@@ -12,6 +12,7 @@
 
 /node_modules/
 /packages/orm-npm/node_modules/
+/packages/dbspec-language/node_modules/
 /vendor-php/
 /docs/.vitepress/cache/
 /docs/.vitepress/dist/

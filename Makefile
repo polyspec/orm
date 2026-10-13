@@ -1016,6 +1016,8 @@ dbspec-ts-check: lease-tool
 # dbspec-language-check는 TypeScript client와 @polyspec/dbspec-language를 build하고, 언어 서비스의 module graph가
 # node module, Node global과 driver에 닿지 않는지, 공유 vector의 format과 hash, 토큰과 UTF-16 범위, tests/editor의
 # fixture를 실행한다.
+# It also runs resolveSet with the node:fs host over the set-files.json vectors and set resolution, and dbspec-fmt over
+# its modes, exit codes, stderr lines and the --write and --check of the editor fixtures.
 .PHONY: dbspec-language-check
 # dbspec-codemirror-check builds the CodeMirror adapter and runs the editor fixtures through an EditorState.
 dbspec-codemirror-check: lease-tool
@@ -1029,7 +1031,23 @@ dbspec-language-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	npm run --workspace @polyspec/dbspec-language build
-	node --test packages/dbspec-language/tests/module-graph.test.mjs packages/dbspec-language/tests/editor.test.mjs packages/dbspec-language/tests/vectors.test.mjs
+	node --test packages/dbspec-language/tests/module-graph.test.mjs packages/dbspec-language/tests/editor.test.mjs packages/dbspec-language/tests/vectors.test.mjs packages/dbspec-language/tests/resolve-set.test.mjs packages/dbspec-language/tests/cli.test.mjs
+
+# The prefix of `make install-cli`: the copy of dbspec-fmt in $(CLI_PREFIX)/lib and its script in $(CLI_PREFIX)/bin.
+CLI_PREFIX ?= $(HOME)/.local
+
+# install-cli builds the TypeScript client and @polyspec/dbspec-language and installs the command dbspec-fmt under
+# CLI_PREFIX without a symbolic link (scripts/install-cli.mjs): a copy of both packages and a script that runs node
+# with the copied entry. Put $(CLI_PREFIX)/bin on PATH; uninstall-cli removes the copy and the script.
+.PHONY: install-cli uninstall-cli
+install-cli: lease-tool
+	$(HOLD_TYPESCRIPT)
+	$(TSC_BUILD)
+	npm run --workspace @polyspec/dbspec-language build
+	$(ONLINE) node scripts/install-cli.mjs install --prefix $(CLI_PREFIX)
+
+uninstall-cli:
+	node scripts/install-cli.mjs uninstall --prefix $(CLI_PREFIX)
 
 # dbspec-go-check는 Go dbspec engine package(engine/dbspec)의 test를 모두 실행한다: tests/dbspec/cases.json의
 # 공유 vector, 자기 rule case, manifest, statement, plan, comparison, Mermaid vector, apply 정리 error,

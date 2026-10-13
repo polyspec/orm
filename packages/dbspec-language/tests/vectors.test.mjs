@@ -1,13 +1,17 @@
 // The shared vectors of tests/dbspec through the language service: every canonical and normalize case formats to its
 // canonical text, every invalid case reports its errors and is refused by format, formatting keeps the manifest and
 // schema hashes and is idempotent, and the tokens of every syntax vector equal the tokens of openDocument after the
-// UTF-16 conversion. A sets case whose documents repeat a name is not run: a set is a Record of names to texts, so it
-// has no form for that case; the case is reported as skipped with its reason, not dropped.
+// UTF-16 conversion. The documents of a sets case are written as a file tree with their set file and each takes its
+// set from resolveSet, so a case whose documents repeat a name runs too: resolveSet reports the repetition.
 //
 // Usage: node --test packages/dbspec-language/tests/vectors.test.mjs (after the build)
 import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join as joinPath } from 'node:path';
 import { caseTest } from '../../../tests/testcase.mjs';
 import * as language from '../dist/index.js';
+import { nodeSetHost } from '../dist/cli/host.js';
 import { parseDbspec } from '@polyspec/orm/dbspec';
 import { dbspecManifest } from '@polyspec/orm';
 import { codePointIndex, join, parserLines, utf16Index, vectorsFile } from './helpers.mjs';
@@ -16,7 +20,7 @@ import { codePointIndex, join, parserLines, utf16Index, vectorsFile } from './he
 const TIMEOUT = 15000;
 const vector = (name, body) => caseTest(name, TIMEOUT, body);
 
-const { openDocument } = language;
+const { openDocument, resolveSet } = language;
 const cases = vectorsFile('cases.json');
 const syntax = vectorsFile('syntax.json');
 
@@ -101,9 +105,31 @@ for (const c of [...cases.canonical, ...cases.normalize, ...cases.hashes]) {
 }
 
 /**
+ * Writes the documents of a sets case as a file tree under a new temporary directory: the owned documents
+ * `set/<place>.dbs` listed in `set/dbspec-set.json`, the external documents `external/<place>.dbs` listed as
+ * `../external/<place>.dbs`. Returns the tree root with `/` separators.
+ */
+function setTree(c) {
+  const root = mkdtempSync(joinPath(tmpdir(), 'dbspec-language-sets-')).replaceAll('\\', '/');
+  mkdirSync(`${root}/set`);
+  mkdirSync(`${root}/external`);
+  const documents = c.documents.map((lines, i) => {
+    writeFileSync(`${root}/set/${i + 1}.dbs`, join(lines, false));
+    return `${i + 1}.dbs`;
+  });
+  const external = (c.external ?? []).map((lines, i) => {
+    writeFileSync(`${root}/external/${i + 1}.dbs`, join(lines, false));
+    return `../external/${i + 1}.dbs`;
+  });
+  writeFileSync(`${root}/set/dbspec-set.json`, JSON.stringify({ schema: 1, documents, external }));
+  return root;
+}
+
+/**
  * The text and the set of the document a syntax vector id names: `<group>/<case>` for a canonical, normalize or
  * invalid case (its main document), `hashes/<case>/<document>`, and `sets/<case>/<place>` for the document at that
- * 1-based place of a sets case, whose set holds the other documents and the case's external documents.
+ * 1-based place of a sets case, whose set is the one resolveSet gives from the case's file tree. A repeated document
+ * name is the one diagnostic resolveSet gives there: the case's name.duplicate errors at the later documents.
  */
 function syntaxCase(id) {
   const parts = id.split('/');
@@ -114,15 +140,23 @@ function syntaxCase(id) {
     return { text: join(c.documents[parts[2]], false), set: setOf(c, parts[2]) };
   }
   if (group === 'sets') {
-    const c = cases.sets.find(x => x.id === parts[1]);
-    assert.ok(c, `sets case ${parts[1]}`);
-    const index = Number(parts[2]) - 1;
-    const set = {};
-    for (const [i, lines] of c.documents.entries()) {
-      if (i !== index) set[headerName(lines)] = join(lines, false);
+    const c = cases.sets.find(x => x.id === parts.slice(1, -1).join('/'));
+    assert.ok(c, `sets case ${id}`);
+    const place = Number(parts.at(-1));
+    const root = setTree(c);
+    try {
+      const resolved = resolveSet(`${root}/set/${place}.dbs`, nodeSetHost);
+      assert.deepEqual(resolved.errors, []);
+      assert.equal(resolved.setFile, `${root}/set/dbspec-set.json`);
+      const names = c.documents.map(headerName);
+      const repeated = names.flatMap((name, i) => (names.indexOf(name) < i ? [`${root}/set/${i + 1}.dbs`] : []));
+      assert.deepEqual(resolved.diagnostics.map(d => d.path), repeated);
+      assert.deepEqual(resolved.diagnostics.map(d => ({ line: d.line, column: d.column, rule: d.rule })),
+        repeated.length === 0 ? [] : c.errors.filter(e => e.rule === 'name.duplicate'));
+      return { text: join(c.documents[place - 1], false), set: resolved.set };
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
-    for (const external of c.external ?? []) set[headerName(external)] = join(external, false);
-    return { text: join(c.documents[index], false), set };
   }
   const caseId = parts.slice(1).join('/');
   const c = cases[group].find(x => x.id === caseId);
@@ -131,16 +165,6 @@ function syntaxCase(id) {
 }
 
 for (const s of syntax.cases) {
-  const parts = s.id.split('/');
-  const sets = parts[0] === 'sets';
-  // A sets case's id ends with its document's place. A sets case whose documents repeat a name has no Record form and
-  // is not run here; the exclusion is checked by the case below, so it is reported and not dropped.
-  if (sets) {
-    const caseId = parts.slice(1, -1).join('/');
-    const c = cases.sets.find(x => x.id === caseId);
-    const names = c.documents.map(headerName);
-    if (new Set(names).size !== names.length) continue;
-  }
   vector(`syntax ${s.id} gives the vector's tokens in UTF-16`, () => {
     const { text, set } = syntaxCase(s.id);
     const lines = parserLines(text);
@@ -154,16 +178,3 @@ for (const s of syntax.cases) {
     assert.deepEqual(openDocument(text, { set }).tokens, expected);
   });
 }
-
-// The sets cases with a repeated document name are the only ones not run as tokens: exactly these two places.
-vector('the sets whose documents repeat a name are the only syntax sets without a Record form', () => {
-  const repeated = syntax.cases
-    .filter(s => s.id.startsWith('sets/'))
-    .filter(s => {
-      const c = cases.sets.find(x => x.id === s.id.split('/')[1]);
-      const names = c.documents.map(headerName);
-      return new Set(names).size !== names.length;
-    })
-    .map(s => s.id);
-  assert.deepEqual(repeated, ['sets/repeated-document-name/1', 'sets/repeated-document-name/2']);
-});
