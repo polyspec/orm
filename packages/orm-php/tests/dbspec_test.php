@@ -18,6 +18,10 @@ foreach (['canonical', 'normalize', 'invalid'] as $kind) {
     }
     $counts[$kind] = dbspec_run_cases($kind, $cases[$kind], 2.0);
 }
+if (!isset($cases['positions']) || $cases['positions'] === []) {
+    throw new RuntimeException('Missing positions vectors');
+}
+$counts['positions'] = dbspec_run_position_cases($cases['positions'], 2.0);
 if (!isset($cases['files']) || $cases['files'] === []) {
     throw new RuntimeException('Missing files vectors');
 }

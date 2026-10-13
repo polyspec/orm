@@ -9,8 +9,9 @@ final class Dbspec
     /**
      * Parses a document. `$documents` is the declared document set, document
      * name => text, in which `use` lines find the documents they name. The
-     * result holds the document and no diagnostics, or every diagnostic in
-     * source order and no document.
+     * result holds the document, its declaration positions in source order
+     * (docs/dbspec.md "Declaration positions"), and no diagnostics; or every
+     * diagnostic in source order, no document and no positions.
      *
      * @param array<string, string> $documents
      */
@@ -21,8 +22,8 @@ final class Dbspec
                 throw new \InvalidArgumentException('The declared document set maps document names to texts');
             }
         }
-        [$document, $diagnostics] = (new Parser($documents))->run($text);
-        return $document === null ? ParseResult::invalid($diagnostics) : ParseResult::valid($document);
+        [$document, $diagnostics, $positions] = (new Parser($documents))->run($text);
+        return $document === null ? ParseResult::invalid($diagnostics) : ParseResult::valid($document, $positions);
     }
 
     /** 모든 dbspec document 파일의 첫 byte다. header `dbspec 1 <document>`가 이것으로 시작한다. */
