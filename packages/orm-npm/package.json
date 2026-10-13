@@ -46,7 +46,7 @@
   "dependencies": {
     "@noble/hashes": "2.4.0",
     "@polyspec/ordered-json": "0.0.8",
-    "mysql2": "^3.24.5",
+    "mysql2": "^3.24.6",
     "pg": "^8.23.1",
     "typescript": "^6.0.3",
     "yaml": "2.9.1"

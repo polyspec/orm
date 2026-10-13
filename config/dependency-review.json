@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mjs) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-13T14:26:45.735Z",
+  "reviewed": "2026-10-13T14:41:08.525Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "e8018194734f098be4a0db32b37594a301d0a2b0cd4da1d67d316755d55dcf86",
+      "sha256": "0e0fb91777369ac31e7a5067666653faa377b41894552c990d5d1f285b23c9b0",
       "advisories": []
     },
     {
@@ -102,8 +102,8 @@
       "ecosystem": "npm",
       "manifest": "packages/orm-npm/package.json",
       "package": "mysql2",
-      "version": "3.24.5",
-      "latest": "3.24.5"
+      "version": "3.24.6",
+      "latest": "3.24.6"
     },
     {
       "ecosystem": "npm",
