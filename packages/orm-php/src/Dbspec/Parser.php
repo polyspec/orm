@@ -2259,6 +2259,8 @@ final class Parser
         $limits = [];
         $history = null;
         $requires = [];
+        // The identity of each initial, terminal and transition line: its form and states, never its require list.
+        $seen = [];
         foreach ($this->tableSettings as [$kind, $arguments, $line, $at, $lists, $form]) {
             if ($kind !== 'state_machine') {
                 continue;
@@ -2277,6 +2279,17 @@ final class Parser
             } elseif ($form === 'limit') {
                 $limits[] = [$line, $arguments];
             } else {
+                // A line of another column already reports that a table holds one machine; it is no line of this one.
+                if ($arguments[0][0] === $column) {
+                    [$key, $what] = $form === 'transition'
+                        ? ["transition {$arguments[1][0]} {$arguments[2][0]}", "{$arguments[1][0]} -> {$arguments[2][0]}"]
+                        : ["{$form} {$arguments[1][0]}", "{$form} {$arguments[1][0]}"];
+                    if (isset($seen[$key])) {
+                        $this->error('setting', $line, $at, "state_machine repeats {$what}");
+                        continue;
+                    }
+                    $seen[$key] = true;
+                }
                 $lines[] = [$line, $arguments, $form, $at];
                 foreach ($lists as [, $columns]) {
                     array_push($requires, ...$columns);

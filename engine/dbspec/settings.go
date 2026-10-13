@@ -174,6 +174,8 @@ func (v *validator) stateMachineConsistency(t *tableNode) {
 	var lines, limits []*settingNode
 	var history *settingNode
 	var requires []token
+	// seen holds the identity of each initial, terminal and transition line: its form and states, never its require list.
+	seen := map[string]bool{}
 	for _, s := range t.settings.lines {
 		if s.keyword.text != "state_machine" {
 			continue
@@ -193,6 +195,15 @@ func (v *validator) stateMachineConsistency(t *tableNode) {
 		case "limit":
 			limits = append(limits, s)
 		default:
+			// A line of another column already reports that a table holds one machine; it is no line of this one.
+			key, what := machineLine(s)
+			if s.args[0].text == column && seen[key] {
+				v.add(RuleSetting, s.keyword, "state_machine repeats %s", what)
+				continue
+			}
+			if s.args[0].text == column {
+				seen[key] = true
+			}
 			lines = append(lines, s)
 			for _, list := range s.lists {
 				requires = append(requires, list.columns...)
@@ -733,4 +744,15 @@ func coordinate(t token) (int64, bool) {
 	}
 	n, err := strconv.ParseInt(canonicalNumber(t.text), 10, 64)
 	return n, err == nil && n >= math.MinInt32 && n <= math.MaxInt32
+}
+
+// machineLine returns the identity of the initial, terminal or transition line s of a state_machine and its
+// description: a line of the same identity adds no meaning, and one with another require list contradicts it, so a
+// repeat is a `setting` error (docs/dbspec.md "Settings").
+func machineLine(s *settingNode) (string, string) {
+	switch s.form {
+	case "initial", "terminal":
+		return s.form + " " + s.args[1].text, s.form + " " + strconv.Quote(s.args[1].text)
+	}
+	return "transition " + s.args[1].text + " " + s.args[2].text, strconv.Quote(s.args[1].text) + " -> " + strconv.Quote(s.args[2].text)
 }

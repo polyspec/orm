@@ -872,6 +872,7 @@
   "engine/dbspec/settings.go::coordinate": "func(t token) (int64, bool)",
   "engine/dbspec/settings.go::inKeyOrCheck": "func(t *tableNode, column string) bool",
   "engine/dbspec/settings.go::isInteger": "func(t Type) bool",
+  "engine/dbspec/settings.go::machineLine": "func(s *settingNode) (string, string)",
   "engine/dbspec/settings.go::validator.audit": "receiver=*validator func(t *tableNode, s *settingNode)",
   "engine/dbspec/settings.go::validator.auditLists": "receiver=*validator func(t *tableNode, s *settingNode, columnRef token) func(string) bool",
   "engine/dbspec/settings.go::validator.auditRecord": "receiver=*validator func(t *tableNode, column *columnNode, columnRef, referencesRef, historyRef token)",
