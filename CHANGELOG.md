@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T128-2a-2 (breaking): the Go `orm-gen gen` takes `--set <dbspec-set.json>`; `--document`, `--use` and `runtimemodel.LoadFileSet` are removed. `dbspec.ReadSet` reads a set file and `runtimemodel.LoadSetFile` loads one.
 - T128-2a-3 (breaking): the TypeScript `orm-gen gen` takes `--set <dbspec-set.json>`; `--schema` and `--use` are removed. `readDbspecSet` reads a set file, and `@polyspec/orm/dbspec` exports the pure `parseSet(bytes, path)`.
 - T128-7: the documentation site renders ```` ```dbs ```` fences through the dbspec language service, with a colour per token class in the light and the dark theme; a fence of a set declares `set=` and `document=`, and any diagnostic of a fence fails the docs build.
 - T128-2a-4 (breaking): the Python `orm-gen gen` takes the set file with `--set <dbspec-set.json>`, parsed by argparse; `--schema` and `--use` are removed. `read_dbspec_set` reads a set file by docs/dbspec.md "Document sets".
