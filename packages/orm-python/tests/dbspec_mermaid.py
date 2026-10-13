@@ -8,14 +8,10 @@
 #
 # A failed check raises CheckFailed. The checks do not use assert, which python -O removes.
 import json
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
-_ORDERED_JSON = Path(__file__).resolve().parents[4] / 'ordered-json' / 'packages' / 'ordered-json-python' / 'src'
-if _ORDERED_JSON.is_dir():
-    sys.path.insert(0, str(_ORDERED_JSON))
+# The client and ordered-json come from PYTHONPATH, as make dbspec-python-check declares it.
 
 from polyspec.orm.dbspec import emit_dbspec, parse_dbspec, read_dbspec_file  # noqa: E402
 from polyspec.orm.dbspec.mermaid import export_mermaid, import_mermaid  # noqa: E402

@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T154: the Python Mermaid test imports only through the declared PYTHONPATH.
 - T149: the feature coverage runs Python owners, and schema_definition covers Python with its seven cases.
 
 ## 0.0.10
