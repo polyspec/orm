@@ -89,6 +89,9 @@ if (args[0] === 'list' && args[1] === '-m' && args[2] === '-versions') {
   const versions = registry.go?.[module];
   if (!versions) { console.error('go: module ' + module + ' not found'); process.exit(1); }
   console.log(JSON.stringify({ Path: module, Versions: versions }));
+} else if (args[0] === 'list' && args[1] === '-e') {
+  // go list -e -f <format> <pattern>...: every pattern names a buildable package, printed as the pattern.
+  console.log(args.slice(4).join('\\n'));
 } else {
   console.error('go stub: unsupported ' + args.join(' '));
   process.exit(2);

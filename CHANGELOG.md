@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T126-1: orm vendors kit from its release tag v0.0.31 instead of a branch, declares its Python through uv (`pythonBuild.version` and `uv` in config/toolchain.json), and its `release-assets` declares the installs it builds on (`install-go`, `install-node`).
 - T128-1: the Go editor tools added after 0.0.9 (`cmd/orm-fmt`, `cmd/orm-lsp`, `cmd/orm-tokens` and the regex classifier `engine/dbspec/tokens.go`) are removed before any release, with the docs bridge that built a Go binary; T128 rebuilds the editor stack as a standard of every runtime.
 
 ## 0.0.9

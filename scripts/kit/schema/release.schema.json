@@ -164,11 +164,11 @@
               "type": "object"
             },
             "lock": {
-              "description": "Each wheel package with the path of its PEP 751 lock (pylock.toml or pylock.<name>.toml): the registry packages and the polyspec archives that the wheel depends on, installed with their hashes.",
+              "description": "Each wheel package with the path of its PEP 751 lock (pylock.toml or pylock.<name>.toml): the registry packages and the polyspec archives that the wheel depends on, installed with their hashes. A sibling (another wheel package of this configuration, released by the same tag) is not held here; a Requires-Dist names it by its URL of the release without a hash.",
               "type": "object"
             },
             "polyspec": {
-              "description": "Each polyspec distribution that a wheel may depend on, with the URL of its GitHub repository; a Requires-Dist names it only by a direct reference to its release asset.",
+              "description": "Each polyspec distribution that a wheel may depend on, with the URL of its GitHub repository; a Requires-Dist names it only by a direct reference to its release asset with a sha256 fragment. A wheel package of this configuration is a sibling and is never declared here.",
               "type": "object"
             }
           }

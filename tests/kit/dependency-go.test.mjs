@@ -2,14 +2,14 @@
 // module proxy, the vulnerabilities that the code calls from govulncheck, and the install of govulncheck into var/tools.
 // go, govulncheck and the proxy are stubs.
 import assert from 'node:assert/strict';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { goRequirements } from '../../scripts/kit/dependency-state.mjs';
 import { goAdvisories, parseJsonStream, updatePlan } from '../../scripts/kit/dependency-review.mjs';
 import { installGovulncheck } from '../../scripts/kit/install-govulncheck.mjs';
-import { fixtureCheckout as fixture, gate, installCargoAuditStub, installGovulncheckStub, review } from './checkout.mjs';
+import { fixtureCheckout as fixture, gate, govulncheckCalls, installCargoAuditStub, installGovulncheckStub, review } from './checkout.mjs';
 import { FIXTURE_REGISTRY, stubRegistries } from './registry.mjs';
 
 const MESSAGES = [
@@ -103,4 +103,27 @@ chmod 755 "$GOBIN/govulncheck"
   assert.equal(existsSync(path.join(root, 'var/tools/govulncheck/bin/govulncheck')), true);
   assert.deepEqual(installGovulncheck({ root, recorded: '1.1.4' }), { installed: false, release: '1.1.4' });
   assert.equal(readFileSync(log, 'utf8').split('\n').filter(Boolean).length, 1);
+});
+
+test('govulncheck scans the packages of each tracked Go module and never the tree under var/ (K53)', (t) => {
+  const root = fixture(t);
+  // The checkout's own module, a second lock beside packages/fixture-go, with a toolchain tree under var/tools as install-go leaves it.
+  writeFileSync(path.join(root, 'go.mod'), 'module example.com/kit-root\n\ngo 1.21\n\nrequire github.com/google/uuid v1.6.0\n');
+  cpSync(path.join(root, 'packages/fixture-go/go.sum'), path.join(root, 'go.sum'));
+  writeFileSync(path.join(root, 'main.go'), 'package main\n\nfunc main() {}\n');
+  const goroot = path.join(root, 'var/tools/go/golang.org/toolchain@v0.0.1-go1.27.2.darwin-arm64');
+  mkdirSync(path.join(goroot, 'src/x'), { recursive: true });
+  writeFileSync(path.join(goroot, 'src/go.mod'), 'module std\n\ngo 1.27\n');
+  writeFileSync(path.join(goroot, 'src/x/x.go'), 'package x\n');
+  installCargoAuditStub(root);
+  installGovulncheckStub(root);
+  const stub = stubRegistries(t);
+  stub.registry(FIXTURE_REGISTRY);
+  const result = review(root, [], stub.env);
+  assert.doesNotMatch(result.stdout, /advisory query failed/);
+  const scans = govulncheckCalls(root).map(({ cwd, args }) => ({ cwd: path.relative(realpathSync(root), cwd), args }));
+  assert.deepEqual(scans, [
+    { cwd: '', args: ['-json', '.'] },
+    { cwd: 'packages/fixture-go', args: ['-json', '.'] },
+  ]);
 });

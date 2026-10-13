@@ -18,9 +18,10 @@
 // changes only with a version or a dependency, and `lock` runs on the release commit before the tag is pushed.
 // `lock` resolves version ranges, so it is the one step that reads a registry; no check runs it.
 // A `wheel` package is installed into a clean virtual environment of var/tools/bin/python3: its dependencies from the lock of
-// consumers.wheel.lock (`pip install --require-hashes --no-deps --only-binary :all:`, the online step of the proof), then the wheel
-// itself (`pip install --no-index --require-hashes --no-deps`, named with the sha256 of its file), then `pip check`, which fails
-// on a lock that lacks a dependency.
+// consumers.wheel.lock (`pip install --require-hashes --no-deps --only-binary :all:`, the online step of the proof), then the wheels
+// of all wheel packages in one command from their files (`pip install --no-index --require-hashes --no-deps`, each named with the
+// sha256 of its file), then `pip check`, which fails on a lock that lacks a dependency. The command names every wheel of the release,
+// so a sibling (a wheel of the same release) is installed from its file: with --no-deps pip never reads a sibling's URL.
 // A Go module tag releases no archive and has nothing to install. Each failure names the expected and the actual value.
 //   TAG is `latest` for the newest root release tag reachable from HEAD.
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -190,7 +191,7 @@ export function installWheelFiles({ root, env, folder, version, directory, names
   const project = path.join(folder, WHEEL_KIND);
   const venv = path.join(project, 'venv');
   mkdirSync(project, { recursive: true });
-  // The venv is a copy of the checkout Python with no pip and no symbolic link (python-venv.mjs); pip of the checkout installs into it.
+  // uv venv makes the venv from the checkout Python with no pip (python-venv.mjs); pip of the checkout installs into it.
   try {
     makeVenv({ root, directory: venv, env });
   } catch (error) {

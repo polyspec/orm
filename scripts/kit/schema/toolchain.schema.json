@@ -30,26 +30,16 @@
       "pattern": "^\\d+\\.\\d+$"
     },
     "pythonBuild": {
-      "description": "The exact Python release of the python minor, from a python-build-standalone release: install-tools installs its install_only archive for each platform in sha256, the digest of the archive from the SHA256SUMS of that release.",
+      "description": "The exact Python release of the python minor. install-tools installs it with the uv of the declaration uv (uv python install), which downloads the python-build-standalone build that its release names and checks the build's sha256.",
       "type": "object",
       "required": [
-        "version",
-        "release",
-        "sha256"
+        "version"
       ],
       "additionalProperties": false,
       "properties": {
         "version": {
           "type": "string",
           "pattern": "^\\d+\\.\\d+\\.\\d+$"
-        },
-        "release": {
-          "type": "string",
-          "pattern": "^\\d{8}$"
-        },
-        "sha256": {
-          "type": "object",
-          "description": "The sha256 of the archive of each platform key (process.platform-process.arch); the install reads each digest as 64 lowercase hexadecimal digits."
         }
       }
     },
@@ -90,6 +80,20 @@
         }
       }
     },
+    "phpunit": {
+      "description": "The PHPUnit release of the PHP tests of kit: install-tools installs the Composer project of config/phpunit (composer.json and composer.lock) into var/tools/phpunit with the declared Composer.",
+      "type": "object",
+      "required": [
+        "version"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        }
+      }
+    },
     "go": {
       "description": "Where the Go release is declared: the go.mod that holds its toolchain line or go directive, and optionally a file that holds the exact release.",
       "type": "object",
@@ -124,6 +128,25 @@
         "sha256": {
           "type": "object",
           "description": "The sha256 of the ruff wheel of each platform key; the install accepts a wheel of any listed digest and names the platform key of none."
+        }
+      }
+    },
+    "uv": {
+      "description": "The uv release that install-tools installs into var/tools/uv: the exact version, and the sha256 of the archive uv-<target>.tar.gz of the GitHub release of each platform key (process.platform-process.arch), the digest read as 64 lowercase hexadecimal digits.",
+      "type": "object",
+      "required": [
+        "version",
+        "sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "sha256": {
+          "type": "object",
+          "description": "The sha256 of the uv archive of each platform key; the install refuses an archive of another digest."
         }
       }
     },

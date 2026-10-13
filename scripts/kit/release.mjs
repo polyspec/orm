@@ -39,7 +39,7 @@ import path from 'node:path';
 import { releaseOf } from './github-release.mjs';
 import { consumerConfigProblems } from './release-consumer-config.mjs';
 import { buildWheel, metadataProblems, sourceProblems, tomlString, wheelMetadata, wheelName } from './release-wheel.mjs';
-import { lockProblems, wheelDependencyProblems } from './wheel-dependencies.mjs';
+import { lockProblems, siblingsOf, wheelDependencyProblems } from './wheel-dependencies.mjs';
 import { readConfig } from './schema-validate.mjs';
 import { checkedFiles } from './tracked-files.mjs';
 import { isMain, ROOT } from './paths.mjs';
@@ -408,7 +408,7 @@ export function assets(ctx, tag) {
         const metadata = wheelMetadata(root, path.join(next, names[index]), ctx.env);
         return [
           ...metadataProblems(metadata, name, version),
-          ...wheelDependencyProblems({ metadata, version, polyspec: config.consumers.wheel.polyspec, lockFile: locks[index].file, lockText: locks[index].text }),
+          ...wheelDependencyProblems({ metadata, name, version, polyspec: config.consumers.wheel.polyspec, siblings: siblingsOf(config, name), repositoryUrl: config.repositoryUrl, lockFile: locks[index].file, lockText: locks[index].text }),
         ].map(problem => `${names[index]}: ${problem}`);
       }
       const file = MANIFEST_OF[kind];

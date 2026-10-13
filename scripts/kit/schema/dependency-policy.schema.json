@@ -52,10 +52,47 @@
       }
     },
     "pythonLocks": {
+      "description": "Each Python lock (PEP 751, pylock.toml or pylock.<name>.toml) with its declared source. The writer (make python-lock) resolves the source with uv; the offline check (make python-lock-check) reads the lock against the source. The source has the direct requirements and the constraints that pin every package of the lock.",
       "type": "array",
       "items": {
-        "type": "string",
-        "pattern": "^([^/\\\\][^\\\\]*/)?pylock(\\.[A-Za-z0-9_-]+)?\\.toml$"
+        "type": "object",
+        "required": [
+          "lock",
+          "source"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "lock": {
+            "type": "string",
+            "pattern": "^([^/\\\\][^\\\\]*/)?pylock(\\.[A-Za-z0-9_-]+)?\\.toml$"
+          },
+          "source": {
+            "type": "object",
+            "required": [
+              "requirements",
+              "constraints"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "requirements": {
+                "type": "string",
+                "pattern": "^([^/\\\\][^\\\\]*/)?(pyproject\\.toml|[A-Za-z0-9._-]+\\.(txt|in))$",
+                "description": "A requirements file (one requirement per line, name with an optional exact or range specifier, or name @ url) that names the direct dependencies, or a pyproject.toml whose static [project].dependencies name them."
+              },
+              "constraints": {
+                "type": "string",
+                "pattern": "^([^/\\\\][^\\\\]*/)?[A-Za-z0-9._-]+\\.(txt|in)$",
+                "description": "A constraints file that pins every package of the lock, transitive ones too: name==version, or name @ url#sha256=<digest> for a polyspec archive."
+              },
+              "findLinks": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^/\\\\]",
+                "description": "A directory of the checkout, relative to the root, with the local wheels that uv reads with --no-index --find-links; the lock then names each local wheel by a path relative to the lock."
+              }
+            }
+          }
+        }
       }
     },
     "exceptions": {

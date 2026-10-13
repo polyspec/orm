@@ -20,7 +20,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { POLICY, RECORD, TOOLCHAIN, UPDATE, dependencyKey, lockEcosystem, lockFix, readState } from './dependency-state.mjs';
+import { POLICY, RECORD, TOOLCHAIN, UPDATE, dependencyKey, goPackagePatterns, lockEcosystem, lockFix, readState } from './dependency-state.mjs';
 import { cargoAuditCommand } from './install-cargo-audit.mjs';
 import { govulncheckCommand } from './install-govulncheck.mjs';
 import { isMain, ROOT } from './paths.mjs';
@@ -168,6 +168,18 @@ function latestReleases(root, state) {
   return latest;
 }
 
+/**
+ * The import paths of the packages of the Go module of `lock` that govulncheck scans, or { error }: the packages of
+ * goPackagePatterns that have a buildable file, by `go list -e`. A directory whose every file a build constraint excludes
+ * is no package for `./...`, and govulncheck refuses it as a pattern, so it is dropped here.
+ */
+export function goPackages(root, lock) {
+  const patterns = goPackagePatterns(root, lock);
+  if (patterns.length === 0) return { list: [] };
+  const answer = run('go', ['list', '-e', '-f', '{{if or .GoFiles .TestGoFiles .XTestGoFiles}}{{.ImportPath}}{{end}}', ...patterns], path.join(root, path.posix.dirname(lock)));
+  return answer.error ? answer : { list: answer.stdout.split('\n').filter(Boolean) };
+}
+
 /** The advisories of every lock: lock -> { advisories } or { error }. Each npm lock is audited in the directory it lies in. */
 function advisories(root, state) {
   const result = new Map();
@@ -228,7 +240,21 @@ function advisories(root, state) {
   }
   for (const lock of state.locks.filter(item => lockEcosystem(item) === 'go')) {
     const command = govulncheckCommand(root);
-    const answer = existsSync(command) ? run(command, ['-json', './...'], path.join(root, path.posix.dirname(lock))) : { error: `${path.relative(root, command)} is not installed; run make install-tools` };
+    if (!existsSync(command)) {
+      result.set(lock, { error: `${path.relative(root, command)} is not installed; run make install-tools` });
+      continue;
+    }
+    const packages = goPackages(root, lock);
+    if (packages.error) {
+      result.set(lock, { error: packages.error });
+      continue;
+    }
+    // A module with no buildable package calls no vulnerable function, and govulncheck refuses an empty pattern list.
+    if (packages.list.length === 0) {
+      result.set(lock, { advisories: [] });
+      continue;
+    }
+    const answer = run(command, ['-json', ...packages.list], path.join(root, path.posix.dirname(lock)));
     if (answer.error) {
       result.set(lock, { error: answer.error });
       continue;

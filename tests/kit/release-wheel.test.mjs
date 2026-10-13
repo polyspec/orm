@@ -16,6 +16,7 @@ import { Stop } from '../../scripts/kit/process.mjs';
 import { readJson, releaseSandbox, writeJson } from './release-sandbox.mjs';
 import { consumerSandbox } from './release-consumer-sandbox.mjs';
 import { BACKEND_BYTES, BACKEND_FILE } from './wheel-stubs.mjs';
+import { GENERATOR_LOCK, GENERATOR_WHEEL, REPOSITORY, SIBLING, SIBLING_URL, SIBLING_WHEEL, addSibling, generatorRequires, siblingLine } from './sibling-sandbox.mjs';
 
 const stop = (fn, pattern) => assert.throws(fn, error => error instanceof Stop && pattern.test(error.message), String(pattern));
 const escaped = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -182,8 +183,8 @@ test('release-consumer installs the wheel with --no-index and --require-hashes i
   const box = consumerSandbox(t);
   box.lock();
   assert.equal(consumer.installConsumers(box.ctx(), '0.0.1', path.join(box.root, release.ASSETS)), 4);
-  const [venvCall] = box.calls('checkout-python3').filter(call => call.args[1] === 'venv');
-  assert.deepEqual(venvCall.args.slice(0, 4), ['-m', 'venv', '--copies', '--without-pip'], 'the venv is made through makeVenv: a copy of the checkout Python with no pip');
+  const [venvCall] = box.calls('checkout-uv').filter(call => call.args[0] === 'venv');
+  assert.deepEqual(venvCall.args.slice(0, 4), ['venv', '--quiet', '--python', path.join(box.root, 'var/tools/bin/python3')], 'the venv is made through makeVenv: uv venv from the checkout Python, with no pip');
   const venv = venvCall.args[4];
   const dependencies = box.calls('checkout-python3').find(call => call.args.includes('--only-binary'));
   assert.equal(dependencies.requirements, `ruff==0.16.10 --hash=sha256:${'1'.repeat(64)}\n`, 'the lock of the wheel is installed with its hashes first');
@@ -220,4 +221,56 @@ test('config: a wheel package needs its consumer smoke and a pinned build backen
   stop(() => release.loadConfig(edit(c => { delete c.consumers.wheel; return c; }).root), /consumers\.wheel is missing; the wheel packages \[kit-fixture\] need a consumer project that installs them/);
   stop(() => release.loadConfig(edit(c => { delete c.buildBackend; return c; }).root), /buildBackend is missing; the wheel packages \[kit-fixture\] need a pinned build backend/);
   stop(() => release.loadConfig(edit(c => { c.proof.gitTag['packages/fixture-rust/Cargo.toml'].kind = 'python'; return c; }).root), /proof\.gitTag\.packages\/fixture-rust\/Cargo\.toml\.kind is "python", the allowed values are rust/);
+});
+
+test('assets accepts a sibling of the same release named by its asset URL without a hash, and names both wheels', (t) => {
+  const box = releaseSandbox(t, { mutate: addSibling });
+  const tag = box.release('0.0.1');
+  box.wheelRequires(generatorRequires(siblingLine()));
+  assert.deepEqual(release.assets(context(box), tag).sort(), ['fixture-app-npm-0.0.1.tgz', 'fixture-lib-npm-0.0.1.tgz', GENERATOR_WHEEL, SIBLING_WHEEL, 'polyspec-kit-fixture-php-0.0.1.zip'].sort());
+});
+
+test('assets refuses a sibling named with a #sha256 fragment, a name==version and another version, and names each', (t) => {
+  const cases = [
+    [siblingLine(`${SIBLING_URL}#sha256=${'c'.repeat(64)}`), `Requires-Dist ${siblingLine(`${SIBLING_URL}#sha256=${'c'.repeat(64)}`)} names the sibling ${SIBLING} of this release with a #sha256 fragment; a sibling is named by its URL without a hash, since its sha256 is known only after the release builds it`],
+    [`${SIBLING}==0.0.1`, `Requires-Dist ${SIBLING}==0.0.1 names the sibling ${SIBLING} of this release by name==version; it must be a direct reference to its release asset`],
+    [siblingLine(`${REPOSITORY}/releases/download/v0.0.2/kit_fixture_validator-0.0.2-py3-none-any.whl`), `names ${SIBLING} at v0.0.2, the release is v0.0.1`],
+  ];
+  for (const [line, message] of cases) {
+    const box = releaseSandbox(t, { mutate: addSibling });
+    const tag = box.release('0.0.1');
+    box.wheelRequires(generatorRequires(line));
+    stop(() => release.assets(context(box), tag), new RegExp(escaped(message)));
+  }
+});
+
+test('assets refuses a sibling from another repository or with another file name, and names the expected form', (t) => {
+  const other = siblingLine('https://example.com/polyspec/other/releases/download/v0.0.1/kit_fixture_validator-0.0.1-py3-none-any.whl');
+  const wrong = siblingLine(`${REPOSITORY}/releases/download/v0.0.1/kit_other-0.0.1-py3-none-any.whl`);
+  for (const [line, message] of [[other, `is not a release asset of ${REPOSITORY}, the repository of this release`], [wrong, `the file kit_other-0.0.1-py3-none-any.whl of v0.0.1 is not ${SIBLING_WHEEL}`]]) {
+    const box = releaseSandbox(t, { mutate: addSibling });
+    const tag = box.release('0.0.1');
+    box.wheelRequires(generatorRequires(line));
+    stop(() => release.assets(context(box), tag), new RegExp(escaped(message)));
+  }
+});
+
+test('assets refuses a lock of the wheel that holds the sibling, and names the lock', (t) => {
+  const box = releaseSandbox(t, {
+    mutate: (root) => {
+      addSibling(root);
+      const lock = readFileSync(path.join(root, GENERATOR_LOCK), 'utf8');
+      writeFileSync(path.join(root, GENERATOR_LOCK), `${lock}\n[[packages]]\nname = "${SIBLING}"\nversion = "0.0.1"\narchive = { url = "${SIBLING_URL}", hashes = { sha256 = "${'d'.repeat(64)}" } }\n`);
+    },
+  });
+  const tag = box.release('0.0.1');
+  box.wheelRequires(generatorRequires(siblingLine()));
+  stop(() => release.assets(context(box), tag), new RegExp(escaped(`${GENERATOR_LOCK}: ${SIBLING} is a wheel of this release; the lock of kit-fixture holds no sibling`)));
+});
+
+test('config refuses a consumers.wheel.polyspec entry that names a wheel package of the configuration', (t) => {
+  const box = releaseSandbox(t, { mutate: addSibling });
+  const config = readJson(box.root, 'config/release.json');
+  writeJson(box.root, 'config/release.json', { ...config, consumers: { ...config.consumers, wheel: { ...config.consumers.wheel, polyspec: { [SIBLING]: REPOSITORY } } } });
+  stop(() => release.loadConfig(box.root), new RegExp(escaped(`config/release.json: consumers.wheel.polyspec.${SIBLING} names the wheel package ${SIBLING} of this repository`)));
 });

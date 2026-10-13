@@ -15,7 +15,7 @@
     },
     {
       "lock": "packages/fixture-python/pylock.toml",
-      "sha256": "55b765afbfb9f7552b3093050820ade2914d21ea4de792fb376a3b25da018f0b",
+      "sha256": "383512fcc6e8e1166dcbfd7f90924a12e42644b3db0deabce45a37bb8a1acb75",
       "advisories": []
     },
     {
@@ -73,13 +73,5 @@
       "latest": "v1.6.0"
     }
   ],
-  "vcs": [
-    {
-      "lock": "packages/fixture-python/pylock.toml",
-      "package": "pip-tools",
-      "url": "https://github.com/jazzband/pip-tools",
-      "requestedRevision": "7.4.1",
-      "commitId": "60ebdf5d1625cb63d0b94326035e0aa209659f4d"
-    }
-  ]
+  "vcs": []
 }

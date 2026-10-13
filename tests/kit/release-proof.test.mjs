@@ -12,6 +12,8 @@ import { Stop, run } from '../../scripts/kit/process.mjs';
 import * as proof from '../../scripts/kit/release-proof.mjs';
 import { git, readJson, writeJson } from './release-sandbox.mjs';
 import { consumerSandbox } from './release-consumer-sandbox.mjs';
+import { GENERATOR_WHEEL, REPOSITORY, SIBLING, SIBLING_URL, SIBLING_WHEEL, generatorRequires, siblingLine, siblingMutate } from './sibling-sandbox.mjs';
+const escaped = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const stop = (fn, pattern) => assert.throws(fn, error => error instanceof Stop && pattern.test(error.message), String(pattern));
 const REMOTE = 'example.com/polyspec/kit-fixture';
@@ -35,6 +37,7 @@ test('a released tag is proven in four steps and each step runs the commands of 
   assert.deepEqual(prove(box), [
     'the draft release v0.0.1 lists exactly its 4 archives',
     'downloaded [fixture-app-npm-0.0.1.tgz, fixture-lib-npm-0.0.1.tgz, kit_fixture-0.0.1-py3-none-any.whl, polyspec-kit-fixture-php-0.0.1.zip] from the release v0.0.1',
+    'kit_fixture-0.0.1-py3-none-any.whl: the sha256 of the downloaded file is the one the release lists',
     'npm ci of 2 packages from tests/release-consumer/npm',
     "npm fixture-lib 0.0.1: node -e require('fixture-lib/package.json')",
     "npm fixture-app 0.0.1: node -e require('fixture-app/package.json')",
@@ -49,11 +52,11 @@ test('a released tag is proven in four steps and each step runs the commands of 
     'the Go module example.com/kit-fixture-go resolves at packages/fixture-go/v0.0.1',
   ]);
   const [list, ...downloads] = box.calls('gh');
-  assert.deepEqual(list.args, ['api', '--hostname', 'example.com', '--paginate', 'repos/polyspec/kit-fixture/releases', '--jq', '.[] | {id, tag_name, draft, assets: [.assets[] | {id, name}]} | @json']);
+  assert.deepEqual(list.args, ['api', '--hostname', 'example.com', '--paginate', 'repos/polyspec/kit-fixture/releases', '--jq', '.[] | {id, tag_name, draft, assets: [.assets[] | {id, name, url: .browser_download_url, digest}]} | @json']);
   assert.deepEqual(downloads.map(call => call.args.at(-1)), ['repos/polyspec/kit-fixture/releases/assets/1', 'repos/polyspec/kit-fixture/releases/assets/2', 'repos/polyspec/kit-fixture/releases/assets/3', 'repos/polyspec/kit-fixture/releases/assets/4']);
   assert.deepEqual(downloads[0].args.slice(0, 5), ['api', '--hostname', 'example.com', '-H', 'Accept: application/octet-stream']);
-  const [venvCall] = box.calls('checkout-python3').filter(call => call.args[1] === 'venv');
-  assert.deepEqual(venvCall.args.slice(0, 4), ['-m', 'venv', '--copies', '--without-pip']);
+  const [venvCall] = box.calls('checkout-uv').filter(call => call.args[0] === 'venv');
+  assert.deepEqual(venvCall.args.slice(0, 4), ['venv', '--quiet', '--python', path.join(box.root, 'var/tools/bin/python3')]);
   const venv = { args: [null, null, venvCall.args[4]] };
   const [dependencies, install] = box.calls('checkout-python3').filter(call => call.args.includes('--require-hashes'));
   assert.deepEqual(dependencies.args.slice(0, 5), ['-m', 'pip', '--python', path.join(venv.args[2], 'bin', 'python'), 'install']);
@@ -118,8 +121,8 @@ test('the proof fails when pip cannot install the tag, when the venv cannot be m
   stop(() => prove(box), /python3 -m pip --python \S+ install .*--require-hashes --no-deps .*-r .* exited with 1: pip stub: no matching distribution/);
   box.stub({ modes: { 'checkout-python3': '', python: 'smoke-fail' } });
   stop(() => prove(box), /python -c import kit_fixture exited with 1: python stub: ModuleNotFoundError/);
-  box.stub({ modes: { 'checkout-python3': 'venv-fail', python: '' } });
-  stop(() => prove(box), /python3 -m venv --copies --without-pip .* ended with exit status 1/);
+  box.stub({ modes: { 'checkout-uv': 'venv-fail', python: '' } });
+  stop(() => prove(box), /uv venv --quiet --python .* ended with exit status 1/);
 });
 
 test('the proof fails when cargo cannot resolve the tag', (t) => {
@@ -176,7 +179,7 @@ test('the proof removes its temporary directory and changes nothing in the check
   const before = git(box.root, 'status', '--porcelain', '--ignored');
   prove(box);
   assert.equal(git(box.root, 'status', '--porcelain', '--ignored'), before);
-  const folder = path.dirname(path.dirname(box.calls('checkout-python3').find(call => call.args[1] === 'venv').args[4]));
+  const folder = path.dirname(path.dirname(box.calls('checkout-uv').find(call => call.args[0] === 'venv').args[4]));
   assert.match(path.basename(folder), /^kit-release-consumer-/);
   assert.equal(existsSync(folder), false);
 });
@@ -188,7 +191,7 @@ test('the command line prints one line for each step and the exit status', (t) =
   const run = argv => proof.main(argv, { root: box.root, env: box.env, print: line => lines.push(line), error: line => errors.push(line) });
   assert.equal(run(['v0.0.1']), 0);
   assert.ok(lines.every(line => line.startsWith('✔ ')), lines.join('\n'));
-  assert.equal(lines.length, 15);
+  assert.equal(lines.length, 16);
   assert.equal(lines.at(-1), '✔ v0.0.1 is proven from outside the repository');
   box.stub({ modes: { go: 'fail' } });
   assert.equal(run(['v0.0.1']), 1);
@@ -237,4 +240,29 @@ test('the proof downloads each polyspec archive of a wheel lock and names a dige
   writeFileSync(path.join(wrongSource, file), bytes);
   wrong.stub({ dependencies: [{ repo: 'polyspec/kit-lib', tag: 'v0.0.1', file, source: wrongSource }] });
   stop(() => prove(wrong), new RegExp(`${file} of ${repo} v0\\.0\\.1 has the sha256 ${digest}, packages/fixture-python/pylock\\.wheel\\.toml holds ${'2'.repeat(64)} for kit-lib`));
+});
+
+test('the proof checks each sibling URL in a wheel against the published asset, and installs the wheels together from their files', (t) => {
+  const box = locked(t, { mutate: siblingMutate(generatorRequires(siblingLine())) });
+  const steps = prove(box);
+  assert.ok(steps.includes(`${GENERATOR_WHEEL}: its Requires-Dist of ${SIBLING} is the published asset of ${SIBLING_WHEEL}, ${SIBLING_URL}`), steps.join('\n'));
+  assert.ok(steps.includes(`${GENERATOR_WHEEL}: the sha256 of the downloaded file is the one the release lists`), steps.join('\n'));
+  const install = box.calls('checkout-python3').find(call => call.args.includes('--no-index'));
+  assert.ok(install.args.includes('--no-deps'), 'the wheels install with no dependency resolution, so the sibling is never fetched from its URL');
+  assert.deepEqual(install.requirements.split('\n').filter(Boolean).map(line => path.basename(line.split(' ')[0])), [GENERATOR_WHEEL, SIBLING_WHEEL]);
+});
+
+test('the proof refuses a sibling URL in a wheel that differs from the URL of the published asset', (t) => {
+  const box = locked(t, { mutate: siblingMutate(generatorRequires(siblingLine())) });
+  const state = box.state();
+  box.stub({ release: { ...state.release, published: { ...state.release.published, [SIBLING_WHEEL]: { ...state.release.published[SIBLING_WHEEL], url: `${REPOSITORY}/releases/download/v0.0.1/elsewhere/${SIBLING_WHEEL}` } } } });
+  stop(() => prove(box), new RegExp(escaped(`${GENERATOR_WHEEL} requires ${SIBLING} at ${SIBLING_URL}, the release v0.0.1 publishes ${SIBLING_WHEEL} at ${REPOSITORY}/releases/download/v0.0.1/elsewhere/${SIBLING_WHEEL}`)));
+});
+
+test('the proof refuses a wheel whose downloaded sha256 differs from the digest that the release lists', (t) => {
+  const box = locked(t, { mutate: siblingMutate(generatorRequires(siblingLine())) });
+  const state = box.state();
+  const listed = `sha256:${'0'.repeat(64)}`;
+  box.stub({ release: { ...state.release, published: { ...state.release.published, [GENERATOR_WHEEL]: { ...state.release.published[GENERATOR_WHEEL], digest: listed } } } });
+  stop(() => prove(box), new RegExp(escaped(`the release v0.0.1 lists ${GENERATOR_WHEEL} with the sha256 ${'0'.repeat(64)}, the downloaded file has`)));
 });

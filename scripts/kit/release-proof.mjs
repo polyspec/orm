@@ -9,7 +9,9 @@
 //   1. The GitHub Release of TAG, a draft included, lists exactly the archives that config/release.json declares for the version.
 //   2. Each polyspec archive that a wheel lock names (consumers.wheel.lock) is the release asset of its version in its repository
 //      (consumers.wheel.polyspec): the release lists the file, and the sha256 of the downloaded file is the one the lock holds.
-//   3. The release assets, downloaded into a temporary directory, install together in clean npm and Composer projects
+//   3. The release assets, downloaded into a temporary directory, are checked and install together: each wheel's file has the
+//      sha256 that the release lists, and each sibling that a wheel requires is the published asset of that sibling (its URL is
+//      exactly the URL of the release asset). Then they install in clean npm, Composer and Python projects
 //      (release-consumer.mjs installConsumers, with the committed manifests and locks of the checkout) and the smoke command of
 //      each package passes. Run it in a checkout of the tag, whose consumer projects name the archives of the version.
 //   4. Each manifest with the mode `git-tag` installs from the tag: a Rust crate as a git dependency of a temporary crate, and
@@ -29,7 +31,8 @@ import { run, Stop } from './process.mjs';
 import { installConsumers } from './release-consumer.mjs';
 import { readPylock } from './pylock.mjs';
 import { fileDigest } from './digest.mjs';
-import { repositoryOf, wheelLocks } from './wheel-dependencies.mjs';
+import { wheelMetadata, wheelName } from './release-wheel.mjs';
+import { repositoryOf, siblingLinks, siblingsOf, wheelLocks } from './wheel-dependencies.mjs';
 
 /** Step 1: the names of the assets of the GitHub Release (a draft included) equal the archives of the tag. */
 function proveAssets(ctx, tag, version, directory, step) {
@@ -72,12 +75,36 @@ function proveDependencies(ctx, folder, step) {
   }
 }
 
-/** Step 3: download the assets of the release into `folder/assets` and install them in clean consumer projects. */
+/**
+ * Step 3, the wheels of the release, each downloaded file checked before it is installed: its sha256 is the one that the release
+ * lists, and each sibling in its METADATA is named by the URL of the published asset of that sibling (wheel-dependencies.mjs).
+ */
+function proveWheels(ctx, tag, version, assets, release, step) {
+  const { config, root, env } = ctx;
+  for (const { name } of config.packages.filter(item => item.kind === 'wheel')) {
+    const file = wheelName(name, version);
+    const listed = release.assets.find(item => item.name === file);
+    const digest = listed?.digest?.replace(/^sha256:/, '') ?? null;
+    const actual = fileDigest(path.join(assets, file));
+    if (actual !== digest) throw new Stop(`the release ${tag} lists ${file} with the sha256 ${digest ?? 'none'}, the downloaded file has ${actual}`);
+    step(`${file}: the sha256 of the downloaded file is the one the release lists`);
+    for (const link of siblingLinks(wheelMetadata(root, path.join(assets, file), env), siblingsOf(config, name))) {
+      const sibling = wheelName(link.name, version);
+      const published = release.assets.find(item => item.name === sibling);
+      if (!published) throw new Stop(`${file} requires ${link.name} at ${link.url}, the release ${tag} lists no ${sibling}`);
+      if (published.url !== link.url) throw new Stop(`${file} requires ${link.name} at ${link.url}, the release ${tag} publishes ${sibling} at ${published.url ?? 'no URL'}`);
+      step(`${file}: its Requires-Dist of ${link.name} is the published asset of ${sibling}, ${link.url}`);
+    }
+  }
+}
+
+/** Step 3: download the assets of the release into `folder/assets`, check the wheels and install the assets in clean consumer projects. */
 function proveInstall(ctx, tag, version, folder, release, step) {
   const assets = path.join(folder, 'assets');
   mkdirSync(assets, { recursive: true });
   for (const { id, name } of release.assets) downloadAsset({ cwd: ctx.root, env: ctx.env }, ctx.config.repositoryUrl, id, path.join(assets, name));
   step(`downloaded [${readdirSync(assets).sort().join(', ')}] from the release ${tag}`);
+  proveWheels(ctx, tag, version, assets, release, step);
   const count = installConsumers(ctx, version, assets, text => step(text));
   step(`installed and checked ${count} packages from the release assets`);
 }

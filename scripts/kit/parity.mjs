@@ -50,6 +50,9 @@ export function checkParity(root, { execute = true, env = process.env, say = () 
   const { codes, findings: unreadable } = readCodes(model, root);
   if (unreadable.length) return { findings: unreadable, ledger };
   for (const profile of model.narrow) say(`profile ${profile.name} omits ${profile.omitted.join(', ')}: ${profile.reason}`);
+  for (const unit of model.config.units.filter(entry => entry.kind === 'suite' && entry.admit !== undefined)) {
+    for (const entry of model.notAdmitted(unit)) say(`unit ${unit.id} does not run ${entry.name} for ${entry.omitted.join(', ')}: ${unit.admit} lists ${entry.list.join(', ')}`);
+  }
   const executed = execute ? runBindings(model, root, { env, files, say }) : { ledger, findings: [] };
   say('check the units against the tree');
   const findings = [

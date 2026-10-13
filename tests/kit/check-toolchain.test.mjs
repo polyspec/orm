@@ -115,7 +115,7 @@ test('the tools to check come from the arguments; an undeclared tool, an unknown
   assert.equal(undeclared.status, 1);
   assert.match(undeclared.stderr, /go is not declared; declare it in config\/toolchain\.json or in its file, or leave it out of the tools to check/);
   const unknown = check(bare, stubs.env, 'make');
-  assert.match(unknown.stderr, /unknown tool make; the tools are node, npm, go, rust, php, python, composer, ruff, cargoAudit, govulncheck/);
+  assert.match(unknown.stderr, /unknown tool make; the tools are node, npm, go, rust, php, python, composer, ruff, uv, phpunit, cargoAudit, govulncheck/);
 
   const nothing = check(toolchainCheckout(t), stubs.env);
   assert.equal(nothing.status, 1);
@@ -133,4 +133,13 @@ test('the make target toolchain-check passes the tools to the check', () => {
   const dry = spawnSync('make', ['-n', '--no-print-directory', '-f', 'scripts/kit/kit.mk', 'toolchain-check', 'TOOLS=npm go'], { cwd: path.join(path.dirname(new URL(import.meta.url).pathname), '../..'), encoding: 'utf8' });
   assert.equal(dry.status, 0, dry.stderr);
   assert.equal(dry.stdout.trim(), 'node scripts/kit/check-toolchain.mjs npm go');
+});
+
+test('uv is probed by its version line, and a uv of another release names the declaring file and the fix', (t) => {
+  const root = toolchainCheckout(t, { 'config/toolchain.json': JSON.stringify({ schema: 1, uv: { version: '0.12.11', sha256: { 'linux-x64': 'a'.repeat(64) } } }) });
+  const same = versionStubs(t, { uv: 'uv 0.12.11 (4b53f66b7 2026-09-08 aarch64-apple-darwin)' });
+  assert.deepEqual(toolchainVersions(['uv'], { root, env: same.env, run: undefined }).uv, '0.12.11');
+  assert.deepEqual(toolchainMismatches(['uv'], { root, env: same.env }), []);
+  const older = versionStubs(t, { uv: 'uv 0.12.10 (4b53f66b7 2026-09-08 aarch64-apple-darwin)' });
+  assert.deepEqual(toolchainMismatches(['uv'], { root, env: older.env }), ['uv: 0.12.10 runs here and config/toolchain.json uv declares 0.12.11; fix: make install-tools, and var/tools/bin first on PATH']);
 });

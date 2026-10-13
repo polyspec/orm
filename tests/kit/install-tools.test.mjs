@@ -1,5 +1,5 @@
-// Tests of scripts/kit/install-tools.mjs: each declared tool is installed into var/tools with PATH stubs (npm, go, python,
-// curl), wrappers are executable files and no symbolic link is written, a second run installs nothing, a changed
+// Tests of scripts/kit/install-tools.mjs: each declared tool is installed into var/tools with stubs (npm, go, curl on PATH,
+// and the uv of a release archive), wrappers are executable files and no symbolic link is written, a second run installs nothing, a changed
 // declaration replaces the tool, and a failure names the expected and the actual value.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -9,7 +9,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { goToolchainModule } from '../../scripts/kit/install-go.mjs';
 import { toolchainCheckout } from './toolchain-checkout.mjs';
-import { pythonBuild, ruffWheel, toolchainStubs } from './toolchain-stubs.mjs';
+import { ruffWheel, toolchainStubs, uvRelease } from './toolchain-stubs.mjs';
 
 const MODULE = goToolchainModule('1.27.1');
 const install = (root, env, ...tools) => spawnSync(process.execPath, ['scripts/kit/install-tools.mjs', ...tools], { cwd: root, env, encoding: 'utf8' });
@@ -181,35 +181,35 @@ test('the Go toolchain module names the platform and refuses an unsupported one'
 // The ruff of the declaration: its exact version and the sha256 of its wheel, under the platform key of this machine.
 const ruffDigest = version => createHash('sha256').update(ruffWheel(version)).digest('hex');
 const ruffConfig = (version = '0.16.10', digest = ruffDigest(version)) => ({ version, sha256: { [`${process.platform}-${process.arch}`]: digest } });
-const ruffFiles = py => ({ 'config/toolchain.json': config({ python: '3.14', pythonBuild: py.declared, ruff: ruffConfig() }) });
-// The calls of the installs: the version probes of the Python are not installs.
-const installCalls = stubs => stubs.calls().filter(line => !line.includes('--version'));
+const PYTHON_BUILD = { version: '3.14.8' };
+const ruffFiles = uv => ({ 'config/toolchain.json': config({ python: '3.14', pythonBuild: PYTHON_BUILD, uv: uv.declared, ruff: ruffConfig() }) });
+// The calls of the installs: the version probes and the lookups of the installed Python are not installs.
+const installCalls = stubs => stubs.calls().filter(line => !line.includes('--version') && !line.startsWith('uv python find'));
 const RUFF_WHEEL = version => path.join('var/tools/wheels', `ruff-${version}-py3-none-any.whl`);
 
-test('ruff is downloaded with its sha256 checked, installed into a virtual environment of var/tools/bin/python3 and kept by a second run', (t) => {
-  const py = pythonBuild(t);
-  const root = toolchainCheckout(t, ruffFiles(py));
-  const stubs = toolchainStubs(t, { downloads: { [py.url]: py.archive } });
+test('ruff is downloaded with its sha256 checked, installed by uv into a virtual environment of var/tools/bin/python3 and kept by a second run', (t) => {
+  const uv = uvRelease(t);
+  const root = toolchainCheckout(t, ruffFiles(uv));
+  const stubs = toolchainStubs(t, { downloads: { [uv.url]: uv.archive } });
   const first = install(root, stubs.env);
   assert.equal(first.status, 0, first.stderr);
   const calls = installCalls(stubs);
-  assert.match(calls.find(line => line.startsWith('python3.14 -m venv')), /^python3\.14 -m venv --copies .*var\/tools\/python\.next-/);
+  assert.match(calls.find(line => line.startsWith('uv venv')), new RegExp(`^uv venv --quiet --python ${path.join(root, 'var/tools/bin/python3').replaceAll('.', '\\.')} .*var/tools/python\\.next-`));
   assert.match(calls.find(line => line.includes(' pip download ')), /^python3\.14 -m pip download --no-deps .*--only-binary :all: --require-hashes -r .* -d .*var\/tools\/wheels$/);
-  assert.equal(calls.find(line => line.startsWith('venv-python')), `venv-python -m pip install --quiet --no-index --no-deps ${path.join(root, RUFF_WHEEL('0.16.10'))}`);
+  assert.match(calls.find(line => line.startsWith('uv pip install')), new RegExp(`^uv pip install --quiet --python .*var/tools/python\\.next-[^ ]*/bin/python --no-index --no-deps ${path.join(root, RUFF_WHEEL('0.16.10')).replaceAll('.', '\\.')}$`));
   assert.equal(run(path.join(root, 'var/tools/bin/ruff'), stubs.env), 'ruff 0.16.10');
-  noSymlinks(path.join(root, 'var/tools'));
   assert.equal(install(root, stubs.env).status, 0);
   assert.equal(installCalls(stubs).length, calls.length, 'a second run starts no install');
 
-  writeFileSync(path.join(root, 'config/toolchain.json'), config({ python: '3.14', pythonBuild: py.declared, ruff: ruffConfig('0.17.0') }));
+  writeFileSync(path.join(root, 'config/toolchain.json'), config({ python: '3.14', pythonBuild: PYTHON_BUILD, uv: uv.declared, ruff: ruffConfig('0.17.0') }));
   assert.equal(install(root, stubs.env).status, 0);
   assert.equal(run(path.join(root, 'var/tools/bin/ruff'), stubs.env), 'ruff 0.17.0');
 });
 
 test('a ruff wheel whose sha256 is not declared is removed, and the failure names both digests', (t) => {
-  const py = pythonBuild(t);
-  const root = toolchainCheckout(t, { 'config/toolchain.json': config({ python: '3.14', pythonBuild: py.declared, ruff: ruffConfig('0.16.10', '0'.repeat(64)) }) });
-  const result = install(root, toolchainStubs(t, { downloads: { [py.url]: py.archive } }).env);
+  const uv = uvRelease(t);
+  const root = toolchainCheckout(t, { 'config/toolchain.json': config({ python: '3.14', pythonBuild: PYTHON_BUILD, uv: uv.declared, ruff: ruffConfig('0.16.10', '0'.repeat(64)) }) });
+  const result = install(root, toolchainStubs(t, { downloads: { [uv.url]: uv.archive } }).env);
   assert.equal(result.status, 1);
   assert.match(result.stderr, new RegExp(`${RUFF_WHEEL('0.16.10').replaceAll('.', '\\.')} has the sha256 ${ruffDigest('0.16.10')}, config/toolchain\\.json ruff declares ${'0'.repeat(64)}; the file is removed`));
   assert.equal(existsSync(path.join(root, RUFF_WHEEL('0.16.10'))), false);
@@ -217,9 +217,9 @@ test('a ruff wheel whose sha256 is not declared is removed, and the failure name
 });
 
 test('ruff of another release than its installation prints fails with the expected and the actual release', (t) => {
-  const py = pythonBuild(t);
-  const root = toolchainCheckout(t, ruffFiles(py));
-  const wrong = install(root, toolchainStubs(t, { downloads: { [py.url]: py.archive }, extra: { STUB_RUFF_SHOWS: '0.15.0' } }).env);
+  const uv = uvRelease(t);
+  const root = toolchainCheckout(t, ruffFiles(uv));
+  const wrong = install(root, toolchainStubs(t, { downloads: { [uv.url]: uv.archive }, extra: { STUB_RUFF_SHOWS: '0.15.0' } }).env);
   assert.equal(wrong.status, 1);
   assert.match(wrong.stderr, /the installation of ruff 0\.16\.10 into .* prints 0\.15\.0; expected 0\.16\.10/);
 });
@@ -280,7 +280,7 @@ test('the named tools are installed alone, and an unknown or an undeclared name 
   assert.ok(stubs.calls().every(line => !line.startsWith('python3.14')), 'ruff was not installed');
   const unknown = install(root, stubs.env, 'make');
   assert.equal(unknown.status, 1);
-  assert.match(unknown.stderr, /unknown tool make; the tools are python, pythonBackend, npm, go, ruff, composer, cargoAudit, govulncheck/);
+  assert.match(unknown.stderr, /unknown tool make; the tools are python, pythonBackend, npm, go, ruff, uv, composer, phpunit, cargoAudit, govulncheck/);
   const undeclared = install(root, stubs.env, 'go');
   assert.equal(undeclared.status, 1);
   assert.match(undeclared.stderr, /go is not declared; declare it in config\/toolchain\.json or in its file, or leave it out of the tools to install/);
@@ -324,21 +324,21 @@ test('an audit tool that prints another release fails with the expected and the 
   assert.match(result.stderr, /the installation of cargo-audit 0\.22\.2 into .* prints 0\.21\.0; expected 0\.22\.2/);
 });
 
-test('every declared tool is installed in the order npm, Go, Python, ruff, Composer, cargo-audit, govulncheck', (t) => {
+test('every declared tool is installed in the order npm, Go, uv, Python, ruff, Composer, cargo-audit, govulncheck', (t) => {
   const phar = path.join(toolchainCheckout(t), 'phar');
   writeFileSync(phar, 'phar');
   const sha256 = createHash('sha256').update('phar').digest('hex');
-  const py = pythonBuild(t);
+  const uv = uvRelease(t);
   const root = toolchainCheckout(t, {
     'package.json': '{ "packageManager": "npm@12.2.0" }',
     'go.mod': 'module example.com/fixture\n\ngo 1.27.1\n',
-    'config/toolchain.json': config({ python: '3.14', pythonBuild: py.declared, go: { mod: 'go.mod' }, ruff: ruffConfig(), composer: { version: '2.10.3', sha256 }, cargoAudit: '0.22.2', govulncheck: '1.1.4' }),
+    'config/toolchain.json': config({ python: '3.14', pythonBuild: PYTHON_BUILD, uv: uv.declared, go: { mod: 'go.mod' }, ruff: ruffConfig(), composer: { version: '2.10.3', sha256 }, cargoAudit: '0.22.2', govulncheck: '1.1.4' }),
   });
-  const stubs = toolchainStubs(t, { downloads: { 'https://getcomposer.org/download/2.10.3/composer.phar': phar, [py.url]: py.archive } });
+  const stubs = toolchainStubs(t, { downloads: { 'https://getcomposer.org/download/2.10.3/composer.phar': phar, [uv.url]: uv.archive } });
   const result = install(root, stubs.env);
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(result.stdout.split('\n').filter(line => /: installed /.test(line)).map(line => line.split(':')[0].replace('[install-tools] ', '')), ['npm', 'Go', 'Python', 'ruff', 'Composer', 'cargo-audit', 'govulncheck']);
-  assert.deepEqual(readdirSync(path.join(root, 'var/tools/bin')).sort(), ['composer', 'go', 'gofmt', 'npm', 'npx', 'python3', 'ruff']);
+  assert.deepEqual(result.stdout.split('\n').filter(line => /: installed /.test(line)).map(line => line.split(':')[0].replace('[install-tools] ', '')), ['npm', 'Go', 'uv', 'Python', 'ruff', 'Composer', 'cargo-audit', 'govulncheck']);
+  assert.deepEqual(readdirSync(path.join(root, 'var/tools/bin')).sort(), ['composer', 'go', 'gofmt', 'npm', 'npx', 'python3', 'ruff', 'uv']);
   const calls = installCalls(stubs).length;
   const again = install(root, stubs.env);
   assert.equal(again.status, 0, again.stderr);

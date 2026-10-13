@@ -1,6 +1,7 @@
 // Stubs of the Python tool of the wheel tests. `-m pip wheel DIR SRC` writes the wheel of SRC into the directory after `-w`,
-// with the Requires-Dist lines that the JSON file STUB_WHEEL_REQUIRES_FILE holds. `-m pip download ... -d DIR` writes the
-// build backend file BACKEND_FILE with BACKEND_BYTES into DIR. Each pip call is appended as a JSON line to STUB_PYTHON_LOG
+// with the Requires-Dist lines that the JSON file STUB_WHEEL_REQUIRES_FILE holds (an array for every wheel, or an object from each
+// distribution name to its lines). `-m pip download ... -d DIR` writes the build backend file BACKEND_FILE with BACKEND_BYTES
+// into DIR. Each pip call is appended as a JSON line to STUB_PYTHON_LOG
 // when that variable is set, with the requirements file of a `-r` argument read at call time. No test reaches an index.
 export const BACKEND_FILE = 'setuptools-84.0.0-py3-none-any.whl';
 export const BACKEND_BYTES = 'setuptools 84.0.0 stand-in of the wheel tests\n';
@@ -15,7 +16,9 @@ function pipWheel(args) {
   const text = fs.readFileSync(path.join(source, 'pyproject.toml'), 'utf8');
   const name = /^name = "(.*)"$/m.exec(text)[1];
   const version = /^version = "(.*)"$/m.exec(text)[1];
-  const requires = process.env.STUB_WHEEL_REQUIRES_FILE && fs.existsSync(process.env.STUB_WHEEL_REQUIRES_FILE) ? JSON.parse(fs.readFileSync(process.env.STUB_WHEEL_REQUIRES_FILE, 'utf8')) : [];
+  // The file holds the Requires-Dist lines of every wheel, or an object from each distribution name to its lines.
+  const given = process.env.STUB_WHEEL_REQUIRES_FILE && fs.existsSync(process.env.STUB_WHEEL_REQUIRES_FILE) ? JSON.parse(fs.readFileSync(process.env.STUB_WHEEL_REQUIRES_FILE, 'utf8')) : [];
+  const requires = Array.isArray(given) ? given : (given[name] ?? []);
   const distribution = name.replace(/[^\\w\\d.]+/g, '_');
   const folder = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'stub-wheel-'));
   fs.mkdirSync(path.join(folder, distribution + '-' + version + '.dist-info'));

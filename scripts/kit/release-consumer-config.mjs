@@ -38,6 +38,10 @@ function wheelProblems(consumer, names, problems) {
     problems.push('consumers.wheel.polyspec needs an object from each polyspec distribution name to its repository URL');
   } else {
     for (const [name, url] of Object.entries(consumer.polyspec)) {
+      if (names.includes(name)) {
+        problems.push(`consumers.wheel.polyspec.${name} names the wheel package ${name} of this repository; a sibling of the release needs no declaration`);
+        continue;
+      }
       if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name)) problems.push(`consumers.wheel.polyspec.${name} needs a distribution name`);
       if (typeof url !== 'string' || !REPOSITORY.test(url)) problems.push(`consumers.wheel.polyspec.${name} is ${JSON.stringify(url)}, the repository of a polyspec package is https://github.com/polyspec/<repo>`);
     }

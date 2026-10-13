@@ -1,16 +1,19 @@
 // Tests of scripts/kit/parity.mjs, the language-parity check. Each test builds a mini repository of five implementations
 // (go, rust, ts, php, python) whose declaration config/parity.json passes, changes one dimension of it and expects the
 // finding of exactly one rule: R1 to R11 and the declaration errors. Stub commands stand in for go, cargo, php and the
-// Python of var/tools; the TypeScript tests run on the real node. A stub prints the `PASS`/`FAIL` lines of the test file it
-// runs (go: as `go test -json` events of the subtests of the -run symbol) and exits with the status of its `EXIT <n>` line (go: `EXIT <symbol> <n>`).
+// Python of var/tools, and print the native output of their tool for the cases of the test file they run; the TypeScript
+// tests are node:test files that run on the real node. A stub reads the lines `PASS <name>` and `FAIL <name>` of its test
+// file (the name of a native test: a go subtest, a libtest path, a PHPUnit or unittest method) and exits with the status of
+// its `EXIT <n>` line (go: `EXIT <symbol> <n>`).
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { checkParity } from '../../scripts/kit/parity.mjs';
+import { runOf } from '../../scripts/kit/parity-runners.mjs';
 import { tree } from './tree.mjs';
 
 const KIT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../scripts/kit');
@@ -56,41 +59,71 @@ console.log(JSON.stringify({ Action: exit ? 'fail' : 'pass', Test: symbol }));
 process.exit(exit);
 `;
 
-// The stub of cargo: `cargo test --manifest-path <crate>/Cargo.toml (--test <name> | --lib) -- --exact <symbol> --nocapture`
-// reads tests/<name>.rs or src/lib.rs of the crate. It writes what cargo 1.98 writes, observed with a real crate: the build
-// lines on standard error; on standard output `running 1 test`, then `test <symbol> ... ` without a line break, so the first
-// line that the test prints with println! continues that line; the lines of eprintln! (`STDERR <line>` in the file) on
-// standard error; then the result lines.
+// The stub of cargo: `cargo test --manifest-path <crate>/Cargo.toml (--test <name> | --lib) -- --test-threads=1 <filter>`
+// reads tests/<name>.rs or src/lib.rs of the crate and runs each test whose name starts with the filter. It writes what cargo
+// writes for serial tests: `running <n> tests`, then `test <name> ... ok` or `FAILED` for each test, then the result line.
 const CARGO_STUB = `#!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
 const args = process.argv.slice(2);
 const crate = path.dirname(args[args.indexOf('--manifest-path') + 1]);
 const file = args.includes('--lib') ? path.join(crate, 'src/lib.rs') : path.join(crate, 'tests', args[args.indexOf('--test') + 1] + '.rs');
-const symbol = args[args.indexOf('--exact') + 1];
+const filter = args[args.length - 1];
+const tests = fs.readFileSync(file, 'utf8').split('\\n').map(line => /^(PASS|FAIL) (\\S+)$/.exec(line)).filter(match => match && match[2].startsWith(filter));
 process.stderr.write('   Compiling codec v0.1.0\\n    Finished \\x60test\\x60 profile [unoptimized + debuginfo] target(s) in 0.01s\\n     Running ' + file + '\\n');
-process.stdout.write('\\nrunning 1 test\\ntest ' + symbol + ' ... ');
+process.stdout.write('\\nrunning ' + tests.length + ' tests\\n');
 let exit = 0;
+for (const [, outcome, name] of tests) {
+  process.stdout.write('test ' + name + ' ... ' + (outcome === 'PASS' ? 'ok' : 'FAILED') + '\\n');
+  if (outcome === 'FAIL') exit = 1;
+}
 for (const line of fs.readFileSync(file, 'utf8').split('\\n')) {
-  if (/^(PASS|FAIL) /.test(line)) process.stdout.write(line + '\\n');
-  if (/^STDERR /.test(line)) process.stderr.write(line.slice('STDERR '.length) + '\\n');
   const status = /^EXIT (\\d+)$/.exec(line);
   if (status) exit = Number(status[1]);
 }
-process.stdout.write(exit ? 'FAILED\\n' : 'ok\\n\\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\\n\\n');
+process.stdout.write(exit ? '\\nfailures:\\n\\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\\n\\n' : '\\ntest result: ok. ' + tests.length + ' passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\\n\\n');
 process.exit(exit ? 101 : 0);
 `;
 
-// The stub of php and python3: it prints the PASS and FAIL lines of the test file, its last argument, and exits with its EXIT
-// line. With REQUIRE_PYTHONPATH it reports nothing and exits with 3 unless PYTHONPATH is python/src and -B is its first argument.
-const LINE_STUB = `#!/usr/bin/env node
+// The stub of PHPUnit (`php <args> vendor/bin/phpunit --teamcity <test>`): each `PASS <name>` and `FAIL <name>` line of the test
+// file is a test method, which PHPUnit reports as TeamCity messages; a `##teamcity[` line of the file is printed as it is. It
+// exits with 1 when a test failed.
+const PHP_STUB = `#!/usr/bin/env node
+const fs = require('fs');
+const args = process.argv.slice(2);
+const file = args[args.length - 1];
+let exit = 0;
+const teamcity = (name, attributes) => '##teamcity[' + name + ' ' + Object.entries(attributes).map(([key, value]) => key + "='" + value + "'").join(' ') + ']';
+for (const line of fs.readFileSync(file, 'utf8').split('\\n')) {
+  const test = /^(PASS|FAIL) (\\S+)$/.exec(line);
+  if (test) {
+    const location = 'php_qn://' + file + '::\\\\CodecTest::' + test[2];
+    console.log(teamcity('testStarted', { name: test[2], locationHint: location }));
+    if (test[1] === 'FAIL') { console.log(teamcity('testFailed', { name: test[2], message: 'Failed asserting', details: 'at ' + file })); exit = 1; }
+    console.log(teamcity('testFinished', { name: test[2], duration: '1' }));
+  }
+  if (line.startsWith('##teamcity[')) console.log(line);
+  const status = /^EXIT (\\d+)$/.exec(line);
+  if (status) exit = Number(status[1]);
+}
+process.exit(exit);
+`;
+
+// The stub of Python (`python3 <args> -m unittest -v <test>`), which writes its verbose results to standard error: a line
+// `<method> (<module>.<class>.<method>) ... ok` for each `PASS <method>` line of the test file, `FAIL` for a `FAIL` line.
+// With REQUIRE_PYTHONPATH it reports nothing and exits with 3 unless PYTHONPATH is python/src and -B is its first argument.
+const PY_STUB = `#!/usr/bin/env node
 const fs = require('fs');
 const args = process.argv.slice(2);
 const file = args[args.length - 1];
 if (process.env.REQUIRE_PYTHONPATH && !(process.env.PYTHONPATH === 'python/src' && args[0] === '-B')) process.exit(3);
 let exit = 0;
 for (const line of fs.readFileSync(file, 'utf8').split('\\n')) {
-  if (/^(PASS|FAIL) /.test(line)) console.log(line);
+  const test = /^(PASS|FAIL) (\\S+)$/.exec(line);
+  if (test) {
+    process.stderr.write(test[2] + ' (test_codec.Codec.' + test[2] + ') ... ' + (test[1] === 'PASS' ? 'ok' : 'FAIL') + '\\n');
+    if (test[1] === 'FAIL') exit = 1;
+  }
   const status = /^EXIT (\\d+)$/.exec(line);
   if (status) exit = Number(status[1]);
 }
@@ -98,7 +131,7 @@ process.exit(exit);
 `;
 
 const STUBS = mkdtempSync(path.join(tmpdir(), 'kit-parity-stubs-'));
-for (const [name, text] of [['go', GO_STUB], ['cargo', CARGO_STUB], ['php', LINE_STUB]]) {
+for (const [name, text] of [['go', GO_STUB], ['cargo', CARGO_STUB], ['php', PHP_STUB]]) {
   writeFileSync(path.join(STUBS, name), text);
   chmodSync(path.join(STUBS, name), 0o755);
 }
@@ -106,6 +139,9 @@ test.after(() => rmSync(STUBS, { recursive: true, force: true }));
 const ENV = { ...process.env, PATH: `${STUBS}${path.delimiter}${process.env.PATH}` };
 
 const snapshot = entries => `${JSON.stringify(Object.fromEntries(entries.map(([id, exported]) => [id, { exported }])), null, 2)}\n`;
+
+// A node:test file of the codec: its two cases.
+const NODE_CODEC = "import test from 'node:test';\ntest('empty', () => {});\ntest('ascii', () => {});\n";
 
 const FILES = {
   '.gitignore': 'var/\n',
@@ -117,21 +153,22 @@ const FILES = {
   'go/width_test.go': 'PASS TestWidth/narrow\nPASS TestWidth/wide\n',
   'tests/vectors/size.json': JSON.stringify(['small']),
   'go/size_test.go': 'PASS TestSize/small\n',
-  'rust/tests/size.rs': 'PASS size/small\n',
+  'rust/tests/size.rs': 'PASS vectors::small\n',
   'go/codes.go': 'package codec\n\nconst (\n\tCodeConfig = "CONFIG"\n\tCodeDecode = "CODEC_DECODE"\n)\n',
   'rust/Cargo.toml': '[package]\nname = "codec"\n',
-  'rust/src/lib.rs': 'PASS width/narrow\nPASS width/wide\n',
+  'rust/src/lib.rs': 'PASS width::tests::vectors::narrow\nPASS width::tests::vectors::wide\n',
   'rust/src/codes.rs': 'pub const CONFIG: &str = "CONFIG";\npub const CODEC_DECODE: &str = "CODEC_DECODE";\n',
-  // The first line continues `test vectors ... ` of libtest; the second goes to standard error.
-  'rust/tests/codec.rs': 'PASS codec/empty elapsed=1ms\nSTDERR PASS codec/ascii elapsed=1ms\n',
+  'rust/tests/codec.rs': 'PASS vectors::empty\nPASS vectors::ascii\n',
   'ts/src/index.ts': 'export const encode = () => 1;\n',
   'ts/src/codes.ts': "export const CONFIG = 'CONFIG';\nexport const CODEC_DECODE = 'CODEC_DECODE';\n",
-  'ts/tests/codec.mjs': "console.log('RUN codec/empty deadline=1m0s');\nconsole.log('PASS codec/empty elapsed=1ms');\nconsole.log('PASS codec/ascii elapsed=1ms');\n",
+  'ts/tests/codec.mjs': NODE_CODEC,
   'php/src/Code.php': "<?php\nfinal class Code\n{\n    const CONFIG = 'CONFIG';\n    const CODEC_DECODE = 'CODEC_DECODE';\n}\n",
-  'php/tests/codec.php': 'PASS codec/empty elapsed=1ms\nPASS codec/ascii elapsed=1ms\n',
+  'php/tests/codec.php': 'PASS test_empty\nPASS test_ascii\n',
+  'php/composer.json': '{}\n',
+  'php/vendor/bin/phpunit': '',
   'python/codes.py': 'CONFIG = "CONFIG"\nCODEC_DECODE = "CODEC_DECODE"\n',
-  'python/tests/test_codec.py': 'PASS codec/empty\nPASS codec/ascii\n',
-  'var/tools/bin/python3': LINE_STUB,
+  'python/tests/test_codec.py': 'PASS test_empty\nPASS test_ascii\n',
+  'var/tools/bin/python3': PY_STUB,
   'contracts/symbols/go.json': snapshot([['go/codec.go::Encode', true], ['go/codec.go::encodeHost', false]]),
   'contracts/symbols/rust.json': snapshot([['rust/src/lib.rs::encode', true], ['rust/src/lib.rs::hex_upper', true]]),
   'contracts/symbols/ts.json': snapshot([['ts/src/index.ts::encode', true]]),
@@ -271,11 +308,11 @@ test('each runner runs the native test of its binding', TIMEOUT, (t) => {
   const { ledger } = checkParity(root, { execute: true, env: ENV, say: () => {} });
   const commands = Object.fromEntries(ledger.runs.map(run => [`${run.unit} ${run.implementation}`, { cwd: run.cwd, command: [run.command, ...run.args] }]));
   assert.deepEqual(commands['codec go'], { cwd: 'go', command: ['go', 'test', '-json', '-count=1', '-run', '^TestCodec$', './'] });
-  assert.deepEqual(commands['codec rust'], { cwd: '.', command: ['cargo', 'test', '--manifest-path', 'rust/Cargo.toml', '--test', 'codec', '--', '--exact', 'vectors', '--nocapture', '--test-threads=1'] });
-  assert.deepEqual(commands['width rust'], { cwd: '.', command: ['cargo', 'test', '--manifest-path', 'rust/Cargo.toml', '--lib', '--', '--exact', 'width::tests::vectors', '--nocapture', '--test-threads=1'] });
-  assert.deepEqual(commands['codec ts'], { cwd: '.', command: [process.execPath, 'ts/tests/codec.mjs'] });
-  assert.deepEqual(commands['codec php'], { cwd: '.', command: ['php', 'php/tests/codec.php'] });
-  assert.deepEqual(commands['codec python'], { cwd: '.', command: [path.join(root, 'var/tools/bin/python3'), 'python/tests/test_codec.py'] });
+  assert.deepEqual(commands['codec rust'], { cwd: '.', command: ['cargo', 'test', '--manifest-path', 'rust/Cargo.toml', '--test', 'codec', '--', '--test-threads=1', 'vectors::'] });
+  assert.deepEqual(commands['width rust'], { cwd: '.', command: ['cargo', 'test', '--manifest-path', 'rust/Cargo.toml', '--lib', '--', '--test-threads=1', 'width::tests::vectors::'] });
+  assert.deepEqual(commands['codec ts'], { cwd: '.', command: [process.execPath, '--test', '--test-reporter=tap', 'ts/tests/codec.mjs'] });
+  assert.deepEqual(commands['codec php'], { cwd: '.', command: ['php', 'php/vendor/bin/phpunit', '--teamcity', '--no-configuration', 'php/tests/codec.php'] });
+  assert.deepEqual(commands['codec python'], { cwd: '.', command: [path.join(root, 'var/tools/bin/python3'), '-m', 'unittest', '-v', 'python/tests/test_codec.py'] });
 });
 
 test('an implementation declares the command, the arguments and the environment of its runner', TIMEOUT, (t) => {
@@ -287,16 +324,16 @@ test('an implementation declares the command, the arguments and the environment 
     implementation('rust').args = ['--features', 'vectors'];
     return config;
   };
-  const files = { '.gitignore': 'var/\n.venv/\n', 'python/.venv/bin/python': LINE_STUB };
+  const files = { '.gitignore': 'var/\n.venv/\n', 'python/.venv/bin/python': PY_STUB };
   const root = repository(t, { files, edit: declare(true) });
   chmodSync(path.join(root, 'python/.venv/bin/python'), 0o755);
   const { findings, ledger } = checkParity(root, { execute: true, env: ENV, say: () => {} });
   assert.deepEqual(findings, []);
   const commands = Object.fromEntries(ledger.runs.map(run => [`${run.unit} ${run.implementation}`, [run.command, ...run.args]]));
-  assert.deepEqual(commands['codec python'], [path.join(root, 'python/.venv/bin/python'), '-B', 'python/tests/test_codec.py']);
-  assert.deepEqual(commands['codec php'], ['php', '-d', 'extension=php/modules/codec.so', 'php/tests/codec.php']);
+  assert.deepEqual(commands['codec python'], [path.join(root, 'python/.venv/bin/python'), '-B', '-m', 'unittest', '-v', 'python/tests/test_codec.py']);
+  assert.deepEqual(commands['codec php'], ['php', '-d', 'extension=php/modules/codec.so', 'php/vendor/bin/phpunit', '--teamcity', '--no-configuration', 'php/tests/codec.php']);
   assert.deepEqual(commands['codec go'], ['go', 'test', '-tags', 'parity', '-json', '-count=1', '-run', '^TestCodec$', './']);
-  assert.deepEqual(commands['codec rust'], ['cargo', 'test', '--features', 'vectors', '--manifest-path', 'rust/Cargo.toml', '--test', 'codec', '--', '--exact', 'vectors', '--nocapture', '--test-threads=1']);
+  assert.deepEqual(commands['codec rust'], ['cargo', 'test', '--features', 'vectors', '--manifest-path', 'rust/Cargo.toml', '--test', 'codec', '--', '--test-threads=1', 'vectors::']);
   assert.equal(process.env.REQUIRE_PYTHONPATH, undefined, 'the environment of an implementation reaches only its runs');
   const other = repository(t, { files, edit: declare(false) });
   chmodSync(path.join(other, 'python/.venv/bin/python'), 0o755);
@@ -312,7 +349,7 @@ test('a runner value references the invoking environment as ${NAME}, resolved wh
     implementation('php').args = ['-d', 'extension=${PARITY_PHP}/codec.so'];
     return config;
   };
-  const files = { '.gitignore': 'var/\n.venv/\n', 'python/.venv/bin/python': LINE_STUB };
+  const files = { '.gitignore': 'var/\n.venv/\n', 'python/.venv/bin/python': PY_STUB };
   const root = repository(t, { files, edit: declare });
   chmodSync(path.join(root, 'python/.venv/bin/python'), 0o755);
   const env = { ...ENV, PARITY_VENV: path.join(root, 'python/.venv'), PARITY_PYTHON: 'python', PARITY_PHP: 'php/modules' };
@@ -320,9 +357,9 @@ test('a runner value references the invoking environment as ${NAME}, resolved wh
   const { findings, ledger } = checkParity(root, { execute: true, env, say: line => lines.push(line) });
   assert.deepEqual(findings, []);
   const commands = Object.fromEntries(ledger.runs.map(run => [`${run.unit} ${run.implementation}`, [run.command, ...run.args]]));
-  assert.deepEqual(commands['codec python'], [path.join(root, 'python/.venv/bin/python'), '-B', 'python/tests/test_codec.py']);
-  assert.deepEqual(commands['codec php'], ['php', '-d', 'extension=php/modules/codec.so', 'php/tests/codec.php']);
-  assert.ok(lines.includes('run codec php (1 of 2): php -d extension=${PARITY_PHP}/codec.so php/tests/codec.php (in .)'), lines.join('\n'));
+  assert.deepEqual(commands['codec python'], [path.join(root, 'python/.venv/bin/python'), '-B', '-m', 'unittest', '-v', 'python/tests/test_codec.py']);
+  assert.deepEqual(commands['codec php'], ['php', '-d', 'extension=php/modules/codec.so', 'php/vendor/bin/phpunit', '--teamcity', '--no-configuration', 'php/tests/codec.php']);
+  assert.ok(lines.includes('run codec php (1 of 2): php -d extension=${PARITY_PHP}/codec.so php/vendor/bin/phpunit --teamcity --no-configuration php/tests/codec.php (in .)'), lines.join('\n'));
   assert.ok(!lines.some(line => line.includes('php/modules') || line.includes(env.PARITY_VENV)), lines.join('\n'));
   const messages = environment => checkParity(root, { execute: true, env: environment, say: () => {} }).findings.map(finding => `${finding.rule} ${finding.unit} ${finding.implementation}: ${finding.message}`);
   assert.deepEqual(checkParity(root, { execute: false, env: ENV, say: () => {} }).findings, [], 'the declarations do not read the environment');
@@ -369,10 +406,10 @@ test('a support file of an implementation is never a test: it lies in its roots 
     'R6: a node test outside ts, the roots of the node implementations, and outside tests/compare, the comparator roots; move it into the package of its implementation',
   ]);
   // parity-check runs each node, php and python support file once; a harness line in its output is a test that no binding declares.
-  const reporting = check(t, { files: { ...files, 'ts/tests/case.mjs': "console.log('PASS codec/empty');\n", 'php/tests/cases.php': 'FAIL codec/ascii\n' }, edit: declare() });
+  const reporting = check(t, { files: { ...files, 'ts/tests/case.mjs': "import test from 'node:test';\ntest('empty', () => {});\n", 'php/tests/cases.php': 'FAIL test_ascii\n' }, edit: declare() });
   assert.deepEqual(reporting.findings.map(finding => `${finding.rule} ${finding.implementation} ${finding.place}: ${finding.message}`), [
-    'R5 ts ts/tests/case.mjs: the support file reports cases (PASS codec/empty); declare it as the test of a binding',
-    'R5 php php/tests/cases.php: the support file reports cases (FAIL codec/ascii); declare it as the test of a binding',
+    'R5 ts ts/tests/case.mjs: the support file reports cases (empty); declare it as the test of a binding',
+    'R5 php php/tests/cases.php: the support file reports cases (ascii); declare it as the test of a binding',
   ]);
 });
 
@@ -412,9 +449,9 @@ test('R3: a binding that fails, misses a case, adds a case or exits with an erro
   const { findings, ledger } = check(t, {
     files: {
       'go/codec_test.go': 'PASS TestCodec/empty\nFAIL TestCodec/ascii\nEXIT TestCodec 1\n',
-      'ts/tests/codec.mjs': "console.log('PASS codec/empty elapsed=1ms');\nconsole.log('PASS codec/ascii elapsed=1ms');\nconsole.log('PASS codec/latin1 elapsed=1ms');\n",
-      'php/tests/codec.php': 'PASS codec/empty\nPASS codec/ascii\nEXIT 2\n',
-      'python/tests/test_codec.py': 'PASS codec/empty\n',
+      'ts/tests/codec.mjs': `${NODE_CODEC}test('latin1', () => {});\n`,
+      'php/tests/codec.php': 'PASS test_empty\nPASS test_ascii\nEXIT 2\n',
+      'python/tests/test_codec.py': 'PASS test_empty\n',
     },
   });
   assert.deepEqual(keys(findings), ['R3 codec go', 'R3 codec ts', 'R3 codec php', 'R3 codec python']);
@@ -429,18 +466,19 @@ test('R3: a binding that fails, misses a case, adds a case or exits with an erro
 test('R3: a binding whose second run executes other cases or other results than the first fails, naming the cases', TIMEOUT, (t) => {
   // The test counts its runs in var/ (ignored): the first run passes ascii, the second fails it and adds latin1.
   const flaky = [
+    "import test from 'node:test';",
     "import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';",
     'let runs = 0;',
     "try { runs = Number(readFileSync('var/ts-runs', 'utf8')); } catch {}",
     "mkdirSync('var', { recursive: true });",
     "writeFileSync('var/ts-runs', String(runs + 1));",
-    "console.log('PASS codec/empty');",
-    "console.log(runs ? 'FAIL codec/ascii' : 'PASS codec/ascii');",
-    "if (runs) console.log('PASS codec/latin1');",
+    "test('empty', () => {});",
+    "test('ascii', () => { if (runs) throw new Error('flaky'); });",
+    "if (runs) test('latin1', () => {});",
   ].join('\n');
   const { findings, ledger } = check(t, { files: { 'ts/tests/codec.mjs': `${flaky}\n` } });
   assert.deepEqual(keys(findings), ['R3 codec ts']);
-  assert.equal(findings[0].message, 'the second run differs from the first: ascii pass then fail; latin1 only in the second run');
+  assert.equal(findings[0].message, 'the second run differs from the first: exit 0 then 1; ascii pass then fail; latin1 only in the second run');
   assert.deepEqual(ledger.runs.filter(run => run.implementation === 'ts').map(run => run.attempt), [1, 2]);
 });
 
@@ -458,13 +496,13 @@ test('R3: a binding whose runner cannot start fails, and a check of the declarat
 test('R3: a Go package that does not build names the compiler output', TIMEOUT, (t) => {
   const { findings } = check(t, { files: { 'go/codec_test.go': 'BUILD ./codec_test.go:7:2: undefined: undefinedThing\n' } });
   assert.deepEqual(keys(findings), ['R3 codec go', 'R3 width go', 'R3 size go']);
-  assert.equal(findings[0].message, 'exited with 1: # example.com/codec [example.com/codec.test] | ./codec_test.go:7:2: undefined: undefinedThing; not executed: empty, ascii');
+  assert.equal(findings[0].message, 'exited with 1: ./codec_test.go:7:2: undefined: undefinedThing; not executed: empty, ascii');
 });
 
 test('a case name that a runner cannot report, and a Go symbol that is no test function, fail the declaration', TIMEOUT, (t) => {
   const messages = change => check(t, change, { execute: false }).findings.map(finding => `${finding.rule}: ${finding.message}`);
   assert.deepEqual(messages({ files: { 'tests/vectors/codec.json': JSON.stringify({ vectors: [{ name: 'empty' }, { name: 'two words' }, { name: 'a/b' }] }) } }), [
-    'declaration: unit codec: tests/vectors/codec.json: the case "two words" holds whitespace, which no harness line can report',
+    'declaration: unit codec: tests/vectors/codec.json: the case "two words" holds whitespace, which no test name of the check can match',
     'declaration: unit codec: tests/vectors/codec.json: the case "a/b" holds /, which Go nests as a subtest; the unit has a go binding',
   ]);
   assert.deepEqual(messages({ files: { 'tests/vectors/width.json': JSON.stringify(['a/b']) }, edit: (config) => { binding(config, 'width', 'go').symbol = 'Width'; return config; } }), [
@@ -488,7 +526,7 @@ test('R5: a test file of an implementation that no binding runs fails', TIMEOUT,
 
 test('R6: a binding whose test lies outside the roots of its implementation fails', TIMEOUT, (t) => {
   const { findings } = check(t, {
-    files: { 'php/tests/codec.php': null, 'tests/php/codec.php': FILES['php/tests/codec.php'] },
+    files: { 'php/tests/codec.php': null, 'tests/php/codec.php': FILES['php/tests/codec.php'], 'tests/composer.json': '{}\n', 'tests/vendor/bin/phpunit': '' },
     edit: config => { binding(config, 'codec', 'php').test = 'tests/php/codec.php'; return config; },
   });
   assert.deepEqual(keys(findings), ['R6 codec php']);
@@ -502,6 +540,8 @@ test('R6: a test of a runner outside the roots of every implementation of that r
       'php/tests/codec_test.go': 'package php\n',
       'tests/compare/all_test.go': 'package compare\n',
       'tests/compare/codec.php': FILES['php/tests/codec.php'],
+      'tests/composer.json': '{}\n',
+      'tests/vendor/bin/phpunit': '',
       'php/tests/codec.php': null,
     },
     edit: (config) => { binding(config, 'codec', 'php').test = 'tests/compare/codec.php'; return config; },
@@ -686,7 +726,7 @@ test('make parity-check and parity-declarations-check pass without a finding; pa
   assert.equal(passed.status, 0, passed.stdout + passed.stderr);
   assert.match(passed.stdout, /\[parity\] run codec go \(1 of 2\): go test -json -count=1 -run \^TestCodec\$ \.\//);
   assert.match(passed.stdout, /\[parity\] every unit holds in every implementation/);
-  writeFileSync(path.join(root, 'python/tests/test_codec.py'), 'PASS codec/empty\n');
+  writeFileSync(path.join(root, 'python/tests/test_codec.py'), 'PASS test_empty\n');
   assert.equal(make('parity-declarations-check').status, 0, 'the declarations do not run the bindings');
   assert.notEqual(make('parity-check').status, 0);
   const failed = spawnSync(process.execPath, ['scripts/kit/parity.mjs'], { cwd: root, env: ENV, encoding: 'utf8' });
@@ -694,3 +734,111 @@ test('make parity-check and parity-declarations-check pass without a finding; pa
   assert.match(failed.stderr, /\[parity\] R3 not-executed codec python python\/tests\/test_codec\.py: .*not executed: ascii/);
   assert.match(failed.stderr, /\[parity\] 1 findings/);
 });
+
+test('K33 reads the TeamCity messages of a PHPUnit run through the php runner: a class is a group, a method a case (K47)', TIMEOUT, (t) => {
+  // The messages of PHPUnit 11 for a class with a passing and a failing test method, as the php runner reads them.
+  const teamcity = [
+    "##teamcity[testSuiteStarted name='CodecTest' locationHint='php_qn://php/tests/codec.php::\\\\CodecTest' nodeId='1' parentNodeId='0']",
+    "##teamcity[testStarted name='test_empty' locationHint='php_qn://php/tests/codec.php::\\\\CodecTest::test_empty' nodeId='2' parentNodeId='1']",
+    "##teamcity[testFinished name='test_empty' duration='1' nodeId='2' parentNodeId='1']",
+    "##teamcity[testStarted name='test_ascii' locationHint='php_qn://php/tests/codec.php::\\\\CodecTest::test_ascii' nodeId='3' parentNodeId='1']",
+    "##teamcity[testFailed name='test_ascii' message='Failed asserting that false is true.' details='php/tests/codec.php:9' nodeId='3' parentNodeId='1']",
+    "##teamcity[testFinished name='test_ascii' duration='2' nodeId='3' parentNodeId='1']",
+    "##teamcity[testSuiteFinished name='CodecTest' nodeId='1' parentNodeId='0']",
+    'EXIT 1',
+  ].join('\n');
+  const { findings, ledger } = check(t, { files: { 'php/tests/codec.php': `${teamcity}\n` } });
+  assert.deepEqual(keys(findings), ['R3 codec php']);
+  assert.equal(findings[0].message, 'exited with 1; failed: ascii');
+  assert.deepEqual(ledger.cases.filter(entry => entry.implementation === 'php').map(entry => `${entry.case} ${entry.outcome}`), ['empty pass', 'ascii fail']);
+});
+
+test('R3: a case that one run reports twice fails, and the finding names the case (K47)', TIMEOUT, (t) => {
+  const { findings } = check(t, { files: { 'go/codec_test.go': 'PASS TestCodec/empty\nPASS TestCodec/empty\nPASS TestCodec/ascii\n' } });
+  assert.deepEqual(keys(findings), ['R3 codec go']);
+  assert.equal(findings[0].message, 'reported twice in run 1: empty; reported twice in run 2: empty');
+});
+
+test('a case that the admit list of its suite does not name is not run for the implementation, and every run prints it (K47)', TIMEOUT, (t) => {
+  const vectors = JSON.stringify({ vectors: [{ name: 'empty' }, { name: 'ascii', kinds: ['go', 'rust', 'ts', 'php'] }] });
+  const edit = (config) => { config.units.find(unit => unit.id === 'codec').admit = 'kinds'; return config; };
+  const lines = [];
+  const root = repository(t, { files: { 'tests/vectors/codec.json': vectors, 'python/tests/test_codec.py': 'PASS test_empty\n' }, edit });
+  const { findings, ledger } = checkParity(root, { execute: true, env: ENV, say: line => lines.push(line) });
+  assert.deepEqual(findings, []);
+  assert.ok(lines.includes('unit codec does not run ascii for python: kinds lists go, rust, ts, php'), lines.join('\n'));
+  assert.deepEqual(ledger.cases.filter(entry => entry.implementation === 'python').map(entry => entry.case), ['empty']);
+  const reported = check(t, { files: { 'tests/vectors/codec.json': vectors, 'python/tests/test_codec.py': 'PASS test_empty\nPASS test_ascii\n' }, edit });
+  assert.deepEqual(keys(reported.findings), ['R3 codec python']);
+  assert.match(reported.findings[0].message, /not in the suite: ascii/);
+  const declared = (kinds) => check(t, { files: { 'tests/vectors/codec.json': JSON.stringify({ vectors: [{ name: 'empty' }, { name: 'ascii', kinds }] }) }, edit }, { execute: false }).findings.map(finding => `${finding.rule}: ${finding.message}`);
+  assert.deepEqual(declared(['go', 'kotlin']), ['declaration: unit codec: case ascii admits kotlin, which is not an implementation of the profile all']);
+  assert.deepEqual(declared('go'), ['declaration: unit codec: case ascii has kinds that is no array of implementation names']);
+});
+
+test('the PHPUnit run names the configuration of its package, phpunit.xml or phpunit.xml.dist, or none (K47)', TIMEOUT, (t) => {
+  const args = files => runOf({ name: 'php', runner: 'php' }, repository(t, { files }), { implementation: 'php', test: 'php/tests/codec.php' }, 'codec', ENV).args;
+  assert.deepEqual(args({}), ['php/vendor/bin/phpunit', '--teamcity', '--no-configuration', 'php/tests/codec.php']);
+  assert.deepEqual(args({ 'php/phpunit.xml': '<phpunit/>\n' }), ['php/vendor/bin/phpunit', '--teamcity', '--configuration', 'php/phpunit.xml', 'php/tests/codec.php']);
+  assert.deepEqual(args({ 'php/phpunit.xml.dist': '<phpunit/>\n' }), ['php/vendor/bin/phpunit', '--teamcity', '--configuration', 'php/phpunit.xml.dist', 'php/tests/codec.php']);
+});
+
+test('admit: an implementation that admits no case, a key on no case, an empty list and a repeated name are declaration findings (K47)', TIMEOUT, (t) => {
+  const edit = (config) => { config.units.find(unit => unit.id === 'codec').admit = 'kinds'; return config; };
+  const all = ['go', 'rust', 'ts', 'php', 'python'];
+  const findings = (vectors, change = {}) => check(t, { files: { 'tests/vectors/codec.json': JSON.stringify({ vectors }), ...change.files }, edit: change.edit ?? edit }, { execute: false }).findings.map(finding => `${finding.rule} ${finding.message}`);
+  // python admits no case of the suite: the finding names the implementation and the way out.
+  const none = findings([{ name: 'empty', kinds: ['go', 'rust', 'ts', 'php'] }, { name: 'ascii', kinds: ['go', 'rust', 'ts', 'php'] }]);
+  assert.equal(none.length, 1, none.join('\n'));
+  assert.match(none[0], /^declaration unit codec: no case of .* admits python, so the suite runs nothing.*R8/);
+  // An excluded implementation is reported by R8 only.
+  const excluded = findings([{ name: 'empty', kinds: ['go', 'rust', 'ts', 'php'] }, { name: 'ascii', kinds: ['go', 'rust', 'ts', 'php'] }], {
+    files: { 'python/tests/test_codec.py': null },
+    edit: (config) => {
+      edit(config);
+      config.units.find(unit => unit.id === 'codec').bindings = config.units.find(unit => unit.id === 'codec').bindings.filter(entry => entry.implementation !== 'python');
+      config.exclusions.push({ unit: 'codec', implementation: 'python', reason: 'the Python harness reports no cases yet', item: 'T76-1' });
+      return config;
+    },
+  });
+  assert.deepEqual(excluded.map(line => line.split(' ')[0]), ['R8']);
+  // A key that no case has, an empty list and a repeated name.
+  assert.match(findings([{ name: 'empty' }, { name: 'ascii' }]).join('\n'), /^declaration unit codec: .*no case of .* has kinds/m);
+  assert.match(findings([{ name: 'empty', kinds: [] }, { name: 'ascii', kinds: all }]).join('\n'), /declaration unit codec: .*case empty has kinds that is empty/);
+  assert.match(findings([{ name: 'empty', kinds: ['go', 'go', 'rust', 'ts', 'php', 'python'] }, { name: 'ascii', kinds: all }]).join('\n'), /declaration unit codec: .*case empty lists go twice/);
+});
+
+/** A temporary repository of the real tool `python` with the files and the declaration `config`, checked with the wrapper of the checkout. */
+function realPython(t, files, config) {
+  const root = tree(t, { '.gitignore': 'var/\n', ...files, 'config/parity.json': `${JSON.stringify(config, null, 2)}\n` });
+  const wrapper = path.join(KIT, '../..', 'var/tools/bin/python3');
+  if (!existsSync(wrapper)) assert.fail(`${wrapper} does not exist; run make install-tools TOOLS="python pythonBackend"`);
+  mkdirSync(path.join(root, 'var/tools/bin'), { recursive: true });
+  copyFileSync(wrapper, path.join(root, 'var/tools/bin/python3'));
+  chmodSync(path.join(root, 'var/tools/bin/python3'), 0o755);
+  return checkParity(root, { execute: true, env: process.env, say: () => {} });
+}
+
+const UNITTEST_CONFIG = {
+  schema: 1,
+  implementations: [{ name: 'python', runner: 'python', roots: ['python'], tests: ['python/tests/test_*.py'] }],
+  profiles: [{ name: 'all', implementations: ['python'] }],
+  testPatterns: [{ runner: 'python', globs: ['**/tests/**/test_*.py'] }],
+  units: [{
+    id: 'codec', kind: 'suite', profile: 'all', file: 'tests/vectors/codec.json', cases: '$.vectors[*].name',
+    bindings: [{ implementation: 'python', test: 'python/tests/test_codec.py' }],
+  }],
+  nativeOnly: [],
+  exclusions: [],
+};
+
+test('R3: a unittest expected failure is a todo, which is no pass, so its case fails (real unittest, K47)', { timeout: 120_000 }, (t) => {
+  const { findings, ledger } = realPython(t, {
+    'tests/vectors/codec.json': JSON.stringify({ vectors: [{ name: 'empty' }, { name: 'known' }] }),
+    'python/tests/test_codec.py': 'import unittest\n\n\nclass Codec(unittest.TestCase):\n    def test_empty(self):\n        pass\n\n    @unittest.expectedFailure\n    def test_known(self):\n        self.fail("not yet")\n',
+  }, UNITTEST_CONFIG);
+  assert.deepEqual(keys(findings), ['R3 codec python']);
+  assert.equal(findings[0].message, 'failed: known');
+  assert.deepEqual(ledger.cases.map(entry => `${entry.case} ${entry.outcome}`).sort(), ['empty pass', 'known fail']);
+});
+

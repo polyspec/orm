@@ -84,7 +84,16 @@ test('a declaration that is malformed or contradicts another fails with the file
     [{ 'config/toolchain.json': '{ "schema": 1, "go": { "mod": "go.mod" } }', 'go.mod': 'go 1.27\n' }, /go\.mod has no toolchain line or go directive <major>\.<minor>\.<patch>; it has "1\.27"/],
     [{ 'config/toolchain.json': '{ "schema": 1, "ruff": { "version": "0.16", "sha256": {} } }' }, /config\/toolchain\.json ruff must record version as <major>\.<minor>\.<patch>; it records "0\.16"/],
     [{ 'config/toolchain.json': '{ "schema": 1, "ruff": { "version": "0.16.10", "sha256": {} } }' }, /config\/toolchain\.json ruff must record the sha256 of the ruff wheel of each platform, for example linux-x64; it records none/],
+    [{ 'config/toolchain.json': '{ "schema": 1, "uv": { "version": "0.12", "sha256": {} } }' }, /config\/toolchain\.json uv must record version as <major>\.<minor>\.<patch>; it records "0\.12"/],
+    [{ 'config/toolchain.json': '{ "schema": 1, "uv": { "version": "0.12.24", "sha256": {} } }' }, /config\/toolchain\.json uv must record the sha256 of the uv archive of each platform, for example linux-x64; it records none/],
     [{ 'config/toolchain.json': `{ "schema": 1, "ruff": { "version": "0.16.10", "sha256": { "linux-x64": "${'a'.repeat(63)}" } } }` }, /config\/toolchain\.json ruff must record the sha256 of linux-x64 as 64 lowercase hexadecimal digits/],
   ];
   for (const [files, message] of cases) assert.throws(() => declaredToolchain(toolchainCheckout(t, files)), message);
+});
+
+test('uv is declared by its exact version and the sha256 of its archive of each platform, read as the uv of install-tools', (t) => {
+  const digest = 'b'.repeat(64);
+  const root = toolchainCheckout(t, { 'config/toolchain.json': JSON.stringify({ schema: 1, uv: { version: '0.12.11', sha256: { 'linux-x64': digest } } }) });
+  assert.deepEqual(declaredToolchain(root).uv, { version: '0.12.11', sha256: { 'linux-x64': digest }, source: 'config/toolchain.json uv' });
+  assert.equal(declaredToolchain(root).ruff, undefined, 'ruff is not declared by uv');
 });

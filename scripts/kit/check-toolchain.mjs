@@ -2,7 +2,7 @@
 // Checks that every tool of the checkout runs at the version that the checkout declares, without a network
 // (`make toolchain-check`):
 //
-//   node scripts/kit/check-toolchain.mjs [tool...]      the tools: node npm go rust php python composer ruff cargoAudit govulncheck
+//   node scripts/kit/check-toolchain.mjs [tool...]      the tools: node npm go rust php python composer ruff phpunit cargoAudit govulncheck
 //
 // Without a tool name it checks every declared tool; naming an undeclared tool fails. Python is var/tools/bin/python3, the Python that
 // install-python.mjs installs, and never the Python of PATH. var/tools/bin comes first on PATH, GOTOOLCHAIN=local
@@ -30,6 +30,8 @@ const probes = {
   python: { command: root => toolsPath(root, 'bin', 'python3'), args: ['--version'], pattern: /^Python (\d+\.\d+\.\d+)/m, fix: () => INSTALL },
   composer: { command: () => 'composer', args: ['--version', '--no-ansi'], pattern: /^Composer version (\d+\.\d+\.\d+) /m, fix: v => `install Composer ${v}, or declare its sha256 and run ${INSTALL}` },
   ruff: { command: () => 'ruff', ...RELEASE_OUTPUT.ruff, fix: () => INSTALL },
+  uv: { command: () => 'uv', ...RELEASE_OUTPUT.uv, fix: () => INSTALL },
+  phpunit: { command: () => 'phpunit', ...RELEASE_OUTPUT.phpunit, fix: () => INSTALL },
   cargoAudit: { command: cargoAuditCommand, ...RELEASE_OUTPUT.cargoAudit, fix: () => 'make install-tools' },
   govulncheck: { command: govulncheckCommand, ...RELEASE_OUTPUT.govulncheck, fix: () => 'make install-tools' },
 };

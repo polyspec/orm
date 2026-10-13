@@ -22,7 +22,7 @@ cargo-downloads-check: ## Check that the crates of every Cargo.lock are in the r
 
 cargo-downloads-fetch: ## Download the crates of every Cargo.lock
 	$(ONLINE) node scripts/kit/check-cargo-downloads.mjs --fetch
-# Toolchains (K8.2): install-tools installs the declared npm, Go, ruff (with the sha256 of its wheels), Composer (with a sha256), cargo-audit and
+# Toolchains (K8.2): install-tools installs the declared npm, Go, ruff and uv (with the sha256 of their wheels), Composer (with a sha256), cargo-audit and
 # govulncheck into var/tools; ONLINE, because it downloads. Nothing on the machine changes. Put var/tools/bin first on PATH.
 # toolchain-check compares the running tools with the declarations and fails with the expected and the running version.
 .PHONY: install-tools toolchain-check
@@ -136,10 +136,10 @@ release-go-tags: ## Require the tag <directory>/vX.Y.Z of every Go module at the
 release-backend: ## Download the build backend of the wheel packages into var/tools/wheels with its sha256 checked; ONLINE
 	$(ONLINE) node scripts/kit/release-backend.mjs
 
-# --- python-venv: a virtual environment of the checkout Python with no symbolic link (scripts/kit/python-venv.mjs). Consumers
-# make their environments with it: CPython's `-m venv` links lib64 to lib on 64-bit posix systems other than macOS.
+# --- python-venv: a virtual environment of the checkout Python, made by the uv of the checkout as uv makes it
+# (scripts/kit/python-venv.mjs); an existing venv of the checkout Python is kept.
 .PHONY: python-venv
-python-venv: ## Make the virtual environment DIR (which must not exist) from var/tools/bin/python3, with no symbolic link; offline
+python-venv: ## Make the virtual environment DIR from var/tools/bin/python3 with var/tools/bin/uv venv; offline
 	@test -n "$(DIR)" || { echo "python-venv: DIR is required, for example make python-venv DIR=pkg/.venv"; exit 1; }
 	node scripts/kit/python-venv.mjs $(DIR)
 
@@ -187,3 +187,12 @@ parity-check: ## Run the binding of every suite in every implementation and chec
 
 parity-declarations-check: ## Check the parity rules of config/parity.json that need no run: symbols, bindings, tests, error codes, lists, documents; offline
 	node scripts/kit/parity.mjs --declarations
+
+# --- python-lock: the PEP 751 locks of config/dependency-policy.json (pythonLocks), each with its requirements and a constraints file
+# that pins every package. The writer resolves with var/tools/bin/uv (install-tools TOOLS=uv); the check never resolves.
+.PHONY: python-lock python-lock-check
+python-lock: ## Write every Python lock of pythonLocks with var/tools/bin/uv from its requirements and constraints; ONLINE
+	$(ONLINE) node scripts/kit/python-lock.mjs write
+
+python-lock-check: ## Check every Python lock of pythonLocks against its requirements and constraints, with no network; offline
+	node scripts/kit/python-lock.mjs check

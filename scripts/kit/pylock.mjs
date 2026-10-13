@@ -219,7 +219,7 @@ function sourceOf(entry, lock, name) {
   return { kind: 'none', vcs: null, files: [] };
 }
 
-/** Reads a PEP 751 lock: { lockVersion, createdBy, packages: [{ name, version, kind, vcs, files: [{ url, sha256 }] }] }. */
+/** Reads a PEP 751 lock: { lockVersion, createdBy, packages: [{ name, version, kind, vcs, files: [{ url, path, sha256 }] }] }. */
 export function readPylock(text, lock) {
   let data;
   try {
@@ -237,7 +237,7 @@ export function readPylock(text, lock) {
       version: entry.version,
       kind: source.kind,
       vcs: source.vcs,
-      files: source.files.map(file => ({ url: file.url ?? null, sha256: file.hashes?.sha256 ?? null })),
+      files: source.files.map(file => ({ url: file.url ?? null, path: file.path ?? null, sha256: file.hashes?.sha256 ?? null })),
     };
   });
   return { lockVersion: data['lock-version'], createdBy, packages };

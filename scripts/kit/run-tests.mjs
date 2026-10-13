@@ -11,9 +11,10 @@
 // check can tell a record of the current files from a stale one.
 //
 // --venv runs the python tool with the interpreter of a virtual environment, so a package's tests import its own installed
-// dependencies. The environment must come from the Python of the checkout: its pyvenv.cfg names var/tools/python-build/python/bin
-// as its home (install-tools installs that Python), and it holds no symbolic link (`python -m venv --copies`). Any other
-// environment is refused before the tool starts. python-venv.mjs makes such an environment (make python-venv DIR=<directory>).
+// dependencies. The environment must come from the Python of the checkout: its pyvenv.cfg names a directory of var/tools/uv-python
+// as its home (install-tools installs that Python with uv). Any other environment is refused before the tool starts. Its
+// symbolic links are accepted as the tool that made it left them: `make python-venv DIR=<directory>` (python-venv.mjs) makes such
+// an environment with `uv venv`.
 //
 // Tools: node (node --test), vitest, go (go test), cargo (cargo test), phpunit and python (python3 -m unittest). node and
 // vitest stop a test at its timeout themselves; for go, cargo, phpunit and python this runner stops the tool when a test
@@ -27,6 +28,7 @@ import path from 'node:path';
 import readline from 'node:readline';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createProgress } from './test-progress.mjs';
+import { cargoEvents, goEvents, phpunitEvents, pythonEvents, toProgress } from './test-output.mjs';
 import { signalGroup } from './process-group.mjs';
 import { venvProblem } from './python-venv.mjs';
 import { toolsPath } from './tool-wrappers.mjs';
@@ -126,189 +128,6 @@ export function toolCommand({ tool, timeoutSeconds, cwd, args, phpExtension, ven
   throw new Error(USAGE);
 }
 
-/**
- * Read go test -json events into progress lines; the output of a test is shown only when it fails. The compiler output of a
- * package that does not build arrives as `build-output` events and its end as a `build-fail` event: both are printed and the
- * error lines are added to `build` for the summary. A package that started no test case is reported as skipped.
- */
-export function goEvents(progress, build = []) {
-  const output = new Map();
-  // The test cases that each package started; a package that started none passed nothing.
-  const started = new Map();
-  return line => {
-    let event;
-    try { event = JSON.parse(line); } catch { return progress.line(line); }
-    if (event.Action === 'build-output') {
-      for (const text of String(event.Output ?? '').split('\n').filter(Boolean)) {
-        progress.line(text);
-        if (!text.startsWith('#')) build.push(text.trim());
-      }
-      return undefined;
-    }
-    if (event.Action === 'build-fail') return progress.line(`✖ build of ${event.ImportPath} failed`);
-    const id = event.Test ? `${event.Package} › ${event.Test.replaceAll('/', ' › ')}` : event.Package;
-    const group = !event.Test;
-    switch (event.Action) {
-      case 'start': started.set(event.Package, 0); return progress.start(id, { group: true });
-      case 'run':
-        if (group) return undefined;
-        started.set(event.Package, (started.get(event.Package) ?? 0) + 1);
-        return progress.start(id);
-      case 'output': {
-        if (group) { if (!/^(?:ok|PASS|FAIL|\?)\s/.test(event.Output)) process.stdout.write(event.Output); return; }
-        output.set(id, (output.get(id) ?? '') + event.Output);
-        return;
-      }
-      case 'pass':
-        output.delete(id);
-        if (group && !started.get(event.Package)) {
-          progress.skip(id);
-          return progress.line(`○ ${id}: ran no test case`);
-        }
-        return progress.pass(id, event.Elapsed * 1000);
-      case 'skip': output.delete(id); return progress.skip(id);
-      case 'fail': {
-        const text = (output.get(id) ?? '').split('\n').filter(entry => !/^\s*(?:=== RUN|--- FAIL|=== (?:PAUSE|CONT))/.test(entry)).join('\n');
-        output.delete(id);
-        return progress.fail(id, (event.Elapsed ?? 0) * 1000, text);
-      }
-      default: return undefined;
-    }
-  };
-}
-
-/**
- * Read the output of a serial runner in which a test prints `<name> ... ` when it starts and its outcome on the same line
- * when it ends. `result` matches a finished line with the name and the outcome, `pending` the name of the test that started
- * at the end of an unfinished line, `outcome` names the progress call of an outcome (`pass`, `fail` or `skip`), `idOf` turns
- * a name into a test id and `other` receives every other line. The runner is serial, so an outcome belongs to the test that
- * started last.
- */
-function startResultLines(progress, { result, pending, outcome, idOf, other }) {
-  let current;
-  let buffer = '';
-  const start = (name) => {
-    if (current !== undefined) return;
-    current = idOf(name);
-    progress.start(current);
-  };
-  const line = (text) => {
-    const match = result.exec(text);
-    if (!match) return other(text);
-    start(match[1]);
-    progress[outcome(match[2])](current);
-    current = undefined;
-    return undefined;
-  };
-  return (data) => {
-    buffer += data;
-    let end;
-    while ((end = buffer.indexOf('\n')) !== -1) {
-      line(buffer.slice(0, end));
-      buffer = buffer.slice(end + 1);
-    }
-    const started = pending.exec(buffer);
-    if (started) start(started[1]);
-  };
-}
-
-/**
- * Read serial libtest output into progress lines. A test prints `test <name> ... ` when it starts and its result (`ok`,
- * `FAILED` or `ignored`) when it ends; cargo names each test binary on standard error before running it.
- */
-export function cargoEvents(progress) {
-  let binary = 'cargo';
-  const stdout = startResultLines(progress, {
-    result: /^test (\S+) \.\.\. (ok|FAILED|ignored)\b/,
-    pending: /^test (\S+) \.\.\. $/,
-    outcome: word => ({ ok: 'pass', FAILED: 'fail', ignored: 'skip' })[word],
-    idOf: name => `${binary} › ${name}`,
-    other: (text) => {
-      if (text.trim() && !/^(?:running \d+ tests?$|test result:|failures:$|successes:$)/.test(text.trim())) progress.line(`  ${text}`);
-    },
-  });
-  return {
-    stdout,
-    stderr(text) {
-      const running = /^\s*(?:Running|Doc-tests)\s+(?:unittests\s+)?(\S+)/.exec(text);
-      if (running) binary = running[1];
-      if (text.trim()) progress.line(text.trim());
-    },
-  };
-}
-
-/**
- * Read the verbose output of Python unittest, which it writes to standard error, into progress lines. A test prints
- * `<method> (<module>.<class>.<method>) ... ` when it starts and its outcome when it ends: `ok` and `expected failure` pass,
- * `skipped '<reason>'` is skipped, and `FAIL`, `ERROR` and `unexpected success` fail. A test with a docstring prints its
- * description on a line of its own and the first docstring line before ` ... `; the test keeps the id of the description.
- * The failure reports at the end of the run are printed as they are.
- */
-export function pythonEvents(progress) {
-  const DESCRIPTION = /^\w+ \([\w.]+\)$/;
-  // The description line of a test with a docstring, which names the test whose outcome follows.
-  let described;
-  return startResultLines(progress, {
-    result: /^(.+?) \.\.\. (ok|FAIL|ERROR|skipped\b.*|expected failure|unexpected success)$/,
-    pending: /^(.+?) \.\.\. $/,
-    outcome: word => (word === 'ok' || word === 'expected failure' ? 'pass' : word.startsWith('skipped') ? 'skip' : 'fail'),
-    idOf: (name) => {
-      const id = described ?? name;
-      described = undefined;
-      return id;
-    },
-    other: (text) => {
-      if (DESCRIPTION.test(text)) { described = text; return; }
-      described = undefined;
-      if (text.trim()) progress.line(`  ${text}`);
-    },
-  });
-}
-
-const unescapeTeamcity = value => value.replace(/\|(['|\][nr])/g, (match, character) => ({ n: '\n', r: '\r' })[character] ?? character);
-
-/**
- * Read PHPUnit TeamCity messages into progress lines. Other lines, such as the summary with the warnings that fail the run
- * under failOnWarning, are printed as they are.
- */
-export function phpunitEvents(progress) {
-  const failures = new Map();
-  // A test is named by its class and method; testFinished repeats only the method name.
-  const ids = new Map();
-  // Suites without a location (the configuration and the test suites) are printed as groups. A class or a data provider
-  // method has a location on its start only, so its finish is matched by this set.
-  const groups = new Set();
-  const qualified = attributes => {
-    const hint = /::\\?([^:]+)::(.+)$/.exec(attributes.locationHint ?? '');
-    return hint ? `${hint[1].split('\\').pop()}::${hint[2]}` : attributes.name;
-  };
-  return line => {
-    const message = /^##teamcity\[(\w+)((?: \w+='(?:[^'|]|\|.)*')*)\]$/.exec(line.trim());
-    if (!message) return line.trim() ? progress.line(line) : undefined;
-    const attributes = Object.fromEntries([...message[2].matchAll(/ (\w+)='((?:[^'|]|\|.)*)'/g)].map(([, key, value]) => [key, unescapeTeamcity(value)]));
-    if (message[1] === 'testStarted') ids.set(attributes.name, qualified(attributes));
-    const id = ids.get(attributes.name) ?? attributes.name;
-    switch (message[1]) {
-      case 'testSuiteStarted': {
-        if (attributes.locationHint) return undefined;
-        groups.add(id);
-        return progress.start(id, { group: true });
-      }
-      case 'testSuiteFinished': return groups.delete(id) ? progress.pass(id) : undefined;
-      case 'testStarted': return progress.start(id);
-      // PHPUnit reports a test that ran out of its time limit and also made no assertion twice.
-      case 'testFailed': failures.set(id, [failures.get(id), attributes.message ?? '', attributes.details ?? ''].filter(Boolean).join('\n')); return undefined;
-      case 'testIgnored': return progress.skip(id);
-      case 'testFinished': {
-        const duration = Number(attributes.duration);
-        if (failures.has(id)) { const text = failures.get(id); failures.delete(id); return progress.fail(id, duration, text); }
-        return progress.pass(id, duration);
-      }
-      default: return undefined;
-    }
-  };
-}
-
 /** Runs the tool of `argv`; resolves the exit status of the run (0 passed, 1 failed). */
 /**
  * Sends SIGTERM to the process group of a timed-out test (its pgid is the pid of the detached child). EPERM while a member is in
@@ -354,6 +173,7 @@ export async function run(argv, { root = ROOT, write = text => process.stdout.wr
       onTimeout: () => { timedOut = true; terminateGroup(child.pid); },
       resultFile,
     }) : undefined;
+    const sink = progress && toProgress(progress);
     // The error lines of the tool, which the summary names when the tool exits without a failing test.
     const errors = [];
     // The compiler errors of a Go package that does not build, which the summary names.
@@ -363,19 +183,19 @@ export async function run(argv, { root = ROOT, write = text => process.stdout.wr
       handle(text);
     };
     if (cargo) {
-      const events = cargoEvents(progress);
+      const events = cargoEvents(sink);
       child.stdout.setEncoding('utf8').on('data', events.stdout);
       readline.createInterface({ input: child.stderr }).on('line', noting(events.stderr));
     } else if (python) {
       // unittest writes its progress to standard error; the standard output of the tests is printed as it is.
-      const events = pythonEvents(progress);
+      const events = pythonEvents(sink);
       child.stderr.setEncoding('utf8').on('data', (data) => {
         for (const text of data.split('\n')) if (ERROR_LINE.test(text.trim())) errors.push(text.trim());
         events(data);
       });
       readline.createInterface({ input: child.stdout }).on('line', text => progress.line(`  ${text}`));
     } else if (reads) {
-      readline.createInterface({ input: child.stdout }).on('line', noting(options.tool === 'go' ? goEvents(progress, build) : phpunitEvents(progress)));
+      readline.createInterface({ input: child.stdout }).on('line', noting(options.tool === 'go' ? goEvents(sink, build) : phpunitEvents(sink)));
     }
     // A tool that cannot start, such as a command missing on PATH, fails with its command and the install fix.
     const ended = await new Promise((resolve) => {

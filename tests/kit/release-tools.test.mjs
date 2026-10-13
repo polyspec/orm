@@ -45,7 +45,7 @@ test('release-tools derives the install-tools names of the fixture configuration
   const config = JSON.parse(readFileSync(FIXTURE, 'utf8'));
   assert.ok(config.proof?.gitTag, 'the fixture proves a git-tag manifest, so the proof needs its Rust toolchain');
   assert.deepEqual(toolsFor(config), {
-    install: ['npm', 'composer', 'python', 'pythonBackend', 'go'],
+    install: ['npm', 'composer', 'uv', 'python', 'pythonBackend', 'go'],
     rust: true,
   });
 });
@@ -68,7 +68,7 @@ test('release-tools installs the Python and its build backend for a wheel packag
     ],
     goModules: {},
   };
-  assert.deepEqual(toolsFor(config), { install: ['npm', 'python', 'pythonBackend'], rust: false });
+  assert.deepEqual(toolsFor(config), { install: ['npm', 'uv', 'python', 'pythonBackend'], rust: false });
 });
 
 test('prepareRust installs the channel of rust-toolchain.toml with rustup in the checkout and checks rustc against it', (t) => {

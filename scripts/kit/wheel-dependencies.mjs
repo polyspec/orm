@@ -1,10 +1,13 @@
-// The dependencies of a wheel package (kind wheel). A Requires-Dist of the wheel is either a registry pin `name==version` or,
-// for a polyspec package declared in consumers.wheel.polyspec of config/release.json, a PEP 508 direct reference to its release
-// asset with the sha256 of that asset as the fragment: `name @ https://github.com/polyspec/<repo>/releases/download/v<version>/
-// <file>#sha256=<hex>`, where <file> is the PEP 427 name of the wheel. Nothing else is accepted. The lock of the wheel
-// (consumers.wheel.lock, a PEP 751 pylock.toml) holds every dependency: a registry package with the version and the sha256 of its
-// files, a polyspec package as an archive entry with the same URL and sha256 as its reference. The lock is a superset, so it may
-// hold transitive packages. The checks read the texts and never the network; lockRequirements renders the lock as a requirement
+// The dependencies of a wheel package (kind wheel). A Requires-Dist of the wheel takes one of three forms:
+//   - a registry pin `name==version`, which the lock of the wheel (consumers.wheel.lock, a PEP 751 pylock.toml) holds with the
+//     version and the sha256 of its files;
+//   - for a polyspec package declared in consumers.wheel.polyspec, a PEP 508 direct reference to its release asset with the sha256
+//     of that asset as the fragment: `name @ https://github.com/polyspec/<repo>/releases/download/v<version>/<file>#sha256=<hex>`,
+//     where <file> is the PEP 427 name of the wheel; the lock holds it as an archive entry with the same URL and sha256;
+//   - for a sibling, another wheel package of the same config/release.json (siblingsOf), a direct reference to its asset of this
+//     release WITHOUT a fragment: `name @ <repositoryUrl>/releases/download/v<version>/<file>`. The sha256 of a sibling is known only
+//     after the release builds it, so the lock of the wheel never holds it.
+// Nothing else is accepted. The checks read the texts and never the network; lockRequirements renders the lock as a requirement
 // file of hashes for pip (release-consumer.mjs installs it online in release-proof).
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -19,6 +22,11 @@ const SOURCE_NAMES = { vcs: 'a git source', directory: 'a directory source', non
 
 /** The name of a distribution in its normalized form (PEP 503): lower case, runs of `-`, `_` and `.` as one `-`. */
 export const canonicalName = name => name.toLowerCase().replace(/[-_.]+/g, '-');
+
+/** The siblings of the wheel `name`: the other wheel packages of config.packages, which the same tag releases. */
+export const siblingsOf = (config, name) => config.packages
+  .filter(item => item.kind === 'wheel' && canonicalName(item.name) !== canonicalName(name))
+  .map(item => item.name);
 
 /** The form of a Requires-Dist that is not a registry pin or a direct reference: a git source, a marker, a URL or a range. */
 function requirementForm(spec) {
@@ -64,49 +72,91 @@ export function lockRequirements(text, lockFile) {
 /**
  * The problems of the dependencies of a wheel of `name` at `version` against its lock: each Requires-Dist of the METADATA is
  * accepted or named with its reason; each polyspec archive of the lock is a release asset of the repository that
- * consumers.wheel.polyspec declares for it. `polyspec` maps a distribution name to its repository URL.
+ * consumers.wheel.polyspec declares for it. `polyspec` maps a distribution name to its repository URL; `siblings` are the names
+ * of the other wheel packages of the configuration (siblingsOf), each named by its asset of this release at `repositoryUrl`.
  */
-export function wheelDependencyProblems({ metadata, version, polyspec, lockFile, lockText }) {
+export function wheelDependencyProblems({ metadata, name, version, polyspec, siblings = [], repositoryUrl, lockFile, lockText }) {
   const form = lockProblems(lockText, lockFile);
   if (form.length) return form;
   const lock = readPylock(lockText, lockFile);
-  const packages = new Map(lock.packages.map(entry => [canonicalName(entry.name), entry]));
-  const declared = new Map(Object.entries(polyspec).map(([name, repo]) => [canonicalName(name), { name, repo }]));
+  const context = {
+    lockFile,
+    version,
+    repositoryUrl,
+    packages: new Map(lock.packages.map(entry => [canonicalName(entry.name), entry])),
+    declared: new Map(Object.entries(polyspec).map(([declared, repo]) => [canonicalName(declared), { name: declared, repo }])),
+    siblings: new Set(siblings.map(canonicalName)),
+  };
   const problems = [];
   for (const [, line] of metadata.matchAll(/^Requires-Dist: (.*)$/gm)) {
-    problems.push(...requirementProblems(line.trim(), { lockFile, packages, declared }));
+    problems.push(...requirementProblems(line.trim(), context));
   }
   for (const entry of lock.packages) {
-    if (entry.kind !== 'archive') continue;
-    const repository = declared.get(canonicalName(entry.name));
-    if (!repository) {
-      problems.push(`${lockFile}: ${entry.name} is an archive, consumers.wheel.polyspec does not declare it`);
-    } else if (!entry.files[0].url.startsWith(`${repository.repo}/releases/download/v${entry.version}/`)) {
-      problems.push(`${lockFile}: ${entry.name} ${entry.version} has the URL ${entry.files[0].url}, not a release asset of ${repository.repo} at v${entry.version}`);
+    if (context.siblings.has(canonicalName(entry.name))) {
+      problems.push(`${lockFile}: ${entry.name} is a wheel of this release; the lock of ${name} holds no sibling, since its sha256 is known only after the release builds it. Fix: remove ${entry.name} from ${lockFile}`);
+    } else if (entry.kind === 'archive') {
+      const repository = context.declared.get(canonicalName(entry.name));
+      if (!repository) {
+        problems.push(`${lockFile}: ${entry.name} is an archive, consumers.wheel.polyspec does not declare it`);
+      } else if (!entry.files[0].url.startsWith(`${repository.repo}/releases/download/v${entry.version}/`)) {
+        problems.push(`${lockFile}: ${entry.name} ${entry.version} has the URL ${entry.files[0].url}, not a release asset of ${repository.repo} at v${entry.version}`);
+      }
     }
   }
   return problems;
 }
 
-/** The problems of one Requires-Dist line against the lock and the declared polyspec packages. */
-function requirementProblems(spec, { lockFile, packages, declared }) {
+/**
+ * The direct references of a METADATA to its siblings, as { name, url } for each `name @ url` line of a sibling. The proof compares
+ * each URL with the URL of the published asset of the sibling (release-proof.mjs).
+ */
+export function siblingLinks(metadata, siblings) {
+  const names = new Set(siblings.map(canonicalName));
+  return [...metadata.matchAll(/^Requires-Dist: (.*)$/gm)]
+    .map(([, line]) => DIRECT.exec(line.trim()))
+    .filter(found => found && names.has(canonicalName(found[1])))
+    .map(([, name, url]) => ({ name, url }));
+}
+
+/** The problems of one Requires-Dist line against the lock, the declared polyspec packages and the siblings. */
+function requirementProblems(spec, context) {
   const plain = PLAIN.exec(spec);
-  if (plain) return plainProblems(spec, plain[1], plain[2], { lockFile, packages, declared });
+  if (plain) return plainProblems(spec, plain[1], plain[2], context);
   const direct = DIRECT.exec(spec);
-  if (direct && requirementForm(spec) === 'a URL') return directProblems(spec, direct[1], direct[2], { lockFile, packages, declared });
+  if (direct && requirementForm(spec) === 'a URL') return directProblems(spec, direct[1], direct[2], context);
   return [`Requires-Dist ${spec} is ${requirementForm(spec)}, not name==version or a polyspec release asset with a sha256 fragment`];
 }
 
-function plainProblems(spec, name, version, { lockFile, packages, declared }) {
+function plainProblems(spec, name, pinned, context) {
+  const { lockFile, packages, declared, siblings } = context;
+  if (siblings.has(canonicalName(name))) return [`Requires-Dist ${spec} names the sibling ${name} of this release by name==version; it must be a direct reference to its release asset`];
   if (declared.has(canonicalName(name))) return [`Requires-Dist ${spec} names the polyspec package ${name}; it must be a direct reference to its release asset with a sha256 fragment`];
   const entry = packages.get(canonicalName(name));
-  if (!entry) return [`Requires-Dist ${spec} has no entry in ${lockFile}. Fix: add ${name} ${version} with its files to ${lockFile}`];
-  if (entry.version !== version) return [`Requires-Dist ${spec} differs from ${lockFile}: ${name} is ${entry.version}`];
+  if (!entry) return [`Requires-Dist ${spec} has no entry in ${lockFile}. Fix: add ${name} ${pinned} with its files to ${lockFile}`];
+  if (entry.version !== pinned) return [`Requires-Dist ${spec} differs from ${lockFile}: ${name} is ${entry.version}`];
   if (entry.kind !== 'registry') return [`${lockFile}: ${name} is ${entry.kind === 'archive' ? 'an archive' : SOURCE_NAMES[entry.kind]}, the Requires-Dist ${spec} names a registry version`];
   return [];
 }
 
-function directProblems(spec, name, url, { lockFile, packages, declared }) {
+/** The version and the file name of a release asset `<repo>/releases/download/v<version>/<file>`, or null when `url` is not one. */
+function releaseAsset(url, repo) {
+  const found = new RegExp(`^${repo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/releases/download/v(\\d+(?:\\.\\d+)*)/([^/]+)$`).exec(url);
+  return found ? { version: found[1], file: found[2] } : null;
+}
+
+/** A sibling is a direct reference to its asset of this release, without a fragment; each failure names its reason. */
+function siblingProblems(spec, name, url, { version, repositoryUrl }) {
+  if (url.includes('#')) return [`Requires-Dist ${spec} names the sibling ${name} of this release with a #sha256 fragment; a sibling is named by its URL without a hash, since its sha256 is known only after the release builds it`];
+  const asset = releaseAsset(url, repositoryUrl);
+  if (!asset) return [`Requires-Dist ${spec} is not a release asset of ${repositoryUrl}, the repository of this release`];
+  if (asset.version !== version) return [`Requires-Dist ${spec} names ${name} at v${asset.version}, the release is v${version}`];
+  if (asset.file !== wheelName(name, version)) return [`Requires-Dist ${spec}: the file ${asset.file} of v${version} is not ${wheelName(name, version)}`];
+  return [];
+}
+
+function directProblems(spec, name, url, context) {
+  const { lockFile, packages, declared } = context;
+  if (context.siblings.has(canonicalName(name))) return siblingProblems(spec, name, url, context);
   const repository = declared.get(canonicalName(name));
   if (!repository) return [`Requires-Dist ${spec} names ${name}, which consumers.wheel.polyspec does not declare; a direct reference is accepted only for a declared polyspec package`];
   const hash = url.indexOf('#');
@@ -116,9 +166,9 @@ function directProblems(spec, name, url, { lockFile, packages, declared }) {
     return [`Requires-Dist ${spec} has no #sha256= fragment; a polyspec package is named by its release asset and the sha256 of that asset`];
   }
   const sha256 = fragment.slice('sha256='.length);
-  const found = new RegExp(`^${repository.repo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/releases/download/v(\\d+(?:\\.\\d+)*)/([^/]+)$`).exec(base);
-  if (!found) return [`Requires-Dist ${spec} is not a release asset of ${repository.repo}, the repository that consumers.wheel.polyspec declares for ${name}`];
-  const [, version, file] = found;
+  const asset = releaseAsset(base, repository.repo);
+  if (!asset) return [`Requires-Dist ${spec} is not a release asset of ${repository.repo}, the repository that consumers.wheel.polyspec declares for ${name}`];
+  const { version, file } = asset;
   if (file !== wheelName(name, version)) return [`Requires-Dist ${spec}: the file ${file} of v${version} is not ${wheelName(name, version)}`];
   const entry = packages.get(canonicalName(name));
   if (!entry) return [`Requires-Dist ${spec} has no entry in ${lockFile}. Fix: add ${name} ${version} with its archive to ${lockFile}`];

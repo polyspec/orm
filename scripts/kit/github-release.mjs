@@ -13,10 +13,10 @@ export function repositoryParts(url) {
   return { hostname: host, repo };
 }
 
-/** The release of `tag` in the repository, drafts included, as `{ id, tag_name, draft, assets: [{ id, name }] }`, or null. */
+/** The release of `tag` in the repository, drafts included, as `{ id, tag_name, draft, assets: [{ id, name, url, digest }] }`, or null. `url` is the download URL of an asset and `digest` its `sha256:<hex>`, as GitHub lists them. */
 export function releaseOf(options, url, tag) {
   const { hostname, repo } = repositoryParts(url);
-  const listed = run('gh', ['api', '--hostname', hostname, '--paginate', `repos/${repo}/releases`, '--jq', '.[] | {id, tag_name, draft, assets: [.assets[] | {id, name}]} | @json'], options);
+  const listed = run('gh', ['api', '--hostname', hostname, '--paginate', `repos/${repo}/releases`, '--jq', '.[] | {id, tag_name, draft, assets: [.assets[] | {id, name, url: .browser_download_url, digest}]} | @json'], options);
   const releases = listed.split('\n').filter(line => line.trim() !== '').map(line => JSON.parse(line));
   return releases.find(release => release.tag_name === tag) ?? null;
 }

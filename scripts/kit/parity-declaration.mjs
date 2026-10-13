@@ -51,24 +51,28 @@ function patternError(source) {
   }
 }
 
-/** The case names that the path `cases` ($ followed by .<key> and [*] steps) selects in `value`, with an error for each step that finds nothing. */
+/**
+ * The case names that the path `cases` ($ followed by .<key> and [*] steps) selects in `value`, with an error for each step that
+ * finds nothing. `entries` pairs each name with `parent`, the object or array that holds it, which carries the admit list of its case.
+ */
 export function casesOf(value, cases) {
-  let selected = [{ value, where: '$' }];
+  let selected = [{ value, where: '$', parent: undefined }];
   const errors = [];
   for (const [step, key] of cases.slice(1).matchAll(/\.([A-Za-z_][A-Za-z0-9_-]*)|\[\*\]/g)) {
     selected = selected.flatMap(({ value: item, where }) => {
       if (key !== undefined) {
-        if (item && typeof item === 'object' && !Array.isArray(item) && key in item) return [{ value: item[key], where: `${where}${step}` }];
+        if (item && typeof item === 'object' && !Array.isArray(item) && key in item) return [{ value: item[key], where: `${where}${step}`, parent: item }];
         errors.push(`${where} has no ${key}`);
         return [];
       }
-      if (Array.isArray(item)) return item.map((entry, index) => ({ value: entry, where: `${where}[${index}]` }));
+      if (Array.isArray(item)) return item.map((entry, index) => ({ value: entry, where: `${where}[${index}]`, parent: item }));
       errors.push(`${where} is no array`);
       return [];
     });
   }
   for (const { value: name, where } of selected) if (typeof name !== 'string' || !name) errors.push(`${where} is no case name`);
-  return { names: selected.map(entry => entry.value).filter(name => typeof name === 'string' && name), errors };
+  const entries = selected.filter(entry => typeof entry.value === 'string' && entry.value).map(entry => ({ name: entry.value, parent: entry.parent }));
+  return { names: entries.map(entry => entry.name), entries, errors };
 }
 
 /** Whether `file` lies in the directory `root`. */
@@ -238,13 +242,14 @@ export function readDeclaration(root, files) {
   }
   const units = new Map();
   const cases = new Map();
+  const admissions = new Map();
   for (const unit of config.units) {
     if (units.has(unit.id)) fail(`the unit ${unit.id} is declared twice`);
     units.set(unit.id, unit);
     const where = `unit ${unit.id}`;
     const members = knownProfile(unit.profile, where) ? profiles.get(unit.profile) : [];
     const owned = unit.kind === 'suite' ? unit.bindings ?? [] : unit.symbols ?? [];
-    const misplaced = unit.kind === 'suite' ? ['symbols'] : ['file', 'cases', 'bindings'];
+    const misplaced = unit.kind === 'suite' ? ['symbols'] : ['file', 'cases', 'bindings', 'admit'];
     for (const key of misplaced) if (key in unit) fail(`${where}: a unit of kind ${unit.kind} has no ${key}`);
     const seen = new Set();
     for (const entry of owned) {
@@ -273,12 +278,36 @@ export function readDeclaration(root, files) {
     if (!found.errors.length && !found.names.length) fail(`${where}: ${unit.cases} selects no case in ${unit.file}`);
     const repeated = found.names.filter((name, index) => found.names.indexOf(name) !== index);
     for (const name of new Set(repeated)) fail(`${where}: ${unit.file} repeats the case ${name}`);
-    // A harness line ends its case name at whitespace, and Go nests a subtest at each /.
+    // A case name holds no whitespace, which go test rewrites to _ in a subtest name, and Go nests a subtest at each /.
     for (const name of found.names) {
-      if (/\s/.test(name)) fail(`${where}: ${unit.file}: the case ${JSON.stringify(name)} holds whitespace, which no harness line can report`);
+      if (/\s/.test(name)) fail(`${where}: ${unit.file}: the case ${JSON.stringify(name)} holds whitespace, which no test name of the check can match`);
       if (goBound && name.includes('/')) fail(`${where}: ${unit.file}: the case ${JSON.stringify(name)} holds /, which Go nests as a subtest; the unit has a go binding`);
     }
     cases.set(unit.id, found.names);
+    if (unit.admit !== undefined) {
+      const admitted = new Map();
+      let carriers = 0;
+      for (const { name, parent } of found.entries) {
+        if (!parent || typeof parent !== 'object' || Array.isArray(parent)) {
+          fail(`${where}: case ${name} is no object, so ${unit.admit} cannot list the implementations that admit it`);
+          continue;
+        }
+        if (!(unit.admit in parent)) continue;
+        carriers++;
+        const list = parent[unit.admit];
+        if (!Array.isArray(list) || list.some(entry => typeof entry !== 'string')) {
+          fail(`${where}: case ${name} has ${unit.admit} that is no array of implementation names`);
+          continue;
+        }
+        // An empty list admits nothing, which is no list; a name twice is a copy that the list does not need.
+        if (list.length === 0) fail(`${where}: case ${name} has ${unit.admit} that is empty; list the implementations that admit it, or remove the key`);
+        for (const repeat of new Set(list.filter((entry, index) => list.indexOf(entry) !== index))) fail(`${where}: case ${name} lists ${repeat} twice in ${unit.admit}`);
+        for (const implementation of list) if (!members.includes(implementation)) fail(`${where}: case ${name} admits ${implementation}, which is not an implementation of the profile ${unit.profile}`);
+        admitted.set(name, list);
+      }
+      if (!found.errors.length && carriers === 0) fail(`${where}: no case of ${unit.file} has ${unit.admit}; remove the admit key or add it to the cases that it admits`);
+      admissions.set(unit.id, admitted);
+    }
   }
   for (const entry of config.nativeOnly ?? []) {
     if (!implementations.has(entry.implementation)) fail(`nativeOnly names ${entry.implementation}, which is no implementation`);
@@ -302,12 +331,29 @@ export function readDeclaration(root, files) {
     knownProfile(list.profile, `languageLists ${list.file}`);
     if (!files.has(list.file)) fail(`languageLists: ${list.file} does not exist`);
   }
+  // The case names of a suite that `implementation` runs: every case, except those whose admit list omits it.
+  const admitted = (unit, implementation) => (cases.get(unit.id) ?? []).filter(name => !admissions.get(unit.id)?.has(name) || admissions.get(unit.id).get(name).includes(implementation));
+  // An implementation of the profile of an admit suite that admits no case runs nothing: it leaves the profile, or R8 excludes
+  // it. An excluded one is already an R8 finding, so it is not repeated here.
+  for (const unit of config.units.filter(entry => entry.kind === 'suite' && entry.admit !== undefined && cases.has(entry.id))) {
+    for (const name of (profiles.get(unit.profile) ?? []).filter(member => implementations.has(member))) {
+      if (exclusions.has(`${unit.id}\0${name}`) || admitted(unit, name).length) continue;
+      fail(`unit ${unit.id}: no case of ${unit.file} admits ${name}, so the suite runs nothing for it; take ${name} out of the profile ${unit.profile}, or exclude it under R8 with its reason and item`);
+    }
+  }
   const model = {
     config,
     implementations,
     profiles,
     narrow,
     cases,
+    admit: unit => unit.admit,
+    admitted,
+    // The cases that an admit list keeps from some implementation of the profile, as `case`, its list and the implementations it omits.
+    notAdmitted: unit => (cases.get(unit.id) ?? []).flatMap((name) => {
+      const list = admissions.get(unit.id)?.get(name);
+      return list === undefined ? [] : [{ name, list, omitted: (profiles.get(unit.profile) ?? []).filter(member => implementations.has(member) && !list.includes(member)) }];
+    }).filter(entry => entry.omitted.length),
     snapshots,
     members: unit => (profiles.get(unit.profile) ?? []).filter(name => implementations.has(name)),
     exclusion: (unit, implementation) => exclusions.get(`${unit.id}\0${implementation}`),

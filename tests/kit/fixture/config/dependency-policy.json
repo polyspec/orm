@@ -10,7 +10,13 @@
     "packages/fixture-python/pyproject.toml"
   ],
   "pythonLocks": [
-    "packages/fixture-python/pylock.toml"
+    {
+      "lock": "packages/fixture-python/pylock.toml",
+      "source": {
+        "requirements": "packages/fixture-python/requirements.txt",
+        "constraints": "packages/fixture-python/constraints.txt"
+      }
+    }
   ],
   "npmLocks": [
     "package-lock.json"

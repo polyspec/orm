@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Installs the tools that the release of this repository needs (`make release-tools`), derived from config/release.json:
 //
-//   npm, composer, python, pythonBackend, go   install-tools installs them into var/tools: a package or consumer of that kind,
-//                                              a wheel (python and its build backend) or a Go module
+//   npm, composer, uv, python, pythonBackend, go   install-tools installs them into var/tools: a package or consumer of that
+//                                                  kind, a wheel (uv, the python that uv installs and its build backend) or a Go module
 //   rust                                       a git-tag manifest of the proof: the channel of rust-toolchain.toml is installed
 //                                              with rustup, as make install does, and check-toolchain checks rustc against it
 //
@@ -24,11 +24,12 @@ export function toolsFor(config) {
   if (kinds.has('npm') || config.consumers?.npm) needed.add('npm');
   if (kinds.has('composer') || config.consumers?.composer) needed.add('composer');
   if (kinds.has('wheel') || config.consumers?.wheel) {
+    needed.add('uv');
     needed.add('python');
     needed.add('pythonBackend');
   }
   if (Object.keys(config.goModules ?? {}).length) needed.add('go');
-  const order = ['npm', 'composer', 'python', 'pythonBackend', 'go'];
+  const order = ['npm', 'composer', 'uv', 'python', 'pythonBackend', 'go'];
   return { install: order.filter(name => needed.has(name)), rust: Object.keys(config.proof?.gitTag ?? {}).length > 0 };
 }
 
@@ -71,18 +72,6 @@ export function main(argv, { root = path.resolve(HERE, '../..'), env = process.e
     if (rust) {
       print('[release-tools] rust: rustup installs the channel of rust-toolchain.toml');
       prepareRust(root, { env, print, error });
-    }
-    // A checkout whose release builds Go warms its module cache here: the checks of the repository run offline
-    // (GOPROXY=off is a repository export), so a later build finds its modules only if this step downloaded them.
-    if (existsSync(path.join(root, 'go.mod')) && install.includes('go')) {
-      print('[release-tools] go modules: downloading the modules of go.mod');
-      step(path.join(root, 'var/tools/bin/go'), ['mod', 'download'], { cwd: root, env: { ...env, GOPROXY: process.env.GOPROXY ?? 'https://proxy.golang.org,direct' }, print, error });
-    }
-    // A checkout whose release builds npm packages installs its node modules here, as its own install target does:
-    // the checks and the release build read node_modules, which nothing else creates on a fresh runner.
-    if (existsSync(path.join(root, 'package-lock.json'))) {
-      print('[release-tools] npm: installing the node modules of the checkout');
-      step('npm', ['ci'], { cwd: root, env: { ...env, npm_config_offline: undefined }, print, error });
     }
     print(`[release-tools] the tools of the release are ready: ${[...install, ...(rust ? ['rust'] : [])].join(' ') || 'none'}`);
   } catch (failure) {

@@ -1175,4 +1175,6 @@ typescript-build: lease-tool
 release-consumer release-proof: export npm_config_allow_remote := root
 
 # The archive of the npm package holds the build of the TypeScript client (scripts/kit/release.mjs packs the tree as it is).
-release-assets: typescript-build
+# release-assets는 자신이 선언한 설치 위에서 build한다: lease tool의 Go module과 TypeScript build의 node module.
+# release runner에는 둘 다 없고, 검사는 offline(GOPROXY=off)으로 실행된다.
+release-assets: install-go install-node typescript-build

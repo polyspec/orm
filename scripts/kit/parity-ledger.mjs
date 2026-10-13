@@ -8,11 +8,14 @@
 import path from 'node:path';
 import { execute } from './process.mjs';
 import { finding, resolveReferences, supportFiles } from './parity-declaration.mjs';
-import { runOf } from './parity-runners.mjs';
+import { outcomesOf, runOf } from './parity-runners.mjs';
 import { pairs } from './parity-units.mjs';
 
 /** The names of `cases` (a map from case to outcome) whose outcome is `outcome`. */
 const named = (cases, outcome) => [...cases].filter(([, value]) => value === outcome).map(([name]) => name);
+
+/** The names that `reported` (the `[name, outcome]` pairs of one run, in order) report more than once. */
+const repeated = reported => [...new Set(reported.map(([name]) => name).filter((name, index, names) => names.indexOf(name) !== index))];
 
 /** How the second run differs from the first: its exit status, and each case with another result or in one run only. */
 function differences(first, second) {
@@ -38,9 +41,6 @@ function resolvedRun(declared, root, binding, unit, env) {
   return { ...run, shown: [declared.command ?? shown.command, ...shown.args].join(' ') };
 }
 
-/** The harness lines (`PASS <unit>/<case>`, `FAIL <unit>/<case>`) of `output`. */
-const harnessLines = output => output.split('\n').map(line => line.trim()).filter(line => /^(?:PASS|FAIL) \S/.test(line));
-
 // The runners whose support files the check runs: a file runner reports its cases by printing them, so a support file of one
 // could hold a test that no declaration shows.
 const FILE_RUNNERS = new Set(['node', 'php', 'python']);
@@ -54,7 +54,7 @@ function runSupport(model, root, files, { env, say }) {
     say(`run the support file ${file} of ${implementation.name}: ${run.shown} (in ${run.cwd})`);
     const result = execute(run.command, run.args, { cwd: path.join(root, run.cwd), env: run.env });
     if (result.error) return [finding('R5', `the support file could not run: ${run.shown}: ${result.error.message}`, where)];
-    const reported = harnessLines(result.stdout);
+    const reported = outcomesOf(run, result).map(([name]) => name);
     return reported.length ? [finding('R5', `the support file reports cases (${reported.join(', ')}); declare it as the test of a binding`, where)] : [];
   }));
 }
@@ -75,16 +75,17 @@ export function runBindings(model, root, { env, files, say }) {
       findings.push(finding('R3', run.error, where));
       continue;
     }
-    const expected = model.cases.get(unit.id);
+    const expected = model.admitted(unit, implementation.name);
     // The binding runs twice; the same tree gives the same cases with the same results, or the binding does not hold.
     const [first, second] = [1, 2].map((attempt) => {
       say(`run ${unit.id} ${implementation.name} (${attempt} of 2): ${run.shown} (in ${run.cwd})`);
       const result = execute(run.command, run.args, { cwd: path.join(root, run.cwd), env: run.env });
       const status = result.error ? null : result.status;
-      const cases = result.error ? new Map() : run.cases(result);
+      const reported = result.error ? [] : outcomesOf(run, result);
+      const cases = new Map(reported);
       ledger.runs.push({ unit: unit.id, implementation: implementation.name, attempt, command: run.command, args: run.args, cwd: run.cwd, status });
       say(`${unit.id} ${implementation.name} (${attempt} of 2): ${status === 0 ? 'exit 0' : `exit ${status ?? 'none'}`}, ${named(cases, 'pass').length} of ${expected.length} cases passed`);
-      return { result, status, cases };
+      return { result, status, cases, repeated: repeated(reported) };
     });
     const { result, status, cases } = first;
     for (const [name, outcome] of cases) ledger.cases.push({ unit: unit.id, implementation: implementation.name, case: name, outcome });
@@ -95,6 +96,7 @@ export function runBindings(model, root, { env, files, say }) {
       named(cases, 'skip').length && `skipped: ${named(cases, 'skip').join(', ')}`,
       `not executed: ${expected.filter(name => !cases.has(name)).join(', ')}`,
       `not in the suite: ${[...cases.keys()].filter(name => !expected.includes(name)).join(', ')}`,
+      ...[first, second].flatMap((attempt, index) => (attempt.repeated.length ? [`reported twice in run ${index + 1}: ${attempt.repeated.join(', ')}`] : [])),
       `the second run differs from the first: ${differences(first, second).join('; ')}`,
     ].filter(part => part && !part.endsWith(': '));
     if (problems.length) findings.push(finding('R3', problems.join('; '), where));

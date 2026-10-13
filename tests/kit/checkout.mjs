@@ -1,7 +1,7 @@
 // Helpers of the dependency tests: a copy of tests/kit/fixture with the tools, as a Git repository of a temporary
 // directory, so that each tool reads its own checkout, and the commands that run the gate and the review in it.
 import { spawnSync } from 'node:child_process';
-import { chmodSync, cpSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -44,16 +44,28 @@ else { console.log(JSON.stringify(report)); process.exit(report.vulnerabilities.
 
 /**
  * Installs a stub of govulncheck into var/tools/govulncheck/bin of `root`: it prints `Scanner: govulncheck@v1.1.4` for
- * -version and the JSON `messages` one after the other for a scan, and exits 0 as govulncheck -json does.
+ * -version and the JSON `messages` one after the other for a scan, and exits 0 as govulncheck -json does. Each scan
+ * appends its working directory and arguments to var/tools/govulncheck/calls.log (govulncheckCalls reads it).
  */
 export function installGovulncheckStub(root, messages = []) {
-  const bin = path.join(root, 'var/tools/govulncheck/bin');
+  const prefix = path.join(root, 'var/tools/govulncheck');
+  const bin = path.join(prefix, 'bin');
   mkdirSync(bin, { recursive: true });
   const file = path.join(bin, 'govulncheck');
   writeFileSync(file, `#!/usr/bin/env node
+const { appendFileSync } = require('node:fs');
 const messages = ${JSON.stringify(messages)};
 if (process.argv.includes('-version')) console.log('Go: go1.27.0\\nScanner: govulncheck@v1.1.4\\nDB: https://vuln.go.dev');
-else for (const message of messages) console.log(JSON.stringify(message, null, 2));
+else {
+  appendFileSync(${JSON.stringify(path.join(prefix, 'calls.log'))}, JSON.stringify({ cwd: process.cwd(), args: process.argv.slice(2) }) + '\\n');
+  for (const message of messages) console.log(JSON.stringify(message, null, 2));
+}
 `);
   chmodSync(file, 0o755);
+}
+
+/** The scans that the govulncheck stub of `root` ran, in order: { cwd, args }. */
+export function govulncheckCalls(root) {
+  const log = path.join(root, 'var/tools/govulncheck/calls.log');
+  return existsSync(log) ? readFileSync(log, 'utf8').split('\n').filter(Boolean).map(line => JSON.parse(line)) : [];
 }
