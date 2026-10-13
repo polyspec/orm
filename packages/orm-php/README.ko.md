@@ -1,5 +1,5 @@
 <!-- doc-id: packages-orm-php-readme -->
-<!-- source-sha256: b95541313b3ee078c581e44807e0dbe00a9b01ed3ed6240b36af7af0c399c08e -->
+<!-- source-sha256: dbec5978be10cfc16e14be05303a9ba0a36c9d12b28e63a3574ea59eb0bf613a -->
 # orm — PHP 클라이언트
 
 PHP 클라이언트: PDO(`pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`) 위의 생성 모델(`Polyspec\Orm\Tests\Model\Author`, …). 라이브러리가

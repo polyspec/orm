@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T128-2a-5 (breaking): the PHP `orm-gen gen` takes `--set <dbspec-set.json>`; the positional files and `--use` are removed. `Dbspec::readSet` and its native twin in the PHP extension read a set file.
 - T128-8-1: `@polyspec/dbspec-codemirror` (`packages/dbspec-codemirror`) is the CodeMirror 6 extension of dbspec: token colours, lint diagnostics, folding and formatting on Shift+Alt+F, from the language service.
 - T128-2a-2 (breaking): the Go `orm-gen gen` takes `--set <dbspec-set.json>`; `--document`, `--use` and `runtimemodel.LoadFileSet` are removed. `dbspec.ReadSet` reads a set file and `runtimemodel.LoadSetFile` loads one.
 - T128-2a-3 (breaking): the TypeScript `orm-gen gen` takes `--set <dbspec-set.json>`; `--schema` and `--use` are removed. `readDbspecSet` reads a set file, and `@polyspec/orm/dbspec` exports the pure `parseSet(bytes, path)`.
