@@ -292,13 +292,13 @@ dbspec-introspect-ts-check: lease-tool
 # dbspec-introspect-php-check는 같은 round trip과 미지원 case를 PHP client의
 # Polyspec\Orm\Dbspec\Dbspec::introspect로 실행한다.
 .PHONY: dbspec-introspect-php-check
-dbspec-introspect-php-check:
+dbspec-introspect-php-check: php-vendor-check
 	$(WITH_TEST_ENV) php packages/orm-php/tests/dbspec_introspect_test.php
 
 # dbspec-introspect-php-extension-check는 같은 round trip과 미지원 case를 PHP 확장 orm_dbspec의
 # Polyspec\Orm\Dbspec\Native\Dbspec::introspect로 실행한다. 확장은 이 실행의 directory에 build한다.
 .PHONY: dbspec-introspect-php-extension-check
-dbspec-introspect-php-extension-check:
+dbspec-introspect-php-extension-check: php-vendor-check
 	$(RUN_LONG) php-extension-build -- sh packages/orm-php-extension/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 	$(WITH_TEST_ENV) php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_introspect_test.php
 	rm -rf $(RUN_DIR)
@@ -389,19 +389,19 @@ dbspec-plan-rust-check: cargo-downloads-check
 # dbspec-plan-php-check는 같은 case를 PHP client의 Polyspec\Orm\Dbspec\Dbspec::planSteps와
 # Dbspec::introspect로 적용한다.
 .PHONY: dbspec-plan-php-check
-dbspec-plan-php-check:
+dbspec-plan-php-check: php-vendor-check
 	$(WITH_TEST_ENV) php packages/orm-php/tests/dbspec_plan_apply_test.php
 
 # dbspec-apply-php-check는 2000 table plan을 뺀 dbspec-apply-check의 scenario를 PHP client의
 # Polyspec\Orm\Dbspec\Dbspec::apply, recover, rollback, finalize로 MySQL, PostgreSQL, SQLite에서 실행한다.
 .PHONY: dbspec-apply-php-check
-dbspec-apply-php-check:
+dbspec-apply-php-check: php-vendor-check
 	$(WITH_TEST_ENV) php packages/orm-php/tests/dbspec_apply_test.php
 
 # dbspec-apply-php-extension-check는 같은 scenario를 PHP 확장 orm_dbspec의 Polyspec\Orm\Dbspec\Native\Dbspec::apply,
 # recover, rollback, finalize로 실행한다. 확장은 이 실행의 directory에 build한다.
 .PHONY: dbspec-apply-php-extension-check
-dbspec-apply-php-extension-check:
+dbspec-apply-php-extension-check: php-vendor-check
 	$(RUN_LONG) php-extension-build -- sh packages/orm-php-extension/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 	$(WITH_TEST_ENV) php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_apply_test.php
 	rm -rf $(RUN_DIR)
@@ -533,10 +533,10 @@ dbspec-stress-bench/prepare:
 dbspec-stress-bench/go: dbspec-stress-bench/prepare
 	$(GO_TEST) -tags bench ./engine/dbspec -run '^TestStressDocument$$' -count=1
 	$(GO_TEST) -tags bench ./engine/dbspec -run '^TestStressDocument$$' -count=1
-dbspec-stress-bench/php: dbspec-stress-bench/prepare
+dbspec-stress-bench/php: php-vendor-check dbspec-stress-bench/prepare
 	php packages/orm-php/tests/dbspec_stress_test.php
 	php packages/orm-php/tests/dbspec_stress_test.php
-dbspec-stress-bench/php-introspect: dbspec-stress-bench/prepare
+dbspec-stress-bench/php-introspect: php-vendor-check dbspec-stress-bench/prepare
 	php packages/orm-php/tests/dbspec_introspect_stress_test.php
 dbspec-stress-bench/typescript: dbspec-stress-bench/prepare lease-tool
 	$(HOLD_TYPESCRIPT)
@@ -591,40 +591,40 @@ rust-send-savepoint-check/test: cargo-downloads-check
 # 실행한다.
 dbspec-php-check: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set
 .PHONY: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set
-dbspec-php-check/documents:
+dbspec-php-check/documents: php-vendor-check
 	php packages/orm-php/tests/dbspec_test.php
 	php packages/orm-php/tests/dbspec_test.php
-dbspec-php-check/rules:
+dbspec-php-check/rules: php-vendor-check
 	php packages/orm-php/tests/dbspec_rules_test.php
 	php packages/orm-php/tests/dbspec_rules_test.php
-dbspec-php-check/manifest:
+dbspec-php-check/manifest: php-vendor-check
 	php packages/orm-php/tests/dbspec_manifest_test.php
 	php packages/orm-php/tests/dbspec_manifest_test.php
-dbspec-php-check/render:
+dbspec-php-check/render: php-vendor-check
 	php packages/orm-php/tests/dbspec_render_test.php
 	php packages/orm-php/tests/dbspec_render_test.php
-dbspec-php-check/plan:
+dbspec-php-check/plan: php-vendor-check
 	php packages/orm-php/tests/dbspec_plan_test.php
 	php packages/orm-php/tests/dbspec_plan_test.php
-dbspec-php-check/mermaid:
+dbspec-php-check/mermaid: php-vendor-check
 	php packages/orm-php/tests/dbspec_mermaid_test.php
 	php packages/orm-php/tests/dbspec_mermaid_test.php
-dbspec-php-check/apply-cleanup:
+dbspec-php-check/apply-cleanup: php-vendor-check
 	php packages/orm-php/tests/dbspec_apply_cleanup_test.php
 	php packages/orm-php/tests/dbspec_apply_cleanup_test.php
 # dbspec-php-check/unicode는 PHP UnicodeWord의 표가 모든 code point에서 그 구간과 같은지 본다(표 자체는 dbspec-go-check/unicode가 Go와 맞춘다).
-dbspec-php-check/unicode:
+dbspec-php-check/unicode: php-vendor-check
 	php packages/orm-php/tests/dbspec_unicode_test.php
 	php packages/orm-php/tests/dbspec_unicode_test.php
 # dbspec-php-check/show-create는 MysqlCatalog::createChecks가 tests/dbspec/show-create.json의 모든 case를 기대한 본문으로 읽는지 본다.
 # dbspec-php-check/analyze는 syntax analysis와 format을 focused case와 cases.json의 모든 case로 본다(docs/dbspec.md "Syntax analysis", "Formatting").
-dbspec-php-check/analyze:
+dbspec-php-check/analyze: php-vendor-check
 	php packages/orm-php/tests/dbspec_analyze_test.php
-dbspec-php-check/show-create:
+dbspec-php-check/show-create: php-vendor-check
 	php packages/orm-php/tests/dbspec_show_create_test.php
 # dbspec-php-check/set runs Dbspec::readSet on every case of tests/dbspec/set-files.json and the focused cases, each
 # a temporary file tree with real symbolic and hard links (docs/dbspec.md "Document sets").
-dbspec-php-check/set:
+dbspec-php-check/set: php-vendor-check
 	php packages/orm-php/tests/dbspec_set_test.php
 
 .PHONY: dbspec-php-extension-check php-extension-arginfo
@@ -649,16 +649,16 @@ dbspec-php-extension-check/prepare:
 dbspec-php-extension-check/declarations: dbspec-php-extension-check/prepare
 	ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) php packages/orm-php-extension/tests/declarations_test.php
 	ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) php packages/orm-php-extension/tests/declarations_test.php
-dbspec-php-extension-check/vectors: dbspec-php-extension-check/prepare
+dbspec-php-extension-check/vectors: php-vendor-check dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_test.php
 	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_test.php
 # dbspec-php-extension-check/analyze는 확장의 syntax analysis와 format이 PHP client와 같은 token, 위치, diagnostic, emission과
 # formatted text를 내는지 focused case, cases.json의 모든 case와 한도 error로 본다.
-dbspec-php-extension-check/analyze: dbspec-php-extension-check/prepare
+dbspec-php-extension-check/analyze: php-vendor-check dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_analyze_test.php
 	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_analyze_test.php
 # dbspec-php-extension-check/names는 확장의 Names(render, ofTable, column)이 PHP client의 Names와 같은 결과와 예외를 내는지 본다.
-dbspec-php-extension-check/names: dbspec-php-extension-check/prepare
+dbspec-php-extension-check/names: php-vendor-check dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_names_test.php
 dbspec-php-extension-check/plan: dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_plan_test.php
@@ -675,7 +675,7 @@ dbspec-php-extension-check/show-create: dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_show_create_test.php
 # dbspec-php-extension-check/set runs the extension's Dbspec::readSet on every case of tests/dbspec/set-files.json and
 # the focused cases and requires each result to equal the PHP client's, messages included.
-dbspec-php-extension-check/set: dbspec-php-extension-check/prepare
+dbspec-php-extension-check/set: php-vendor-check dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_set_test.php
 php-extension-arginfo:
 	php packages/orm-php-extension/scripts/arginfo.php $(GEN_STUB) write
@@ -824,19 +824,19 @@ fuzz-check/clients-go-orm:
 # 쓰고, php-min-check는 composer.json이 지원하는 최저 release를 준다.
 PHP = php
 client-unit-check: client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/perf-extensions
-client-unit-check/dsn:
+client-unit-check/dsn: php-vendor-check
 	$(PHP) packages/orm-php/tests/dsn.php
-client-unit-check/markdown:
+client-unit-check/markdown: php-vendor-check
 	$(PHP) packages/orm-php/tests/markdown_test.php
-client-unit-check/relation-keys:
+client-unit-check/relation-keys: php-vendor-check
 	$(PHP) packages/orm-php/tests/relation_keys.php
-client-unit-check/hostcodec:
+client-unit-check/hostcodec: php-vendor-check
 	$(PHP) packages/orm-php/tests/hostcodec.php
-client-unit-check/engine:
+client-unit-check/engine: php-vendor-check
 	$(PHP) packages/orm-php/tests/engine_test.php
-client-unit-check/runtime-model:
+client-unit-check/runtime-model: php-vendor-check
 	$(PHP) packages/orm-php/tests/runtime_model_test.php
-client-unit-check/orm-gen:
+client-unit-check/orm-gen: php-vendor-check
 	$(PHP) packages/orm-php/tests/orm_gen_test.php
 client-unit-check/perf-extensions:
 	$(PHP) packages/orm-php/tests/perf_extensions_test.php
@@ -894,7 +894,7 @@ conformance-counter-check:
 # test를 실행한다. 각 runner가 자기 case를 기한과 함께 보고한다.
 conformance-result-check: conformance-result-check/php conformance-result-check/typescript conformance-result-check/go conformance-result-check/python
 .PHONY: conformance-result-check/php conformance-result-check/typescript conformance-result-check/go conformance-result-check/python
-conformance-result-check/php:
+conformance-result-check/php: php-vendor-check
 	php tests/conformance/result_php.php
 conformance-result-check/typescript: lease-tool
 	$(HOLD_TYPESCRIPT)
@@ -975,7 +975,7 @@ FLOWMARK ?= $(abspath .runtime/bin/flowmark)
 markdown-conformance-check: markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript
 markdown-conformance-check/go:
 	FLOWMARK=$(FLOWMARK) $(GO_TEST) -tags markdown ./packages/orm-go/markdownmodel -run '^TestMarkdownConformance$$' -count=1
-markdown-conformance-check/php:
+markdown-conformance-check/php: php-vendor-check
 	FLOWMARK=$(FLOWMARK) $(PHP) packages/orm-php/tests/markdown_conformance.php
 # Python runner는 build 정보를 go version -m으로 읽는다.
 markdown-conformance-check/python: python-venv-check
