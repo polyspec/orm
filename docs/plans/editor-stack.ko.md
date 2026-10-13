@@ -1,5 +1,5 @@
 <!-- doc-id: plans-editor-stack -->
-<!-- source-sha256: b08d5b5c3a455bc495cb11160aa24ac41496ddf1cc3cfd8b281dd307ce6b7e3c -->
+<!-- source-sha256: 88bc4bb237361c7b9d3d8bf7335082ce207b394e673bb687f110394f486403f1 -->
 # 계획: 표준으로서의 dbspec editor stack
 
 [English](editor-stack.md)
@@ -52,8 +52,9 @@ owner 판정:
      - `limit` 오류는 token을 내지 않는다. 검사가 할당보다 먼저이기 때문이다
        (docs/dbspec.md:301);
      - `header`나 `encoding` 중단 뒤에는 중단 줄과 그 뒤 모든 줄이 lexical token을 만든다;
-     - 그런 lexical 전용 줄에서 단어는 `word`이고, 숫자, 문자열, operator, punctuation, comment는
-       lexical class를 유지한다;
+     - 그런 lexical 전용 줄에서 단어는 숫자를 포함해 `word`이고, 문자열, operator, punctuation,
+       comment 줄은 그 class를 유지한다: lexer는 숫자를 단어로 읽는다(T128-2에서 "숫자는 lexical
+       class를 유지한다"를 바로잡음. 숫자에는 lexical class가 없다);
      - `encoding`에서 단독 CR은 줄 끝이 아니며, lexing은 그 뒤에서 이어진다;
      - 잘못된 문자는 token을 내지 않는다;
      - parser가 포기한 줄(복구 경로)의 단어도 `word`다. 의미 진단만 가진 줄은 parser가 정한 class를

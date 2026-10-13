@@ -296,6 +296,42 @@ Emission writes a parsed document in one canonical text, so `emit(parse(s)) == s
 - `f64` literals as the shortest decimal without exponent that reads back as the same value, without a point for an integral value, and `0` for negative zero; a check literal takes the canonical default form of the column it meets, and a predicate keeps only the parentheses that an `or` inside an `and` needs;
 - a comment line stays attached to the line that follows it and takes that line's indentation; a comment before a closing `}` takes the indentation of the block's lines; comments after the last block follow one blank line; a comment keeps its text from `#` to the line end unchanged.
 
+## Syntax analysis
+
+Each implementation has one dbspec lexer and one parser, and syntax analysis is an output of that parser: no editor layer, generated file or regular expression holds a rule of the grammar. A regular-expression grammar such as TextMate's has no parser context, and a name may be a keyword (`table` is a valid column name), so it would classify tokens differently from the parser.
+
+`analyze(text, set)` returns the parse result, unchanged, and the tokens of the text. A token is `{line, start, end, class}`: `line` is 1-based, `start` and `end` count Unicode code points from the line start, and `end` is exclusive. The classes are:
+
+The lexer reads four kinds of token: a word, a string, a punctuation mark (`{`, `}`, `(`, `)`, `,`) and an operator (`=`, `<>`, `<`, `<=`, `>`, `>=`, `+`, `-`, `*`, `/`); a number is a word, and a comment is a whole line. The parser gives each token its class:
+
+| Class | Tokens |
+| --- | --- |
+| `keyword` | A word that the grammar of its line reads as a keyword at its position, such as `table`, `primary`, `references`, `null` or `and` |
+| `type` | A word of a column type |
+| `name` | A document, table, column, constraint, index or diagram name, where it is declared and where it is referenced |
+| `setting` | The first word of a line of a `settings` block; the other words of the line take the classes above |
+| `number` | A word that the parser reads as a number |
+| `string` | A string |
+| `operator` | An operator, the `-` and `>` of `->` included |
+| `punctuation` | A punctuation mark |
+| `comment` | A comment line, from `#` to the line end |
+| `word` | A word that the parser does not classify |
+
+The cases that the parse does not complete are defined:
+
+- a `limit` error yields no tokens, since the check precedes allocation ([Limits and errors](#limits-and-errors));
+- after an `encoding` or `header` stop, the stop line and every later line yield lexical tokens only: a word, a number included, is `word`, and a string, an operator, a punctuation mark and a comment line keep their class; for `encoding`, a bare CR is not a line end, and lexing goes on after it;
+- an invalid character yields no token;
+- on a line the parser abandoned with a `syntax` diagnostic, a word is `word`; a line that carries only a semantic diagnostic keeps the classes the parser gave it.
+
+Comment positions exist only in the tokens, never in the document model. Tokens serve highlighting; a tool that needs the position of a declaration reads the declaration positions of the parse result, never the tokens or the text.
+
+The vectors are `tests/dbspec/syntax.json`: the tokens of the canonical, normalize, invalid, sets and hashes cases of `cases.json`; the `files` cases stay with the file and byte readers. The vectors are generated once from the TypeScript implementation, reviewed, then fixed, and every implementation matches them exactly.
+
+## Formatting
+
+`format(text, set)` is `emit(parse(text, set))` in every implementation. A document with a diagnostic is refused and never rewritten. Formatting holds three invariants: `emit(parse(format(x))) == emit(parse(x))`, the manifest and schema hashes of `format(x)` equal those of `x`, and `format(format(x)) == format(x)`. Model equality is not one of them, since emission sorts constraints and `use` lines ([Canonical form](#canonical-form)). The text of a canonical document is its own format, so an editor that formats it changes nothing. The vectors are those of `cases.json`: a canonical or normalize case formats to its canonical text, and an invalid case is refused.
+
 ## Limits and errors
 
 A document has at most 32 MiB, 4096 tables, 120000 columns and 20000 foreign keys; the check happens before allocation. An error is `SCHEMA_INVALID` with the 1-based line and column of the offending token, the rule below and a message. Columns count Unicode code points. A stopping error (`encoding`, `header`, `limit`) is reported after the diagnostics found before it. Diagnostics are ordered by line, then column, then the order of the rule table below. A header name that does not match the name rule is `name.format` and parsing continues. A rule about a whole table, constraint or setting points at its name or keyword token; any other rule points at the token that breaks it:

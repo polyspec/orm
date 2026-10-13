@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T128-2: the dbspec specification states syntax analysis (`analyze` and its token classes, for every implementation, from the one parser) and formatting (`format` as `emit(parse(text))`, refusing a document with a diagnostic, with its three invariants), and docs/editor.md states the editor tools: the browser-safe parser entry, the language service, the adapters, their import rules, results, ecosystem mechanisms and fixtures.
 - T126-1: orm vendors kit from its release tag v0.0.31 instead of a branch, declares its Python through uv (`pythonBuild.version` and `uv` in config/toolchain.json), and its `release-assets` declares the installs it builds on (`install-go`, `install-node`).
 - T128-1: the Go editor tools added after 0.0.9 (`cmd/orm-fmt`, `cmd/orm-lsp`, `cmd/orm-tokens` and the regex classifier `engine/dbspec/tokens.go`) are removed before any release, with the docs bridge that built a Go binary; T128 rebuilds the editor stack as a standard of every runtime.
 
