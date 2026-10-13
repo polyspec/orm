@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T128-4: `@polyspec/orm/dbspec` is a browser-safe entry with parse, emit, analyze, format and readDbspecBytes; its module graph holds no Node module, Node global or driver, and a test follows the graph to prove it.
 - T128-2-2: the syntax analysis rules ground their exclusion of regex grammars on valid column names that are keyword words (`key`, `text`, `references`), instead of the reserved `table`.
 - T128-2-1: the dbspec syntax analysis rules define a number by its form, a word of digits with an optional fraction, and keep its `number` class on a line read only lexically.
 - T128-3s (breaking): a repeated `state_machine` line of one machine is a `setting` error at the later line in every runtime: one `initial` and one `terminal` line per state, and one transition line per `<from> -> <to>` pair whatever its `require` list. Such a document was accepted silently before.

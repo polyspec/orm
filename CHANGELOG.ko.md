@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c77b7c6fe84b1ab46de62717051c3eea1249f53718adaa9cce3afda02d54b0f1 -->
+<!-- source-sha256: 1e8a3db2518bf2584c113eef4becc00792d3b4b597b8aae624b08081085e6d6b -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-4: `@polyspec/orm/dbspec`은 parse, emit, analyze, format, readDbspecBytes를 가진 browser용 진입점이다; 그 module graph에는 Node module, Node global, driver가 없으며, test가 graph를 따라가 이를 증명한다.
 - T128-2-2: 구문 분석 규칙이 regex 문법을 배제하는 근거를 예약어 `table` 대신, keyword 단어이면서 올바른 column 이름인 `key`, `text`, `references`에 둔다.
 - T128-2-1: dbspec 구문 분석 규칙이 숫자를 형태(숫자와 선택적 소수부로 된 단어)로 정의하고, lexical로만 읽는 줄에서도 `number` class를 유지한다.
 - T128-3s (breaking): 한 기계의 반복된 `state_machine` 줄은 모든 runtime에서 뒤 줄의 `setting` error다: state마다 `initial` 줄과 `terminal` 줄 하나, `require` 목록과 상관없이 `<from> -> <to>` 쌍마다 전환 줄 하나. 전에는 그런 문서를 아무 말 없이 받아들였다.
