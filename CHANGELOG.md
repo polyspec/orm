@@ -5,6 +5,7 @@
 
 ## 0.0.11
 
+- T140-1: the Markdown IR executor table of docs/dialects.md mirrors the flowmark that the markdown conformance pins.
 - T153: the Python Collection's get and fetched import key_text and no longer raise NameError.
 - T147: the interface check refuses a public component method that no rule declares.
 - T147-5: Rust's AesKeyring lists its key versions, and the rule AESKeyring.versions is declared.
