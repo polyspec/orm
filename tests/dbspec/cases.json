@@ -11432,6 +11432,29 @@
           "rule": "name.length"
         }
       ]
+    },
+    {
+      "id": "generated-name-collision",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table service_module_board_comment_archive_row_2026_archive_ {",
+          "  id i64 identity",
+          "  col_00027815 i32",
+          "  col_00101989 i32",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 6,
+          "column": 3,
+          "rule": "name.duplicate"
+        }
+      ]
     }
   ],
   "hashes": [
