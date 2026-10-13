@@ -44,11 +44,11 @@ extension은 없다. PHP 8.4 이상. Version 0.0.9. DSN의 scheme이 PDO driver�
 styled 컬럼(`ordered_json`, `serialize`, `yaml`, `gz`, `base64` codec)은 생성된 setter와 getter에서 `Polyspec\Orm\StyledValue`를 쓴다. `StyledValue::sqlNull()`은 SQL NULL을, `StyledValue::value($value)`는 literal null을 포함한 encode된 값을 나타낸다. null을 허용하지 않는 컬럼은 setter를 호출할 때 SQL NULL을 `CODEC_ENCODE`로 거부한다. 선택에서 제외한 styled 컬럼을 요청하면 `COLUMN_UNSELECTED`를 돌려준다. `toArray()`와 `toJson()`은 선택한 styled 컬럼마다 `{"kind":"sql-null"}` 또는 `{"kind":"value","value":...}`를 출력한다. `toJson()`은 ordered JSON 값을 그대로 보존한다.
 
 ```sh
-vendor/bin/orm-gen gen --out src/Model --namespace 'Example\Model' schema/example.dbs
+vendor/bin/orm-gen gen --set schema/dbspec-set.json --out src/Model --namespace 'Example\Model'
 ```
 
-schema가 바뀐 뒤 Composer script로 실행한다(`"scripts": {"orm-gen": "orm-gen gen --out
-src/Model --namespace Example\\Model schema/example.dbs"}`). 인자는 묶음의 모든 문서를 나열한다.
+schema가 바뀐 뒤 Composer script로 실행한다(`"scripts": {"orm-gen": "orm-gen gen --set
+schema/dbspec-set.json --out src/Model --namespace Example\\Model"}`). set file이 묶음의 모든 문서를 나열한다(docs/dbspec.md "Document sets").
 생성기는 diagnostic이 있는 문서 묶음과 모델 method와 겹치는 컬럼 이름을 거부하고,
 앞서 생성한 file을 바꿔 쓰며, `bootstrap.php`는 한 번 require해야 한다. `--check`를 주면 `gen`은 아무것도 쓰지 않고,
 최신이 아닌 출력 file마다 `differs:`, `missing:`, `extra:`를 출력하며, 줄을 출력하면

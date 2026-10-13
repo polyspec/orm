@@ -38,7 +38,7 @@ sequence는 자기가 보내는 statement의 kind를 순서대로 적고, utilit
 
 ```sh
 (cd packages/orm-go/model && go generate ./)
-php packages/orm-php/bin/orm-gen gen --out packages/orm-php/gen --namespace 'Polyspec\Orm\Tests\Model' schema/bench.dbs
+php packages/orm-php/bin/orm-gen gen --set schema/dbspec-set.json --out packages/orm-php/gen --namespace 'Polyspec\Orm\Tests\Model'
 npm run typescript:build
 go run ./tests/interfaces/check --generate --record --self-test
 ```

@@ -27,6 +27,15 @@ function check(bool $ok, string $message): void
     }
 }
 
+/** Writes the set file of $documents and $external into $dir. */
+function set_file(string $dir, array $documents, array $external = []): string
+{
+    @mkdir($dir, 0o700, true);
+    $path = "$dir/dbspec-set.json";
+    file_put_contents($path, json_encode(['schema' => 1, 'documents' => $documents, 'external' => $external], JSON_UNESCAPED_SLASHES));
+    return $path;
+}
+
 function tool(array $args): array
 {
     ob_start();
@@ -41,8 +50,9 @@ $tests['gen --check compares the models without writing'] = function () use ($wo
     $dir = "$work/gen-check";
     @mkdir("$dir/model", 0o700, true);
     file_put_contents("$dir/example.dbs", "dbspec 1 example\n\ntable item {\n  seq i64\n  name varchar(32)\n  primary key (seq)\n}\n\ntable tag {\n  seq i64\n  primary key (seq)\n}\n");
-    $args = ['gen', '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example', '--check', "$dir/example.dbs"];
-    [$code] = tool(['gen', '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example', "$dir/example.dbs"]);
+    $set = set_file($dir, ['example.dbs']);
+    $args = ['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example', '--check'];
+    [$code] = tool(['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example']);
     check($code === 0, 'gen');
     file_put_contents("$dir/model/Notes.php", "<?php\n");
     [$code, $out, $err] = tool($args);
@@ -57,62 +67,92 @@ $tests['gen --check compares the models without writing'] = function () use ($wo
 };
 
 $tests['gen rejects a file without the dbspec signature'] = function () use ($work): void {
-    // Dbspec::readFile이 parse 전에 DbSchema project XML과 빈 파일을 signature로 거부한다.
+    // The byte check rejects the DbSchema project XML and the empty file before the parse, and every
+    // file's diagnostic is printed.
+    $set = set_file("$work/signature", ['dbschema.dbs', 'empty.dbs']);
     foreach (['dbschema.dbs', 'empty.dbs'] as $name) {
-        $path = dirname(__DIR__, 3) . "/tests/dbspec/files/$name";
-        $dir = "$work/signature-$name";
-        [$code, $out, $err] = tool(['gen', '--out', $dir, '--namespace', 'Polyspec\\Orm\\Tests\\Example', $path]);
-        check($code === 1 && $out === '' && $err === "orm-gen: SCHEMA_INVALID: $path:1:1: signature: $path is not a dbspec document\n", "$name: $code $out $err");
-        check(!file_exists($dir), "$name: gen wrote $dir");
+        copy(dirname(__DIR__, 3) . "/tests/dbspec/files/$name", "$work/signature/$name");
     }
+    $dir = "$work/signature/model";
+    [$code, $out, $err] = tool(['gen', '--set', $set, '--out', $dir, '--namespace', 'Polyspec\\Orm\\Tests\\Example']);
+    $want = "orm-gen: SCHEMA_INVALID: $work/signature/dbschema.dbs:1:1: signature: $work/signature/dbschema.dbs is not a dbspec document\n"
+        . "$work/signature/empty.dbs:1:1: signature: $work/signature/empty.dbs is not a dbspec document\n";
+    check($code === 1 && $out === '' && $err === $want, "$code $out $err");
+    check(!file_exists($dir), "gen wrote $dir");
+};
+
+$tests['gen prints every error of the set file and writes nothing'] = function () use ($work): void {
+    $dir = "$work/set-errors";
+    $set = set_file($dir, ['gone.dbs', 'sub\\x.dbs']);
+    [$code, $out, $err] = tool(['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example']);
+    $want = "orm-gen: CONFIG: set.file: $dir/gone.dbs: gone.dbs is not a name that $dir/ lists\n"
+        . "set.path: $set: the documents path \"sub\\\\x.dbs\" has no normal form\n";
+    check($code === 1 && $out === '' && $err === $want, "$code $out $err");
+    check(!file_exists("$dir/model"), 'gen wrote the models');
+};
+
+$tests['gen takes the documents only from the set file'] = function () use ($work): void {
+    $dir = "$work/positional";
+    $set = set_file($dir, ['example.dbs']);
+    file_put_contents("$dir/example.dbs", "dbspec 1 example\n\ntable item {\n  seq i64\n  primary key (seq)\n}\n");
+    foreach ([['--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example', "$dir/example.dbs"], ['--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example', "$dir/example.dbs"], ['--set', $set, '--use', "$dir/example.dbs", '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example']] as $args) {
+        [$code, $out, $err] = tool(['gen', ...$args]);
+        check($code === 2 && $out === '' && str_contains($err, 'usage: orm-gen gen --set '), json_encode($args) . ": $code $out $err");
+    }
+    check(!file_exists("$dir/model"), 'gen wrote the models');
 };
 
 $tests['gen rejects a column named after a model method'] = function () use ($work): void {
     // restore()는 모든 model의 method이므로 restore column의 condition method와 겹친다.
     $dir = "$work/gen-reserved";
     @mkdir("$dir/model", 0o700, true);
+    $set = set_file($dir, ['example.dbs']);
     foreach (['create', 'restore'] as $column) {
         file_put_contents("$dir/example.dbs", "dbspec 1 example\n\ntable item {\n  seq i64\n  $column varchar(32)\n  primary key (seq)\n}\n");
-        [$code, $out, $err] = tool(['gen', '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example', "$dir/example.dbs"]);
+        [$code, $out, $err] = tool(['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example']);
         check($code !== 0 && str_contains($out . $err, "column name is a reserved method name: $column"), "$column: $code $out $err");
     }
 };
 
-$tests['gen --use generates only the owned tables of a set with external documents'] = function () use ($work): void {
-    // member.dbs는 core.dbs의 ext_account와 ext_audit을 use로 쓴다. core는 --use로 주는 외부 문서이므로
-    // model을 만들지 않고, bootstrap은 외부 문서에서 쓰는 table의 text를 담는다.
+$tests['gen generates only the owned tables of a set with external documents'] = function () use ($work): void {
+    // member.dbs uses ext_account and ext_audit of core.dbs. core is an external document of the set, so it
+    // gets no model, and the bootstrap holds the text of the external tables that are used.
     $root = dirname(__DIR__, 3);
     $dir = "$work/gen-use";
-    @mkdir($dir, 0o700, true);
-    [$code, $out, $err] = tool(['gen', '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example', '--use', "$root/contracts/fixtures/external/core.dbs", "$root/contracts/fixtures/external/member.dbs"]);
+    $set = set_file("$dir/set/app", ['member.dbs'], ['../core/core.dbs']);
+    @mkdir("$dir/set/core", 0o700, true);
+    copy("$root/contracts/fixtures/external/member.dbs", "$dir/set/app/member.dbs");
+    copy("$root/contracts/fixtures/external/core.dbs", "$dir/set/core/core.dbs");
+    [$code, $out, $err] = tool(['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example']);
     check($code === 0, "gen: $code $out $err");
     $files = array_map('basename', glob("$dir/model/*.php") ?: []);
     sort($files);
     check($files === ['ExtPost.php', 'ExtPostHistory.php', 'bootstrap.php'], 'generated files ' . json_encode($files));
     $bootstrap = (string) @file_get_contents("$dir/model/bootstrap.php");
     check(str_contains($bootstrap, 'const EXTERNAL_TEXT = ') && str_contains($bootstrap, 'table ext_account {') && !str_contains($bootstrap, 'table ext_session {'), 'bootstrap carries the used external tables');
-    [$code, $out] = tool(['gen', '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example', '--check', '--use', "$root/contracts/fixtures/external/core.dbs", "$root/contracts/fixtures/external/member.dbs"]);
-    check($code === 0 && $out === '', "gen --check with --use: $code $out");
+    [$code, $out] = tool(['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example', '--check']);
+    check($code === 0 && $out === '', "gen --check with external documents: $code $out");
 };
 
 $tests['gen writes the same models however the paths are written'] = function () use ($work): void {
-    // PHP 생성기는 소스를 scan하지 않으므로 document와 output path만 상대, 절대, `./`, 끝의 `/`로 바꿔 쓴다.
+    // The PHP generator scans no source, so only the set and output paths are written relative, absolute,
+    // with `./` and with a trailing `/` (the output only: a set path ends in its file name).
     $dir = "$work/gen-path-spelling";
-    @mkdir($dir, 0o700, true);
+    set_file($dir, ['example.dbs']);
     file_put_contents("$dir/example.dbs", "dbspec 1 example\n\ntable item {\n  seq i64\n  name varchar(32)\n  primary key (seq)\n}\n");
     $spellings = [
-        'relative' => ['example.dbs', 'model'],
-        'absolute' => ["$dir/example.dbs", "$dir/model"],
-        'dot' => ['./example.dbs', './model'],
-        'trailing_slash' => ['example.dbs', 'model/'],
+        'relative' => ['dbspec-set.json', 'model'],
+        'absolute' => ["$dir/dbspec-set.json", "$dir/model"],
+        'dot' => ['./dbspec-set.json', './model'],
+        'trailing_slash' => ['dbspec-set.json', 'model/'],
     ];
     $previous = getcwd();
     chdir($dir);
     try {
         $first = null;
-        foreach ($spellings as $name => [$document, $out]) {
+        foreach ($spellings as $name => [$set, $out]) {
             exec('rm -rf ' . escapeshellarg("$dir/model"));
-            [$code, , $err] = tool(['gen', '--out', $out, '--namespace', 'Polyspec\\Orm\\Tests\\Example', $document]);
+            [$code, , $err] = tool(['gen', '--set', $set, '--out', $out, '--namespace', 'Polyspec\\Orm\\Tests\\Example']);
             check($code === 0, "$name: $code $err");
             $files = [];
             foreach (glob("$dir/model/*.php") as $file) {

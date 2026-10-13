@@ -1495,6 +1495,91 @@ static void read_bytes(zend_string *name, zend_string *bytes, zval *return_value
     zv_result(return_value, dbs_ce_ReadResult, "text", &text, &d);
 }
 
+/* ------------------------------------------------------------------ sets */
+
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetFile, __construct)
+{
+    zend_string *path, *bytes;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_STR(path)
+        Z_PARAM_STR(bytes)
+    ZEND_PARSE_PARAMETERS_END();
+    init_str(ZEND_THIS, "path", path);
+    init_str(ZEND_THIS, "bytes", bytes);
+}
+
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetError, __construct)
+{
+    zend_string *rule, *path, *message;
+    ZEND_PARSE_PARAMETERS_START(3, 3)
+        Z_PARAM_STR(rule)
+        Z_PARAM_STR(path)
+        Z_PARAM_STR(message)
+    ZEND_PARSE_PARAMETERS_END();
+    init_str(ZEND_THIS, "rule", rule);
+    init_str(ZEND_THIS, "path", path);
+    init_str(ZEND_THIS, "message", message);
+}
+
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetResult, __construct)
+{
+    zval *documents, *external, *errors;
+    ZEND_PARSE_PARAMETERS_START(3, 3)
+        Z_PARAM_ARRAY_OR_NULL(documents)
+        Z_PARAM_ARRAY_OR_NULL(external)
+        Z_PARAM_ARRAY(errors)
+    ZEND_PARSE_PARAMETERS_END();
+    init_array_or_null(ZEND_THIS, "documents", documents);
+    init_array_or_null(ZEND_THIS, "external", external);
+    init_prop(ZEND_THIS, "errors", errors);
+}
+
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetResult, valid)
+{
+    zval *documents, *external;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ARRAY(documents)
+        Z_PARAM_ARRAY(external)
+    ZEND_PARSE_PARAMETERS_END();
+    obj_new(return_value, dbs_ce_SetResult);
+    zval d, e, none;
+    ZVAL_COPY(&d, documents);
+    ZVAL_COPY(&e, external);
+    ZVAL_EMPTY_ARRAY(&none);
+    obj_put(return_value, "documents", &d);
+    obj_put(return_value, "external", &e);
+    obj_put(return_value, "errors", &none);
+}
+
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetResult, invalid)
+{
+    zval *errors;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_ARRAY(errors)
+    ZEND_PARSE_PARAMETERS_END();
+    if (zend_hash_num_elements(Z_ARRVAL_P(errors)) == 0) {
+        zend_throw_exception(spl_ce_LogicException, "An invalid set result needs an error", 0);
+        RETURN_THROWS();
+    }
+    obj_new(return_value, dbs_ce_SetResult);
+    zval list;
+    ZVAL_COPY(&list, errors);
+    obj_put_null(return_value, "documents");
+    obj_put_null(return_value, "external");
+    obj_put(return_value, "errors", &list);
+}
+
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, readSet)
+{
+    zend_string *path;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_STR(path)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    dbs_read_set(path, return_value);
+    LEAVE();
+}
+
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, readBytes)
 {
     zend_string *name, *bytes;
@@ -2103,6 +2188,9 @@ static PHP_MINIT_FUNCTION(orm_dbspec)
     dbs_ce_IntrospectResult = register_class_Polyspec_Orm_Dbspec_Native_IntrospectResult();
     dbs_ce_Dbspec = register_class_Polyspec_Orm_Dbspec_Native_Dbspec();
     dbs_ce_PlanApply = register_class_Polyspec_Orm_Dbspec_Native_PlanApply();
+    dbs_ce_SetFile = register_class_Polyspec_Orm_Dbspec_Native_SetFile();
+    dbs_ce_SetError = register_class_Polyspec_Orm_Dbspec_Native_SetError();
+    dbs_ce_SetResult = register_class_Polyspec_Orm_Dbspec_Native_SetResult();
 
     /* PHP의 readonly class는 동적 property를 받지 않는다. 내부 class는 그 flag를 따로 둔다. */
 #define DBS_NO_DYNAMIC(n) if (dbs_ce_##n->ce_flags & ZEND_ACC_READONLY_CLASS) dbs_ce_##n->ce_flags |= ZEND_ACC_NO_DYNAMIC_PROPERTIES;
@@ -2140,6 +2228,7 @@ static const zend_module_dep orm_dbspec_deps[] = {
     ZEND_MOD_REQUIRED("spl")
     ZEND_MOD_REQUIRED("hash")
     ZEND_MOD_REQUIRED("pdo")
+    ZEND_MOD_REQUIRED("json")
     ZEND_MOD_END
 };
 
