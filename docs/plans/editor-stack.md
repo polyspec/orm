@@ -326,7 +326,7 @@ text lives in T128's Cause and Acceptance, plus `docs/editor.md`.
     `vscode.provideDocumentSemanticTokens`.
   - The orm CI job that runs the integration test gets a VS Code install step, through the
     kit tool of T128-K.
-- **T128-K, in kit's own checklist and cited by its kit ID: the shared editor tools.**
+- **T128-K, kit's item K80: the shared editor tools.**
   - The transitive editor import checker (template's `editor-boundary-check`), its rules declared in `config/*.json`.
   - The VS Code installer.
   - Both move from template into kit. orm and template take them with `make kit-sync`. Grounding:
@@ -356,20 +356,20 @@ Each row gets a real ID of the next wave, `T<wave>.<n>`, assigned in step 1. orm
 those IDs. Each row also updates its `docs/features.md` rows and its EDT-n rules in
 `docs/spec/editor.md`.
 
-- **Row A: the parser is the only grammar.**
+- **Row A, template T23.1: the parser is the only grammar.**
   - `analyze`/`analyzePrefix` return fully classified tokens and the tag body parts.
   - `template-language` deletes its re-stated tables: tokens.ts SIGILS and OPERATOR, tags.ts
     WRAPPERS, body.ts LOOP_HEAD and ASSIGN_HEAD, expression.ts RESERVED and IDENT, and the
     duplicated delimiter-directive regex.
   - The import check gains a rule: the language service declares no lexical table.
-- **Row B: token analysis and the formatter in every runtime.**
+- **Row B, template T23.2: token analysis and the formatter in every runtime.**
   - The formatting style of `docs/operations/editor-tools.md` becomes spec rules.
   - The conformance cases carry the expected tokens and the formatted text.
   - Go, Rust, PHP, the PHP extension and Python implement `analyze` and `format`; Python
     extends its existing `analyze`. Each holds the AST invariant and idempotence.
   - The parity and conformance runners compare tokens and formatted text.
   - `features.md`: `template-language` passes in every runtime.
-- **Row C: no grammar in the VS Code extension.**
+- **Row C, template T23.3: no grammar in the VS Code extension.**
   - Its tmLanguage keeps only the HTML host (`text.html.basic` with embedded CSS and JS).
   - The tag injection rules are deleted; tags are coloured by the semantic tokens it already
     maps.
@@ -377,11 +377,11 @@ those IDs. Each row also updates its `docs/features.md` rows and its EDT-n rules
   - The grammar tests (`vscode-tmgrammar-test`, and `captureSyntaxTokens` for a tag in an
     attribute value) are rewritten as semantic-token assertions.
   - `docs/operations/editor-tools.md` (+ko) is updated.
-- **Row D: take the kit editor tools.**
+- **Row D, template T23.4: take the kit editor tools.**
   - Take the import checker and the VS Code installer from kit (T128-K) with `make kit-sync`.
   - Delete `scripts/check-editor-boundaries.mjs` and `scripts/install-vscode.mjs`.
   - Declare its rules (`@polyspec/template`, `src/cli`) in config.
-- **Row E: host-less tools resolve include paths by a declared root marker.**
+- **Row E, template T23.5: host-less tools resolve include paths by a declared root marker.**
   - Found: an include or block path resolves relative to the including template inside a loader
     root (spec/examples.md:178, conformance.md:17). The host supplies the root as a runtime
     option. The compiler follows static include paths (compiler.md:26). The language service
@@ -497,8 +497,8 @@ those IDs. Each row also updates its `docs/features.md` rows and its EDT-n rules
    then every adoption. The rules govern everything after.
 2. Register every remaining item in the checklists:
    - orm: T128 rewritten, with T128-2 to T128-9, T128-2a, T128-3s, T128-3p and T128-R;
-   - kit: T128-K;
-   - template: rows A–E and their execution-plan entries;
+   - kit: T128-K (K80, registered 34766f3);
+   - template: rows A–E as Wave 23, T23.1–T23.5 (registered 1349fa4);
    - flowmark: the set-file item, F-W, F-G and `T12.1-38-1`.
    Then T128-2, the rulings in the specs.
 3. T128-K, T128-2a, T128-3s, T128-3p, T128-3 through T128-9, then T128-R.

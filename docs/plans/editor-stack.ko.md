@@ -1,5 +1,5 @@
 <!-- doc-id: plans-editor-stack -->
-<!-- source-sha256: fca3109ba01548bc0cb7882bff0ca2411736e64244b60d7189e464d120a630d7 -->
+<!-- source-sha256: b08d5b5c3a455bc495cb11160aa24ac41496ddf1cc3cfd8b281dd307ce6b7e3c -->
 # 계획: 표준으로서의 dbspec editor stack
 
 [English](editor-stack.md)
@@ -294,7 +294,7 @@ Cause, Acceptance, 그리고 `docs/editor.md`에 있다.
   - test: EditorState를 통한 CodeMirror fixture; `vscode.provideDocumentSemanticTokens`를 확인하는
     vscode integration.
   - integration test를 돌리는 orm CI job은 T128-K의 kit 도구로 VS Code 설치 단계를 가진다.
-- **T128-K, kit 자신의 checklist에 두고 kit ID로 인용한다: 공유 editor 도구.**
+- **T128-K, kit의 항목 K80: 공유 editor 도구.**
   - 전이적 editor import checker(template의 `editor-boundary-check`). 그 규칙은 `config/*.json`에 선언한다.
   - VS Code installer.
   - 둘 다 template에서 kit으로 옮긴다. orm과 template은 `make kit-sync`로 받는다. 근거: kit의 규칙은
@@ -322,31 +322,31 @@ Cause, Acceptance, 그리고 `docs/editor.md`에 있다.
 각 행은 1단계에서 다음 wave의 실제 ID `T<wave>.<n>`을 받는다. orm의 T128은 그 ID를 인용한다. 각 행은
 `docs/features.md`의 행과 `docs/spec/editor.md`의 EDT-n 규칙도 고친다.
 
-- **행 A: parser만이 문법이다.**
+- **행 A, template T23.1: parser만이 문법이다.**
   - `analyze`/`analyzePrefix`가 완전히 분류된 token과 tag body 부분을 돌려준다.
   - `template-language`는 다시 적은 표를 지운다: tokens.ts의 SIGILS와 OPERATOR, tags.ts의 WRAPPERS,
     body.ts의 LOOP_HEAD와 ASSIGN_HEAD, expression.ts의 RESERVED와 IDENT, 중복된 delimiter-directive
     regex.
   - import 검사에 규칙을 더한다: language service는 lexical 표를 선언하지 않는다.
-- **행 B: 모든 runtime의 token 분석과 formatter.**
+- **행 B, template T23.2: 모든 runtime의 token 분석과 formatter.**
   - `docs/operations/editor-tools.md`의 formatting 방식을 명세 규칙으로 만든다.
   - conformance case가 기대 token과 format된 text를 가진다.
   - Go, Rust, PHP, PHP extension, Python이 `analyze`와 `format`을 구현한다; Python은 기존 `analyze`를
     확장한다. 각각 AST 불변식과 멱등성을 지킨다.
   - parity와 conformance runner가 token과 format된 text를 비교한다.
   - `features.md`: `template-language`가 모든 runtime에서 통과한다.
-- **행 C: VS Code 확장에 문법이 없다.**
+- **행 C, template T23.3: VS Code 확장에 문법이 없다.**
   - tmLanguage는 HTML host(`text.html.basic`과 포함된 CSS, JS)만 남긴다.
   - tag injection 규칙을 지운다; tag는 이미 mapping된 semantic token으로 색을 입는다.
   - `configurationDefaults`가 semantic highlighting을 켠다.
   - 문법 test(`vscode-tmgrammar-test`, 그리고 attribute 값 속 tag에 대한 `captureSyntaxTokens`)를
     semantic token 확인으로 다시 쓴다.
   - `docs/operations/editor-tools.md`(+ko)를 고친다.
-- **행 D: kit editor 도구를 받아들인다.**
+- **행 D, template T23.4: kit editor 도구를 받아들인다.**
   - kit(T128-K)에서 import checker와 VS Code installer를 `make kit-sync`로 받는다.
   - `scripts/check-editor-boundaries.mjs`와 `scripts/install-vscode.mjs`를 지운다.
   - 그 규칙(`@polyspec/template`, `src/cli`)을 config에 선언한다.
-- **행 E: host 없는 도구는 선언된 root 표식으로 include 경로를 결정한다.**
+- **행 E, template T23.5: host 없는 도구는 선언된 root 표식으로 include 경로를 결정한다.**
   - 발견: include나 block 경로는 loader root 안에서 그것을 포함한 template에 상대적으로 결정된다
     (spec/examples.md:178, conformance.md:17). host가 runtime option으로 root를 준다. compiler는 정적
     include 경로를 따라간다(compiler.md:26). language service는 아무것도 결정하지 않으므로, 잘못된
@@ -447,8 +447,8 @@ Cause, Acceptance, 그리고 `docs/editor.md`에 있다.
    그 뒤의 모든 일은 이 규칙을 따른다.
 2. 남은 모든 항목을 각 checklist에 등록한다:
    - orm: T128 재작성과 T128-2에서 T128-9, T128-2a, T128-3s, T128-3p, T128-R;
-   - kit: T128-K;
-   - template: 행 A–E와 그 execution-plan 항목;
+   - kit: T128-K(K80, 34766f3에서 등록);
+   - template: 행 A–E를 Wave 23의 T23.1–T23.5로(1349fa4에서 등록);
    - flowmark: set 파일 항목, F-W, F-G, `T12.1-38-1`.
    그다음 T128-2, 명세 안의 판정.
 3. T128-K, T128-2a, T128-3s, T128-3p, T128-3부터 T128-9, 그다음 T128-R.
