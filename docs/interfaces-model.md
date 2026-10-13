@@ -31,6 +31,7 @@ classDiagram
         toArray()
     }
     class Core {
+        <<internal>>
         Columns columns
         Group conditions
         Optional_Db connection
@@ -44,6 +45,7 @@ classDiagram
         build()
     }
     class Request {
+        <<internal>>
         RequestIR ir
         List_Value params
         shape()
@@ -73,6 +75,7 @@ classDiagram
         Group where
     }
     class Planner {
+        <<internal>>
         Dialect dialect
         SchemaManifest manifest
         validate()
@@ -115,6 +118,7 @@ classDiagram
         withRequestHook()
     }
     class TransactionFlow {
+        <<internal>>
         List_TransactionFrame frames
         begin()
         savepoint()
@@ -175,6 +179,7 @@ classDiagram
         Map_Integer_Integer versions
     }
     class Generator {
+        <<internal>>
         SchemaManifest manifest
         List_Path scan
         generate()
@@ -240,16 +245,16 @@ classDiagram
 | Component | Behavior and state |
 |---|---|
 | Model | Generated per entity. Holds the column values of a new or loaded row and the chain state in its Core. |
-| Core | Stores the chain state and builds a value-free request with a separate parameter list. |
-| Request | The request shape is the plan cache key; values stay in the parameter list. |
+| Core | Stores the chain state and builds a value-free request with a separate parameter list. Internal: Each client builds the request inside its own model runtime; the request IR it builds is the common shape, not the build call (docs/interfaces.md §2). |
+| Request | The request shape is the plan cache key; values stay in the parameter list. Internal: The shape is the plan cache key that each client computes inside its connection; the request IR and its parameter list are common, not the shape call (docs/interfaces.md §7). |
 | RequestIR | The common request shape of every client. |
 | QueryNode | The root, a join child, a relation child, or a subquery. |
-| Planner | Runs in the client process. Validates a request against the manifest and renders the dialect SQL. |
+| Planner | Runs in the client process. Validates a request against the manifest and renders the dialect SQL. Internal: Each client validates and plans the request inside its connection, in the calling process; the plan and its SQL are common, checked by the conformance vectors, not the planner calls (docs/interfaces.md §7). |
 | Plan | Immutable statements and assembly metadata cached per request shape. |
 | Step | One SQL statement of a plan. |
 | Assemble | Maps result columns by position to models, joins, and relations. |
 | Db | Owns the pool, the planners of the schema sets registered on it, the plan and statement caches, and the statement event subscribers. |
-| TransactionFlow | Private. The transaction of the current execution flow; models without a connection use it. |
+| TransactionFlow | Private. The transaction of the current execution flow; models without a connection use it. Internal: Begin, savepoint, commit and rollback are private; Db.transaction is their public entry (docs/interfaces.md §6). |
 | Collection | Ordered models keyed by primary key, keyName, or fetchKey. |
 | Page | The rows and counts of getsPage. |
 | Utils | Connection utilities; lock and local values need an active transaction. |
@@ -257,10 +262,12 @@ classDiagram
 | AesUtils | Reports and rotates AES key versions of a model table. |
 | AESKeyring | Keys by version; the current version encrypts new values. |
 | AESRotationStatus | Row counts per key version. |
-| Generator | One per language. Reads the dbspec document set and emits models; Go and Rust emit only the chain methods the sources call. |
+| Generator | One per language. Reads the dbspec document set and emits models; Go and Rust emit only the chain methods the sources call. Internal: Each language generates its models with its own build tool and command; the generated models are common, not the generate call (docs/interfaces.md §11, docs/usage.md §3). |
 | Error | A stable code from docs/errors.yaml. |
 | Dbspec | Reads a dbspec document file, or checks the bytes of one that the caller read, after checking its signature and encoding, reads a set file into the files of its document set, parses a dbspec document against its declared document set and gives the positions of its declarations, analyzes a text into that parse result and the tokens of its syntax, formats a text in canonical form or refuses a text that has a diagnostic, emits a parsed document in canonical form, gives the manifest text, schema text and hashes of a document set, renders a document set as dialect statements, introspects a database into a document, compares databases with external documents and with a set, reads, emits, chains, diffs and writes the steps of plans, compares schema texts, applies, recovers, rolls back and finalizes plans on a connection, and exports and imports Mermaid erDiagrams (docs/dbspec.md, docs/dialects.md, docs/plans.md, docs/mermaid.md). |
 | DbspecDocument | One parsed and validated dbspec document. It is immutable; emitting it gives its canonical text. |
+
+A component marked `<<internal>>` states its grounding in the manifest field `internal` (`internal_ko`): each client implements its methods privately with no common signature, so they have no interface rule. Every method of the other components has a rule, and every rule names a method of a public component; `make interface-check` checks both directions.
 
 | From | To | Relation |
 |---|---|---|

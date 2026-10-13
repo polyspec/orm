@@ -69,3 +69,22 @@ func TestManifestRefusesRuleWithoutComponentMethod(t *testing.T) {
 		}
 	}
 }
+
+// An internal component (its "internal" field states why) is an operation each client implements privately with no
+// common signature: its methods have no rule, and a rule may not name one of them.
+func TestManifestInternalComponentMethodsHaveNoRule(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	internal := `{"id":"Planner","methods":["plan"],"internal":"Each client plans privately.","internal_ko":"각 client가 비공개로 plan한다."}`
+	if err := validateManifest(componentManifest(t, []string{internal})); err != nil {
+		t.Fatalf("the method of an internal component was refused for having no rule: %v", err)
+	}
+	err := validateManifest(componentManifest(t, []string{internal}, "Planner.plan"))
+	if err == nil || !strings.Contains(err.Error(), "Planner.plan") {
+		t.Fatalf("the manifest check accepted the rule Planner.plan of an internal component: %v", err)
+	}
+	for _, half := range []string{`{"id":"Planner","methods":["plan"],"internal":"Each client plans privately."}`, `{"id":"Planner","methods":["plan"],"internal_ko":"각 client가 비공개로 plan한다."}`} {
+		if err := validateManifest(componentManifest(t, []string{half})); err == nil || !strings.Contains(err.Error(), "Planner") {
+			t.Fatalf("the manifest check accepted an internal component without its grounding in both languages: %v", err)
+		}
+	}
+}
