@@ -21,7 +21,7 @@
     "typescript:test": "node tests/run-long.mjs typescript-build -- npm run typescript:build && node packages/orm-npm/tests/dsn.mjs && node packages/orm-npm/tests/idle-connection-end.mjs && node packages/orm-npm/tests/engine.mjs && node packages/orm-npm/tests/generate.mjs && node packages/orm-npm/tests/generate-scan.mjs && node packages/orm-npm/tests/codec-vector.mjs && node packages/orm-npm/tests/styled-value.mjs && node packages/orm-npm/tests/dbspec.mjs && node packages/orm-npm/tests/dbspec-rules.mjs && node packages/orm-npm/tests/package-declarations.mjs && node packages/orm-npm/tests/request_hook.mjs && ./scripts/typescript/sqlite-test.sh"
   },
   "devDependencies": {
-    "mermaid": "12.1.0",
+    "mermaid": "12.2.0",
     "vitepress": "1.6.4"
   },
   "overrides": {

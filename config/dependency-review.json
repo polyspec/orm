@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mjs) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-13T13:12:43.777Z",
+  "reviewed": "2026-10-13T13:19:11.131Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "dd2fc4aad872913121341cbe2842b1165a18eca1997ed9975f29a4a84683716d",
+      "sha256": "d8c18956af14f58167fe7705596bf265bbf9163d80e0443b9ccb5e9c9179e745",
       "advisories": []
     },
     {
@@ -57,7 +57,7 @@
       "ecosystem": "npm",
       "manifest": "package.json",
       "package": "mermaid",
-      "version": "12.1.0",
+      "version": "12.2.0",
       "latest": "12.2.0"
     },
     {
@@ -66,6 +66,13 @@
       "package": "vitepress",
       "version": "1.6.4",
       "latest": "1.6.4"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-language/package.json",
+      "package": "typescript",
+      "version": "6.0.3",
+      "latest": "7.0.2"
     },
     {
       "ecosystem": "npm",

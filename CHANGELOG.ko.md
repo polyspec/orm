@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: bf4f4ea1b4d0ea8e8f7523004b1f307036efe09df6106419ac27236e81bccc38 -->
+<!-- source-sha256: 1f5d96174727e03cc82b2cd1b74296b16fc97996a2af860ac1084f9511e3c584 -->
 # 변경 이력
 
 ## Unreleased
 
+- T138: 문서 site가 mermaid 12.2.0으로 도표를 그린다.
 - T128-3-3: 구문 분석, 선언 위치, browser entry의 Go, Rust, TypeScript test가 case harness로 case를 시작하므로 각각 deadline과 RUN 줄을 가진다.
 - T128-5: `@polyspec/dbspec-language`(`packages/dbspec-language`)가 dbspec language service다: `openDocument(text, {set})`가 UTF-16 range를 가진 diagnostic, token, block의 folding range, `format()`을 browser-safe parser entry만으로 준다.
 - T128-3-2: `tests/dbspec/syntax.json`이 T129가 더한 case 아홉의 token을 담고, 지운 case 셋을 더는 적지 않는다.
