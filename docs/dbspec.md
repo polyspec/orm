@@ -298,7 +298,7 @@ Emission writes a parsed document in one canonical text, so `emit(parse(s)) == s
 
 ## Syntax analysis
 
-Each implementation has one dbspec lexer and one parser, and syntax analysis is an output of that parser: no editor layer, generated file or regular expression holds a rule of the grammar. A regular-expression grammar such as TextMate's has no parser context, and a name may be a keyword (`table` is a valid column name), so it would classify tokens differently from the parser.
+Each implementation has one dbspec lexer and one parser, and syntax analysis is an output of that parser: no editor layer, generated file or regular expression holds a rule of the grammar. A regular-expression grammar such as TextMate's has no parser context, and a name may be a keyword word that is not reserved (`key`, `text` and `references` are valid column names), so it would classify tokens differently from the parser.
 
 `analyze(text, set)` returns the parse result, unchanged, and the tokens of the text. A token is `{line, start, end, class}`: `line` is 1-based, `start` and `end` count Unicode code points from the line start, and `end` is exclusive. The classes are:
 
