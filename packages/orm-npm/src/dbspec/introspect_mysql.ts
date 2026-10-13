@@ -1,10 +1,11 @@
 // MySQL의 현재 database를 catalog으로 읽는다 (docs/dialects.md "Introspection").
 // 모든 query는 현재 database 전체를 한 번에 읽는다.
-import { actionName, Catalog, cut, quote, tableTypes, type CatalogQuery, type IColumn, type IForeignKey, type IKey, type ITable } from './introspect_catalog.js';
+import { actionName, Catalog, quote, tableTypes, type CatalogQuery, type IColumn, type IForeignKey, type IKey, type ITable } from './introspect_catalog.js';
 import { CheckDecodeError, decodeCheck } from './introspect_check.js';
 import { recognizeTriggers, type ITrigger } from './introspect_trigger.js';
 import type { DbspecType } from './model.js';
 import { UUID_PATTERN } from './render.js';
+import { renderedColumn } from './names.js';
 
 const TABLES_QUERY = `SELECT TABLE_NAME, TABLE_TYPE, IFNULL(CREATE_OPTIONS, '') FROM information_schema.TABLES
 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME NOT LIKE 'dbspec$%' ORDER BY TABLE_NAME`;
@@ -104,10 +105,10 @@ export async function readMySQL(query: CatalogQuery): Promise<Catalog> {
       c.report('check', table, name, 'the check is not enforced');
       continue;
     }
-    const [owner, column, generated] = cut(name, '$');
-    if (generated) {
-      const col = columns.get(table)?.get(column);
-      if (owner !== table || col === undefined || withoutIntroducers(clause) !== withoutIntroducers(rendererCheck(col))) {
+    if (name.includes('$')) {
+      const column = renderedColumn(table, name, columns.get(table)?.keys() ?? []);
+      const col = column === null ? undefined : columns.get(table)?.get(column);
+      if (column === null || col === undefined || withoutIntroducers(clause) !== withoutIntroducers(rendererCheck(col))) {
         c.report('check', table, name, `the check ${clause} is not the renderer CHECK`);
         continue;
       }

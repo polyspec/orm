@@ -5,7 +5,8 @@ import type { DbspecColumn, DbspecDiagnostic, DbspecDocument, DbspecForeignKey, 
 import { sortedBy, type DbspecPlan } from './plan.js';
 import { columnOf, planDiff, sameDefault, sameType, sortedKeys, type PlanDiff } from './plan_diff.js';
 import { checkOf, foreignKeyOf, hasTriggers, indexOf, renameCheck, uniqueOf, type ObjectRef } from './plan_objects.js';
-import { Renderer, type DbspecDialect } from './render.js';
+import { Renderer, type DbspecDialect } from './render.js';import { rendererName } from './names.js';
+
 
 /**
  * How a step's statement shows that it took effect (docs/plans.md "Steps",
@@ -341,10 +342,10 @@ class PlanWriter {
     // 옛 정의: 이름 바꾸기를 적용한 source table과 보관 이름의 더하는 column
     const old = this.renamedSource(name);
     const hiddenAdded = added.map(c => ({ ...columnOf(t, c)!, name: this.hold(`+${name}.${c}`) }));
-    const newCreate = (as: string): string => this.r.createTable(t, as, c => `${t.name}$${c}`, hiddenDropped);
+    const newCreate = (as: string): string => this.r.createTable(t, as, c => rendererName(t.name, c), hiddenDropped);
     // sourceColumn은 옛 정의 column의 source 이름이다. 지우는 column은 이름이 그대로다.
     const sourceColumn = (c: string): string => columns.get(c) ?? c;
-    const oldCreate = this.r.createTable(old, name, c => `${src.name}$${sourceColumn(c)}`, hiddenAdded);
+    const oldCreate = this.r.createTable(old, name, c => rendererName(src.name, sourceColumn(c)), hiddenAdded);
     const newList = this.r.list([...t.columns.map(c => c.name), ...hiddenDropped.map(c => c.name)]);
     // 옛 table에서 새 정의로 옮기는 식
     const into: string[] = [];

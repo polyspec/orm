@@ -3,7 +3,8 @@
 import { byteOrder, type Catalog, type ITable } from './introspect_catalog.js';
 import type { DbspecSetting, DbspecTable } from './model.js';
 import { auditLine } from './audit.js';
-import { Renderer, type DbspecDialect } from './render.js';
+import { Renderer, type DbspecDialect } from './render.js';import { rendererName } from './names.js';
+
 
 /** catalog trigger 하나를 renderer가 쓰는 statement 형식으로 다시 쓴 것이다. PostgreSQL은 function과 trigger statement 두 개다. */
 export interface ITrigger {
@@ -42,9 +43,9 @@ function triggerSetting(dialect: DbspecDialect, t: ITable, list: readonly ITrigg
   const names = new Map(list.map(tr => [tr.name, tr]));
   const candidates: DbspecSetting[] = [];
   if (list.length === 2) candidates.push({ comments: [], kind: 'immutable' });
-  const insert = names.get(`${t.name}$audit_insert`);
+  const insert = names.get(rendererName(t.name, 'audit_insert'));
   if (insert !== undefined && list.length === 3) {
-    const update = names.get(`${t.name}$audit_update`);
+    const update = names.get(rendererName(t.name, 'audit_update'));
     const m = AUDIT_INSERT_PATTERN.exec(statementBody(insert.statements));
     const u = AUDIT_UPDATE_PATTERN.exec(statementBody(update?.statements ?? []));
     const audit = m !== null && u !== null ? auditOf(t, m[1]!, m[2]!.split(', '), u[1]!) : null;

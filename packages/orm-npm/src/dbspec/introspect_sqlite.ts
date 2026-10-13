@@ -1,10 +1,12 @@
 // SQLite의 main database를 catalog으로 읽는다 (docs/dialects.md "Introspection").
 // sqlite_master와 table-valued pragma를 join해 모든 table을 한 번에 읽는다.
-import { actionName, Catalog, rendererCheckName, tableTypes, type CatalogQuery, type DbspecUnsupported, type IForeignKey } from './introspect_catalog.js';
+import { actionName, Catalog, tableTypes, type CatalogQuery, type DbspecUnsupported, type IForeignKey } from './introspect_catalog.js';
 import { CheckDecodeError, decodeCheck, unscaledDecimal } from './introspect_check.js';
 import { recognizeTriggers, type ITrigger } from './introspect_trigger.js';
 import type { DbspecAction, DbspecType } from './model.js';
+import { rendererName } from './names.js';
 import { Renderer } from './render.js';
+
 
 const MASTER_QUERY = `SELECT type, name, tbl_name, IFNULL(sql, '') FROM sqlite_master
 WHERE name NOT LIKE 'sqlite_%' AND tbl_name NOT LIKE 'dbspec$%' ORDER BY type, name`;
@@ -82,7 +84,7 @@ export async function readSQLite(query: CatalogQuery): Promise<Catalog> {
       c.report('column', table, name, `the column definition ${JSON.stringify(st.columns.get(name) ?? '')} has clauses that dbspec does not read`);
       continue;
     }
-    const checkName = rendererCheckName(table, name);
+    const checkName = rendererName(table, name);
     const check = st.checks.get(checkName);
     let type: DbspecType;
     let identity = false;
