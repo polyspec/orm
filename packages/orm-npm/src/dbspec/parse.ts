@@ -54,6 +54,8 @@ const STAGES = new Set<string>(['ordered_json', 'aes', 'hex', 'gz', 'base64', 's
 const ACTIONS = new Set<string>(['restrict', 'cascade', 'set_null']);
 const CONSTRAINT_WORDS = new Set(['primary', 'unique', 'index', 'foreign', 'check']);
 const EXPRESSION_WORDS = new Set(['and', 'or', 'not', 'in', 'between', 'is', 'null', 'true', 'false']);
+/** The words that are keywords in a value position: a default, a check literal, a coordinate and a limit count (R6, R18). */
+const VALUE_WORDS = new Set(['true', 'false', 'null', 'now']);
 const COMPARISONS = new Set(['=', '<>', '<', '<=', '>', '>=']);
 const ORDERINGS = new Set(['<', '<=', '>', '>=']);
 const ARITHMETIC = new Set(['+', '-', '*', '/']);
@@ -433,16 +435,26 @@ function lexLine(text: string, line: number): Lexed {
   return { toks, error: null };
 }
 
-/** Go's lexRecover: the tokens of a line whose character that starts no token is read as a space. */
-function lexRecover(text: string, line: number): Tk[] {
+/** The class of a token that the reader does not classify: a number, a string, an operator, a punctuation mark or a word. */
+export type DbspecTokenClass = 'keyword' | 'type' | 'name' | 'setting' | 'number' | 'string' | 'operator' | 'punctuation' | 'comment' | 'word';
+
+/**
+ * Go's lexRecover: the tokens of a line whose character that starts no token is read as a space. The text returned is the
+ * line the tokens refer to: each offending code point is one space, so its code points are those of the line.
+ */
+function recoverLine(text: string, line: number): { toks: Tk[]; text: string } {
   const chars = Array.from(text);
   for (let attempt = 0; attempt <= chars.length; attempt++) {
     const joined = chars.join('');
     const lexed = lexLine(joined, line);
-    if (lexed.error === null) return lexed.toks;
+    if (lexed.error === null) return { toks: lexed.toks, text: joined };
     chars[Array.from(joined.slice(0, lexed.error.index)).length] = ' ';
   }
-  return [];
+  return { toks: [], text: chars.join('') };
+}
+
+function lexRecover(text: string, line: number): Tk[] {
+  return recoverLine(text, line).toks;
 }
 
 /** Whether a foreign key action changes child rows (Go's propagates). */
@@ -667,6 +679,12 @@ class DocumentParser {
   private syntaxLine = 0;
   private columnCount = 0;
   private foreignKeyCount = 0;
+  /** The lines on which the reader reported a syntax diagnostic: their words are `word` (R1). An unclosed block is not one. */
+  readonly abandoned = new Set<number>();
+  /** The class the reader gave a word, by `line:start` (docs/dbspec.md "Syntax analysis"). */
+  readonly classes = new Map<string, DbspecTokenClass>();
+  /** The lines of a block whose opening line failed: read for diagnostics, with lexical classes (R20). */
+  readonly lexical = new Set<number>();
 
   constructor(
     private readonly lines: string[],
@@ -681,8 +699,20 @@ class DocumentParser {
     return this.parents.length === 0 ? [this.document.name] : this.parents;
   }
 
+  /** Gives a word the class of the position the reader consumed it at; the words of a lexical line keep their lexical class (R20). */
+  private mark(tok: Tk | undefined, cls: DbspecTokenClass): void {
+    if (tok === undefined || tok.k !== K.Word || this.lexical.has(tok.line)) return;
+    this.classes.set(`${tok.line}:${tok.s}`, cls);
+  }
+
+  /** A value word that is a keyword (VALUE_WORDS); any other word keeps its lexical class. */
+  private markValue(tok: Tk | undefined): void {
+    if (tok !== undefined && VALUE_WORDS.has(tok.t)) this.mark(tok, 'keyword');
+  }
+
   private report(rule: DbspecRule, line: number, index: number, message: string): void {
     if (rule === 'syntax') {
+      this.abandoned.add(line);
       if (this.syntaxLine === line) return;
       this.syntaxLine = line;
     }
@@ -755,9 +785,16 @@ class DocumentParser {
     let table: ITable | null = null;
     let diagram: IDiagram | null = null;
     let comments: string[] = [];
+    // A block whose opening line failed keeps lexical classes in its lines until it closes (R20).
+    let tableLexical = false;
+    let settingsLexical = false;
+    let diagramLexical = false;
     for (let n = 1; n < lines.length && !this.stopped; n++) {
       const text = lines[n]!;
       const line = n + 1;
+      if ((state === 'table' && tableLexical) || (state === 'settings' && (tableLexical || settingsLexical)) || (state === 'diagram' && diagramLexical)) {
+        this.lexical.add(line);
+      }
       let i = 0;
       while (i < text.length && text.charCodeAt(i) === 32) i++;
       if (i === text.length) continue;
@@ -778,17 +815,22 @@ class DocumentParser {
       if (first === undefined) continue;
       if (state === 'top') {
         if (isWord(first, 'use')) {
+          this.mark(first, 'keyword');
           if (phase > 1) this.at('order', first, 'use lines come before tables and diagrams');
           else phase = 1;
           this.use(toks, line, own);
         } else if (isWord(first, 'table')) {
+          this.mark(first, 'keyword');
           if (phase > 2) this.at('order', first, 'tables come before diagrams');
           else phase = 2;
           table = this.tableHeader(toks, line, own);
+          tableLexical = this.abandoned.has(line);
           state = 'table';
         } else if (isWord(first, 'diagram')) {
+          this.mark(first, 'keyword');
           phase = 3;
           diagram = this.diagramHeader(toks, line, own);
+          diagramLexical = this.abandoned.has(line);
           state = 'diagram';
         } else {
           this.at('syntax', first, 'expected use, table or diagram');
@@ -799,16 +841,20 @@ class DocumentParser {
           if (toks.length > 1) this.syntax(toks, 1, line, 'expected the end of the line');
           t.closing = own;
           table = null;
+          tableLexical = false;
           state = 'top';
         } else if (lexed.error !== null) {
           state = this.lexedTableLine(t, toks, line, own);
+          if (state === 'settings') settingsLexical = this.abandoned.has(line);
         } else if (isWord(first, 'settings')) {
+          this.mark(first, 'keyword');
           // Go는 반복된 block의 키워드에 order를 줄이 올바른 형식(`settings {`만)일 때만 보고한다.
           if (t.settings !== null && isPunct(toks[1], '{') && toks.length === 2) this.at('order', first, 'a table has at most one settings block');
           this.openSettingsBlock(t, { open: isPunct(toks[1], '{') ? toks[1]! : first, entries: [], comments: own, closing: [] });
           t.phase = 2;
           if (!isPunct(toks[1], '{')) this.syntax(toks, 1, line, 'expected {');
           else if (toks.length > 2) this.syntax(toks, 2, line, 'expected the end of the line');
+          settingsLexical = this.abandoned.has(line);
           state = 'settings';
         } else if (first.k === K.Word && CONSTRAINT_WORDS.has(first.t)) {
           if (t.phase === 2) this.at('order', first, 'key, index, foreign key and check lines come before settings');
@@ -831,6 +877,7 @@ class DocumentParser {
         if (isPunct(first, '}')) {
           if (toks.length > 1) this.syntax(toks, 1, line, 'expected the end of the line');
           this.settingsBlock!.closing = own;
+          settingsLexical = false;
           state = 'table';
         } else {
           this.setting(toks, line, own, lexed.error !== null);
@@ -841,6 +888,7 @@ class DocumentParser {
           if (toks.length > 1) this.syntax(toks, 1, line, 'expected the end of the line');
           d.closing = own;
           diagram = null;
+          diagramLexical = false;
           state = 'top';
         } else if (lexed.error === null) {
           this.placement(d, toks, line, own);
@@ -877,8 +925,11 @@ class DocumentParser {
     let end = prefix.length;
     while (end < text.length && /[A-Za-z0-9_]/.test(text[end]!)) end++;
     if (end === prefix.length || end < text.length) return fail(end);
-    const name = lexLine(text, 1).toks[2]!;
+    const toks = lexLine(text, 1).toks;
+    const name = toks[2]!;
     this.name(name);
+    this.mark(toks[0], 'keyword');
+    this.mark(name, 'name');
     this.document.name = name.t;
     this.document.nameTok = name;
     return true;
@@ -922,6 +973,8 @@ class DocumentParser {
     this.name(doc);
     for (const t of listed[0]) this.name(t);
     for (const t of listed[0]) this.document.failed.delete(t.t);
+    this.mark(doc, 'name');
+    for (const t of listed[0]) this.mark(t, 'name');
     this.document.uses.push({ doc, tables: listed[0], comments });
   }
 
@@ -959,6 +1012,7 @@ class DocumentParser {
     this.document.tables.push(table);
     if (!named) this.syntax(toks, 1, line, 'expected a table name');
     else {
+      this.mark(name, 'name');
       this.name(name);
       if (!isPunct(toks[2], '{')) this.syntax(toks, 2, line, 'expected {');
       else this.end(toks, 3, line);
@@ -974,6 +1028,7 @@ class DocumentParser {
     this.document.diagrams.push(diagram);
     if (!named) this.syntax(toks, 1, line, 'expected a diagram name');
     else {
+      this.mark(name, 'name');
       if (this.name(name) && this.document.diagrams.some(d => d !== diagram && d.named && d.name.t === name.t)) {
         this.at('name.duplicate', name, `diagram ${name.t} repeats`);
       }
@@ -1034,6 +1089,8 @@ class DocumentParser {
       table.failed.add(name.t);
       return this.syntax(toks, 1, line, 'expected a type');
     }
+    this.mark(name, 'name');
+    this.mark(typeTok, 'type');
     let i = 2;
     let params: Tk[] | null = null;
     if (isPunct(toks[i], '(')) {
@@ -1054,10 +1111,20 @@ class DocumentParser {
     let defaultTok: Tk | null = null;
     let valueTok: Tk | null = null;
     let complete = true;
-    if (isWord(toks[i], 'null')) nullTok = toks[i++]!;
-    if (isWord(toks[i], 'identity')) identity = toks[i++]!;
+    if (isWord(toks[i], 'null')) {
+      nullTok = toks[i]!;
+      this.mark(nullTok, 'keyword');
+      i++;
+    }
+    if (isWord(toks[i], 'identity')) {
+      identity = toks[i]!;
+      this.mark(identity, 'keyword');
+      i++;
+    }
     if (isWord(toks[i], 'default')) {
-      defaultTok = toks[i++]!;
+      defaultTok = toks[i]!;
+      this.mark(defaultTok, 'keyword');
+      i++;
       const v = toks[i];
       const next = toks[i + 1];
       if (v !== undefined && v.k === K.Op && v.t === '-' && next !== undefined && next.k === K.Word && next.s === v.e) {
@@ -1065,6 +1132,7 @@ class DocumentParser {
         i += 2;
       } else if (v !== undefined && (v.k === K.Word || v.k === K.Str)) {
         valueTok = v;
+        this.markValue(v);
         i++;
       } else {
         this.syntax(toks, i, line, 'expected a default value');
@@ -1110,7 +1178,11 @@ class DocumentParser {
       }
       i++;
       let descending = false;
-      if (directions && (isWord(toks[i], 'asc') || isWord(toks[i], 'desc'))) descending = toks[i++]!.t === 'desc';
+      if (directions && (isWord(toks[i], 'asc') || isWord(toks[i], 'desc'))) {
+        this.mark(toks[i], 'keyword');
+        descending = toks[i++]!.t === 'desc';
+      }
+      this.mark(w, 'name');
       cols.push({ tok: w, descending });
       if (isPunct(toks[i], ',')) {
         i++;
@@ -1151,6 +1223,7 @@ class DocumentParser {
 
   private constraint(table: ITable, toks: Tk[], line: number, comments: string[]): void {
     const kw = toks[0]!;
+    this.mark(kw, 'keyword');
     switch (kw.t) {
       case 'primary': {
         const failed = (): void => {
@@ -1160,6 +1233,7 @@ class DocumentParser {
           failed();
           return this.syntax(toks, 1, line, 'expected key');
         }
+        this.mark(toks[1], 'keyword');
         const cols = this.keyColumns(toks, 2, line, false);
         if (cols === null || !this.end(toks, cols[1], line)) return failed();
         for (const c of cols[0]) this.name(c.tok);
@@ -1178,6 +1252,7 @@ class DocumentParser {
           table.failedKey = true;
           return;
         }
+        this.mark(name, 'name');
         this.constraintName(name);
         for (const c of cols[0]) this.name(c.tok);
         (kw.t === 'index' ? table.indexes : table.uniques).push({ kw, name, cols: cols[0], comments });
@@ -1198,6 +1273,7 @@ class DocumentParser {
         const close = toks[toks.length - 1]!;
         // Go: the rest after `(` must end with `)`; an empty expression `()` is an expression error at the `)`.
         if (toks.length < 4 || !isPunct(close, ')')) return this.syntax(toks, toks.length, line, "expected ')' at the end of the check");
+        this.mark(name, 'name');
         this.constraintName(name);
         table.checks.push({ name, expr: toks.slice(3, -1), close, comments, text: '' });
         return;
@@ -1208,14 +1284,18 @@ class DocumentParser {
   private foreignKeyLine(table: ITable, toks: Tk[], line: number, comments: string[]): void {
     const kw = toks[0]!;
     if (!isWord(toks[1], 'key')) return this.syntax(toks, 1, line, 'expected key');
+    this.mark(toks[1], 'keyword');
     const name = toks[2];
     if (name === undefined || name.k !== K.Word) return this.syntax(toks, 2, line, 'expected a name');
+    this.mark(name, 'name');
     const cols = this.keyColumns(toks, 3, line, false);
     if (cols === null) return;
     let i = cols[1];
     if (!isWord(toks[i], 'references')) return this.syntax(toks, i, line, 'expected references');
+    this.mark(toks[i], 'keyword');
     const target = toks[i + 1];
     if (target === undefined || target.k !== K.Word) return this.syntax(toks, i + 1, line, 'expected a table name');
+    this.mark(target, 'name');
     const refs = this.keyColumns(toks, i + 2, line, false);
     if (refs === null) return;
     i = refs[1];
@@ -1223,10 +1303,14 @@ class DocumentParser {
     const actionToks: Tk[] = [];
     for (const event of ['delete', 'update'] as const) {
       if (!isWord(toks[i], 'on') || !isWord(toks[i + 1], event)) continue;
+      this.mark(toks[i], 'keyword');
+      this.mark(toks[i + 1], 'keyword');
       const action = toks[i + 2];
       if (action === undefined || action.k !== K.Word) return this.syntax(toks, i + 2, line, 'expected an action');
       actions[event] = action.t as DbspecAction;
       actionToks.push(action);
+      // R3: an action that is not restrict, cascade or set_null is a word, with a semantic diagnostic.
+      if (ACTIONS.has(action.t)) this.mark(action, 'keyword');
       i += 3;
     }
     if (!this.end(toks, i, line)) return;
@@ -1264,6 +1348,8 @@ class DocumentParser {
     if (lexed) return;
     const kw = toks[0]!;
     if (kw.k !== K.Word) return this.syntax(toks, 0, line, 'expected a setting');
+    // R4: the first word of a settings line is a setting, known or not.
+    this.mark(kw, 'setting');
     const words = (from: number, count: number | null): Tk[] | null => {
       const out: Tk[] = [];
       for (let i = from; i < toks.length; i++) {
@@ -1289,6 +1375,7 @@ class DocumentParser {
         const w = words(1, 1);
         if (w === null) return;
         this.name(w[0]!);
+        this.mark(w[0], 'name');
         entry = { kw, comments, kind: 'entity', name: w[0]! };
         break;
       }
@@ -1298,14 +1385,19 @@ class DocumentParser {
         const w = words(1, 1);
         if (w === null) return;
         this.name(w[0]!);
+        this.mark(w[0], 'name');
         entry = { kw, comments, kind: kw.t, column: w[0]! };
         break;
       }
       case 'select': {
         if (!isWord(toks[1], 'explicit')) return this.syntax(toks, 1, line, 'expected explicit');
+        this.mark(toks[1], 'keyword');
         const w = words(2, null);
         if (w === null) return;
-        for (const c of w) this.name(c);
+        for (const c of w) {
+          this.mark(c, 'name');
+          this.name(c);
+        }
         entry = { kw, comments, kind: 'select_explicit', columns: w };
         break;
       }
@@ -1313,8 +1405,11 @@ class DocumentParser {
         const w = words(1, null);
         if (w === null) return;
         if (w.length < 2) return this.syntax(toks, toks.length, line, 'expected a codec stage');
+        this.mark(w[0], 'name');
         this.name(w[0]!);
         const stages = w.slice(1);
+        // R3: a codec stage of the known set is a keyword; another word is a word, with a semantic diagnostic.
+        for (const s of stages) if (STAGES.has(s.t)) this.mark(s, 'keyword');
         if (!this.detachedBlock) for (const s of stages) if (!STAGES.has(s.t)) this.at('setting', s, `${s.t} is not a codec stage`);
         entry = { kw, comments, kind: 'codec', column: w[0]!, stages };
         break;
@@ -1322,14 +1417,20 @@ class DocumentParser {
       case 'blind_index': {
         const w = words(1, 2);
         if (w === null) return;
-        for (const c of w) this.name(c);
+        for (const c of w) {
+          this.mark(c, 'name');
+          this.name(c);
+        }
         entry = { kw, comments, kind: 'blind_index', column: w[0]!, indexColumn: w[1]! };
         break;
       }
       case 'navigation': {
         const w = words(1, 3);
         if (w === null) return;
-        for (const c of w) this.name(c);
+        for (const c of w) {
+          this.mark(c, 'name');
+          this.name(c);
+        }
         entry = { kw, comments, kind: 'navigation', foreignKey: w[0]!, childName: w[1]!, parentName: w[2]! };
         break;
       }
@@ -1340,6 +1441,7 @@ class DocumentParser {
       case 'markdown': {
         const w = words(1, 1);
         if (w === null) return;
+        this.mark(w[0], 'name');
         entry = { kw, comments, kind: 'markdown', column: w[0]! };
         break;
       }
@@ -1361,6 +1463,7 @@ class DocumentParser {
       case 'body': {
         const w = words(1, 1);
         if (w === null) return;
+        this.mark(w[0], 'name');
         entry = { kw, comments, kind: kw.t === 'title' ? 'title' : kw.t === 'body' ? 'body' : 'order', column: w[0]! };
         break;
       }
@@ -1386,8 +1489,10 @@ class DocumentParser {
         let i = 1;
         for (const label of ['into', 'column', 'references', 'action', 'previous']) {
           if (!isWord(toks[i], label)) return this.syntax(toks, i, line, `expected ${label}`);
+          this.mark(toks[i], 'keyword');
           const w = toks[i + 1];
           if (w === undefined || w.k !== K.Word) return this.syntax(toks, i + 1, line, 'expected a name');
+          this.mark(w, 'name');
           this.name(w);
           parts.push(w);
           i += 2;
@@ -1397,6 +1502,8 @@ class DocumentParser {
           if (!isPunct(toks[i + 1], '(')) return this.syntax(toks, i + 1, line, 'expected (');
           const listed = this.list(toks, i + 2, line, ')');
           if (listed === null) return;
+          this.mark(toks[i], 'keyword');
+          for (const c of listed[0]) this.mark(c, 'name');
           lists.push({ kw: toks[i]!, columns: listed[0] });
           i = listed[1];
         }
@@ -1413,7 +1520,10 @@ class DocumentParser {
   /** Reads a name-like word at i, or reports a syntax error there (or after the line) and returns null. */
   private settingWord(toks: Tk[], i: number, line: number, what: string): Tk | null {
     const t = toks[i];
-    if (t !== undefined && t.k === K.Word) return t;
+    if (t !== undefined && t.k === K.Word) {
+      this.mark(t, 'name');
+      return t;
+    }
     this.syntax(toks, i, line, `expected ${what}`);
     return null;
   }
@@ -1425,6 +1535,7 @@ class DocumentParser {
       this.syntax(toks, 1, line, "expected 'files', 'document' or 'block'");
       return null;
     }
+    this.mark(storage, 'keyword');
     let i = 2;
     let foreignKey: Tk | null = null;
     if (storage.t === 'block') {
@@ -1439,6 +1550,7 @@ class DocumentParser {
         this.syntax(toks, i, line, "expected 'list' or 'table'");
         return null;
       }
+      this.mark(word, 'keyword');
       shape = word;
       i++;
     }
@@ -1446,6 +1558,7 @@ class DocumentParser {
     let shard: { at: Tk; column: Tk; period: Tk } | null = null;
     const at = toks[i];
     if (at !== undefined && at.k === K.Word && at.t === 'shard') {
+      this.mark(at, 'keyword');
       const column = this.settingWord(toks, i + 1, line, 'the shard column');
       if (column === null) return null;
       const period = toks[i + 2];
@@ -1453,6 +1566,7 @@ class DocumentParser {
         this.syntax(toks, i + 2, line, "expected 'year', 'month' or 'day'");
         return null;
       }
+      this.mark(period, 'keyword');
       shard = { at, column, period };
       i += 3;
     }
@@ -1477,6 +1591,7 @@ class DocumentParser {
     };
     const keyword = (text: string): boolean => {
       if (isWord(toks[i], text)) {
+        this.mark(toks[i], 'keyword');
         i++;
         return true;
       }
@@ -1486,6 +1601,7 @@ class DocumentParser {
     const formAhead = (text: string): boolean => isWord(toks[i], text) && !isOp(toks[i + 1], '-');
     const requireList = (): Tk[] | null | undefined => {
       if (!isWord(toks[i], 'require')) return null;
+      this.mark(toks[i], 'keyword');
       i++;
       if (!isPunct(toks[i], '(')) {
         this.syntax(toks, i, line, "expected '('");
@@ -1494,6 +1610,7 @@ class DocumentParser {
       const listed = this.list(toks, i + 1, line, ')');
       if (listed === null) return undefined;
       i = listed[1];
+      for (const w of listed[0]) this.mark(w, 'name');
       return listed[0];
     };
     const column = take('the state column');
@@ -1507,6 +1624,7 @@ class DocumentParser {
     };
     if (formAhead('initial') || formAhead('terminal')) {
       const terminal = toks[i]!.t === 'terminal';
+      this.mark(toks[i], 'keyword');
       i++;
       const state = take('a state name');
       if (state === null) return null;
@@ -1516,6 +1634,7 @@ class DocumentParser {
       return done({ form: 'terminal', state, requires });
     }
     if (formAhead('history')) {
+      this.mark(toks[i], 'keyword');
       i++;
       const table = take('the history table');
       if (table === null || !keyword('row')) return null;
@@ -1530,6 +1649,7 @@ class DocumentParser {
       return done({ form: 'history', table, row, from, to, at });
     }
     if (formAhead('limit')) {
+      this.mark(toks[i], 'keyword');
       i++;
       const state = take('a state name');
       if (state === null) return null;
@@ -1544,6 +1664,7 @@ class DocumentParser {
         count = { k: K.Word, t: '-' + n.t, s: t!.s, e: n.e, line };
         i += 2;
       } else if (t !== undefined && t.k === K.Word) {
+        this.markValue(t);
         count = t;
         i++;
       } else {
@@ -1570,6 +1691,7 @@ class DocumentParser {
     const table = toks[0]!;
     if (table.k !== K.Word) return this.syntax(toks, 0, line, 'expected a table name');
     if (!isWord(toks[1], 'at')) return this.syntax(toks, 1, line, 'expected at');
+    this.mark(toks[1], 'keyword');
     let i = 2;
     const coordinates: { tok: Tk; text: string }[] = [];
     for (let n = 0; n < 2; n++) {
@@ -1579,11 +1701,13 @@ class DocumentParser {
         coordinates.push({ tok: v, text: '-' + next.t });
         i += 2;
       } else if (v !== undefined && v.k === K.Word) {
+        this.markValue(v);
         coordinates.push({ tok: v, text: v.t });
         i++;
       } else return this.syntax(toks, i, line, 'expected a coordinate');
     }
     if (!this.end(toks, i, line)) return;
+    this.mark(table, 'name');
     this.name(table);
     const values: number[] = [];
     for (const c of coordinates) {
@@ -1874,6 +1998,10 @@ class DocumentParser {
       this.at(rule, tok, message);
     };
     // 끝까지 읽힌 술어의 열과 타입 진단: 원본 순서로 첫 번째만 보고한다.
+    // R14: the tokens read before the first reading diagnostic keep their classes; the rest keep lexical classes.
+    const mark = (tok: Tk | undefined, cls: DbspecTokenClass): void => {
+      if (!flagged) this.mark(tok, cls);
+    };
     const issues: { readonly tok: Tk; readonly message: string; readonly rule: DbspecRule }[] = [];
     const issue = (tok: Tk, message: string, rule: DbspecRule = 'check'): void => {
       issues.push({ tok, message, rule });
@@ -1894,6 +2022,7 @@ class DocumentParser {
     const expectWord = (text: string): void => {
       const tok = take();
       if (!isWord(tok, text)) throw new ExpressionSyntax(tok);
+      mark(tok, 'keyword');
       out.push(text);
     };
     const isNumber = (tok: Tk | undefined): boolean => tok !== undefined && tok.k === K.Word && UNSIGNED_NUMBER.test(tok.t);
@@ -1916,7 +2045,10 @@ class DocumentParser {
       const t = take();
       if (t.k === K.Str) return literalOperand(t, t.t);
       if (isNumber(t)) return literalOperand(t, numberText(t.t));
-      if (isWord(t, 'true') || isWord(t, 'false')) return literalOperand(t, t.t);
+      if (isWord(t, 'true') || isWord(t, 'false')) {
+        mark(t, 'keyword');
+        return literalOperand(t, t.t);
+      }
       if (isWord(t, 'null')) flag('check', t, 'the null literal is not part of a predicate');
       else if (t.k === K.Word && !EXPRESSION_WORDS.has(t.t)) flag('check', t, `${t.t} is not a literal`);
       else throw new ExpressionSyntax(t);
@@ -1936,7 +2068,10 @@ class DocumentParser {
       }
       if (t.k !== K.Word) throw new ExpressionSyntax(t);
       if (isNumber(t)) return literalOperand(t, numberText(t.t));
-      if (t.t === 'true' || t.t === 'false') return literalOperand(t, t.t);
+      if (t.t === 'true' || t.t === 'false') {
+        mark(t, 'keyword');
+        return literalOperand(t, t.t);
+      }
       if (t.t === 'null') {
         flag('check', t, 'the null literal is not part of a predicate');
         return null;
@@ -1954,6 +2089,8 @@ class DocumentParser {
         return null;
       }
       // Go의 ref: a malformed reference reports its name rule (format, then length) and is not resolved.
+      // A column reference is a name (R13), whether it resolves or not.
+      mark(t, 'name');
       if (!wellFormed(t.t)) {
         issue(t, RESERVED.has(t.t) ? `${t.t} is a reserved word` : `${t.t} does not match [a-z][a-z0-9_]*`, 'name.format');
         return null;
@@ -2038,10 +2175,14 @@ class DocumentParser {
         return { kind: 'leaf', parts: out };
       }
       const negated = isWord(t, 'not') && isWord(toks[i + 1], 'in');
-      if (negated) out.push(take().t);
+      if (negated) {
+        mark(t, 'keyword');
+        out.push(take().t);
+      }
       const u = peek();
       if (isWord(u, 'in')) {
         const column = subject(left, u!);
+        mark(u, 'keyword');
         out.push(take().t);
         expectPunct('(');
         const values = [literal()];
@@ -2055,8 +2196,12 @@ class DocumentParser {
       }
       if (isWord(u, 'is')) {
         subject(left, u!);
+        mark(u, 'keyword');
         out.push(take().t);
-        if (isWord(peek(), 'not')) out.push(take().t);
+        if (isWord(peek(), 'not')) {
+          mark(peek(), 'keyword');
+          out.push(take().t);
+        }
         expectWord('null');
         return { kind: 'leaf', parts: out };
       }
@@ -2065,6 +2210,7 @@ class DocumentParser {
     const and = (): Predicate => {
       let left = predicate();
       while (isWord(peek(), 'and')) {
+        mark(peek(), 'keyword');
         take();
         left = { kind: 'logical', op: 'and', left, right: predicate() };
       }
@@ -2073,6 +2219,7 @@ class DocumentParser {
     const or = (): Predicate => {
       let left = and();
       while (isWord(peek(), 'or')) {
+        mark(peek(), 'keyword');
         take();
         left = { kind: 'logical', op: 'or', left, right: and() };
       }
@@ -2926,11 +3073,86 @@ function parseText(text: string, context: ParseContext, parents: readonly string
   return { diagnostics, document: parser.document, parser };
 }
 
-/** The document of a text and its declared document set, or every diagnostic in source order. */
-export function parseDocument(text: string, documents: Readonly<Record<string, string>>): ParsedDocument {
-  const parsed = parseText(text, { documents, cache: new Map() }, []);
+function resultOf(parsed: Parsed): ParsedDocument {
   if (parsed.diagnostics.length > 0 || parsed.parser === null) {
     return { document: null, positions: null, diagnostics: parsed.diagnostics };
   }
   return { document: parsed.parser.build(), positions: parsed.parser.positions(), diagnostics: [] };
+}
+
+/** The document of a text and its declared document set, or every diagnostic in source order. */
+export function parseDocument(text: string, documents: Readonly<Record<string, string>>): ParsedDocument {
+  return resultOf(parseText(text, { documents, cache: new Map() }, []));
+}
+
+/** A token of a text: its 1-based line, its start and end in code points on the line, and its class. */
+export interface RawToken {
+  readonly line: number;
+  readonly start: number;
+  readonly end: number;
+  readonly cls: DbspecTokenClass;
+}
+
+/** Code points of a text, as Array.from counts them: an offending character and a surrogate pair each count once. */
+function codePointCount(text: string): number {
+  return Array.from(text).length;
+}
+
+/** The class of a lexed token of a line that the reader read (or of a line it did not read, with `read` false). */
+function classOf(tok: Tk, line: number, parser: DocumentParser | null, read: boolean, abandoned: boolean): DbspecTokenClass {
+  if (tok.k === K.Str) return 'string';
+  if (tok.k === K.Punct) return 'punctuation';
+  if (tok.k === K.Op) return 'operator';
+  if (read && !abandoned) {
+    const marked = parser!.classes.get(`${line}:${tok.s}`);
+    if (marked !== undefined) return marked;
+  }
+  return UNSIGNED_NUMBER.test(tok.t) ? 'number' : 'word';
+}
+
+/**
+ * The tokens of a text (docs/dbspec.md "Syntax analysis"), from the parse of the same text. The lines the reader read
+ * take the classes it gave; a line it did not read, after a stop, keeps lexical classes. A limit stop gives no tokens.
+ */
+function tokensOf(text: string, parsed: Parsed): RawToken[] {
+  const { diagnostics, parser } = parsed;
+  if (diagnostics.some(d => d.rule === 'limit')) return [];
+  const last = diagnostics[diagnostics.length - 1];
+  const headerStop = parser !== null && parser.halted && last?.rule === 'header';
+  const encoding = diagnostics.find(d => d.rule === 'encoding');
+  // The lines before the encoding stop line were read; the header stop reads none.
+  const readBefore = parser === null || headerStop ? 0 : encoding === undefined ? Infinity : encoding.line;
+  const raw = text.split('\n');
+  const tokens: RawToken[] = [];
+  for (let n = 0; n < raw.length; n++) {
+    const line = n + 1;
+    // A CR before an LF is part of the line end; a bare CR is an offending character (R22).
+    const content = n < raw.length - 1 && raw[n]!.endsWith('\r') ? raw[n]!.slice(0, -1) : raw[n]!;
+    let i = 0;
+    while (i < content.length && content.charCodeAt(i) === 32) i++;
+    if (i === content.length) continue;
+    if (content.charCodeAt(i) === 35) {
+      tokens.push({ line, start: i, end: codePointCount(content), cls: 'comment' });
+      continue;
+    }
+    const read = line < readBefore;
+    const lexed = lexLine(content, line);
+    const recovered = lexed.error === null ? { toks: lexed.toks, text: content } : recoverLine(content, line);
+    const abandoned = read && parser!.abandoned.has(line);
+    for (const tok of recovered.toks) {
+      tokens.push({
+        line,
+        start: codePointCount(recovered.text.slice(0, tok.s)),
+        end: codePointCount(recovered.text.slice(0, tok.e)),
+        cls: classOf(tok, line, read ? parser : null, read, abandoned),
+      });
+    }
+  }
+  return tokens;
+}
+
+/** The parse result of a text together with its tokens: the result is the one parseDocument gives. */
+export function analyzeDocument(text: string, documents: Readonly<Record<string, string>>): { parsed: ParsedDocument; tokens: RawToken[] } {
+  const parsed = parseText(text, { documents, cache: new Map() }, []);
+  return { parsed: resultOf(parsed), tokens: tokensOf(text, parsed) };
 }

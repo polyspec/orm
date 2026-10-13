@@ -13,7 +13,8 @@
 import { createHash } from 'node:crypto';
 import type { DbspecColumn, DbspecDiagnostic, DbspecDocument, DbspecTable, DbspecUse } from './model.js';
 import { emitDocument, typeText } from './emit.js';
-import { parseDocument } from './parse.js';
+import { analyzeDocument, parseDocument, type DbspecTokenClass, type ParsedDocument } from './parse.js';
+export type { DbspecTokenClass } from './parse.js';
 import { checkSet } from './set.js';
 
 export { renderDbspec, renderDbspecStatements, type DbspecDialect, type DbspecRenderResult, type DbspecRenderStatementsResult, type DbspecRenderedStatement } from './render.js';
@@ -87,7 +88,7 @@ export type DbspecParseResult =
  * document text are strings; a string that is not well-formed UTF-16 is an
  * `encoding` diagnostic.
  */
-export function parseDbspec(text: string, documents: Readonly<Record<string, string>>): DbspecParseResult {
+function documentSet(text: string, documents: Readonly<Record<string, string>>): Readonly<Record<string, string>> {
   if (typeof text !== 'string') throw new TypeError('dbspec text must be a string');
   if (documents === null || typeof documents !== 'object' || Array.isArray(documents)) {
     throw new TypeError('dbspec documents must be an object of document names to texts');
@@ -97,7 +98,10 @@ export function parseDbspec(text: string, documents: Readonly<Record<string, str
     if (typeof source !== 'string') throw new TypeError(`dbspec document ${name} must be a string`);
     set[name] = source;
   }
-  const parsed = parseDocument(text, Object.freeze(set));
+  return Object.freeze(set);
+}
+
+function frozenParse(parsed: ParsedDocument): DbspecParseResult {
   if (parsed.document !== null) {
     const positions = parsed.positions.map(p =>
       Object.freeze({ kind: p.kind, path: Object.freeze([...p.path]), line: p.line, column: p.column }),
@@ -108,6 +112,44 @@ export function parseDbspec(text: string, documents: Readonly<Record<string, str
     Object.freeze({ rule: d.rule, line: d.line, column: d.column, message: d.message }),
   );
   return Object.freeze({ document: null, positions: null, diagnostics: Object.freeze(diagnostics) });
+}
+
+export function parseDbspec(text: string, documents: Readonly<Record<string, string>>): DbspecParseResult {
+  return frozenParse(parseDocument(text, documentSet(text, documents)));
+}
+
+/** A token of a text (docs/dbspec.md "Syntax analysis"): its 1-based line, its start and end in code points, and its class. */
+export interface DbspecToken {
+  readonly line: number;
+  readonly start: number;
+  readonly end: number;
+  readonly class: DbspecTokenClass;
+}
+
+/**
+ * The parse result of a text, unchanged, with the tokens of the text in source order. The tokens serve highlighting; a
+ * declaration's place is in the positions of the parse result.
+ */
+export type DbspecAnalysis =
+  | { readonly document: DbspecDocument; readonly positions: readonly DbspecPosition[]; readonly diagnostics: readonly []; readonly tokens: readonly DbspecToken[] }
+  | { readonly document: null; readonly positions: null; readonly diagnostics: readonly DbspecDiagnostic[]; readonly tokens: readonly DbspecToken[] };
+
+export function analyzeDbspec(text: string, documents: Readonly<Record<string, string>>): DbspecAnalysis {
+  const { parsed, tokens } = analyzeDocument(text, documentSet(text, documents));
+  const result = frozenParse(parsed);
+  const frozenTokens = tokens.map(t => Object.freeze({ line: t.line, start: t.start, end: t.end, class: t.cls }));
+  return Object.freeze({ ...result, tokens: Object.freeze(frozenTokens) });
+}
+
+/** The formatted text of a document with no diagnostic, or its diagnostics and no text (docs/dbspec.md "Formatting"). */
+export type DbspecFormatResult =
+  | { readonly text: string; readonly diagnostics: readonly [] }
+  | { readonly text: null; readonly diagnostics: readonly DbspecDiagnostic[] };
+
+export function formatDbspec(text: string, documents: Readonly<Record<string, string>>): DbspecFormatResult {
+  const result = parseDbspec(text, documents);
+  if (result.document === null) return Object.freeze({ text: null, diagnostics: result.diagnostics });
+  return Object.freeze({ text: emitDbspec(result.document), diagnostics: Object.freeze([]) as readonly [] });
 }
 
 /** Writes a document in canonical form: emitting a parsed canonical text returns the same text. */
