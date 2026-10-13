@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 56dffb1a1375709ac245f6d3fa12407bfe33929b7378dcee63917d0c5b2a5da9 -->
+<!-- source-sha256: 7bc223279d116066145c31c000ec1408704bb97686afbe311bb5476cf6831258 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -939,6 +939,7 @@
 - [ ] T128-9 editor package를 검사와 release 설정에 연결한다. 인수 조건: orm 규칙을 가진 kit import 검사, feature owner, check input, CI group, workspace build와 test script, release manifest와 consumer smoke, dependency review 기록, AGENTS.md(+ko)의 package 배치.
 - [ ] T128-R editor stack release. 인수 조건: green CI 뒤의 `chore(release)` bump commit, maintainer의 tag, release workflow, 모든 npm package의 `release-verify`.
 - [o] T129 renderer가 만드는 이름을 하나의 hash 규칙으로 63 bytes에 맞춘다(T8.1.5 후속). 원인: renderer는 `<table>$<column>` CHECK와 `<table>$<event>` trigger·function을 쓰는데, `service_module_board_comment_history` table과 `service_module_board_post_seq` column의 history는 66 bytes CHECK 이름을 받아 audit table을 선언할 수 없다. 선언된 이름은 여전히 거부하며 줄이지 않는다. 인수 조건: docs/dbspec.md "이름"과 docs/dialects.md가 규칙을 정한다: 63 bytes 이하이면 plain form, 아니면 처음 54 bytes, `$`, SHA-256 소문자 16진수 8자리. 이름은 ASCII이므로 bytes가 곧 문자다. 생성 이름은 선언된 이름과 함께 유일하며, 충돌은 두 출처를 적는 `name.duplicate`다. tests/dbspec/cases.json은 정확히 63 bytes인 plain case와 64 bytes인 hash case를 허용하고, plain과 hash의 충돌, hash끼리의 충돌, 사용자가 고른 64 bytes 이름을 거부한다. tests/dbspec/ddl.json은 66 bytes history case와 정확한 생성 이름을 가진다. tests/dbspec/introspect.json은 그 문서를 MySQL, PostgreSQL, SQLite에서 다시 읽어 이름을 다시 계산한다. 모든 runtime(Go, PHP, PHP extension, TypeScript, Python, Rust)이 compare check에서 이 vector를 실행하고, `make dbspec-ddl-check`와 `dbspec-introspect-check`의 database 검사가 통과한다.
+- [o] T129-1 renderer 이름의 interface symbol을 기록한다(T129 후속). 원인: T129는 `rendererName`과 `renderedColumn`, generated-name 검사기와 Names class 등 symbol을 추가하고 없앴는데, 승인될 때 interface snapshot을 기록하지 않았다. 전체 `make conformance-check`가 그 기록이 없음을 찾았다. 근거: T129 tree(6cfcbac4)에서 `--record`로 interfaces 검사를 실행해 contracts/symbols의 다섯 snapshot을 썼고, contracts/interfaces.json은 계산된 hash를 가진다: go sha256:35e0d986f546547aeeb6070e9c2dc85382a6f4026c1a73536f57f7376b6ae8cc, php sha256:b011a44b9e3acfbca2f0bf1f358b7fc5e9a099bf1caac2fc4968c70af3f422b3, rust sha256:8cdc879e4e245937b87b3bc679bf67b0dab32c41c4d707ffd159b00278a65dbc, typescript sha256:6a7fccd4fe61e011534bf9cb221a086d7a4fa60415e43ea697a08ec54fd51da1, python sha256:1b21698d94db68f4b28193bafbd6f7a2fff5a066facbaa0bf3074fc66d0ae5ef. record가 없는 검사(non-record)는 다섯 언어와 PHP extension 모두에서 통과한다.
 - [ ] T131 code 주석을 영어로 번역한다. 원인: AGENTS가 code 주석은 한국어라고 적어, 주석은 영어라는 owner 규칙(kit PRINCIPLES, K84)과 어긋났다. 2026-10-13 기준 728개 파일에 한국어 주석 10,059줄이 남아 있다. 인수 조건: code 파일의 주석에 한글이 없으며, 이를 어기면 실패하는 검사가 check target에 들어 있다; AGENTS가 영어 규칙을 적는다.
   - [ ] T131-1 주석 언어 검사: 각 생태계 자신의 tokenizer(Go `go/scanner`, TypeScript scanner, Python `tokenize`, PHP `token_get_all`; tokenizer가 없는 언어는 먼저 S1의 rebuild 기록)로 모든 code 파일의 주석 token을 꺼내 한글이 있으면 파일과 줄을 대며 실패하는 얇은 도구; 현재 tree에서 red다.
   - [ ] T131-2 Go 주석을 영어로.
