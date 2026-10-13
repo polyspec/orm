@@ -730,10 +730,13 @@ class _Cursor:
 
 
 class DocumentParser:
-    def __init__(self, lines, context: _ParseContext, parents):
+    def __init__(self, lines, context: _ParseContext, parents, complete: bool = True):
         self.lines = lines
         self.context = context
         self.parents = parents
+        # False when the lines are the complete lines before an encoding stop: the document's
+        # end is not reached, so the open blocks at the end are not reported (as Go does).
+        self.complete = complete
         self.diagnostics = []
         self.document = _Document()
         self._stopped = False
@@ -914,7 +917,7 @@ class DocumentParser:
                 elif lexed is None:
                     self._placement(diagram, toks, line, own)
             n += 1
-        if self._stopped:
+        if self._stopped or not self.complete:
             return
         # 가장 안쪽의 열린 block만 보고한다(Go처럼): 열린 settings block은 표의 `{`를 보고하지 않는다.
         if state == 'settings':
@@ -2842,10 +2845,13 @@ def _parse_text(text: str, context: _ParseContext, parents) -> _Parsed:
         return _Parsed(diagnostics, empty, None)
     raw = text.split('\n')
     encoding = _encoding_error(raw)
-    if encoding is not None:
+    # 인코딩 오류 앞의 완전한 줄만 parse한다(Go의 splitSource): 오류 줄 앞의 진단이 먼저 온다.
+    # 첫 줄의 오류(BOM, 첫 줄의 bare CR)는 완전한 줄이 없으므로 그 오류만 보고한다.
+    complete = raw if encoding is None else raw[:encoding.line - 1]
+    if encoding is not None and not complete:
         return _Parsed([encoding], empty, None)
-    lines = [line[:-1] if line.endswith('\r') else line for line in raw]
-    parser = DocumentParser(lines, context, parents)
+    lines = [line[:-1] if line.endswith('\r') else line for line in complete]
+    parser = DocumentParser(lines, context, parents, complete=encoding is None)
     parser.parse()
     if not parser.halted:
         parser.validate()
@@ -2859,6 +2865,9 @@ def _parse_text(text: str, context: _ParseContext, parents) -> _Parsed:
                                       pair[0]))]
     if stop is not None:
         found.append(stop)
+    # 인코딩 오류는 멈춘 오류가 없을 때만 보고한다(Go의 defer: 앞선 header나 limit 멈춤이 우선).
+    if encoding is not None and not parser.halted:
+        found.append(encoding)
     return _Parsed(found, parser.document, parser)
 
 
