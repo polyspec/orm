@@ -29,3 +29,50 @@
 @media (max-width: 767px) {
   .VPHome .vp-doc { padding: 0 24px; }
 }
+
+/* The dbs fence (docs/.vitepress/dbs.ts): one colour per class of syntax analysis (docs/dbspec.md), light and dark. */
+:root {
+  --dbs-keyword: #a626a4;
+  --dbs-type: #0184bc;
+  --dbs-name: #383a42;
+  --dbs-setting: #c18401;
+  --dbs-number: #986801;
+  --dbs-string: #50a14f;
+  --dbs-operator: #0184bc;
+  --dbs-punctuation: #696c77;
+  --dbs-comment: #8a8c93;
+  --dbs-word: #e45649;
+}
+.dark {
+  --dbs-keyword: #c678dd;
+  --dbs-type: #56b6c2;
+  --dbs-name: #abb2bf;
+  --dbs-setting: #e5c07b;
+  --dbs-number: #d19a66;
+  --dbs-string: #98c379;
+  --dbs-operator: #56b6c2;
+  --dbs-punctuation: #8b929e;
+  --dbs-comment: #7f848e;
+  --dbs-word: #e06c75;
+}
+.vp-doc pre.dbs {
+  margin: 16px 0;
+  overflow: auto;
+  padding: 20px 24px;
+  border-radius: 8px;
+  background: var(--vp-code-block-bg);
+  font-family: var(--vp-font-family-mono);
+  font-size: var(--vp-code-font-size);
+  line-height: var(--vp-code-line-height);
+}
+.vp-doc pre.dbs code { color: var(--dbs-name); }
+.dbs-keyword { color: var(--dbs-keyword); }
+.dbs-type { color: var(--dbs-type); }
+.dbs-name { color: var(--dbs-name); }
+.dbs-setting { color: var(--dbs-setting); }
+.dbs-number { color: var(--dbs-number); }
+.dbs-string { color: var(--dbs-string); }
+.dbs-operator { color: var(--dbs-operator); }
+.dbs-punctuation { color: var(--dbs-punctuation); }
+.dbs-comment { color: var(--dbs-comment); font-style: italic; }
+.dbs-word { color: var(--dbs-word); }

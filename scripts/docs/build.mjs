@@ -25,7 +25,17 @@ function command(args, step) {
   });
 }
 
+// The dbs fence (docs/.vitepress/dbs.ts) renders through the dbspec language service, which reads the parser entry of
+// @polyspec/orm, so both packages are built before the site. npm itself runs the builds; the build is started by
+// `npm run docs:build`, which names npm's own script in npm_execpath.
+const npm = process.env.npm_execpath;
+if (!npm) throw new Error('scripts/docs/build.mjs runs through `npm run docs:build`, which sets npm_execpath');
+
 const passed = await runLong('docs-build', async ({ step }) => {
+  for (const build of [['run', 'typescript:build'], ['run', '--workspace', '@polyspec/dbspec-language', 'build']]) {
+    step(`npm ${build.join(' ')}`);
+    await command([npm, ...build], step);
+  }
   const args = [path.join(root, 'node_modules/vitepress/bin/vitepress.js'), 'build', 'docs'];
   step(`node ${path.relative(root, args[0])} ${args.slice(1).join(' ')}`);
   await command(args, step);
