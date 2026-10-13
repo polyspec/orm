@@ -956,6 +956,109 @@
             },
             "encoded_b64": "ZmlsZXM6CiAgLQogICAgJHR5cGU6IHVwbG9hZF9maWxlCiAgICBtaW1lOiB0ZXh0L3BsYWluCiAgICBuYW1lOiByZXBvcnQudHh0CiAgICBwYXRoOiAvdG1wL3JlcG9ydC50eHQKICAtCiAgICAkdHlwZTogdXBsb2FkX2ZpbGUKICAgIG1pbWU6ICcnCiAgICBuYW1lOiByYXcuYmluCiAgICBwYXRoOiAvdG1wL3Jhdy5iaW4KdGl0bGU6IHJlcXVlc3QK",
             "deterministic": false
+        },
+        {
+            "name": "yaml_core/binary_like",
+            "styles": [
+                "yaml"
+            ],
+            "value": "0b101",
+            "encoded_b64": "MGIxMDE=",
+            "deterministic": false
+        },
+        {
+            "name": "yaml_core/signed_hex_like",
+            "styles": [
+                "yaml"
+            ],
+            "value": "+0x1",
+            "encoded_b64": "KzB4MQ==",
+            "deterministic": false
+        },
+        {
+            "name": "yaml_core/underscore_int_like",
+            "styles": [
+                "yaml"
+            ],
+            "value": "1_000",
+            "encoded_b64": "MV8wMDA=",
+            "deterministic": false
+        },
+        {
+            "name": "yaml_core/date_like",
+            "styles": [
+                "yaml"
+            ],
+            "value": "2014-12-31",
+            "encoded_b64": "MjAxNC0xMi0zMQ==",
+            "deterministic": false
+        },
+        {
+            "name": "yaml_core/timestamp_like",
+            "styles": [
+                "yaml"
+            ],
+            "value": "2001-12-14t21:59:43.10-05:00",
+            "encoded_b64": "MjAwMS0xMi0xNHQyMTo1OTo0My4xMC0wNTowMA==",
+            "deterministic": false
+        },
+        {
+            "name": "yaml_core/next_line",
+            "styles": [
+                "yaml"
+            ],
+            "value": "ab",
+            "encoded_b64": "YcKFYg==",
+            "deterministic": false
+        },
+        {
+            "name": "yaml_core/leading_zero_int",
+            "styles": [
+                "yaml"
+            ],
+            "value": 777,
+            "encoded_b64": "MDc3Nw==",
+            "deterministic": false
+        },
+        {
+            "name": "yaml_core/octal",
+            "styles": [
+                "yaml"
+            ],
+            "value": 15,
+            "encoded_b64": "MG8xNw==",
+            "deterministic": false
+        },
+        {
+            "name": "yaml_core/hex",
+            "styles": [
+                "yaml"
+            ],
+            "value": 31,
+            "encoded_b64": "MHgxRg==",
+            "deterministic": false
+        },
+        {
+            "name": "yaml_core/signed_int",
+            "styles": [
+                "yaml"
+            ],
+            "value": 12,
+            "encoded_b64": "KzEy",
+            "deterministic": false
+        },
+        {
+            "name": "yaml_core/map",
+            "styles": [
+                "yaml"
+            ],
+            "value": {
+                "a": "1_000",
+                "b": "0b101",
+                "c": "2014-12-31"
+            },
+            "encoded_b64": "YTogMV8wMDAKYjogMGIxMDEKYzogMjAxNC0xMi0zMQo=",
+            "deterministic": false
         }
     ]
 }

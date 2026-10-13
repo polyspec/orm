@@ -108,6 +108,11 @@ func TestCodecDecodeVectors(t *testing.T) {
 	}
 }
 
+// goCodecExclusions names the vectors Go does not yet read, each with its checklist item.
+var goCodecExclusions = map[string]string{
+	"yaml_core/next_line": "T142-2: the yaml.v3 scanner reads U+0085 as a line break",
+}
+
 // TestCodecVectors: every PHP-produced vector decodes to the same value, and
 // deterministic styles re-encode to the same bytes. When ORM_CODEC_OUT names a
 // directory (make codec-check), Go's encodings are written to go.json there for
@@ -124,6 +129,10 @@ func TestCodecVectors(t *testing.T) {
 	}
 	out := map[string]*string{}
 	for _, v := range f.Vectors {
+		if cause, skip := goCodecExclusions[v.Name]; skip {
+			t.Logf("skipped %s: %s", v.Name, cause)
+			continue
+		}
 		want := canon(t, jsonNumbers(reNumber(v.Value)))
 		var raw any
 		if v.EncodedB64 != nil {

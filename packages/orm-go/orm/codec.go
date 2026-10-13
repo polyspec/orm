@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -272,6 +273,9 @@ func yamlNode(node *goyaml.Node) (any, error) {
 		}
 		return out, nil
 	case goyaml.ScalarNode:
+		if yamlPlainUntagged(node) {
+			return yamlCoreScalar(node)
+		}
 		switch node.Tag {
 		case "!!null":
 			return nil, nil
@@ -301,9 +305,73 @@ func yamlNode(node *goyaml.Node) (any, error) {
 	}
 }
 
+var (
+	yamlCoreInt   = regexp.MustCompile(`^(?:[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+)$`)
+	yamlCoreFloat = regexp.MustCompile(`^(?:[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))$`)
+)
+
+// yamlPlainUntagged reports a plain scalar without an explicit tag, whose tag the reader
+// resolves. yaml.v3 resolves such a scalar by its own YAML 1.1 rules (`0b101`, `+0x1`,
+// `1_000` and timestamps), so its Tag is not used.
+func yamlPlainUntagged(node *goyaml.Node) bool {
+	return node.Style&(goyaml.TaggedStyle|goyaml.DoubleQuotedStyle|goyaml.SingleQuotedStyle|goyaml.LiteralStyle|goyaml.FoldedStyle) == 0
+}
+
+// yamlCoreScalar resolves a plain scalar by the tags of the YAML 1.2 core schema (YAML 1.2.2,
+// 10.3.2): null, bool, int and float by their regular expressions, and str otherwise. An
+// integer outside int64 and a float that is not finite are outside the common value model.
+func yamlCoreScalar(node *goyaml.Node) (any, error) {
+	text := node.Value
+	switch text {
+	case "", "~", "null", "Null", "NULL":
+		return nil, nil
+	case "true", "True", "TRUE":
+		return true, nil
+	case "false", "False", "FALSE":
+		return false, nil
+	}
+	switch {
+	case yamlCoreInt.MatchString(text):
+		var value int64
+		var err error
+		switch {
+		case strings.HasPrefix(text, "0o"):
+			value, err = strconv.ParseInt(text[2:], 8, 64)
+		case strings.HasPrefix(text, "0x"):
+			value, err = strconv.ParseInt(text[2:], 16, 64)
+		default:
+			value, err = strconv.ParseInt(text, 10, 64)
+		}
+		if err != nil {
+			return nil, codecErr(CodeCodecDecode, "yaml: integer %s at line %d is outside the int64 range", text, node.Line)
+		}
+		return value, nil
+	case yamlCoreFloat.MatchString(text):
+		value, err := strconv.ParseFloat(text, 64)
+		if err != nil || math.IsNaN(value) || math.IsInf(value, 0) {
+			return nil, codecErr(CodeCodecDecode, "yaml: non-finite or invalid float %s at line %d", text, node.Line)
+		}
+		return value, nil
+	}
+	return text, nil
+}
+
 func yamlMapKey(node *goyaml.Node) (string, error) {
 	if node.Kind != goyaml.ScalarNode {
 		return "", codecErr(CodeCodecDecode, "yaml: map keys must be scalar strings at line %d", node.Line)
+	}
+	if yamlPlainUntagged(node) {
+		value, err := yamlCoreScalar(node)
+		if err != nil {
+			return "", err
+		}
+		switch v := value.(type) {
+		case string:
+			return v, nil
+		case int64:
+			return strconv.FormatInt(v, 10), nil
+		}
+		return "", codecErr(CodeCodecDecode, "yaml: map keys must be strings or integers at line %d", node.Line)
 	}
 	switch node.Tag {
 	case "!!str":
