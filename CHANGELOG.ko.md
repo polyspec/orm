@@ -1,10 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: bbcf52b1535ae924781a0bdd334ecde3e05b78d80974ec1f7e3e90e174b12357 -->
+<!-- source-sha256: 17e77c1914829d22201976516a6bd2a4c79378d888385a24821fc24a069d00a8 -->
 # 변경 이력
 
 ## Unreleased
 
 - T165-1: orm이 kit 0.0.41을 받는다. 그 mise.lock은 ARM runner를 위해 linux-arm64를 pin한다.
+- T137-1-2: PHP client는 PSR-4만으로 load된다. class마다 file 하나이고, packages/php/composer.json에 classmap이 없으며, test model은 autoload-dev로 load되고, test autoloader는 Composer의 것이다.
 - T137-1-1: config/layout.yml이 packages/dbspec-vscode를 선언하고, 어떤 검사도 PYTHONPATH를 설정하지 않는다.
 - T135-1: scripts/test-servers.sh와 그 테스트의 주석이 영어다.
 - T128-8-3: make install-vscode가 kit 설치기로 extension의 최소 VS Code를 설치하고, make dbspec-vscode-integration이 그 안에서 editor fixture 다섯을 실행하며, CI의 editor job이 가상 X server에서 그것을 실행한다.
