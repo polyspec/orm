@@ -332,6 +332,8 @@ bool dbs_valid_name(str name);
 
 /* 문서 집합(이름 => text)으로 text를 parse한다. 문서가 없으면 diagnostics에 하나 이상이 있다. */
 document *dbs_parse(str text, const smap *documents, diags *out, dposv *pos);
+/* The name that the parser's header step reads from the text, empty when the header fails (Dbspec::parseSet). */
+str dbs_header_name(str text);
 /* dbs_parse와 같고 token도 준다(한도 error이면 없다). */
 document *dbs_analyze(str text, const smap *documents, diags *out, dposv *pos, dtokv *tokens);
 
@@ -624,7 +626,7 @@ void dbs_read_set(zend_string *path, zval *return_value);
     X(ParseResult) X(Manifest) X(ManifestResult) X(RenderResult) X(Plan) X(PlanStep) X(Effect) X(NullCheck) X(Change) \
     X(Difference) X(Unsupported) X(TableRename) X(ColumnRename) X(ColumnName) X(ApplyEvent) X(ApplyError) \
     X(ApplyCleanupError) X(PlanParseResult) X(PlanStepsResult) X(ChainResult) X(DiffResult) X(ComparisonResult) \
-    X(MermaidExportResult) X(MermaidImportResult) X(IntrospectResult) X(Dbspec) X(PlanApply) X(SetFile) X(SetError) X(SetResult)
+    X(MermaidExportResult) X(MermaidImportResult) X(IntrospectResult) X(Dbspec) X(PlanApply) X(SetFile) X(SetError) X(SetResult) X(SetDocument)
 
 #define DBS_DECLARE_CE(n) extern zend_class_entry *dbs_ce_##n;
 DBS_CLASSES(DBS_DECLARE_CE)

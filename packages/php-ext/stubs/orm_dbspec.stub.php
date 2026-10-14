@@ -273,6 +273,18 @@ final readonly class SetResult
     public static function invalid(array $errors): SetResult {}
 }
 
+/** The result of one text of a set (Dbspec::parseSet): the name its header names, '' when the header fails; whether the text is external; and what one parse of the text returns. A text whose name an earlier text has is not parsed and carries the one diagnostic `name.duplicate`. */
+final readonly class SetDocument
+{
+    public string $name;
+    public bool $external;
+    public ?Document $document;
+    public ?array $positions;
+    public array $diagnostics;
+
+    public function __construct(string $name, bool $external, ?Document $document, ?array $positions, array $diagnostics) {}
+}
+
 /** The outcome of Dbspec::parse: a document, its declaration positions and no diagnostics, or every diagnostic in source order and no document and no positions. */
 final readonly class ParseResult
 {
@@ -637,6 +649,9 @@ final class Dbspec
 
     /** Reads the set file at $path and the files it lists (docs/dbspec.md "Document sets"): the set file, its JSON, each path and the read with the file identity, in that order. */
     public static function readSet(string $path): SetResult {}
+
+    /** Parses the texts of one document set (docs/dbspec.md "Parsing a set"): one result per text, owned, then external, each in set order; a text whose header name an earlier text has is not parsed and carries `name.duplicate`. */
+    public static function parseSet(array $owned, array $external): array {}
 
     /** Writes a document in its canonical text: `emit(parse(s)) === s` for canonical input. */
     public static function emit(Document $document): string {}

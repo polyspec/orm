@@ -96,6 +96,60 @@ final class Dbspec
     }
 
     /**
+     * Parses the texts of one document set (docs/dbspec.md "Parsing a set"): $owned, then $external, each in set
+     * order, and returns one result per text in that order. Each text's name is the name the parser reads from its
+     * header; a text whose name an earlier text has is not parsed, and its result carries the one diagnostic
+     * `name.duplicate`. Every other text is parsed with the texts of all
+     * other named documents as the documents its use lines name, and an external text's document is marked external.
+     *
+     * @param list<string> $owned
+     * @param list<string> $external
+     * @return list<SetDocument>
+     */
+    public static function parseSet(array $owned, array $external): array
+    {
+        $texts = [];
+        foreach ([[$owned, false], [$external, true]] as [$list, $isExternal]) {
+            foreach ($list as $text) {
+                if (!is_string($text)) {
+                    throw new \InvalidArgumentException('A document set holds texts');
+                }
+                $texts[] = [$text, $isExternal];
+            }
+        }
+        $names = [];
+        $named = [];
+        $repeated = [];
+        foreach ($texts as $i => [$text]) {
+            $name = Parser::headerName($text);
+            $names[$i] = $name;
+            if ($name !== '') {
+                if (isset($named[$name])) {
+                    $repeated[$i] = true;
+                    continue;
+                }
+                $named[$name] = $text;
+            }
+        }
+        $documents = [];
+        foreach ($texts as $i => [$text, $isExternal]) {
+            if (isset($repeated[$i])) {
+                $diagnostic = new Diagnostic('name.duplicate', 1, 10, "document {$names[$i]} appears twice in the document set");
+                $documents[] = new SetDocument($names[$i], $isExternal, null, null, [$diagnostic]);
+                continue;
+            }
+            $others = $named;
+            unset($others[$names[$i]]);
+            $result = self::parse($text, $others);
+            if ($result->document !== null) {
+                $result->document->external = $isExternal;
+            }
+            $documents[] = new SetDocument($names[$i], $isExternal, $result->document, $result->positions, $result->diagnostics);
+        }
+        return $documents;
+    }
+
+    /**
      * 호출자가 자기 규칙으로 읽은 dbspec document 파일의 byte를 parse 전에 확인한다.
      * $name은 message가 파일을 가리키는 이름이다. SIGNATURE로 시작하지 않는 byte는 text 없이
      * line 1, column 1의 `signature` diagnostic 하나와 message "<name> is not a dbspec

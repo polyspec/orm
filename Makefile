@@ -599,8 +599,8 @@ rust-send-savepoint-check/test: cargo-downloads-check
 # tests/dbspec/plans.json의 plan vector, tests/dbspec/mermaid.json의 Mermaid vector, 감싼 SQLite
 # connection으로 주입한 apply 정리 error를 각각 두 번 실행한다. stress 문서는 make bench가
 # 실행한다.
-dbspec-php-check: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set
-.PHONY: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set
+dbspec-php-check: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set dbspec-php-check/set-parse
+.PHONY: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set dbspec-php-check/set-parse
 dbspec-php-check/documents: php-vendor-check
 	php packages/php/tests/dbspec_test.php
 	php packages/php/tests/dbspec_test.php
@@ -636,6 +636,10 @@ dbspec-php-check/show-create: php-vendor-check
 # a temporary file tree with real symbolic and hard links (docs/dbspec.md "Document sets").
 dbspec-php-check/set: php-vendor-check
 	php packages/php/tests/dbspec_set_test.php
+# dbspec-php-check/set-parse runs Dbspec::parseSet on every case of tests/dbspec/set-parse.json (docs/dbspec.md
+# "Parsing a set").
+dbspec-php-check/set-parse: php-vendor-check
+	php packages/php/tests/dbspec_set_parse_test.php
 
 .PHONY: dbspec-php-extension-check php-extension-arginfo
 # dbspec-php-extension-check는 PHP 확장 orm_dbspec(packages/php-ext, PHP client의 dbspec 표면을 C로 구현한
@@ -649,8 +653,8 @@ dbspec-php-check/set: php-vendor-check
 PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/orm_dbspec.so
 GEN_STUB = $(abspath .runtime/bin/gen-stub/gen_stub.php)
 dbspec-php-extension-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-$$PPID
-.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/analyze dbspec-php-extension-check/names dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create dbspec-php-extension-check/set
-dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/analyze dbspec-php-extension-check/names dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create dbspec-php-extension-check/set
+.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/analyze dbspec-php-extension-check/names dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse
+dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/analyze dbspec-php-extension-check/names dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse
 	rm -rf $(RUN_DIR)
 dbspec-php-extension-check/arginfo:
 	php packages/php-ext/scripts/arginfo.php $(GEN_STUB) check
@@ -687,6 +691,10 @@ dbspec-php-extension-check/show-create: dbspec-php-extension-check/prepare
 # the focused cases and requires each result to equal the PHP client's, messages included.
 dbspec-php-extension-check/set: php-vendor-check dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/php-ext/tests/dbspec_set_test.php
+# dbspec-php-extension-check/set-parse runs the extension's Dbspec::parseSet on every case of
+# tests/dbspec/set-parse.json and requires each result to equal the PHP client's.
+dbspec-php-extension-check/set-parse: php-vendor-check dbspec-php-extension-check/prepare
+	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/php-ext/tests/dbspec_set_parse_test.php
 php-extension-arginfo:
 	php packages/php-ext/scripts/arginfo.php $(GEN_STUB) write
 
