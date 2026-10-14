@@ -296,6 +296,28 @@ async fn insert_assign_case(driver: &str) {
     database.drop().await;
 }
 
+async fn reads_params_case(driver: &str) {
+    let database = CaseDatabase::create(driver).await;
+    let db = installed(&database).await;
+    let seen = std::sync::Arc::new(std::sync::Mutex::new(None::<Param>));
+    let record = seen.clone();
+    let hooked = db.with_request_hook(move |request: &mut Request, params: &mut RequestParams| {
+        if request.kind == "insert" {
+            for assign in &request.set {
+                if assign.column == "label" {
+                    *record.lock().expect("seen") = assign.p.and_then(|p| params.get(p)).cloned();
+                }
+            }
+        }
+        Ok(())
+    });
+    let mut row = with_values(item(&hooked), &[("part", "r"), ("label", "read")]);
+    polyspec_orm::model::create(&mut row).await.expect("create");
+    assert_eq!(*seen.lock().expect("seen"), Some(Param::from("read")), "the hook reads the value bound to the assignment");
+    db.close().await;
+    database.drop().await;
+}
+
 async fn loaded_row_writes_case(driver: &str) {
     let database = CaseDatabase::create(driver).await;
     let db = installed(&database).await;
@@ -478,6 +500,12 @@ async fn read_filter() {
 async fn coverage_request_hook_read_filter() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     read_filter_case(feature_database()).await;
+}
+
+#[tokio::test]
+async fn reads_params() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    reads_params_case("sqlite").await;
 }
 
 #[tokio::test]
