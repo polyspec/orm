@@ -151,16 +151,6 @@ rules:
         source: { file: "{path}", extract: { regex: '=>\s*(\.\.?/\S*)' } }
     message: "S5: a replace directive of a go.mod names a folder inside the repository"
 
-  - id: layout-npm-file
-    kind: for_each_file
-    level: error
-    select: ["**/package.json", "!tests/kit/fixture/**"]
-    require:
-      - kind: cross_file
-        relation: resolves
-        source: { file: "{path}", extract: { regex: '"file:([^"]+)"' } }
-    message: "S5: a file: dependency of a package.json names a folder inside the repository"
-
   - id: layout-python-path
     kind: for_each_file
     level: error

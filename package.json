@@ -21,6 +21,7 @@
     "typescript:test": "node tests/run-long.mjs typescript-build -- npm run typescript:build && node packages/ts/tests/dsn.mjs && node packages/ts/tests/idle-connection-end.mjs && node packages/ts/tests/engine.mjs && node packages/ts/tests/generate.mjs && node packages/ts/tests/generate-scan.mjs && node packages/ts/tests/codec-vector.mjs && node packages/ts/tests/styled-value.mjs && node packages/ts/tests/dbspec.mjs && node packages/ts/tests/dbspec-rules.mjs && node packages/ts/tests/package-declarations.mjs && node packages/ts/tests/request_hook.mjs && ./scripts/typescript/sqlite-test.sh"
   },
   "devDependencies": {
+    "@polyspec/kit": "https://github.com/polyspec/kit/releases/download/v0.0.38/polyspec-kit-npm-0.0.38.tgz",
     "mermaid": "12.2.0",
     "vitepress": "1.6.4"
   },
