@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 4ec6030229ecf5cd7dca9ace054eeecf7acc0ef5be5e3377a9c9c566ab142fa0 -->
+<!-- source-sha256: 41ea6c627b0df21ad26f6f931f19f3e8cd6c82a16edd38dcddc5d3f71a961e78 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1025,7 +1025,7 @@
   - [o] T158-2 socket 길이 test가 T135의 socket folder를 따른다 (T158 후속). 원인: static repo-check의 "test-servers.sh refuses a socket path longer than the platform limit"가 `Cannot find module '/tmp/orm-sock-.../d/.../scripts/free-ports.mjs'`로 실패한다. T135가 socket을 checkout 밖으로 옮겼는데 test는 여전히 checkout 경로를 늘린다. 완료 기준: test가 T135의 선언된 socket 위치로 한도를 넘기고 `make repo-check`가 통과하며, red를 먼저 확인한다.
   - [o] T158-3 codec-check의 need에 python을 선언한다 (T158에 이어). 원인: T142-3로 codec-check가 Python vector를 실행하는데 contracts/check-inputs.json의 codec-check에 `python` need가 없어 static job이 `python-venv-check: .../.venv/bin/python is missing`로 실패한다(run 38465371334). 완료 조건: need를 선언하고 static job의 codec-check가 통과한다.
   - [o] T158-4 dbspec-vscode integration의 인자 오류에 해결 방법을 적는다 (T158에 이어). 원인: repo-check가 packages/dbspec-vscode/tests/integration/run.mjs:22를 거부한다. `--vscode`가 없을 때의 문구가 해결 방법을 적지 않는다(run 38465371334). 완료 조건: 문구가 `make dbspec-vscode-integration`을 적고 repo-check가 통과한다.
-- [ ] T159 request hook에 요청의 parameter를 읽기 전용으로 모든 client에서 넘긴다. 원인: hyper scope hook은 묶인 값을 검사하고 실패 시 닫혀야 하는데, hook에 parameter를 주는 것은 PHP(`$r->params`)뿐이다. 완료 조건: Node와 Python은 hook을 `(request, addParam, params)`로 부르고, Go와 Rust는 params 타입으로 읽으며, 그것으로 parameter를 바꿀 수 없다. client마다 사례가 있고 먼저 red를 확인하며, interfaces 기록과 문서를 갱신한다.
+- [o] T159 request hook에 요청의 parameter를 읽기 전용으로 모든 client에서 넘긴다. 원인: hyper scope hook은 묶인 값을 검사하고 실패 시 닫혀야 하는데, hook에 parameter를 주는 것은 PHP(`$r->params`)뿐이다. 완료 조건: Node와 Python은 hook을 `(request, addParam, params)`로 부르고, Go와 Rust는 params 타입으로 읽으며, 그것으로 parameter를 바꿀 수 없다. client마다 사례가 있고 먼저 red를 확인하며, interfaces 기록과 문서를 갱신한다.
 - [o] T156 모든 생성기가 모든 key의 모든 prefix마다 유형 있는 메서드를 선언한다. 원인: scan한 소스가 호출하는 메서드만 생성되어, 어떤 소스도 호출하지 않는 key prefix에는 메서드가 없었다(hyper U-97). 완료 조건: Go, Rust, TypeScript model이 primary key, unique key, index의 모든 prefix마다 메서드를 선언하고, Python은 같은 이름을 실행 시점에 해석하며, symbol 기록과 docs/usage.md를 갱신한다.
   - [o] T156-1 T156 이후 orm main CI를 다시 green으로 만든다 (T156에 이어). 원인: run 38502539388이 실패했다. Python key-prefix 테스트가 PYTHONPATH를 바꾸고 지워진 packages/orm-python/bin/orm-gen을 실행했고, Go와 Rust key-prefix 테스트가 testcase를 시작하지 않았으며, generator/gen_go_key_prefix_test.go가 어떤 feature에도 속하지 않았고, src/models/markdown_fixture에 key-prefix 메서드가 없었다. 완료 조건: 각각을 고치고 그 소유 검사가 통과한다.
   - [o] T156-2 Go markdown model을 다시 생성한다 (T156에 이어). 원인: run 38504701356이 go-markdown-model-generated에서 실패했다. packages/orm-go/markdownmodel에 key-prefix 메서드가 없었다. 완료 조건: go generate가 폴더를 바꾸지 않는다.
