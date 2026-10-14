@@ -14,27 +14,27 @@ func TestParseSet(t *testing.T) {
 	shop := "dbspec 1 shop\n\nuse core { account }\n\ntable item {\n  seq i64\n  account_seq i64\n  primary key (seq)\n  index ix_item_account (account_seq)\n  foreign key fk_item_account (account_seq) references account (seq) on delete restrict on update restrict\n}\n"
 	core := "dbspec 1 core\n\ntable account {\n  seq i64\n  primary key (seq)\n}\n"
 	got := ParseSet([]string{shop}, []string{core})
-	if len(got.Diagnostics) > 0 || len(got.Documents) != 2 {
+	if len(got) != 2 {
 		t.Fatalf("set %+v", got)
 	}
-	if d := got.Documents[0]; d.Name != "shop" || d.External || d.Document == nil || len(d.Positions) == 0 || len(d.Diagnostics) > 0 {
+	if d := got[0]; d.Name != "shop" || d.External || d.Document == nil || len(d.Positions) == 0 || len(d.Diagnostics) > 0 {
 		t.Fatalf("shop %+v", d)
 	}
-	if d := got.Documents[1]; d.Name != "core" || !d.External || d.Document == nil || !d.Document.External {
+	if d := got[1]; d.Name != "core" || !d.External || d.Document == nil || !d.Document.External {
 		t.Fatalf("core %+v", d)
 	}
 	repeated := ParseSet([]string{core, core}, nil)
-	if len(repeated.Diagnostics) != 1 || repeated.Diagnostics[0].Rule != RuleNameDuplicate || repeated.Documents[1].Document != nil {
+	if d := repeated[1]; len(d.Diagnostics) != 1 || d.Diagnostics[0].Rule != RuleNameDuplicate || d.Document != nil {
 		t.Fatalf("repeated %+v", repeated)
 	}
 	bad := ParseSet([]string{"table x {}\n"}, nil)
-	if d := bad.Documents[0]; d.Name != "" || d.Document != nil || len(d.Diagnostics) == 0 || d.Diagnostics[0].Rule != RuleHeader {
+	if d := bad[0]; d.Name != "" || d.Document != nil || len(d.Diagnostics) == 0 || d.Diagnostics[0].Rule != RuleHeader {
 		t.Fatalf("bad header %+v", d)
 	}
 }
 
 // TestParseSetVectors runs the shared vectors of tests/dbspec/set-parse.json (docs/dbspec.md "Parsing a set"): the
-// name, the external mark, whether the text parsed and the rule and place of each diagnostic, and the set diagnostics.
+// name, the external mark, whether the text parsed and the rule, place and, when given, the message of each diagnostic.
 func TestParseSetVectors(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	raw, err := os.ReadFile(filepath.Join("..", "..", "tests", "dbspec", "set-parse.json"))
@@ -55,7 +55,6 @@ func TestParseSetVectors(t *testing.T) {
 				Parsed      bool
 				Diagnostics []diag
 			}
-			Diagnostics []diag
 		}
 	}
 	if err := json.Unmarshal(raw, &vectors); err != nil {
@@ -63,25 +62,20 @@ func TestParseSetVectors(t *testing.T) {
 	}
 	for _, c := range vectors.Cases {
 		got := ParseSet(c.Owned, c.External)
-		if len(got.Documents) != len(c.Documents) || len(got.Diagnostics) != len(c.Diagnostics) {
-			t.Errorf("%s: %d documents and %d set diagnostics, want %d and %d", c.Name, len(got.Documents), len(got.Diagnostics), len(c.Documents), len(c.Diagnostics))
+		if len(got) != len(c.Documents) {
+			t.Errorf("%s: %d documents, want %d", c.Name, len(got), len(c.Documents))
 			continue
 		}
 		for i, want := range c.Documents {
-			d := got.Documents[i]
+			d := got[i]
 			if d.Name != want.Name || d.External != want.External || (d.Document != nil) != want.Parsed || len(d.Diagnostics) != len(want.Diagnostics) {
 				t.Errorf("%s: document %d is %q external=%v parsed=%v with %d diagnostics, want %+v", c.Name, i, d.Name, d.External, d.Document != nil, len(d.Diagnostics), want)
 				continue
 			}
 			for k, w := range want.Diagnostics {
-				if x := d.Diagnostics[k]; x.Rule != w.Rule || x.Line != w.Line || x.Column != w.Column {
-					t.Errorf("%s: document %d diagnostic %d is %s at %d:%d, want %s at %d:%d", c.Name, i, k, x.Rule, x.Line, x.Column, w.Rule, w.Line, w.Column)
+				if x := d.Diagnostics[k]; x.Rule != w.Rule || x.Line != w.Line || x.Column != w.Column || (w.Message != "" && x.Message != w.Message) {
+					t.Errorf("%s: document %d diagnostic %d is %+v, want %+v", c.Name, i, k, x, w)
 				}
-			}
-		}
-		for k, w := range c.Diagnostics {
-			if x := got.Diagnostics[k]; x.Rule != w.Rule || x.Line != w.Line || x.Column != w.Column || x.Message != w.Message {
-				t.Errorf("%s: set diagnostic %d is %+v, want %+v", c.Name, k, x, w)
 			}
 		}
 	}

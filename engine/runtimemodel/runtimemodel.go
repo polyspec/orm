@@ -175,12 +175,9 @@ func LoadDocuments(documents []string) (*Model, []dbspec.Diagnostic) {
 // set의 runtime model을 반환한다.
 func LoadDocumentSet(owned, external []string) (*Model, []dbspec.Diagnostic) {
 	set := dbspec.ParseSet(owned, external)
-	if len(set.Diagnostics) > 0 {
-		return nil, set.Diagnostics
-	}
-	documents := make([]*dbspec.Document, 0, len(set.Documents))
+	documents := make([]*dbspec.Document, 0, len(set))
 	var diagnostics []dbspec.Diagnostic
-	for _, d := range set.Documents {
+	for _, d := range set {
 		for _, x := range d.Diagnostics {
 			x.Message = "document " + d.Name + ": " + x.Message
 			diagnostics = append(diagnostics, x)
