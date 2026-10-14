@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1811a9a6560a4913dce4283ad8ae9e0deb2e00b915dfe2e361453713b2250858 -->
+<!-- source-sha256: f03894a7b66ecc229824a250a3bd22da421388701bda4e24c21facccfdacca2e -->
 # 변경 이력
 
 ## Unreleased
 
+- Rust workspace가 unsafe code와 이유 없는 allow attribute를 거부한다. planner의 lifetime transmute를 없앴고, thread CPU clock은 rustix로 읽으며, SQLite authorizer callback만 이유를 적고 unsafe code를 유지한다. (#T137-1-3)
 - T166: 모든 client가 하나의 set parse(Go dbspec.ParseSet, TypeScript parseDbspecSet, Python parse_dbspec_set, PHP와 extension Dbspec::parseSet, Rust dbspec::parse_set)로 문서 집합을 parse한다. 각 text는 parser의 header로 이름이 정해지고, 반복된 이름은 뒤 text의 진단이며, 공유 vector tests/dbspec/set-parse.json이 규칙을 담는다. 문자열 비교로 header를 읽던 곳은 모두 없앴다.
 - T165-4: kit-check가 mise.toml과 mise.lock을 입력으로 받는다.
 - T167: PHP client가 Db::transaction의 결과와 model row(Collection, Page, gets, getsPage)에 @template generic을 선언해 PHPStan level 9가 그 type을 안다.
