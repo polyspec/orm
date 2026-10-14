@@ -22,9 +22,9 @@ caseTest('countDifferences compares counts by lower case name', COMPUTE, () => {
   ]);
 });
 
-// 실제 서버 case는 이 checkout의 script를 짧은 임시 root로 복사하고, 그 platform의 기본
-// lower_case_table_names(macOS 2, Linux 0)로 MySQL primary와 replica를 초기화한 뒤 선언한 1로
-// migration한다. socket 경로가 platform 한도 안에 들도록 root는 /tmp 아래에 둔다.
+// The real server case copies the scripts of this checkout to a short temporary root, initializes the MySQL primary and
+// replica with the platform's default lower_case_table_names (2 on macOS, 0 on Linux), then migrates them to the declared
+// 1. The root lives under /tmp so the socket paths fit the platform limit.
 const repository = new URL('..', import.meta.url).pathname;
 const platformDefault = process.platform === 'darwin' ? 2 : 0;
 
@@ -48,15 +48,15 @@ function fixture(mysqlPort, replicaPort) {
       { encoding: 'utf8', env: isolatedEnvironment({ LEASE: process.env.LEASE, LEASES: join(root, '.runtime/servers.leases') }) }),
     close: () => {
       spawnSync('sh', [join(root, 'scripts/test-servers.sh'), 'mysql-stop'], { stdio: 'ignore' });
-      // mysql-start가 만든 socket directory(test-servers.sh의 SOCKET_DIR)는 stop만 지우므로 여기서 지운다.
+      // Only stop removes the socket directory that mysql-start made (SOCKET_DIR of test-servers.sh), so it is removed here.
       spawnSync('sh', ['-c', 'cd "$1" && rm -rf "/tmp/orm-servers-$(pwd | tr -d \'\\n\' | cksum | cut -d \' \' -f 1)"', 'sh', root], { stdio: 'ignore' });
       rmSync(root, { recursive: true, force: true });
     },
   };
 }
 
-// lease case는 다른 실행이 서버의 shared lease를 가진 동안 migration이 아무것도 바꾸지 않고 그 보유자를
-// 적으며 실패하는지 확인한다. 보유자는 FIFO를 읽으며 멈춰 있는 shell이고, 확인 뒤 FIFO에 써서 끝낸다.
+// The lease case checks that, while another run holds the server's shared lease, the migration changes nothing and fails
+// naming the holder. The holder is a shell stopped reading a FIFO, ended by a write to it after the check.
 caseTest('the MySQL migration is refused while another run holds a lease of the servers', PROCESS, () => {
   const lease = process.env.LEASE;
   assert.ok(lease, 'LEASE is unset; run make test-servers-check, which builds it');
@@ -66,7 +66,7 @@ caseTest('the MySQL migration is refused while another run holds a lease of the 
   let holder;
   try {
     execFileSync('mkfifo', [release, ready]);
-    // 보유자는 lease를 얻은 뒤 ready에 쓰고 release를 읽으며 기다린다. 이 case는 ready를 읽어 보유를 안다.
+    // The holder writes to ready after it takes the lease and waits reading release; the case reads ready to learn of the hold.
     holder = spawn('sh', ['-c', `${lease} hold ${servers.leases} shared --pid $$ && echo held > ${ready} && read line < ${release}`], { stdio: 'ignore' });
     assert.equal(execFileSync('sh', ['-c', `read state < ${ready}; echo $state`], { encoding: 'utf8' }), 'held\n');
     const refused = servers.migrate();
@@ -97,7 +97,7 @@ caseTest('a MySQL setting other than the declared one migrates the data with equ
     assert.equal(servers.sql(39301, 'SELECT @@lower_case_table_names').trim(), String(platformDefault));
     const first = servers.migrate();
     assert.equal(first.status, 0, first.stdout + first.stderr);
-    // migration 단계는 장기 작업이므로 기한이 없다.
+    // The migration steps are a long task, so they have no deadline.
     for (const step of ['preflight', 'dump', 'stop', 'keep', 'start', 'restore', 'verify', 'record']) {
       assert.match(first.stdout, new RegExp(`^RUN mysql-migration/${step} no-deadline$`, 'm'));
       assert.match(first.stdout, new RegExp(`^PASS mysql-migration/${step} elapsed=`, 'm'));
@@ -127,7 +127,7 @@ caseTest('names that one lower case name would merge refuse the migration before
     servers.sql(39311, 'CREATE DATABASE Pair; CREATE TABLE Pair.Foo (id INT)');
     const second = spawnSync('mysql', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', '39311', '-u', 'root', '-e', 'CREATE TABLE Pair.foo (id INT)'], { encoding: 'utf8' });
     if (platformDefault !== 0) {
-      // 대소문자를 구분하지 않는 파일 시스템의 서버는 그런 이름 쌍을 만들지 않는다(1050).
+      // A server on a case-insensitive file system makes no such pair of names (1050).
       assert.notEqual(second.status, 0);
       assert.match(second.stderr, /1050/);
       return;
