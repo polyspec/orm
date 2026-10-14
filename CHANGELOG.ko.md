@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 571a20ec3d525a37575842141c28cdd1928fa73961ca9150e0411cbfa8bfcc9d -->
+<!-- source-sha256: b8f3c67206f9125bae4a587bb5898368d48a65f09aab1e5bf5272f137374409d -->
 # 변경 이력
 
 ## Unreleased
 
+- tests/와 examples/ 아래 Go program과 test는 root go.work의 module tests/go.mod와 examples/go.mod다. (#T137-1-6)
 - Go module은 tag packages/go/vX.Y.Z로 release하는 github.com/polyspec/orm/packages/go다. engine/*, generator, cmd/orm-gen은 packages/go/engine/*, packages/go/generator, packages/go/cmd/orm-gen이고, internal/testcase와 internal/procevent는 packages/go/testcase와 packages/go/procevent다. Go consumer는 새 module을 요구하고 그 경로를 import한다. (#T137-1-5)
 - conformance orchestrator와 interface checker는 TypeScript다(tests/conformance/check/main.mts, tests/interfaces/check/main.mts). 그 Go program과 internal/stmtdiff를 지웠다. (#T137-1-4-6)
 - test server의 socket folder는 checkout 경로의 SHA-256으로 이름 짓고, AGENTS.md는 worktree를 지우기 전에 그 server를 멈춘다고 적는다. 실행 중인 server는 이 변경을 받기 전에 멈춘다: 그 socket은 이전 이름을 쓴다. (#T137-1-4-10)

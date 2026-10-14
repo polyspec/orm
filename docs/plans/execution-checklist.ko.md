@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 94c8b7197ead7add3f22270b965b25c13ff4e83bf19fa4bf2826df670eed4f74 -->
+<!-- source-sha256: 576bc2d1d4f95b5040d86679f0463afa82b89753924223bcff71d267e6d566d9 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -991,6 +991,8 @@
   - [o] T137-1-3 workspace의 Rust lint를 받는다 (T137-1에 이어). 원인: lint-cargo-lints가 모든 Cargo.toml(11)을 거부한다. workspace가 unsafe_code와 clippy::allow_attributes_without_reason을 deny하고 각 package가 그것을 받아야 한다. orm에는 unsafe 사용 5곳(case-clock, SQLite authorizer, planner scope)과 이유 없는 allow attribute 20개가 있다. 완료 조건: lint를 선언하고, 각 unsafe 사용을 없애거나 이유와 함께 허용하며, 모든 allow가 이유를 적고, rust-check가 통과한다.
   - [o] T137-1-5 Go module을 packages/go로 옮긴다 (T137-1에 이어). 원인: root Go module(go.mod, go.sum, engine/, generator/, cmd/, internal/)이 S5를 어겼고, ordered-json 0.0.9는 같은 layout을 위해 Go module을 packages/go로 옮겼다. 완료 조건: module은 release tag packages/go/vX.Y.Z의 github.com/polyspec/orm/packages/go이고, engine, generator, cmd/orm-gen, internal/testdb가 그 아래에 있으며, tests/의 Go program이 import하는 testcase와 procevent는 거기의 공개 package다. layout-check가 그 경로를 하나도 보고하지 않는다.
     Evidence: packages/go에서 go build와 go vet이 통과한다. database 없이 engine과 그 하위 package 여섯, generator, testcase의 go test가 통과하고 model generation coverage test가 통과한다. Go symbol을 다시 기록해(경로 접두어만 바뀜) make interface-check가 통과하고, repo, feature, release-coverage, dependency-policy, 문서 검사가 통과한다.
+  - [o] T137-1-6 tests/와 examples/의 Go program에 workspace 안의 자기 module을 준다 (T137-1-5에 이어). 원인: root module을 옮긴 뒤 tests/와 examples/ 아래 Go program과 test는 어느 module에도 속하지 않았고, kit의 Go lint는 replace를 금지한다. 완료 조건: tests/go.mod와 examples/go.mod가 config/layout.yml이 선언한 root go.work의 module이고, replace가 필요 없으며, contracts/의 Go test는 tests/interfaces/contracts에 있다.
+    Evidence: tests와 examples에서 go build와 go vet이 통과하고, tag를 붙인 vet(physical, bench, markdown, decimalphysical, examples, featurecoverage, ormtest)이 세 module에서 통과한다. database 없이 tests/interfaces/contracts, tests/dbspec/unicode, tests/conformance/runner_go, tests/dialects의 go test가 통과하고, make go-vet-check, go-fmt-check, testcase-check/go가 통과한다.
   - [o] T137-1-3-1 Rust model을 allow attribute 없이 생성한다 (T137-1-3에 이어). 원인: orm-build가 모든 model에 #[allow(unused_mut)]와 #[allow(clippy::new_without_default)]를 써서, allow attribute를 거부하는 consumer(kit workspace lint를 쓰는 fsm)가 실패했다. Evidence: build test generated_code_carries_no_allow_attribute가 수정 전 실패하고 수정 후 통과한다. rust-check, rust-fmt-check, interface-check가 통과한다.
   Evidence: make layout-check가 lint-cargo-lints finding을 보고하지 않는다(이전 11건). rust-check, rust-fmt-check, dbspec-rust-check, interface-check, dependency-policy-check가 통과한다.
   - [ ] T137-1-4 언어를 넘는 infrastructure를 TypeScript로 쓴다 (T137-1에 이어). 원인: S9(layout-infrastructure-typescript, layout-infrastructure-shebang)가 scripts/와 tests/ 아래 다른 interpreter의 script 198개를 거부한다. 완료 조건: 각각을 TypeScript로 옮기거나 config/layout.yml에 이유와 함께 S9 예외로 선언한다.
