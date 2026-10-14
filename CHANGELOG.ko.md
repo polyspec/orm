@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4f1a7924f17a983d1b52d1ca7f966c8a47421e42c39ec7059bd51be9a7c7472c -->
+<!-- source-sha256: dd448adf95c78acc9ab1672ea35133cb01407ed2c4a969936bca6ebee8cb8a74 -->
 # 변경 이력
 
 ## Unreleased
+
+- T163: Python `RuntimeModel.load_set`과 TypeScript `loadSet`이 PHP, Go, Rust처럼 generated schema 값의 parse된 문서를 돌려준다.
 
 ## 0.0.13
 
