@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 33d35b82b435ccdcbe7e055ca96af54a1eb351dc210f442518a4cce360a263d6 -->
+<!-- source-sha256: 94c8b7197ead7add3f22270b965b25c13ff4e83bf19fa4bf2826df670eed4f74 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -989,6 +989,8 @@
   - [o] T137-1-1 config/layout.yml에 packages/dbspec-vscode를 선언하고 T134가 codec-check/python과 tests/conformance/result_python.py에 남긴 PYTHONPATH를 없앤다 (T137-1에 이어). 완료 조건: layout-check가 둘 다 보고하지 않고, Python codec vector와 conformance runner test가 통과한다.
   - [o] T137-1-2 PHP client를 PSR-4만으로 map한다 (T137-1에 이어). 원인: lint-composer-policy(S2)가 packages/php/composer.json의 classmap을 거부한다. source file 11개(Codec, Markdown, Engine, GroupRows, Model, AesKeyring, Db, Planner, Collection, Utils, Orm)가 class를 여럿 담아 classmap이 필요하고, library가 autoload-dev를 map하지 않는다. 완료 조건: file마다 class 하나로 PSR-4를 따르고, classmap이 없으며, autoload-dev를 PSR-4로 map하고, PHP 검사가 통과한다.
   - [o] T137-1-3 workspace의 Rust lint를 받는다 (T137-1에 이어). 원인: lint-cargo-lints가 모든 Cargo.toml(11)을 거부한다. workspace가 unsafe_code와 clippy::allow_attributes_without_reason을 deny하고 각 package가 그것을 받아야 한다. orm에는 unsafe 사용 5곳(case-clock, SQLite authorizer, planner scope)과 이유 없는 allow attribute 20개가 있다. 완료 조건: lint를 선언하고, 각 unsafe 사용을 없애거나 이유와 함께 허용하며, 모든 allow가 이유를 적고, rust-check가 통과한다.
+  - [o] T137-1-5 Go module을 packages/go로 옮긴다 (T137-1에 이어). 원인: root Go module(go.mod, go.sum, engine/, generator/, cmd/, internal/)이 S5를 어겼고, ordered-json 0.0.9는 같은 layout을 위해 Go module을 packages/go로 옮겼다. 완료 조건: module은 release tag packages/go/vX.Y.Z의 github.com/polyspec/orm/packages/go이고, engine, generator, cmd/orm-gen, internal/testdb가 그 아래에 있으며, tests/의 Go program이 import하는 testcase와 procevent는 거기의 공개 package다. layout-check가 그 경로를 하나도 보고하지 않는다.
+    Evidence: packages/go에서 go build와 go vet이 통과한다. database 없이 engine과 그 하위 package 여섯, generator, testcase의 go test가 통과하고 model generation coverage test가 통과한다. Go symbol을 다시 기록해(경로 접두어만 바뀜) make interface-check가 통과하고, repo, feature, release-coverage, dependency-policy, 문서 검사가 통과한다.
   - [o] T137-1-3-1 Rust model을 allow attribute 없이 생성한다 (T137-1-3에 이어). 원인: orm-build가 모든 model에 #[allow(unused_mut)]와 #[allow(clippy::new_without_default)]를 써서, allow attribute를 거부하는 consumer(kit workspace lint를 쓰는 fsm)가 실패했다. Evidence: build test generated_code_carries_no_allow_attribute가 수정 전 실패하고 수정 후 통과한다. rust-check, rust-fmt-check, interface-check가 통과한다.
   Evidence: make layout-check가 lint-cargo-lints finding을 보고하지 않는다(이전 11건). rust-check, rust-fmt-check, dbspec-rust-check, interface-check, dependency-policy-check가 통과한다.
   - [ ] T137-1-4 언어를 넘는 infrastructure를 TypeScript로 쓴다 (T137-1에 이어). 원인: S9(layout-infrastructure-typescript, layout-infrastructure-shebang)가 scripts/와 tests/ 아래 다른 interpreter의 script 198개를 거부한다. 완료 조건: 각각을 TypeScript로 옮기거나 config/layout.yml에 이유와 함께 S9 예외로 선언한다.

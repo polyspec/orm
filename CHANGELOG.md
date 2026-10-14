@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Go module is github.com/polyspec/orm/packages/go, released by the tags packages/go/vX.Y.Z: engine/*, generator and cmd/orm-gen are packages/go/engine/*, packages/go/generator and packages/go/cmd/orm-gen, and internal/testcase and internal/procevent are packages/go/testcase and packages/go/procevent. A Go consumer requires the new module and imports its paths. (#T137-1-5)
 - The conformance orchestrator and the interface checker are TypeScript (tests/conformance/check/main.mts, tests/interfaces/check/main.mts); their Go programs and internal/stmtdiff are removed. (#T137-1-4-6)
 - The socket folder of the test servers is named by SHA-256 of the checkout path, and AGENTS.md states that a worktree's servers stop before the worktree is removed. Stop running servers before taking this change: their sockets keep the earlier name. (#T137-1-4-10)
 
