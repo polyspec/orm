@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: b2184b21e51f1966c4e7313d44f3a7da80f6b8d35c31e91b5c9943feded0c451 -->
+<!-- source-sha256: e42bbde2b0ecd4dc5751b83bac4f6c2392c6003f4e3c5aa7de44628049cace12 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1113,7 +1113,7 @@
   Evidence: 변경 전 orm-gen-scan이 3 case에서 실패했고(invoked vector 둘, PHPStan method.notFound) 변경 후 27건 통과한다. orm-gen-scan-parity 16건 통과, interface-check -language php는 symbol 변경이 없다.
 - [o] T176 Python client에서 3.46보다 오래된 SQLite를 거부한다. 원인: Go(db.go), Rust(db.rs), PHP(Orm.php), TypeScript(driver.ts) client는 docs/dialects.md대로 연결할 때 3.46보다 오래된 SQLite를 CAPABILITY_UNSUPPORTED로 거부하지만, Python client에는 그 검사가 없고 Python은 system SQLite를 link한다. 완료 조건: RED case가 3.46보다 오래되었다고 보고하는 SQLite에 Python client가 연결하는 것을 보이고, 이후 client가 다른 client와 같은 message의 CAPABILITY_UNSUPPORTED로 거부하고 3.46 이상은 받아들인다. 공유 vector는 만들지 않는다: 각 client는 자기가 link한 library의 version을 읽고, 어느 case도 다른 client의 그것을 바꿀 수 없으므로 각 검사는 자기 비교다.
   Evidence: 변경 전 test_sqlite_version이 3.45.3에서 "OrmError not raised"로 실패했다. 변경 후 3.45.3, 3.9.0, 2.8.17을 거부하고 3.46.0, 3.50.4, 4.0.0을 받아들이며, python-unit-check가 통과한다.
-- [ ] T177 0.0.17을 release한다. 원인: hyper module이 기다리는 호출한 model의 PHP orm-gen scan(T175), Python client의 SQLite version 검사(T176), TypeScript infrastructure script(T137-1-4-5, T137-1-4-9)가 main에 있다. 완료 조건: version-bump commit이 모든 manifest를 0.0.17로 하고 Unreleased를 0.0.17로 옮기며, 바뀐 lock의 dependency review와 v0.0.17의 consumer lock을 기록한다. 그 commit에서 CI가 통과하고, annotated tag v0.0.17이 release asset을 게시한다.
+- [ ] T177 0.0.17을 release한다. 원인: hyper module이 기다리는 호출한 model의 PHP orm-gen scan(T175), Python client의 SQLite version 검사(T176), limepie가 기다리는 모든 client의 ordered-json 0.0.9(T178), TypeScript infrastructure script(T137-1-4-5, T137-1-4-9)가 main에 있다. 완료 조건: version-bump commit이 모든 manifest를 0.0.17로 하고 Unreleased를 0.0.17로 옮기며, 바뀐 lock의 dependency review와 v0.0.17의 consumer lock을 기록한다. 그 commit에서 CI가 통과하고, annotated tag v0.0.17이 release asset을 게시한다.
   - [o] T177-1 0.0.17 release commit의 package check를 통과시킨다 (T177에 이어). 원인: 739f8709의 CI가 package-check에서 실패했다. Rust client를 path dependency로 검사하는 외부 crate에 lock이 없어, offline cargo가 git dependency polyspec-ordered-json을 tag v0.0.8로 해석하는데 runner가 되살린 git database에 그 tag가 없었다. 이전 실행은 cache에 tag가 있을 때만 통과했다. 완료 조건: 외부 crate가 packages/rust/Cargo.lock을 쓰고, client의 cargo fetch --locked가 받은 것만 있는 cargo home으로 검사가 통과한다.
     Evidence: cargo fetch --locked 뒤의 새 CARGO_HOME에서 변경 전 외부 crate의 cargo check가 "failed to find tag v0.0.8"로 실패했다. lock을 쓰면 통과하고, 그 cargo home으로 make package-check가 통과한다.
 - [o] T178 모든 client에서 ordered-json 0.0.9를 쓴다. 원인: ordered-json 0.0.9에는 limepie가 import 속도에 필요한 Python parser(T1.41)가 있는데, orm은 PHP(zip URL), TypeScript, Python wheel의 Requires-Dist에서 ordered-json 0.0.8을 정확히 고정해 consumer가 바꿀 수 없다(kit과 limepie가 보고). 완료 조건: PHP, TypeScript, Python, Rust, Go client가 0.0.9를 요구하고(Go는 새 module 경로 github.com/polyspec/ordered-json/packages/go로, Python은 sha256을 붙인 wheel URL로), lock과 dependency review를 기록하며, 각 client의 codec과 JSON 검사가 통과한다.

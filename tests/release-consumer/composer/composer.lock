@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c0e30e71f553112a74caf20d70f8f77e",
+    "content-hash": "4cfb34bcdcaa06e18e15625f46df0448",
     "packages": [
         {
             "name": "nikic/php-parser",
@@ -65,22 +65,25 @@
         },
         {
             "name": "polyspec/ordered-json",
-            "version": "0.0.8",
+            "version": "0.0.9",
             "dist": {
                 "type": "zip",
-                "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.8/polyspec-ordered-json-php-0.0.8.zip",
-                "shasum": "6fa67fff99b422f42ed7ab51ac470cadf8ade699"
+                "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.9/polyspec-ordered-json-php-0.0.9.zip",
+                "shasum": "5f93a2c0df5967163801cb3d4d087e44834bb456"
             },
             "require": {
                 "ext-json": "*",
                 "ext-pcre": "*",
-                "php": ">=8.2"
+                "php": ">=8.5"
             },
             "suggest": {
                 "ext-ordered_json": "Native backend from the polyspec/ordered-json-extension PIE package"
             },
             "type": "library",
             "autoload": {
+                "psr-4": {
+                    "Polyspec\\OrderedJson\\": "src/"
+                },
                 "files": [
                     "src/OrderedJson.php"
                 ]
@@ -101,7 +104,7 @@
                 "ext-zlib": "*",
                 "nikic/php-parser": "^5.9.0",
                 "php": ">=8.5",
-                "polyspec/ordered-json": "0.0.8",
+                "polyspec/ordered-json": "0.0.9",
                 "purrphp/yaml": "^1.0",
                 "symfony/yaml": "^8.1"
             },
