@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c4920d9e5d7f3197bf9b2b556eff91ddf3b47cad2176df82cbc8d898d0744321 -->
+<!-- source-sha256: a83967406fa571e942be9a9f5c3633fb689958fe6ae8e5f65870166e68716417 -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-8-3: make install-vscode가 kit 설치기로 extension의 최소 VS Code를 설치하고, make dbspec-vscode-integration이 그 안에서 editor fixture 다섯을 실행하며, CI의 editor job이 가상 X server에서 그것을 실행한다.
 - T165: orm이 kit 0.0.40을 받는다. mise.toml의 도구(Go, Python, uv, Composer, alint, govulncheck, cargo-audit)를 mise.lock에서 설치하고, `.python-version`을 지웠으며, install-python과 python-venv-check는 mise.toml의 Python을 읽고, CI는 make install-tools로 도구를 설치한다.
 - T137-4: CI Node step이 install-packages가 kit을 설치한 뒤 두 번째 make로 interface TypeScript를 설치한다.
 - T137-3: CI가 interface reader의 TypeScript를 설치하고, PHP extension의 arginfo header가 이름 변경 뒤의 stub과 맞는다.
