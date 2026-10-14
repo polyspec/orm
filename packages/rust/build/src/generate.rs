@@ -908,9 +908,7 @@ fn model_source(gm: &Model<'_>) -> String {
     }
     b.push_str("        }\n    }\n\n");
     b.push_str("    fn into_core(self) -> polyspec_orm::Core {\n        self.__orm\n    }\n\n");
-    b.push_str(
-        "    #[allow(unused_mut, reason = \"an entity whose columns need no conversion leaves v unchanged\")]\n    fn assign(&mut self, name: &str, mut v: polyspec_orm::Val) -> polyspec_orm::Result<bool> {\n        match name {\n",
-    );
+    let mut arms = String::new();
     for c in &e.fields {
         let (bt, id) = (base(c), ident(&c.name));
         let conversion = match c.ty {
@@ -918,11 +916,14 @@ fn model_source(gm: &Model<'_>) -> String {
             _ => convert(bt).to_owned(),
         };
         if field(c) != bt {
-            let _ = writeln!(b, "            {:?} => self.{id} = if v.is_null() {{ None }} else {{ Some({conversion}) }},", c.name);
+            let _ = writeln!(arms, "            {:?} => self.{id} = if v.is_null() {{ None }} else {{ Some({conversion}) }},", c.name);
         } else {
-            let _ = writeln!(b, "            {:?} => self.{id} = {conversion},", c.name);
+            let _ = writeln!(arms, "            {:?} => self.{id} = {conversion},", c.name);
         }
     }
+    // v is mutable only when a conversion takes its value in place.
+    let binding = if arms.contains("v.take_") { "mut v" } else { "v" };
+    let _ = write!(b, "    fn assign(&mut self, name: &str, {binding}: polyspec_orm::Val) -> polyspec_orm::Result<bool> {{\n        match name {{\n{arms}");
     b.push_str("            _ => return Ok(false),\n        }\n        self.__orm.mark_field_ready(name);\n        Ok(true)\n    }\n\n");
     b.push_str("    fn value(&self, name: &str) -> Option<polyspec_orm::Val> {\n        if !self.__orm.field_ready(name) { return None; }\n        Some(match name {\n");
     for c in &e.fields {
@@ -948,6 +949,7 @@ fn model_source(gm: &Model<'_>) -> String {
         b,
         "impl polyspec_orm::serde::Serialize for {t} {{\n    fn serialize<S: polyspec_orm::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {{\n        polyspec_orm::serde::Serialize::serialize(&polyspec_orm::model::raw_json(polyspec_orm::model::to_json(self)).map_err(polyspec_orm::serde::ser::Error::custom)?, s)\n    }}\n}}\n\n"
     );
+    let _ = write!(b, "impl Default for {t} {{\n    /// Creates a model, as new does.\n    fn default() -> Self {{\n        Self::new()\n    }}\n}}\n\n");
     b.push_str(&FIXED_CODE.replacen("impl T {", &format!("impl {t} {{"), 1));
     for c in &e.fields {
         let (bt, fd, id, col) = (base(c), field(c), ident(&c.name), c.name.as_str());
