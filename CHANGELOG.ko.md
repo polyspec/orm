@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b2a1dbd20543d01fdb394d3b23f5c2665e76a4bb85b75cc1c9477228bf441aee -->
+<!-- source-sha256: 5df227654da02dc3861d4515029e071fd9f28902bbfde249273715674c6e40ed -->
 # 변경 이력
 
 ## Unreleased
 
+- 생성된 TypeScript model이 쓰는 runtime 이름만 import하고, chain method를 합쳐진 interface 대신 class field로 선언한다. (#T170)
 - 생성된 Rust model이 allow attribute를 담지 않는다: 변환이 값을 가져가는 곳에만 mut v를 쓰고, 인자 없는 new 옆에 Default impl을 둔다. (#T137-1-3-1)
 - make run-databases TARGETS=conformance-check VECTOR="..."가 준비된 bench database에서 지정한 conformance vector를 실행하고, RECORD=1은 전체 실행을 기록한다. VECTOR와 함께 쓴 RECORD는 거부한다. conformance README가 다섯 client를 기술한다. (#T169-2)
 - 공유 decode vector가 모든 client에서 JSON 값을 비교하고, 받아들이는 YAML key 1, "true", tRUE, nULL, .InF가 공유 vector가 되었다. PHP는 T142-1-1의 purrphp 결함 때문에 대소문자가 섞인 key 세 개를 건너뛴다. (#T142-11)
