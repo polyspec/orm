@@ -108,22 +108,18 @@ export function rustToolchainErrors(toolchain, makefile, workflows, running) {
   return errors;
 }
 
-// goVersionErrors returns one error for each workflow that does not set up the Go that go.mod declares. The go line of go.mod
-// is the one declaration of the Go release: kit's toolchain-check requires it to be the kit pin, with no toolchain line, and
-// the running go to be that release. workflows is {path: text}.
-//   - An actions/setup-go step reads `go-version-file: go.mod` and writes no `go-version` of its own; a workflow that runs go
-//     uses setup-go.
+// goVersionErrors returns one error for each workflow that does not install the Go of mise.toml. mise.toml declares the one
+// Go release (kit K127): kit's toolchain-check requires it to be the kit pin and the running go to be that release, and
+// make install-tools installs it from mise.lock. workflows is {path: text}.
+//   - A workflow that runs go runs make install-tools (the tools of mise.toml), and none sets up a second Go with
+//     actions/setup-go.
 export function goVersionErrors(workflows) {
   const errors = [];
   for (const [path, workflow] of Object.entries(workflows)) {
-    const steps = actionSteps(workflow, 'actions/setup-go');
-    if (runs(workflow, /(^|[\s;&|(])(go\s|make (?:check|install-go)\b)/m) && steps.length === 0)
-      errors.push(`${path} runs Go without actions/setup-go; add a setup-go step with go-version-file: go.mod`);
-    for (const step of steps) {
-      if (/^\s*go-version:/m.test(step) || /\{\s*go-version:/.test(step)) errors.push(`${path} declares go-version itself; read go-version-file: go.mod in actions/setup-go`);
-      if (!/(?:^\s*|\{\s*)go-version-file:\s*["']?go\.mod["']?/m.test(step))
-        errors.push(`${path} does not read go-version-file go.mod in actions/setup-go; add go-version-file: go.mod`);
-    }
+    if (actionSteps(workflow, 'actions/setup-go').length > 0)
+      errors.push(`${path} sets up Go with actions/setup-go; the Go of mise.toml is installed by make install-tools`);
+    if (runs(workflow, /(^|[\s;&|(])(go\s|make (?:check|install-go)\b)/m) && !runs(workflow, /(^|[\s;&|(])make install-tools(?![^\n]*TOOLS=)/m))
+      errors.push(`${path} runs Go without the Go of mise.toml; add a step that runs make install-tools`);
   }
   return errors;
 }

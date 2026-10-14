@@ -299,6 +299,11 @@ jobs:
         id: go
         if: ${{ !cancelled() }}
         run: make install-tools
+      # make check runs go with GOPROXY=off; make install-go downloads the modules of go.mod for the lease program.
+      - name: Go modules
+        id: go-modules
+        if: ${{ !cancelled() }}
+        run: make install-go
       - name: VS Code of the integration test
         id: vscode
         if: ${{ !cancelled() }}

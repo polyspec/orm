@@ -6,8 +6,8 @@
 // language service package and the orm package of this checkout, installs both as copies without bin links, renames
 // it to <prefix>/lib/polyspec-dbspec-fmt, and writes the executable script <prefix>/bin/dbspec-fmt through a temporary
 // file and a rename; the script runs node with the entry of the copied language service package by its absolute
-// path. The orm package depends on @polyspec/ordered-json, which is released on GitHub only, so the project carries
-// the override of this repository's package.json for it. A later install replaces both, so a changed build is
+// path. The orm package depends on @polyspec/ordered-json, which is released on GitHub only, so the project depends on
+// it by the URL of this repository's override, which allow-remote=root admits. A later install replaces both, so a changed build is
 // installed again; a failed install removes its prepared directory and keeps the previous install.
 // uninstall: removes the project and the script.
 //
@@ -43,10 +43,12 @@ if (action === 'uninstall') {
     const orm = join(root, 'packages', 'ts');
     writeFileSync(join(next, 'package.json'), `${JSON.stringify({
       private: true,
-      dependencies: { '@polyspec/dbspec-language': `file:${language}`, '@polyspec/orm': `file:${orm}` },
+      dependencies: { '@polyspec/dbspec-language': `file:${language}`, '@polyspec/orm': `file:${orm}`, '@polyspec/ordered-json': orderedJson },
       overrides: { '@polyspec/orm': `file:${orm}`, '@polyspec/ordered-json': orderedJson },
     }, null, 2)}\n`);
-    writeFileSync(join(next, '.npmrc'), 'install-links=true\nbin-links=false\n');
+    // npm 12 fetches a URL dependency only where allow-remote admits it: the tarball of @polyspec/ordered-json is a
+    // dependency of the project root, so allow-remote=root admits it and nothing deeper (as the release consumers do).
+    writeFileSync(join(next, '.npmrc'), 'install-links=true\nbin-links=false\nallow-remote=root\n');
     process.stdout.write(`install-cli: npm install in ${next}\n`);
     const result = spawnSync('npm', ['install', '--no-audit', '--no-fund', '--no-package-lock'], { cwd: next, stdio: 'inherit' });
     if (result.status !== 0) throw new Error(`npm install in ${next} exited with ${result.status ?? result.signal}; the previous install is unchanged`);
