@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 17e77c1914829d22201976516a6bd2a4c79378d888385a24821fc24a069d00a8 -->
+<!-- source-sha256: 6410fb497d72f37396903778ace66b61b4cf855d19a7e5f6392063bc9d2e7169 -->
 # 변경 이력
 
 ## Unreleased
 
+- T165-2: npm package 검사가 npm 12 형태의 npm pack --json을 읽고, install-cli가 URL 의존성을 루트에서 허용하며, workflow는 mise.toml에서 Go를 받고, editor job이 Go module을 내려받는다.
 - T165-1: orm이 kit 0.0.41을 받는다. 그 mise.lock은 ARM runner를 위해 linux-arm64를 pin한다.
 - T137-1-2: PHP client는 PSR-4만으로 load된다. class마다 file 하나이고, packages/php/composer.json에 classmap이 없으며, test model은 autoload-dev로 load되고, test autoloader는 Composer의 것이다.
 - T137-1-1: config/layout.yml이 packages/dbspec-vscode를 선언하고, 어떤 검사도 PYTHONPATH를 설정하지 않는다.

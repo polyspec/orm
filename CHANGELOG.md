@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T165-2: the npm package checks read the npm 12 form of npm pack --json, install-cli admits its URL dependency at the root, workflows take Go from mise.toml, and the editor job downloads the Go modules.
 - T165-1: orm takes kit 0.0.41, whose mise.lock pins linux-arm64 for the ARM runners.
 - T137-1-2: the PHP client loads by PSR-4 alone: every class has its own file, packages/php/composer.json has no classmap, the test models load by autoload-dev, and the test autoloader is Composer's.
 - T137-1-1: config/layout.yml declares packages/dbspec-vscode, and no check sets PYTHONPATH.
