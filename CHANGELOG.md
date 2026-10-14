@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The review record lists nikic/php-parser, which the PHP orm-gen scan requires. (#T172-1)
 - The PHP orm-gen takes `--scan`: it reads the sources with nikic/php-parser, declares each chain method they call on a model as a typed `@method` tag, so PHPStan finds it, and rejects an unknown column, operator or argument count during generation; a symlink in a scanned directory is an error. (#T172)
 - The Rust validate and codec vectors run on the workspace with its test features, and the plan vectors report a measured CPU time above its bound as a warning. (#T148-2-2)
 - Go, TypeScript, Python and Rust report each shared-vector case under its id: Go subtests, one TypeScript test per case, Python load_tests cases and Rust libtest-mimic trials; Rust validates through the public engine::validate. (#T148-2)

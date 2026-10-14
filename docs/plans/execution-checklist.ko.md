@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 4f435ea122be02dcb625e4b6359efd2f3e162b6e8f56f1cbb80ed9a4521b4c33 -->
+<!-- source-sha256: 38bc297c529dbf8b003689c820ca9392b906d0d23afcf485236440ec50555208 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1081,6 +1081,9 @@
   - [o] T171-1 CI cache 복원 뒤에 Rust crate를 받는다 (T171에 이어). 원인: 0.0.15 bump의 CI가 모든 Rust group에서 실패했다: Swatinem/rust-cache가 make install-rust가 받은 crate 위에 오래된 registry를 복원해 rustls 0.23.46이 없었다. Evidence: install-rust가 복원 전의 install-rust-toolchain과 복원 뒤의 install-rust-crates로 나뉜다. scripts/check와 scripts/repo test가 통과한다.
 - [o] T172 생성된 PHP model에 scan한 chain method를 선언한다. 원인: PHP orm-gen에 `--scan`이 없어(`gen --set --out --namespace [--check]`) module code가 부르는 chain method(`ltSeq`, `andSlotNumber`)가 어디에도 선언되지 않으며, 실행은 맞는 호출에 PHPStan이 method.notFound를 보고한다. Go, TypeScript, Rust는 scan이 찾은 method를 생성하고 Python은 맞지 않는 method를 보고하는데, docs/dsl.md 2.2는 PHP만 scan 없이 둔다(hyper가 0.0.15에서 보고, 호출 8개). 완료 조건: PHP orm-gen이 `--scan`을 받아 source를 nikic/php-parser로 읽고, 찾은 chain method마다 정확한 parameter와 return type의 `@method` tag를 model class에 선언하며, 다른 generator처럼 모르는 column, operator, 인자 수를 생성 중에 거부한다. docs/dsl.md(+ko)가 이를 적는다. 받는 case와 거부하는 case의 generator vector, parity unit, fixture에 대한 PHPStan 실행에서 method.notFound 0건.
   Evidence: OrmGenScanTest(23)와 OrmGenScanParityTest(14)가 먼저 "flag provided but not defined: -scan"으로 실패했고 지금 통과한다. level 9 PHPStan fixture는 method.notFound를 보고하지 않고, scan하지 않은 대조 호출은 보고한다. symlink case는 RecursiveDirectoryIterator로 바꾸기 전에 exit 0으로 실패했다.
+  - [o] T172-1 nikic/php-parser의 review를 기록한다 (T172에 이어). 원인: T172가 nikic/php-parser를 dependency review 없이 packages/php/composer.json의 require로 옮겨, 65c758b5에서 CI group static의 dependency-policy-check가 실패했다(review 뒤에 lock이 바뀌었고 nikic/php-parser의 항목이 없다). 완료 조건: make dependency-review RECORD=1이 registry dependency 47개와 lock 9개를 기록하고 make dependency-policy-check가 통과한다.
+    Evidence: 2026-10-14T18:06:24Z에 기록한 review로 dependency-policy-check가 통과한다.
+  - [ ] T172-2 PHP scan의 PHPStan case가 CI에서 통과하게 한다 (T172에 이어). 원인: 65c758b5에서 CI group feature_verify_other가 OrmGenScanTest::test_phpstan_finds_every_scanned_chain_method를 "the control call is declared"에서 실패시켰고, 로컬에서는 통과한다. 이 case는 PHPStan의 종료 상태를 읽지 않아 분석하지 않은 실행이 finding 없이 첫 assertion을 통과했다. 완료 조건: case는 0이나 1이 아닌 상태에서 PHPStan의 출력과 함께 실패하고 control에는 상태 1을 요구한다. CI의 원인을 그 출력에서 찾아 고치고 feature_verify_other가 통과한다.
 - [o] T156 모든 생성기가 모든 key의 모든 prefix마다 유형 있는 메서드를 선언한다. 원인: scan한 소스가 호출하는 메서드만 생성되어, 어떤 소스도 호출하지 않는 key prefix에는 메서드가 없었다(hyper U-97). 완료 조건: Go, Rust, TypeScript model이 primary key, unique key, index의 모든 prefix마다 메서드를 선언하고, Python은 같은 이름을 실행 시점에 해석하며, symbol 기록과 docs/usage.md를 갱신한다.
   - [o] T156-1 T156 이후 orm main CI를 다시 green으로 만든다 (T156에 이어). 원인: run 38502539388이 실패했다. Python key-prefix 테스트가 PYTHONPATH를 바꾸고 지워진 packages/orm-python/bin/orm-gen을 실행했고, Go와 Rust key-prefix 테스트가 testcase를 시작하지 않았으며, generator/gen_go_key_prefix_test.go가 어떤 feature에도 속하지 않았고, src/models/markdown_fixture에 key-prefix 메서드가 없었다. 완료 조건: 각각을 고치고 그 소유 검사가 통과한다.
   - [o] T156-2 Go markdown model을 다시 생성한다 (T156에 이어). 원인: run 38504701356이 go-markdown-model-generated에서 실패했다. packages/orm-go/markdownmodel에 key-prefix 메서드가 없었다. 완료 조건: go generate가 폴더를 바꾸지 않는다.

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5e2f1afc3e2dd0f4a916bd88a861cd24223e94f836fb700d6ac0ad1bfceb6ac4 -->
+<!-- source-sha256: bcfb388267ccceddca35bfd632974e77a59d90abc17d51c8c2abd655cf07d35e -->
 # 변경 이력
 
 ## Unreleased
 
+- review 기록이 PHP orm-gen scan이 요구하는 nikic/php-parser를 적는다. (#T172-1)
 - PHP orm-gen이 `--scan`을 받는다: source를 nikic/php-parser로 읽고, model에 부르는 chain method마다 타입이 있는 `@method` 태그를 선언해 PHPStan이 찾게 하며, 모르는 column, operator, 인자 수는 생성 중에 거부한다. scan한 디렉터리의 symlink는 오류다. (#T172)
 - Rust validate와 codec vector가 workspace의 test feature로 실행되고, plan vector는 기준을 넘은 측정 CPU 시간을 경고로 보고한다. (#T148-2-2)
 - Go, TypeScript, Python, Rust가 각 공유 vector case를 그 id로 보고한다: Go subtest, case마다 TypeScript test 하나, Python load_tests case, Rust libtest-mimic trial이며, Rust는 공개 engine::validate로 검증한다. (#T148-2)
