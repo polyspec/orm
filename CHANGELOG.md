@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T137: orm takes kit 0.0.38 as the package @polyspec/kit and follows its standards: the client folders are named by runtime (packages/go, packages/php, packages/python, …), AGENTS.md links the kit principles, the toolchain floors follow the kit pins, and the TypeScript interface reader runs on TypeScript 6 until TypeScript 7 has a stable API; the layout findings are T137-1.
 - T137 (breaking): orm takes kit as the npm package `@polyspec/kit` (`make install-tools TOOLS=npm`, `make install-packages`) instead of a vendored copy, and links its PRINCIPLES.md. The client folders are named by runtime: `packages/go`, `packages/ts`, `packages/php`, `packages/php-ext`, `packages/python` (the subdirectory of the Python client) and `packages/rust`, whose crates lie in `build/` and `schema/`; the Go import paths are `github.com/polyspec/orm/packages/go/...`. The toolchain floors are the kit pins: Node.js 26.11.1, PHP 8.5, Python 3.14, Go 1.27.2, Rust 1.99.0 and TypeScript 7.0.2; `orm-gen --scan` of the TypeScript client parses with oxc-parser, so `@polyspec/orm` no longer depends on the TypeScript compiler.
 
 ## 0.0.14
