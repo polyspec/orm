@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mts) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-14T23:15:22.616Z",
+  "reviewed": "2026-10-14T23:49:25.405Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "fc8951646fff8b1ec7d2b071b6caa3e68f123038a68a5d5f80d6cdcdd02a000e",
+      "sha256": "e3c2000fad667bc53f5868698355b601c38308c63084f440f16d1c01aa58a069",
       "advisories": [
         {
           "package": "sprintf-js",
@@ -114,6 +114,13 @@
       "package": "typescript",
       "version": "7.0.2",
       "latest": "7.0.2"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "package.json",
+      "package": "unbash",
+      "version": "5.1.0",
+      "latest": "5.1.0"
     },
     {
       "ecosystem": "npm",
@@ -436,6 +443,13 @@
       "package": "golang.org/x/sys",
       "version": "v0.49.0",
       "latest": "v0.49.0"
+    },
+    {
+      "ecosystem": "go",
+      "manifest": "tests/go.mod",
+      "package": "golang.org/x/tools",
+      "version": "v0.52.0",
+      "latest": "v0.52.0"
     },
     {
       "ecosystem": "go",

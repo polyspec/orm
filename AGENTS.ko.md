@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: e7e828364858153086fa2bdca15f58a50d4f8d81f070a8007704fad05bae0ea6 -->
+<!-- source-sha256: 94172051fa1127aa0b8dc5b81c287ee507e5cc9a61c52fcbadb80f7346e2290e -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -77,7 +77,7 @@ orm 자신의 규칙만 적는다.
   자기 process group에서 실행한다. 통과한 단계가 그 directory의 entry, `.runtime/run`의 실행 directory, group의
   process를 남기면 그 단계는 남긴 것을 적고 실패하며, 실패한 단계가 남긴 것은 보고서에 들어간다. 어느 쪽이든
   runner는 그 뒤 남은 것을 지우고 process를 끝낸다. code는 실패를 포함한 모든 경로에서 자기 임시 file을 지운다.
-  Go `main`은 `os.Exit(run())`으로 끝나고 `defer` 뒤에 `os.Exit`를 부르지 않으며(`make repo-check`), Rust test는
+  Go `main`은 `os.Exit(run())`으로 끝나고 `defer` 뒤에 `os.Exit`를 부르지 않으며(`make go-vet-check`), Rust test는
   임시 directory를 drop할 때 지우는 값으로 가진다. 자기 session을 새로 여는 process는 group을 떠나 보이지 않으므로,
   단계보다 오래 사는 server는 setup 단계만 시작한다.
 - test의 결과는 그것을 실행한 쪽의 환경에 달리지 않는다. JavaScript test는 하위 process(make, check script, 가짜
@@ -87,8 +87,8 @@ orm 자신의 규칙만 적는다.
 - 성능은 측정하고 보고할 뿐 test를 실패시키지 않는다. test는 측정(CPU 시간과 wall-clock 시간, 기준, 비율, 기계)을
   출력하고, 측정이 문서의 기준값을 넘으면 측정값, 기준값, 기계를 담은 `WARNING` 줄을 출력한다. check runner는 그 줄을
   실행 기록과 summary에 남기고 GitHub `::warning::` annotation으로 쓴다. test는 그래도 통과한다. test는 정확성으로만
-  실패하고, 기한은 멈추지 않는 case를 끝낼 뿐이다. `make repo-check`는 측정한 시간이 한도를 넘었다고 실패하는 test를
-  거부한다. 경고를 없애려고 기준값을 올리지 않는다. 바꾸려면 CI runner에서 얻은 같은 종류의 새 증거가 필요하다.
+  실패하고, 기한은 멈추지 않는 case를 끝낼 뿐이다. `make repo-check`(Go는 `make go-vet-check`)는 측정한 시간이 한도를
+  넘었다고 실패하는 test를 거부한다. 경고를 없애려고 기준값을 올리지 않는다. 바꾸려면 CI runner에서 얻은 같은 종류의 새 증거가 필요하다.
 - 검사는 결과가 시간에 따라 달라지는 registry 조회를 하지 않는다: 최신 version 조회, version 범위의 해석, 오래된
   package나 새 release의 조회가 없다. lock이 정확한 version과 integrity로 고정한 package의 download는 설치이며
   허용한다. `make install`이 검사가 읽는 것을 download하고, Makefile은 cargo, go, npm, Composer를 offline으로

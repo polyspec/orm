@@ -3,7 +3,8 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CI_SETUP, groupSetupErrors, RUNNER_STEPS } from '../check/ci-setup.mts';
-import { ciGroups, ciPassedErrors, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, helperEnvironmentErrors, helperRunErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, workflowSteps, ownWorkflows } from './ci.mts';
+import { ciGroups, ciPassedErrors, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, helperEnvironmentErrors, helperRunErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, ownWorkflows } from './ci.mts';
+import { workflowSteps } from './workflow.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors, messageFiles } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
@@ -11,8 +12,9 @@ import { connectProbeErrors, runtimeSource } from './probes.mts';
 import { composerVersionErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mts';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { kitCopies } from './kit-copies.mts';
-import { callerPathErrors, deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mts';
-import { callerEnvironmentErrors, goCargoErrors, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, scriptCommands, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
+import { segments } from './shell.mts';
+import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
+import { callerEnvironmentErrors, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, scriptCommands, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, rustTestCaseErrors, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
 import { checkInputErrors } from '../features/owners.mts';
 import { COMPUTE, sections } from '../../tests/testcase.mts';
 import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
@@ -94,7 +96,6 @@ const trackedText = (paths: string[]) => Object.fromEntries(paths.map((path: str
 failures.push(...nodeTestErrors(trackedText(tracked.filter(path => /\.(?:mjs|mts|js)$/.test(path) && !path.startsWith('docs/')))));
 // JavaScript test는 하위 process에 자기를 실행한 쪽의 환경을 넘기지 않는다: case가 주는 변수만 준다.
 failures.push(...callerEnvironmentErrors(trackedText(tracked.filter(path => /\.test\.m[jt]s$/.test(path)))));
-failures.push(...goTestCaseErrors(trackedText(tracked.filter(path => path.endsWith('_test.go')))));
 failures.push(...rustTestCaseErrors(trackedText(tracked.filter(path => path.endsWith('.rs')))));
 // Makefile, contracts/features.json, scripts/의 shell script와 root package.json이 실행하는 PHP와
 // TypeScript test도 공유 case 보고를 쓴다.
@@ -103,17 +104,17 @@ const scripts = await scriptCommands(root, tracked);
 // The setup step databases/create runs the commands of scripts/check/databases.mts.
 failures.push(...helperRunErrors(features, makefile, scripts.get('scripts/check/databases.mts') ?? ''));
 const runCommands = [
-  ...makefile.split('\n').filter(line => line.startsWith('\t')).map(line => ({ source: 'Makefile', command: line.slice(1) })),
-  ...featureCommands(features).map(command => ({ source: 'contracts/features.json', command })),
-  ...[...scripts].flatMap(([path, text]) => text.split('\n').map(command => ({ source: path, command }))),
-  ...Object.values(rootPackage.scripts ?? {}).map(command => ({ source: 'package.json', command })),
+  ...recipeLines(makefile).filter(line => line.recipe).map(line => ({ source: 'Makefile', command: line.text, dialect: 'make' as const })),
+  ...featureCommands(features).map(command => ({ source: 'contracts/features.json', command, dialect: 'sh' as const })),
+  ...[...scripts].map(([path, text]) => ({ source: path, command: text, dialect: 'sh' as const })),
+  ...Object.values(rootPackage.scripts ?? {}).map(command => ({ source: 'package.json', command, dialect: 'sh' as const })),
 ];
 failures.push(...reportingScriptErrors(runCommands, (path: string) => trackedSet.has(path) ? readFileSync(join(root, path), 'utf8') : undefined));
 // build와 lint 도구(tsc, go generate, go vet, go build, cargo build)는 장기 작업이므로 tests/run-long.mts
 // 아래에서 단계 로그와 함께 기한 없이 실행한다.
 const featureUnits = [...features.features.flatMap(feature => feature.verification.filter(check => (check.cwd ?? '.') === '.')
-  .map(check => ({ name: `contracts/features.json ${feature.id}/${check.id}`, commands: [check.command] }))),
-  ...(features.helpers ?? []).map(helper => ({ name: `contracts/features.json helper ${helper.id}`, commands: [helper.command] }))];
+  .map(check => ({ name: `contracts/features.json ${feature.id}/${check.id}`, commands: [check.command], dialect: 'sh' as const }))),
+  ...(features.helpers ?? []).map(helper => ({ name: `contracts/features.json helper ${helper.id}`, commands: [helper.command], dialect: 'sh' as const }))];
 failures.push(...unwrappedToolErrors(featureUnits));
 // cargo test 실행 앞에는 같은 인자의 `cargo test --no-run` build가 RUN_LONG 아래에서 기한 없이 있다.
 // Makefile recipe, 검증 명령, root package.json script, 그리고 그 명령이 run-long 밖에서 실행하는
@@ -122,15 +123,15 @@ failures.push(...unwrappedToolErrors(featureUnits));
 const readTracked = (path: string) => scripts.get(path) ?? (trackedSet.has(path) && !path.endsWith('.mts') ? readFileSync(join(root, path), 'utf8') : undefined);
 const recipeUnits = makeRecipes(makefile);
 const scriptUnits = reachedScripts(runCommands, readTracked);
-const allPackageUnits = Object.entries(rootPackage.scripts ?? {}).map(([name, command]) => ({ name: `package.json ${name}`, commands: [command] }));
+const allPackageUnits = Object.entries(rootPackage.scripts ?? {}).map(([name, command]) => ({ name: `package.json ${name}`, commands: [command], dialect: 'sh' as const }));
 failures.push(...unbuiltCargoTestErrors([...recipeUnits, ...featureUnits, ...allPackageUnits, ...scriptUnits]));
 // Makefile recipe, 명령 여럿인 root package.json script(명령 하나인 script는 도구의 정의이고 그
 // 호출을 본다), run-long 밖의 shell script도 build 도구를 run-long 아래에서 기한 없이 실행한다.
-const packageUnits = allPackageUnits.filter(unit => segments(unit.commands[0] ?? '').length > 1);
+const packageUnits = allPackageUnits.filter(unit => segments(unit.commands[0] ?? '', 'sh').length > 1);
 failures.push(...unwrappedToolErrors([...recipeUnits, ...packageUnits, ...scriptUnits]));
 // go test는 tests/go-test.mts(기한 없는 build 뒤 실행)나 RUN_LONG 아래에서 실행한다.
 const variables = makeVariables(makefile);
-const expandedRecipes = recipeUnits.map(unit => ({ name: unit.name, commands: unit.commands.map(command => expand(command, variables)) }));
+const expandedRecipes = recipeUnits.map(unit => ({ ...unit, commands: unit.commands.map(command => expand(command, variables)) }));
 failures.push(...rawGoTestErrors([...expandedRecipes, ...featureUnits, ...scriptUnits]));
 // check의 명령(Makefile recipe, 검증 명령, package.json script, run-long 아래의 것까지 scripts/의 shell
 // script)은 장기 작업에 기한을 두지 않는다. 기한은 test case 안에만 있다.
@@ -138,20 +139,15 @@ const everyScriptUnit = reachedScripts(runCommands, readTracked, { throughLong: 
 failures.push(...longDeadlineErrors([...expandedRecipes, ...featureUnits, ...allPackageUnits, ...everyScriptUnit]));
 // go run의 build는 단계 로그가 없으므로 tests/go-run.mts로 실행한다. workflow의 step도 본다.
 failures.push(...goRunErrors([...expandedRecipes, ...featureUnits, ...allPackageUnits, ...everyScriptUnit,
-  ...Object.entries(workflows).flatMap(([path, workflow]) => workflowSteps(workflow).map(step => ({ name: `${path} step "${step.name}"`, commands: step.run.split('\n') })))]));
+  ...Object.entries(workflows).flatMap(([path, workflow]) => workflowSteps(workflow).map(step => ({ name: `${path} step "${step.name}"`, commands: [step.run], dialect: 'workflow' as const })))]));
 // Makefile 밖의 명령도 공유 Rust target directory에 lease 아래에서만 build하고 그곳의 program을 실행하지 않는다.
 failures.push(...unleasedCargoErrors([...featureUnits, ...allPackageUnits, ...everyScriptUnit]));
-// Go checker도 cargo를 lease 아래에서 실행하고 복사한 program을 실행한다.
-const goFiles = Object.fromEntries(tracked.filter(path => path.endsWith('.go')).map(path => [path, readFileSync(join(root, path), 'utf8')]));
-failures.push(...goCargoErrors(goFiles));
-// Go 함수는 defer 뒤에 os.Exit를 부르지 않는다: 그 defer가 지울 임시 file과 풀 lock이 남는다.
-failures.push(...deferredExitErrors(goFiles));
-// Go code는 runtime.Caller로 file을 찾지 않는다: 그 경로는 binary가 compile된 곳이고 실행하는 checkout이 아니다.
-failures.push(...callerPathErrors(goFiles));
+// The rules of Go source (a Go test starts its case, cargo under its lease, no os.Exit after a defer, no runtime.Caller, no
+// failure on a measured time) are the analyzers of tests/analyzers, which make go-vet-check/orm runs with go vet.
 // 실행 조건이 없다는 실패 message는 원인과 고치는 방법을 함께 적는다.
 failures.push(...fixlessMessageErrors(Object.fromEntries(messageFiles(tracked).map((path: string) => [path, readFileSync(join(root, path), 'utf8')]))));
 // test는 측정한 시간이 한도를 넘었다고 실패하지 않는다: 성능은 측정하고 경고로 보고한다(AGENTS.md).
-const testFile = (path: string) => /(?:_test\.go|\.test\.m[jt]s|\/tests\/.*\.(?:php|rs|m[jt]s|go)|^tests\/.*\.(?:m[jt]s|go|php)|\/examples\/.*\.rs|\/src\/lib\.rs)$/.test(path);
+const testFile = (path: string) => /(?:\.test\.m[jt]s|\/tests\/.*\.(?:php|rs|m[jt]s)|^tests\/.*\.(?:m[jt]s|php)|\/examples\/.*\.rs|\/src\/lib\.rs)$/.test(path);
 failures.push(...timeFailureErrors(Object.fromEntries(tracked.filter(testFile).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 // 자기 process group으로 process를 시작한 JavaScript는 그 group이 끝난 뒤 남은 process를 확인한다.
 failures.push(...detachedGroupErrors(Object.fromEntries(tracked.filter(path => /\.m?js$/.test(path)).map(path => [path, readFileSync(join(root, path), 'utf8')]))));

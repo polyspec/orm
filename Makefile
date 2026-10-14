@@ -1241,10 +1241,17 @@ go-fmt-check:
 	@$(RUN_LONG) go-fmt -- sh -c 'files=$$(gofmt -l $$(git ls-files "*.go")); if [ -n "$$files" ]; then echo "gofmt would change:"; echo "$$files"; exit 1; fi; echo "every tracked Go source is gofmt formatted"'
 
 # go-vet-check runs go vet over every Go package of the modules of go.work, test files
-# included.
-.PHONY: go-vet-check
-go-vet-check:
+# included: its own analyzers (go-vet-check/std), then the analyzers of the repository's
+# rules for Go source (tests/analyzers) through their vet tool orm-vet (go-vet-check/orm).
+# The two are independent parts, so a failure of one still runs the other (make -k).
+ORM_VET = $(abspath .runtime/bin/orm-vet)
+.PHONY: go-vet-check go-vet-check/std go-vet-check/orm
+go-vet-check: go-vet-check/std go-vet-check/orm
+go-vet-check/std:
 	$(RUN_LONG) go-vet -- go vet $(GO_PACKAGES)
+go-vet-check/orm:
+	$(RUN_LONG) go-build/orm-vet -- $(PUBLISH) $(ORM_VET) go build -o @OUT@ ./tests/analyzers/orm-vet
+	$(RUN_LONG) go-vet/orm -- go vet -vettool=$(ORM_VET) $(GO_PACKAGES)
 
 # codec-check는 PHP codec으로 tests/codec/vectors.json을 decode하고 encode한 뒤, 이 target이 실행한 Go, Rust,
 # TypeScript codec test가 이 make 실행의 directory(CODEC_OUT, ORM_CODEC_OUT)에 쓴 출력을 decode한다
