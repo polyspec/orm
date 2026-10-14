@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+## 0.0.12
+
 - T159: the request hook receives the request's bound parameters read-only in every client: Node and Python as the third argument, Go as a copied slice, Rust through `RequestParams::get`; PHP already had `$r->params`.
 - T156-2: the committed Go markdown model carries the key-prefix methods.
 - T139-2: the Rust symbol record holds the saphyr YAML reader.
