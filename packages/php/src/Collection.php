@@ -7,11 +7,13 @@ namespace Polyspec\Orm;
  * An ordered set of models keyed by primary key, key column, or key callback.
  * A later row with the same key replaces the earlier one. The integer 7 and
  * the text "7" are different keys.
- * @implements \IteratorAggregate<int|string, Model>
+ *
+ * @template TModel of Model
+ * @implements \IteratorAggregate<int|string, TModel>
  */
 final class Collection implements \IteratorAggregate, \Countable, \JsonSerializable
 {
-    /** @var array<string, array{0: int|string, 1: Model}> */
+    /** @var array<string, array{0: int|string, 1: TModel}> */
     private array $items = [];
     /** @var array<string, mixed> */
     private array $fetched = [];
@@ -32,12 +34,16 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
         return (is_int($key) ? 'i' : 's') . $key;
     }
 
-    /** @internal */
+    /**
+     * @internal
+     * @param TModel $model
+     */
     public function put(int|string $key, Model $model): void
     {
         $this->items[self::slot($key)] = [$key, $model];
     }
 
+    /** @return TModel|null */
     public function get(int|string $key): ?Model
     {
         return $this->items[self::slot($key)][1] ?? null;
@@ -48,6 +54,7 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
         return isset($this->items[self::slot($key)]);
     }
 
+    /** @return TModel|null */
     public function first(): ?Model
     {
         foreach ($this->items as [, $m]) {
@@ -62,13 +69,13 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
         return array_values(array_map(static fn(array $e): int|string => $e[0], $this->items));
     }
 
-    /** @return list<Model> */
+    /** @return list<TModel> */
     public function all(): array
     {
         return array_values(array_map(static fn(array $e): Model => $e[1], $this->items));
     }
 
-    /** @return list<array{0: int|string, 1: Model}> */
+    /** @return list<array{0: int|string, 1: TModel}> */
     public function entries(): array
     {
         return array_values($this->items);
@@ -79,6 +86,7 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
         return count($this->items);
     }
 
+    /** @return \Generator<int|string, TModel, mixed, void> */
     public function getIterator(): \Generator
     {
         foreach ($this->items as [$key, $m]) {
@@ -110,7 +118,11 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
         return $out;
     }
 
-    /** Sets the connection of every row. */
+    /**
+     * Sets the connection of every row.
+     *
+     * @return self<TModel>
+     */
     public function connect(Db $db): self
     {
         foreach ($this->items as [, $m]) {
@@ -119,7 +131,11 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
         return $this;
     }
 
-    /** Short form of connect. */
+    /**
+     * Short form of connect.
+     *
+     * @return self<TModel>
+     */
     public function __invoke(Db $db): self
     {
         return $this->connect($db);

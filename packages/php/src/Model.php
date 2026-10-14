@@ -1274,6 +1274,7 @@ abstract class Model implements \JsonSerializable
         return Db::rowKey($vals, $asm['key']) ?? '';
     }
 
+    /** @return Collection<static> */
     private function assemble(Db $db, Request $r, array $plan, array $result): Collection
     {
         $a = new Assembly($db, $this->conn, $result, $r->external !== []);
@@ -1415,6 +1416,7 @@ abstract class Model implements \JsonSerializable
 
     // ---- terminals ----
 
+    /** @return Collection<static> */
     private function load(string $kind): Collection
     {
         [$db, $frame] = $this->executor();
@@ -1429,7 +1431,11 @@ abstract class Model implements \JsonSerializable
         return $this->load('one')->first() ?? throw new OrmException(Code::NO_ROWS, 'query matched no rows');
     }
 
-    /** The matching rows. */
+    /**
+     * The matching rows.
+     *
+     * @return Collection<static>
+     */
     public function gets(): Collection
     {
         return $this->load('all');
@@ -1578,7 +1584,11 @@ abstract class Model implements \JsonSerializable
         return $number;
     }
 
-    /** One page and the total count. */
+    /**
+     * One page and the total count.
+     *
+     * @return Page<static>
+     */
     public function getsPage(int $page, int $perPage): Page
     {
         if ($page < 1 || $perPage < 1) {
