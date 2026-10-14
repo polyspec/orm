@@ -11,6 +11,7 @@
         "ext-pdo": "*",
         "ext-json": "*",
         "ext-zlib": "*",
+        "purrphp/yaml": "1.0.0",
         "symfony/yaml": "^7.4"
     },
     "suggest": {

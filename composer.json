@@ -57,5 +57,8 @@
         "platform": {
             "php": "8.5.0"
         }
+    },
+    "require-dev": {
+        "phpstan/phpstan": "2.3.1"
     }
 }

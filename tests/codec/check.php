@@ -38,11 +38,16 @@ function canon(mixed $v): mixed
 }
 
 // 각 구역은 memory 안에서 vector를 decode하고 encode하는 case다.
-// The vectors PHP does not yet read, each with its checklist item; each is printed when skipped.
-$phpExclusions = array_fill_keys(
-    ['yaml_core/underscore_int_like', 'yaml_core/date_like', 'yaml_core/timestamp_like', 'yaml_core/leading_zero_int', 'yaml_core/map'],
-    'T142-1: symfony/yaml does not read plain scalars by the YAML 1.2 core schema',
-);
+// The vectors PHP does not yet read, each with the defect that stops it; each is printed when skipped.
+$phpExclusions = [
+    // purrphp/yaml 1.0.0 CoreSchema (OCTAL_PATTERN, HEXADECIMAL_PATTERN) takes a sign before 0o/0x;
+    // the YAML 1.2.2 core schema (10.3.2) has none, so +0x1 is a string.
+    'yaml_core/signed_hex_like' => 'purrphp/yaml 1.0.0 CoreSchema reads +0x1 as the integer 1, not the string',
+    // purrphp/yaml 1.0.0 CoreSchema matches DECIMAL_PATTERN but casts with FILTER_VALIDATE_INT, which
+    // refuses a leading zero, so the core int 0777 becomes the float 777.0. The value comparison
+    // below does not tell 777 from 777.0, so the vector is listed by name.
+    'yaml_core/leading_zero_int' => 'purrphp/yaml 1.0.0 CoreSchema reads 0777 as the float 777.0, not the integer 777',
+];
 // The vectors the Go runner skips (goCodecExclusions in packages/go/orm/codec_test.go), so go.json lacks them.
 $goExclusions = ['yaml_core/next_line' => 'T142-2: the yaml.v3 scanner reads U+0085 as a line break'];
 testcase_begin('codec/php-vectors', TESTCASE_COMPUTE);
@@ -75,6 +80,12 @@ $errors = [
     ['multiple YAML documents', fn() => Codec::decode(['yaml'], "---\na: 1\n---\na: 2\n"), Code::CODEC_DECODE],
     ['YAML alias', fn() => Codec::decode(['yaml'], "a: &x [1]\nb: *x\n"), Code::CODEC_DECODE],
     ['YAML custom tag', fn() => Codec::decode(['yaml'], "a: !custom value\n"), Code::CODEC_DECODE],
+    ['YAML anchor', fn() => Codec::decode(['yaml'], "a: &x 1\n"), Code::CODEC_DECODE],
+    ['YAML standard tag', fn() => Codec::decode(['yaml'], "a: !!str 1\n"), Code::CODEC_DECODE],
+    ['YAML merge key', fn() => Codec::decode(['yaml'], "a: {b: 1}\nc:\n  <<: {b: 1}\n"), Code::CODEC_DECODE],
+    ['YAML null map key', fn() => Codec::decode(['yaml'], "~: value\n"), Code::CODEC_DECODE],
+    ['YAML float map key', fn() => Codec::decode(['yaml'], "1.5: value\n"), Code::CODEC_DECODE],
+    ['YAML collection map key', fn() => Codec::decode(['yaml'], "[a]: value\n"), Code::CODEC_DECODE],
     ['YAML non-finite number', fn() => Codec::decode(['yaml'], "value: .inf\n"), Code::CODEC_DECODE],
     ['YAML boolean map key', fn() => Codec::decode(['yaml'], "true: value\n"), Code::CODEC_DECODE],
     ['invalid YAML order', fn() => Codec::encode(['serialize', 'yaml'], StyledValue::value([])), Code::CODEC_UNSUPPORTED],
