@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6410fb497d72f37396903778ace66b61b4cf855d19a7e5f6392063bc9d2e7169 -->
+<!-- source-sha256: d2ae4059d5ce6a7629984fb7cdca1e8fe11ac6c8e26583ed76acee53078b7cfe -->
 # 변경 이력
 
 ## Unreleased
 
+- T168: python-venv-check가 파일을 sed로 읽지 않고 mise.toml의 Python을 mise에게 묻는다.
+- T165-3: orm이 kit 0.0.42를 받아, go vet과 go test가 mise가 var/tools 아래 설치한 Go를 더는 지나지 않는다.
 - T165-2: npm package 검사가 npm 12 형태의 npm pack --json을 읽고, install-cli가 URL 의존성을 루트에서 허용하며, workflow는 mise.toml에서 Go를 받고, editor job이 Go module을 내려받는다.
 - T165-1: orm이 kit 0.0.41을 받는다. 그 mise.lock은 ARM runner를 위해 linux-arm64를 pin한다.
 - T137-1-2: PHP client는 PSR-4만으로 load된다. class마다 file 하나이고, packages/php/composer.json에 classmap이 없으며, test model은 autoload-dev로 load되고, test autoloader는 Composer의 것이다.
