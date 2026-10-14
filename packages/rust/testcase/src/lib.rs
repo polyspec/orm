@@ -234,3 +234,48 @@ impl Drop for Case {
         }
     }
 }
+
+/// The libtest-mimic trial that [`trial`] builds and [`run`] runs.
+pub use libtest_mimic::Trial;
+
+/// A libtest-mimic trial for a test target with `harness = false`: the trial `name` runs `body` as the case `name`
+/// with the deadline `deadline`. A vector file's case is the trial `<test>::<case id>`, so the runner reports each
+/// case under its id and the filter `<test>::` selects the cases of one test. A panic in `body` fails the trial.
+pub fn trial(name: impl Into<String>, deadline: Duration, body: impl FnOnce() + Send + 'static) -> libtest_mimic::Trial {
+    let name = name.into();
+    libtest_mimic::Trial::test(name.clone(), move || {
+        let _case = start(name, deadline);
+        body();
+        Ok(())
+    })
+}
+
+/// [`trial`] for an async case: `body` runs on a current-thread runtime of its own, as `#[tokio::test]` runs it.
+pub fn async_trial<F>(name: impl Into<String>, deadline: Duration, body: impl FnOnce() -> F + Send + 'static) -> libtest_mimic::Trial
+where
+    F: std::future::Future<Output = ()>,
+{
+    trial(name, deadline, move || {
+        tokio::runtime::Builder::new_current_thread().enable_all().build().expect("a current-thread runtime").block_on(body());
+    })
+}
+
+/// Runs `trials` with the arguments of the test binary's command line, as libtest does, and exits with the result.
+pub fn run(trials: Vec<libtest_mimic::Trial>) -> ! {
+    libtest_mimic::run(&libtest_mimic::Arguments::from_args(), trials).exit()
+}
+
+/// [`run`] for cases that share a database or a server: unless the command line gives `--test-threads`, the trials
+/// run one after another, in the order of the file.
+pub fn run_in_order(trials: Vec<libtest_mimic::Trial>) -> ! {
+    run_in_order_then(trials, || {})
+}
+
+/// [`run_in_order`], then `after` once every trial has ended, before the exit: it releases what the trials shared.
+pub fn run_in_order_then(trials: Vec<libtest_mimic::Trial>, after: impl FnOnce()) -> ! {
+    let mut arguments = libtest_mimic::Arguments::from_args();
+    arguments.test_threads.get_or_insert(1);
+    let conclusion = libtest_mimic::run(&arguments, trials);
+    after();
+    conclusion.exit()
+}

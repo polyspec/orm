@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[3]
 
 from polyspec.orm.dbspec import parse_dbspec  # noqa: E402
 from polyspec.orm.dbspec.render import render_dbspec  # noqa: E402
-from vector_case import vector_tests  # noqa: E402
+from vector_case import VectorCase, vector_tests  # noqa: E402
 
 
 def parse_set(documents: dict) -> list:
@@ -45,9 +45,13 @@ class RenderDialectTest(unittest.TestCase):
             render_dbspec(documents, 'oracle')
 
 
+class Case(VectorCase):
+    """A case of the vector file of this module."""
+
+
 def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
     """One test for each ddl case, named by the case id."""
-    tests.addTests(vector_tests(DATA['cases'], check_case))
+    tests.addTests(vector_tests(Case, DATA['cases'], check_case))
     return tests
 
 

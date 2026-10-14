@@ -10,7 +10,7 @@ from pathlib import Path
 from polyspec.orm.dbspec import (DbspecPosition, check_set, dbspec_manifest, emit_dbspec,
                                  format_dbspec, parse_dbspec, read_dbspec_file)
 from dbspec_cases_reader import read_cases  # noqa: E402
-from vector_case import vector_tests  # noqa: E402
+from vector_case import VectorCase, vector_tests  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -198,11 +198,15 @@ CHECKS = (('canonical', check_canonical), ('normalize', check_normalize), ('inva
           ('hashes', check_hashes), ('sets', check_sets), ('files', check_files), ('positions', check_positions))
 
 
+class Case(VectorCase):
+    """A case of the vector file of this module."""
+
+
 def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
     """One test for each case of every section, named by the case id."""
     cases = read_cases()
     for section, check in CHECKS:
-        tests.addTests(vector_tests(cases[section], check))
+        tests.addTests(vector_tests(Case, cases[section], check))
     return tests
 
 

@@ -196,9 +196,7 @@ async fn bounded(driver: &str, case: &str) {
 
 /// Guard: every case the fixture names has a test function for each driver in
 /// this file, so no named case is left without a run.
-#[test]
 fn every_fixture_case_has_a_test_per_driver() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let source = include_str!("statement_fault.rs");
     for case in fixture().cases {
         for driver in ["sqlite", "mysql", "postgres"] {
@@ -208,23 +206,24 @@ fn every_fixture_case_has_a_test_per_driver() {
     }
 }
 
-/// Every fixture case on SQLite, MySQL and PostgreSQL, reported as one line `statement-fault/<case>`: a case
-/// passes when it passes on every database. A panic in one database run is caught, and its message becomes
-/// the reason of the FAIL line.
+/// Every fixture case on SQLite, MySQL and PostgreSQL, each the trial `statement_fault_cases::<case>`: a case
+/// passes when it passes on every database. A panic in one database run is caught, and its message fails the case.
 #[cfg(feature = "test-faults")]
-#[tokio::test]
-async fn statement_fault_cases() {
-    let _test = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    for case in fixture().cases {
-        let mut report = polyspec_orm_testcase::start(format!("statement-fault/{case}"), CASE_DEADLINE * 3);
-        for driver in ["sqlite", "mysql", "postgres"] {
-            let outcome = futures_util::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(bounded(driver, &case))).await;
-            if let Err(payload) = outcome {
-                report.fail(format!("{driver}: {}", panic_reason(payload)));
-                break;
-            }
-        }
-    }
+fn statement_fault_cases() -> Vec<polyspec_orm_testcase::Trial> {
+    fixture()
+        .cases
+        .into_iter()
+        .map(|case| {
+            polyspec_orm_testcase::async_trial(format!("statement_fault_cases::{case}"), CASE_DEADLINE * 3, move || async move {
+                for driver in ["sqlite", "mysql", "postgres"] {
+                    let outcome = futures_util::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(bounded(driver, &case))).await;
+                    if let Err(payload) = outcome {
+                        panic!("{driver}: {}", panic_reason(payload));
+                    }
+                }
+            })
+        })
+        .collect()
 }
 
 /// The reason of a caught panic: its message.
@@ -238,85 +237,83 @@ fn panic_reason(payload: Box<dyn std::any::Any + Send>) -> String {
 }
 
 #[cfg(feature = "test-faults")]
-#[tokio::test]
 async fn refused_insert_sqlite() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("sqlite", "refused_insert").await;
 }
 
 #[cfg(feature = "test-faults")]
-#[tokio::test]
 async fn refused_insert_mysql() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("mysql", "refused_insert").await;
 }
 
 #[cfg(feature = "test-faults")]
-#[tokio::test]
 async fn refused_insert_postgres() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("postgres", "refused_insert").await;
 }
 
 #[cfg(feature = "test-faults")]
-#[tokio::test]
 async fn consumed_by_one_statement_sqlite() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("sqlite", "consumed_by_one_statement").await;
 }
 
 #[cfg(feature = "test-faults")]
-#[tokio::test]
 async fn consumed_by_one_statement_mysql() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("mysql", "consumed_by_one_statement").await;
 }
 
 #[cfg(feature = "test-faults")]
-#[tokio::test]
 async fn consumed_by_one_statement_postgres() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("postgres", "consumed_by_one_statement").await;
 }
 
 #[cfg(feature = "test-faults")]
-#[tokio::test]
 async fn refused_in_transaction_sqlite() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("sqlite", "refused_in_transaction").await;
 }
 
 #[cfg(feature = "test-faults")]
-#[tokio::test]
 async fn refused_in_transaction_mysql() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("mysql", "refused_in_transaction").await;
 }
 
 #[cfg(feature = "test-faults")]
-#[tokio::test]
 async fn refused_in_transaction_postgres() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("postgres", "refused_in_transaction").await;
 }
 
 #[cfg(feature = "test-faults")]
-#[tokio::test]
 async fn empty_argument_refused_sqlite() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("sqlite", "empty_argument_refused").await;
 }
 
 #[cfg(feature = "test-faults")]
-#[tokio::test]
 async fn empty_argument_refused_mysql() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("mysql", "empty_argument_refused").await;
 }
 
 #[cfg(feature = "test-faults")]
-#[tokio::test]
 async fn empty_argument_refused_postgres() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("postgres", "empty_argument_refused").await;
+}
+
+fn main() {
+    #[cfg_attr(not(feature = "test-faults"), expect(unused_mut, reason = "the fault cases exist only with the feature test-faults"))]
+    let mut trials = vec![polyspec_orm_testcase::trial("every_fixture_case_has_a_test_per_driver", polyspec_orm_testcase::DATABASE, every_fixture_case_has_a_test_per_driver)];
+    #[cfg(feature = "test-faults")]
+    {
+        trials.extend(statement_fault_cases());
+        trials.push(polyspec_orm_testcase::async_trial("refused_insert_sqlite", polyspec_orm_testcase::DATABASE, refused_insert_sqlite));
+        trials.push(polyspec_orm_testcase::async_trial("refused_insert_mysql", polyspec_orm_testcase::DATABASE, refused_insert_mysql));
+        trials.push(polyspec_orm_testcase::async_trial("refused_insert_postgres", polyspec_orm_testcase::DATABASE, refused_insert_postgres));
+        trials.push(polyspec_orm_testcase::async_trial("consumed_by_one_statement_sqlite", polyspec_orm_testcase::DATABASE, consumed_by_one_statement_sqlite));
+        trials.push(polyspec_orm_testcase::async_trial("consumed_by_one_statement_mysql", polyspec_orm_testcase::DATABASE, consumed_by_one_statement_mysql));
+        trials.push(polyspec_orm_testcase::async_trial("consumed_by_one_statement_postgres", polyspec_orm_testcase::DATABASE, consumed_by_one_statement_postgres));
+        trials.push(polyspec_orm_testcase::async_trial("refused_in_transaction_sqlite", polyspec_orm_testcase::DATABASE, refused_in_transaction_sqlite));
+        trials.push(polyspec_orm_testcase::async_trial("refused_in_transaction_mysql", polyspec_orm_testcase::DATABASE, refused_in_transaction_mysql));
+        trials.push(polyspec_orm_testcase::async_trial("refused_in_transaction_postgres", polyspec_orm_testcase::DATABASE, refused_in_transaction_postgres));
+        trials.push(polyspec_orm_testcase::async_trial("empty_argument_refused_sqlite", polyspec_orm_testcase::DATABASE, empty_argument_refused_sqlite));
+        trials.push(polyspec_orm_testcase::async_trial("empty_argument_refused_mysql", polyspec_orm_testcase::DATABASE, empty_argument_refused_mysql));
+        trials.push(polyspec_orm_testcase::async_trial("empty_argument_refused_postgres", polyspec_orm_testcase::DATABASE, empty_argument_refused_postgres));
+    }
+    polyspec_orm_testcase::run_in_order(trials);
 }

@@ -10,7 +10,7 @@ from pathlib import Path
 from polyspec.ordered_json import Value as OrderedJson, stringify as ordered_json_stringify
 from polyspec.orm.codec import CodecError, blind_index, decode, encode, host_decode, host_encode
 from polyspec.orm.styled_value import StyledValue
-from vector_case import vector_tests
+from vector_case import VectorCase, vector_tests
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -132,12 +132,16 @@ class CodecVectorTest(unittest.TestCase):
                          '1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8')
 
 
+class Case(VectorCase):
+    """A case of the vector file of this module."""
+
+
 def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
     """One test for each codec vector, named by the vector, and one for each AES vector, named by its key."""
     with open(ROOT / 'tests' / 'codec' / 'vectors.json', encoding='utf-8') as handle:
-        tests.addTests(vector_tests(json.load(handle)['vectors'], check_vector, lambda vector: vector['name']))
+        tests.addTests(vector_tests(Case, json.load(handle)['vectors'], check_vector, lambda vector: vector['name']))
     with open(ROOT / 'tests' / 'codec' / 'aes-vectors.json', encoding='utf-8') as handle:
-        tests.addTests(vector_tests(json.load(handle)['vectors'], check_aes_vector, lambda vector: vector['key']))
+        tests.addTests(vector_tests(Case, json.load(handle)['vectors'], check_aes_vector, lambda vector: vector['key']))
     return tests
 
 

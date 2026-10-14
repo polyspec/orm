@@ -10,6 +10,7 @@ use polyspec_orm::dbspec::{self, Document};
 use polyspec_orm::serde_json::Value;
 use polyspec_orm::{Config, Db, Schema};
 use polyspec_orm_case_database::CaseDatabase;
+use polyspec_orm_testcase::Trial;
 
 fn root() -> String {
     format!("{}/../../..", polyspec_orm_testcase::manifest_dir().display())
@@ -46,20 +47,30 @@ async fn install_case(driver: &str, dsn: &str, vector: &Value) {
     db.close().await;
 }
 
-#[tokio::test]
-async fn install_verifies_the_database() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+/// Each case of the fixture is the trial `install_verifies_the_database::<id>` on the three databases.
+fn install_verifies_the_database() -> Vec<Trial> {
     let path = format!("{}/contracts/fixtures/install/changed_database.json", root());
     let fixture: Value = polyspec_orm::serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"))).unwrap();
     let cases = fixture["cases"].as_array().unwrap_or_else(|| panic!("{path} has no cases"));
     assert!(!cases.is_empty(), "{path} has no cases");
-    for case in cases {
-        assert_eq!(case["operation"], "install", "case {} has another operation", case["id"]);
-        for driver in ["sqlite", "mysql", "postgres"] {
-            let database = CaseDatabase::create(driver).await;
-            install_case(driver, database.dsn(), case).await;
-            database.drop().await;
-            polyspec_orm_testcase::step(format_args!("install_verifies_the_database {} {driver}", case["id"].as_str().unwrap()));
-        }
-    }
+    cases
+        .iter()
+        .map(|case| {
+            let id = case["id"].as_str().unwrap().to_owned();
+            let case = case.clone();
+            polyspec_orm_testcase::async_trial(format!("install_verifies_the_database::{id}"), polyspec_orm_testcase::DATABASE, move || async move {
+                assert_eq!(case["operation"], "install", "case {} has another operation", case["id"]);
+                for driver in ["sqlite", "mysql", "postgres"] {
+                    let database = CaseDatabase::create(driver).await;
+                    install_case(driver, database.dsn(), &case).await;
+                    database.drop().await;
+                    polyspec_orm_testcase::step(format_args!("{driver}"));
+                }
+            })
+        })
+        .collect()
+}
+
+fn main() {
+    polyspec_orm_testcase::run_in_order(install_verifies_the_database());
 }

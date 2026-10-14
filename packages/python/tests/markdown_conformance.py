@@ -15,7 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 
 from test_sqlite import generate  # noqa: E402
-from vector_case import vector_tests  # noqa: E402
+from vector_case import VectorCase, vector_tests  # noqa: E402
 
 from polyspec.orm import Collection, Model, OrmError  # noqa: E402
 
@@ -408,9 +408,13 @@ def check_case(test: unittest.TestCase, case: dict) -> None:
     print(f'PASS {case["id"]} elapsed={elapsed:.3f}s', flush=True)
 
 
+class Case(VectorCase):
+    """A case of the vector file of this module."""
+
+
 def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
     """One test for each case of cases.json, named by the case id, in the order of the file."""
-    tests.addTests(vector_tests(load_cases(), check_case))
+    tests.addTests(vector_tests(Case, load_cases(), check_case))
     return tests
 
 

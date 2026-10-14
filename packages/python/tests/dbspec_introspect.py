@@ -22,7 +22,7 @@ import pymysql  # noqa: E402
 from polyspec.orm.dbspec import emit_dbspec, parse_dbspec  # noqa: E402
 from polyspec.orm.dbspec.introspect import introspect_dbspec  # noqa: E402
 from polyspec.orm.dbspec.render import render_dbspec  # noqa: E402
-from vector_case import vector_tests  # noqa: E402
+from vector_case import VectorCase, vector_tests  # noqa: E402
 
 # tests/dbspec/introspect의 연결 규칙과 같다(packages/ts/tests/dbspec-introspect.mjs).
 CONNECTION_RULES = {
@@ -144,6 +144,10 @@ def tearDownModule():
     TEMP['dir'].cleanup()
 
 
+class Case(VectorCase):
+    """A case of the vector file of this module."""
+
+
 def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
     """One test for each introspect case, named by the case id. A failed case does not stop the others."""
     data = json.loads((ROOT / 'tests' / 'dbspec' / 'introspect.json').read_text())
@@ -153,7 +157,7 @@ def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: 
         if not dsn:
             raise SystemExit(f'ORM_TEST_{dialect.upper()}_DSN is required; run make dbspec-introspect-python-check, which passes TEST_ENV')
     cases = list(enumerate(data['cases']))
-    tests.addTests(vector_tests(cases, lambda _test, item: check_case(item[1], item[0], dsns, TEMP['dir'].name),
+    tests.addTests(vector_tests(Case, cases, lambda _test, item: check_case(item[1], item[0], dsns, TEMP['dir'].name),
                                 lambda item: item[1]['id']))
     return tests
 

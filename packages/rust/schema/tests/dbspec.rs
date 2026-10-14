@@ -1,4 +1,5 @@
 use polyspec_orm_case_clock::CaseClock;
+use polyspec_orm_testcase::Trial;
 use polyspec_orm_schema::dbspec::{self, Document};
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -84,7 +85,6 @@ fn parsed(id: &str, text: &str, set: &BTreeMap<String, String>) -> Document {
 fn run(case: &Value, kind: &str) {
     let clock = CaseClock::start();
     let id = case["id"].as_str().unwrap();
-    let inner = polyspec_orm_testcase::start(format!("{kind}/{id}"), polyspec_orm_testcase::wall_for_cpu(CASE_DEADLINE));
     let (text, set) = declared(case);
     match kind {
         "canonical" => {
@@ -128,7 +128,7 @@ fn run(case: &Value, kind: &str) {
     if cpu >= CASE_DEADLINE {
         polyspec_orm_testcase::warning(format_args!("{id}: cpu {cpu:?} exceeds {CASE_DEADLINE:?} (wall {wall:?})"));
     }
-    inner.step(format_args!("cpu={cpu:?} wall={wall:?}"));
+    polyspec_orm_testcase::step(format_args!("cpu={cpu:?} wall={wall:?}"));
 }
 
 /// The positions case: the main document parses, and its declaration positions equal the listed ones in
@@ -163,37 +163,26 @@ fn assert_keys(value: &Value, keys: &[&str], id: &str) {
     }
 }
 
-#[test]
-fn shared_dbspec_vectors() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
-    let clock = CaseClock::start();
-    polyspec_orm_testcase::step(format_args!("start dbspec vectors {}", cases_path().display()));
-    let file = read_cases();
-    let mut seen = std::collections::BTreeSet::new();
-    let mut count = 0;
-    for kind in ["canonical", "normalize", "invalid"] {
+/// The canonical, normalize, invalid and positions cases of cases.json, each the trial `shared_dbspec_vectors::<id>`.
+fn shared_dbspec_vectors(file: &Value, seen: &mut std::collections::BTreeSet<String>) -> Vec<Trial> {
+    let mut trials = Vec::new();
+    for kind in ["canonical", "normalize", "invalid", "positions"] {
         let cases = file[kind].as_array().unwrap_or_else(|| panic!("{kind} cases are listed"));
         assert!(!cases.is_empty(), "{kind} cases are not empty");
         for case in cases {
             let id = case["id"].as_str().unwrap();
             assert!(!id.is_empty() && seen.insert(id.to_owned()), "case id {id} is nonempty and unique");
-            run(case, kind);
-            count += 1;
+            let case = case.clone();
+            trials.push(polyspec_orm_testcase::trial(format!("shared_dbspec_vectors::{id}"), polyspec_orm_testcase::wall_for_cpu(CASE_DEADLINE), move || {
+                if kind == "positions" {
+                    run_positions(&case);
+                } else {
+                    run(&case, kind);
+                }
+            }));
         }
     }
-    let positions = file["positions"].as_array().unwrap_or_else(|| panic!("positions cases are listed"));
-    assert!(!positions.is_empty(), "positions cases are not empty");
-    for case in positions {
-        let id = case["id"].as_str().unwrap();
-        assert!(!id.is_empty() && seen.insert(id.to_owned()), "case id {id} is nonempty and unique");
-        run_positions(case);
-        count += 1;
-    }
-    let (cpu, wall) = (clock.cpu(), clock.wall());
-    if cpu >= SUITE_DEADLINE {
-        polyspec_orm_testcase::warning(format_args!("dbspec vectors: cpu {cpu:?} exceeds {SUITE_DEADLINE:?} (wall {wall:?})"));
-    }
-    polyspec_orm_testcase::step(format_args!("dbspec vectors {count} cases cpu={cpu:?} wall={wall:?}"));
+    trials
 }
 
 /// The analyses of tests/dbspec/syntax.json, built as scripts/dbspec/syntax-vectors.mjs builds them (`vectorInputs`):
@@ -245,120 +234,138 @@ fn vector_inputs(cases: &Value) -> Vec<(String, String, BTreeMap<String, String>
     inputs
 }
 
-/// Every analysis of tests/dbspec/syntax.json, in file order, equals its tokens exactly. The file and each entry are
-/// read strictly: an unknown or missing key, or a token that is not four values, panics.
-#[test]
-fn shared_dbspec_syntax() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
-    let clock = CaseClock::start();
-    let cases = read_cases();
+/// tests/dbspec/syntax.json, read strictly: an unknown or missing key panics.
+fn syntax_file() -> Value {
     let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/syntax.json");
     let file: Value = serde_json::from_slice(&std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).unwrap();
     assert_keys(&file, &["version", "note", "cases"], "syntax.json");
     assert_eq!(file["version"].as_u64(), Some(1));
-    let entries = file["cases"].as_array().expect("syntax cases are listed");
-    let inputs = vector_inputs(&cases);
-    // The ids are unique, so each analysis has exactly one entry; the file's key order is not compared.
+    file
+}
+
+/// syntax.json has exactly one entry for each analysis that cases.json gives; the file's key order is not compared.
+fn syntax_entries_match_the_analyses() {
+    let entries = syntax_file()["cases"].as_array().expect("syntax cases are listed").clone();
+    let inputs = vector_inputs(&read_cases());
     let mut by_id = BTreeMap::new();
-    for entry in entries {
+    for entry in &entries {
         assert_keys(entry, &["id", "tokens"], "syntax entry");
         let id = entry["id"].as_str().expect("entry id is a string").to_owned();
         assert!(by_id.insert(id.clone(), entry).is_none(), "{id}: syntax.json lists the id once");
     }
     assert_eq!(by_id.len(), inputs.len(), "syntax.json has one entry per analysis");
-    for (id, text, set) in &inputs {
-        let entry = by_id.get(id).unwrap_or_else(|| panic!("{id}: syntax.json lists the analysis"));
-        let expected: Vec<(usize, usize, usize, String)> = entry["tokens"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|token| {
-                let values = token.as_array().unwrap_or_else(|| panic!("{id}: token is an array"));
-                assert_eq!(values.len(), 4, "{id}: token has four values");
-                (
-                    values[0].as_u64().unwrap() as usize,
-                    values[1].as_u64().unwrap() as usize,
-                    values[2].as_u64().unwrap() as usize,
-                    values[3].as_str().unwrap().to_owned(),
-                )
-            })
-            .collect();
-        let got: Vec<(usize, usize, usize, String)> = dbspec::analyze(text, set).tokens.into_iter().map(|t| (t.line, t.start, t.end, t.class)).collect();
-        assert_eq!(got, expected, "{id}: tokens");
+    for (id, _, _) in &inputs {
+        assert!(by_id.contains_key(id), "{id}: syntax.json lists the analysis");
     }
-    let (cpu, wall) = (clock.cpu(), clock.wall());
-    polyspec_orm_testcase::step(format_args!("dbspec syntax {} analyses cpu={cpu:?} wall={wall:?}", inputs.len()));
+}
+
+/// Each entry of tests/dbspec/syntax.json, the trial `shared_dbspec_syntax::<id>`: its analysis equals its tokens
+/// exactly. A token that is not four values panics.
+fn shared_dbspec_syntax(cases: &Value) -> Vec<Trial> {
+    let mut inputs: BTreeMap<String, (String, BTreeMap<String, String>)> = BTreeMap::new();
+    for (id, text, set) in vector_inputs(cases) {
+        inputs.insert(id, (text, set));
+    }
+    let mut trials = Vec::new();
+    for entry in syntax_file()["cases"].as_array().expect("syntax cases are listed") {
+        let id = entry["id"].as_str().expect("entry id is a string").to_owned();
+        let entry = entry.clone();
+        let input = inputs.get(&id).cloned();
+        trials.push(polyspec_orm_testcase::trial(format!("shared_dbspec_syntax::{id}"), polyspec_orm_testcase::wall_for_cpu(CASE_DEADLINE), move || {
+            assert_keys(&entry, &["id", "tokens"], "syntax entry");
+            let (text, set) = input.unwrap_or_else(|| panic!("{id}: cases.json gives the analysis"));
+            let expected: Vec<(usize, usize, usize, String)> = entry["tokens"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|token| {
+                    let values = token.as_array().unwrap_or_else(|| panic!("{id}: token is an array"));
+                    assert_eq!(values.len(), 4, "{id}: token has four values");
+                    (
+                        values[0].as_u64().unwrap() as usize,
+                        values[1].as_u64().unwrap() as usize,
+                        values[2].as_u64().unwrap() as usize,
+                        values[3].as_str().unwrap().to_owned(),
+                    )
+                })
+                .collect();
+            let got: Vec<(usize, usize, usize, String)> = dbspec::analyze(&text, &set).tokens.into_iter().map(|t| (t.line, t.start, t.end, t.class)).collect();
+            assert_eq!(got, expected, "{id}: tokens");
+        }));
+    }
+    trials
 }
 
 /// files case는 `dbspec::read_file`에 path를 주어, `dbspec::read_bytes`에 파일 byte와 case
 /// path를 이름으로 주어 두 번 읽는다. signature가 없는 byte는 "<name> is not a dbspec
 /// document", UTF-8이 아닌 byte는 "<name> is not valid UTF-8" diagnostic 하나를, 나머지
 /// 파일은 그 byte를 돌려주며 그 text는 parse와 emit에서 바뀌지 않는다.
-#[test]
-fn shared_dbspec_files() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
-    let clock = CaseClock::start();
+fn shared_dbspec_files(file: &Value, seen: &mut std::collections::BTreeSet<String>) -> Vec<Trial> {
     let path = cases_path();
-    let file = read_cases();
     let cases = file["files"].as_array().expect("files cases are listed");
     assert!(!cases.is_empty(), "files cases are not empty");
+    let mut trials = Vec::new();
     for case in cases {
         let id = case["id"].as_str().unwrap();
-        let inner = polyspec_orm_testcase::start(format!("files/{id}"), polyspec_orm_testcase::wall_for_cpu(CASE_DEADLINE));
-        let case_clock = CaseClock::start();
-        let file_path = path.parent().unwrap().join(case["path"].as_str().unwrap());
-        let expected: Vec<(String, usize, usize)> = case["errors"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|e| (e["rule"].as_str().unwrap().to_owned(), e["line"].as_u64().unwrap() as usize, e["column"].as_u64().unwrap() as usize))
-            .collect();
-        let name = case["path"].as_str().unwrap();
-        let shown = file_path.display().to_string();
-        let raw = std::fs::read(&file_path).unwrap_or_else(|e| panic!("{id}: {shown}: {e}"));
-        let reads = [
-            ("file", shown.as_str(), dbspec::read_file(&file_path)),
-            ("bytes", name, dbspec::read_bytes(name, raw.clone()).map_err(dbspec::ReadError::Diagnostics)),
-        ];
-        for (kind, name, read) in reads {
-            match read {
-                Ok(text) => {
-                    assert!(expected.is_empty(), "{id} {kind}: read text where diagnostics are expected");
-                    assert_eq!(text.as_bytes(), raw.as_slice(), "{id} {kind}: the file bytes");
-                    let document = parsed(id, &text, &BTreeMap::new());
-                    assert_eq!(dbspec::emit(&document), text, "{id} {kind}: the file text emits unchanged");
-                }
-                Err(dbspec::ReadError::Diagnostics(errors)) => {
-                    let got: Vec<(String, usize, usize)> = errors.iter().map(|e| (e.rule.clone(), e.line, e.column)).collect();
-                    assert_eq!(got, expected, "{id} {kind}: diagnostics {errors:?}");
-                    for error in &errors {
-                        let message = match error.rule.as_str() {
-                            "signature" => format!("{name} is not a dbspec document"),
-                            _ => format!("{name} is not valid UTF-8"),
-                        };
-                        assert_eq!(error.message, message, "{id} {kind}: message");
-                    }
-                }
-                Err(dbspec::ReadError::Io(error)) => panic!("{id} {kind}: {shown}: {error}"),
-            }
-        }
-        let (cpu, wall) = (case_clock.cpu(), case_clock.wall());
-        if cpu >= CASE_DEADLINE {
-            polyspec_orm_testcase::warning(format_args!("{id}: cpu {cpu:?} exceeds {CASE_DEADLINE:?} (wall {wall:?})"));
-        }
-        inner.step(format_args!("cpu={cpu:?} wall={wall:?}"));
+        assert!(!id.is_empty() && seen.insert(id.to_owned()), "case id {id} is nonempty and unique");
+        let (case, path) = (case.clone(), path.clone());
+        trials.push(polyspec_orm_testcase::trial(format!("shared_dbspec_files::{id}"), polyspec_orm_testcase::wall_for_cpu(CASE_DEADLINE), move || read_file_case(&case, &path)));
     }
-    let (cpu, wall) = (clock.cpu(), clock.wall());
-    polyspec_orm_testcase::step(format_args!("dbspec files {} cases cpu={cpu:?} wall={wall:?}", cases.len()));
+    trials
+}
+
+/// Reads one files case twice and checks both reads.
+fn read_file_case(case: &Value, path: &std::path::Path) {
+    let id = case["id"].as_str().unwrap();
+    let case_clock = CaseClock::start();
+    let file_path = path.parent().unwrap().join(case["path"].as_str().unwrap());
+    let expected: Vec<(String, usize, usize)> = case["errors"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| (e["rule"].as_str().unwrap().to_owned(), e["line"].as_u64().unwrap() as usize, e["column"].as_u64().unwrap() as usize))
+        .collect();
+    let name = case["path"].as_str().unwrap();
+    let shown = file_path.display().to_string();
+    let raw = std::fs::read(&file_path).unwrap_or_else(|e| panic!("{id}: {shown}: {e}"));
+    let reads = [
+        ("file", shown.as_str(), dbspec::read_file(&file_path)),
+        ("bytes", name, dbspec::read_bytes(name, raw.clone()).map_err(dbspec::ReadError::Diagnostics)),
+    ];
+    for (kind, name, read) in reads {
+        match read {
+            Ok(text) => {
+                assert!(expected.is_empty(), "{id} {kind}: read text where diagnostics are expected");
+                assert_eq!(text.as_bytes(), raw.as_slice(), "{id} {kind}: the file bytes");
+                let document = parsed(id, &text, &BTreeMap::new());
+                assert_eq!(dbspec::emit(&document), text, "{id} {kind}: the file text emits unchanged");
+            }
+            Err(dbspec::ReadError::Diagnostics(errors)) => {
+                let got: Vec<(String, usize, usize)> = errors.iter().map(|e| (e.rule.clone(), e.line, e.column)).collect();
+                assert_eq!(got, expected, "{id} {kind}: diagnostics {errors:?}");
+                for error in &errors {
+                    let message = match error.rule.as_str() {
+                        "signature" => format!("{name} is not a dbspec document"),
+                        _ => format!("{name} is not valid UTF-8"),
+                    };
+                    assert_eq!(error.message, message, "{id} {kind}: message");
+                }
+            }
+            Err(dbspec::ReadError::Io(error)) => panic!("{id} {kind}: {shown}: {error}"),
+        }
+    }
+    let (cpu, wall) = (case_clock.cpu(), case_clock.wall());
+    if cpu >= CASE_DEADLINE {
+        polyspec_orm_testcase::warning(format_args!("{id}: cpu {cpu:?} exceeds {CASE_DEADLINE:?} (wall {wall:?})"));
+    }
+    polyspec_orm_testcase::step(format_args!("cpu={cpu:?} wall={wall:?}"));
 }
 
 /// A change to cases.json, with the location and the problem that the reader names for it.
 type Mutation<'a> = (&'a str, &'a str, Box<dyn Fn(&mut Value)>);
 
 /// The reader of cases.json refuses a missing or an unknown section or field of every section, naming it.
-#[test]
 fn shared_dbspec_cases_reader_refuses_missing_and_unknown_fields() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
     let original = read_cases();
     let manifest = original["sets"].as_array().unwrap().iter().position(|c| c.get("manifest").is_some()).expect("a sets case has a manifest");
     let manifest_extra = format!("sets[{manifest}].manifest.extra");
@@ -381,4 +388,19 @@ fn shared_dbspec_cases_reader_refuses_missing_and_unknown_fields() {
         assert_eq!(dbspec_cases::check_cases(&value, "tests/dbspec/cases.json"), Err(format!("tests/dbspec/cases.json: {location} {problem}")), "{location}");
     }
     polyspec_orm_testcase::step(format_args!("{} refused", mutations.len()));
+}
+
+fn main() {
+    let file = read_cases();
+    let mut seen = std::collections::BTreeSet::new();
+    let mut trials = shared_dbspec_vectors(&file, &mut seen);
+    trials.extend(shared_dbspec_files(&file, &mut seen));
+    trials.extend(shared_dbspec_syntax(&file));
+    trials.push(polyspec_orm_testcase::trial("syntax_entries_match_the_analyses", polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE), syntax_entries_match_the_analyses));
+    trials.push(polyspec_orm_testcase::trial(
+        "shared_dbspec_cases_reader_refuses_missing_and_unknown_fields",
+        polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE),
+        shared_dbspec_cases_reader_refuses_missing_and_unknown_fields,
+    ));
+    polyspec_orm_testcase::run(trials);
 }

@@ -2,9 +2,9 @@
 //! opener는 `named.sqlite?_pragma=…` 같은 file을 만든다(docs/dialects.md
 //! "Probe environment").
 
-#[tokio::test]
+use polyspec_orm_testcase::Trial;
+
 async fn sqlite_file_name_is_the_path() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let directory = std::env::temp_dir().join(format!("orm-rust-sqlite-name-{}", std::process::id()));
     assert!(!directory.exists(), "{} already exists", directory.display());
     std::fs::create_dir(&directory).expect("temporary directory");
@@ -29,54 +29,62 @@ async fn sqlite_file_name_is_the_path() {
 }
 
 /// tests/dsn/sqlite-paths.json: DSN path는 percent-decode한 file을 열고, 잘못된
-/// path는 CONFIG다(docs/config.md "Runtime connection").
-#[tokio::test]
-async fn sqlite_path_cases() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+/// path는 CONFIG다(docs/config.md "Runtime connection"). 각 case는 trial `sqlite_path_cases::<id>`이고,
+/// 연결 하나를 10 s 기한 안에서 열고 닫는다.
+fn sqlite_path_cases() -> Vec<Trial> {
     let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dsn/sqlite-paths.json");
     let vectors: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path).expect("sqlite-paths.json")).expect("sqlite-paths.json");
     let cases = vectors["cases"].as_array().expect("cases");
     assert!(vectors["version"] == 1 && !cases.is_empty(), "tests/dsn/sqlite-paths.json has no cases");
-    let mut failures = Vec::new();
-    for (index, case) in cases.iter().enumerate() {
-        let id = case["id"].as_str().expect("id");
-        // 각 vector는 연결 하나를 10 s 기한 안에서 열고 닫는다.
-        let mut inner = polyspec_orm_testcase::start(format!("dsn/sqlite-path/{id}"), std::time::Duration::from_secs(10));
-        let directory = std::env::temp_dir().join(format!("orm-rust-sqlite-path-{}-{index}", std::process::id()));
-        assert!(!directory.exists(), "{} already exists", directory.display());
-        std::fs::create_dir(&directory).expect("temporary directory");
-        let dsn = format!("sqlite://{}/{}", directory.display(), case["path"].as_str().expect("path"));
-        // 각 case는 자기 기한 안에서 연결한다.
-        let code = match tokio::time::timeout(std::time::Duration::from_secs(10), polyspec_orm::Db::connect(&dsn, 1, polyspec_orm::Config::default())).await {
-            Err(_) => Some("TIMEOUT".to_owned()),
-            Ok(Ok(db)) => {
-                db.close().await;
-                None
-            }
-            Ok(Err(e)) => Some(e.code().to_owned()),
-        };
-        let names: Vec<String> =
-            std::fs::read_dir(&directory).expect("read directory").map(|e| e.expect("entry").file_name().to_string_lossy().into_owned()).collect();
-        std::fs::remove_dir_all(&directory).expect("remove temporary directory");
-        let problem = match (case["error"].as_str(), case["file"].as_str()) {
-            (Some(want), _) if code.as_deref() != Some(want) || !names.is_empty() => Some(format!("code {code:?}, files {names:?}; want {want} and no file")),
-            (Some(_), _) => None,
-            (None, Some(_)) if code.is_some() => Some(format!("code {code:?}")),
-            (None, Some(file)) => {
-                let allowed = [file.to_owned(), format!("{file}-journal"), format!("{file}-shm"), format!("{file}-wal")];
-                names
-                    .iter()
-                    .find(|n| !allowed.contains(n))
-                    .map(|n| format!("files {names:?}: {n} is not {file}"))
-                    .or_else(|| (!names.iter().any(|n| n == file)).then(|| format!("files {names:?}: {file} is missing")))
-            }
-            (None, None) => Some("the case has neither file nor error".to_owned()),
-        };
-        if let Some(p) = problem {
-            inner.fail(&p);
-            failures.push(format!("{id}: {p}"));
+    cases
+        .iter()
+        .enumerate()
+        .map(|(index, case)| {
+            let id = case["id"].as_str().expect("id").to_owned();
+            let case = case.clone();
+            polyspec_orm_testcase::async_trial(format!("sqlite_path_cases::{id}"), std::time::Duration::from_secs(10), move || async move { sqlite_path_case(index, &case).await })
+        })
+        .collect()
+}
+
+async fn sqlite_path_case(index: usize, case: &serde_json::Value) {
+    let directory = std::env::temp_dir().join(format!("orm-rust-sqlite-path-{}-{index}", std::process::id()));
+    assert!(!directory.exists(), "{} already exists", directory.display());
+    std::fs::create_dir(&directory).expect("temporary directory");
+    let dsn = format!("sqlite://{}/{}", directory.display(), case["path"].as_str().expect("path"));
+    // 각 case는 자기 기한 안에서 연결한다.
+    let code = match tokio::time::timeout(std::time::Duration::from_secs(10), polyspec_orm::Db::connect(&dsn, 1, polyspec_orm::Config::default())).await {
+        Err(_) => Some("TIMEOUT".to_owned()),
+        Ok(Ok(db)) => {
+            db.close().await;
+            None
         }
-        drop(inner);
+        Ok(Err(e)) => Some(e.code().to_owned()),
+    };
+    let names: Vec<String> =
+        std::fs::read_dir(&directory).expect("read directory").map(|e| e.expect("entry").file_name().to_string_lossy().into_owned()).collect();
+    std::fs::remove_dir_all(&directory).expect("remove temporary directory");
+    let problem = match (case["error"].as_str(), case["file"].as_str()) {
+        (Some(want), _) if code.as_deref() != Some(want) || !names.is_empty() => Some(format!("code {code:?}, files {names:?}; want {want} and no file")),
+        (Some(_), _) => None,
+        (None, Some(_)) if code.is_some() => Some(format!("code {code:?}")),
+        (None, Some(file)) => {
+            let allowed = [file.to_owned(), format!("{file}-journal"), format!("{file}-shm"), format!("{file}-wal")];
+            names
+                .iter()
+                .find(|n| !allowed.contains(n))
+                .map(|n| format!("files {names:?}: {n} is not {file}"))
+                .or_else(|| (!names.iter().any(|n| n == file)).then(|| format!("files {names:?}: {file} is missing")))
+        }
+        (None, None) => Some("the case has neither file nor error".to_owned()),
+    };
+    if let Some(p) = problem {
+        panic!("{p}");
     }
-    assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
+}
+
+fn main() {
+    let mut trials = vec![polyspec_orm_testcase::async_trial("sqlite_file_name_is_the_path", polyspec_orm_testcase::DATABASE, sqlite_file_name_is_the_path)];
+    trials.extend(sqlite_path_cases());
+    polyspec_orm_testcase::run(trials);
 }

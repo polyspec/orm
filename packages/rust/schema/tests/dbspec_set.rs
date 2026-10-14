@@ -6,6 +6,7 @@
 //! runs.
 
 use polyspec_orm_case_clock::CaseClock;
+use polyspec_orm_testcase::Trial;
 use polyspec_orm_schema::dbspec;
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
@@ -13,9 +14,6 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 const CASE_DEADLINE: Duration = Duration::from_secs(1);
-// SUITE_DEADLINE is the CPU time limit of the test; the wall-clock deadline that ends a stuck test is
-// ten times it (polyspec_orm_testcase::wall_for_cpu).
-const SUITE_DEADLINE: Duration = Duration::from_secs(5);
 
 fn vectors_path() -> PathBuf {
     polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/set-files.json")
@@ -120,7 +118,6 @@ fn build(root: &Path, tree: &Map<String, Value>, id: &str) {
 fn run(case: &Value) {
     let map = object(case, "case", &["id", "tree", "set", "want"], &[]);
     let id = string(&map["id"], "case id");
-    let inner = polyspec_orm_testcase::start(format!("set-files/{id}"), polyspec_orm_testcase::wall_for_cpu(CASE_DEADLINE));
     let clock = CaseClock::start();
     let tree = map["tree"].as_object().unwrap_or_else(|| panic!("{id}: tree is not an object"));
     let set = string(&map["set"], id);
@@ -168,14 +165,11 @@ fn run(case: &Value) {
     if cpu >= CASE_DEADLINE {
         polyspec_orm_testcase::warning(format_args!("{id}: cpu {cpu:?} exceeds {CASE_DEADLINE:?} (wall {wall:?})"));
     }
-    drop(inner);
 }
 
-/// Every case of set-files.json gives its documents and external files, or its errors in order.
-#[test]
-fn shared_set_file_vectors() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
-    let clock = CaseClock::start();
+/// Every case of set-files.json gives its documents and external files, or its errors in order: each case is the
+/// trial `shared_set_file_vectors::<id>`.
+fn shared_set_file_vectors() -> Vec<Trial> {
     let path = vectors_path();
     let file: Value = serde_json::from_slice(&std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).unwrap();
     let file = object(&file, "set-files.json", &["version", "note", "cases"], &[]);
@@ -183,12 +177,16 @@ fn shared_set_file_vectors() {
     string(&file["note"], "note");
     let cases = file["cases"].as_array().expect("cases are listed");
     assert!(!cases.is_empty(), "cases are not empty");
-    for case in cases {
-        run(case);
-    }
-    polyspec_orm_testcase::step(format_args!("{} set file cases", cases.len()));
-    let (cpu, wall) = (clock.cpu(), clock.wall());
-    if cpu >= SUITE_DEADLINE {
-        polyspec_orm_testcase::warning(format_args!("set file vectors: cpu {cpu:?} exceeds {SUITE_DEADLINE:?} (wall {wall:?})"));
-    }
+    cases
+        .iter()
+        .map(|case| {
+            let id = string(&object(case, "case", &["id", "tree", "set", "want"], &[])["id"], "case id").to_owned();
+            let case = case.clone();
+            polyspec_orm_testcase::trial(format!("shared_set_file_vectors::{id}"), polyspec_orm_testcase::wall_for_cpu(CASE_DEADLINE), move || run(&case))
+        })
+        .collect()
+}
+
+fn main() {
+    polyspec_orm_testcase::run(shared_set_file_vectors());
 }
