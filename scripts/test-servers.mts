@@ -24,6 +24,7 @@
 // cross-process lease and no exit event of a process that is not its child.
 import { spawn, spawnSync, type SpawnSyncOptions } from 'node:child_process';
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, renameSync, rmSync, statSync, watch, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { userInfo } from 'node:os';
 
@@ -35,31 +36,17 @@ export class TestServerError extends Error {
   constructor(message: string, status = 1) { super(message); this.status = status; }
 }
 
-// cksum is the POSIX cksum CRC of the bytes: the CRC-32 of polynomial 0x04C11DB7, most significant bit first, over the
-// data and then its length in the fewest bytes, least significant first, complemented. It names the socket folder.
-export function cksum(data: Buffer): number {
-  let crc = 0;
-  const step = (byte: number) => {
-    crc ^= byte << 24;
-    for (let bit = 0; bit < 8; bit++) crc = crc & 0x80000000 ? (crc << 1) ^ 0x04c11db7 : crc << 1;
-    crc >>>= 0;
-  };
-  for (const byte of data) step(byte);
-  for (let length = data.length; length > 0; length = Math.floor(length / 256)) step(length & 0xff);
-  return ~crc >>> 0;
-}
-
 /** The paths of the servers of a checkout. */
 export type Paths = ReturnType<typeof paths>;
 
 // paths are the files of the servers of the checkout <root>. The socket folder holds the Unix sockets. A socket path
 // must fit sun_path, and a path under a deep checkout does not, so the sockets live in /tmp, the directory POSIX defines
-// for temporary files, in a folder named by the POSIX cksum of the checkout path: unique to the checkout and the same on
-// every run. Its file "checkout" names the checkout that owns it; start refuses a folder another checkout owns, and stop
+// for temporary files, in a folder named by the first 16 hex digits of the SHA-256 of the checkout path: unique to the
+// checkout and the same on every run. Its file "checkout" names the checkout that owns it; start refuses a folder another checkout owns, and stop
 // removes it. leases is the lease directory of the servers (tests/lease): a run that uses the servers holds a shared
 // lease there (WITH_TEST_ENV of the Makefile reads the path from the environment file); stopping the servers, a fresh
 // start and the MySQL migration hold the exclusive lease, which is refused while any lease is held, naming the holders.
-export function paths(root: string, socketDir = `/tmp/orm-servers-${cksum(Buffer.from(root))}`) {
+export function paths(root: string, socketDir = `/tmp/orm-servers-${createHash('sha256').update(root).digest('hex').slice(0, 16)}`) {
   const dir = join(root, '.runtime/servers');
   return {
     root, dir, socketDir,

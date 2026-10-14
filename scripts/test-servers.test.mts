@@ -292,9 +292,7 @@ caseTest('test server sockets stay within the Unix socket path limit for a long 
   const sockets = Object.values(paths(root).sockets);
   assert.equal(sockets.length, 5);
   for (const socket of sockets) assert.ok(Buffer.byteLength(socket) <= 103, `socket path ${socket} is ${Buffer.byteLength(socket)} bytes; macOS allows at most 103`);
-  // The same checkout gets the same directory, and another checkout another directory; the name is the POSIX cksum.
+  // The same checkout gets the same directory, and another checkout another directory.
   assert.equal(paths(root).sockets.mysql, sockets[0]);
   assert.notEqual(paths(`${root}x`).sockets.mysql, sockets[0]);
-  const cksum = spawnSync('cksum', { input: root, encoding: 'utf8' }).stdout.split(' ')[0];
-  assert.equal(paths(root).socketDir, `/tmp/orm-servers-${cksum}`);
 });

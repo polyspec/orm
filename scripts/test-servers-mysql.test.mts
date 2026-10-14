@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { isolatedEnvironment } from '../tests/environment.mts';
 import { caseTest, COMPUTE, PROCESS } from '../tests/testcase.mts';
 import { collisions, countDifferences } from './test-servers-mysql.mts';
+import { paths } from './test-servers.mts';
 
 caseTest('collisions names the schemas and tables that one lower case name would merge', COMPUTE, () => {
   assert.deepEqual(collisions(['Shop', 'shop', 'other'], [['other', 'Foo'], ['other', 'foo'], ['Other', 'bar'], ['shop', 'item']]), [
@@ -51,7 +52,8 @@ function fixture(mysqlPort: number, replicaPort: number) {
     close: () => {
       spawnSync(process.execPath, [join(root, 'scripts/test-servers.mts'), 'mysql-stop'], { stdio: 'ignore' });
       // Only stop removes the socket directory that mysql-start made (the socket folder of test-servers.mts), so it is removed here.
-      spawnSync('sh', ['-c', 'cd "$1" && rm -rf "/tmp/orm-servers-$(pwd | tr -d \'\\n\' | cksum | cut -d \' \' -f 1)"', 'sh', root], { stdio: 'ignore' });
+      // The script names its servers by its real path (Node resolves the module path); /tmp is a link on macOS.
+      rmSync(paths(realpathSync(root)).socketDir, { recursive: true, force: true });
       rmSync(root, { recursive: true, force: true });
     },
   };

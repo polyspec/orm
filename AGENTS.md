@@ -46,8 +46,10 @@ vendors; this file states only the rules of orm.
 - Name branches `{type}/{shortname}-{checklist ID}` and worktrees
   `{project}-{shortname}-{checklist ID}`. After integrating a branch into `main`, verify its commits
   or equivalent changes are present and its worktree is clean. Before removal, preserve any files
-  excluded by `.gitignore` that exist only in that worktree and are still needed. Then remove the
-  worktree and local branch immediately.
+  excluded by `.gitignore` that exist only in that worktree and are still needed, and run
+  `make test-servers-stop` there: its servers run from its `.runtime/servers`, and a server whose
+  data directory is removed under it never exits. Then remove the worktree and local branch
+  immediately.
   Preserve unintegrated or active work.
 - Each checkout builds Rust into its own target directory, `packages/rust/target` of that checkout,
   and no checkout points `CARGO_TARGET_DIR` at the target directory of another; `make` stops when a

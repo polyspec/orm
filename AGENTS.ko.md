@@ -37,8 +37,9 @@ orm 자신의 규칙만 적는다.
   extension은 릴리스 버전을 유지하며 `.vsix`로 빌드된다(docs/editor.md).
 - 브랜치는 `{type}/{shortname}-{체크리스트 ID}`, 워크트리는 `{프로젝트}-{shortname}-{체크리스트 ID}`로
   이름 짓는다. 브랜치를 `main`에 통합한 뒤 커밋이나 동등한 변경이 반영됐고 워크트리가 깨끗한지 확인한다.
-  삭제할 워크트리에만 있는 `.gitignore` 제외 파일 중 계속 필요한 파일은 먼저 다른 곳에 보존한다.
-  그런 다음 워크트리와 로컬 브랜치를 즉시 제거한다.
+  삭제할 워크트리에만 있는 `.gitignore` 제외 파일 중 계속 필요한 파일은 먼저 다른 곳에 보존하고, 그
+  워크트리에서 `make test-servers-stop`을 실행한다: 그 server는 그 `.runtime/servers`에서 실행되고, data
+  directory가 지워진 server는 끝나지 않는다. 그런 다음 워크트리와 로컬 브랜치를 즉시 제거한다.
   미통합 작업이나 진행 중인 작업은 보존한다.
 - 각 checkout은 Rust를 자기 target directory(그 checkout의 `packages/rust/target`)에 build하고, 어떤 checkout도
   `CARGO_TARGET_DIR`을 다른 checkout의 target directory로 정하지 않는다. command line이 checkout 밖의 것을
