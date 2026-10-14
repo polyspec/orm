@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The PHP client reads YAML with purrphp/yaml and its core schema, so 1_000, dates and timestamps stay strings as in every other client. orm refuses documents, aliases, anchors, tags, merge keys and duplicate keys on its node model. Two vectors stay excluded for purrphp defects, tracked by T142-1-1. (#T142-1)
 - The Rust workspaces deny unsafe code and allow attributes without a reason. The planner's lifetime transmute is removed, the thread CPU clock reads through rustix, and only the SQLite authorizer callback keeps unsafe code, with its reason. (#T137-1-3)
 - T166: every client parses a document set through one set parse (Go dbspec.ParseSet, TypeScript parseDbspecSet, Python parse_dbspec_set, PHP and the extension Dbspec::parseSet, Rust dbspec::parse_set): each text is named by its parser's header, a repeated name is the later text's diagnostic, and the shared vectors tests/dbspec/set-parse.json hold the rule; every header read by string matching is removed.
 - T165-4: kit-check takes mise.toml and mise.lock as its inputs.
