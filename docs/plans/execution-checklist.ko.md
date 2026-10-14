@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 65f36eb361cf657bb993ede617c60fb0db5c663ff3fe938cc7e2162cac6da8de -->
+<!-- source-sha256: fe3639ea95337dd053ca8e9ec4c6620d5352366d20276712800a505c9536fc2e -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1102,6 +1102,8 @@
   - [o] T173-1 0.0.16의 릴리스 commit이 CI를 통과하게 한다 (T173에 이어). 원인: ae23528a의 CI run 38615714975가 실패했다: T172가 model_generation의 설명을 바꾼 뒤 docs/features.md를 다시 생성하지 않았고, CoveragePerformanceGateTest는 package directory로 경로를 만들어 T148-1-1이 지운 packages/php/vendor/bin/phpunit을 계속 실행했으며, T172-2의 PHPStan case가 실패했다. 완료 조건: 생성 문서가 최신이고, case가 vendor-php/bin/phpunit을 실행하며, static, feature_coverage, feature_verify_other가 통과한다.
 - [o] T174 TypeScript scan에서 not, andNot, orNot callback 안에서 부르는 chain method를 선언한다. 원인: TypeScript scan은 and, or, on, fetchKey, fetchValue에 준 callback의 첫 매개변수를 receiver class의 model로 읽었지만, PHP scan(T172)과 chain 문법(docs/dsl.md)이 같게 다루는 not, andNot, orNot은 읽지 않았다. 그래서 tests/conformance/runner_typescript가 부르는 orGtReadCount와 ltReadCount를 생성된 model이 선언하지 않아 tsc가 거부한다. 완료 조건: scan이 not, andNot, orNot의 callback을 and, or처럼 다루고, 수정 전에 실패하는 generator scan case가 있으며, commit된 model이 runner가 부르는 method를 선언한다.
   Evidence: generate-scan model_calls가 수정 전에 "Author lacks gtServiceSeq, lbName, neIsDisplay"로 실패했고 지금 통과한다. npm run models가 Author에 ltReadCount와 orGtReadCount를 더하고 make ts-model-check가 통과한다.
+  - [o] T174-1 scan한 chain method의 TypeScript symbol을 기록한다 (T174에 이어). 원인: T174가 Author.ltReadCount와 Author.orGtReadCount로 packages/ts/src/models/models.ts를 다시 생성했지만 TypeScript symbol을 기록하지 않아, 297b6afd에서 interface-check(feature_verify_rust, interface_contract/interface-self-test)가 그것을 예상하지 못한 symbol로 보고했다. 완료 조건: contracts/symbols/typescript.json이 두 symbol을, contracts/interfaces.json이 새 hash를 가지고 go run ./tests/interfaces/check -language typescript가 통과한다.
+    Evidence: -record가 정확히 두 symbol을 더하고, 계산한 hash로 검사가 통과한다.
 - [o] T156 모든 생성기가 모든 key의 모든 prefix마다 유형 있는 메서드를 선언한다. 원인: scan한 소스가 호출하는 메서드만 생성되어, 어떤 소스도 호출하지 않는 key prefix에는 메서드가 없었다(hyper U-97). 완료 조건: Go, Rust, TypeScript model이 primary key, unique key, index의 모든 prefix마다 메서드를 선언하고, Python은 같은 이름을 실행 시점에 해석하며, symbol 기록과 docs/usage.md를 갱신한다.
   - [o] T156-1 T156 이후 orm main CI를 다시 green으로 만든다 (T156에 이어). 원인: run 38502539388이 실패했다. Python key-prefix 테스트가 PYTHONPATH를 바꾸고 지워진 packages/orm-python/bin/orm-gen을 실행했고, Go와 Rust key-prefix 테스트가 testcase를 시작하지 않았으며, generator/gen_go_key_prefix_test.go가 어떤 feature에도 속하지 않았고, src/models/markdown_fixture에 key-prefix 메서드가 없었다. 완료 조건: 각각을 고치고 그 소유 검사가 통과한다.
   - [o] T156-2 Go markdown model을 다시 생성한다 (T156에 이어). 원인: run 38504701356이 go-markdown-model-generated에서 실패했다. packages/orm-go/markdownmodel에 key-prefix 메서드가 없었다. 완료 조건: go generate가 폴더를 바꾸지 않는다.
