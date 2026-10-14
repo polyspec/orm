@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 675042801d51c0b869d231849bb99a01f3718dd6376f89e154660300e151e469 -->
+<!-- source-sha256: 3c647a846be4a12e96e6649fccbc9e73d9c93ade92a8f86857a648dd5a6050ce -->
 # 변경 이력
 
 ## Unreleased
 
+- T156: 모든 생성기가 모든 key(primary key, unique key, index)의 모든 prefix마다 유형 있는 메서드를 선언한다. scan한 소스가 호출하는지와 상관없다. Python은 같은 이름을 실행 시점에 해석한다.
 - T143: docs/dbspec.md가 각 set reader가 감지하는 Windows reparse tag를 적는다. Go, Rust, PHP extension은 모든 name surrogate, TypeScript와 PHP는 Node와 PHP `lstat`이 내주는 symbolic link와 junction이다.
 - T142-8: node script가 PHP를 실행하는 target이 vendor-php를 먼저 확인한다.
 - T142-7: PHP script가 vendor-php를 읽는 모든 make target이 이를 먼저 확인한다(31개 target).

@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 977c2cda939b6eda97eb0102f5a169539b40aa932d616134e55979451983921a -->
+<!-- source-sha256: f0c706aaec13f0d443dab4d07fe05fd005e69eb994fbfbe20d9098103a0eefe3 -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
