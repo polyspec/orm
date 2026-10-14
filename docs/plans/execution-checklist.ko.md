@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 0841a8832eded5277bbe10484da82095b63a8823f9335de1c0e85504ad8e395d -->
+<!-- source-sha256: 2126af4fcdc5c6f89c98efbc122a00508e4b560ea2f4842a4688d4411d24e455 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1118,6 +1118,8 @@
     Evidence: cargo fetch --locked 뒤의 새 CARGO_HOME에서 변경 전 외부 crate의 cargo check가 "failed to find tag v0.0.8"로 실패했다. lock을 쓰면 통과하고, 그 cargo home으로 make package-check가 통과한다.
   - [o] T177-2 Linux에서 시작한 server의 첫 줄을 읽는다 (T177에 이어). 원인: a7d4dac1의 CI가 repo-check에서 실패했다. startLogged case가 Linux에서 stderr에 아무것도 없이 멈췄다. startLogged는 server를 spawn한 뒤에 log 크기를 읽었는데, Linux에서는 그때 이미 server가 줄을 써서 읽기가 ready 줄 뒤에서 시작했고 이후 쓰기가 없어 깨어나지 않았다. macOS는 spawn이 느려 통과했을 뿐이다. 완료 조건: 읽기가 spawn 전의 log 크기에서 시작한다.
     Evidence: CI log에서 case가 20초 제한에서 stderr가 빈 채로 끝났다. 즉 한 줄도 읽지 못했다. spawn 전에 크기를 읽으면 로컬에서 8회 중 8회 통과한다.
+  - [o] T177-3 server test에서 멈춘 process를 상태로 판정한다 (T177에 이어). 원인: e8dac3c8의 CI가 test-servers-check에서 실패했다. Linux에서 stopPid는 종료 event에 돌아왔지만 끝난 가짜 server는 그것을 입양한 process가 아직 거두지 않은 zombie였고, case는 zombie에도 성공하는 kill(pid, 0)을 실행 중으로 보았다. macOS는 이전 shell 단계가 reaper에게 시간을 주어 통과했을 뿐이다. 완료 조건: stopPid case와 binary log fixture가 끝난 process를 ps로 판정한다: 없거나 상태 Z.
+    Evidence: CI record가 종료 event 17 ms 뒤 "quick server still runs after stopPid"를 적는다. 상태 판정으로 test-servers.test가 로컬에서 9건 통과하고, stopPid case는 3회 중 3회 통과한다.
 - [o] T178 모든 client에서 ordered-json 0.0.9를 쓴다. 원인: ordered-json 0.0.9에는 limepie가 import 속도에 필요한 Python parser(T1.41)가 있는데, orm은 PHP(zip URL), TypeScript, Python wheel의 Requires-Dist에서 ordered-json 0.0.8을 정확히 고정해 consumer가 바꿀 수 없다(kit과 limepie가 보고). 완료 조건: PHP, TypeScript, Python, Rust, Go client가 0.0.9를 요구하고(Go는 새 module 경로 github.com/polyspec/ordered-json/packages/go로, Python은 sha256을 붙인 wheel URL로), lock과 dependency review를 기록하며, 각 client의 codec과 JSON 검사가 통과한다.
   Evidence: 내려받은 wheel의 sha256이 bc4d26a9…f01d다. test server에서 JSON, codec, AES case의 go test가 통과하고, PHP hostcodec unit 61건, Rust codec test 8건, python-unit-check, TypeScript codec vector가 통과한다. review 뒤 dependency-policy-check가 통과한다.
 - [o] T156 모든 생성기가 모든 key의 모든 prefix마다 유형 있는 메서드를 선언한다. 원인: scan한 소스가 호출하는 메서드만 생성되어, 어떤 소스도 호출하지 않는 key prefix에는 메서드가 없었다(hyper U-97). 완료 조건: Go, Rust, TypeScript model이 primary key, unique key, index의 모든 prefix마다 메서드를 선언하고, Python은 같은 이름을 실행 시점에 해석하며, symbol 기록과 docs/usage.md를 갱신한다.

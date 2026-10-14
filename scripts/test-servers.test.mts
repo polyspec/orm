@@ -10,6 +10,12 @@ import { isolatedEnvironment } from '../tests/environment.mts';
 import { caseTest, COMPUTE, DATABASE } from '../tests/testcase.mts';
 import { environment, MYSQLD_BINLOG, mysqldArguments, paths, stopPid } from './test-servers.mts';
 
+// processState is the state that ps reports for a process, empty when it is gone. exited is whether it has ended: an ended
+// process is gone, or a zombie (state Z) until the process that adopted it reaps it, and kill(pid, 0) still succeeds on a
+// zombie, so the state is read.
+const processState = (pid: number): string => spawnSync('ps', ['-o', 'stat=', '-p', String(pid)], { encoding: 'utf8' }).stdout.trim();
+const exited = (pid: number): boolean => { const state = processState(pid); return state === '' || state.startsWith('Z'); };
+
 // The stopPid case stops a fake server. Stopping a server is a long task, so it has no deadline, and its end is learned
 // from the operating system's exit event (STOP_PROCESS), not by polling. A slow but sound server that ends 1.5 seconds
 // after TERM is reported stopped after that, when its process is already gone.
@@ -29,7 +35,7 @@ read state < ${ready}`], { timeout: 10_000 });
       const started = Date.now();
       stopPid(pidFile);
       const elapsed = Date.now() - started;
-      assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' }, `${name} server still runs after stopPid`);
+      assert.ok(exited(pid), `${name} server still runs after stopPid (state ${processState(pid)})`);
       assert.ok(elapsed >= delay * 1000, `${name} server reported stopped after ${elapsed} ms, before its ${delay} s shutdown`);
     }
   } finally {
@@ -272,7 +278,7 @@ caseTest('the test MySQL server removes an expired binary log by itself', DATABA
       const pid = readFileSync(pidFile, 'utf8').trim();
       const stopped = spawnSync(process.env.STOP_PROCESS ?? '', ['TERM', pid], { encoding: 'utf8' });
       assert.equal(stopped.status, 0, `the fixture mysqld ${pid} did not stop (STOP_PROCESS ${process.env.STOP_PROCESS ?? 'unset'}): ${stopped.error?.message ?? stopped.stderr}; ${root} is kept`);
-      assert.throws(() => process.kill(Number(pid), 0), { code: 'ESRCH' }, `mysqld ${pid} still runs after STOP_PROCESS returned; ${root} is kept`);
+      assert.ok(exited(Number(pid)), `mysqld ${pid} (state ${processState(Number(pid))}) still runs after STOP_PROCESS returned; ${root} is kept`);
     }
     rmSync(root, { recursive: true, force: true });
     rmSync(socketDir, { recursive: true, force: true });
