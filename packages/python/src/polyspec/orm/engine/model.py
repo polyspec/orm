@@ -3,7 +3,7 @@
 # parse해서 entity, field, key, codec stage와 setting을 얻는다.
 from dataclasses import dataclass
 
-from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec
+from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec_set
 from polyspec.orm.errors import OrmError
 
 __all__ = ['Entity', 'Field', 'RuntimeModel', 'entity_of', 'field_of', 'model_of_documents',
@@ -122,10 +122,6 @@ def split_documents(text: str) -> list:
     return out
 
 
-def _header_name(text: str) -> str:
-    return text[len(_HEADER):text.index('\n')]
-
-
 def _type_sizes(t) -> tuple:
     if t.kind == 'decimal':
         return t.precision, t.scale, 0
@@ -215,29 +211,19 @@ def model_of_documents(documents) -> RuntimeModel:
 
 def parse_document_set(texts, external_texts=()) -> list:
     """한 문서 집합의 dbspec text들을 parse한다: 집합이 소유한 문서와 집합이 쓰는
-    외부 문서. 각 text는 다른 모든 문서와 함께 parse되고, 외부 문서는 external로
-    표시된다."""
-    import dataclasses
-    named = {}
-    every = list(texts) + list(external_texts)
-    for text in every:
-        if not isinstance(text, str) or not text.startswith(_HEADER):
-            raise OrmError('SCHEMA_INVALID', 'a dbspec text does not start with its header')
-        named[_header_name(text)] = text
+    외부 문서. parse_dbspec_set이 각 text를 다른 모든 문서와 함께 parse하고 외부 문서를
+    external로 표시한다. 문서의 첫 진단은 SCHEMA_INVALID다."""
+    for text in list(texts) + list(external_texts):
+        if not isinstance(text, str):
+            raise OrmError('SCHEMA_INVALID', 'a dbspec text is not a string')
     documents = []
-    for index, text in enumerate(every):
-        others = {name: source for name, source in named.items()
-                  if name != _header_name(text)}
-        document, _positions, diagnostics = parse_dbspec(text, others)
-        if document is None:
-            d = diagnostics[0]
+    for entry in parse_dbspec_set(texts, external_texts):
+        if entry.document is None:
+            d = entry.diagnostics[0]
             raise OrmError('SCHEMA_INVALID',
-                           f'document {_header_name(text)}: {d.rule} at {d.line}:{d.column}: '
+                           f'document {entry.name}: {d.rule} at {d.line}:{d.column}: '
                            f'{d.message}')
-        # 외부 문서는 set이 소유하지 않으므로 external로 표시한다.
-        if index >= len(texts):
-            document = dataclasses.replace(document, external=True)
-        documents.append(document)
+        documents.append(entry.document)
     return documents
 
 
