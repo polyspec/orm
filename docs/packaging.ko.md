@@ -1,5 +1,5 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: 0e67da04b7b9f92a0157424333db3182ecef921a7d4170e25efdbadfd594ba44 -->
+<!-- source-sha256: 4c693a30a909ba81d9ed91392a4316c54abbd920dd60dcd74cd3685084b6f83d -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
@@ -23,12 +23,12 @@
   {
     "dependencies": {
       "@polyspec/orm": "file:vendor/polyspec-orm-npm-<version>.tgz",
-      "@polyspec/ordered-json": "file:vendor/polyspec-ordered-json-npm-0.0.8.tgz"
+      "@polyspec/ordered-json": "file:vendor/polyspec-ordered-json-npm-0.0.9.tgz"
     }
   }
   ```
 
-- Composer: `artifact` repository는 내려받은 zip의 directory이고, Composer는 zip마다 그 `composer.json`에서 이름, version, 요구 사항을 읽는다. artifact repository는 orm zip과 그것이 요구하는 polyspec package마다 그 zip(`polyspec-ordered-json-php-0.0.8.zip`)을 담는다.
+- Composer: `artifact` repository는 내려받은 zip의 directory이고, Composer는 zip마다 그 `composer.json`에서 이름, version, 요구 사항을 읽는다. artifact repository는 orm zip과 그것이 요구하는 polyspec package마다 그 zip(`polyspec-ordered-json-php-0.0.9.zip`)을 담는다.
 
   ```json
   {
@@ -43,7 +43,7 @@
 
 Python client인 `packages/python/pyproject.toml`(배포 이름 `polyspec-orm`)은 PEP 427 wheel `polyspec_orm-<version>-py3-none-any.whl`로 release되며, GitHub Release의 asset으로 npm과 Composer archive 곁에 놓인다. `make release-assets TAG=vX.Y.Z`가 tag된 commit에서 wheel을 만들고, 그때 `config/release.json`의 `buildBackend`가 고정한 build backend(`setuptools==84.0.0`, sha256을 build마다 확인)를 쓴다. wheel은 `<package>-<language>-<version>.<ext>` 형식의 archive가 아니므로 PEP 427 이름을 유지한다.
 
-wheel의 `Requires-Dist`는 registry package이면 정확한 `name==version`이고, polyspec package이면 asset의 sha256을 붙인 direct reference다(kit K49): `polyspec-ordered-json @ https://github.com/polyspec/ordered-json/releases/download/v0.0.8/polyspec_ordered_json-0.0.8-py3-none-any.whl#sha256=db98…645a`. ordered-json은 어떤 package index에도 없고 참조가 그 release asset을 가리키므로, lock 없는 pip install도 GitHub에서 받으며 package index에 그 이름을 묻지 않는다. `config/release.json`은 polyspec 의존성의 repository를 `consumers.wheel.polyspec`에, wheel의 lock을 `consumers.wheel.lock`에 선언한다. `packages/python/pylock.toml`(PEP 751)은 transitive를 포함한 모든 의존성을 file마다 sha256과 함께 담고, ordered-json은 같은 URL과 sha256의 archive 항목으로 담는다. release proof는 그 lock을 `--require-hashes`로 설치한 뒤 orm의 wheel을 `--no-index`로 설치하고, `pip check`를 실행하고 `polyspec.orm`을 import한다. lock은 kit가 고정한 uv 0.12.11이 복사한 pyproject.toml로 쓴다: `uv pip compile pyproject.toml --universal --python-version 3.14 --generate-hashes --format pylock.toml -o pylock.toml --no-cache`. `--python-version`이 필요하다: 없으면 uv는 universal resolution의 하한을 `requires-python`이 아니라 찾은 interpreter에서 정한다. 반복 가능한 `make python-lock`과 그 offline 검사는 kit 0.0.26(K54)과 함께 온다. wheel은 Python 3.14와 CPython만 지원한다: `requires-python`은 `>=3.14`이며, CI가 test하는 `mise.toml` Python의 minor release이고 그보다 오래된 release는 아니다. 의존성 `polyspec-ordered-json==0.0.8`이 3.14를 요구하기 때문이다. `packages/python/tests/test_requires_python.py`가 둘을 비교한다. orm의 toolchain은 python-build-standalone의 CPython이며, package는 classifier `Programming Language :: Python :: Implementation :: CPython`을 선언한다. 그래서 `psycopg-binary==3.3.6` 의존성은 다른 구현을 위한 marker 없이 psycopg의 binary build를 직접 이름 붙인다.
+wheel의 `Requires-Dist`는 registry package이면 정확한 `name==version`이고, polyspec package이면 asset의 sha256을 붙인 direct reference다(kit K49): `polyspec-ordered-json @ https://github.com/polyspec/ordered-json/releases/download/v0.0.9/polyspec_ordered_json-0.0.9-py3-none-any.whl#sha256=bc4d…f01d`. ordered-json은 어떤 package index에도 없고 참조가 그 release asset을 가리키므로, lock 없는 pip install도 GitHub에서 받으며 package index에 그 이름을 묻지 않는다. `config/release.json`은 polyspec 의존성의 repository를 `consumers.wheel.polyspec`에, wheel의 lock을 `consumers.wheel.lock`에 선언한다. `packages/python/pylock.toml`(PEP 751)은 transitive를 포함한 모든 의존성을 file마다 sha256과 함께 담고, ordered-json은 같은 URL과 sha256의 archive 항목으로 담는다. release proof는 그 lock을 `--require-hashes`로 설치한 뒤 orm의 wheel을 `--no-index`로 설치하고, `pip check`를 실행하고 `polyspec.orm`을 import한다. lock은 kit가 고정한 uv 0.12.11이 복사한 pyproject.toml로 쓴다: `uv pip compile pyproject.toml --universal --python-version 3.14 --generate-hashes --format pylock.toml -o pylock.toml --no-cache`. `--python-version`이 필요하다: 없으면 uv는 universal resolution의 하한을 `requires-python`이 아니라 찾은 interpreter에서 정한다. 반복 가능한 `make python-lock`과 그 offline 검사는 kit 0.0.26(K54)과 함께 온다. wheel은 Python 3.14와 CPython만 지원한다: `requires-python`은 `>=3.14`이며, CI가 test하는 `mise.toml` Python의 minor release이고 그보다 오래된 release는 아니다. 의존성 `polyspec-ordered-json==0.0.9`이 3.14를 요구하기 때문이다. `packages/python/tests/test_requires_python.py`가 둘을 비교한다. orm의 toolchain은 python-build-standalone의 CPython이며, package는 classifier `Programming Language :: Python :: Implementation :: CPython`을 선언한다. 그래서 `psycopg-binary==3.3.6` 의존성은 다른 구현을 위한 marker 없이 psycopg의 binary build를 직접 이름 붙인다.
 
 psycopg의 binary extra는 그것이 펼쳐지는 두 plain requirement `psycopg==3.3.6`과 `psycopg-binary==3.3.6`으로 적는다. 그 extra는 PyPy를 제외하는데 plain requirement로는 그것을 나타낼 수 없으므로, PyPy에서도 `psycopg-binary`를 요구한다.
 

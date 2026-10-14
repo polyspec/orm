@@ -6,7 +6,7 @@ require (
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/goccy/go-yaml v1.19.2
 	github.com/jackc/pgx/v5 v5.11.0
-	github.com/polyspec/ordered-json/packages/ordered-json-go v0.0.8
+	github.com/polyspec/ordered-json/packages/go v0.0.9
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/sys v0.49.0
 	golang.org/x/tools v0.52.0

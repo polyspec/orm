@@ -45,7 +45,7 @@
   },
   "dependencies": {
     "@noble/hashes": "2.4.0",
-    "@polyspec/ordered-json": "0.0.8",
+    "@polyspec/ordered-json": "0.0.9",
     "mysql2": "^3.24.6",
     "oxc-parser": "0.154.0",
     "pg": "^8.23.1",

@@ -4,7 +4,7 @@ import (
 	"encoding/json/jsontext"
 	"testing"
 
-	orderedjson "github.com/polyspec/ordered-json/packages/ordered-json-go"
+	orderedjson "github.com/polyspec/ordered-json/packages/go"
 	"github.com/polyspec/orm/packages/go/orm"
 	_ "github.com/polyspec/orm/packages/go/orm/pg"
 	_ "github.com/polyspec/orm/packages/go/orm/sqlite"

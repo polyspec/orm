@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f80a9723183c82613aaa9936f80e1e42",
+    "content-hash": "6f6b73adead3d4f8f57e883d3df9f3c5",
     "packages": [
         {
             "name": "nikic/php-parser",
@@ -65,22 +65,25 @@
         },
         {
             "name": "polyspec/ordered-json",
-            "version": "0.0.8",
+            "version": "0.0.9",
             "dist": {
                 "type": "zip",
-                "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.8/polyspec-ordered-json-php-0.0.8.zip",
-                "shasum": "6fa67fff99b422f42ed7ab51ac470cadf8ade699"
+                "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.9/polyspec-ordered-json-php-0.0.9.zip",
+                "shasum": "5f93a2c0df5967163801cb3d4d087e44834bb456"
             },
             "require": {
                 "ext-json": "*",
                 "ext-pcre": "*",
-                "php": ">=8.2"
+                "php": ">=8.5"
             },
             "suggest": {
                 "ext-ordered_json": "Native backend from the polyspec/ordered-json-extension PIE package"
             },
             "type": "library",
             "autoload": {
+                "psr-4": {
+                    "Polyspec\\OrderedJson\\": "src/"
+                },
                 "files": [
                     "src/OrderedJson.php"
                 ]
@@ -92,7 +95,7 @@
             "dist": {
                 "type": "path",
                 "url": "packages/php",
-                "reference": "8f1be6f6b98cee844debe4faee48192d6c238d2d"
+                "reference": "46221428a41ffc0de1bf3d6213d93cc004866fd7"
             },
             "require": {
                 "composer-runtime-api": "^2.2",
@@ -101,7 +104,7 @@
                 "ext-zlib": "*",
                 "nikic/php-parser": "^5.9.0",
                 "php": ">=8.5",
-                "polyspec/ordered-json": "0.0.8",
+                "polyspec/ordered-json": "0.0.9",
                 "purrphp/yaml": "^1.0",
                 "symfony/yaml": "^8.1"
             },

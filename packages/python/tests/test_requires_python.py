@@ -2,7 +2,7 @@
 #
 # CI runs the package only under the pinned interpreter of make install-python, the Python release of mise.toml, so
 # requires-python of packages/python/pyproject.toml is its minor release and nothing older: its dependency
-# polyspec-ordered-json 0.0.8 requires 3.14, so a floor such as >=3.11 declares a range that the package cannot install on.
+# polyspec-ordered-json 0.0.9 requires 3.14, so a floor such as >=3.11 declares a range that the package cannot install on.
 import tomllib
 import unittest
 from pathlib import Path

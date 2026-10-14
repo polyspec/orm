@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	orderedjson "github.com/polyspec/ordered-json/packages/ordered-json-go"
+	orderedjson "github.com/polyspec/ordered-json/packages/go"
 
 	"github.com/polyspec/orm/internal/testcase"
 )

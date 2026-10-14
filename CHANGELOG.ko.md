@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f66bfc52fc67f4408639d8f79f6c5407b65c536189200f2cf02f0ca97679fa24 -->
+<!-- source-sha256: 284eee27e46c3ddcd817e89def3487030a57e1609eaad34d25cf3514e9bf2318 -->
 # 변경 이력
 
 ## Unreleased
+
+- 모든 client가 ordered-json 0.0.9를 요구한다. Go client는 module 경로 github.com/polyspec/ordered-json/packages/go에서 import한다. (#T178)
 
 ## 0.0.17
 
