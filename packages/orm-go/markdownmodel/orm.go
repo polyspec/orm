@@ -80,8 +80,16 @@ type ormModel interface {
 	*PeopleModel | *TasksModel | *LogsModel
 }
 
+type argIntEq interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~[]int | ~[]int8 | ~[]int16 | ~[]int32 | ~[]int64 | ~[]uint | ~[]uint8 | ~[]uint16 | ~[]uint32 | ~[]uint64 | orm.Func | ormModel
+}
+
 type argStringEq interface {
 	~string | ~[]string | orm.Func | ormModel
+}
+
+type argStringEqNull interface {
+	~string | ~[]string | orm.Func | ormModel | orm.NullType
 }
 
 // hasId is a model with the column id.
