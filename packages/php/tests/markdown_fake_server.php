@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /*
- * markdown_test.php가 flowmark server 대신 쓰는 server다. 127.0.0.1의 빈 port에서 연결 하나를
+ * MarkdownTest.php가 flowmark server 대신 쓰는 server다. 127.0.0.1의 빈 port에서 연결 하나를
  * 받고, 받은 message 줄마다 인자의 답을 차례로 쓴다. 듣기 시작하면 port를 한 줄로 쓰고, 연결이
  * 끝나거나 답이 떨어지면 연결을 닫고 받은 줄들을 JSON 배열 한 줄로 쓰고 끝난다.
  *

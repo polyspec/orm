@@ -112,12 +112,14 @@ function dependencies(path, text) {
   return [...text.matchAll(/(?:\bfrom|\bimport)\s*\(?\s*'(\.{1,2}\/[^']+)'/g)].map(match => resolve(directory, match[1]));
 }
 
-// reportingScriptErrors는 명령(commands: {source, command})이 실행하는 PHP나 TypeScript test file이
-// 공유 case 보고(tests/testcase.php, tests/testcase.mjs)를 직접이나 require, import한 file을 거쳐 쓰지
-// 않을 때마다 오류 하나를 돌려준다. read(path)는 tracked file의 text이거나 없으면 undefined다.
+// reportingScriptErrors는 명령(commands: {source, command})이 실행하는 test file이 case를 보고하지 않을 때마다
+// 오류 하나를 돌려준다. TypeScript test는 공유 case 보고(tests/testcase.mjs)를 직접이나 import한 file을 거쳐
+// 써야 한다. PHP test는 PHPUnit(packages/<package>/vendor/bin/phpunit과 그 package의 phpunit.xml.dist)이
+// 실행하고 보고하며 기한을 둔다. 그래서 php가 packages/<runtime>/tests/의 file을 직접 실행하면 오류다.
+// read(path)는 tracked file의 text이거나 없으면 undefined다.
 export function reportingScriptErrors(commands, read) {
   const reports = (path, seen = new Set()) => {
-    if (path === 'tests/testcase.php' || path === 'tests/testcase.mjs') return true;
+    if (path === 'tests/testcase.mjs') return true;
     if (seen.has(path)) return false;
     seen.add(path);
     const text = read(path);
@@ -130,7 +132,8 @@ export function reportingScriptErrors(commands, read) {
       if (checked.has(path)) continue;
       checked.add(path);
       if (read(path) === undefined) errors.push(`${source} runs ${path}, which is not a tracked file`);
-      else if (!reports(path)) errors.push(`${source} runs ${path}, which reports no case through tests/testcase.php or tests/testcase.mjs, so it runs without a deadline or RUN line`);
+      else if (path.endsWith('.php')) errors.push(`${source} runs ${path} with php, not with the PHPUnit of its package (packages/<package>/vendor/bin/phpunit), so it runs without a deadline or a case report`);
+      else if (!reports(path)) errors.push(`${source} runs ${path}, which reports no case through tests/testcase.mjs, so it runs without a deadline or RUN line`);
     }
   }
   return errors;

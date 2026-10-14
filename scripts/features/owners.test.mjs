@@ -19,7 +19,7 @@ const helperIds = async paths => (await selectHelpers(manifest, root, paths)).ma
 caseTest('a changed test selects only the commands that run it', 5000, async () => {
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/mysql_tls_test.go'])), ['dsn_connection/dsn-go', 'dsn_connection/dsn-mysql-tls-go']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/external_documents_test.go'])), ['schema_install/install-register-go']);
-  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/coverage_dsn.php'])), ['dsn_connection/coverage/owner/php']);
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/CoverageDsnTest.php'])), ['dsn_connection/coverage/owner/php']);
 });
 
 // transaction 끝 case(G5.45-1)는 test가 들어 있는 file이 그 test를 실행하는 명령을 고르는지 본다. Rust의 tx.rs는 자기
@@ -35,7 +35,7 @@ caseTest('a changed file selects the transaction end tests that it holds or that
 
 caseTest('a whole-suite command is split by package', 5000, async () => {
   assert.deepEqual(selected(await selectOwners(manifest, root, ['engine/ir/operators_test.go'])), ['planner/planner-go-ir']);
-  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/dbspec_render_test.php'])), ['schema_definition/schema-php']);
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/DbspecRenderTest.php'])), ['schema_definition/schema-php']);
 });
 
 caseTest('a shared helper selects its own check and no feature', 5000, async () => {
@@ -131,7 +131,7 @@ caseTest('a selected make target runs with the environments of owner-check and t
 // 고르고, 전체 suite target(scope suite)은 make check만 실행한다.
 const t42 = [
   'packages/go/orm/statement_events_test.go', 'packages/go/orm/events.go',
-  'packages/php/src/StatementEvent.php', 'packages/php/tests/statement_events_test.php',
+  'packages/php/src/StatementEvent.php', 'packages/php/tests/StatementEventsTest.php',
   'packages/rust/orm/src/events.rs', 'packages/rust/orm/tests/statement_events.rs',
   'packages/ts/src/events.ts', 'packages/ts/tests/statement-events.mjs',
   'contracts/fixtures/statement_events.dbs',

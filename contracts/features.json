@@ -72,27 +72,27 @@
         "packages/go/orm/timezone_test.go",
         "packages/go/orm/sqlite_file_name_test.go",
         "packages/go/model/replica_test.go",
-        "packages/php/tests/dsn.php",
+        "packages/php/tests/DsnTest.php",
         "packages/ts/tests/dsn.mjs",
         "packages/ts/tests/idle-connection-end.mjs",
         "packages/rust/orm/tests/zone.rs",
         "packages/rust/orm/tests/sqlite_file_name.rs",
         "packages/go/orm/coverage_dsn_test.go",
         "packages/go/model/coverage_dsn_test.go",
-        "packages/php/tests/coverage_dsn.php",
+        "packages/php/tests/CoverageDsnTest.php",
         "packages/rust/orm/tests/coverage_dsn.rs",
         "packages/rust/tests/src/integration.rs",
         "packages/ts/tests/coverage_dsn.mjs",
         "packages/go/orm/sqlite_path_test.go",
         "packages/rust/tests/tests/example_dsn.rs",
-        "packages/php/tests/sqlite_without_mysql.php",
+        "packages/php/tests/SqliteWithoutMysqlTest.php",
         "packages/go/orm/mysql_tls_test.go",
-        "packages/php/tests/mysql_tls.php",
+        "packages/php/tests/MysqlTlsTest.php",
         "packages/rust/orm/tests/mysql_tls.rs",
         "packages/ts/tests/mysql_tls.mjs",
         "tests/dsn/sqlite-paths.json",
         "packages/go/orm/markdown_test.go",
-        "packages/php/tests/markdown_test.php",
+        "packages/php/tests/MarkdownTest.php",
         "packages/rust/orm/tests/markdown.rs",
         "packages/ts/tests/markdown.mjs"
       ],
@@ -114,10 +114,10 @@
         },
         {
           "id": "markdown-session-php",
-          "command": "php packages/php/tests/markdown_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/MarkdownTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/markdown_test.php",
+            "packages/php/tests/MarkdownTest.php",
             "packages/php/tests/markdown_fake_server.php",
             "packages/php/src/Markdown.php"
           ]
@@ -153,10 +153,10 @@
         },
         {
           "id": "dsn-php",
-          "command": "php packages/php/tests/dsn.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DsnTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/dsn.php",
+            "packages/php/tests/DsnTest.php",
             "tests/dsn/sqlite-paths.json"
           ]
         },
@@ -186,7 +186,7 @@
           "shard": "other",
           "inputs": [
             "scripts/php-without-mysql.sh",
-            "packages/php/tests/sqlite_without_mysql.php"
+            "packages/php/tests/SqliteWithoutMysqlTest.php"
           ],
           "environment": "linux-runner"
         },
@@ -200,10 +200,10 @@
         },
         {
           "id": "dsn-mysql-tls-php",
-          "command": "php packages/php/tests/mysql_tls.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/MysqlTlsTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/mysql_tls.php"
+            "packages/php/tests/MysqlTlsTest.php"
           ]
         },
         {
@@ -312,13 +312,13 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/coverage_dsn.php"
+              "packages/php/tests/CoverageDsnTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_dsn.php",
+                  "test": "packages/php/tests/CoverageDsnTest.php",
                   "cases": [
                     "dsn_connection"
                   ],
@@ -328,7 +328,7 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_dsn.php",
+                  "test": "packages/php/tests/CoverageDsnTest.php",
                   "cases": [
                     "dsn_connection"
                   ],
@@ -338,7 +338,7 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_dsn.php",
+                  "test": "packages/php/tests/CoverageDsnTest.php",
                   "cases": [
                     "dsn_connection"
                   ],
@@ -608,11 +608,11 @@
         "packages/go/orm/assignment_propagation_test.go",
         "packages/go/orm/conversion_error_test.go",
         "packages/go/orm/collection_key_test.go",
-        "packages/php/tests/model_test.php",
-        "packages/php/tests/client_generics_test.php",
-        "packages/php/tests/group_rows.php",
-        "packages/php/tests/group_rows_db.php",
-        "packages/php/tests/aggregate_numeric.php",
+        "packages/php/tests/ModelTest.php",
+        "packages/php/tests/ClientGenericsTest.php",
+        "packages/php/tests/GroupRowsTest.php",
+        "packages/php/tests/GroupRowsDbTest.php",
+        "packages/php/tests/AggregateNumericTest.php",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/group_rows.mjs",
         "packages/ts/tests/group_rows_db.mjs",
@@ -626,8 +626,8 @@
         "packages/rust/orm/tests/value_decode.rs",
         "tests/conformance/runner_go/main_test.go",
         "packages/go/decimalmodel/decimal_physical_test.go",
-        "packages/php/tests/decimal_model.php",
-        "packages/php/tests/decimal_model_db.php",
+        "packages/php/tests/DecimalModelTest.php",
+        "packages/php/tests/DecimalModelDbTest.php",
         "packages/rust/tests/src/decimal_physical.rs",
         "packages/ts/tests/decimal_model.mjs",
         "packages/ts/tests/decimal_model.test.ts",
@@ -635,12 +635,12 @@
         "packages/go/orm/group_rows_test.go",
         "packages/go/orm/related_test.go",
         "packages/go/orm/value_types_test.go",
-        "packages/php/tests/unselected_column.php",
-        "packages/php/tests/unselected_column_db.php",
+        "packages/php/tests/UnselectedColumnTest.php",
+        "packages/php/tests/UnselectedColumnDbTest.php",
         "packages/rust/orm/tests/value_types.rs",
         "packages/rust/tests/src/result_chains.rs",
         "packages/go/model/coverage_model_queries_test.go",
-        "packages/php/tests/coverage_model_queries.php",
+        "packages/php/tests/CoverageModelQueriesTest.php",
         "packages/rust/tests/src/coverage_model_queries.rs",
         "packages/ts/tests/coverage_model_queries.mjs",
         "packages/go/orm/shape_test.go",
@@ -652,7 +652,7 @@
         "packages/go/model/styled_state_test.go",
         "packages/go/decimalmodel/schema_set_test.go",
         "contracts/fixtures/decimal_schema.dbs",
-        "packages/php/tests/runtime_db_test.php",
+        "packages/php/tests/RuntimeDbTest.php",
         "packages/php/tests/deadlock_child.php",
         "packages/rust/orm/tests/decimal_model.rs",
         "packages/ts/tests/typecheck.ts",
@@ -684,36 +684,36 @@
         },
         {
           "id": "client-generics-php",
-          "command": "php packages/php/tests/client_generics_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ClientGenericsTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/client_generics_test.php"
+            "packages/php/tests/ClientGenericsTest.php"
           ]
         },
         {
           "id": "queries-php",
-          "command": "php packages/php/tests/model_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/model_test.php",
+            "packages/php/tests/ModelTest.php",
             "packages/php/tests/case_database.php",
             "packages/php/tests/deadlock_child.php"
           ]
         },
         {
           "id": "group-rows-php-unit",
-          "command": "php packages/php/tests/group_rows.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/group_rows.php"
+            "packages/php/tests/GroupRowsTest.php"
           ]
         },
         {
           "id": "aggregate-php",
-          "command": "php packages/php/tests/aggregate_numeric.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AggregateNumericTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/aggregate_numeric.php",
+            "packages/php/tests/AggregateNumericTest.php",
             "contracts/fixtures/aggregate_numeric.json"
           ]
         },
@@ -748,7 +748,7 @@
           "shard": "other",
           "inputs": [
             "scripts/group-rows-physical-check.mjs",
-            "packages/php/tests/group_rows_db.php",
+            "packages/php/tests/GroupRowsDbTest.php",
             "packages/ts/tests/group_rows_db.mjs"
           ]
         },
@@ -779,35 +779,35 @@
         },
         {
           "id": "decimal-php-unit",
-          "command": ". \"$DECIMAL_ENV\" && php packages/php/tests/decimal_model.php",
+          "command": ". \"$DECIMAL_ENV\" && packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DecimalModelTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/decimal_model.php"
+            "packages/php/tests/DecimalModelTest.php"
           ]
         },
         {
           "id": "decimal-php-mysql",
-          "command": ". \"$DECIMAL_ENV\" && php packages/php/tests/decimal_model_db.php --dialect mysql",
+          "command": ". \"$DECIMAL_ENV\" && php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'with data set \"mysql\"$' packages/php/tests/DecimalModelDbTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/decimal_model_db.php",
+            "packages/php/tests/DecimalModelDbTest.php",
             "contracts/fixtures/decimal_schema.dbs"
           ]
         },
         {
           "id": "decimal-php-postgres",
-          "command": ". \"$DECIMAL_ENV\" && php packages/php/tests/decimal_model_db.php --dialect postgres",
+          "command": ". \"$DECIMAL_ENV\" && php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'with data set \"postgres\"$' packages/php/tests/DecimalModelDbTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/decimal_model_db.php"
+            "packages/php/tests/DecimalModelDbTest.php"
           ]
         },
         {
           "id": "decimal-php-sqlite",
-          "command": ". \"$DECIMAL_ENV\" && php packages/php/tests/decimal_model_db.php --dialect sqlite",
+          "command": ". \"$DECIMAL_ENV\" && php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'with data set \"sqlite\"$' packages/php/tests/DecimalModelDbTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/decimal_model_db.php"
+            "packages/php/tests/DecimalModelDbTest.php"
           ]
         },
         {
@@ -901,10 +901,10 @@
         },
         {
           "id": "runtime-db-php",
-          "command": "php packages/php/tests/runtime_db_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeDbTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/runtime_db_test.php"
+            "packages/php/tests/RuntimeDbTest.php"
           ]
         },
         {
@@ -983,13 +983,13 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/coverage_model_queries.php"
+              "packages/php/tests/CoverageModelQueriesTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_model_queries.php",
+                  "test": "packages/php/tests/CoverageModelQueriesTest.php",
                   "cases": [
                     "model_query_rows"
                   ],
@@ -999,7 +999,7 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_model_queries.php",
+                  "test": "packages/php/tests/CoverageModelQueriesTest.php",
                   "cases": [
                     "model_query_rows"
                   ],
@@ -1009,7 +1009,7 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_model_queries.php",
+                  "test": "packages/php/tests/CoverageModelQueriesTest.php",
                   "cases": [
                     "model_query_rows"
                   ],
@@ -1178,19 +1178,19 @@
       "tests": [
         "packages/go/model/model_test.go",
         "packages/go/model/assignment_test.go",
-        "packages/php/tests/model_test.php",
+        "packages/php/tests/ModelTest.php",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/styled-value.mjs",
         "packages/rust/tests/src/integration.rs",
         "packages/go/decimalmodel/decimal_physical_test.go",
-        "packages/php/tests/decimal_model.php",
-        "packages/php/tests/decimal_model_db.php",
+        "packages/php/tests/DecimalModelTest.php",
+        "packages/php/tests/DecimalModelDbTest.php",
         "packages/rust/tests/src/decimal_physical.rs",
         "packages/ts/tests/decimal_model.mjs",
         "packages/ts/tests/decimal_model.test.ts",
         "packages/ts/tests/decimal_model_db.mjs",
         "packages/go/orm/clock_test.go",
-        "packages/php/tests/clock_test.php",
+        "packages/php/tests/ClockTest.php",
         "packages/rust/orm/tests/clock.rs",
         "packages/ts/tests/clock.mjs",
         "packages/go/orm/decimal_model_test.go",
@@ -1199,10 +1199,10 @@
         "packages/go/orm/styled_state_test.go",
         "packages/go/orm/styled_state_physical_test.go",
         "packages/go/model/styled_state_test.go",
-        "packages/php/tests/styled_value_test.php",
+        "packages/php/tests/StyledValueTest.php",
         "packages/rust/orm/tests/decimal_model.rs",
         "packages/go/model/coverage_model_writes_test.go",
-        "packages/php/tests/coverage_model_writes.php",
+        "packages/php/tests/CoverageModelWritesTest.php",
         "packages/rust/tests/src/coverage_model_writes.rs",
         "packages/ts/tests/coverage_model_writes.mjs",
         "packages/go/orm/assignment_propagation_test.go",
@@ -1212,7 +1212,7 @@
         "contracts/fixtures/styled_column_states.json",
         "packages/rust/orm/tests/restore.rs",
         "packages/go/orm/identity_load_test.go",
-        "packages/php/tests/identity_load_test.php",
+        "packages/php/tests/IdentityLoadTest.php",
         "packages/ts/tests/identity-load.mjs",
         "packages/python/tests/identity_load.py",
         "packages/rust/orm/tests/identity_load.rs",
@@ -1250,35 +1250,35 @@
         },
         {
           "id": "decimal-php-unit",
-          "command": ". \"$DECIMAL_ENV\" && php packages/php/tests/decimal_model.php",
+          "command": ". \"$DECIMAL_ENV\" && packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DecimalModelTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/decimal_model.php",
+            "packages/php/tests/DecimalModelTest.php",
             "contracts/fixtures/decimal_model.json"
           ]
         },
         {
           "id": "decimal-php-mysql",
-          "command": ". \"$DECIMAL_ENV\" && php packages/php/tests/decimal_model_db.php --dialect mysql",
+          "command": ". \"$DECIMAL_ENV\" && php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'with data set \"mysql\"$' packages/php/tests/DecimalModelDbTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/decimal_model_db.php"
+            "packages/php/tests/DecimalModelDbTest.php"
           ]
         },
         {
           "id": "decimal-php-postgres",
-          "command": ". \"$DECIMAL_ENV\" && php packages/php/tests/decimal_model_db.php --dialect postgres",
+          "command": ". \"$DECIMAL_ENV\" && php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'with data set \"postgres\"$' packages/php/tests/DecimalModelDbTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/decimal_model_db.php"
+            "packages/php/tests/DecimalModelDbTest.php"
           ]
         },
         {
           "id": "decimal-php-sqlite",
-          "command": ". \"$DECIMAL_ENV\" && php packages/php/tests/decimal_model_db.php --dialect sqlite",
+          "command": ". \"$DECIMAL_ENV\" && php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'with data set \"sqlite\"$' packages/php/tests/DecimalModelDbTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/decimal_model_db.php"
+            "packages/php/tests/DecimalModelDbTest.php"
           ]
         },
         {
@@ -1354,20 +1354,20 @@
         },
         {
           "id": "clock-php",
-          "command": "php packages/php/tests/clock_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ClockTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/clock_test.php",
+            "packages/php/tests/ClockTest.php",
             "contracts/fixtures/clock.dbs",
             "contracts/fixtures/clock_mark.dbs"
           ]
         },
         {
           "id": "styled-value-php",
-          "command": "php packages/php/tests/styled_value_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/StyledValueTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/styled_value_test.php",
+            "packages/php/tests/StyledValueTest.php",
             "contracts/fixtures/styled_column_states.json"
           ]
         },
@@ -1412,10 +1412,10 @@
         },
         {
           "id": "identity-load-php",
-          "command": "php packages/php/tests/identity_load_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/IdentityLoadTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/identity_load_test.php",
+            "packages/php/tests/IdentityLoadTest.php",
             "contracts/fixtures/identity_load.dbs",
             "contracts/fixtures/identity_load.json"
           ]
@@ -1516,13 +1516,13 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/coverage_model_writes.php"
+              "packages/php/tests/CoverageModelWritesTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_model_writes.php",
+                  "test": "packages/php/tests/CoverageModelWritesTest.php",
                   "cases": [
                     "model_write_cycle"
                   ],
@@ -1532,7 +1532,7 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_model_writes.php",
+                  "test": "packages/php/tests/CoverageModelWritesTest.php",
                   "cases": [
                     "model_write_cycle"
                   ],
@@ -1542,7 +1542,7 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_model_writes.php",
+                  "test": "packages/php/tests/CoverageModelWritesTest.php",
                   "cases": [
                     "model_write_cycle"
                   ],
@@ -1714,31 +1714,32 @@
       "tests": [
         "packages/go/model/model_test.go",
         "packages/go/orm/cancel_test.go",
-        "packages/php/tests/model_test.php",
+        "packages/php/tests/ModelTest.php",
         "packages/ts/tests/model.mjs",
         "packages/rust/orm/tests/zone.rs",
         "packages/rust/tests/src/integration.rs",
         "packages/go/orm/goexit_test.go",
         "packages/go/orm/context_reset_test.go",
         "packages/go/model/sqlite_concurrency_test.go",
-        "packages/php/tests/sqlite_concurrency_test.php",
+        "packages/php/tests/SqliteConcurrencyTest.php",
+        "packages/php/tests/sqlite_concurrency_writer.php",
         "packages/ts/tests/sqlite-concurrency.mjs",
         "packages/rust/orm/tests/sqlite_concurrency.rs",
         "packages/go/orm/rollback_test.go",
-        "packages/php/tests/rollback_test.php",
+        "packages/php/tests/RollbackTest.php",
         "packages/rust/orm/tests/rollback.rs",
         "packages/ts/tests/rollback.mjs",
         "packages/go/orm/cancelled_session_test.go",
         "packages/go/orm/transaction_end_test.go",
         "packages/go/model/coverage_transactions_test.go",
-        "packages/php/tests/coverage_transactions.php",
+        "packages/php/tests/CoverageTransactionsTest.php",
         "packages/rust/tests/src/coverage_transactions.rs",
         "packages/ts/tests/coverage_transactions.mjs",
         "packages/go/orm/rollback_fault_test.go",
         "packages/go/orm/rollback_fault_entry_test.go",
         "packages/go/orm/statement_fault_test.go",
         "packages/go/orm/statement_fault_entry_test.go",
-        "packages/php/tests/statement_fault_test.php",
+        "packages/php/tests/StatementFaultTest.php",
         "packages/rust/orm/tests/statement_fault.rs",
         "packages/ts/tests/statement_fault.mjs",
         "packages/python/tests/statement_fault.py",
@@ -1787,10 +1788,10 @@
         },
         {
           "id": "rollback-php",
-          "command": "php packages/php/tests/rollback_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RollbackTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/rollback_test.php",
+            "packages/php/tests/RollbackTest.php",
             "packages/php/testing/Faults.php",
             "contracts/fixtures/rollback.dbs"
           ]
@@ -1807,10 +1808,10 @@
         },
         {
           "id": "statement-fault-php",
-          "command": "php packages/php/tests/statement_fault_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/StatementFaultTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/statement_fault_test.php",
+            "packages/php/tests/StatementFaultTest.php",
             "packages/php/testing/Faults.php",
             "contracts/fixtures/statement_fault.json",
             "contracts/fixtures/rollback.dbs"
@@ -1893,10 +1894,11 @@
         },
         {
           "id": "sqlite-concurrency-php",
-          "command": "php packages/php/tests/sqlite_concurrency_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/SqliteConcurrencyTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/sqlite_concurrency_test.php"
+            "packages/php/tests/SqliteConcurrencyTest.php",
+            "packages/php/tests/sqlite_concurrency_writer.php"
           ]
         },
         {
@@ -1984,13 +1986,13 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/coverage_transactions.php"
+              "packages/php/tests/CoverageTransactionsTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_transactions.php",
+                  "test": "packages/php/tests/CoverageTransactionsTest.php",
                   "cases": [
                     "transaction_rollback",
                     "transaction_savepoint"
@@ -2001,7 +2003,7 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_transactions.php",
+                  "test": "packages/php/tests/CoverageTransactionsTest.php",
                   "cases": [
                     "transaction_rollback",
                     "transaction_savepoint"
@@ -2012,7 +2014,7 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_transactions.php",
+                  "test": "packages/php/tests/CoverageTransactionsTest.php",
                   "cases": [
                     "transaction_rollback",
                     "transaction_savepoint"
@@ -2176,10 +2178,10 @@
         "packages/go/orm/statement_events_test.go",
         "packages/go/orm/statement_events_export_test.go",
         "packages/ts/tests/statement-events.mjs",
-        "packages/php/tests/statement_events_test.php",
+        "packages/php/tests/StatementEventsTest.php",
         "packages/rust/orm/tests/statement_events.rs",
         "packages/go/orm/coverage_statement_events_test.go",
-        "packages/php/tests/coverage_statement_events.php",
+        "packages/php/tests/CoverageStatementEventsTest.php",
         "packages/ts/tests/coverage_statement_events.mjs"
       ],
       "docs": [
@@ -2212,10 +2214,10 @@
         },
         {
           "id": "statement-events-php",
-          "command": "php packages/php/tests/statement_events_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/StatementEventsTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/statement_events_test.php",
+            "packages/php/tests/StatementEventsTest.php",
             "packages/php/tests/statement_events_run.php",
             "packages/php/tests/case_database.php",
             "contracts/fixtures/statement_events.dbs",
@@ -2296,7 +2298,7 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/coverage_statement_events.php"
+              "packages/php/tests/CoverageStatementEventsTest.php"
             ],
             "inputs": [
               "packages/php/tests/statement_events_run.php",
@@ -2308,7 +2310,7 @@
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_statement_events.php",
+                  "test": "packages/php/tests/CoverageStatementEventsTest.php",
                   "cases": [
                     "statement_events"
                   ],
@@ -2318,7 +2320,7 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_statement_events.php",
+                  "test": "packages/php/tests/CoverageStatementEventsTest.php",
                   "cases": [
                     "statement_events"
                   ],
@@ -2328,7 +2330,7 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_statement_events.php",
+                  "test": "packages/php/tests/CoverageStatementEventsTest.php",
                   "cases": [
                     "statement_events"
                   ],
@@ -2496,15 +2498,15 @@
         "generator/gen_go_scan_test.go",
         "generator/gen_go_test.go",
         "generator/generator_test.go",
-        "packages/php/tests/engine_test.php",
+        "packages/php/tests/EngineTest.php",
         "packages/ts/tests/generate.mjs",
         "packages/rust/build/tests/generate.rs",
-        "packages/php/tests/orm_gen_test.php",
-        "packages/php/tests/model_methods_test.php",
+        "packages/php/tests/OrmGenTest.php",
+        "packages/php/tests/ModelMethodsTest.php",
         "packages/ts/tests/generate-scan.mjs",
         "packages/ts/tests/models-scan.mjs",
         "packages/go/model/coverage_model_generation_test.go",
-        "packages/php/tests/coverage_model_generation.php",
+        "packages/php/tests/CoverageModelGenerationTest.php",
         "packages/rust/tests/tests/coverage_model_generation.rs",
         "packages/ts/tests/coverage_model_generation.mjs"
       ],
@@ -2548,20 +2550,20 @@
         },
         {
           "id": "generation-php",
-          "command": "php packages/php/tests/orm_gen_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/orm_gen_test.php",
+            "packages/php/tests/OrmGenTest.php",
             "tests/dbspec/files/dbschema.dbs",
             "tests/dbspec/files/empty.dbs"
           ]
         },
         {
           "id": "generation-methods-php",
-          "command": "php packages/php/tests/model_methods_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelMethodsTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/model_methods_test.php"
+            "packages/php/tests/ModelMethodsTest.php"
           ]
         },
         {
@@ -2613,13 +2615,13 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/coverage_model_generation.php"
+              "packages/php/tests/CoverageModelGenerationTest.php"
             ],
             "commands": {
               "none": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_model_generation.php",
+                  "test": "packages/php/tests/CoverageModelGenerationTest.php",
                   "cases": [
                     "model_generation_check"
                   ]
@@ -2742,19 +2744,19 @@
         "packages/python/tests/coverage_case.py"
       ],
       "tests": [
-        "packages/php/tests/dbspec_apply_cleanup_test.php",
-        "packages/php/tests/dbspec_apply_test.php",
+        "packages/php/tests/DbspecApplyCleanupTest.php",
+        "packages/php/tests/DbspecApplyTest.php",
         "packages/php/tests/dbspec_cases.php",
-        "packages/php/tests/dbspec_introspect_stress_test.php",
-        "packages/php/tests/dbspec_introspect_test.php",
-        "packages/php/tests/dbspec_manifest_test.php",
-        "packages/php/tests/dbspec_mermaid_test.php",
-        "packages/php/tests/dbspec_plan_apply_test.php",
-        "packages/php/tests/dbspec_plan_test.php",
-        "packages/php/tests/dbspec_render_test.php",
-        "packages/php/tests/dbspec_rules_test.php",
-        "packages/php/tests/dbspec_stress_test.php",
-        "packages/php/tests/dbspec_test.php",
+        "packages/php/tests/DbspecIntrospectStressTest.php",
+        "packages/php/tests/DbspecIntrospectTest.php",
+        "packages/php/tests/DbspecManifestTest.php",
+        "packages/php/tests/DbspecMermaidTest.php",
+        "packages/php/tests/DbspecPlanApplyTest.php",
+        "packages/php/tests/DbspecPlanTest.php",
+        "packages/php/tests/DbspecRenderTest.php",
+        "packages/php/tests/DbspecRulesTest.php",
+        "packages/php/tests/DbspecStressTest.php",
+        "packages/php/tests/DbspecTest.php",
         "packages/rust/schema/tests/dbspec.rs",
         "packages/rust/schema/tests/dbspec_manifest.rs",
         "packages/rust/schema/tests/dbspec_mermaid.rs",
@@ -2793,47 +2795,47 @@
         "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
         "packages/ts/tests/dbspec-apply-cleanup.mjs",
         "packages/ts/tests/dbspec-unicode.mjs",
-        "packages/php/tests/dbspec_unicode_test.php",
+        "packages/php/tests/DbspecUnicodeTest.php",
         "engine/dbspec/show_create_test.go",
         "engine/dbspec/show_create_introspect_test.go",
-        "packages/php/tests/dbspec_show_create_test.php",
+        "packages/php/tests/DbspecShowCreateTest.php",
         "packages/ts/tests/dbspec-show-create.mjs",
         "packages/go/orm/coverage_schema_definition_test.go",
-        "packages/php/tests/coverage_schema_definition.php",
+        "packages/php/tests/CoverageSchemaDefinitionTest.php",
         "packages/rust/schema/tests/coverage_schema_definition.rs",
         "packages/ts/tests/coverage_schema_definition.mjs",
         "packages/ts/tests/package-declarations.mjs",
         "engine/dbspec/case_clock_test.go",
         "packages/php-ext/tests/declarations.php",
-        "packages/php-ext/tests/declarations_test.php",
-        "packages/php-ext/tests/dbspec_test.php",
-        "packages/php-ext/tests/dbspec_plan_test.php",
-        "packages/php-ext/tests/dbspec_mermaid_test.php",
-        "packages/php-ext/tests/dbspec_apply_cleanup_test.php",
-        "packages/php-ext/tests/dbspec_show_create_test.php",
+        "packages/php-ext/tests/DeclarationsTest.php",
+        "packages/php-ext/tests/DbspecTest.php",
+        "packages/php-ext/tests/DbspecPlanTest.php",
+        "packages/php-ext/tests/DbspecMermaidTest.php",
+        "packages/php-ext/tests/DbspecApplyCleanupTest.php",
+        "packages/php-ext/tests/DbspecShowCreateTest.php",
         "packages/php/tests/dbspec_set_cases.php",
-        "packages/php/tests/dbspec_set_test.php",
-        "packages/php-ext/tests/dbspec_set_test.php",
+        "packages/php/tests/DbspecSetTest.php",
+        "packages/php-ext/tests/DbspecSetTest.php",
         "engine/dbspec/analyze_test.go",
         "engine/dbspec/syntax_vectors_test.go",
-        "packages/php/tests/dbspec_analyze_test.php",
+        "packages/php/tests/DbspecAnalyzeTest.php",
         "packages/php/tests/dbspec_analysis_cases.php",
         "packages/php/tests/dbspec_syntax_vectors.php",
-        "packages/php-ext/tests/dbspec_analyze_test.php",
+        "packages/php-ext/tests/DbspecAnalyzeTest.php",
         "packages/rust/schema/tests/dbspec_analyze.rs",
         "packages/ts/tests/dbspec-analyze.mjs",
         "engine/dbspec/set_test.go",
         "engine/dbspec/parseset_test.go",
         "packages/php/tests/dbspec_set_parse_cases.php",
-        "packages/php/tests/dbspec_set_parse_test.php",
-        "packages/php-ext/tests/dbspec_set_parse_test.php",
+        "packages/php/tests/DbspecSetParseTest.php",
+        "packages/php-ext/tests/DbspecSetParseTest.php",
         "packages/ts/tests/dbspec-set-parse.mjs",
         "packages/rust/schema/tests/dbspec_set.rs",
         "packages/rust/schema/tests/dbspec_set_parse.rs",
         "packages/ts/tests/dbspec-set.mjs",
         "packages/ts/tests/browser-entry.mjs",
         "packages/ts/tests/syntax-vectors.mjs",
-        "packages/php-ext/tests/dbspec_names_test.php",
+        "packages/php-ext/tests/DbspecNamesTest.php",
         "packages/python/tests/dbspec_cases.py",
         "packages/python/tests/dbspec_ddl.py",
         "packages/python/tests/dbspec_plans.py",
@@ -2897,24 +2899,24 @@
           "command": "make dbspec-php-check",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/dbspec_test.php",
+            "packages/php/tests/DbspecTest.php",
             "packages/php/tests/case_clock.php",
             "packages/php/tests/dbspec_cases.php",
-            "packages/php/tests/dbspec_rules_test.php",
-            "packages/php/tests/dbspec_manifest_test.php",
-            "packages/php/tests/dbspec_render_test.php",
-            "packages/php/tests/dbspec_plan_test.php",
-            "packages/php/tests/dbspec_mermaid_test.php",
-            "packages/php/tests/dbspec_apply_cleanup_test.php",
-            "packages/php/tests/dbspec_unicode_test.php",
+            "packages/php/tests/DbspecRulesTest.php",
+            "packages/php/tests/DbspecManifestTest.php",
+            "packages/php/tests/DbspecRenderTest.php",
+            "packages/php/tests/DbspecPlanTest.php",
+            "packages/php/tests/DbspecMermaidTest.php",
+            "packages/php/tests/DbspecApplyCleanupTest.php",
+            "packages/php/tests/DbspecUnicodeTest.php",
             "packages/php/src/Dbspec/UnicodeWord.php",
-            "packages/php/tests/dbspec_show_create_test.php",
+            "packages/php/tests/DbspecShowCreateTest.php",
             "packages/php/tests/dbspec_set_cases.php",
-            "packages/php/tests/dbspec_set_test.php",
+            "packages/php/tests/DbspecSetTest.php",
             "packages/php/tests/dbspec_set_parse_cases.php",
-            "packages/php/tests/dbspec_set_parse_test.php",
+            "packages/php/tests/DbspecSetParseTest.php",
             "tests/dbspec/set-files.json",
-            "packages/php/tests/dbspec_analyze_test.php",
+            "packages/php/tests/DbspecAnalyzeTest.php",
             "packages/php/tests/dbspec_analysis_cases.php",
             "packages/php/tests/dbspec_syntax_vectors.php",
             "tests/dbspec/syntax.json",
@@ -3028,23 +3030,23 @@
             "packages/php-ext/composer.json",
             "packages/php-ext/stubs/orm_dbspec.stub.php",
             "packages/php-ext/tests/declarations.php",
-            "packages/php-ext/tests/declarations_test.php",
-            "packages/php-ext/tests/dbspec_test.php",
-            "packages/php-ext/tests/dbspec_plan_test.php",
-            "packages/php/tests/dbspec_plan_test.php",
+            "packages/php-ext/tests/DeclarationsTest.php",
+            "packages/php-ext/tests/DbspecTest.php",
+            "packages/php-ext/tests/DbspecPlanTest.php",
+            "packages/php/tests/DbspecPlanTest.php",
             "tests/dbspec/plans.json",
-            "packages/php-ext/tests/dbspec_mermaid_test.php",
-            "packages/php/tests/dbspec_mermaid_test.php",
+            "packages/php-ext/tests/DbspecMermaidTest.php",
+            "packages/php/tests/DbspecMermaidTest.php",
             "tests/dbspec/mermaid.json",
-            "packages/php-ext/tests/dbspec_apply_cleanup_test.php",
-            "packages/php/tests/dbspec_apply_cleanup_test.php",
-            "packages/php-ext/tests/dbspec_show_create_test.php",
-            "packages/php-ext/tests/dbspec_set_test.php",
-            "packages/php-ext/tests/dbspec_set_parse_test.php",
+            "packages/php-ext/tests/DbspecApplyCleanupTest.php",
+            "packages/php/tests/DbspecApplyCleanupTest.php",
+            "packages/php-ext/tests/DbspecShowCreateTest.php",
+            "packages/php-ext/tests/DbspecSetTest.php",
+            "packages/php-ext/tests/DbspecSetParseTest.php",
             "packages/php/tests/dbspec_set_parse_cases.php",
             "packages/php/tests/dbspec_set_cases.php",
             "tests/dbspec/set-files.json",
-            "packages/php-ext/tests/dbspec_analyze_test.php",
+            "packages/php-ext/tests/DbspecAnalyzeTest.php",
             "packages/php/tests/dbspec_analysis_cases.php",
             "packages/php/tests/dbspec_syntax_vectors.php",
             "tests/dbspec/syntax.json",
@@ -3057,7 +3059,7 @@
             "tests/dbspec/files/shop.dbs",
             "tests/dbspec/files/dbschema.dbs",
             "tests/dbspec/files/empty.dbs",
-            "packages/php-ext/tests/dbspec_names_test.php"
+            "packages/php-ext/tests/DbspecNamesTest.php"
           ]
         },
         {
@@ -3146,7 +3148,7 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/coverage_schema_definition.php"
+              "packages/php/tests/CoverageSchemaDefinitionTest.php"
             ],
             "inputs": [
               "contracts/fixtures/schema_definition.json"
@@ -3155,7 +3157,7 @@
               "none": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_schema_definition.php",
+                  "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
                   "cases": [
                     "dbspec_emit_round_trip",
                     "dbspec_manifest_hash",
@@ -3337,22 +3339,22 @@
       "tests": [
         "packages/go/orm/keyword_test.go",
         "packages/go/orm/timezone_test.go",
-        "packages/php/tests/model_test.php",
+        "packages/php/tests/ModelTest.php",
         "packages/ts/tests/model.mjs",
         "packages/rust/orm/tests/zone.rs",
         "packages/go/orm/install_test.go",
-        "packages/php/tests/schema_set_test.php",
+        "packages/php/tests/SchemaSetTest.php",
         "packages/ts/tests/schema-set.mjs",
         "packages/php/tests/case_database.php",
         "packages/ts/tests/case-database.mjs",
         "packages/go/decimalmodel/schema_set_test.go",
         "packages/rust/tests/src/decimal_physical.rs",
         "packages/go/model/coverage_schema_install_test.go",
-        "packages/php/tests/coverage_schema_install.php",
+        "packages/php/tests/CoverageSchemaInstallTest.php",
         "packages/rust/tests/src/coverage_schema_install.rs",
         "packages/ts/tests/coverage_schema_install.mjs",
         "packages/go/orm/add_tables_and_columns_test.go",
-        "packages/php/tests/add_tables_and_columns_test.php",
+        "packages/php/tests/AddTablesAndColumnsTest.php",
         "packages/rust/orm/tests/add_tables_and_columns.rs",
         "packages/ts/tests/add-tables-and-columns.mjs",
         "packages/go/orm/external_documents_test.go",
@@ -3379,10 +3381,10 @@
         },
         {
           "id": "install-php",
-          "command": "php packages/php/tests/engine_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/engine_test.php",
+            "packages/php/tests/EngineTest.php",
             "tests/ir/validate.json"
           ]
         },
@@ -3397,10 +3399,10 @@
         },
         {
           "id": "install-add-tables-and-columns-php",
-          "command": "php packages/php/tests/add_tables_and_columns_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AddTablesAndColumnsTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/add_tables_and_columns_test.php",
+            "packages/php/tests/AddTablesAndColumnsTest.php",
             "packages/php/tests/case_database.php",
             "contracts/fixtures/add_tables_and_columns/*.dbs"
           ]
@@ -3439,10 +3441,10 @@
         },
         {
           "id": "install-register-php",
-          "command": "php packages/php/tests/schema_set_test.php register_sends_no_statement install_verifies_the_database external_documents",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test_(register_sends_no_statement|install_verifies_the_database|external_documents)' packages/php/tests/SchemaSetTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/schema_set_test.php",
+            "packages/php/tests/SchemaSetTest.php",
             "packages/php/tests/case_database.php",
             "contracts/fixtures/install/changed_database.json"
           ]
@@ -3547,13 +3549,13 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/coverage_schema_install.php"
+              "packages/php/tests/CoverageSchemaInstallTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_schema_install.php",
+                  "test": "packages/php/tests/CoverageSchemaInstallTest.php",
                   "cases": [
                     "schema_install_existing",
                     "schema_install_partial",
@@ -3565,7 +3567,7 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_schema_install.php",
+                  "test": "packages/php/tests/CoverageSchemaInstallTest.php",
                   "cases": [
                     "schema_install_existing",
                     "schema_install_partial",
@@ -3577,7 +3579,7 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_schema_install.php",
+                  "test": "packages/php/tests/CoverageSchemaInstallTest.php",
                   "cases": [
                     "schema_install_existing",
                     "schema_install_partial",
@@ -3759,7 +3761,7 @@
         "engine/engine_test.go",
         "engine/query_forms_test.go",
         "engine/planner/soft_delete_test.go",
-        "packages/php/tests/engine_test.php",
+        "packages/php/tests/EngineTest.php",
         "packages/ts/tests/engine.mjs",
         "engine/functions_physical_test.go",
         "engine/interface_test.go",
@@ -3769,9 +3771,9 @@
         "engine/dialect/sqlite_test.go",
         "packages/rust/tests/src/conformance.rs",
         "engine/planner/runtime_model_test.go",
-        "packages/php/tests/runtime_model_test.php",
+        "packages/php/tests/RuntimeModelTest.php",
         "packages/go/orm/coverage_planner_test.go",
-        "packages/php/tests/coverage_planner.php",
+        "packages/php/tests/CoveragePlannerTest.php",
         "packages/rust/orm/tests/unit/coverage_planner.rs",
         "packages/ts/tests/coverage_planner.mjs",
         "engine/planner/restore_test.go",
@@ -3874,10 +3876,10 @@
         },
         {
           "id": "planner-php",
-          "command": "php packages/php/tests/engine_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/engine_test.php",
+            "packages/php/tests/EngineTest.php",
             "tests/ir/validate.json"
           ]
         },
@@ -4106,7 +4108,7 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/coverage_planner.php"
+              "packages/php/tests/CoveragePlannerTest.php"
             ],
             "inputs": [
               "contracts/fixtures/planner.json",
@@ -4116,7 +4118,7 @@
               "none": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_planner.php",
+                  "test": "packages/php/tests/CoveragePlannerTest.php",
                   "cases": [
                     "planner_statement",
                     "planner_count",
@@ -4449,11 +4451,11 @@
       ],
       "tests": [
         "packages/go/model/model_test.go",
-        "packages/php/tests/model_test.php",
+        "packages/php/tests/ModelTest.php",
         "packages/rust/tests/src/integration.rs",
         "packages/ts/tests/model.mjs",
         "packages/go/model/coverage_composite_keys_test.go",
-        "packages/php/tests/coverage_composite_keys.php",
+        "packages/php/tests/CoverageCompositeKeysTest.php",
         "packages/rust/tests/src/coverage_composite_keys.rs",
         "packages/ts/tests/coverage_composite_keys.mjs"
       ],
@@ -4527,13 +4529,13 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/coverage_composite_keys.php"
+              "packages/php/tests/CoverageCompositeKeysTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_composite_keys.php",
+                  "test": "packages/php/tests/CoverageCompositeKeysTest.php",
                   "cases": [
                     "composite_key_rows"
                   ],
@@ -4543,7 +4545,7 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_composite_keys.php",
+                  "test": "packages/php/tests/CoverageCompositeKeysTest.php",
                   "cases": [
                     "composite_key_rows"
                   ],
@@ -4553,7 +4555,7 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_composite_keys.php",
+                  "test": "packages/php/tests/CoverageCompositeKeysTest.php",
                   "cases": [
                     "composite_key_rows"
                   ],
@@ -4711,16 +4713,17 @@
         "packages/go/orm/aes_rotation_test.go",
         "packages/go/orm/aes_json_test.go",
         "packages/go/orm/aes_keys_test.go",
-        "packages/php/tests/aes_json_test.php",
+        "packages/php/tests/AesJsonTest.php",
         "packages/rust/orm/tests/aes_json.rs",
         "packages/rust/orm/tests/aes_keys.rs",
         "packages/ts/tests/model.mjs",
-        "packages/php/tests/hostcodec.php",
+        "packages/php/tests/HostcodecTest.php",
         "packages/ts/tests/codec-vector.mjs",
+        "packages/php/tests/CodecVectorsTest.php",
         "packages/go/orm/fuzz_test.go",
         "packages/rust/tests/src/integration.rs",
         "packages/go/orm/coverage_authenticated_encryption_test.go",
-        "packages/php/tests/coverage_authenticated_encryption.php",
+        "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
         "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
         "packages/ts/tests/coverage_authenticated_encryption.mjs",
         "contracts/fixtures/secret_config.dbs",
@@ -4758,11 +4761,20 @@
         },
         {
           "id": "encryption-php",
-          "command": "php packages/php/tests/hostcodec.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/HostcodecTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/hostcodec.php",
+            "packages/php/tests/HostcodecTest.php",
             "tests/codec/decode-vectors.json"
+          ]
+        },
+        {
+          "id": "encryption-codec-php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test_php_' packages/php/tests/CodecVectorsTest.php",
+          "shard": "other",
+          "inputs": [
+            "packages/php/tests/CodecVectorsTest.php",
+            "tests/codec/vectors.json"
           ]
         },
         {
@@ -4805,10 +4817,10 @@
         },
         {
           "id": "aes-json-php",
-          "command": "php packages/php/tests/aes_json_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AesJsonTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/aes_json_test.php",
+            "packages/php/tests/AesJsonTest.php",
             "contracts/fixtures/secret_config.dbs"
           ]
         },
@@ -4866,7 +4878,7 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/coverage_authenticated_encryption.php"
+              "packages/php/tests/CoverageAuthenticatedEncryptionTest.php"
             ],
             "inputs": [
               "contracts/fixtures/authenticated_encryption.json"
@@ -4875,7 +4887,7 @@
               "none": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_authenticated_encryption.php",
+                  "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
                   "cases": [
                     "aes_envelope_decrypt",
                     "aes_round_trip",
@@ -4999,11 +5011,11 @@
       "tests": [
         "packages/go/model/chunk_test.go",
         "packages/rust/tests/src/integration.rs",
-        "packages/php/tests/relation_keys.php",
-        "packages/php/tests/model_test.php",
+        "packages/php/tests/RelationKeysTest.php",
+        "packages/php/tests/ModelTest.php",
         "packages/ts/tests/model.mjs",
         "packages/go/model/coverage_parameter_chunking_test.go",
-        "packages/php/tests/coverage_parameter_chunking.php",
+        "packages/php/tests/CoverageParameterChunkingTest.php",
         "packages/rust/tests/src/coverage_parameter_chunking.rs",
         "packages/ts/tests/coverage_parameter_chunking.mjs",
         "packages/rust/tests/src/result_chains.rs",
@@ -5037,18 +5049,18 @@
         },
         {
           "id": "chunking-php-keys",
-          "command": "php packages/php/tests/relation_keys.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/relation_keys.php"
+            "packages/php/tests/RelationKeysTest.php"
           ]
         },
         {
           "id": "chunking-php",
-          "command": "php packages/php/tests/model_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/model_test.php",
+            "packages/php/tests/ModelTest.php",
             "packages/php/tests/case_database.php"
           ]
         },
@@ -5118,13 +5130,13 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/coverage_parameter_chunking.php"
+              "packages/php/tests/CoverageParameterChunkingTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_parameter_chunking.php",
+                  "test": "packages/php/tests/CoverageParameterChunkingTest.php",
                   "cases": [
                     "root_in_chunking"
                   ],
@@ -5134,7 +5146,7 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_parameter_chunking.php",
+                  "test": "packages/php/tests/CoverageParameterChunkingTest.php",
                   "cases": [
                     "root_in_chunking"
                   ],
@@ -5144,7 +5156,7 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_parameter_chunking.php",
+                  "test": "packages/php/tests/CoverageParameterChunkingTest.php",
                   "cases": [
                     "root_in_chunking"
                   ],
@@ -5307,15 +5319,15 @@
         "packages/go/orm/pg/pg_test.go",
         "packages/rust/orm/tests/soft_delete.rs",
         "engine/dbspec/render_test.go",
-        "packages/php/tests/dbspec_render_test.php",
+        "packages/php/tests/DbspecRenderTest.php",
         "packages/ts/tests/dbspec-render.mjs",
         "packages/rust/schema/tests/dbspec_render.rs",
         "packages/go/orm/refusal_test.go",
-        "packages/php/tests/driver_error_test.php",
+        "packages/php/tests/DriverErrorTest.php",
         "packages/rust/orm/tests/refusal.rs",
         "packages/ts/tests/driver-error.mjs",
         "packages/go/model/coverage_constraints_and_relations_test.go",
-        "packages/php/tests/coverage_constraints_and_relations.php",
+        "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
         "packages/rust/tests/src/coverage_constraints_and_relations.rs",
         "packages/ts/tests/coverage_constraints_and_relations.mjs",
         "contracts/fixtures/refusal.dbs"
@@ -5353,10 +5365,10 @@
         },
         {
           "id": "driver-error-php",
-          "command": "php packages/php/tests/driver_error_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DriverErrorTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/driver_error_test.php",
+            "packages/php/tests/DriverErrorTest.php",
             "contracts/fixtures/refusal.dbs"
           ]
         },
@@ -5443,13 +5455,13 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/coverage_constraints_and_relations.php"
+              "packages/php/tests/CoverageConstraintsAndRelationsTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_constraints_and_relations.php",
+                  "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
                   "cases": [
                     "constraint_errors"
                   ],
@@ -5459,7 +5471,7 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_constraints_and_relations.php",
+                  "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
                   "cases": [
                     "constraint_errors"
                   ],
@@ -5469,7 +5481,7 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_constraints_and_relations.php",
+                  "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
                   "cases": [
                     "constraint_errors"
                   ],
@@ -5627,20 +5639,20 @@
         "contracts/fixtures/external/board.dbs"
       ],
       "tests": [
-        "packages/php/tests/model_test.php",
+        "packages/php/tests/ModelTest.php",
         "packages/rust/orm/tests/audit.rs",
         "packages/ts/tests/model.mjs",
         "packages/go/orm/audit_transaction_test.go",
-        "packages/php/tests/runtime_db_test.php",
+        "packages/php/tests/RuntimeDbTest.php",
         "packages/ts/tests/dbspec_runtime_db.mjs",
         "packages/go/orm/coverage_audit_triggers_test.go",
-        "packages/php/tests/coverage_audit_triggers.php",
+        "packages/php/tests/CoverageAuditTriggersTest.php",
         "packages/rust/orm/tests/coverage_audit_triggers.rs",
         "packages/ts/tests/coverage_audit_triggers.mjs",
-        "packages/php/tests/coverage_audit_columns.php",
+        "packages/php/tests/CoverageAuditColumnsTest.php",
         "packages/go/orm/restore_test.go",
         "packages/rust/orm/tests/restore.rs",
-        "packages/php/tests/audit_external_sets_test.php",
+        "packages/php/tests/AuditExternalSetsTest.php",
         "contracts/fixtures/external/board.dbs",
         "contracts/fixtures/external/core.dbs",
         "contracts/fixtures/external/core_extra.dbs",
@@ -5665,10 +5677,10 @@
         },
         {
           "id": "audit-external-sets-php",
-          "command": "php packages/php/tests/audit_external_sets_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AuditExternalSetsTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/audit_external_sets_test.php",
+            "packages/php/tests/AuditExternalSetsTest.php",
             "contracts/fixtures/external/board.dbs",
             "contracts/fixtures/external/core.dbs",
             "contracts/fixtures/external/core_extra.dbs",
@@ -5766,8 +5778,8 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/coverage_audit_triggers.php",
-              "packages/php/tests/coverage_audit_columns.php"
+              "packages/php/tests/CoverageAuditTriggersTest.php",
+              "packages/php/tests/CoverageAuditColumnsTest.php"
             ],
             "inputs": [
               "packages/php/tests/restore_case.php",
@@ -5780,7 +5792,7 @@
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_audit_triggers.php",
+                  "test": "packages/php/tests/CoverageAuditTriggersTest.php",
                   "cases": [
                     "audit_history",
                     "audit_transaction_entry_points",
@@ -5790,7 +5802,7 @@
                 },
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_audit_columns.php",
+                  "test": "packages/php/tests/CoverageAuditColumnsTest.php",
                   "cases": [
                     "audit_selected_columns"
                   ],
@@ -5800,7 +5812,7 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_audit_triggers.php",
+                  "test": "packages/php/tests/CoverageAuditTriggersTest.php",
                   "cases": [
                     "audit_history",
                     "audit_transaction_entry_points",
@@ -5810,7 +5822,7 @@
                 },
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_audit_columns.php",
+                  "test": "packages/php/tests/CoverageAuditColumnsTest.php",
                   "cases": [
                     "audit_selected_columns"
                   ],
@@ -5820,7 +5832,7 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_audit_triggers.php",
+                  "test": "packages/php/tests/CoverageAuditTriggersTest.php",
                   "cases": [
                     "audit_history",
                     "audit_transaction_entry_points",
@@ -5830,7 +5842,7 @@
                 },
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_audit_columns.php",
+                  "test": "packages/php/tests/CoverageAuditColumnsTest.php",
                   "cases": [
                     "audit_selected_columns"
                   ],
@@ -6017,7 +6029,7 @@
         "tests/interfaces/rust/src/main.rs",
         "tests/interfaces/typescript.mjs",
         "packages/go/orm/coverage_interface_contract_test.go",
-        "packages/php/tests/coverage_interface_contract.php",
+        "packages/php/tests/CoverageInterfaceContractTest.php",
         "packages/rust/orm/tests/coverage_interface_contract.rs",
         "packages/ts/tests/coverage_interface_contract.mjs",
         "contracts/generate.go",
@@ -6096,7 +6108,7 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/coverage_interface_contract.php"
+              "packages/php/tests/CoverageInterfaceContractTest.php"
             ],
             "inputs": [
               "tests/interfaces/check/*.go",
@@ -6108,7 +6120,7 @@
               "none": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_interface_contract.php",
+                  "test": "packages/php/tests/CoverageInterfaceContractTest.php",
                   "cases": [
                     "interface_symbols"
                   ]
@@ -6220,14 +6232,14 @@
         "packages/go/bench/client_test.go",
         "packages/go/bench/gate_test.go",
         "packages/go/bench/native_test.go",
-        "packages/php/tests/perf_gate.php",
+        "packages/php/tests/PerfGateTest.php",
         "packages/php/tests/perf_extensions.php",
-        "packages/php/tests/perf_extensions_test.php",
+        "packages/php/tests/PerfExtensionsTest.php",
         "packages/rust/tests/src/client_bench.rs",
         "packages/rust/tests/tests/client_bench_args.rs",
         "packages/rust/tests/tests/client_bench_dsn.rs",
         "packages/go/bench/coverage_performance_gate_test.go",
-        "packages/php/tests/coverage_performance_gate.php",
+        "packages/php/tests/CoveragePerformanceGateTest.php",
         "packages/rust/tests/tests/coverage_performance_gate.rs",
         "packages/go/bench/statements_test.go",
         "tests/timing/preempted.test.mjs"
@@ -6244,7 +6256,7 @@
             "scripts/perf-test.sh",
             "packages/go/bench/statements_test.go",
             "packages/go/bench/gate_test.go",
-            "packages/php/tests/perf_gate.php",
+            "packages/php/tests/PerfGateTest.php",
             "packages/php/tests/perf_extensions.php"
           ]
         },
@@ -6306,13 +6318,13 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/coverage_performance_gate.php"
+              "packages/php/tests/CoveragePerformanceGateTest.php"
             ],
             "commands": {
               "none": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_performance_gate.php",
+                  "test": "packages/php/tests/CoveragePerformanceGateTest.php",
                   "cases": [
                     "hot_path_gate"
                   ]
@@ -6400,7 +6412,7 @@
       ],
       "tests": [
         "packages/go/markdownmodel/conformance_test.go",
-        "packages/php/tests/markdown_conformance.php",
+        "packages/php/tests/MarkdownConformanceTest.php",
         "packages/python/tests/markdown_conformance.py",
         "packages/rust/tests/tests/markdown_conformance.rs",
         "packages/ts/tests/markdown_conformance.mjs",
@@ -6413,7 +6425,7 @@
         "tests/conformance/runner_typescript.mjs",
         "packages/rust/tests/src/conformance.rs",
         "packages/go/model/coverage_conformance_verification_test.go",
-        "packages/php/tests/coverage_conformance_verification.php",
+        "packages/php/tests/CoverageConformanceVerificationTest.php",
         "packages/rust/tests/tests/coverage_conformance_verification.rs",
         "packages/ts/tests/coverage_conformance_verification.mjs"
       ],
@@ -6538,7 +6550,7 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/coverage_conformance_verification.php"
+              "packages/php/tests/CoverageConformanceVerificationTest.php"
             ],
             "inputs": [
               "tests/conformance/vectors.json"
@@ -6547,7 +6559,7 @@
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_conformance_verification.php",
+                  "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
                   "cases": [
                     "conformance_vector"
                   ],
@@ -6557,7 +6569,7 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_conformance_verification.php",
+                  "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
                   "cases": [
                     "conformance_vector"
                   ],
@@ -6567,7 +6579,7 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_conformance_verification.php",
+                  "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
                   "cases": [
                     "conformance_vector"
                   ],
@@ -6923,8 +6935,8 @@
         "packages/ts/tests/request_hook.mjs",
         "packages/ts/tests/coverage_request_hook.mjs",
         "packages/ts/tests/request_hook_run.mjs",
-        "packages/php/tests/request_hook_test.php",
-        "packages/php/tests/coverage_request_hook.php",
+        "packages/php/tests/RequestHookTest.php",
+        "packages/php/tests/CoverageRequestHookTest.php",
         "packages/php/tests/request_hook_cases.php",
         "packages/rust/orm/tests/request_hook.rs"
       ],
@@ -6954,10 +6966,10 @@
         },
         {
           "id": "request-hook-php",
-          "command": "php packages/php/tests/request_hook_test.php",
+          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/request_hook_test.php",
+            "packages/php/tests/RequestHookTest.php",
             "packages/php/tests/request_hook_cases.php",
             "contracts/fixtures/request_hook.dbs"
           ]
@@ -7095,7 +7107,7 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/coverage_request_hook.php"
+              "packages/php/tests/CoverageRequestHookTest.php"
             ],
             "inputs": [
               "packages/php/tests/request_hook_cases.php",
@@ -7106,7 +7118,7 @@
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_request_hook.php",
+                  "test": "packages/php/tests/CoverageRequestHookTest.php",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -7125,7 +7137,7 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_request_hook.php",
+                  "test": "packages/php/tests/CoverageRequestHookTest.php",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -7144,7 +7156,7 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/coverage_request_hook.php",
+                  "test": "packages/php/tests/CoverageRequestHookTest.php",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -7348,9 +7360,9 @@
         "packages/php/tests/coverage_cases.php"
       ],
       "tests": [
-        "packages/php/tests/coverage_cases_test.php"
+        "packages/php/tests/CoverageCasesTest.php"
       ],
-      "command": "php packages/php/tests/coverage_cases_test.php"
+      "command": "php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CoverageCasesTest.php"
     },
     {
       "id": "coverage-runner-typescript",
@@ -7375,12 +7387,16 @@
     {
       "id": "php-test-autoload",
       "paths": [
-        "packages/php/tests/autoload.php"
+        "packages/php/tests/autoload.php",
+        "packages/php/tests/bootstrap.php",
+        "packages/php/phpunit.xml.dist",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php-ext/phpunit.xml.dist"
       ],
       "tests": [
-        "packages/php/tests/autoload_test.php"
+        "packages/php/tests/AutoloadTest.php"
       ],
-      "command": "php packages/php/tests/autoload_test.php"
+      "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AutoloadTest.php"
     },
     {
       "id": "go-test-helpers",
@@ -7502,8 +7518,8 @@
       "id": "unselected-column-physical",
       "paths": [
         "scripts/unselected-column-physical-check.mjs",
-        "packages/php/tests/unselected_column.php",
-        "packages/php/tests/unselected_column_db.php"
+        "packages/php/tests/UnselectedColumnTest.php",
+        "packages/php/tests/UnselectedColumnDbTest.php"
       ],
       "tests": [],
       "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" unselected-column-physical-check"
@@ -7519,7 +7535,7 @@
     {
       "id": "conformance-result",
       "paths": [
-        "tests/conformance/result_php.php",
+        "packages/php/tests/ConformanceResultTest.php",
         "tests/conformance/result_php_helpers.php",
         "tests/conformance/result_typescript.mjs"
       ],
@@ -7540,8 +7556,8 @@
     {
       "id": "dbspec-stress",
       "paths": [
-        "packages/php/tests/dbspec_stress_test.php",
-        "packages/php/tests/dbspec_introspect_stress_test.php",
+        "packages/php/tests/DbspecStressTest.php",
+        "packages/php/tests/DbspecIntrospectStressTest.php",
         "packages/ts/tests/dbspec-stress.mjs",
         "engine/dbspec/stress_test.go"
       ],

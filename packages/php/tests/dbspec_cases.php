@@ -2,10 +2,11 @@
 declare(strict_types=1);
 require_once __DIR__ . '/case_clock.php';
 require_once dirname(__DIR__, 3) . '/tests/dbspec/cases.php';
-// Runs dbspec cases in the shape of tests/dbspec/cases.json: canonical cases
-// emit unchanged, normalize cases emit their canonical lines, invalid cases
-// report exactly the listed errors in order. Each case reports its start,
-// result and elapsed time and has its own deadline.
+
+use PHPUnit\Framework\Assert;
+
+// Checks dbspec cases in the shape of tests/dbspec/cases.json with the PHPUnit
+// assertions; the test classes run each case as one data set named by its id.
 
 /**
  * Joins each document's lines with LF, with CRLF when $crlf is true, or
@@ -32,89 +33,80 @@ function dbspec_documents(array $documents, bool $crlf, bool $mixed = false): ar
     return $texts;
 }
 
-/** Runs one kind of cases and returns how many passed; throws on the first failure. */
-function dbspec_run_cases(string $kind, array $cases, float $deadlineSeconds): int
+/**
+ * Checks one case of a kind (canonical, normalize, invalid) with the PHPUnit assertions: a canonical case emits
+ * unchanged, a normalize case emits its canonical lines, an invalid case reports exactly the listed errors in order. The
+ * case's CPU time is measured against its reference $cpuSeconds (case_clock.php).
+ */
+function dbspec_check_case(string $kind, array $case, float $cpuSeconds): void
 {
-    $passed = 0;
-    foreach ($cases as $case) {
-        $id = $kind . '/' . $case['id'];
-        $clock = cpuCaseBegin($id, $deadlineSeconds);
-        $texts = dbspec_documents($case['documents'], $case['crlf'] ?? false, $case['mixed'] ?? false);
-        $text = $texts[$case['main']];
-        $result = Polyspec\Orm\Dbspec\Dbspec::parse($text, $texts);
-        if ($kind === 'invalid') {
-            if ($result->document !== null) {
-                throw new RuntimeException("$id: a document was returned with diagnostics expected");
-            }
-            if ($result->positions !== null) {
-                throw new RuntimeException("$id: positions were returned for an invalid document");
-            }
-            $got = array_map(static fn(Polyspec\Orm\Dbspec\Diagnostic $d): array => ['line' => $d->line, 'column' => $d->column, 'rule' => $d->rule], $result->diagnostics);
-            $want = array_map(static fn(array $e): array => ['line' => $e['line'], 'column' => $e['column'], 'rule' => $e['rule']], $case['errors']);
-            if ($got !== $want) {
-                throw new RuntimeException("$id: diagnostics differ\nwant " . json_encode($want) . "\ngot  " . json_encode($got) . "\n" . implode("\n", array_map(static fn($d) => "{$d->line}:{$d->column} {$d->rule} {$d->message}", $result->diagnostics)));
-            }
-            foreach ($result->diagnostics as $d) {
-                if ($d->message === '') {
-                    throw new RuntimeException("$id: empty diagnostic message");
-                }
-            }
-        } else {
-            if ($result->diagnostics !== [] || $result->document === null) {
-                throw new RuntimeException("$id: unexpected diagnostics\n" . implode("\n", array_map(static fn($d) => "{$d->line}:{$d->column} {$d->rule} {$d->message}", $result->diagnostics)));
-            }
-            $want = $kind === 'canonical' ? implode("\n", $case['documents'][$case['main']]) . "\n" : implode("\n", $case['canonical']) . "\n";
-            $emitted = Polyspec\Orm\Dbspec\Dbspec::emit($result->document);
-            if ($emitted !== $want) {
-                throw new RuntimeException("$id: emission differs\n--- want\n$want--- got\n$emitted");
-            }
-            $again = Polyspec\Orm\Dbspec\Dbspec::parse($emitted, $texts);
-            if ($again->document === null || Polyspec\Orm\Dbspec\Dbspec::emit($again->document) !== $emitted) {
-                throw new RuntimeException("$id: emission is not idempotent");
-            }
+    $id = $kind . '/' . $case['id'];
+    $clock = cpuCaseBegin($cpuSeconds);
+    $texts = dbspec_documents($case['documents'], $case['crlf'] ?? false, $case['mixed'] ?? false);
+    $text = $texts[$case['main']];
+    $result = Polyspec\Orm\Dbspec\Dbspec::parse($text, $texts);
+    if ($kind === 'invalid') {
+        Assert::assertNull($result->document, "$id: a document was returned with diagnostics expected");
+        Assert::assertNull($result->positions, "$id: positions were returned for an invalid document");
+        $got = array_map(static fn(Polyspec\Orm\Dbspec\Diagnostic $d): array => ['line' => $d->line, 'column' => $d->column, 'rule' => $d->rule], $result->diagnostics);
+        $want = array_map(static fn(array $e): array => ['line' => $e['line'], 'column' => $e['column'], 'rule' => $e['rule']], $case['errors']);
+        Assert::assertSame($want, $got, "$id: diagnostics differ\n" . implode("\n", array_map(static fn($d) => "{$d->line}:{$d->column} {$d->rule} {$d->message}", $result->diagnostics)));
+        foreach ($result->diagnostics as $d) {
+            Assert::assertNotSame('', $d->message, "$id: empty diagnostic message");
         }
-        cpuCaseEnd($id, $clock);
-        $passed++;
+    } else {
+        Assert::assertSame([], array_map(static fn($d) => "{$d->line}:{$d->column} {$d->rule} {$d->message}", $result->diagnostics), "$id: unexpected diagnostics");
+        Assert::assertNotNull($result->document, "$id: no document");
+        $want = $kind === 'canonical' ? implode("\n", $case['documents'][$case['main']]) . "\n" : implode("\n", $case['canonical']) . "\n";
+        $emitted = Polyspec\Orm\Dbspec\Dbspec::emit($result->document);
+        Assert::assertSame($want, $emitted, "$id: emission differs");
+        $again = Polyspec\Orm\Dbspec\Dbspec::parse($emitted, $texts);
+        Assert::assertNotNull($again->document, "$id: emission does not parse again");
+        Assert::assertSame($emitted, Polyspec\Orm\Dbspec\Dbspec::emit($again->document), "$id: emission is not idempotent");
     }
-    return $passed;
+    cpuCaseEnd($id, $clock);
 }
 
 /**
- * Runs the positions cases: each parses its main document and must return the
- * listed positions, in order, with the listed kind, path, line and column.
- * The section is read strictly: a case or position with an unknown or missing
- * field is an error.
+ * The data sets of one kind of cases, each named "<kind>/<id>" and holding [kind, case]. A repeated id is an error.
+ *
+ * @return iterable<string, array{string, array}>
  */
-function dbspec_run_position_cases(array $cases, float $deadlineSeconds): int
+function dbspec_case_sets(string $kind, array $cases): iterable
 {
-    $passed = 0;
+    $seen = [];
     foreach ($cases as $case) {
-        if (array_keys($case) !== ['id', 'documents', 'main', 'positions']) {
-            throw new RuntimeException('positions case has unexpected fields: ' . implode(',', array_keys($case)));
+        $name = $kind . '/' . $case['id'];
+        if (isset($seen[$name])) {
+            throw new RuntimeException("repeated case id $name");
         }
-        $id = 'positions/' . $case['id'];
-        $clock = cpuCaseBegin($id, $deadlineSeconds);
-        $texts = dbspec_documents($case['documents'], false);
-        $result = Polyspec\Orm\Dbspec\Dbspec::parse($texts[$case['main']], $texts);
-        if ($result->document === null || $result->diagnostics !== []) {
-            throw new RuntimeException("$id: parse failed");
-        }
-        $got = [];
-        foreach ($result->positions as $p) {
-            $got[] = ['kind' => $p->kind, 'path' => $p->path, 'line' => $p->line, 'column' => $p->column];
-        }
-        $want = [];
-        foreach ($case['positions'] as $p) {
-            if (array_keys($p) !== ['kind', 'path', 'line', 'column']) {
-                throw new RuntimeException("$id: position has unexpected fields");
-            }
-            $want[] = $p;
-        }
-        if ($got !== $want) {
-            throw new RuntimeException("$id: positions differ\nwant " . json_encode($want) . "\ngot  " . json_encode($got));
-        }
-        cpuCaseEnd($id, $clock);
-        $passed++;
+        $seen[$name] = true;
+        yield $name => [$kind, $case];
     }
-    return $passed;
+}
+
+/**
+ * Checks one positions case: it parses its main document and must return the listed positions, in order, with the
+ * listed kind, path, line and column. The section is read strictly: a case or position with an unknown or missing field
+ * is an error.
+ */
+function dbspec_check_position_case(array $case, float $cpuSeconds): void
+{
+    Assert::assertSame(['id', 'documents', 'main', 'positions'], array_keys($case), 'positions case has unexpected fields');
+    $id = 'positions/' . $case['id'];
+    $clock = cpuCaseBegin($cpuSeconds);
+    $texts = dbspec_documents($case['documents'], false);
+    $result = Polyspec\Orm\Dbspec\Dbspec::parse($texts[$case['main']], $texts);
+    Assert::assertTrue($result->document !== null && $result->diagnostics === [], "$id: parse failed");
+    $got = [];
+    foreach ($result->positions as $p) {
+        $got[] = ['kind' => $p->kind, 'path' => $p->path, 'line' => $p->line, 'column' => $p->column];
+    }
+    $want = [];
+    foreach ($case['positions'] as $p) {
+        Assert::assertSame(['kind', 'path', 'line', 'column'], array_keys($p), "$id: position has unexpected fields");
+        $want[] = $p;
+    }
+    Assert::assertSame($want, $got, "$id: positions differ");
+    cpuCaseEnd($id, $clock);
 }

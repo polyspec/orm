@@ -1,5 +1,5 @@
 # Schema inspection, table privileges and connection statistics of the Python client on SQLite, MySQL and
-# PostgreSQL, the cases that packages/ts/tests/model.mjs (schemaEmpty), packages/php/tests/model_test.php
+# PostgreSQL, the cases that packages/ts/tests/model.mjs (schemaEmpty), packages/php/tests/ModelTest.php
 # (utilities) and packages/rust/tests/src/integration.rs (schema_empty) run: schema().empty() on a new case
 # database, with an empty PostgreSQL schema other than public and with the installed tables; exists and installed;
 # the privileges that only PostgreSQL supports; stats. MySQL and PostgreSQL need ORM_TEST_MYSQL_DSN and

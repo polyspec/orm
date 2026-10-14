@@ -495,10 +495,10 @@ caseTest('a workflow that runs a verification command of feature-check again fai
   const commands = featureCommands({ features: [{ verification: [
     { id: 'interfaces', command: 'PATH="$HOME/.cargo/bin:$PATH" go run ./tests/interfaces/check --self-test' },
     { id: 'perf', command: './scripts/perf-test.sh' },
-    { id: 'elsewhere', command: 'php tests/codec/check.php', cwd: 'packages/php' },
+    { id: 'elsewhere', command: 'php packages/php/tests/CodecVectorsTest.php', cwd: 'packages/php' },
   ] }] });
   assert.deepEqual(commands, ['PATH="$HOME/.cargo/bin:$PATH" go run ./tests/interfaces/check --self-test', './scripts/perf-test.sh']);
-  const twice = steps.replace('make repo-check', 'make check\n          make interface-check fuzz-check\n          ./scripts/perf-test.sh\n          php tests/codec/check.php');
+  const twice = steps.replace('make repo-check', 'make check\n          make interface-check fuzz-check\n          ./scripts/perf-test.sh\n          php packages/php/tests/CodecVectorsTest.php');
   assert.deepEqual(ciDuplicateCommandErrors(twice, make, commands), [
     'ci.yml step "checks" runs make interface-check, whose commands make check runs in feature-check',
     'ci.yml step "checks" runs ./scripts/perf-test.sh, which make check runs in feature-check',
@@ -1086,31 +1086,27 @@ caseTest('every PHP and TypeScript test that a check runs reports its cases', CO
     ...Object.values(JSON.parse(text('package.json')).scripts).map(command => ({ source: 'package.json', command })),
   ];
   const files = new Set(trackedFiles('*'));
-  assert.ok(commands.some(({ command }) => testEntries(command).includes('packages/php/tests/decimal_model_db.php')));
+  assert.ok(commands.some(({ command }) => /packages\/php\/vendor\/bin\/phpunit .*packages\/php\/tests\/DecimalModelDbTest\.php/.test(command)));
   assert.deepEqual(reportingScriptErrors(commands, path => files.has(path) ? text(path) : undefined), []);
 });
 
-caseTest('a PHP or TypeScript test without the shared case report fails', COMPUTE, () => {
+caseTest('a PHP test outside PHPUnit or a TypeScript test without the shared case report fails', COMPUTE, () => {
   const files = {
-    'packages/php/tests/bare.php': "<?php\nrequire __DIR__ . '/autoload.php';\necho 'PASS';\n",
-    'packages/php/tests/autoload.php': '<?php\n',
-    'packages/php/tests/helped.php': "<?php\nrequire_once __DIR__ . '/case_helper.php';\n",
-    'packages/php/tests/case_helper.php': "<?php\nrequire_once dirname(__DIR__, 3) . '/tests/testcase.php';\n",
+    'packages/php/tests/BareTest.php': "<?php\nfinal class BareTest extends PHPUnit\\Framework\\TestCase {}\n",
     'packages/ts/tests/bare.mjs': "import { Db } from '../dist/index.js';\n",
     'packages/ts/tests/cased.mjs': "import { cases } from '../../../tests/testcase.mjs';\n",
-    'tests/testcase.php': '<?php\n',
     'tests/testcase.mjs': '',
   };
   const read = path => files[path];
   assert.deepEqual(testEntries('. "$DECIMAL_ENV" && node --conditions=orm-test packages/ts/tests/bare.mjs --dialect mysql'), ['packages/ts/tests/bare.mjs']);
   assert.deepEqual(reportingScriptErrors([
-    { source: 'Makefile', command: 'php packages/php/tests/bare.php && php packages/php/tests/helped.php' },
+    { source: 'Makefile', command: 'php packages/php/tests/BareTest.php && php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/BareTest.php' },
     { source: 'contracts/features.json', command: 'node --test packages/ts/tests/bare.mjs packages/ts/tests/cased.mjs' },
     { source: 'scripts/x.sh', command: 'php packages/php/tests/missing.php' },
     { source: 'scripts/y.sh', command: 'php scripts/setup.php' },
   ], read), [
-    'Makefile runs packages/php/tests/bare.php, which reports no case through tests/testcase.php or tests/testcase.mjs, so it runs without a deadline or RUN line',
-    'contracts/features.json runs packages/ts/tests/bare.mjs, which reports no case through tests/testcase.php or tests/testcase.mjs, so it runs without a deadline or RUN line',
+    'Makefile runs packages/php/tests/BareTest.php with php, not with the PHPUnit of its package (packages/<package>/vendor/bin/phpunit), so it runs without a deadline or a case report',
+    'contracts/features.json runs packages/ts/tests/bare.mjs, which reports no case through tests/testcase.mjs, so it runs without a deadline or RUN line',
     'scripts/x.sh runs packages/php/tests/missing.php, which is not a tracked file',
   ]);
 });
@@ -1204,6 +1200,7 @@ caseTest('a workflow that runs a test runner after make check fails by identity'
   assert.equal(runnerIdentity("go test -v -timeout 0 ./engine/ir -run '^$' -fuzz FuzzDecodeRequest -fuzztime=1s"), undefined);
   assert.equal(runnerIdentity('go run ./tests/interfaces/check --results tests/conformance/out'), undefined);
   assert.equal(runnerIdentity('node tests/go-test.mjs -v -timeout 0 ./engine -count=1'), 'go test');
+  assert.equal(runnerIdentity('php -d extension=x.so packages/php-ext/vendor/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecTest.php'), 'phpunit packages/php-ext/vendor/bin/phpunit');
   assert.equal(runnerIdentity("node tests/run-long.mjs fuzz/ir -- go test -v ./engine/ir -run '^$' -fuzz FuzzDecodeRequest"), undefined);
   assert.equal(runnerIdentity('node tests/run-long.mjs rust-build/x -- cargo test --no-run --locked'), 'cargo test');
   const make = [
@@ -1220,7 +1217,7 @@ caseTest('a workflow that runs a test runner after make check fails by identity'
     '          make fuzz-check vet-again',
     '          go vet ./... && go test -v -timeout 0 ./...',
     '          (cd packages/rust && cargo test --locked -p polyspec-orm codec)',
-    '          php tests/codec/check.php',
+    '          php packages/php/tests/CodecVectorsTest.php',
     '          node --test scripts/x.test.mjs',
     '          go run ./tests/interfaces/check --results tests/conformance/out',
   ].join('\n'));
@@ -1230,7 +1227,7 @@ caseTest('a workflow that runs a test runner after make check fails by identity'
     message('go vet'),
     message('go test'),
     message('cargo test'),
-    message('php tests/codec/check.php'),
+    message('php packages/php/tests/CodecVectorsTest.php'),
     message('node test'),
     message('go test'),
   ]);

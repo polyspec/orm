@@ -1,40 +1,11 @@
 <?php
 declare(strict_types=1);
-// packages/php/tests/coverage_*.php가 함께 쓰는 feature coverage case 실행기다
-// (scripts/features/coverage.mjs). script는 인자의 case ID만 실행하고 case마다
-// `CASE <id> PASS` 한 줄을 출력한다. 실패한 case는 예외를 던져 process가 그
-// 오류와 함께 0이 아닌 code로 끝난다.
+// packages/php/tests/Coverage*Test.php가 함께 쓰는 feature coverage helper다(scripts/features/coverage.mjs가
+// 그 test method를 PHPUnit으로 실행한다).
 
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\OrmException;
-
-/**
- * 인자로 받은 case ID를 선언 순서대로 실행한다. 인자가 없거나 모르는 ID,
- * 중복 ID는 실행 전에 거부한다.
- *
- * @param list<string> $argv
- * @param array<string, Closure(): void> $cases
- */
-function runCoverageCases(array $argv, array $cases): void
-{
-    $requested = array_slice($argv, 1);
-    if ($requested === []) {
-        throw new RuntimeException('usage: ' . basename($argv[0]) . ' ' . implode(' ', array_keys($cases)));
-    }
-    if (count(array_unique($requested)) !== count($requested)) {
-        throw new RuntimeException('duplicate case ID in ' . implode(' ', $requested));
-    }
-    foreach ($requested as $id) {
-        if (!isset($cases[$id])) {
-            throw new RuntimeException("unknown case $id; the cases are " . implode(', ', array_keys($cases)));
-        }
-    }
-    foreach ($requested as $id) {
-        $cases[$id]();
-        echo "CASE $id PASS\n";
-    }
-}
 
 /**
  * checker가 고른 database와 DSN이다. 둘 중 하나라도 없으면 실패한다.
@@ -65,13 +36,6 @@ function coverageJson(string $path, bool $associative = true): mixed
         throw new RuntimeException("cannot read $path");
     }
     return json_decode($text, $associative, 512, JSON_THROW_ON_ERROR);
-}
-
-function coverageWant(bool $ok, string $message): void
-{
-    if (!$ok) {
-        throw new RuntimeException($message);
-    }
 }
 
 /** $fn이 던진 OrmException의 code다. 다른 예외는 그대로 전파하고, 성공하면 'no error'다. */
@@ -105,7 +69,7 @@ function coverageRestoring(Closure $body, Closure $restore): void
 }
 
 /**
- * 자식 process를 실행해 종료 코드와 stdout, stderr를 돌려준다. 출력은 CASE 출력에
+ * 자식 process를 실행해 종료 코드와 stdout, stderr를 돌려준다. 출력은 test 출력에
  * 섞이지 않으며, 호출자가 실패 오류에 넣는다.
  *
  * @param list<string> $command

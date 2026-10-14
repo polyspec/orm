@@ -83,10 +83,10 @@ function case_admin(string $dsn): PDO
 }
 
 /**
- * $driver의 새 case database를 만들고 STEP 줄로 알린다. MySQL과 PostgreSQL은 ORM_TEST_<DRIVER>_DSN의
+ * $driver의 새 case database를 만들고 $step으로 알린다. MySQL과 PostgreSQL은 ORM_TEST_<DRIVER>_DSN의
  * server에 database를, SQLite는 temp directory에 file을 만든다. 호출자가 drop()을 부른다.
  *
- * @param callable(string): void $step 실행 중인 case의 단계 줄 출력(testcase_run의 $step이나 testcase_step)
+ * @param callable(string): void $step case의 단계를 알리는 callable(test는 아무것도 하지 않는 callable을 준다)
  */
 function case_database(string $driver, callable $step): CaseDatabase
 {

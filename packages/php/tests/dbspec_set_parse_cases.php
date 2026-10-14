@@ -1,8 +1,10 @@
 <?php
 declare(strict_types=1);
 
+use PHPUnit\Framework\Assert;
+
 // The shared vectors tests/dbspec/set-parse.json of the set parse (docs/dbspec.md "Parsing a set"), run against a
-// parseSet of the PHP client or of the extension. Each case is one testcase; $check, when given, sees every result too.
+// parseSet of the PHP client or of the extension. Each case is one data set; $check, when given, sees every result too.
 
 /**
  * The result of a set parse as plain data: each document's name, external mark, document (as JSON of its public
@@ -23,36 +25,44 @@ function dbspec_set_parse_described(array $result): array
         ], $result);
 }
 
-/** Runs every vector through $parse(owned, external); returns the number of cases. */
-function dbspec_set_parse_run(string $root, string $prefix, callable $parse, ?callable $check = null): int
+/**
+ * The data sets of tests/dbspec/set-parse.json, each named by its case name and holding [case]. A repeated name is an
+ * error.
+ *
+ * @return iterable<string, array{array<string, mixed>}>
+ */
+function dbspec_set_parse_sets(string $root): iterable
 {
     $vectors = json_decode(file_get_contents("$root/tests/dbspec/set-parse.json"), true, 512, JSON_THROW_ON_ERROR);
+    $seen = [];
     foreach ($vectors['cases'] as $case) {
-        $ok = testcase_run("$prefix/{$case['name']}", TESTCASE_COMPUTE, static function () use ($case, $parse, $check): void {
-            $result = $parse($case['owned'], $case['external']);
-            // A vector diagnostic states its rule and place, and its message where the rule fixes one.
-            $want = $case['documents'];
-            $got = array_map(static fn(object $d, int $i): array => [
-                'name' => $d->name,
-                'external' => $d->external,
-                'parsed' => $d->document !== null,
-                'diagnostics' => array_map(static fn(object $x, int $k): array => array_intersect_key(['rule' => $x->rule, 'line' => $x->line, 'column' => $x->column, 'message' => $x->message], $want[$i]['diagnostics'][$k] ?? ['rule' => 0, 'line' => 0, 'column' => 0]), $d->diagnostics, array_keys($d->diagnostics)),
-            ], $result, array_keys($result));
-            if ($got != $want) {
-                throw new RuntimeException('want ' . json_encode($want) . ', got ' . json_encode($got));
-            }
-            foreach ($result as $d) {
-                if ($d->document !== null && $d->document->external !== $d->external) {
-                    throw new RuntimeException("document {$d->name} is not marked as its text is");
-                }
-            }
-            if ($check !== null) {
-                $check($result, $case);
-            }
-        });
-        if (!$ok) {
-            exit(1);
+        if (isset($seen[$case['name']])) {
+            throw new RuntimeException("repeated set parse case {$case['name']}");
+        }
+        $seen[$case['name']] = true;
+        yield $case['name'] => [$case];
+    }
+}
+
+/** Runs one vector through $parse(owned, external) with the PHPUnit assertions; $check, when given, sees the result too. */
+function dbspec_set_parse_check(array $case, callable $parse, ?callable $check = null): void
+{
+    $result = $parse($case['owned'], $case['external']);
+    // A vector diagnostic states its rule and place, and its message where the rule fixes one.
+    $want = $case['documents'];
+    $got = array_map(static fn(object $d, int $i): array => [
+        'name' => $d->name,
+        'external' => $d->external,
+        'parsed' => $d->document !== null,
+        'diagnostics' => array_map(static fn(object $x, int $k): array => array_intersect_key(['rule' => $x->rule, 'line' => $x->line, 'column' => $x->column, 'message' => $x->message], $want[$i]['diagnostics'][$k] ?? ['rule' => 0, 'line' => 0, 'column' => 0]), $d->diagnostics, array_keys($d->diagnostics)),
+    ], $result, array_keys($result));
+    Assert::assertEquals($want, $got);
+    foreach ($result as $d) {
+        if ($d->document !== null) {
+            Assert::assertSame($d->external, $d->document->external, "document {$d->name} is not marked as its text is");
         }
     }
-    return count($vectors['cases']);
+    if ($check !== null) {
+        $check($result, $case);
+    }
 }

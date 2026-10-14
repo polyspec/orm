@@ -8,7 +8,7 @@
  * PHP 확장 orm_dbspec이 등록하는 class의 선언이다. 실행 시 load하지 않는다: 확장이 있으면 같은 이름의 class를
  * 확장이 등록한다. 선언은 interface 검사(contracts/interfaces.json의 php-extension)의 inventory이고,
  * packages/php-ext/scripts/arginfo.php가 gen_stub.php로 src/orm_dbspec_arginfo.h를 만들며,
- * packages/php-ext/tests/declarations_test.php가 load한 확장의 Reflection과 이 file의 Reflection이 같은지
+ * packages/php-ext/tests/DeclarationsTest.php가 load한 확장의 Reflection과 이 file의 Reflection이 같은지
  * 확인한다. class와 그 property, 메서드는 PHP client(packages/php/src/Dbspec)의 같은 이름 class와 같다. gen_stub은
  * 배열 상수를 쓰지 못하므로 src/orm_dbspec.c가 등록하고, 반환 type에 `self` 대신 class 이름을 쓴다.
  */

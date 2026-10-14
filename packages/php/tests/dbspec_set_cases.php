@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+use PHPUnit\Framework\Assert;
+
 // The set reader vectors (tests/dbspec/set-files.json, docs/dbspec.md "Document sets"), shared by the PHP
 // client test and the extension test. The vector file is read strictly: an unknown or missing field is an
 // error, and every case runs.
@@ -116,13 +118,22 @@ function dbspec_set_described(object $result): array
 }
 
 /**
- * Runs every case through $read(path) and compares it with the vector; $also(result, path) may add its
- * own comparison (the extension test compares with the PHP client). Returns the number of cases.
+ * The data sets of every vector case and of the focused cases ("focused/<id>"), each holding [case]. A repeated id is
+ * an error.
+ *
+ * @return iterable<string, array{array<string, mixed>}>
  */
-function dbspec_set_run(string $root, string $prefix, callable $read, ?callable $also = null): int
+function dbspec_set_sets(string $root): iterable
 {
-    return dbspec_set_run_cases(dbspec_set_cases($root), $prefix, $read, $also)
-        + dbspec_set_run_cases(dbspec_set_focused(), "$prefix/focused", $read, $also);
+    $seen = [];
+    foreach ([['', dbspec_set_cases($root)], ['focused/', dbspec_set_focused()]] as [$prefix, $cases]) {
+        foreach ($cases as $case) {
+            $name = $prefix . $case['id'];
+            Assert::assertFalse(isset($seen[$name]), "repeated set case id $name");
+            $seen[$name] = true;
+            yield $name => [$case];
+        }
+    }
 }
 
 /**
@@ -149,67 +160,56 @@ function dbspec_set_focused(): array
     ];
 }
 
-/** Runs cases of the vector format; see dbspec_set_run. */
-function dbspec_set_run_cases(array $cases, string $prefix, callable $read, ?callable $also): int
+/**
+ * Runs one case through $read(path) in a temporary file tree of its own and compares it with the vector, with the
+ * PHPUnit assertions; $also(result, path) may add its own comparison (the extension test compares with the PHP
+ * client).
+ */
+function dbspec_set_check(array $case, callable $read, ?callable $also = null): void
 {
-    $base = sys_get_temp_dir() . '/orm-php-dbspec-set-' . getmypid() . '-' . md5($prefix);
-    register_shutdown_function(static function () use ($base): void {
-        exec('rm -rf ' . escapeshellarg($base));
-    });
-    $failed = 0;
-    foreach ($cases as $n => $case) {
-        $passed = testcase_run("$prefix/{$case['id']}", TESTCASE_COMPUTE, static function () use ($case, $base, $n, $read, $also): void {
-            $dir = "$base/$n";
-            if (!mkdir($dir, 0o700, true)) {
-                throw new RuntimeException("cannot create $dir");
+    $dir = sys_get_temp_dir() . '/orm-php-dbspec-set-' . getmypid() . '-' . md5($case['id'] . json_encode($case['tree']));
+    if (!mkdir($dir, 0o700, true)) {
+        throw new RuntimeException("cannot create $dir");
+    }
+    try {
+        $bytes = dbspec_set_tree($dir, $case['tree']);
+        $path = "$dir/{$case['set']}";
+        $result = $read($path);
+        $got = dbspec_set_described($result);
+        $want = $case['want'];
+        if (isset($want['errors'])) {
+            $expected = array_map(static fn(array $e): array => [$e['rule'], "$dir/{$e['path']}"], $want['errors']);
+            $rules = array_map(static fn(array $e): array => [$e[0], $e[1]], $got['errors']);
+            $detail = 'want errors ' . json_encode($expected, JSON_UNESCAPED_SLASHES) . ', got ' . json_encode($got, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+            Assert::assertNull($got['documents'], $detail);
+            Assert::assertNull($got['external'], $detail);
+            Assert::assertSame($expected, $rules, $detail);
+            foreach ($got['errors'] as [, $errorPath, $message]) {
+                Assert::assertTrue(str_contains($message, $errorPath), "the message \"$message\" does not name $errorPath");
             }
-            $bytes = dbspec_set_tree($dir, $case['tree']);
-            $path = "$dir/{$case['set']}";
-            $result = $read($path);
-            $got = dbspec_set_described($result);
-            $want = $case['want'];
-            if (isset($want['errors'])) {
-                $expected = array_map(static fn(array $e): array => [$e['rule'], "$dir/{$e['path']}"], $want['errors']);
-                $rules = array_map(static fn(array $e): array => [$e[0], $e[1]], $got['errors']);
-                if ($got['documents'] !== null || $got['external'] !== null || $rules !== $expected) {
-                    throw new RuntimeException('want errors ' . json_encode($expected, JSON_UNESCAPED_SLASHES) . ', got ' . json_encode($got, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE));
-                }
-                foreach ($got['errors'] as [, $errorPath, $message]) {
-                    if (!str_contains($message, $errorPath)) {
-                        throw new RuntimeException("the message \"$message\" does not name $errorPath");
-                    }
-                }
-            } else {
-                $expected = [];
-                foreach (['documents', 'external'] as $list) {
-                    $expected[$list] = array_map(static function (string $p) use ($dir, $bytes): array {
-                        // A joined path such as app/../core/core.dbs names the tree file core/core.dbs.
-                        $parts = [];
-                        foreach (explode('/', $p) as $segment) {
-                            if ($segment === '..') {
-                                array_pop($parts);
-                            } else {
-                                $parts[] = $segment;
-                            }
+        } else {
+            $expected = [];
+            foreach (['documents', 'external'] as $list) {
+                $expected[$list] = array_map(static function (string $p) use ($dir, $bytes): array {
+                    // A joined path such as app/../core/core.dbs names the tree file core/core.dbs.
+                    $parts = [];
+                    foreach (explode('/', $p) as $segment) {
+                        if ($segment === '..') {
+                            array_pop($parts);
+                        } else {
+                            $parts[] = $segment;
                         }
-                        return ["$dir/$p", $bytes[implode('/', $parts)] ?? throw new RuntimeException("the vector lists $p, which is no tree file")];
-                    }, $want[$list]);
-                }
-                $expected['errors'] = [];
-                if ($got !== $expected) {
-                    throw new RuntimeException('want ' . json_encode($expected, JSON_UNESCAPED_SLASHES) . ', got ' . json_encode($got, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE));
-                }
+                    }
+                    return ["$dir/$p", $bytes[implode('/', $parts)] ?? throw new RuntimeException("the vector lists $p, which is no tree file")];
+                }, $want[$list]);
             }
-            if ($also !== null) {
-                $also($result, $path);
-            }
-        });
-        if (!$passed) {
-            $failed++;
+            $expected['errors'] = [];
+            Assert::assertSame($expected, $got, 'want ' . json_encode($expected, JSON_UNESCAPED_SLASHES) . ', got ' . json_encode($got, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE));
         }
+        if ($also !== null) {
+            $also($result, $path);
+        }
+    } finally {
+        exec('rm -rf ' . escapeshellarg($dir));
     }
-    if ($failed > 0) {
-        throw new RuntimeException("$failed of " . count($cases) . ' set cases failed');
-    }
-    return count($cases);
 }

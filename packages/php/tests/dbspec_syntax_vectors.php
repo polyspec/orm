@@ -154,42 +154,35 @@ function dbspec_syntax_inputs(array $cases): array
 }
 
 /**
- * Compares the tokens of every input with syntax.json exactly, and requires the same set of cases. Every differing case
- * is reported, with its first differing token. $analyze gives the tokens of a text as [line, start, end, class] lists.
+ * The syntax vector data sets, each named "syntax/<id>" and holding [want, text, documents]: want is the tokens of
+ * syntax.json for the input as [line, start, end, class] lists, or null when syntax.json has none (the test fails it).
+ * A repeated input id is an error.
  *
- * @param array<string, list<array{0:int,1:int,2:int,3:string}>> $want
- * @param callable(string, array<string,string>): list<array{0:int,1:int,2:int,3:string}> $analyze
+ * @return iterable<string, array{?list<array{0:int,1:int,2:int,3:string}>, string, array<string,string>}>
  */
-function dbspec_syntax_check(array $want, array $inputs, callable $analyze): int
+function dbspec_syntax_sets(string $root, array $cases): iterable
 {
-    $problems = [];
+    $want = dbspec_syntax_load($root);
     $seen = [];
-    foreach ($inputs as [$id, $text, $documents]) {
+    foreach (dbspec_syntax_inputs($cases) as [$id, $text, $documents]) {
+        if (isset($seen[$id])) {
+            throw new RuntimeException("$id: the inputs repeat this case");
+        }
         $seen[$id] = true;
-        if (!isset($want[$id])) {
-            $problems[] = "$id: syntax.json has no tokens for this case";
-            continue;
-        }
-        $got = $analyze($text, $documents);
-        if ($got === $want[$id]) {
-            continue;
-        }
-        $detail = 'tokens differ: got ' . count($got) . ', want ' . count($want[$id]);
-        foreach ($want[$id] as $k => $token) {
-            if (($got[$k] ?? null) !== $token) {
-                $detail .= '; first difference at token ' . $k . ': got ' . json_encode($got[$k] ?? null) . ', want ' . json_encode($token);
-                break;
-            }
-        }
-        $problems[] = "$id: $detail";
+        yield "syntax/$id" => [$want[$id] ?? null, $text, $documents];
     }
-    foreach (array_keys($want) as $id) {
-        if (!isset($seen[$id])) {
-            $problems[] = "$id: syntax.json has a case that the inputs do not produce";
-        }
+}
+
+/**
+ * The cases of syntax.json that the inputs do not produce: syntax.json and the inputs must hold the same set of cases.
+ *
+ * @return list<string>
+ */
+function dbspec_syntax_unproduced(string $root, array $cases): array
+{
+    $produced = [];
+    foreach (dbspec_syntax_inputs($cases) as [$id]) {
+        $produced[$id] = true;
     }
-    if ($problems !== []) {
-        throw new RuntimeException(count($problems) . " syntax vector case(s) differ:\n" . implode("\n", $problems));
-    }
-    return count($inputs);
+    return array_values(array_filter(array_keys(dbspec_syntax_load($root)), static fn(string $id): bool => !isset($produced[$id])));
 }

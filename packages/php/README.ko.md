@@ -30,12 +30,12 @@ extension은 없다. PHP 8.4 이상. Version 0.0.15. DSN의 scheme이 PDO driver
   한 process가 여러 문서 묶음의 생성 모델을 load할 수 있다. 각 모델 class는 자기 묶음의
   `manifestHash`를 가지며, manifest text의 hash가 선언한 `manifestHash`와 다른 bootstrap은
   어떤 문장보다 먼저 `SCHEMA_HASH_MISMATCH`로 실패한다.
-- `tests/` — `model_test.php`(모델 통합 test), `runtime_model_test.php`와
-  `runtime_db_test.php`(runtime model, 설치, audit), `schema_set_test.php`(한 process의 여러
-  문서 묶음), `add_tables_and_columns_test.php`(설치한 묶음에 더하는 table과 컬럼),
-  `mysql_tls.php`(DSN parameter와 MySQL TLS), `clock_test.php`, `driver_error_test.php`, `rollback_test.php`,
-  `engine_test.php`, `hostcodec.php`, `dsn.php`,
-  `relation_keys.php`, `perf_gate.php`, `orm_gen_test.php`(command line), 그리고 `Dbspec/`의 `dbspec_*`
+- `tests/` — `ModelTest.php`(모델 통합 test), `RuntimeModelTest.php`와
+  `RuntimeDbTest.php`(runtime model, 설치, audit), `SchemaSetTest.php`(한 process의 여러
+  문서 묶음), `AddTablesAndColumnsTest.php`(설치한 묶음에 더하는 table과 컬럼),
+  `MysqlTlsTest.php`(DSN parameter와 MySQL TLS), `ClockTest.php`, `DriverErrorTest.php`, `RollbackTest.php`,
+  `EngineTest.php`, `HostcodecTest.php`, `DsnTest.php`,
+  `RelationKeysTest.php`, `PerfGateTest.php`, `OrmGenTest.php`(command line), 그리고 `Dbspec/`의 `dbspec_*`
   test. conformance runner는
   `tests/conformance/runner.php`다.
 
@@ -151,16 +151,16 @@ savepoint는 message `transaction failed (<cause>) and rollback failed (<rollbac
 
     ORM_TEST_MYSQL_DSN='mysql://root@localhost/orm_php_test?socket=/tmp/mysql.sock' \
       ORM_TEST_POSTGRES_DSN='postgres:///orm_php_test?host=/tmp' \
-      php packages/php/tests/model_test.php
-    php packages/php/tests/runtime_model_test.php
-    php packages/php/tests/engine_test.php
-    php packages/php/tests/hostcodec.php
-    php packages/php/tests/dsn.php
-    php packages/php/tests/relation_keys.php
-    php packages/php/tests/orm_gen_test.php
+      packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTest.php
+    packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeModelTest.php
+    packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php
+    packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/HostcodecTest.php
+    packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DsnTest.php
+    packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php
+    packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php
     go run ./tests/conformance/check run -langs php -driver mysql|postgres|sqlite -dsn <bench DSN>
 
-`model_test.php`는 SQLite, MySQL, PostgreSQL에서 실행되고 MySQL이나 PostgreSQL DSN이 없으면 실패한다. schema를 설치하거나
+`ModelTest.php`는 SQLite, MySQL, PostgreSQL에서 실행되고 MySQL이나 PostgreSQL DSN이 없으면 실패한다. schema를 설치하거나
 `utils()->schema()->empty()`를 검사하는 case는 DSN의 server에 자기 database(또는 새 SQLite file)를 만들고 끝나면, 실패 뒤에도,
 지운다(tests/case_database.php). 그래서 DSN이 가리키는 database는 비어 있을 필요가 없고 test의
-table을 남기지 않는다. `runtime_db_test.php`는 같은 DSN을 받는다. `perf_gate.php`는 시드된 bench database에서 client를 PDO와 비교한다.
+table을 남기지 않는다. `RuntimeDbTest.php`는 같은 DSN을 받는다. `PerfGateTest.php`는 시드된 bench database에서 client를 PDO와 비교한다.

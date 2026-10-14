@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The PHPUnit configuration of the package's tests. Each test class declares its size: #[Small] for a case that computes in
+  memory and reads repository files, #[Medium] for one that runs statements on a database of TEST_ENV, #[Large] for one that
+  runs a child process (php, go, node). The time limits are wall-clock deadlines that end a stalled case, not limits on its
+  own computation: a case over its limit fails. PHPUnit enforces them where pcntl is loaded (php-invoker).
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         recordTestRunHistory="false"
+         colors="false"
+         enforceTimeLimit="true"
+         timeoutForSmallTests="60"
+         timeoutForMediumTests="120"
+         timeoutForLargeTests="300"
+         requireCoverageMetadata="false"
+         beStrictAboutOutputDuringTests="true"
+         failOnRisky="true"
+         failOnWarning="true"
+         failOnDeprecation="true"
+         failOnNotice="true"
+         failOnEmptyTestSuite="true"
+         displayDetailsOnTestsThatTriggerWarnings="true"
+         displayDetailsOnTestsThatTriggerDeprecations="true"
+         displayDetailsOnTestsThatTriggerNotices="true"
+         displayDetailsOnTestsThatTriggerErrors="true">
+    <testsuites>
+        <testsuite name="polyspec/orm-dbspec">
+            <directory suffix="Test.php">tests</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>

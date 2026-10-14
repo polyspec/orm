@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 // audit 기록을 받은 transaction의 scenario(packages/go/orm/audit_transaction_test.go의 auditCase와
-// 같다). runtime_db_test.php의 owner case와 coverage_audit_triggers.php의 audit_history case가 함께
+// 같다). RuntimeDbTest.php의 owner case와 CoverageAuditTriggersTest.php의 audit_history case가 함께
 // 쓴다. 호출자는 contracts/fixtures/audit.dbs의 model을 $namespace에 생성하고 연결에 설치한다.
 
 use Polyspec\Orm\Code;
@@ -23,9 +23,7 @@ function auditErrorCode(Closure $fn): string
 
 function auditWant(bool $ok, string $message): void
 {
-    if (!$ok) {
-        throw new RuntimeException($message);
-    }
+    \PHPUnit\Framework\Assert::assertTrue($ok, $message);
 }
 
 /** query의 모든 row를 문자열 목록으로 읽는다. NULL은 'NULL'이다. @return list<list<string>> */

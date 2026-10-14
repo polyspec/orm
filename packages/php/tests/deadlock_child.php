@@ -1,5 +1,5 @@
 <?php
-// One side of the deadlock test in model_test.php. Inside transaction(): update the first row,
+// One side of the deadlock test in ModelTest.php. Inside transaction(): update the first row,
 // print "locked", wait for a line on stdin, then update the second row. The other side runs with
 // the rows swapped, so the database reports a deadlock to one of them and transaction() runs the
 // closure again. Prints "done <closure runs>".

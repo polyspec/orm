@@ -7,12 +7,9 @@
 // Db::withRequestHook calls its hook with each request right before planning;
 // the hook changes $r->ir in place and adds parameters with $r->param(). Each
 // case installs the fixture on the empty database of a DSN. The unit test
-// request_hook_test.php runs them on SQLite files, and the feature coverage
-// coverage_request_hook.php on a case database of the selected database.
+// RequestHookTest.php runs them on SQLite files, and the feature coverage
+// CoverageRequestHookTest.php on a case database of the selected database.
 declare(strict_types=1);
-
-require __DIR__ . '/autoload.php';
-require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
@@ -25,33 +22,37 @@ use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Tests\RequestHookCase\HookEntry;
 use Polyspec\Orm\Tests\RequestHookCase\HookItem;
 
-$work = sys_get_temp_dir() . '/orm-php-request-hook-' . getmypid();
-@mkdir($work, 0o700, true);
-register_shutdown_function(static function () use ($work): void {
-    exec('rm -rf ' . escapeshellarg($work));
-});
-
-$schemaText = (string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/request_hook.dbs');
-Generator::generate(RuntimeModel::build(RuntimeModel::parse(['request_hook.dbs' => $schemaText])), "$work/models", 'Polyspec\\Orm\\Tests\\RequestHookCase');
-spl_autoload_register(static function (string $class) use ($work): void {
-    if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\RequestHookCase\\')) {
-        require "$work/models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\RequestHookCase\\')) . '.php';
+/**
+ * Generates the models of contracts/fixtures/request_hook.dbs into a work directory of the process, removed when the
+ * process ends, and loads them; once per process.
+ */
+function requestHookModels(): void
+{
+    static $loaded = false;
+    if ($loaded) {
+        return;
     }
-});
-require "$work/models/bootstrap.php";
+    $loaded = true;
+    $work = sys_get_temp_dir() . '/orm-php-request-hook-' . getmypid();
+    @mkdir($work, 0o700, true);
+    register_shutdown_function(static function () use ($work): void {
+        exec('rm -rf ' . escapeshellarg($work));
+    });
+    $schemaText = (string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/request_hook.dbs');
+    Generator::generate(RuntimeModel::build(RuntimeModel::parse(['request_hook.dbs' => $schemaText])), "$work/models", 'Polyspec\\Orm\\Tests\\RequestHookCase');
+    spl_autoload_register(static function (string $class) use ($work): void {
+        if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\RequestHookCase\\')) {
+            require "$work/models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\RequestHookCase\\')) . '.php';
+        }
+    });
+    require "$work/models/bootstrap.php";
+}
 
 const READ_KINDS = ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate'];
 
-$hookFailures = 0;
-$hookCurrent = '';
-
 function hookCheck(bool $ok, string $message): void
 {
-    global $hookFailures, $hookCurrent;
-    if (!$ok) {
-        $hookFailures++;
-        fwrite(STDERR, "FAIL $hookCurrent: $message\n");
-    }
+    \PHPUnit\Framework\Assert::assertTrue($ok, $message);
 }
 
 /** The error a call raises, or null when it returns. */
@@ -348,17 +349,12 @@ const REQUEST_HOOK_CASES = [
     'restore_hook_set_key' => 'restoreHookSetKeyCase',
 ];
 
-/** Runs case $id on the empty database of $dsn and fails when a check of it failed. */
+/** Runs case $id on the empty database of $dsn; a failed check of it fails the running PHPUnit test. */
 function runRequestHookCase(string $id, string $dsn): void
 {
-    global $hookFailures, $hookCurrent;
     if (!isset(REQUEST_HOOK_CASES[$id])) {
         throw new RuntimeException("unknown request hook case $id; the cases are " . implode(', ', array_keys(REQUEST_HOOK_CASES)));
     }
-    $before = $hookFailures;
-    $hookCurrent = $id;
+    requestHookModels();
     (REQUEST_HOOK_CASES[$id])($dsn);
-    if ($hookFailures > $before) {
-        throw new RuntimeException(($hookFailures - $before) . ' check(s) of request hook case ' . $id . ' failed; each FAIL line names one');
-    }
 }

@@ -311,7 +311,7 @@ caseTest('the summary step reports a runner that did not finish, with the partia
 // 기대는 부분은 그 setup 부분을 prerequisite으로 가진다.
 const PARTS = {
   'version-check': ['unit', 'run'], 'repo-check': ['unit', 'run'],
-  'testcase-check': ['go', 'node', 'runners', 'php', 'rust'], 'ts-check': ['hold', 'types', 'test'],
+  'testcase-check': ['go', 'node', 'runners', 'rust'], 'ts-check': ['hold', 'types', 'test'],
   'rust-check': ['check', 'clippy', 'clippy-live-db', 'clippy-test-faults'], 'rust-fmt-check': ['clients', 'bench', 'interfaces'],
   'fuzz-check': ['engine-ir', 'clients-go-orm'], 'dialect-facts-check': ['probes', 'facts'], 'feature-unit-check': ['docs', 'coverage', 'owners', 'select'],
   'client-unit-check': ['dsn', 'markdown', 'relation-keys', 'hostcodec', 'engine', 'runtime-model', 'orm-gen', 'model-methods', 'client-generics', 'perf-extensions'],

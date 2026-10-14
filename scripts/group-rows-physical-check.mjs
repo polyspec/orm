@@ -61,13 +61,21 @@ for (const database of databases) {
   });
   for (const language of ['php', 'typescript']) {
     const program = language === 'php' ? 'php' : 'node';
-    const path = `${packageDirectory[language]}/tests/group_rows_db.${language === 'php' ? 'php' : 'mjs'}`;
+    const args = language === 'php'
+      ? ['packages/php/vendor/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--teamcity', 'packages/php/tests/GroupRowsDbTest.php']
+      : [`${packageDirectory[language]}/tests/group_rows_db.mjs`];
     for (let attempt = 1; attempt <= 2; attempt++) {
       await step(`group-rows/${database}/${language}/${attempt}`, 2 * timeoutMs, async ({ step: progress }) => {
         let output;
-        try { output = await run(program, [path], { ...process.env, ORM_GROUP_DATABASE: database, ORM_GROUP_DSN: dsn }); }
+        try { output = await run(program, args, { ...process.env, ORM_GROUP_DATABASE: database, ORM_GROUP_DSN: dsn }); }
         catch (error) { throw new Error(String(error.message).replaceAll(dsn, '[redacted]')); }
-        if (output.trim() !== `CASE group_rows_${database} PASS`) {
+        // PHPUnit의 TeamCity 출력에서는 test 하나가 끝나고 실패하거나 건너뛴 test가 없어야 하고, TypeScript test는 CASE 줄
+        // 하나를 쓴다.
+        const finished = [...output.matchAll(/^##teamcity\[testFinished name='([^']*)'/gm)].map(match => match[1]);
+        const passed = language === 'php'
+          ? JSON.stringify(finished) === JSON.stringify(['test_group_rows']) && !/^##teamcity\[test(?:Failed|Ignored) /m.test(output)
+          : output.trim() === `CASE group_rows_${database} PASS`;
+        if (!passed) {
           throw new Error(`${database}/${language}/${attempt}: missing exact pass event`);
         }
         const after = await state(database, dsn);

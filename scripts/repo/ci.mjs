@@ -438,7 +438,7 @@ export function expand(command, variables) {
 }
 
 // runnerIdentity는 명령 조각이 실행하는 test runner의 정체다: `go test`(fuzzing만 하는 `-fuzz`는 test
-// 실행이 아니다), `go vet`, `cargo test`, `php <file>`, `node --test`나 test file을 실행하는 `node`.
+// 실행이 아니다), `go vet`, `cargo test`, PHPUnit, `php <file>`, `node --test`나 test file을 실행하는 `node`.
 // 앞의 환경 변수 대입은 정체를 바꾸지 않는다. test runner가 아니면 undefined다.
 export function runnerIdentity(segment) {
   const command = segment.replace(/^(?:[A-Z_][A-Z0-9_]*=(?:"[^"]*"|'[^']*'|\S*)\s+)+/, '');
@@ -450,6 +450,9 @@ export function runnerIdentity(segment) {
   if (/^(?:go\s+test|node\s+tests\/go-test\.mjs)\b/.test(command)) return /\s-fuzz[\s=]/.test(command) ? undefined : 'go test';
   if (/^go\s+vet\b/.test(command)) return 'go vet';
   if (/^cargo\s+(?:\+\S+\s+)?test\b/.test(command)) return 'cargo test';
+  // PHPUnit of a package (`php [-d ...] packages/<package>/vendor/bin/phpunit ... <file>`) runs PHP tests.
+  const phpunit = /^(?:\S*php\s+(?:-d\s+\S+\s+|-\S+\s+)*)?(packages\/[\w-]+\/vendor\/bin\/phpunit)\b/.exec(command);
+  if (phpunit) return `phpunit ${phpunit[1]}`;
   const php = /^php\s+(?:-\S+\s+)*([\w./-]+\.php)\b/.exec(command);
   if (php) return `php ${php[1]}`;
   if (/^node\s+(?:-\S+\s+)*(?:--test\b|(?:packages\/(?:go|ts|php|php-ext|python|rust)|tests)\/)/.test(command)) return 'node test';
