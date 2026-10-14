@@ -111,6 +111,8 @@ rules:
       - "!tests/docs"
       - "!tests/lease"
       - "!tests/stop-process"
+      # The go/analysis analyzers of the repository's rules for Go source, which make go-vet-check/orm runs with go vet.
+      - "!tests/analyzers"
 
   # S9 exceptions. Each test or tool below is of its own ecosystem, not cross-language infrastructure.
   - id: layout-infrastructure-typescript
@@ -161,6 +163,9 @@ rules:
       # the exit notification of another process (kqueue, pidfd) for stop-process.
       - "!tests/lease/**"
       - "!tests/stop-process/**"
+      # The rules of this repository for Go source are go/analysis analyzers, the plugins of Go's own analyzer that go vet
+      # runs (go vet -vettool) over the syntax trees and types of the compiler, with their testdata packages.
+      - "!tests/analyzers/**"
 
   # The Python symbol extractor runs as a program of its interpreter (its shebang), an exception of the rule above.
   - id: layout-infrastructure-shebang

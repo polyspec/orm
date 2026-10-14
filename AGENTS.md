@@ -98,7 +98,7 @@ vendors; this file states only the rules of orm.
   group fails and names what it left, and a failed step's leftovers go into the report. Either way
   the runner then removes them and ends the processes. Code removes its own temporary files on
   every path, failure included: a Go `main` ends with `os.Exit(run())` and calls no `os.Exit` after
-  a `defer` (`make repo-check`), and a Rust test holds its temporary directory in a value that
+  a `defer` (`make go-vet-check`), and a Rust test holds its temporary directory in a value that
   removes it on drop. A process that starts a session of its own leaves the group and is not seen,
   so only the setup steps start servers that outlive a step.
 - A test's result does not depend on the environment of whoever runs it. A JavaScript test starts a
@@ -110,8 +110,8 @@ vendors; this file states only the rules of orm.
   time, the reference, the ratio and the machine), and a measurement above its documented reference value prints a
   `WARNING` line with the measurement, the reference and the machine, which the check runner keeps in the run record
   and the summary and writes as a GitHub `::warning::` annotation; the test still passes. A test fails only on
-  correctness, and a deadline only ends a case that does not stop. `make repo-check` refuses a test that fails on a
-  measured time above a bound. A reference value is never raised to remove a warning; a change needs new evidence of
+  correctness, and a deadline only ends a case that does not stop. `make repo-check` (and `make go-vet-check` for Go) refuses a
+  test that fails on a measured time above a bound. A reference value is never raised to remove a warning; a change needs new evidence of
   the same kind from the CI runner.
 - A check makes no registry query whose result depends on time: no latest lookup, no resolution of a
   version range, no query about outdated packages or new releases. Downloading a package that a lock

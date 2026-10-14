@@ -8,7 +8,7 @@
 
 import { parse as parseToml } from 'smol-toml';
 import semver from 'semver';
-import { actionSteps, workflowSteps } from './ci.mts';
+import { actionSteps, environment, workflowSteps, type WorkflowStep } from './workflow.mts';
 
 // MINIMUM_SCRIPT는 composer.json require.php의 최저 release를 출력하는 script다.
 const MINIMUM_SCRIPT = 'node scripts/php/php-min.mts';
@@ -52,22 +52,23 @@ export function phpVersionErrors(declared: string, minimum: string | undefined, 
     // 그 step은 make ci-php-min-version(${MINIMUM_SCRIPT} --version을 version=x.y로 적는 target)을 실행한다.
     const minimumStep = workflowSteps(workflow).some(step => step.id === 'php-min' &&
       step.run === MINIMUM_STEP);
-    const readsFile = (step: string) => /^\s*php-version-file:\s*["']?\.php-version["']?\s*$/m.test(step);
-    const readsMinimum = (step: string) => /^\s*php-version:\s*\$\{\{\s*steps\.php-min\.outputs\.version\s*\}\}\s*$/m.test(step);
+    const readsFile = (step: WorkflowStep) => step.with['php-version-file'] === '.php-version';
+    const readsMinimum = (step: WorkflowStep) => /^\$\{\{\s*steps\.php-min\.outputs\.version\s*\}\}$/.test(String(step.with['php-version'] ?? ''));
     for (const step of steps) {
       // 검사의 PHP는 debugger와 coverage driver 없이 실행한다: Xdebug는 hot-path gate의 비율을 바꾼다.
-      if (!/^\s*coverage:\s*["']?none["']?\s*$/m.test(step))
+      if (step.with['coverage'] !== 'none')
         errors.push(`${path} sets up PHP without coverage: none, so Xdebug or pcov can load`);
       if (readsMinimum(step)) {
         if (!minimumStep) errors.push(`${path} reads steps.php-min.outputs.version without the step that writes it from ${MINIMUM_SCRIPT}`);
         continue;
       }
-      if (/^\s*php-version:/m.test(step)) errors.push(`${path} declares php-version itself; .php-version declares it`);
+      if (Object.hasOwn(step.with, 'php-version')) errors.push(`${path} declares php-version itself; .php-version declares it`);
       if (!readsFile(step))
         errors.push(`${path} does not read php-version-file .php-version in shivammathur/setup-php`);
     }
     if (steps.filter(readsMinimum).length > 1) errors.push(`${path} installs the lowest PHP release more than once`);
-    if (steps.length > 0 && !readsFile(steps.at(-1) ?? ''))
+    const last = steps.at(-1);
+    if (last && !readsFile(last))
       errors.push(`${path} must set up the PHP of .php-version last, so that it is php on PATH`);
   }
   if (exact && running !== declared.trim())
@@ -101,7 +102,7 @@ export function rustToolchainErrors(toolchain: string, makefile: string, workflo
       if (actionSteps(workflow, action).length > 0)
         errors.push(`${path} chooses a Rust toolchain with ${action}; rust-toolchain.toml declares it`);
     if (runs(workflow, /rustup\s+default|rustup\s+toolchain\s+install\s+[A-Za-z0-9]|cargo\s+\+|RUSTUP_TOOLCHAIN/) ||
-        /^\s*RUSTUP_TOOLCHAIN\s*:/m.test(workflow))
+        environment(workflow).has('RUSTUP_TOOLCHAIN'))
       errors.push(`${path} chooses a Rust toolchain itself; rust-toolchain.toml declares it`);
     const usesRust = runs(workflow, /(^|[\s;&|(])cargo\s/m) || actionSteps(workflow, 'Swatinem/rust-cache').length > 0;
     // CI의 step은 make target을 실행하므로, 인자 없는 rustup toolchain install은 make install-rust-toolchain의 recipe에 있다.
@@ -144,7 +145,7 @@ export function composerVersionErrors(miseToml: string, workflows: Record<string
   if (!exact) return [`mise.toml must declare the tool http:composer with one exact Composer release x.y.z as its version, found ${JSON.stringify(version)}; write the release that CI and the local checks run`];
   for (const [path, workflow] of Object.entries(workflows)) {
     for (const step of actionSteps(workflow, 'shivammathur/setup-php')) {
-      if (!new RegExp(`^\\s*tools:\\s*["']?composer:${version.replaceAll('.', '\\.')}["']?\\s*$`, 'm').test(step))
+      if (step.with['tools'] !== `composer:${version}`)
         errors.push(`${path} sets up PHP without tools: composer:${version}; setup-php installs the newest Composer otherwise, so add tools: composer:${version}`);
     }
   }

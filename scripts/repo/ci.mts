@@ -1,4 +1,7 @@
-import { segments } from './testcases.mts';
+import { isDeepStrictEqual } from 'node:util';
+import { andLists, type Dialect, segments, shellSegments } from './shell.mts';
+import { recipeLines } from './testcases.mts';
+import { environment, events, readWorkflow, workflowSteps, type WorkflowJob, type WorkflowStep } from './workflow.mts';
 import { CI_SETUP, stepCondition } from '../check/ci-setup.mts';
 import { parseSelection, selectChecks } from '../features/select.mts';
 import { runName } from '../check/report.mts';
@@ -8,91 +11,14 @@ import { runName } from '../check/report.mts';
 // 서버를 시작하고 그 모든 변수를 검사 단계에 준다.
 
 
-// workflowSteps는 workflow의 step마다 이름, id, timeout-minutes와 run text를 돌려준다. step은 `steps:` 아래 한 단계
-// 깊은 `- `로 시작하고, run text는 한 줄 값이거나 그 아래 더 깊은 block이다.
-/** A step of a workflow: its name, id, timeout-minutes and run text. */
-export type WorkflowStep = { name: string; id: string | undefined; timeout: string | undefined; run: string };
+// runSegments는 step의 run text가 실행하는 명령이다(scripts/repo/shell.mts).
+const runSegments = (step: WorkflowStep): string[] => step.run ? segments(step.run, 'workflow') : [];
 
-export function workflowSteps(workflow: string): WorkflowStep[] {
-  const lines = workflow.split('\n');
-  const steps: { lines: string[] }[] = [];
-  let inSteps = false;
-  let indent: number | null = null;
-  for (const line of lines) {
-    if (/^\s*steps:\s*$/.test(line)) { inSteps = true; indent = null; continue; }
-    if (!inSteps) continue;
-    const item = line.match(/^(\s*)- (.*)$/);
-    const lead = item?.[1] ?? '';
-    if (item && (indent === null || lead.length === indent)) {
-      indent = lead.length;
-      steps.push({ lines: [' '.repeat(indent + 2) + (item[2] ?? '')] });
-    } else if (steps.length > 0 && indent !== null && (line.trim() === '' || leadingSpace(line) > indent)) {
-      steps.at(-1)?.lines.push(line);
-    }
-  }
-  return steps.map(({ lines: stepLines }) => {
-    const name = stepLines.map(line => line.match(/^\s*name:\s*(.*)$/)).find(Boolean)?.[1] ?? (stepLines[0] ?? '').trim();
-    const id = stepLines.map(line => line.match(/^\s*id:\s*(\S+)\s*$/)).find(Boolean)?.[1];
-    const timeout = stepLines.map(line => line.match(/^\s*timeout-minutes:\s*(\S+)\s*$/)).find(Boolean)?.[1];
-    const start = stepLines.findIndex(line => /^\s*run:/.test(line));
-    if (start === -1) return { name, id, timeout, run: '' };
-    const runLine = stepLines[start] ?? '';
-    const runIndent = leadingSpace(runLine);
-    const inline = runLine.replace(/^\s*run:\s*/, '');
-    const block: string[] = [];
-    for (const line of stepLines.slice(start + 1)) {
-      if (line.trim() !== '' && leadingSpace(line) <= runIndent) break;
-      block.push(line.trim());
-    }
-    return { name, id, timeout, run: /^[|>][-+]?$/.test(inline) ? block.join('\n').trim() : inline };
-  });
-}
-
-// workflowJobs는 workflow의 job마다 [id, text]를 돌려준다. job은 `jobs:` 아래 두 칸 깊은 key이고, text는 그 key부터
-// 다음 job 앞까지다. job마다 runner가 따로이므로 step의 순서와 setup은 job 안에서 본다. `jobs:`가 없는 text는 job
-// 하나다.
-/** leadingSpace is the number of spaces and tabs that start a line. */
-function leadingSpace(line: string): number {
-  return /^\s*/.exec(line)?.[0].length ?? 0;
-}
-
-export function workflowJobs(workflow: string): [string | null, string][] {
-  const lines = workflow.split('\n');
-  const start = lines.findIndex((line: string) => /^jobs:\s*$/.test(line));
-  if (start === -1) return [[null, workflow]];
-  const jobs: [string, string[]][] = [];
-  for (const line of lines.slice(start + 1)) {
-    const key = /^ {2}([\w-]+):\s*$/.exec(line);
-    if (key) jobs.push([key[1] ?? '', [line]]);
-    else if (/^\S/.test(line)) break;
-    else if (jobs.length) jobs.at(-1)?.[1].push(line);
-  }
-  return jobs.map(([id, body]) => [id, body.join('\n')]);
-}
-
-// actionSteps는 workflow에서 action(예: actions/setup-node)을 쓰는 step마다 그 step의 줄을 돌려준다.
-export function actionSteps(workflow: string, action: string): string[] {
-  const lines = workflow.split('\n');
-  const steps: string[] = [];
-  for (const [index, current] of lines.entries()) {
-    const item = current.match(/^(\s*)- uses:\s*(\S+)@/);
-    if (!item || item[2] !== action) continue;
-    const indent = (item[1] ?? '').length;
-    const body = [current];
-    for (const line of lines.slice(index + 1)) {
-      if (line.trim() !== '' && leadingSpace(line) <= indent) break;
-      body.push(line);
-    }
-    steps.push(body.join('\n'));
-  }
-  return steps;
-}
-
-// repository의 make target은 run text의 줄 머리에서 실행한다. 다른 directory에서 build하는
+// repository의 make target은 step이 실행하는 명령이다. 다른 directory에서 build하는
 // make(예: `(cd /tmp/sqlite && make)`)는 검사가 아니다.
-const startsServers = (run: string): boolean => /^make test-servers\s*$/m.test(run);
+const startsServers = (step: WorkflowStep): boolean => runSegments(step).some(segment => /^make test-servers$/.test(segment));
 // make install과 그 부분(install-*)은 server 없이 download만 하므로 server보다 앞서도 된다.
-const runsMake = (run: string): boolean => /^make\s+(?!install(?:-[\w-]+)?(?:\s+install(?:-[\w-]+)?)*\s*$)/m.test(run) && !startsServers(run);
+const runsMake = (step: WorkflowStep): boolean => runSegments(step).some(segment => /^make\s+(?!install(?:-[\w-]+)?(?:\s+install(?:-[\w-]+)?)*$)/.test(segment)) && !startsServers(step);
 
 // ciServerErrors는 workflow가 database 검사의 서버와 변수를 test-servers.mts와 같은 정의로 주지
 // 않거나 symbolic link를 만드는 곳마다 오류 하나를 돌려준다.
@@ -104,23 +30,25 @@ export function ciServerErrors(workflow: string, variables: readonly string[]): 
   const errors: string[] = [];
   if (variables.length === 0) return ['scripts/test-servers.mts writes no environment variable'];
   const steps = workflowSteps(workflow);
-  const server = steps.findIndex(step => startsServers(step.run));
+  const defined = environment(workflow);
+  const server = steps.findIndex(startsServers);
   if (server === -1) {
     for (const variable of variables) {
-      if (!new RegExp(`(^|[^A-Z0-9_])${variable}([^A-Z0-9_]|$)`).test(workflow))
+      const named = new RegExp(`(^|[^A-Z0-9_])${variable}([^A-Z0-9_]|$)`);
+      if (!defined.has(variable) && !steps.some(step => named.test(step.run)))
         errors.push(`ci.yml does not provide ${variable}, which the database checks read`);
     }
     errors.push('ci.yml does not start the database servers with make test-servers');
   } else {
     // CI setup step(scripts/check/ci-setup.mts)은 server가 필요 없는 설치와 환경 확인이다.
-    steps.slice(0, server).filter(step => runsMake(step.run) && !Object.hasOwn(CI_SETUP, step.id ?? '')).forEach(step =>
+    steps.slice(0, server).filter(step => runsMake(step) && !Object.hasOwn(CI_SETUP, step.id ?? '')).forEach(step =>
       errors.push(`ci.yml step "${step.name}" runs make before make test-servers starts the servers`));
   }
   for (const variable of variables) {
-    if (new RegExp(`^\\s*${variable}\\s*:`, 'm').test(workflow))
+    if (defined.has(variable))
       errors.push(`ci.yml defines ${variable}; make test-servers defines it`);
   }
-  if (/>>?\s*\.runtime\/servers\/env/.test(workflow))
+  if (steps.some(step => />>?\s*\.runtime\/servers\/env/.test(step.run)))
     errors.push('ci.yml writes .runtime/servers/env; make test-servers writes it');
   // symbolic link는 쓰지 않는다(AGENTS.md): 서버 program은 자기 package 경로에서 찾는다.
   for (const step of steps) {
@@ -140,8 +68,8 @@ export const GROUP_CHECK = 'make check-run GROUP=${{ matrix.group }}';
 
 // runsCheck는 명령 조각이 전체 suite를 실행하는지다: 모든 target(`make check`, `make check-run`)이거나 CI group 하나(GROUP_CHECK)다.
 export const runsCheck = (segment: string) => /^make\s+check(?:-run)?\s*$/.test(segment.trim()) || segment.trim() === GROUP_CHECK;
-const checkStep = (step: WorkflowStep): boolean => step.run.split('\n').flatMap(segments).some(runsCheck);
-const groupStep = (step: WorkflowStep): boolean => step.run.split('\n').flatMap(segments).some((segment: string) => segment.trim() === GROUP_CHECK);
+const checkStep = (step: WorkflowStep): boolean => runSegments(step).some(runsCheck);
+const groupStep = (step: WorkflowStep): boolean => runSegments(step).some((segment: string) => segment === GROUP_CHECK);
 
 // ciGroups는 Makefile의 CI group이다: groups는 CI_GROUPS, targets는 CI_TARGETS_<group>마다 그 target이다.
 export function ciGroups(makefile: string): { groups: string[]; targets: Record<string, string[]> } {
@@ -150,10 +78,12 @@ export function ciGroups(makefile: string): { groups: string[]; targets: Record<
   return { groups, targets };
 }
 
-// matrixGroups는 job text의 matrix `group: [a, b]` 목록이다. 없으면 null이다.
-export function matrixGroups(job: string): string[] | null {
-  const list = /^\s*group:\s*\[(.*)\]\s*$/m.exec(job)?.[1];
-  return list === undefined ? null : list.split(',').map(item => item.trim()).filter(Boolean);
+// matrixGroups는 job의 strategy.matrix.group 목록이다. 없으면 null이다.
+export function matrixGroups(job: WorkflowJob): string[] | null {
+  const strategy = job.value['strategy'];
+  const matrix = typeof strategy === 'object' && strategy !== null ? (strategy as Record<string, unknown>)['matrix'] : undefined;
+  const list = typeof matrix === 'object' && matrix !== null ? (matrix as Record<string, unknown>)['group'] : undefined;
+  return Array.isArray(list) ? list.map(String) : null;
 }
 
 // ciGroupErrors는 CI group이 CHECK_TARGETS를 나누지 않는 곳마다 오류 하나를 돌려준다. GROUP_CHECK를 실행하는 job의
@@ -164,8 +94,9 @@ export function ciGroupErrors(workflow: string, makefile: string): string[] {
   const { groups, targets } = ciGroups(makefile);
   const checks = checkTargets(makefile);
   if (groups.length === 0) return [`ci.yml runs ${GROUP_CHECK}, but the Makefile declares no CI_GROUPS`];
-  for (const [id, job] of workflowJobs(workflow)) {
-    if (!workflowSteps(job).some(groupStep)) continue;
+  for (const job of readWorkflow(workflow).jobs) {
+    const { id } = job;
+    if (!job.steps.some(groupStep)) continue;
     const matrix = matrixGroups(job);
     if (!matrix) { errors.push(`ci.yml job ${id} runs ${GROUP_CHECK} without a matrix group: [...] of CI_GROUPS`); continue; }
     for (const group of new Set(matrix.filter((group, index) => matrix.indexOf(group) !== index))) errors.push(`ci.yml job ${id} lists the matrix group ${group} twice`);
@@ -193,9 +124,9 @@ export function ciGroupErrors(workflow: string, makefile: string): string[] {
 export function ciReportPathErrors(workflow: string, makefile: string): string[] {
   const { groups } = ciGroups(makefile);
   const errors: string[] = [];
-  for (const [id, job] of workflowJobs(workflow)) {
-    const runId = /^\s*ORM_CHECK_RUN_ID:\s*(.+)$/m.exec(job)?.[1]?.trim();
-    const path = /^\s*path:\s*(\.runtime\/check\/.+)$/m.exec(job)?.[1]?.trim();
+  for (const { id, steps } of readWorkflow(workflow).jobs) {
+    const runId = steps.map(step => step.env['ORM_CHECK_RUN_ID']).find((value): value is string => typeof value === 'string');
+    const path = steps.map(step => step.with['path']).find((value): value is string => typeof value === 'string' && value.startsWith('.runtime/check/'));
     if (!runId || !path) continue;
     // The matrix group fills ${{ matrix.group }} with its name.
     const fill = (text: string, group: string) => text.replaceAll('${{ matrix.group }}', group).replaceAll('${{ github.run_id }}', '1').replaceAll('${{ github.run_attempt }}', '1');
@@ -218,8 +149,8 @@ export function ciCheckTargetErrors(workflow: string, makefile: string): string[
   if (targets.length === 0) return ['Makefile declares no CHECK_TARGETS'];
   const ran = new Map<string, string>();
   for (const step of workflowSteps(workflow)) {
-    for (const line of step.run.split('\n')) {
-      const command = /^make\s+(.*)$/.exec(line.trim())?.[1];
+    for (const segment of runSegments(step)) {
+      const command = /^make\s+(.*)$/s.exec(segment)?.[1];
       if (!command) continue;
       for (const word of command.split(/\s+/)) {
         if (!/^[a-z0-9-]+$/.test(word)) break;
@@ -252,15 +183,15 @@ export function featureCommands(features: unknown): string[] {
   return commands;
 }
 
-// recipe는 Makefile에서 target의 명령 줄을 돌려준다. target이 없으면 undefined다.
+// recipe는 Makefile에서 target의 recipe 명령(recipeLines)을 돌려준다. target이 없으면 undefined다.
 function recipe(makefile: string, target: string): string[] | undefined {
-  const lines = makefile.split('\n');
-  const start = lines.findIndex((line: string) => line.startsWith(`${target}:`));
+  const lines = recipeLines(makefile);
+  const start = lines.findIndex(line => !line.recipe && line.text.startsWith(`${target}:`));
   if (start === -1) return undefined;
   const body: string[] = [];
   for (const line of lines.slice(start + 1)) {
-    if (!line.startsWith('\t')) break;
-    body.push(line.slice(1));
+    if (!line.recipe) break;
+    body.push(line.text);
   }
   return body;
 }
@@ -407,10 +338,11 @@ export function runnerErrors(declared: string, workflows: Record<string, string>
     return [`.github/runner ${runner} is not a Linux runner; the linux-runner checks of contracts/features.json run only there`];
   const errors: string[] = [];
   for (const [path, workflow] of Object.entries(workflows)) {
-    const labels = [...workflow.matchAll(/^\s*runs-on:\s*(.*?)\s*$/gm)].map(match => match[1]);
-    if (labels.length === 0) errors.push(`${path} declares no runs-on`);
-    for (const label of labels)
-      if (label !== runner) errors.push(`${path} runs on ${label}; .github/runner declares ${runner}`);
+    for (const job of readWorkflow(workflow, path).jobs) {
+      const label = job.value['runs-on'];
+      if (label === undefined) errors.push(`${path} job ${job.id} declares no runs-on`);
+      else if (label !== runner) errors.push(`${path} job ${job.id} runs on ${typeof label === 'string' ? label : JSON.stringify(label)}; .github/runner declares ${runner}`);
+    }
   }
   return errors;
 }
@@ -423,13 +355,14 @@ export function runnerErrors(declared: string, workflows: Record<string, string>
 export function stepTimeoutErrors(workflows: Record<string, string>): string[] {
   const errors: string[] = [];
   for (const [path, workflow] of Object.entries(workflows)) {
-    const steps = workflowSteps(workflow);
-    for (const step of steps)
-      if (step.timeout !== undefined)
-        errors.push(`${path} step "${step.name}" has timeout-minutes; a long operation gets step logs and no deadline`);
-    const all = workflow.split('\n').filter((line: string) => /^\s*timeout-minutes:/.test(line)).length;
-    const inSteps = steps.filter(step => step.timeout !== undefined).length;
-    if (all > inSteps) errors.push(`${path} has timeout-minutes outside its steps, a deadline for a whole job; a long operation gets step logs and no deadline`);
+    const { jobs } = readWorkflow(workflow, path);
+    for (const job of jobs) {
+      for (const step of job.steps)
+        if (Object.hasOwn(step.value, 'timeout-minutes'))
+          errors.push(`${path} step "${step.name}" has timeout-minutes; a long operation gets step logs and no deadline`);
+      if (Object.hasOwn(job.value, 'timeout-minutes'))
+        errors.push(`${path} job ${job.id} has timeout-minutes, a deadline for a whole job; a long operation gets step logs and no deadline`);
+    }
   }
   return errors;
 }
@@ -486,7 +419,7 @@ export function ciRerunErrors(workflow: string, makefile: string): string[] {
   for (const step of steps) {
     // CI setup step(scripts/check/ci-setup.mts)은 도구를 설치하고 그 환경을 확인할 뿐 test를 실행하지 않는다.
     if (Object.hasOwn(CI_SETUP, step.id ?? '')) continue;
-    for (const segment of step.run.split('\n').flatMap(segments)) {
+    for (const segment of runSegments(step)) {
       if (runsCheck(segment)) continue;
       const identity = runnerIdentity(segment);
       if (identity) { report(step, identity, ''); continue; }
@@ -494,7 +427,7 @@ export function ciRerunErrors(workflow: string, makefile: string): string[] {
       if (!make) continue;
       for (const target of make.split(/\s+/).filter(word => /^[a-z0-9-]+$/.test(word) && word !== 'check' && !targets.has(word))) {
         for (const line of recipe(makefile, target) ?? [])
-          for (const part of segments(expand(line, variables))) {
+          for (const part of segments(expand(line, variables), 'make')) {
             const inner = runnerIdentity(part);
             if (inner) report(step, inner, ` through make ${target}`);
           }
@@ -535,7 +468,7 @@ export function ciLeaseErrors(workflows: Record<string, string>, tracked: string
   const errors: string[] = [];
   for (const [path, workflow] of Object.entries(workflows)) {
     for (const step of workflowSteps(workflow)) {
-      for (const segment of step.run.split('\n').flatMap(segments)) {
+      for (const segment of runSegments(step)) {
         const { name, files } = leaseProgram(segment, tracked);
         const reading = files.find((file: string) => LEASE_READ.test(read(file) ?? ''));
         if (reading)
@@ -550,67 +483,45 @@ export function ciLeaseErrors(workflows: Record<string, string>, tracked: string
 // 뒤에는 검사가 아니라 그 실행의 정보를 남기는 두 step만 온다: runner가 끝나지 않았어도 summary를 job summary와
 // 보고서에 쓰는 summary, 그리고 그 실행 id의 보고서 directory만 올리는 report다. 둘 다 `if: ${{ !cancelled() }}`다.
 // AFTER_GROUP_CHECK은 CI group job의 같은 두 step이다: 실행 id, artifact 이름과 보고서 directory가 matrix의 group을 가지므로
-// group들의 보고서가 서로 겹치지 않는다.
-export const RUN_ID = 'ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}';
-export const GROUP_RUN_ID = 'ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}';
-export const AFTER_CHECK = [
-  ['- name: summary', 'if: ${{ !cancelled() }}', 'env:', RUN_ID, 'run: node scripts/check/summary.mts'],
-  ['- name: report', 'if: ${{ !cancelled() }}', 'uses: actions/upload-artifact@v4', 'with:', 'name: check-${{ github.run_id }}-${{ github.run_attempt }}',
-    'path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}/report/', 'if-no-files-found: error'],
+// group들의 보고서가 서로 겹치지 않는다. step은 workflow의 YAML 값으로 비교한다.
+export const RUN_ID = '${{ github.run_id }}-${{ github.run_attempt }}';
+export const GROUP_RUN_ID = '${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}';
+const NOT_CANCELLED = '${{ !cancelled() }}';
+export const AFTER_CHECK: Record<string, unknown>[] = [
+  { name: 'summary', if: NOT_CANCELLED, env: { ORM_CHECK_RUN_ID: RUN_ID }, run: 'node scripts/check/summary.mts' },
+  { name: 'report', if: NOT_CANCELLED, uses: 'actions/upload-artifact@v4',
+    with: { name: 'check-${{ github.run_id }}-${{ github.run_attempt }}', path: '.runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}/report/', 'if-no-files-found': 'error' } },
 ];
-export const AFTER_GROUP_CHECK = [
-  ['- name: summary', 'if: ${{ !cancelled() }}', 'env:', GROUP_RUN_ID, 'run: node scripts/check/summary.mts'],
-  ['- name: report', 'if: ${{ !cancelled() }}', 'uses: actions/upload-artifact@v4', 'with:', 'name: check-${{ matrix.group }}-${{ github.run_id }}-${{ github.run_attempt }}',
-    'path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_${{ matrix.group }}/report/', 'if-no-files-found: error'],
+export const AFTER_GROUP_CHECK: Record<string, unknown>[] = [
+  { name: 'summary', if: NOT_CANCELLED, env: { ORM_CHECK_RUN_ID: GROUP_RUN_ID }, run: 'node scripts/check/summary.mts' },
+  { name: 'report', if: NOT_CANCELLED, uses: 'actions/upload-artifact@v4',
+    with: { name: 'check-${{ matrix.group }}-${{ github.run_id }}-${{ github.run_attempt }}', path: '.runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_${{ matrix.group }}/report/', 'if-no-files-found': 'error' } },
 ];
-
-// stepText는 workflow의 step마다 주석과 빈 줄을 뺀 줄을 앞뒤 공백 없이 돌려준다.
-function stepTexts(workflow: string): string[][] {
-  const out: string[][] = [];
-  let inSteps = false;
-  let indent: number | null = null;
-  for (const line of workflow.split('\n')) {
-    if (/^\s*steps:\s*$/.test(line)) { inSteps = true; indent = null; continue; }
-    if (!inSteps || line.trim() === '' || line.trim().startsWith('#')) continue;
-    const item = line.match(/^(\s*)- /);
-    const lead = item?.[1] ?? '';
-    if (item && (indent === null || lead.length === indent)) {
-      indent = lead.length;
-      out.push([line.trim()]);
-    } else if (out.length && indent !== null && leadingSpace(line) > indent) out.at(-1)?.push(line.trim());
-  }
-  return out;
-}
 
 // ciAfterCheckErrors는 make check를 실행하는 workflow의 job마다 make check step이 ORM_CHECK_RUN_ID를 주지 않거나, 그 뒤의
 // step이 AFTER_CHECK의 summary와 report와 정확히 같지 않은 곳마다 오류 하나를 돌려준다. 검사는 모두 make check의
 // target에 있고(CHECK_TARGETS), 그 뒤의 step은 그 실행의 summary와 보고서만 남긴다.
 export function ciAfterCheckErrors(workflows: Record<string, string>): string[] {
   const errors: string[] = [];
-  for (const [path, whole] of Object.entries(workflows)) for (const [, workflow] of workflowJobs(whole)) {
-    const steps = workflowSteps(workflow);
+  for (const [path, whole] of Object.entries(workflows)) for (const { steps } of readWorkflow(whole, path).jobs) {
     const check = steps.findIndex(checkStep);
-    if (check === -1) continue;
     const checkStepOf = steps[check];
     if (!checkStepOf) continue;
     const grouped = groupStep(checkStepOf);
     const declared = grouped ? AFTER_GROUP_CHECK : AFTER_CHECK;
     const runId = grouped ? GROUP_RUN_ID : RUN_ID;
-    const texts = stepTexts(workflow);
-    if (!texts[check]?.includes(runId))
-      errors.push(`${path} step "${checkStepOf.name}" gives make check no ${runId}, which names the report of the run`);
-    const after = texts.slice(check + 1);
+    if (checkStepOf.env['ORM_CHECK_RUN_ID'] !== runId)
+      errors.push(`${path} step "${checkStepOf.name}" gives make check no ORM_CHECK_RUN_ID: ${runId}, which names the report of the run`);
+    const after = steps.slice(check + 1);
     for (const [index, step] of after.entries()) {
       const want = declared[index];
-      if (want && step.join('\n') === want.join('\n')) continue;
-      const later = steps[check + 1 + index];
-      const name = later?.name ?? '';
+      if (want && isDeepStrictEqual(step.value, want)) continue;
       errors.push(want
-        ? `${path} step "${name}" after make check is not the declared ${(want[0] ?? '').slice('- name: '.length)} step: ${step.join(' | ')} instead of ${want.join(' | ')}`
-        : `${path} step "${name}" runs ${later?.run.split('\n')[0] || step[0]} after make check; make check runs every check, and only the summary and the report upload follow it, so a check it lacks belongs in a target of CHECK_TARGETS`);
+        ? `${path} step "${step.name}" after make check is not the declared ${String(want['name'])} step: ${JSON.stringify(step.value)} instead of ${JSON.stringify(want)}`
+        : `${path} step "${step.name}" runs ${step.run.split('\n')[0] || JSON.stringify(step.value)} after make check; make check runs every check, and only the summary and the report upload follow it, so a check it lacks belongs in a target of CHECK_TARGETS`);
     }
     for (const want of declared.slice(after.length))
-      errors.push(`${path} has no ${(want[0] ?? '').slice('- name: '.length)} step after make check: ${want.join(' | ')}`);
+      errors.push(`${path} has no ${String(want['name'])} step after make check: ${JSON.stringify(want)}`);
   }
   return errors;
 }
@@ -653,12 +564,12 @@ export const GROUP_NEEDS = 'make --no-print-directory ci-group-needs GROUP=${{ m
 export function ciSetupErrors(workflows: Record<string, string>, { setup, runner }: { setup: Record<string, string | null>; runner: string[] }): string[] {
   const errors: string[] = [];
   for (const [path, whole] of Object.entries(workflows)) {
-    if (/^\s*continue-on-error:/m.test(whole)) errors.push(`${path} uses continue-on-error, which hides a failed step from the job; run later steps with if: \${{ !cancelled() }} instead`);
-    for (const [, workflow] of workflowJobs(whole)) {
-      const steps = workflowSteps(workflow);
-      const texts = stepTexts(workflow);
+    const { jobs } = readWorkflow(whole, path);
+    if (jobs.some(job => Object.hasOwn(job.value, 'continue-on-error') || job.steps.some(step => Object.hasOwn(step.value, 'continue-on-error'))))
+      errors.push(`${path} uses continue-on-error, which hides a failed step from the job; run later steps with if: \${{ !cancelled() }} instead`);
+    for (const { steps } of jobs) {
       const check = steps.findIndex(checkStep);
-      const guarded = (index: number) => (texts[index] ?? []).some(line => /^if: \$\{\{ !cancelled\(\)/.test(line));
+      const guarded = (index: number) => steps[index]?.if?.startsWith('${{ !cancelled()') ?? false;
       if (check === -1) {
         for (const [index, step] of steps.entries())
           if (index > 0 && step.run && !guarded(index)) errors.push(`${path} step "${step.name}" does not run after a failed earlier step; give it if: \${{ !cancelled() ... }}`);
@@ -674,11 +585,10 @@ export function ciSetupErrors(workflows: Record<string, string>, { setup, runner
       const checkStepOf = steps[check];
       if (!checkStepOf) continue;
       if (groupStep(checkStepOf)) {
-        for (const [index, step] of steps.slice(0, check).entries()) {
+        for (const step of steps.slice(0, check)) {
           if (!Object.hasOwn(setup, step.id ?? '')) continue;
-          const want = `if: ${stepCondition(step.id ?? '')}`;
-          const have = texts[index]?.find(line => line.startsWith('if:'));
-          if (have !== want) errors.push(`${path} step "${step.name}" of the CI group job runs under ${have ?? 'no if:'} instead of ${want}, the condition that scripts/check/ci-setup.mts declares for the step ${step.id}`);
+          const want = stepCondition(step.id ?? '');
+          if (step.if !== want) errors.push(`${path} step "${step.name}" of the CI group job runs under ${step.if === undefined ? 'no if:' : `if: ${step.if}`} instead of if: ${want}, the condition that scripts/check/ci-setup.mts declares for the step ${step.id}`);
         }
         const needs = steps.slice(0, check).find(step => step.id === 'group-needs');
         if (needs && needs.run !== GROUP_NEEDS) errors.push(`${path} step "${needs.name}" runs ${needs.run} instead of ${GROUP_NEEDS}, which writes the setup of the CI group as step outputs`);
@@ -686,12 +596,11 @@ export function ciSetupErrors(workflows: Record<string, string>, { setup, runner
       const ids = new Set(steps.slice(0, check).map(step => step.id));
       for (const id of [...runner, ...Object.keys(setup)]) if (!ids.has(id)) errors.push(`${path} has no setup step with the id ${id} of scripts/check/ci-setup.mts`);
       if (!guarded(check)) errors.push(`${path} step "${checkStepOf.name}" does not run after a failed setup step; give it if: \${{ !cancelled() }}`);
-      if (!texts[check]?.includes('ORM_CI_SETUP: ${{ toJSON(steps) }}')) errors.push(`${path} step "${checkStepOf.name}" gives make check no ORM_CI_SETUP: \${{ toJSON(steps) }}, which tells the runner the failed setup steps`);
+      if (checkStepOf.env['ORM_CI_SETUP'] !== '${{ toJSON(steps) }}') errors.push(`${path} step "${checkStepOf.name}" gives make check no ORM_CI_SETUP: \${{ toJSON(steps) }}, which tells the runner the failed setup steps`);
     }
   }
   return errors;
 }
-
 
 // independentTestErrors는 make recipe 하나가 서로 다른 test 실행 줄을 둘 이상 가지는 곳마다 오류 하나를 돌려준다. recipe의
 // 줄은 첫 실패에서 멈추므로(make -k도 recipe 안에서는 멈춘다), 앞의 test가 실패하면 뒤의 test는 실행되지 않고 그
@@ -701,16 +610,16 @@ export function ciSetupErrors(workflows: Record<string, string>, { setup, runner
 export function independentTestErrors(makefile: string): string[] {
   const variables = makeVariables(makefile);
   const recipes: { target: string | null; commands: string[] }[] = [];
-  for (const line of makefile.split('\n')) {
-    const target = /^([A-Za-z0-9_./-]+):(?!=)/.exec(line);
+  for (const { recipe, text } of recipeLines(makefile)) {
+    const target = recipe ? null : /^([A-Za-z0-9_./-]+):(?!=)/.exec(text);
     if (target) recipes.push({ target: target[1] ?? '', commands: [] });
-    else if (line.startsWith('\t') && recipes.length) recipes.at(-1)?.commands.push(line.slice(1));
-    else if (line.trim() !== '' && !line.startsWith('#')) recipes.push({ target: null, commands: [] });
+    else if (recipe && recipes.length) recipes.at(-1)?.commands.push(text);
+    else if (!recipe && text.trim() !== '' && !text.startsWith('#')) recipes.push({ target: null, commands: [] });
   }
   const errors: string[] = [];
   for (const { target, commands } of recipes) {
     if (!target) continue;
-    const tests = new Set(commands.filter(command => checkLine(expand(command, variables))));
+    const tests = new Set(commands.filter(command => checkLine(expand(command, variables), 'make')));
     if (tests.size >= 2)
       errors.push(`Makefile ${target} runs ${tests.size} independent tests in one recipe, whose first failure stops the others; split them into parts ${target}/<part>: ${[...tests].map(test => test.slice(0, 80)).join(' | ')}`);
   }
@@ -720,29 +629,12 @@ export function independentTestErrors(makefile: string): string[] {
 // testRun은 명령 조각이 test나 lint 검사를 실행하는지다: runnerIdentity가 test runner로 보는 것 가운데, 실행하지 않고 compile만
 // 하는 것(go test -c, cargo test --no-run), 출력을 file로 보내는 입력 생성(`> file`), 의존성의 도구(node_modules의
 // tsc 같은 build)는 test 실행이 아니다.
-// checkLine은 명령 줄이 test나 lint 검사를 실행하는지다. tests/cargo-test.mts는 cargo test를 실행한다. make 함수와 shell
-// 치환(`$(abspath ...)`, `$(shell ...)`)은 값 하나로 줄인 뒤 조각마다 testRun으로 본다.
-function checkLine(line: string): boolean {
+// checkLine은 명령(dialect의 text)이 test나 lint 검사를 실행하는지다. tests/cargo-test.mts는 cargo test를 실행한다. 명령이
+// 실행하는 simple command를 shell이 보는 대로(scripts/repo/shell.mts의 shellSegments) testRun으로 본다: make 함수와 변수
+// (`$(abspath ...)`, `$(shell ...)`)는 값 하나(VALUE)다.
+function checkLine(line: string, dialect: Dialect): boolean {
   if (/tests\/cargo-test\.mts/.test(line) && !/\s--no-run\b/.test(line)) return true;
-  return segments(reduceMake(line)).some(segment => testRun(segment.trim()));
-}
-
-// reduceMake은 `$(` 로 시작하는 make 함수와 shell 치환을 짝이 맞는 `)`까지 값 하나(VALUE)로 바꾼다. 안의 괄호도 센다.
-function reduceMake(text: string): string {
-  let out = '';
-  for (let index = 0; index < text.length; index++) {
-    if (text[index] === '$' && text[index + 1] === '(') {
-      let depth = 0;
-      let end = index + 1;
-      for (; end < text.length; end++) {
-        if (text[end] === '(') depth++;
-        else if (text[end] === ')' && --depth === 0) break;
-      }
-      out += 'VALUE';
-      index = end;
-    } else out += text[index];
-  }
-  return out;
+  return shellSegments(line, dialect).some(segment => testRun(segment));
 }
 
 function testRun(segment: string): boolean {
@@ -757,12 +649,15 @@ function testRun(segment: string): boolean {
 }
 
 // chainedCommandErrors는 contracts/features.json의 검증 명령과 helper 명령이 `&&`로 test 실행 둘 이상을 잇는 곳마다
-// 오류 하나를 돌려준다. 앞의 test가 실패하면 뒤의 test는 실행되지 않는다. 각 test는 자기 명령이 된다.
+// 오류 하나를 돌려준다. 앞의 test가 실패하면 뒤의 test는 실행되지 않는다. 각 test는 자기 명령이 된다. `&&`의 목록은
+// shell parser가 읽는다(scripts/repo/shell.mts의 andLists).
 export function chainedCommandErrors(features: { features?: { id: string; verification?: { id: string; command: string }[] }[]; helpers?: { id: string; command: string }[] }): string[] {
   const errors: string[] = [];
   const check = (where: string, command: string) => {
-    const tests = command.split('&&').filter(part => checkLine(part.trim()));
-    if (tests.length >= 2) errors.push(`contracts/features.json ${where} chains ${tests.length} tests with &&, so the first failure stops the next; declare each as its own command: ${command.slice(0, 160)}`);
+    for (const list of andLists(command, 'sh')) {
+      const tests = list.filter(part => checkLine(part, 'sh'));
+      if (tests.length >= 2) errors.push(`contracts/features.json ${where} chains ${tests.length} tests with &&, so the first failure stops the next; declare each as its own command: ${command.slice(0, 160)}`);
+    }
   };
   for (const feature of features.features ?? []) for (const verification of feature.verification ?? []) check(`${feature.id}/${verification.id}`, verification.command);
   for (const helper of features.helpers ?? []) check(`helper ${helper.id}`, helper.command);
@@ -781,66 +676,54 @@ export function ciMakeErrors(workflows: Record<string, string>): string[] {
     for (const step of workflowSteps(workflow)) {
       if (!step.run) continue;
       if (CI_RUN_EXCEPTIONS[path]?.[step.name] === step.run) continue;
-      for (const line of step.run.split('\n').map(line => line.trim()).filter(Boolean))
-        if (!/^make(\s|$)/.test(line)) errors.push(`${path} step "${step.name}" runs ${line}; run it through a make target`);
+      for (const segment of runSegments(step))
+        if (!/^make(\s|$)/.test(segment)) errors.push(`${path} step "${step.name}" runs ${segment}; run it through a make target`);
     }
   }
   return errors;
 }
 
-// WORKFLOW_TRIGGERS는 workflow마다 그 `on:` block이다. ci.yml은 모든 검사 job을 main의 push와 수동 실행에서,
+// WORKFLOW_TRIGGERS는 workflow마다 그 `on:` 값이다. ci.yml은 모든 검사 job을 main의 push와 수동 실행에서,
 // push-gate.yml은 push gate를 모든 push에서 실행하고,
 // docs-pages.yml은 main의 push와 수동 실행에서 공개 site를 build하고 deploy하며, release.yml은 version tag(`vX.Y.Z`,
 // `<dir>/vX.Y.Z`)의 push에서 GitHub Release를 만든다. 다른 workflow는 push, pull_request, merge_group으로 실행하지 않는다.
-export const WORKFLOW_TRIGGERS: Record<string, string[]> = {
-  '.github/workflows/ci.yml': ['on:', '  push:', '    branches: [main]', '  workflow_dispatch:'],
-  '.github/workflows/push-gate.yml': ['on:', '  push:', "    branches: ['**']"],
-  '.github/workflows/docs-pages.yml': ['on:', '  push:', '    branches: [main]', '  workflow_dispatch:'],
-  '.github/workflows/release.yml': ['on:', '  push:', "    tags: ['v*', '**/v*']"],
+export const WORKFLOW_TRIGGERS: Record<string, unknown> = {
+  '.github/workflows/ci.yml': { push: { branches: ['main'] }, workflow_dispatch: null },
+  '.github/workflows/push-gate.yml': { push: { branches: ['**'] } },
+  '.github/workflows/docs-pages.yml': { push: { branches: ['main'] }, workflow_dispatch: null },
+  '.github/workflows/release.yml': { push: { tags: ['v*', '**/v*'] } },
 };
 
-// onBlock은 workflow의 `on:` 줄부터 다음 최상위 key 앞까지의 줄을 끝의 빈 줄과 주석 없이 돌려준다.
-export function onBlock(workflow: string): string[] {
-  const lines = workflow.split('\n');
-  const start = lines.findIndex((line: string) => /^on:/.test(line));
-  if (start === -1) return [];
-  const block = [lines[start] ?? ''];
-  for (const line of lines.slice(start + 1)) {
-    if (/^\S/.test(line)) break;
-    block.push(line);
-  }
-  return block.filter(line => line.trim() !== '' && !line.trim().startsWith('#')).map(line => line.trimEnd());
-}
-
-// workflowTriggerErrors는 WORKFLOW_TRIGGERS의 workflow가 없거나 그 `on:` block이 다른 곳, 그리고 다른 workflow가 push,
+// workflowTriggerErrors는 WORKFLOW_TRIGGERS의 workflow가 없거나 그 `on:` 값이 다른 곳, 그리고 다른 workflow가 push,
 // pull_request나 merge_group으로 실행하는 곳마다 오류 하나를 돌려준다. workflows는 {path: text}다.
 export function workflowTriggerErrors(workflows: Record<string, string>): string[] {
   const errors: string[] = [];
   for (const [path, want] of Object.entries(WORKFLOW_TRIGGERS)) {
-    if (!Object.hasOwn(workflows, path)) { errors.push(`${path} is missing; it runs on ${want.slice(1).map(line => line.trim()).join(' ')}`); continue; }
-    const have = onBlock(workflows[path] ?? '');
-    if (have.join('\n') !== want.join('\n')) errors.push(`${path} has the triggers ${have.map(line => line.trim()).join(' ')} instead of ${want.map(line => line.trim()).join(' ')}`);
+    const text = workflows[path];
+    if (text === undefined) { errors.push(`${path} is missing; it runs on ${JSON.stringify(want)}`); continue; }
+    const have = readWorkflow(text, path).value['on'];
+    if (!isDeepStrictEqual(have, want)) errors.push(`${path} has the triggers ${JSON.stringify(have)} instead of ${JSON.stringify(want)}`);
   }
   for (const [path, workflow] of Object.entries(workflows)) {
     if (Object.hasOwn(WORKFLOW_TRIGGERS, path)) continue;
-    const events = onBlock(workflow).join('\n').match(/\b(?:push|pull_request|merge_group)\b/g) ?? [];
-    if (events.length) errors.push(`${path} runs on ${[...new Set(events)].join(', ')}; only ci.yml, push-gate.yml, docs-pages.yml and release.yml run on these events`);
+    const ran = events(readWorkflow(workflow, path)).filter(event => ['push', 'pull_request', 'merge_group'].includes(event));
+    if (ran.length) errors.push(`${path} runs on ${ran.join(', ')}; only ci.yml, push-gate.yml, docs-pages.yml and release.yml run on these events`);
   }
   return errors;
 }
 
 // CONCURRENCY는 push로 실행하는 workflow가 선언하는 concurrency다. 같은 ref의 새 push는 앞 push의 실행을 끝낸다:
 // runner는 적고, 의미 있는 것은 가장 새 head의 실행이다.
-const CONCURRENCY = ['concurrency:', '  group: ${{ github.workflow }}-${{ github.ref }}', '  cancel-in-progress: true'];
+const CONCURRENCY = { group: '${{ github.workflow }}-${{ github.ref }}', 'cancel-in-progress': true };
 
 // concurrencyErrors는 push로 실행하면서 그 concurrency를 workflow 수준에서 선언하지 않는 workflow마다 오류 하나를
 // 돌려준다. workflows는 {path: text}다.
 export function concurrencyErrors(workflows: Record<string, string>): string[] {
   const errors: string[] = [];
-  for (const [path, workflow] of Object.entries(workflows)) {
-    const on = /^on:\s*\n((?:[ \t].*\n|\s*\n)*)/m.exec(workflow)?.[1] ?? /^on:\s*(.*)$/m.exec(workflow)?.[1] ?? '';
-    if (!/\bpush\b/.test(on)) continue;
-    if (!workflow.split('\n').join('\n').includes(CONCURRENCY.join('\n')))
+  for (const [path, text] of Object.entries(workflows)) {
+    const workflow = readWorkflow(text, path);
+    if (!events(workflow).includes('push')) continue;
+    if (!isDeepStrictEqual(workflow.value['concurrency'], CONCURRENCY))
       errors.push(`${path} runs on push without the workflow-level concurrency group \${{ github.workflow }}-\${{ github.ref }} with cancel-in-progress: true, so a superseded run keeps a runner`);
   }
   return errors;
@@ -850,34 +733,34 @@ export function concurrencyErrors(workflows: Record<string, string>): string[] {
 // 다른 job이 실패하거나 취소되어도 실행되고, needs가 다른 모든 job이므로 그 모든 job이 success일 때만 make ci-passed가
 // 통과한다. make ci-passed runs the Makefile of the repository and the ci-passed tool of @polyspec/kit with node, so the
 // checkout, the node of .node-version and the install of the package come before it.
-export const CI_PASSED_STEP = ['- name: every job passed', 'if: ${{ !cancelled() }}', 'env:', 'RESULTS: ${{ toJSON(needs) }}', 'run: make ci-passed'];
-export const CI_PASSED_STEPS = [
-  ['- uses: actions/checkout@v5'],
-  ['- uses: actions/setup-node@v7', 'with:', 'node-version-file: .node-version'],
+export const CI_PASSED_STEP: Record<string, unknown> = { name: 'every job passed', if: NOT_CANCELLED, env: { RESULTS: '${{ toJSON(needs) }}' }, run: 'make ci-passed' };
+export const CI_PASSED_STEPS: Record<string, unknown>[] = [
+  { uses: 'actions/checkout@v5' },
+  { uses: 'actions/setup-node@v7', with: { 'node-version-file': '.node-version' } },
   // make reads the kit.mk of @polyspec/kit, which these two steps install before make ci-passed runs.
-  ['- name: npm of packageManager', 'id: npm', 'if: ${{ !cancelled() }}', 'run: make install-tools TOOLS=npm'],
-  ['- name: install Node dependencies', 'id: node-modules', 'if: ${{ !cancelled() }}', 'run: make install-packages'],
+  { name: 'npm of packageManager', id: 'npm', if: NOT_CANCELLED, run: 'make install-tools TOOLS=npm' },
+  { name: 'install Node dependencies', id: 'node-modules', if: NOT_CANCELLED, run: 'make install-packages' },
   CI_PASSED_STEP,
 ];
 
 // ciPassedErrors는 ci.yml에 job ci-passed가 없거나, 마지막 job이 아니거나, `if: ${{ always() }}`가 아니거나, needs가 다른 모든
 // job과 같지 않거나, step이 CI_PASSED_STEPS가 아닌 곳마다 오류 하나를 돌려준다.
 export function ciPassedErrors(workflow: string): string[] {
-  const jobs = workflowJobs(workflow);
-  const ids = jobs.map(([id]) => id);
+  const { jobs } = readWorkflow(workflow, 'ci.yml');
+  const ids = jobs.map(job => job.id);
   const at = ids.indexOf('ci-passed');
-  if (at === -1) return ['ci.yml has no job ci-passed, the check that the ruleset requires; add it as the last job with if: ${{ always() }} and needs: every other job'];
+  const job = jobs[at];
+  if (!job) return ['ci.yml has no job ci-passed, the check that the ruleset requires; add it as the last job with if: ${{ always() }} and needs: every other job'];
   const errors: string[] = [];
   if (at !== ids.length - 1) errors.push(`ci.yml job ci-passed is not the last job; move it after ${ids.at(-1)}`);
-  const job = jobs[at]?.[1] ?? '';
-  if (!/^ {4}if: \$\{\{ always\(\) \}\}$/m.test(job)) errors.push('ci.yml job ci-passed does not run with if: ${{ always() }}, so a failed or cancelled job skips it instead of failing it');
-  const needs = /^ {4}needs: \[(.*)\]$/m.exec(job)?.[1]?.split(',').map(item => item.trim()).filter(Boolean) ?? [];
-  const others = ids.filter((id): id is string => id !== null && id !== 'ci-passed');
+  if (job.value['if'] !== '${{ always() }}') errors.push('ci.yml job ci-passed does not run with if: ${{ always() }}, so a failed or cancelled job skips it instead of failing it');
+  const declared = job.value['needs'];
+  const needs = Array.isArray(declared) ? declared.map(String) : typeof declared === 'string' ? [declared] : [];
+  const others = ids.filter(id => id !== 'ci-passed');
   for (const id of others) if (!needs.includes(id)) errors.push(`ci.yml job ci-passed does not need the job ${id}; list every other job under needs`);
   for (const id of needs) if (!others.includes(id)) errors.push(`ci.yml job ci-passed needs ${id}, which is no other job of ci.yml`);
-  const steps = stepTexts(job);
-  const text = (steps: string[][]) => steps.map(step => step.join(' | ')).join(' || ');
-  if (text(steps) !== text(CI_PASSED_STEPS))
-    errors.push(`ci.yml job ci-passed has the steps ${text(steps)} instead of ${text(CI_PASSED_STEPS)}`);
+  const steps = job.steps.map(step => step.value);
+  if (!isDeepStrictEqual(steps, CI_PASSED_STEPS))
+    errors.push(`ci.yml job ci-passed has the steps ${JSON.stringify(steps)} instead of ${JSON.stringify(CI_PASSED_STEPS)}`);
   return errors;
 }

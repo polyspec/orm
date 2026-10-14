@@ -1,8 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { join, posix } from 'node:path';
+import { type Dialect, segments } from './shell.mts';
 
-/** A unit of commands that run in order: a Makefile recipe, a script or a verification command. */
-export type Unit = { name: string; commands: string[] };
+/**
+ * A unit of commands that run in order: a Makefile recipe, a script or a verification command. dialect is the language
+ * the commands are written in (scripts/repo/shell.mts): a recipe is make text, a step of a workflow is workflow text.
+ */
+export type Unit = { name: string; commands: string[]; dialect: Dialect };
 /** read(path) is the text of a tracked file, or undefined when it is not tracked. */
 export type Read = (path: string) => string | undefined;
 
@@ -58,23 +62,6 @@ function body(text: string, index: number): string {
     else if (text[at] === '}' && --depth === 0) return text.slice(start, at + 1);
   }
   return text.slice(start);
-}
-
-// goTestCaseErrors는 Go의 Test나 Fuzz 함수가 packages/go/testcase(testcase.Start, Group, Run, Of)를 쓰지
-// 않을 때마다 오류 하나를 돌려준다. 그런 test는 RUN 줄과 기한 없이 실행된다. files는 {path: text}이고,
-// 그 형식을 정의하는 packages/go/testcase의 test는 검사하지 않는다.
-export function goTestCaseErrors(files: Record<string, string>) {
-  const errors: string[] = [];
-  for (const [path, text] of Object.entries(files)) {
-    if (!path.endsWith('_test.go') || path.startsWith('packages/go/testcase/')) continue;
-    // raw string literal 안의 Go source(생성기 test가 쓰는 file)는 이 file의 test가 아니다. 같은 길이의
-    // 공백으로 바꾸어 위치를 지킨다.
-    const code = text.replace(/`[^`]*`/g, literal => literal.replace(/[^\n]/g, ' '));
-    for (const match of code.matchAll(/^func ((?:Test|Fuzz)\w*)\(\w+ \*testing\.[TF]\) \{/gm))
-      if (!/\btestcase\.(?:Start|Group|Run|Of)\(/.test(body(code, match.index ?? 0)))
-        errors.push(`${path}: ${match[1] ?? ''} does not start its case with packages/go/testcase, so it runs without a deadline or RUN line`);
-  }
-  return errors;
 }
 
 // rustTestCaseErrors는 Rust의 #[test]나 #[tokio::test] 함수가 polyspec_orm_testcase의 case(case! macro나
@@ -138,39 +125,6 @@ export function reportingScriptErrors(commands: { source: string; command: strin
     }
   }
   return errors;
-}
-
-// segments는 shell 명령을 따옴표 밖의 &&, ||, ;, |, 괄호에서 나눈 명령들이다. 따옴표 안(예:
-// `sh -c '... && ...'`)과 `$(...)`는 나누지 않는다.
-export function segments(command: string): string[] {
-  const out: string[] = [];
-  let current = '';
-  let quote: string | null = null;
-  for (let index = 0; index < command.length; index++) {
-    const char = command[index] ?? '';
-    if (quote) {
-      current += char;
-      if (char === quote) quote = null;
-      continue;
-    }
-    if (char === '"' || char === "'") { quote = char; current += char; continue; }
-    // make 변수와 command substitution(`$(NAME)`, `$(cmd)`)은 나누지 않는다.
-    if (char === '$' && command[index + 1] === '(') {
-      let depth = 0;
-      for (; index < command.length; index++) {
-        current += command[index];
-        if (command[index] === '(') depth++;
-        else if (command[index] === ')' && --depth === 0) break;
-      }
-      continue;
-    }
-    const two = command.slice(index, index + 2);
-    if (two === '&&' || two === '||') { out.push(current); current = ''; index++; continue; }
-    if (char === ';' || char === '|' || char === '(' || char === ')') { out.push(current); current = ''; continue; }
-    current += char;
-  }
-  out.push(current);
-  return out.map(item => item.trim()).filter(Boolean);
 }
 
 // 자기 case를 보고하지 않는 build와 lint 도구다. 이 도구는 장기 작업이므로 tests/run-long.mts(Makefile의
@@ -238,9 +192,9 @@ function longOperationError(name: string, what: string, segment: string, at: num
 // 실행하거나 기한 아래에서 실행하는 segment마다 오류 하나를 돌려준다.
 export function unwrappedToolErrors(units: Unit[]): string[] {
   const errors: string[] = [];
-  for (const { name, commands } of units) {
+  for (const { name, commands, dialect } of units) {
     for (const command of commands) {
-      for (const segment of segments(command)) {
+      for (const segment of segments(command, dialect)) {
         const found = tools.find(([, pattern]) => pattern.test(segment));
         if (!found) continue;
         const error = longOperationError(name, found[0], segment, found[1].exec(segment)?.index ?? 0);
@@ -258,9 +212,9 @@ export function unwrappedToolErrors(units: Unit[]): string[] {
 // build하고 복사한 실행 하나의 binary를 실행하며, 그 build는 단계 로그와 함께 기한 없는 장기 작업이다.
 export function unbuiltCargoTestErrors(units: Unit[]): string[] {
   const errors: string[] = [];
-  for (const { name, commands } of units)
+  for (const { name, commands, dialect } of units)
     for (const command of commands)
-      for (const segment of segments(command)) {
+      for (const segment of segments(command, dialect)) {
         const cargo = cargoArguments(segment);
         if (cargo === undefined) continue;
         if (/\s--no-run\b/.test(segment)) {
@@ -276,36 +230,54 @@ export function unbuiltCargoTestErrors(units: Unit[]): string[] {
 // 명령은 build, 설치, 도구 실행, 전체 suite인 장기 작업이고, 기한은 test case 안에만 둔다.
 export function longDeadlineErrors(units: Unit[]): string[] {
   const errors: string[] = [];
-  for (const { name, commands } of units)
+  for (const { name, commands, dialect } of units)
     for (const command of commands)
-      for (const segment of segments(command)) {
+      for (const segment of segments(command, dialect)) {
         const form = deadline(segment);
         if (form) errors.push(`${name} puts a deadline (${form}) on a long operation; it gets step logs and no deadline, and only a test case has its own: ${segment}`);
       }
   return errors;
 }
 
-// makeRecipes는 Makefile의 target마다 recipe 줄을 단위 하나로 돌려준다. 변수 정의(`:=`, `=`)는 target이
+// recipeLines는 Makefile의 줄(lines, tab으로 시작하는 recipe 줄과 그 밖의 줄)을 make가 읽는 대로 돌려준다: recipe 줄은
+// `\`로 끝나면 다음 줄과 이어지는 명령 하나이고(make는 이은 줄 첫머리의 tab 하나를 뗀다), 다른 줄은 그대로다.
+// recipe 줄은 앞의 tab 없이 { recipe: true, text }, 다른 줄은 { recipe: false, text }다.
+export function recipeLines(makefile: string): { recipe: boolean; text: string }[] {
+  const out: { recipe: boolean; text: string }[] = [];
+  const lines = makefile.split('\n');
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index] ?? '';
+    if (!line.startsWith('\t')) { out.push({ recipe: false, text: line }); continue; }
+    const command = [line.slice(1)];
+    // An odd number of backslashes at the end continues the line; an even number is escaped backslashes.
+    while (/(?:^|[^\\])(?:\\\\)*\\$/.test(command.at(-1) ?? '') && index + 1 < lines.length) command.push((lines[++index] ?? '').replace(/^\t/, ''));
+    out.push({ recipe: true, text: command.join('\n') });
+  }
+  return out;
+}
+
+// makeRecipes는 Makefile의 target마다 recipe 명령(recipeLines)을 단위 하나로 돌려준다. 변수 정의(`:=`, `=`)는 target이
 // 아니다.
 export function makeRecipes(makefile: string): Unit[] {
   const units: Unit[] = [];
-  for (const line of makefile.split('\n')) {
-    const target = /^([A-Za-z0-9_.-]+):(?!=)/.exec(line);
-    if (target) units.push({ name: `Makefile ${target[1] ?? ''}`, commands: [] });
-    else if (line.startsWith('\t') && units.length) units.at(-1)?.commands.push(line.slice(1));
-    else if (line.trim() !== '' && !line.startsWith('#')) units.push({ name: 'Makefile', commands: [] });
+  for (const { recipe, text } of recipeLines(makefile)) {
+    const target = recipe ? null : /^([A-Za-z0-9_.-]+):(?!=)/.exec(text);
+    if (target) units.push({ name: `Makefile ${target[1] ?? ''}`, commands: [], dialect: 'make' });
+    else if (recipe && units.length) units.at(-1)?.commands.push(text);
+    else if (!recipe && text.trim() !== '' && !text.startsWith('#')) units.push({ name: 'Makefile', commands: [], dialect: 'make' });
   }
   return units.filter(unit => unit.commands.length);
 }
 
-// reachedScripts는 명령(commands: {command})이 tests/run-long.mts 밖에서 실행하는 scripts/의 shell
-// script나 명령 script(scriptCommands)와, 그 script가 다시 그렇게 실행하는 script다. run-long 아래의 script는 전체가 장기 작업 하나로
+// reachedScripts는 명령(commands: {command, dialect})이 tests/run-long.mts 밖에서 실행하는 scripts/의 shell
+// script나 명령 script(scriptCommands)와, 그 script가 다시 그렇게 실행하는 script다. script 하나는 그 text 전체를 명령
+// 하나로 가진 단위다. run-long 아래의 script는 전체가 장기 작업 하나로
 // 단계 로그를 가진다. throughLong이면 run-long 아래의 script도 담는다: 그 안의 명령도 기한을 두지 않는다.
 // read(path)는 tracked file의 text이거나 없으면 undefined다.
-export function reachedScripts(commands: { command: string }[], read: Read, { throughLong = false }: { throughLong?: boolean } = {}): Unit[] {
+export function reachedScripts(commands: { command: string; dialect: Dialect }[], read: Read, { throughLong = false }: { throughLong?: boolean } = {}): Unit[] {
   const reached = new Map<string, string>();
-  const visit = (command: string) => {
-    for (const segment of segments(command)) {
+  const visit = (command: string, dialect: Dialect) => {
+    for (const segment of segments(command, dialect)) {
       if (!throughLong && longRunner.test(segment)) continue;
       for (const match of segment.matchAll(/(?:^|[\s"'/])(scripts\/[\w/.-]+\.(?:sh|mts))\b/g)) {
         const path = match[1] ?? '';
@@ -313,32 +285,32 @@ export function reachedScripts(commands: { command: string }[], read: Read, { th
         const text = read(path);
         if (text === undefined) continue;
         reached.set(path, text);
-        text.split('\n').forEach(visit);
+        visit(text, 'sh');
       }
     }
   };
-  commands.forEach(({ command }) => visit(command));
-  return [...reached].map(([path, text]) => ({ name: path, commands: text.split('\n').filter((line: string) => !/^\s*#/.test(line)) }));
+  commands.forEach(({ command, dialect }) => visit(command, dialect));
+  return [...reached].map(([path, text]) => ({ name: path, commands: [text], dialect: 'sh' }));
 }
 
 // generateRuns는 명령이 `go generate`를 실행하는 directory를 돌려준다. `sh -c '...'` 안도 읽고, 앞의
 // `cd <dir>`와 run-long의 `--cwd <dir>`로 directory를 정한다. 생성은 추적되는 file을 다시 쓰고 `git diff`로
 // 비교하므로, 같은 directory의 생성은 make check에서 한 번만 실행한다.
-export function generateRuns(command: string): string[] {
+export function generateRuns(command: string, dialect: Dialect): string[] {
   const out: string[] = [];
-  const visit = (text: string, cwd: string) => {
+  const visit = (text: string, language: Dialect, cwd: string) => {
     let directory = cwd;
-    for (const segment of segments(text)) {
+    for (const segment of segments(text, language)) {
       const nested = /\bsh\s+-c\s+'([^']*)'/.exec(segment);
       const runCase = /--cwd\s+(\S+)/.exec(segment);
-      if (nested) { visit(nested[1] ?? '', runCase?.[1] ?? directory); continue; }
+      if (nested) { visit(nested[1] ?? '', language, runCase?.[1] ?? directory); continue; }
       const cd = /^cd\s+(\S+)$/.exec(segment);
       if (cd) { directory = cd[1] ?? directory; continue; }
       const generate = /\bgo\s+generate\s+(\S+)/.exec(segment);
       if (generate) out.push(`${(runCase?.[1] ?? directory).replace(/\/$/, '')}/${generate[1] ?? ''}`.replace(/\/\.\/?$/, '').replace(/^\.\//, ''));
     }
   };
-  visit(command, '.');
+  visit(command, dialect, '.');
   return out;
 }
 
@@ -346,9 +318,9 @@ export function generateRuns(command: string): string[] {
 // directory의 `go generate`를 두 번 이상 실행할 때마다 오류 하나를 돌려준다.
 export function repeatedGenerateErrors(units: Unit[]): string[] {
   const seen = new Map<string, string[]>();
-  for (const { name, commands } of units)
+  for (const { name, commands, dialect } of units)
     for (const command of commands)
-      for (const directory of generateRuns(command)) {
+      for (const directory of generateRuns(command, dialect)) {
         seen.set(directory, [...(seen.get(directory) ?? []), name]);
       }
   return [...seen].filter(([, names]) => names.length > 1)
@@ -362,9 +334,9 @@ export function repeatedGenerateErrors(units: Unit[]): string[] {
 // test binary 전체의 기한(`-timeout`)은 longDeadlineErrors가 본다. Makefile의 변수는 미리 풀어 둔다.
 export function rawGoTestErrors(units: Unit[]): string[] {
   const errors: string[] = [];
-  for (const { name, commands } of units)
+  for (const { name, commands, dialect } of units)
     for (const command of commands)
-      for (const segment of segments(command)) {
+      for (const segment of segments(command, dialect)) {
         const match = /(?:^|\s)go\s+test\b/.exec(segment);
         if (!match || /\btests\/go-test\.mts\b/.test(segment)) continue;
         const form = deadlineForms.map(pattern => pattern.exec(segment)).find(found => found && found.index < match.index);
@@ -391,9 +363,9 @@ export function sharedTargetErrors(makefile: string): string[] {
     if (line.includes('$(CARGO_TARGET_DIR)/'))
       errors.push(`Makefile:${index + 1} uses a path in the shared Rust target directory; run the copy in $(RUN_TARGET) and write run files into $(RUN_DIR): ${line.trim()}`);
   }
-  for (const { name, commands } of makeRecipes(makefile))
+  for (const { name, commands, dialect } of makeRecipes(makefile))
     for (const command of commands)
-      for (const segment of segments(command)) {
+      for (const segment of segments(command, dialect)) {
         const cargo = /\bcargo\s+(?:\+\S+\s+)?(?:build|check|clippy|test\b(?=.*\s--no-run\b))/.exec(segment);
         if (!cargo) continue;
         const leased = /\$\((?:CARGO_LEASED|CARGO_COPY)\)/.exec(segment);
@@ -467,9 +439,9 @@ export function typescriptHolderErrors(makefile: string): string[] {
 // 실행할 program은 그 lease 안에서 실행 하나의 directory로 복사한다(scripts/cargo-build-copy.mts).
 export function unleasedCargoErrors(units: Unit[]): string[] {
   const errors: string[] = [];
-  for (const { name, commands } of units)
+  for (const { name, commands, dialect } of units)
     for (const command of commands)
-      for (const segment of segments(command)) {
+      for (const segment of segments(command, dialect)) {
         if (/\bcargo-test\.mts\b/.test(segment)) continue;
         const cargo = /\bcargo\s+(?:\+\S+\s+)?(?:build|check|clippy|test\b(?=.*\s--no-run\b))/.exec(segment);
         const leased = /"?\$\{?LEASE(?::\?[^}]*)?\}?"?\s+run\b/.exec(segment);
@@ -521,27 +493,14 @@ export function typescriptReaderErrors(makefile: string, read: Read): string[] {
   return errors;
 }
 
-// goCargoErrors는 files({path: text})의 Go file이 cargo build나 cargo test를 실행하면서 공유 Rust target
-// directory의 lease(`lease run <CARGO_LEASES> exclusive --wait`)를 쓰지 않을 때마다 오류 하나를 돌려준다. build한
-// program은 그 lease 안에서 복사한 것을 실행한다(scripts/cargo-build-copy.mts).
-export function goCargoErrors(files: Record<string, string>) {
-  const errors: string[] = [];
-  for (const [path, text] of Object.entries(files)) {
-    if (!/"cargo",\s*"(?:build|test|check|clippy)"/.test(text)) continue;
-    if (!/"exclusive",\s*"--wait"/.test(text) || !/cargo-build-copy\.mts/.test(text))
-      errors.push(`${path} runs cargo without the lease of the shared Rust target directory and a copy of its program; run it through lease run and scripts/cargo-build-copy.mts`);
-  }
-  return errors;
-}
-
 // goRunErrors는 units에서 `go run`을 실행하는 segment마다 오류 하나를 돌려준다. go run은 program을 실행하기 전에
 // 출력 없이 compile하므로 그 build는 단계 로그가 없는 장기 작업이다. tests/go-run.mts는 build를 기한 없는
 // 장기 작업으로 단계 로그와 함께 실행한 뒤 program을 실행한다.
 export function goRunErrors(units: Unit[]): string[] {
   const errors: string[] = [];
-  for (const { name, commands } of units)
+  for (const { name, commands, dialect } of units)
     for (const command of commands)
-      for (const segment of segments(command))
+      for (const segment of segments(command, dialect))
         if (/(?:^|[\s=;&|(])go\s+run\b/.test(segment))
           errors.push(`${name} runs go run, whose build has no step log; run it through tests/go-run.mts: ${segment}`);
   return errors;

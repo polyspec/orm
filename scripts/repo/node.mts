@@ -3,7 +3,7 @@
 // (">=x.y.z")는 TypeScript client가 지원하는 최저 version이며 make ts-min-check가 실행한다.
 
 import semver from 'semver';
-import { actionSteps, workflowSteps } from './ci.mts';
+import { actionSteps, workflowSteps } from './workflow.mts';
 import { parseNpmLock, parsePackage } from '../json/formats.mts';
 
 // exactVersion은 정확한 x.y.z이면 그 version이고 아니면 null이다. 비교는 semver가 한다.
@@ -30,8 +30,8 @@ export function nodeVersionErrors(declared: string, minimum: string | undefined,
     const usesNode = workflowSteps(workflow).some(step => /(^|[\s;&|(])(node|npm|npx)\s/m.test(step.run));
     if (usesNode && steps.length === 0) errors.push(`${path} runs Node without actions/setup-node`);
     for (const step of steps) {
-      if (/^\s*node-version:/m.test(step)) errors.push(`${path} declares node-version itself; .node-version declares it`);
-      if (!/^\s*node-version-file:\s*["']?\.node-version["']?\s*$/m.test(step))
+      if (Object.hasOwn(step.with, 'node-version')) errors.push(`${path} declares node-version itself; .node-version declares it`);
+      if (step.with['node-version-file'] !== '.node-version')
         errors.push(`${path} does not read node-version-file .node-version in actions/setup-node`);
     }
   }

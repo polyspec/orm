@@ -17,9 +17,15 @@ import { declaredNeeds } from '../check/inputs.mts';
 import { readFeatures } from '../features/manifest.mts';
 import { readComposer, readPackage } from '../json/formats.mts';
 import { kitCopies } from './kit-copies.mts';
+import { andLists, segments, shellSegments } from './shell.mts';
+import { readWorkflow } from './workflow.mts';
+import { stringify } from 'yaml';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
-import { callerPathErrors, deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mts';
-import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
+import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
+import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
+
+// yamlSteps writes steps (the values of a workflow's steps) as the list under a job's steps:, six spaces deep.
+const yamlSteps = (steps: unknown[]) => stringify(steps).split('\n').map(line => line ? `      ${line}` : line).join('\n');
 
 // The copies of @polyspec/kit (kit.copies of its package.json) are checked by make kit-check and never edited here, so the
 // rules of this repository do not read them.
@@ -77,7 +83,7 @@ caseTest('a workflow that starts the servers with make test-servers passes', COM
 });
 
 caseTest('a workflow without make test-servers names each variable it lacks', COMPUTE, () => {
-  const written = steps.replace('run: make test-servers', 'run: true').replace(
+  const written = steps.replace('run: make test-servers', "run: 'true'").replace(
     '      - name: checks',
     '      - run: printf "export ORM_TEST_MYSQL_DSN=x" > .runtime/servers/env\n      - name: checks',
   );
@@ -125,15 +131,17 @@ caseTest('a workflow runs only the summary and the report upload after make chec
   assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(check, summary, report, fuzz) }), [
     'ci.yml step "decoder fuzz smoke checks" runs make fuzz-check after make check; make check runs every check, and only the summary and the report upload follow it, so a check it lacks belongs in a target of CHECK_TARGETS',
   ]);
+  // The value of a step as the workflow reads it.
+  const value = (lines: string[]) => JSON.stringify(readWorkflow(['jobs:', '  test:', '    steps:', ...lines].join('\n')).jobs[0]?.steps[0]?.value);
   const everything = report.map(line => line.replace('/report/', '/'));
   assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(check, summary, everything) }), [
-    `ci.yml step "report" after make check is not the declared report step: ${everything.map(line => line.trim()).join(' | ')} instead of ${report.map(line => line.trim()).join(' | ')}`,
+    `ci.yml step "report" after make check is not the declared report step: ${value(everything)} instead of ${value(report)}`,
   ]);
   const other = ['      - uses: actions/cache@v4'];
-  assert.match(ciAfterCheckErrors({ 'ci.yml': workflow(check, summary, report, other) })[0] ?? '', /^ci\.yml step "uses: actions\/cache@v4" runs - uses: actions\/cache@v4 after make check/);
+  assert.match(ciAfterCheckErrors({ 'ci.yml': workflow(check, summary, report, other) })[0] ?? '', /^ci\.yml step "uses: actions\/cache@v4" runs \{"uses":"actions\/cache@v4"\} after make check/);
   assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(check) }), [
-    `ci.yml has no summary step after make check: ${summary.map(line => line.trim()).join(' | ')}`,
-    `ci.yml has no report step after make check: ${report.map(line => line.trim()).join(' | ')}`,
+    `ci.yml has no summary step after make check: ${value(summary)}`,
+    `ci.yml has no report step after make check: ${value(report)}`,
   ]);
   assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(['      - name: make check', '        run: make check'], summary, report) }), [
     'ci.yml step "make check" gives make check no ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}, which names the report of the run',
@@ -427,7 +435,7 @@ caseTest('a CI group job runs each setup step under its declared condition and r
   const setup = { 'group-needs': null, go: 'go', composer: 'composer', servers: 'databases' };
   const runner = ['checkout'];
   const check = `      - name: make check\n        if: \${{ !cancelled() }}\n        env:\n          ORM_CHECK_RUN_ID: \${{ github.run_id }}-\${{ github.run_attempt }}-\${{ matrix.group }}\n          ORM_CI_SETUP: \${{ toJSON(steps) }}\n        run: make check-run GROUP=\${{ matrix.group }}\n`;
-  const after = AFTER_GROUP_CHECK.map(lines => lines.map((line, index) => `${index === 0 ? '      ' : '        '}${line.startsWith('ORM_') || line.startsWith('name: check') || line.startsWith('path:') || line.startsWith('if-no') ? '  ' : ''}${line}`).join('\n')).join('\n') + '\n';
+  const after = yamlSteps(AFTER_GROUP_CHECK);
   const job = (needs: string, composer: string) => `jobs:\n  test:\n    steps:\n      - uses: actions/checkout@v5\n        id: checkout\n      - name: setup of the CI group\n        id: group-needs\n        if: \${{ !cancelled() }}\n        run: ${needs}\n      - uses: actions/setup-go@v6\n        id: go\n        if: \${{ !cancelled() }}\n      - name: install PHP dependencies\n        id: composer\n        if: ${composer}\n        run: make install-php\n      - name: database servers\n        id: servers\n        if: ${stepCondition('servers')}\n        run: make test-servers\n${check}${after}`;
   const good = job(GROUP_NEEDS, stepCondition('composer'));
   assert.deepEqual(ciSetupErrors({ 'ci.yml': good }, { setup, runner }), []);
@@ -450,10 +458,7 @@ caseTest('a CI group job runs each setup step under its declared condition and r
 // workflow에서 빠진 job, 마지막이 아닌 job, always()가 아닌 조건, 다른 step을 거부한다.
 caseTest('the job ci-passed runs last under always() and needs every other job', COMPUTE, () => {
   assert.deepEqual(ciPassedErrors(workflow), []);
-  // A step is written as in ci.yml: its first line under the job's steps, its keys below it, and the entries of with: and env:
-  // below those.
-  const render = (lines: string[]) => lines.map((line: string, index) => `${' '.repeat(index === 0 ? 6 : /^(with|env):$/.test(lines[index - 1] ?? '') ? 10 : 8)}${line}\n`).join('');
-  const step = `    steps:\n${CI_PASSED_STEPS.map(render).join('')}`;
+  const step = `    steps:\n${yamlSteps(CI_PASSED_STEPS)}`;
   const job = (condition: string, needs: string) => `  ci-passed:\n    if: ${condition}\n    needs: [${needs}]\n    runs-on: ubuntu-26.04-arm\n${step}`;
   const others = '  test:\n    steps:\n      - run: make check\n  docs:\n    steps:\n      - run: make docs-ci\n';
   assert.deepEqual(ciPassedErrors(`jobs:\n${others}${job('${{ always() }}', 'test, docs')}`), []);
@@ -464,9 +469,9 @@ caseTest('the job ci-passed runs last under always() and needs every other job',
     'ci.yml job ci-passed does not need the job docs; list every other job under needs',
     'ci.yml job ci-passed needs pages, which is no other job of ci.yml',
   ]);
-  assert.match(ciPassedErrors(`jobs:\n${others}${job('${{ always() }}', 'test, docs').replace('make ci-passed', 'true')}`)[0] ?? '', /^ci\.yml job ci-passed has the steps .* instead of - uses: actions\/checkout@v5/);
+  assert.match(ciPassedErrors(`jobs:\n${others}${job('${{ always() }}', 'test, docs').replace('make ci-passed', 'echo passed')}`)[0] ?? '', /^ci\.yml job ci-passed has the steps .* instead of \[\{"uses":"actions\/checkout@v5"\}/);
   // A job without the checkout runs make where the repository is not, and make finds no Makefile.
-  assert.match(ciPassedErrors(`jobs:\n${others}${job('${{ always() }}', 'test, docs').replace(`      ${CI_PASSED_STEPS[0]?.[0] ?? ''}\n`, '')}`)[0] ?? '', /^ci\.yml job ci-passed has the steps - uses: actions\/setup-node@v7/);
+  assert.match(ciPassedErrors(`jobs:\n${others}${job('${{ always() }}', 'test, docs').replace('      - uses: actions/checkout@v5\n', '')}`)[0] ?? '', /^ci\.yml job ci-passed has the steps \[\{"uses":"actions\/setup-node@v7"/);
 });
 
 // 중복 실행 case는 저장소의 workflow, Makefile, feature contract와 최소 workflow를 검사한다.
@@ -594,12 +599,12 @@ caseTest('every workflow job runs on the runner of .github/runner', COMPUTE, () 
 });
 
 caseTest('a job on another runner fails', COMPUTE, () => {
-  const job = 'jobs:\n  test:\n    runs-on: ubuntu-26.04-arm\n    steps:\n      - run: true\n';
+  const job = 'jobs:\n  test:\n    runs-on: ubuntu-26.04-arm\n    steps:\n      - run: "true"\n';
   assert.deepEqual(runnerErrors('ubuntu-26.04-arm\n', { 'ci.yml': job }), []);
   assert.deepEqual(runnerErrors('ubuntu-26.04-arm\n', { 'ci.yml': job.replace('ubuntu-26.04-arm', 'ubuntu-24.04') }), [
-    'ci.yml runs on ubuntu-24.04; .github/runner declares ubuntu-26.04-arm',
+    'ci.yml job test runs on ubuntu-24.04; .github/runner declares ubuntu-26.04-arm',
   ]);
-  assert.deepEqual(runnerErrors('ubuntu-26.04-arm\n', { 'ci.yml': job.replace('    runs-on: ubuntu-26.04-arm\n', '') }), ['ci.yml declares no runs-on']);
+  assert.deepEqual(runnerErrors('ubuntu-26.04-arm\n', { 'ci.yml': job.replace('    runs-on: ubuntu-26.04-arm\n', '') }), ['ci.yml job test declares no runs-on']);
   assert.deepEqual(runnerErrors('', {}), ['.github/runner must hold one runner label and a newline, found ""']);
   assert.deepEqual(runnerErrors('macos-26\n', {}), [
     '.github/runner macos-26 is not a Linux runner; the linux-runner checks of contracts/features.json run only there',
@@ -721,10 +726,10 @@ caseTest('the files of one run live in its run directory and a TypeScript build 
 caseTest('commands outside the Makefile build into the shared Rust target directory only under its lease', COMPUTE, () => {
   const { packageUnits } = runUnits();
   const files = new Set(trackedFiles('*'));
-  const commands = [...makeRecipes(text('Makefile')), ...featureUnits(), ...packageUnits].flatMap(unit => unit.commands.map(command => ({ command })));
+  const commands = [...makeRecipes(text('Makefile')), ...featureUnits(), ...packageUnits].flatMap(unit => unit.commands.map(command => ({ command, dialect: unit.dialect })));
   const scripts = reachedScripts(commands, readScript, { throughLong: true });
   assert.deepEqual(unleasedCargoErrors([...featureUnits(), ...packageUnits, ...scripts]), []);
-  const unit = (name: string, command: string) => ({ name, commands: [command] });
+  const unit = (name: string, command: string) => ({ name, commands: [command], dialect: 'sh' as const });
   const build = (segment: string) => `x builds into the shared Rust target directory without its lease; run the build under "$LEASE" run "$CARGO_LEASES" exclusive --wait --: ${segment}`;
   assert.deepEqual(unleasedCargoErrors([
     unit('x', 'node tests/run-long.mts b -- cargo build --locked'),
@@ -780,9 +785,9 @@ caseTest('a test that only names a TypeScript test path does not read the build 
 // go run case는 최소 단위를 검사한다. 저장소 전체는 repository check가 본다.
 caseTest('a go run, whose build has no step log, fails', COMPUTE, () => {
   assert.deepEqual(goRunErrors([
-    { name: 'raw', commands: ['go run ./tests/interfaces/check --self-test'] },
-    { name: 'env', commands: ['PATH="$HOME/.cargo/bin:$PATH" go run ./bench/install -dsn x'] },
-    { name: 'wrapped', commands: ['node tests/go-run.mts interfaces-check ./tests/interfaces/check --self-test'] },
+    { name: 'raw', commands: ['go run ./tests/interfaces/check --self-test'], dialect: 'sh' },
+    { name: 'env', commands: ['PATH="$HOME/.cargo/bin:$PATH" go run ./bench/install -dsn x'], dialect: 'sh' },
+    { name: 'wrapped', commands: ['node tests/go-run.mts interfaces-check ./tests/interfaces/check --self-test'], dialect: 'sh' },
   ]), [
     'raw runs go run, whose build has no step log; run it through tests/go-run.mts: go run ./tests/interfaces/check --self-test',
     'env runs go run, whose build has no step log; run it through tests/go-run.mts: PATH="$HOME/.cargo/bin:$PATH" go run ./bench/install -dsn x',
@@ -877,7 +882,7 @@ caseTest('no workflow step or job has timeout-minutes', COMPUTE, () => {
     .replace('        run: make check', '        timeout-minutes: 90\n        run: make check') }),
   [step('uses: actions/checkout@v5'), step('install'), step('checks')]);
   assert.deepEqual(stepTimeoutErrors({ 'ci.yml': plain.replace('    runs-on:', '    timeout-minutes: 360\n    runs-on:') }), [
-    'ci.yml has timeout-minutes outside its steps, a deadline for a whole job; a long operation gets step logs and no deadline',
+    'ci.yml job test has timeout-minutes, a deadline for a whole job; a long operation gets step logs and no deadline',
   ]);
 });
 
@@ -1022,31 +1027,11 @@ caseTest('a JavaScript test gives its child processes only the variables of the 
   }), [spread('a.test.mjs:1'), make('b.test.mjs:1'), spread('b.test.mjs:2')]);
 });
 
-caseTest('every Go and Rust test starts its case with the shared testcase package', COMPUTE, () => {
-  assert.deepEqual(goTestCaseErrors(trackedTexts(trackedFiles('*_test.go'))), []);
+caseTest('every Rust test starts its case with the shared testcase package', COMPUTE, () => {
   assert.deepEqual(rustTestCaseErrors(trackedTexts(trackedFiles('*.rs'))), []);
 });
 
-caseTest('a Go or Rust test without a case of its own fails', COMPUTE, () => {
-  const go = [
-    'package orm',
-    'func TestStarted(t *testing.T) {',
-    '\ttestcase.Start(t, testcase.Compute)',
-    '}',
-    'func TestBare(t *testing.T) {',
-    '\tt.Log("no case")',
-    '}',
-    'func TestGenerated(t *testing.T) {',
-    '\ttestcase.Start(t, testcase.Compute)',
-    '\twrite(`package model',
-    'func TestInside(t *testing.T) { _ = 1 }',
-    '`)',
-    '}',
-    '',
-  ].join('\n');
-  assert.deepEqual(goTestCaseErrors({ 'packages/go/orm/a_test.go': go, 'packages/go/testcase/testcase_test.go': 'func TestBare(t *testing.T) {\n}\n' }), [
-    'packages/go/orm/a_test.go: TestBare does not start its case with packages/go/testcase, so it runs without a deadline or RUN line',
-  ]);
+caseTest('a Rust test without a case of its own fails', COMPUTE, () => {
   const rust = [
     '#[tokio::test]',
     'async fn started() {',
@@ -1066,9 +1051,9 @@ caseTest('a Go or Rust test without a case of its own fails', COMPUTE, () => {
 // case 보고 case는 저장소가 실행하는 PHP와 TypeScript test와 최소 file을 검사한다.
 caseTest('every PHP and TypeScript test that a check runs reports its cases', COMPUTE, () => {
   const commands = [
-    ...text('Makefile').split('\n').filter(line => line.startsWith('\t')).map(line => ({ source: 'Makefile', command: line.slice(1) })),
+    ...recipeLines(text('Makefile')).filter(line => line.recipe).map(line => ({ source: 'Makefile', command: line.text })),
     ...featureCommands(readFeatures(repository.pathname)).map(command => ({ source: 'contracts/features.json', command })),
-    ...[...scriptTexts].flatMap(([path, lines]) => lines.split('\n').map(command => ({ source: path, command }))),
+    ...[...scriptTexts].map(([path, script]) => ({ source: path, command: script })),
     ...Object.values(readPackage(join(repository.pathname, 'package.json')).scripts ?? {}).map(command => ({ source: 'package.json', command })),
   ];
   const files = new Set(trackedFiles('*'));
@@ -1101,8 +1086,8 @@ caseTest('a PHP test outside PHPUnit or a TypeScript test without the shared cas
 const featureUnits = () => {
   const manifest = readFeatures(repository.pathname);
   return [...manifest.features.flatMap(feature => feature.verification
-    .filter(check => (check.cwd ?? '.') === '.').map(check => ({ name: `contracts/features.json ${feature.id}/${check.id}`, commands: [check.command] }))),
-  ...(manifest.helpers ?? []).map(helper => ({ name: `contracts/features.json helper ${helper.id}`, commands: [helper.command] }))];
+    .filter(check => (check.cwd ?? '.') === '.').map(check => ({ name: `contracts/features.json ${feature.id}/${check.id}`, commands: [check.command], dialect: 'sh' as const }))),
+  ...(manifest.helpers ?? []).map(helper => ({ name: `contracts/features.json helper ${helper.id}`, commands: [helper.command], dialect: 'sh' as const }))];
 };
 
 caseTest('every build tool of a verification command runs under run-long without a deadline', COMPUTE, () => {
@@ -1110,9 +1095,9 @@ caseTest('every build tool of a verification command runs under run-long without
 });
 
 caseTest('a build tool outside run-long or under a deadline fails', COMPUTE, () => {
-  assert.deepEqual(segments(`a && node tests/run-long.mts x -- sh -c 'go generate ./ && git diff' || (cd b; c | d)`),
+  assert.deepEqual(segments(`a && node tests/run-long.mts x -- sh -c 'go generate ./ && git diff' || (cd b; c | d)`, 'sh'),
     ['a', `node tests/run-long.mts x -- sh -c 'go generate ./ && git diff'`, 'cd b', 'c', 'd']);
-  const unit = (name: string, command: string) => ({ name, commands: [command] });
+  const unit = (name: string, command: string) => ({ name, commands: [command], dialect: 'sh' as const });
   const outside = (name: string, tool: string, segment: string) => `${name} runs ${tool} outside tests/run-long.mts, so it has no RUN line or step log: ${segment}`;
   const timed = (name: string, tool: string, form: string, segment: string) => `${name} runs ${tool} under a deadline (${form}); a long operation gets step logs and no deadline: ${segment}`;
   assert.deepEqual(unwrappedToolErrors([
@@ -1144,9 +1129,9 @@ caseTest('a build tool outside run-long or under a deadline fails', COMPUTE, () 
 // cargo test case는 저장소의 Makefile, 검증 명령, script와 최소 단위를 검사한다.
 const runUnits = () => {
   const recipes = makeRecipes(text('Makefile'));
-  const packageUnits = Object.entries(readPackage(join(repository.pathname, 'package.json')).scripts ?? {}).map(([name, command]) => ({ name: `package.json ${name}`, commands: [command] }));
+  const packageUnits = Object.entries(readPackage(join(repository.pathname, 'package.json')).scripts ?? {}).map(([name, command]) => ({ name: `package.json ${name}`, commands: [command], dialect: 'sh' as const }));
   const files = new Set(trackedFiles('*'));
-  const commands = [...recipes, ...featureUnits(), ...packageUnits].flatMap(unit => unit.commands.map(command => ({ command })));
+  const commands = [...recipes, ...featureUnits(), ...packageUnits].flatMap(unit => unit.commands.map(command => ({ command, dialect: unit.dialect })));
   return { recipes, packageUnits, scripts: reachedScripts(commands, readScript) };
 };
 
@@ -1162,10 +1147,10 @@ caseTest('a cargo test run outside cargo-test.mts, or a build under a deadline, 
   const message = (name: string, args: string) => `${name} runs cargo test ${args} outside tests/cargo-test.mts, so it runs the test binaries of the shared Rust target directory`;
   const timed = (name: string, args: string, form: string, segment: string) => `${name} runs the build cargo test --no-run ${args} under a deadline (${form}); a long operation gets step logs and no deadline: ${segment}`;
   assert.deepEqual(unbuiltCargoTestErrors([
-    { name: 'bare', commands: ['$(WITH_TEST_ENV) cd packages/rust && cargo +$(T) test --locked --test a -- --nocapture'] },
-    { name: 'built', commands: ['$(RUN_LONG) b --cwd packages/rust -- $(CARGO_LEASED) cargo +$(T) test --no-run --locked --test a', 'cd packages/rust && cargo +$(T) test --locked --test a'] },
-    { name: 'copied', commands: ['cd packages/rust && $(CARGO_TEST) c -- cargo +$(T) test --locked --test a -- --nocapture', 'node tests/cargo-test.mts d -- cargo test --locked --lib'] },
-    { name: 'timed', commands: ['node tests/run-case.mjs b 8m -- cargo test --no-run --locked --test a'] },
+    { name: 'bare', commands: ['$(WITH_TEST_ENV) cd packages/rust && cargo +$(T) test --locked --test a -- --nocapture'], dialect: 'make' },
+    { name: 'built', commands: ['$(RUN_LONG) b --cwd packages/rust -- $(CARGO_LEASED) cargo +$(T) test --no-run --locked --test a', 'cd packages/rust && cargo +$(T) test --locked --test a'], dialect: 'make' },
+    { name: 'copied', commands: ['cd packages/rust && $(CARGO_TEST) c -- cargo +$(T) test --locked --test a -- --nocapture', 'node tests/cargo-test.mts d -- cargo test --locked --lib'], dialect: 'make' },
+    { name: 'timed', commands: ['node tests/run-case.mjs b 8m -- cargo test --no-run --locked --test a'], dialect: 'sh' },
   ]), [message('bare', '--locked --test a'), message('built', '--locked --test a'),
     timed('timed', '--locked --test a', 'run-case.mjs', 'node tests/run-case.mjs b 8m -- cargo test --no-run --locked --test a')]);
 });
@@ -1173,7 +1158,7 @@ caseTest('a cargo test run outside cargo-test.mts, or a build under a deadline, 
 caseTest('every build tool of the Makefile, package.json and the scripts runs under run-long', COMPUTE, () => {
   const { recipes, packageUnits, scripts } = runUnits();
   assert.ok(scripts.some(unit => unit.name === 'scripts/typescript/sqlite-test.mts'));
-  assert.deepEqual(unwrappedToolErrors([...recipes, ...packageUnits.filter(unit => segments(unit.commands[0] ?? '').length > 1), ...scripts]), []);
+  assert.deepEqual(unwrappedToolErrors([...recipes, ...packageUnits.filter(unit => segments(unit.commands[0] ?? '', 'sh').length > 1), ...scripts]), []);
 });
 
 // 재실행 case는 저장소의 workflow와 최소 workflow를 runner의 정체로 검사한다.
@@ -1230,13 +1215,13 @@ caseTest('make check runs each go generate once', COMPUTE, () => {
 });
 
 caseTest('a go generate that make check runs twice fails', COMPUTE, () => {
-  assert.deepEqual(generateRuns(`$(RUN_LONG) go-model -- sh -c 'cd packages/go/model && go generate ./ && git diff --exit-code -- .'`), ['packages/go/model']);
-  assert.deepEqual(generateRuns(`go test ./packages/go/generator && node tests/run-long.mts g --cwd packages/go/model -- sh -c 'go generate ./ && git diff'`), ['packages/go/model']);
-  assert.deepEqual(generateRuns('cd packages/go/other && go generate ./'), ['packages/go/other']);
+  assert.deepEqual(generateRuns(`$(RUN_LONG) go-model -- sh -c 'cd packages/go/model && go generate ./ && git diff --exit-code -- .'`, 'make'), ['packages/go/model']);
+  assert.deepEqual(generateRuns(`go test ./packages/go/generator && node tests/run-long.mts g --cwd packages/go/model -- sh -c 'go generate ./ && git diff'`, 'sh'), ['packages/go/model']);
+  assert.deepEqual(generateRuns('cd packages/go/other && go generate ./', 'sh'), ['packages/go/other']);
   assert.deepEqual(repeatedGenerateErrors([
-    { name: 'Makefile go-model-check', commands: [`$(RUN_LONG) go-model -- sh -c 'cd packages/go/model && go generate ./ && git diff --exit-code -- .'`] },
-    { name: 'contracts/features.json model_generation/generation-go', commands: [`node tests/run-long.mts g --cwd packages/go/model -- sh -c 'go generate ./ && git diff'`] },
-    { name: 'other', commands: ['cd packages/go/other && go generate ./'] },
+    { name: 'Makefile go-model-check', commands: [`$(RUN_LONG) go-model -- sh -c 'cd packages/go/model && go generate ./ && git diff --exit-code -- .'`], dialect: 'make' },
+    { name: 'contracts/features.json model_generation/generation-go', commands: [`node tests/run-long.mts g --cwd packages/go/model -- sh -c 'go generate ./ && git diff'`], dialect: 'sh' },
+    { name: 'other', commands: ['cd packages/go/other && go generate ./'], dialect: 'sh' },
   ]), ['go generate of packages/go/model runs 2 times in make check: Makefile go-model-check, contracts/features.json model_generation/generation-go']);
 });
 
@@ -1245,7 +1230,7 @@ caseTest('every go test runs through go-test.mts or run-long', COMPUTE, () => {
   const makefile = text('Makefile');
   const variables = makeVariables(makefile);
   const { recipes, scripts } = runUnits();
-  const expanded = recipes.map(unit => ({ name: unit.name, commands: unit.commands.map(command => expand(command, variables)) }));
+  const expanded = recipes.map(unit => ({ ...unit, commands: unit.commands.map(command => expand(command, variables)) }));
   assert.deepEqual(rawGoTestErrors([...expanded, ...featureUnits(), ...scripts]), []);
 });
 
@@ -1253,12 +1238,12 @@ caseTest('a go test without its build step, or under a deadline, fails', COMPUTE
   const message = (name: string, segment: string) => `${name} runs go test outside tests/go-test.mts, so its compile has no RUN line or step log: ${segment}`;
   const fuzz = "$(RUN_CASE) fuzz/ir 8m -- go test -v -timeout 0 ./packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s";
   assert.deepEqual(rawGoTestErrors([
-    { name: 'raw', commands: ['go test -v -timeout 0 ./packages/go/orm -run X -count=1'] },
-    { name: 'env', commands: ['ORM_RUN_PERF_GATE=1 go test -v ./packages/go/bench'] },
-    { name: 'wrapped', commands: ['node tests/go-test.mts -v -timeout 0 ./packages/go/engine -count=1'] },
-    { name: 'fuzz', commands: ["$(RUN_LONG) fuzz/ir -- go test -v -timeout 0 ./packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s"] },
-    { name: 'build', commands: ['node tests/run-long.mts go-build -- go test -c -o x ./packages/go/engine/dbspec'] },
-    { name: 'timed', commands: [fuzz] },
+    { name: 'raw', commands: ['go test -v -timeout 0 ./packages/go/orm -run X -count=1'], dialect: 'sh' },
+    { name: 'env', commands: ['ORM_RUN_PERF_GATE=1 go test -v ./packages/go/bench'], dialect: 'sh' },
+    { name: 'wrapped', commands: ['node tests/go-test.mts -v -timeout 0 ./packages/go/engine -count=1'], dialect: 'sh' },
+    { name: 'fuzz', commands: ["$(RUN_LONG) fuzz/ir -- go test -v -timeout 0 ./packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s"], dialect: 'make' },
+    { name: 'build', commands: ['node tests/run-long.mts go-build -- go test -c -o x ./packages/go/engine/dbspec'], dialect: 'sh' },
+    { name: 'timed', commands: [fuzz], dialect: 'sh' },
   ]), [message('raw', 'go test -v -timeout 0 ./packages/go/orm -run X -count=1'), message('env', 'ORM_RUN_PERF_GATE=1 go test -v ./packages/go/bench'),
     `timed runs go test under a deadline ($(RUN_CASE)); a long operation gets step logs and no deadline: ${fuzz}`]);
 });
@@ -1270,10 +1255,10 @@ caseTest('no check puts a deadline on a long operation', COMPUTE, () => {
   const variables = makeVariables(makefile);
   const { recipes, packageUnits } = runUnits();
   const files = new Set(trackedFiles('*'));
-  const commands = [...recipes, ...featureUnits(), ...packageUnits].flatMap(unit => unit.commands.map(command => ({ command })));
+  const commands = [...recipes, ...featureUnits(), ...packageUnits].flatMap(unit => unit.commands.map(command => ({ command, dialect: unit.dialect })));
   const scripts = reachedScripts(commands, readScript, { throughLong: true });
   assert.ok(scripts.some(unit => unit.name === 'scripts/package-check.mts'), 'the scripts under run-long are checked');
-  const expanded = recipes.map(unit => ({ name: unit.name, commands: unit.commands.map(command => expand(command, variables)) }));
+  const expanded = recipes.map(unit => ({ ...unit, commands: unit.commands.map(command => expand(command, variables)) }));
   assert.deepEqual(longDeadlineErrors([...expanded, ...featureUnits(), ...packageUnits, ...scripts]), []);
 });
 
@@ -1291,7 +1276,7 @@ caseTest('a deadline on a long operation fails', COMPUTE, () => {
     'go-runner': 'node tests/go-test.mts -v -timeout 0 ./packages/go/engine -count=1',
     long: 'node tests/run-long.mts rust-build/x -- cargo test --no-run --locked',
   };
-  assert.deepEqual(longDeadlineErrors(Object.entries(units).map(([name, command]) => ({ name, commands: [command] }))), [
+  assert.deepEqual(longDeadlineErrors(Object.entries(units).map(([name, command]) => ({ name, commands: [command], dialect: 'make' as const }))), [
     message('run-case', 'run-case.mjs', units['run-case']),
     message('make', '$(RUN_CASE)', units.make),
     message('variable', '$(BUILD_DEADLINE)', units.variable),
@@ -1367,85 +1352,6 @@ caseTest('a recipe or a command that runs independent tests in sequence is refus
 });
 
 
-caseTest('a Go function does not call os.Exit after a defer', COMPUTE, () => {
-  const leaking = `package main
-
-func main() {
-\tdirectory, _ := os.MkdirTemp("", "x-")
-\tdefer os.RemoveAll(directory)
-\t// os.Exit(3) in a comment is not a call
-\tif failed() {
-\t\tos.Exit(1)
-\t}
-}
-`;
-  const recovering = `package main
-
-func main() {
-\tdefer func() {
-\t\tif recover() != nil {
-\t\t\tos.Exit(1)
-\t\t}
-\t}()
-}
-`;
-  const returning = `package main
-
-func main() {
-\tos.Exit(run())
-}
-
-func run() int {
-\tdirectory, _ := os.MkdirTemp("", "x-")
-\tdefer os.RemoveAll(directory)
-\treturn 1
-}
-
-func usage() {
-\tos.Exit(2)
-}
-`;
-  const helper = `package main
-
-func main() {
-\tdb := open()
-\tdefer db.Close()
-\tcheck(db.Ping())
-}
-
-func check(err error) {
-\tif err != nil {
-\t\tfail(err)
-\t}
-}
-`;
-  const helperExit = `package main
-
-func fail(err error) {
-\tos.Exit(1)
-}
-`;
-  assert.deepEqual(deferredExitErrors({ 'd/main.go': helper, 'd/fail.go': helperExit }), [
-    'd/main.go:6: main calls check, which calls os.Exit, after a defer, which then never runs; return the exit code to main and end it with os.Exit(run())',
-  ]);
-  assert.deepEqual(deferredExitErrors({ 'a/main.go': leaking, 'b/main.go': recovering, 'c/main.go': returning }), [
-    'a/main.go:8: main calls os.Exit after a defer, which then never runs; return the exit code to main and end it with os.Exit(run())',
-    'b/main.go:6: main calls os.Exit after a defer, which then never runs; return the exit code to main and end it with os.Exit(run())',
-  ]);
-  const tracked = execFileSync('git', ['ls-files', '*.go'], { cwd: new URL('../..', import.meta.url).pathname }).toString().split('\n').filter(Boolean).filter(notVendored);
-  assert.deepEqual(deferredExitErrors(Object.fromEntries(tracked.map(path => [path, readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')]))), []);
-});
-
-caseTest('Go code does not find its files through runtime.Caller', COMPUTE, () => {
-  const caller = 'package p\n\nfunc root() string {\n\t_, file, _, _ := runtime.Caller(0)\n\treturn file\n}\n';
-  const comment = 'package p\n\n// runtime.Caller(0) is not used here\nfunc root() string { return "." }\n';
-  assert.deepEqual(callerPathErrors({ 'p/root_test.go': caller, 'p/doc.go': comment }), [
-    'p/root_test.go:4: runtime.Caller gives the path the binary was compiled at, not the checkout that runs it; find files from the working directory (os.Getwd), which go test sets to the package directory',
-  ]);
-  const tracked = execFileSync('git', ['ls-files', '*.go'], { cwd: new URL('../..', import.meta.url).pathname }).toString().split('\n').filter(Boolean).filter(notVendored);
-  assert.deepEqual(callerPathErrors(Object.fromEntries(tracked.map(path => [path, readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')]))), []);
-});
-
 caseTest('a script that starts a process group of its own checks that group after it ends', COMPUTE, () => {
   assert.deepEqual(detachedGroupErrors({
     'a.mjs': "const child = spawn('go', ['test'], { detached: true });",
@@ -1473,17 +1379,17 @@ caseTest('every CI step runs a make target', COMPUTE, () => {
 
 caseTest('a test does not fail on a measured time above a bound', COMPUTE, () => {
   assert.deepEqual(timeFailureErrors({
-    'a_test.go': 'func TestA(t *testing.T) {\n\tif elapsed > parseBudget {\n\t\tt.Fatalf("slow")\n\t}\n}\n',
     'b.rs': '    assert!(cpu < Duration::from_secs(1), "cpu {cpu:?}");\n',
     'c.test.mjs': "    assert.ok(parseMs <= PARSE_BUDGET_MS, 'slow');\n",
     'd.php': "if ($cpuMs > 10000) {\n    throw new RuntimeException('slow');\n}\n",
-  }).map(error => error.split(' fails ')[0]), ['a_test.go:2', 'b.rs:1', 'c.test.mjs:1', 'd.php:1']);
+  }).map(error => error.split(' fails ')[0]), ['b.rs:1', 'c.test.mjs:1', 'd.php:1']);
   // 경고, 하한, 두 측정의 비교, 0과의 비교는 실패가 아니거나 정확성 검사다.
   assert.deepEqual(timeFailureErrors({
-    'e_test.go': 'func TestE(t *testing.T) {\n\tif elapsed > parseBudget {\n\t\ttestcase.Warn("slow")\n\t}\n}\n',
     'f.rs': '    assert!(waited >= Duration::from_millis(200), "too early");\n    assert!(cpu * 4 < wall, "clock");\n',
     'g.test.mjs': "    check(event.elapsed >= 0, 'negative');\n",
   }), []);
+  // Go source is read by the analyzer timefailure of tests/analyzers, never by this text rule.
+  assert.throws(() => timeFailureErrors({ 'a_test.go': 'package a\n' }), /timeFailureErrors reads no Go source \(a_test\.go\); go vet runs the analyzer timefailure of tests\/analyzers over it/);
 });
 
 // trigger case(G5.98)는 ci.yml, push-gate.yml과 docs-pages.yml의 `on:` block이 선언과 같고, 다른 workflow가 push,
@@ -1493,25 +1399,25 @@ caseTest('every workflow runs on its declared events only', COMPUTE, () => {
   const directory = join(root, '.github/workflows');
   const actual = Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [`.github/workflows/${name}`, readFileSync(join(directory, name), 'utf8')]));
   assert.deepEqual(workflowTriggerErrors(actual), []);
-  const text = (on: any[]) => `name: x\n${on.join('\n')}\n\njobs:\n  a:\n    runs-on: ubuntu\n`;
-  const declared = Object.fromEntries(Object.entries(WORKFLOW_TRIGGERS).map(([path, on]) => [path, text(on)]));
+  const text = (on: string[]) => `name: x\n${on.join('\n')}\n\njobs:\n  a:\n    runs-on: ubuntu\n`;
+  const declared = Object.fromEntries(Object.entries(WORKFLOW_TRIGGERS).map(([path, on]) => [path, text([stringify({ on })])]));
   assert.deepEqual(workflowTriggerErrors(declared), []);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/ci.yml': text(['on:', '  pull_request:', '  push:', '    branches: [main]', '  workflow_dispatch:']) }), [
-    '.github/workflows/ci.yml has the triggers on: pull_request: push: branches: [main] workflow_dispatch: instead of on: push: branches: [main] workflow_dispatch:',
+    '.github/workflows/ci.yml has the triggers {"pull_request":null,"push":{"branches":["main"]},"workflow_dispatch":null} instead of {"push":{"branches":["main"]},"workflow_dispatch":null}',
   ]);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/docs-pages.yml': text(['on:', '  push:', '    branches: [main]', '  pull_request:', '  workflow_dispatch:']) }), [
-    '.github/workflows/docs-pages.yml has the triggers on: push: branches: [main] pull_request: workflow_dispatch: instead of on: push: branches: [main] workflow_dispatch:',
+    '.github/workflows/docs-pages.yml has the triggers {"push":{"branches":["main"]},"pull_request":null,"workflow_dispatch":null} instead of {"push":{"branches":["main"]},"workflow_dispatch":null}',
   ]);
   const { ['.github/workflows/push-gate.yml']: _, ...withoutGate } = declared;
   assert.deepEqual(workflowTriggerErrors({ ...withoutGate, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  pull_request:']) }), [
-    ".github/workflows/push-gate.yml is missing; it runs on push: branches: ['**']",
+    '.github/workflows/push-gate.yml is missing; it runs on {"push":{"branches":["**"]}}',
     '.github/workflows/review.yml runs on pull_request; only ci.yml, push-gate.yml, docs-pages.yml and release.yml run on these events',
   ]);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  workflow_dispatch:']) }), []);
   // release.yml은 version tag의 push에서만 실행한다(G5.113-3).
-  assert.deepEqual(WORKFLOW_TRIGGERS['.github/workflows/release.yml'], ['on:', '  push:', "    tags: ['v*', '**/v*']"]);
+  assert.deepEqual(WORKFLOW_TRIGGERS['.github/workflows/release.yml'], { push: { tags: ['v*', '**/v*'] } });
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/release.yml': text(['on:', '  push:', '    branches: [main]']) }), [
-    ".github/workflows/release.yml has the triggers on: push: branches: [main] instead of on: push: tags: ['v*', '**/v*']",
+    '.github/workflows/release.yml has the triggers {"push":{"branches":["main"]}} instead of {"push":{"tags":["v*","**/v*"]}}',
   ]);
 });
 
@@ -1529,14 +1435,14 @@ caseTest('every workflow that runs on push cancels the run of the push before it
 
 // mise.toml declares the one Go release (kit K127): kit's toolchain-check requires it to be the kit pin and the running go
 // to be that release, and every workflow that runs Go installs it with make install-tools, never with actions/setup-go.
-const goWorkflow = '    steps:\n      - run: make install-tools TOOLS=npm\n      - run: make install-tools\n      - run: make check\n';
+const goWorkflow = 'jobs:\n  test:\n    steps:\n      - run: make install-tools TOOLS=npm\n      - run: make install-tools\n      - run: make check\n';
 caseTest('every workflow runs the Go of mise.toml', COMPUTE, () => {
   assert.deepEqual(goVersionErrors({ 'ci.yml': goWorkflow }), []);
   assert.deepEqual(goVersionErrors({ 'ci.yml': goWorkflow.replace('      - run: make install-tools\n', '      - uses: actions/setup-go@v6\n        with: { go-version-file: go.mod }\n') }), [
     'ci.yml sets up Go with actions/setup-go; the Go of mise.toml is installed by make install-tools',
     'ci.yml runs Go without the Go of mise.toml; add a step that runs make install-tools',
   ]);
-  assert.deepEqual(goVersionErrors({ 'ci.yml': '    steps:\n      - run: make install-tools TOOLS=npm\n      - run: make check\n' }), [
+  assert.deepEqual(goVersionErrors({ 'ci.yml': 'jobs:\n  test:\n    steps:\n      - run: make install-tools TOOLS=npm\n      - run: make check\n' }), [
     'ci.yml runs Go without the Go of mise.toml; add a step that runs make install-tools',
   ]);
 });
@@ -1557,7 +1463,7 @@ caseTest('every go.mod declares the module path of its directory', COMPUTE, () =
 
 const MISE = '[tools]\n"http:composer" = { version = "2.10.3", url = "https://getcomposer.org/download/{{ version }}/composer.phar", bin = "composer" }\n';
 caseTest('every setup-php step installs the Composer of mise.toml', COMPUTE, () => {
-  const php = '    steps:\n      - uses: shivammathur/setup-php@v2\n        with:\n          php-version-file: .php-version\n          tools: composer:2.10.3\n';
+  const php = 'jobs:\n  test:\n    steps:\n      - uses: shivammathur/setup-php@v2\n        with:\n          php-version-file: .php-version\n          tools: composer:2.10.3\n';
   assert.deepEqual(composerVersionErrors(MISE, { 'ci.yml': php }, '2.10.3'), []);
   assert.deepEqual(composerVersionErrors(MISE, { 'ci.yml': php.replace('          tools: composer:2.10.3\n', '') }, '2.11.0'), [
     'ci.yml sets up PHP without tools: composer:2.10.3; setup-php installs the newest Composer otherwise, so add tools: composer:2.10.3',
@@ -1570,7 +1476,7 @@ caseTest('every setup-php step installs the Composer of mise.toml', COMPUTE, () 
 
 // T70: 실행 중인 Composer는 선언한 release와 major.minor가 같으면 patch와 상관없이 받아들인다.
 caseTest('a running Composer with the declared major and minor passes whatever its patch', COMPUTE, () => {
-  const php = '    steps:\n      - uses: shivammathur/setup-php@v2\n        with:\n          php-version-file: .php-version\n          tools: composer:2.10.3\n';
+  const php = 'jobs:\n  test:\n    steps:\n      - uses: shivammathur/setup-php@v2\n        with:\n          php-version-file: .php-version\n          tools: composer:2.10.3\n';
   for (const running of ['2.10.3', '2.10.0', '2.10.9'])
     assert.deepEqual(composerVersionErrors(MISE, { 'ci.yml': php }, running), [], running);
   for (const running of ['2.9.9', '2.11.0'])
@@ -1617,4 +1523,52 @@ caseTest('no Makefile or script fixes a TCP port of the test servers', COMPUTE, 
   ]);
   const tracked = execFileSync('git', ['ls-files', 'Makefile', '*.sh'], { cwd: new URL('../..', import.meta.url).pathname }).toString().split('\n').filter(Boolean).filter(notVendored);
   assert.deepEqual(fixedPortErrors(Object.fromEntries(tracked.map(path => [path, readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')]))), []);
+});
+
+// shell reader case(T137-1-4-2)는 명령을 shell parser(unbash)로 읽는지 본다: 따옴표 밖의 escape된 따옴표, 주석, make의
+// 이은 줄과 참조, workflow의 expression, `&&`의 목록, 그리고 parser가 거부하는 명령이다.
+caseTest('the checks read commands with the shell parser', COMPUTE, () => {
+  // An escaped quote opens no string, so the command after the `;` is a command of its own.
+  assert.deepEqual(segments("echo it\\'s; go vet ./a", 'sh'), ["echo it\\'s", 'go vet ./a']);
+  assert.deepEqual(unwrappedToolErrors([{ name: 'x', commands: ["echo it\\'s; go vet ./a"], dialect: 'sh' }]),
+    ['x runs go vet outside tests/run-long.mts, so it has no RUN line or step log: go vet ./a']);
+  // A comment runs nothing.
+  assert.deepEqual(segments('true # see go vet && go vet ./a', 'sh'), ['true']);
+  assert.deepEqual(unwrappedToolErrors([{ name: 'x', commands: ['true # see go vet && go vet ./a'], dialect: 'sh' }]), []);
+  // The commands of a group, a loop and an if are commands; their keywords and word lists are not.
+  assert.deepEqual(segments('for f in a b; do test -f "$f" || { echo "$f is missing"; exit 1; }; done; if [ -n "$x" ]; then go vet ./a; else exit 2; fi', 'sh'),
+    ['test -f "$f"', 'echo "$f is missing"', 'exit 1', '[ -n "$x" ]', 'go vet ./a', 'exit 2']);
+  // make reads a recipe line that ends in a backslash with the next line, drops the prefixes @, - and +, reads $$ as $ and
+  // gives each reference one word; the segment is the text of the recipe.
+  assert.deepEqual(recipeLines('x:\n\t@if true; then \\\n\t  go vet ./a; \\\n\tfi\n\techo \\\\\n'),
+    [{ recipe: false, text: 'x:' }, { recipe: true, text: '@if true; then \\\n  go vet ./a; \\\nfi' }, { recipe: true, text: 'echo \\\\' }, { recipe: false, text: '' }]);
+  assert.deepEqual(makeRecipes('x:\n\t@if true; then \\\n\t  go vet ./a; \\\n\tfi\n').map(unit => unit.commands), [['@if true; then \\\n  go vet ./a; \\\nfi']]);
+  assert.deepEqual(unwrappedToolErrors(makeRecipes('x:\n\t@if true; then \\\n\t  go vet ./a; \\\n\tfi\n')),
+    ['Makefile x runs go vet outside tests/run-long.mts, so it has no RUN line or step log: go vet ./a']);
+  assert.deepEqual(segments('-files=$$(gofmt -l $(GO_DIRS)); [ -z "$$files" ] || $(if $(RECORD),echo a,echo b)', 'make'),
+    ['files=$$(gofmt -l $(GO_DIRS))', '[ -z "$$files" ]', '$(if $(RECORD),echo a,echo b)']);
+  assert.deepEqual(shellSegments('$(RUN_LONG) x -- cargo +$(shell sed -n p f) clippy', 'make'), ['VALUE x -- cargo +VALUE clippy']);
+  assert.deepEqual(segments('make check-run GROUP=${{ matrix.group }} && echo "${{ github.ref }}"', 'workflow'),
+    ['make check-run GROUP=${{ matrix.group }}', 'echo "${{ github.ref }}"']);
+  assert.deepEqual(andLists('a && b || c && d; e', 'sh'), [['a', 'b'], ['c', 'd']]);
+  // A command the parser rejects is an error, never a guess.
+  assert.throws(() => segments("sh -c 'cd packages/ts", 'sh'), /the shell parser rejects this sh command at \d+: .*: sh -c 'cd packages\/ts/);
+  assert.throws(() => segments('echo $(RUN_LONG', 'make'), /the make reference at 5 never closes/);
+});
+
+// workflow reader case(T137-1-4-2)는 workflow를 YAML 문서로 읽는지 본다: flow 형식의 step, action 입력의 timeout-minutes,
+// 그리고 YAML이 아니거나 job이 없는 workflow다.
+caseTest('the checks read a workflow as a YAML document', COMPUTE, () => {
+  // A step in flow style is a step.
+  assert.deepEqual(ciMakeErrors({ 'ci.yml': 'jobs:\n  test:\n    steps:\n      - { name: tests, run: go test ./... }\n' }),
+    ['ci.yml step "tests" runs go test ./...; run it through a make target']);
+  assert.deepEqual(ciMakeErrors({ 'ci.yml': 'jobs:\n  test:\n    steps:\n      - { name: tests, run: make test }\n' }), []);
+  // An input of an action named timeout-minutes is no deadline of the step.
+  assert.deepEqual(stepTimeoutErrors({ 'ci.yml': 'jobs:\n  test:\n    steps:\n      - uses: some/action@v1\n        with:\n          timeout-minutes: 5\n' }), []);
+  // A step's run text is its value, with the indentation of a block scalar removed.
+  assert.deepEqual(readWorkflow('jobs:\n  test:\n    steps:\n      - run: |\n          make a\n          make b\n').jobs[0]?.steps[0]?.run, 'make a\nmake b\n');
+  assert.throws(() => ciMakeErrors({ 'ci.yml': 'jobs:\n  test:\n    steps:\n      - run: make a\n     - run: go test ./...\n' }), /^Error: the workflow is no YAML document: /);
+  assert.throws(() => readWorkflow('jobs:\n  a: {}\n  a: {}\n', 'x.yml'), /^Error: x\.yml is no YAML document: Map keys must be unique/);
+  assert.throws(() => readWorkflow('    steps:\n      - run: make a\n', 'x.yml'), /^Error: x\.yml has no map of jobs$/);
+  assert.throws(() => readWorkflow('jobs:\n  a:\n    steps:\n      - run: true\n', 'x.yml'), /^Error: x\.yml job a step 1 run is not a string$/);
 });
