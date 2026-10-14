@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ea7d105be21bc84a1954e14c1ffe51e53e828ee7235fc40694a92b976aaf52be -->
+<!-- source-sha256: bbcf52b1535ae924781a0bdd334ecde3e05b78d80974ec1f7e3e90e174b12357 -->
 # 변경 이력
 
 ## Unreleased
 
+- T165-1: orm이 kit 0.0.41을 받는다. 그 mise.lock은 ARM runner를 위해 linux-arm64를 pin한다.
 - T137-1-1: config/layout.yml이 packages/dbspec-vscode를 선언하고, 어떤 검사도 PYTHONPATH를 설정하지 않는다.
 - T135-1: scripts/test-servers.sh와 그 테스트의 주석이 영어다.
 - T128-8-3: make install-vscode가 kit 설치기로 extension의 최소 VS Code를 설치하고, make dbspec-vscode-integration이 그 안에서 editor fixture 다섯을 실행하며, CI의 editor job이 가상 X server에서 그것을 실행한다.
