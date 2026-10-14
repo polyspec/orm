@@ -4,7 +4,7 @@
     "runner-check": {"scope": "owner", "needs": [], "inputs": ["scripts/check/**", "scripts/features/owners.mjs", "scripts/client-db-test.sh", "scripts/typescript/sqlite-test.sh", "Makefile", "tests/testcase.mjs", "tests/environment.mjs"]},
     "documents-check": {"scope": "owner", "needs": [], "inputs": ["**/*.md", "config/documents.json", "config/checklist.json"]},
     "commits-check": {"scope": "owner", "needs": [], "inputs": ["config/commits.json", ".githooks/**"]},
-    "kit-check": {"scope": "owner", "needs": [], "inputs": ["package-lock.json", "scripts/kit/**", "config/**", "PRINCIPLES.md", "PRINCIPLES.ko.md", ".github/workflows/release.yml", "ruff.toml", "phpcs.xml.dist", "phpstan.dist.neon", ".golangci.yml", ".oxlintrc.json", "knip.json", ".editorconfig"]},
+    "kit-check": {"scope": "owner", "needs": [], "inputs": ["package-lock.json", "mise.toml", "mise.lock", "scripts/kit/**", "config/**", "PRINCIPLES.md", "PRINCIPLES.ko.md", ".github/workflows/release.yml", "ruff.toml", "phpcs.xml.dist", "phpstan.dist.neon", ".golangci.yml", ".oxlintrc.json", "knip.json", ".editorconfig"]},
     "owner-validate": {"scope": "owner", "needs": [], "inputs": ["config/owner-checks.json", "Makefile"]},
     "release-coverage": {"scope": "owner", "needs": [], "inputs": ["config/release.json", "VERSION", "**/package.json", "**/composer.json", "**/Cargo.toml", "**/pyproject.toml", "**/go.mod"]},
     "dependency-policy-check": {"scope": "owner", "needs": ["php", "composer"], "inputs": ["config/dependency-policy.json", "config/dependency-review.json", "**/package-lock.json", "**/composer.lock", "**/Cargo.lock", "go.sum", "package.json", "packages/ts/package.json", "composer.json", "**/Cargo.toml", "packages/python/pyproject.toml", "go.mod"]},
