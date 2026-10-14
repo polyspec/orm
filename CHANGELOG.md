@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T165: orm takes kit 0.0.40: the tools of mise.toml (Go, Python, uv, Composer, alint, govulncheck, cargo-audit) install from mise.lock, `.python-version` is removed, install-python and python-venv-check read the Python of mise.toml, and CI installs the tools with make install-tools.
 - T137-4: the CI Node step installs the interface TypeScript in a second make, after install-packages has installed kit.
 - T137-3: CI installs the TypeScript of the interface reader, and the PHP extension's arginfo header matches its stub after the rename.
 - T161-1: Python generated models declare the condition method of every column and the tuple method of every key prefix, and every chain method is typed to return the model.
