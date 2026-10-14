@@ -88,12 +88,12 @@ Key   = [Operator] Column
 - `<ColA><Op><ColB>(model)`는 같은 SQL 문장 안에서 호출한 모델의 컬럼 `ColA`와 `model`의 컬럼 `ColB`를 비교한다. `(new Product)->priceGtMinPrice($brand)`는 `a.price > b.min_price`를 출력한다. `Op`는 `Eq`, `Ne`, `Gt`, `Lt`, `Ge`, `Le`다. `on(fn)` 안에서 호출한 모델은 조인 자식이다.
 - `tuple<ColA>With<ColB>(list)`는 여러 컬럼을 값 묶음 목록과 비교한다. `tupleTenantIdWithAccountId([[1, 10], [2, 10]])`는 `(tenant_id, account_id) IN ((1, 10), (2, 10))`이다. `Ne`는 `NOT IN`을 만든다. Go는 컬럼마다 필드가 하나인 생성 값 묶음 구조체 `model.<Model><ColA>With<ColB>`, Rust는 튜플, TypeScript는 타입을 지정한 튜플, Python은 튜플을 사용한다. SQLite는 목록을 `IN (VALUES …)`로 출력한다.
 - `getsByServiceSeqAndIsClose(7, 0)`와 `serviceSeq(7)->andIsClose(0)->gets()`는 같은 조건을 만든다.
-- 체인은 모든 컬럼을 조합할 수 있다. PHP와 Python은 호출 시점에 체인을 해석한다. Go, Rust, TypeScript는 읽은 소스가 호출하는 체인 메서드를 생성하고, 알 수 없는 컬럼·연산자·인자 개수는 생성 단계에서 거부한다. Python의 scan은 어떤 규칙에도 맞지 않는 model method를 생성 단계에서 보고한다.
+- 체인은 모든 컬럼을 조합할 수 있다. PHP와 Python은 호출 시점에 체인을 해석한다. Go, Rust, TypeScript는 읽은 소스가 호출하는 체인 메서드를 생성하고, 알 수 없는 컬럼·연산자·인자 개수는 생성 단계에서 거부한다. PHP는 `--scan`을 주면 같은 메서드를 `@method` 태그로 선언하고 같은 오류를 생성 단계에서 거부한다. Python의 scan은 어떤 규칙에도 맞지 않는 model method를 생성 단계에서 보고한다.
 - 각 언어는 자기 빌드 도구로 생성한다.
   - Go는 `--scan`으로 지정한 패키지를 읽고 호출이 타입 검사를 통과할 때까지 반복한다. `//go:generate` 줄에서 `go run github.com/polyspec/orm/cmd/orm-gen gen --set schema/dbspec-set.json --lang go --out model --scan ./...`를 실행한다. 기본 빌드가 `//go:build` 제약으로 제외하는 파일은 그 제약에 필요한 태그, GOOS, GOARCH로 읽으므로 `GOFLAGS=-tags` 없이도 태그를 지정한 테스트를 포함한다. 기본 빌드는 읽을 모든 패키지를 한 번 읽고, 그런 설정은 그 파일을 가진 패키지만 읽으며 다른 모든 패키지의 타입 정보는 기본 빌드에서 가져온다.
   - TypeScript는 `--scan`으로 지정한 파일을 oxc-parser로 읽고 정확한 메서드 시그니처를 작성한다. `tsc` 전에 `build` 스크립트에서 `orm-gen gen --set schema/dbspec-set.json --out src/models --scan src`를 실행한다.
   - Rust는 `build.rs`에서 `scan`으로 지정한 소스를 `syn`으로 읽는다. `polyspec_orm_build::Builder::set("schema/dbspec-set.json").scan("src").generate()`를 실행하고, `polyspec_orm::models!()`가 결과를 `model` 모듈로 포함한다.
-  - PHP는 컬럼 메타데이터와 타입이 있는 getter·setter를 가진 모델 클래스를 작성한다. `vendor/bin/orm-gen gen --set schema/dbspec-set.json --out src/Model --namespace Example\Model`를 실행한다.
+  - PHP는 컬럼 메타데이터와 타입이 있는 getter·setter를 가진 모델 클래스를 작성한다. `vendor/bin/orm-gen gen --set schema/dbspec-set.json --out src/Model --namespace Example\Model --scan src`를 실행한다. `--scan`은 파일이나 디렉터리를 받고 여러 번 쓸 수 있다. `nikic/php-parser`로 PHP 파일을 읽고, 소스가 그 모델에서 호출하는 체인 메서드(예: `ltSeq`, `andIsClose`, `getsBySeqAndName`)마다 타입이 있는 `@method` 태그를 각 모델 클래스의 주석에 선언하므로 PHPStan이 호출을 찾는다. 호출은 그대로 `__call`로 실행된다. 받는 사람은 생성 클래스 `C`의 `new C`(`use` 별칭 포함), 그 클래스로 선언한 변수·매개변수·반환 타입, 모델의 체인 메서드, `and`·`or`·`not`·`andNot`·`orNot`·`on`·`fetchKey`·`fetchValue`에 준 클로저의 타입 없는 첫 매개변수일 때 모델로 읽는다. 다른 받는 사람의 호출은 태그를 더하지 않는다. 어떤 컬럼·체인·연산자도 받지 않는 이름이나 체인이 받지 않는 인자 개수의 호출은 모델과 메서드 이름을 밝히며 상태 1로 생성을 멈춘다.
   - Python은 타입이 있는 getter·setter를 가진 모델 클래스를 작성하고, 읽은 source 중 어떤 규칙에도 맞지 않는 model method를 보고한다. package가 설치하는 console script로 `orm-gen gen --set schema/dbspec-set.json --out model --scan src`을 실행한다.
 
 ### 2.3 값 형태
