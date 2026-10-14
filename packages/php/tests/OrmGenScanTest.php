@@ -253,13 +253,16 @@ PHP;
             $err = (string) stream_get_contents($pipes[2]);
             fclose($pipes[1]);
             fclose($pipes[2]);
-            proc_close($process);
-            return [array_values(array_filter(explode("\n", $out), static fn(string $line): bool => str_contains($line, '[identifier='))), $out . $err];
+            $status = proc_close($process);
+            // PHPStan exits 0 without errors and 1 with errors; any other status is a run that did not analyse.
+            self::assertContains($status, [0, 1], "phpstan analyse $file exited with $status:\n$out$err");
+            return [array_values(array_filter(explode("\n", $out), static fn(string $line): bool => str_contains($line, '[identifier='))), $out . $err, $status];
         };
         [$findings, $raw] = $analyse("$dir/src/usage.php");
         $notFound = array_values(array_filter($findings, static fn(string $line): bool => str_contains($line, 'method.notFound')));
         self::assertSame([], $notFound, "method.notFound:\n" . implode("\n", $notFound) . "\n$raw");
-        [$control] = $analyse("$dir/control.php");
-        self::assertNotSame([], array_filter($control, static fn(string $line): bool => str_contains($line, 'method.notFound')), 'the control call is declared');
+        [$control, $controlRaw, $controlStatus] = $analyse("$dir/control.php");
+        self::assertSame(1, $controlStatus, "the control call is declared:\n$controlRaw");
+        self::assertNotSame([], array_filter($control, static fn(string $line): bool => str_contains($line, 'method.notFound')), "the control call is declared:\n$controlRaw");
     }
 }
