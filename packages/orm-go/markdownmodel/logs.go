@@ -319,3 +319,17 @@ func (x *LogsModel) OrderByNoteDesc(fn ...orm.Func) *LogsModel {
 }
 
 func (x *LogsModel) ForceIndexIxLogsTask() *LogsModel { x.m.ForceIndex("ix_logs_task"); return x }
+
+func (x *LogsModel) Id[T0 argIntEq](v0 T0) *LogsModel {
+	x.m.Where("", chainLogsId, v0)
+	return x
+}
+
+func (x *LogsModel) Task[T0 argStringEq](v0 T0) *LogsModel {
+	x.m.Where("", chainLogsTask, v0)
+	return x
+}
+
+var chainLogsId = []orm.ChainKey{{Column: "id"}}
+
+var chainLogsTask = []orm.ChainKey{{Column: "task"}}

@@ -576,12 +576,19 @@ func (x *PeopleModel) OrderByUpdatedAtDesc(fn ...orm.Func) *PeopleModel {
 	return x
 }
 
+func (x *PeopleModel) Email[T0 argStringEqNull](v0 T0) *PeopleModel {
+	x.m.Where("", chainPeopleEmail, v0)
+	return x
+}
+
 func (x *PeopleModel) Id[T0 argStringEq](v0 T0) *PeopleModel {
 	x.m.Where("", chainPeopleId, v0)
 	return x
 }
 
 func (x *PeopleModel) MatchOwnerWithId() *PeopleModel { x.m.Match("owner", "id"); return x }
+
+var chainPeopleEmail = []orm.ChainKey{{Column: "email"}}
 
 var chainPeopleId = []orm.ChainKey{{Column: "id"}}
 
