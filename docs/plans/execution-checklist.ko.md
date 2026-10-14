@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 8c24e56918f410bfeac3adc5394db68193cbdb43abe031edd79d2fd9f005db6c -->
+<!-- source-sha256: 20a0a43d797f500452bd96db3b3fcec4f96dfee597d0f1bf28848818718a635a -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1005,7 +1005,9 @@
   - [o] T142-1 PHP가 YAML을 core schema로 읽는다 (T142에 이어). 원인: symfony/yaml 7.4에는 schema flag도 scalar hook도 없고(`Inline::evaluateScalar`는 private), `Yaml::parse`가 `1_000`을 1000으로, `2014-12-31`을 1419984000으로, `2001-12-14t21:59:43.10-05:00`을 1008385183.1로(PARSE_DATETIME은 DateTime을 줄 뿐 text가 아니다), `0777`을 문자열 `0777`로(core: 777) 읽는다. tests/codec/check.php는 vector `yaml_core/underscore_int_like`, `date_like`, `timestamp_like`, `leading_zero_int`, `map`을 명시해 건너뛰고 각각 출력한다. 재시도: ecosystem에서 PHP YAML 1.2 core reader를 고르거나(ext-yaml callback과 다른 package 조사), parser event API로 scalar를 resolve하는 판정을 기록한다. 그 뒤 제외 목록을 지운다.
   Evidence: codec-check, client-unit-check, php-min-check, interface-check, dependency-policy-check가 통과한다.
   - [ ] T142-1-1 yaml_core/signed_hex_like와 yaml_core/leading_zero_int의 PHP 제외를 없앤다 (T142-1에 이어). 원인: purrphp/yaml 1.0.0 CoreSchema가 YAML 1.2.2 10.3.2절과 달리 +0x1을 1로, -0o7을 -7로, 0777을 float 777.0으로, nULL과 tRUE를 null과 true로 읽는다. 완료 조건: upstream에 issue를 내고, purrphp release가 고치며, orm이 그 release를 고정하고, tests/codec/check.php의 제외 목록이 빈다. Retry: 그 release가 나왔을 때.
-  - [ ] T142-2 Go와 Python이 U+0085를 내용으로 읽는다 (T142에 이어). 원인: yaml.v3와 PyYAML의 scanner가 U+0085를 줄바꿈으로 읽어(`a<U+0085>b`가 `a b`로 decode된다) Node API나 resolver hook보다 아래에 있다. packages/orm-go/orm/codec_test.go(`goCodecExclusions`), packages/orm-python/tests/codec_vector.py(`PYTHON_EXCLUSIONS`), tests/codec/check.php가 `yaml_core/next_line`을 명시해 건너뛰고 출력한다. 재시도: U+0085를 지키는 각 ecosystem의 scanner option이나 reader, 또는 기록한 판정; 그 뒤 제외를 지운다.
+  - [o] T142-2 Go와 Python이 U+0085를 내용으로 읽는다 (T142에 이어). 원인: yaml.v3와 PyYAML의 scanner가 U+0085를 줄바꿈으로 읽어(`a<U+0085>b`가 `a b`로 decode된다) Node API나 resolver hook보다 아래에 있다. packages/orm-go/orm/codec_test.go(`goCodecExclusions`), packages/orm-python/tests/codec_vector.py(`PYTHON_EXCLUSIONS`), tests/codec/check.php가 `yaml_core/next_line`을 명시해 건너뛰고 출력한다. 재시도: U+0085를 지키는 각 ecosystem의 scanner option이나 reader, 또는 기록한 판정; 그 뒤 제외를 지운다.
+  Evidence: codec-check, python-unit-check, interface-check, dependency-policy-check가 통과하고 Go codec test가 통과한다.
+  - [ ] T142-9 docs/codec.md의 YAML 거부 규칙이 모든 client에서 성립하게 한다 (T142-2에 이어). 원인: docs/codec.md는 anchor와 explicit tag를 거부하지만, Go와 Python은 alias 없는 anchor와 core tag(!!str, !!int)를 받고 PHP는 거부한다. 빈 stream은 Go에서 오류, Python과 PHP에서 null이다. 완료 조건: docs/codec.md에 형태마다 규칙 하나, 그 각각의 공유 vector, 모든 client의 통과.
   - [o] T142-3 codec-check가 Python codec vector를 실행한다 (T142에 이어). 원인: packages/orm-python/tests/codec_vector.py를 실행하는 make target이 없어(python-unit-check는 `test_*.py`만 맞춘다) Python의 YAML 결함이 드러나지 않았다. 완료 조건: codec-check가 이를 실행하고, 깨진 vector로 먼저 red를 확인한다.
   - [o] T142-4 codec-check가 lease tool을 준비한다 (T142에 이어). 원인: 새 checkout에서 `make lease-tool` 전에는 `make codec-check`가 `.runtime/bin/lease ENOENT`로 실패한다. codec-check/rust에 선행 조건이 없다. 완료 조건: codec-check가 lease-tool에 의존하고, 새 worktree에서 먼저 red를 확인한다.
   - [o] T142-5 codec-check가 실행하는 PHP 의존성을 설치한다 (T142-4에 이어). 원인: 새 checkout에서 `make install-php` 전에는 `codec-check/compare`가 packages/orm-php/tests/autoload.php의 PHP fatal error로 멈춘다. 완료 조건: target에 선행 조건이 있고, 새 worktree에서 먼저 red를 확인한다.
