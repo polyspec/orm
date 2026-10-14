@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 7831af952c8926c694be64877c25db03e27ee4900b7b44a83185c0babc4cc377 -->
+<!-- source-sha256: 9e286e230cfb4d51b4db416856d89a3723ac6b8f0855bb1a28a85e674a1ca2e9 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1025,4 +1025,5 @@
   - [o] T158-3 codec-check의 need에 python을 선언한다 (T158에 이어). 원인: T142-3로 codec-check가 Python vector를 실행하는데 contracts/check-inputs.json의 codec-check에 `python` need가 없어 static job이 `python-venv-check: .../.venv/bin/python is missing`로 실패한다(run 38465371334). 완료 조건: need를 선언하고 static job의 codec-check가 통과한다.
   - [o] T158-4 dbspec-vscode integration의 인자 오류에 해결 방법을 적는다 (T158에 이어). 원인: repo-check가 packages/dbspec-vscode/tests/integration/run.mjs:22를 거부한다. `--vscode`가 없을 때의 문구가 해결 방법을 적지 않는다(run 38465371334). 완료 조건: 문구가 `make dbspec-vscode-integration`을 적고 repo-check가 통과한다.
 - [o] T156 모든 생성기가 모든 key의 모든 prefix마다 유형 있는 메서드를 선언한다. 원인: scan한 소스가 호출하는 메서드만 생성되어, 어떤 소스도 호출하지 않는 key prefix에는 메서드가 없었다(hyper U-97). 완료 조건: Go, Rust, TypeScript model이 primary key, unique key, index의 모든 prefix마다 메서드를 선언하고, Python은 같은 이름을 실행 시점에 해석하며, symbol 기록과 docs/usage.md를 갱신한다.
+  - [o] T156-1 T156 이후 orm main CI를 다시 green으로 만든다 (T156에 이어). 원인: run 38502539388이 실패했다. Python key-prefix 테스트가 PYTHONPATH를 바꾸고 지워진 packages/orm-python/bin/orm-gen을 실행했고, Go와 Rust key-prefix 테스트가 testcase를 시작하지 않았으며, generator/gen_go_key_prefix_test.go가 어떤 feature에도 속하지 않았고, src/models/markdown_fixture에 key-prefix 메서드가 없었다. 완료 조건: 각각을 고치고 그 소유 검사가 통과한다.
 - [ ] T69 Release 0.0.9. 원인: T61, T62와 markdown IR executor인 T62-1, T63부터 T67까지는 polyspec/flowmark가 요구하는 protocol section, markdown 저장 setting과 executor를 추가하며, flowmark는 pseudo-version 대신 released tag를 요구한다. 완료 기준: 0.0.9의 release 절차를 이전 release 항목(T52, T56)과 같이 밟고 tag로 끝난다. T62-1, T63, T64, T65, T66, T67이 필요하다.
