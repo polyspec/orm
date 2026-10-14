@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: a3f10593efe4b37100e01bd958a5780892cf19245d59e09d5922cf878208429d -->
+<!-- source-sha256: e35c407166fe47dab56c9a1b9ea5a25bf6085e8cd4e5fb6527309117ce075c7a -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1036,6 +1036,7 @@
   - [!] T148-2 Go, TypeScript, Python, Rust에서 모든 공유 vector case를 그 id로 보고한다 (T148에 이어). 원인: 각각 vector 파일을 test 하나 안에서 순회한다. 완료 조건: Go `t.Run(<id>)`, TypeScript는 id마다 top-level test, Python은 unittest load_tests로 case마다 id가 case id인 TestCase, Rust는 id로 이름 지은 libtest-mimic trial이다. method 이름을 생성하지 않는다.
     우회. Cause: Go, TypeScript, Python, Rust가 Rust show-create case를 빼고 모든 공유 vector case를 그 id로 보고한다. Rust show-create case는 orm 설계 결정(T148-2-1)을 기다린다. Retry: T148-2-1이 결정될 때.
     - [ ] T148-2-1 Rust show-create case를 그 id로 보고한다 (T148-2에 이어). 원인: Rust는 tests/dbspec/show-create.json을 crate 밖에서 보이지 않는 shown_checks로 읽고 lib unit test 하나로 확인한다. libtest는 unit test 이름에 하이픈 id를 쓸 수 없고, 공개 경로 read_catalog는 읽은 본문을 dbspec 문서로 바꾸므로 vector를 표현하지 못한다(kit 판정: spec 단위가 공개 경로보다 넓으며 orm의 설계 문제다). 완료 조건: orm이 SHOW CREATE reader가 API의 어디에 속하는지 정하고, Rust binding이 각 case를 그 id로 보고한다.
+    - [o] T148-2-2 옮긴 Rust vector를 workspace에서 실행하고 측정 시간은 경고한다 (T148-2에 이어). 원인: main CI가 실패했다: T148-2의 검증 명령이 ORM_RUST_TEST_FEATURES의 workspace feature와 함께 -p polyspec-orm을 썼고, packages/rust/schema/tests/dbspec_plan.rs가 CPU 시간으로 case를 실패시켰다. Evidence: planner-rust-validate, codec-vectors-rust, encryption-codec-rust가 통과하고 저장소 검사가 통과한다.
   - [ ] T148-3 모든 parity unit을 bind하고 parity R2와 R3를 통과한다 (T148-1, T148-2에 이어). 원인: parity 검사가 모든 unit에서 R2 binding 누락 15줄과 R3 196줄을 보고한다. 완료 조건: make parity-check가 통과하며, 끝에 한 번 실행한다.
 - [o] T149 schema_definition에서 Python을 덮는다. 원인: `schema_definition`은 Python이 `planned`이고 검증 명령이 없어, Python set reader와 분석 test는 `make python-check`로만 소유된다. 인수 조건: Python의 schema_definition coverage가 검증 명령과 함께 실행된다(파일 소유 부분은 T151로 옮겼다). 증거: 변경 전 검사기가 Python runner를 몰라 `node scripts/features/coverage.mjs --feature schema_definition --part owner/python`이 `undeclared owning client`로 실패했다; 이제 검사기가 Python owner를 `ORM_PYTHON`으로 실행하고(없으면 실패하며 PATH의 python을 쓰지 않는다), schema_definition이 `schema-python`(`make dbspec-python-check`)과 fixture case 일곱을 실행하는 Python owner를 선언하며 두 번 모두 통과하고, `make feature-unit-check`와 `node scripts/features/build.mjs --check`가 통과한다.
 - [o] T150 낡은 generator 문장 둘을 고친다. 원인: docs/usage.md는 `--check`가 Go, PHP, TypeScript orm-gen에 있다고 하지만 Python에도 있고, docs/packaging.md의 configuration 행은 schema 경로를 Go, PHP, TypeScript만의 connection option이라 한다. 인수 조건: 두 문장(+ko)이 code와 대조해 다섯 client와 맞는다. 증거: `bin_orm_gen.py`에는 하나뿐인 `models.py`에 `missing`이나 `differs`를 출력하는 `--check`가 있고, `Db.connect_schema(dsn, schema)`는 생성된 스키마를 받는다; docs/usage.md와 docs/packaging.md(+ko)가 이제 그렇게 적는다; `make documents-check`와 `npm run docs:rules-check`가 통과한다.
