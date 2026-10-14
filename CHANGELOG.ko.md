@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ff5baf9daa9893f4b09e65ee912ba5c51b22532e84d6b6161564a26288b3a94d -->
+<!-- source-sha256: 353ed988fe6f77e9c65f2191b0be2529eef98c68ac21ff32f125f23632371082 -->
 # 변경 이력
 
 ## Unreleased
 
+- Go, TypeScript, Python, Rust가 각 공유 vector case를 그 id로 보고한다: Go subtest, case마다 TypeScript test 하나, Python load_tests case, Rust libtest-mimic trial이며, Rust는 공개 engine::validate로 검증한다. (#T148-2)
 - PHP client와 extension의 test가 PHPUnit에서 실행된다: 공유 vector는 case id로 이름 붙인 data provider로 실행하고, orm 자체 PHP test runner를 없앴다. symfony/yaml은 8.1이다. (#T148-1)
 
 ## 0.0.15

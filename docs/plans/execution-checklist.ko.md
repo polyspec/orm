@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 3ea06aac9d079e1b0ef8bfd8376fd896ca2612bdfb1fa32e2df58600deec4379 -->
+<!-- source-sha256: a3f10593efe4b37100e01bd958a5780892cf19245d59e09d5922cf878208429d -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1033,7 +1033,8 @@
   우회. Cause: R3는 각 case가 그 생태계의 표준 runner에서 case id로 실행되기를 요구한다. orm은 PHP test를 자체 script runner(packages/php/tests/*.php)로 실행하는데, 이것은 다시 만든 test runner다. 또 Go, TypeScript, Python, Rust의 공유 vector test는 test 하나 안에서 vector를 순회해 어떤 case id도 runner에 닿지 않는다. Retry: kit 0.0.43(K136, K137)이 나오고 T148-1부터 T148-3까지 끝났을 때.
   - [o] T148-1 PHP client와 extension의 test를 PHPUnit으로 실행한다 (T148에 이어). 원인: packages/php/tests와 packages/php-ext/tests가 PHP 생태계의 표준 runner인 PHPUnit이 아니라 orm 자체 script runner로 실행된다. 완료 조건: test가 PHPUnit test case이고, 공유 vector는 data set 이름이 case id인 data provider로 실행되며, make target이 PHPUnit을 실행하고, 손으로 쓴 runner를 없앤다.
     Evidence: client-unit-check, codec-check, dbspec-php-check, dbspec-php-extension-check, php-min-check, interface-check, dependency-policy-check가 통과한다. PHPUnit이 각 공유 vector case를 그 id로 이름 붙인다.
-  - [~] T148-2 Go, TypeScript, Python, Rust에서 모든 공유 vector case를 그 id로 보고한다 (T148에 이어). 원인: 각각 vector 파일을 test 하나 안에서 순회한다. 완료 조건: Go `t.Run(<id>)`, TypeScript는 id마다 top-level test, Python은 unittest load_tests로 case마다 id가 case id인 TestCase, Rust는 id로 이름 지은 libtest-mimic trial이다. method 이름을 생성하지 않는다.
+  - [!] T148-2 Go, TypeScript, Python, Rust에서 모든 공유 vector case를 그 id로 보고한다 (T148에 이어). 원인: 각각 vector 파일을 test 하나 안에서 순회한다. 완료 조건: Go `t.Run(<id>)`, TypeScript는 id마다 top-level test, Python은 unittest load_tests로 case마다 id가 case id인 TestCase, Rust는 id로 이름 지은 libtest-mimic trial이다. method 이름을 생성하지 않는다.
+    우회. Cause: Go, TypeScript, Python, Rust가 Rust show-create case를 빼고 모든 공유 vector case를 그 id로 보고한다. Rust show-create case는 orm 설계 결정(T148-2-1)을 기다린다. Retry: T148-2-1이 결정될 때.
     - [ ] T148-2-1 Rust show-create case를 그 id로 보고한다 (T148-2에 이어). 원인: Rust는 tests/dbspec/show-create.json을 crate 밖에서 보이지 않는 shown_checks로 읽고 lib unit test 하나로 확인한다. libtest는 unit test 이름에 하이픈 id를 쓸 수 없고, 공개 경로 read_catalog는 읽은 본문을 dbspec 문서로 바꾸므로 vector를 표현하지 못한다(kit 판정: spec 단위가 공개 경로보다 넓으며 orm의 설계 문제다). 완료 조건: orm이 SHOW CREATE reader가 API의 어디에 속하는지 정하고, Rust binding이 각 case를 그 id로 보고한다.
   - [ ] T148-3 모든 parity unit을 bind하고 parity R2와 R3를 통과한다 (T148-1, T148-2에 이어). 원인: parity 검사가 모든 unit에서 R2 binding 누락 15줄과 R3 196줄을 보고한다. 완료 조건: make parity-check가 통과하며, 끝에 한 번 실행한다.
 - [o] T149 schema_definition에서 Python을 덮는다. 원인: `schema_definition`은 Python이 `planned`이고 검증 명령이 없어, Python set reader와 분석 test는 `make python-check`로만 소유된다. 인수 조건: Python의 schema_definition coverage가 검증 명령과 함께 실행된다(파일 소유 부분은 T151로 옮겼다). 증거: 변경 전 검사기가 Python runner를 몰라 `node scripts/features/coverage.mjs --feature schema_definition --part owner/python`이 `undeclared owning client`로 실패했다; 이제 검사기가 Python owner를 `ORM_PYTHON`으로 실행하고(없으면 실패하며 PATH의 python을 쓰지 않는다), schema_definition이 `schema-python`(`make dbspec-python-check`)과 fixture case 일곱을 실행하는 Python owner를 선언하며 두 번 모두 통과하고, `make feature-unit-check`와 `node scripts/features/build.mjs --check`가 통과한다.
