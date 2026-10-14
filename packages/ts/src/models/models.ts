@@ -573,10 +573,12 @@ export class Author extends Model {
   declare joinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell) => this;
   declare leftJoinServiceRegionSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell) => this;
   declare leftJoinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell) => this;
+  declare ltReadCount: (v0: number | ValueFunction) => this;
   declare matchSeqWithUserSeq: () => this;
   declare name: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
   declare nePhotoUrl: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare newLabel: (value: unknown) => this;
+  declare orGtReadCount: (v0: number | ValueFunction) => this;
   declare orIsClose: (v0: boolean | readonly (boolean)[] | ValueFunction | Model) => this;
   declare orderByReadCountDescAndSeqAsc: () => this;
   declare phoneBlindIndex: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;

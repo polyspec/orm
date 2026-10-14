@@ -61,7 +61,10 @@ export { Settings };
   }
 }
 
-/** Calls through new, bindings, typed parameters, functions, callbacks, rows and collections add methods to their own model. */
+/**
+ * Calls through new, bindings, typed parameters, functions, callbacks (and, or, not, andNot, orNot), rows and collections
+ * add methods to their own model.
+ */
 async function modelCalls() {
   const { members } = await generate(`
 import { Author, User as Person } from './models/models.js';
@@ -77,6 +80,7 @@ author().neIsClose(true);
 function user() { return new Person(); }
 user().lkName('n');
 new Person().connect(db).and(u => u.neName('x'));
+new Author().connect(db).not(a => a.gtServiceSeq(1)).andNot(a => a.lbName('n')).orNot(a => a.neIsDisplay(true));
 new models.Service().ltSeq(5);
 const rows = await new Author().connect(db).getsByUserSeq(1);
 for (const row of rows) row.neUuid('u');
@@ -86,7 +90,7 @@ const withWriter = await new Author().connect(db).relation(new Person().matchUse
 withWriter.getWriter();
 export { typed };
 `);
-  for (const name of ['geReadCount', 'gtReadCount', 'ltReadCount', 'leReadCount', 'getsByUserSeq', 'neUuid', 'lkPhotoUrl', 'betweenStartDt', 'neIsClose']) {
+  for (const name of ['geReadCount', 'gtReadCount', 'ltReadCount', 'leReadCount', 'getsByUserSeq', 'neUuid', 'lkPhotoUrl', 'betweenStartDt', 'neIsClose', 'gtServiceSeq', 'lbName', 'neIsDisplay']) {
     check(members('Author').includes(name), `Author lacks ${name}`);
   }
   for (const name of ['neName', 'lkName', 'matchUserSeqWithSeq', 'aliasWriter']) check(members('User').includes(name), `User lacks ${name}`);
