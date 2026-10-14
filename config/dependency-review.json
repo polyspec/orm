@@ -1,16 +1,30 @@
 {
   "schema": 1,
-  "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mjs) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-14T04:42:38.128Z",
+  "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mts) from the registries; make dependency-policy-check compares the checkout with it without a network.",
+  "reviewed": "2026-10-14T05:26:50.757Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "58ca1db41ccf9c5091e767d5bc50f55f6a5e023a7992f2958f0c9c1594f2008d",
+      "sha256": "f5155bba5182f7f8fcb624c0ae30fbad75be7470cd20855f7a0b7e8f65fd4402",
+      "advisories": [
+        {
+          "package": "sprintf-js",
+          "version": "1.0.3",
+          "id": "1241202",
+          "severity": "moderate",
+          "title": "sprintf-js vulnerable to denial of service through unbounded precision specifiers",
+          "url": "https://github.com/advisories/GHSA-hp3w-g68c-fv3c"
+        }
+      ]
+    },
+    {
+      "lock": "tests/interfaces/typescript/package-lock.json",
+      "sha256": "7e6a4f05aea550272d5a0a525279b4f98879b103193eeeb832ea003e45e8e040",
       "advisories": []
     },
     {
       "lock": "composer.lock",
-      "sha256": "78dabf69abde3fe3f83fba58983b3cba2c94a164929c56bd4385efdd9caf01a8",
+      "sha256": "aaf1e69bb0b2659bd23560f69c6d5d443732d8ea4e38f8009cb62f74320e49dc",
       "advisories": []
     },
     {
@@ -88,14 +102,21 @@
       "ecosystem": "npm",
       "manifest": "packages/dbspec-language/package.json",
       "package": "@types/node",
-      "version": "22.20.5",
+      "version": "26.6.5",
       "latest": "26.6.5"
     },
     {
       "ecosystem": "npm",
       "manifest": "packages/dbspec-language/package.json",
+      "package": "oxc-parser",
+      "version": "0.154.0",
+      "latest": "0.154.0"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-language/package.json",
       "package": "typescript",
-      "version": "6.0.3",
+      "version": "7.0.2",
       "latest": "7.0.2"
     },
     {
@@ -199,16 +220,16 @@
     {
       "ecosystem": "npm",
       "manifest": "packages/ts/package.json",
-      "package": "pg",
-      "version": "8.23.1",
-      "latest": "8.23.1"
+      "package": "oxc-parser",
+      "version": "0.154.0",
+      "latest": "0.154.0"
     },
     {
       "ecosystem": "npm",
       "manifest": "packages/ts/package.json",
-      "package": "typescript",
-      "version": "6.0.3",
-      "latest": "7.0.2"
+      "package": "pg",
+      "version": "8.23.1",
+      "latest": "8.23.1"
     },
     {
       "ecosystem": "npm",
@@ -221,7 +242,7 @@
       "ecosystem": "npm",
       "manifest": "packages/ts/package.json",
       "package": "@types/node",
-      "version": "22.20.5",
+      "version": "26.6.5",
       "latest": "26.6.5"
     },
     {
@@ -232,11 +253,18 @@
       "latest": "8.23.1"
     },
     {
-      "ecosystem": "composer",
-      "manifest": "composer.json",
-      "package": "phpstan/phpstan",
-      "version": "2.3.1",
-      "latest": "2.3.1"
+      "ecosystem": "npm",
+      "manifest": "packages/ts/package.json",
+      "package": "typescript",
+      "version": "7.0.2",
+      "latest": "7.0.2"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "tests/interfaces/typescript/package.json",
+      "package": "typescript",
+      "version": "6.0.3",
+      "latest": "7.0.2"
     },
     {
       "ecosystem": "pypi",

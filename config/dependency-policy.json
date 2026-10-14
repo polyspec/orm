@@ -13,6 +13,26 @@
     "package-lock.json",
     "tests/interfaces/typescript/package-lock.json"
   ],
-  "exceptions": [],
-  "pythonLocks": []
+  "exceptions": [
+    {
+      "ecosystem": "npm",
+      "manifest": "tests/interfaces/typescript/package.json",
+      "package": "typescript",
+      "reason": "tests/interfaces/typescript.mjs reads the declarations of the TypeScript client with the JavaScript API of the compiler (createSourceFile, the printer and the node factory), which TypeScript 7.0 does not ship; typescript 6.0.3 is the latest release with that API, the same exception as config/toolchain.json.",
+      "removalCondition": "TypeScript ships its stable JavaScript API (announced for 7.1) and tests/interfaces/typescript.mjs reads the declarations through it.",
+      "verification": [
+        "make interface-check"
+      ]
+    }
+  ],
+  "pythonLocks": [],
+  "advisoryExceptions": [
+    {
+      "lock": "package-lock.json",
+      "package": "sprintf-js",
+      "advisory": "1241202",
+      "reason": "GHSA-hp3w-g68c-fv3c (npm advisory 1241202) covers every release of sprintf-js, so no release fixes it. orm pulls sprintf-js 1.0.3 in only through @polyspec/kit -> @microsoft/api-extractor -> @rushstack/ts-command-line -> argparse 1.0.10 -> sprintf-js, which formats the help and error texts of the api-extractor command with its own format strings; no input of a user reaches it. kit accepts the same advisory with the same reason.",
+      "removalCondition": "a release of sprintf-js fixes GHSA-hp3w-g68c-fv3c, or @microsoft/api-extractor no longer depends on argparse; make dependency-review then reports the exception as stale"
+    }
+  ]
 }
