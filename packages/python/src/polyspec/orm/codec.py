@@ -455,34 +455,33 @@ def _yaml_text(memory) -> str:
     return '' if memory is None else bytes(memory).decode('utf-8')
 
 
-def _yaml_scalar(text: str, plain: bool, tag):
-    if tag is None:
-        return _yaml_core(text) if plain else text
-    if tag == '!!str':
-        return text
-    if tag == '!!null':
-        return None
-    value = _yaml_core(text)
-    if tag == '!!bool' and isinstance(value, bool):
-        return value
-    if tag == '!!int' and type(value) is int:
-        return value
-    if tag == '!!float' and type(value) in (int, float):
-        return float(value)
-    raise CodecError('CODEC_DECODE', f'yaml: tag {tag} on {text!r}')
+def _yaml_scalar(text: str, plain: bool):
+    return _yaml_core(text) if plain else text
+
+
+def _yaml_refuse_marks(tree, node, key: bool):
+    # docs/codec.md (yaml): anchors and every explicit tag, the core tags included, are refused.
+    if key:
+        if tree.has_key_anchor(node):
+            raise CodecError('CODEC_DECODE', 'yaml: anchors are not supported')
+        if tree.has_key_tag(node):
+            raise CodecError('CODEC_DECODE', f'yaml: explicit tag {_yaml_text(tree.key_tag(node))} is not supported')
+        return
+    if tree.has_val_anchor(node):
+        raise CodecError('CODEC_DECODE', 'yaml: anchors are not supported')
+    if tree.has_val_tag(node):
+        raise CodecError('CODEC_DECODE', f'yaml: explicit tag {_yaml_text(tree.val_tag(node))} is not supported')
 
 
 def _yaml_node(tree, node):
-    tag = _yaml_text(tree.val_tag(node)) if tree.has_val_tag(node) else None
+    _yaml_refuse_marks(tree, node, False)
     if tree.is_map(node):
-        if tag is not None:
-            raise CodecError('CODEC_DECODE', f'yaml: tag {tag} on a mapping')
         mapping = {}
         for child in ryml.children(tree, node):
             if tree.is_key_ref(child):
                 raise CodecError('CODEC_DECODE', 'yaml: aliases are not allowed')
-            key_tag = _yaml_text(tree.key_tag(child)) if tree.has_key_tag(child) else None
-            key = _yaml_scalar(_yaml_text(tree.key(child)), not tree.is_key_quoted(child), key_tag)
+            _yaml_refuse_marks(tree, child, True)
+            key = _yaml_scalar(_yaml_text(tree.key(child)), not tree.is_key_quoted(child))
             if type(key) is int:
                 key = str(key)
             if not isinstance(key, str):
@@ -492,12 +491,10 @@ def _yaml_node(tree, node):
             mapping[key] = _yaml_node(tree, child)
         return mapping
     if tree.is_seq(node):
-        if tag is not None:
-            raise CodecError('CODEC_DECODE', f'yaml: tag {tag} on a sequence')
         return [_yaml_node(tree, child) for child in ryml.children(tree, node)]
     if tree.is_val_ref(node):
         raise CodecError('CODEC_DECODE', 'yaml: aliases are not allowed')
-    return _yaml_scalar(_yaml_text(tree.val(node)), not tree.is_val_quoted(node), tag)
+    return _yaml_scalar(_yaml_text(tree.val(node)), not tree.is_val_quoted(node))
 
 
 def _decode_yaml(data: bytes):
@@ -510,6 +507,9 @@ def _decode_yaml(data: bytes):
             if len(documents) != 1:
                 raise CodecError('CODEC_DECODE', 'yaml: multiple documents are not supported')
             root = documents[0]
+        elif not (tree.has_val(root) or tree.is_map(root) or tree.is_seq(root)):
+            # A stream without a document (empty, or comments only) is not a YAML value.
+            raise CodecError('CODEC_DECODE', 'yaml: no document')
         return _validate_codec_value(_yaml_node(tree, root), 'yaml decode')
     except CodecError:
         raise

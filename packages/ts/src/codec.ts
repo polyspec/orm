@@ -2,7 +2,7 @@ import { deflateSync, inflateSync } from 'node:zlib';
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'node:crypto';
 import { isIP } from 'node:net';
 import { Value as JsonValue, parse as orderedJsonParse, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
-import { isScalar, parseDocument, stringify as stringifyYaml, visit } from 'yaml';
+import { isScalar, parseAllDocuments, stringify as stringifyYaml, visit } from 'yaml';
 import { StyledValue } from './styled_value.js';
 
 export type CodecValue = null | boolean | number | string | CodecValue[] | { [key: string]: CodecValue };
@@ -291,10 +291,20 @@ function jsonText(value: unknown, depth: number): string {
 
 function decodeYaml(current: Uint8Array): CodecValue {
   try {
-    const document = parseDocument(string(current, 'decode'), { version: '1.2', schema: 'core', strict: true, uniqueKeys: true, stringKeys: true });
+    const documents = parseAllDocuments(string(current, 'decode'), { version: '1.2', schema: 'core', strict: true, uniqueKeys: true, stringKeys: true });
+    // A stream without a document (empty, or comments only) is not a YAML value.
+    if (documents.length === 0) throw new Error('no document');
+    if (documents.length > 1) throw new Error('multiple documents are not supported');
+    const document = documents[0]!;
     if (document.errors.length > 0) throw document.errors[0];
     if (document.warnings.length > 0) throw document.warnings[0];
     visit(document, {
+      // docs/codec.md (yaml): anchors and every explicit tag, the core tags included, are refused.
+      // The parser sets a node's anchor and tag only when the text writes them.
+      Node(_key, node) {
+        if (node.anchor !== undefined) throw new Error(`anchor &${node.anchor} is not supported`);
+        if (node.tag !== undefined) throw new Error(`explicit tag ${node.tag} is not supported`);
+      },
       Pair(_key, pair) {
         if (!isScalar(pair.key) || typeof pair.key.value !== 'string') throw new Error('map keys must be scalar strings');
         if (pair.key.type === 'PLAIN' && /^(?:true|false|null|~|[-+]?(?:\d+\.\d*|\.\d+)(?:e[-+]?\d+)?|[-+]?\d+e[-+]?\d+|[-+]?\.(?:inf|nan))$/i.test(pair.key.source ?? '')) {

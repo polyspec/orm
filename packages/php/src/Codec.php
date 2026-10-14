@@ -192,16 +192,19 @@ final class Codec
      * Reads one YAML 1.2 document with purrphp/yaml and resolves its plain scalars by the library's
      * core schema. The codec's own rules (docs/codec.md, yaml) apply on the node model: one document,
      * no aliases, anchors, explicit tags or merge keys, no duplicate keys, string or integral keys.
-     * A text without a document (empty or only comments) reads as null.
+     * A text without a document (empty or only comments) is not a YAML value and is refused.
      */
     private static function yamlDecode(string $text): mixed
     {
         $documents = (new YamlStream())->fromString($text);
-        if (count($documents) > 1) {
-            throw new \InvalidArgumentException('multiple documents are not supported');
+        switch (count($documents)) {
+            case 0:
+                throw new \InvalidArgumentException('no document');
+            case 1:
+                return self::yamlNode($documents->at(0)->getRoot(), new CoreSchema());
+            default:
+                throw new \InvalidArgumentException('multiple documents are not supported');
         }
-        $document = $documents->at(0);
-        return $document === null ? null : self::yamlNode($document->getRoot(), new CoreSchema());
     }
 
     private static function yamlNode(AbstractNode $node, CoreSchema $schema): mixed

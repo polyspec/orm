@@ -1,5 +1,5 @@
 <!-- doc-id: codec -->
-<!-- source-sha256: 2e55c17eccc0fb29816c4aecd3c02eb226358041859c0a25d601399017082099 -->
+<!-- source-sha256: 6db4ab695401d40c4918d8885b106ef5e98a340d16379ccc49f2655e3054e5c1 -->
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유한하지 않은 값, 지원하지 않는 값에 `CODEC_DECODE`를 반환한다. Host 인코딩은 단계가 없거나 텍스트·바이트가 아닌 값에 `CODEC_ENCODE`를 반환한다. 생성 모델 대입은 컬럼 이름을 붙여 변환 오류를 보고한다. 행 조립은 오류를 호출자에게 반환하고 insert는 쓰기 전에 대입 필드를 검증한다. 빈 바이트 배열은 SQL NULL과 구분한다. scalar 집계 변환은 유효한 십진수를 가장 가까운 유한 binary64 값으로 받는다.
@@ -73,7 +73,7 @@ Go `[]byte`는 공통 JSON 값이 아니므로 JSON encoding에서 `CODEC_ENCODE
 
 PHP 배열은 순서 있는 맵이다. 키가 정확히 `0..n-1`인 배열은 리스트로 읽고, 그 밖의 키는 맵으로 읽는다. serialize 계열 codec은 키 표현을 보존한다. Go와 Rust는 JSON 맵 키를 정렬하고 PHP는 삽입 순서를 유지하므로, 값이 같아도 바이트는 다를 수 있다.
 
-`yaml`은 YAML 1.2 문서 하나를 저장한다. 출력 값은 공통 값 모델을 사용한다. 매핑 키는 문자열이며 정수 YAML 키는 PHP 배열과의 호환을 위해 십진 문자열로 변환한다. 중복 키, 다중 문서, alias, anchor, 명시적 tag, 유한하지 않은 실수, collection 키, 따옴표 없는 boolean·null·실수 키는 `CODEC_DECODE`를 반환한다. YAML 출력 텍스트는 클라이언트마다 다를 수 있으므로 클라이언트 간 검사는 디코딩 값을 비교한다.
+`yaml`은 YAML 1.2 문서 하나를 저장한다. 출력 값은 공통 값 모델을 사용한다. 매핑 키는 문자열이며 정수 YAML 키는 PHP 배열과의 호환을 위해 십진 문자열로 변환한다. 중복 키, 다중 문서, alias, anchor(alias가 없어도), 명시적 tag(`!!str`, `!!int` 같은 core tag 포함), 유한하지 않은 실수, collection 키, 따옴표 없는 boolean·null·실수 키는 `CODEC_DECODE`를 반환한다. 문서가 없는 text, 즉 비었거나 comment만 담은 text는 YAML 값이 아니므로 `CODEC_DECODE`를 반환한다; SQL NULL은 별개의 상태이고, null 값은 `null`이나 `---` 같은 null 문서로 저장한다. YAML 출력 텍스트는 클라이언트마다 다를 수 있으므로 클라이언트 간 검사는 디코딩 값을 비교한다.
 
 `point`는 스타일이 아닌 컬럼 타입이다. 공개 값은 `[x, y]`이며 Go는 `orm.Point`, PHP는 `array{float,float}`, Rust는 `polyspec_orm::Point`, TypeScript는 `Point`를 사용한다. `parsePoint`·`parse_point`·`Codec::point`는 `POINT(x y)`와 PostgreSQL 출력 `(x,y)`를 입력받는다. 쓰기 변환은 `POINT(x y)`를 생성한다. 좌표가 두 개가 아니면 `CODEC_DECODE`, 출력 좌표가 유한하지 않으면 `CODEC_ENCODE`를 반환한다.
 

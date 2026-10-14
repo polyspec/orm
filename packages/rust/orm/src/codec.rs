@@ -288,7 +288,8 @@ fn yaml_printable(c: char) -> bool {
 }
 
 /// Reads one YAML document into the common value model in one pass of the saphyr-parser events.
-/// A stream without a document, or an empty document, is null. Before parsing, the reader
+/// A stream without a document (empty, or comments only) is refused: an empty text is not a
+/// YAML value. An explicit empty document (`---`) is null. Before parsing, the reader
 /// removes a leading byte order mark and refuses a character outside c-printable.
 fn yaml_decode(bytes: &[u8]) -> Result<Value> {
     let source = std::str::from_utf8(bytes).map_err(|e| err(CODEC_DECODE, format!("yaml: invalid UTF-8: {e}")))?;
@@ -300,6 +301,7 @@ fn yaml_decode(bytes: &[u8]) -> Result<Value> {
     YamlParser::new_from_str(source).load(&mut reader, true).map_err(|e| err(CODEC_DECODE, format!("yaml: {e}")))?;
     match reader.error {
         Some(message) => Err(err(CODEC_DECODE, format!("yaml: {message}"))),
+        None if reader.documents == 0 => Err(err(CODEC_DECODE, "yaml: no document")),
         None => Ok(reader.value.unwrap_or(Value::Null)),
     }
 }
@@ -945,8 +947,6 @@ mod tests {
         let yaml = vec!["yaml".to_string()];
         let mut wrong = Vec::new();
         for (text, want) in [
-            ("", serde_json::json!(null)),
-            ("# comment\n", serde_json::json!(null)),
             ("---\n", serde_json::json!(null)),
             ("\u{feff}a: 1\n", serde_json::json!({"a": 1})),
             ("Null\n", serde_json::json!(null)),
@@ -994,6 +994,8 @@ mod tests {
             "1.5: a\n",
             "False: a\n",
             "1e3: a\n",
+            "",
+            "# comment\n",
             "a: !!str x\n",
             "a: ! x\n",
             "!!map {a: 1}\n",

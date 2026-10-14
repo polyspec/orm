@@ -274,11 +274,11 @@ func yamlNode(node ast.Node) (any, error) {
 	case *ast.MappingValueNode:
 		return yamlMapping([]*ast.MappingValueNode{n})
 	case *ast.TagNode:
-		return yamlTagged(n)
+		return nil, codecErr(CodeCodecDecode, "yaml: explicit tag %q at line %d is not supported", n.Start.Value, yamlLine(n))
 	case *ast.AliasNode:
 		return nil, codecErr(CodeCodecDecode, "yaml: aliases are not supported at line %d", yamlLine(n))
 	case *ast.AnchorNode:
-		return yamlNode(n.Value)
+		return nil, codecErr(CodeCodecDecode, "yaml: anchors are not supported at line %d", yamlLine(n))
 	case *ast.LiteralNode:
 		return n.Value.Value, nil
 	}
@@ -331,50 +331,6 @@ func yamlScalar(node ast.Node) (string, bool, bool) {
 	return "", false, false
 }
 
-// yamlTagged reads a scalar with an explicit tag of the core schema; every other tag is refused.
-func yamlTagged(n *ast.TagNode) (any, error) {
-	line := yamlLine(n)
-	text, _, ok := yamlScalar(n.Value)
-	if !ok {
-		return nil, codecErr(CodeCodecDecode, "yaml: tag %q at line %d", n.Start.Value, line)
-	}
-	switch n.Start.Value {
-	case "!!null":
-		return nil, nil
-	case "!!bool":
-		switch value, err := yamlCoreScalar(text, line); v := value.(type) {
-		case bool:
-			return v, err
-		}
-		return nil, codecErr(CodeCodecDecode, "yaml: boolean %q at line %d", text, line)
-	case "!!int":
-		value, err := yamlCoreScalar(text, line)
-		if err != nil {
-			return nil, err
-		}
-		if v, ok := value.(int64); ok {
-			return v, nil
-		}
-		return nil, codecErr(CodeCodecDecode, "yaml: integer %q at line %d", text, line)
-	case "!!float":
-		value, err := yamlCoreScalar(text, line)
-		if err != nil {
-			return nil, err
-		}
-		switch v := value.(type) {
-		case int64:
-			return float64(v), nil
-		case float64:
-			return v, nil
-		}
-		return nil, codecErr(CodeCodecDecode, "yaml: non-finite or invalid float at line %d", line)
-	case "!!str":
-		return text, nil
-	default:
-		return nil, codecErr(CodeCodecDecode, "yaml: tag %q at line %d", n.Start.Value, line)
-	}
-}
-
 var (
 	yamlCoreInt   = regexp.MustCompile(`^(?:[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+)$`)
 	yamlCoreFloat = regexp.MustCompile(`^(?:[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))$`)
@@ -422,9 +378,11 @@ func yamlMapKey(node ast.Node) (string, error) {
 	line := yamlLine(node)
 	var value any
 	var err error
-	switch n := node.(type) {
-	case *ast.TagNode:
-		value, err = yamlTagged(n)
+	switch node.(type) {
+	case *ast.TagNode, *ast.AnchorNode, *ast.AliasNode:
+		// yamlNode refuses each of these forms.
+		_, err = yamlNode(node)
+		return "", err
 	default:
 		text, plain, ok := yamlScalar(node)
 		switch {
