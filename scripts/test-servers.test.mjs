@@ -1,5 +1,5 @@
-// scripts/test-servers.sh의 server 정지 test다. make test-servers-check가 tests/stop-process와 tests/lease를
-// build하고 그 경로를 STOP_PROCESS와 LEASE로 준다.
+// The stop tests of scripts/test-servers.sh. make test-servers-check builds tests/stop-process and tests/lease and passes
+// their paths as STOP_PROCESS and LEASE.
 import assert from 'node:assert/strict';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -9,9 +9,9 @@ import { createServer } from 'node:net';
 import { isolatedEnvironment } from '../tests/environment.mjs';
 import { caseTest, COMPUTE, DATABASE } from '../tests/testcase.mjs';
 
-// stop_pid case는 test-servers.sh의 stop_pid를 그대로 꺼내 가짜 서버를 멈춘다. 서버 정지는 장기 작업이므로
-// 기한이 없고, 끝났는지는 polling이 아니라 운영체제의 종료 사건으로 안다. TERM을 받고 1.5초 뒤에야 끝나는
-// 느리지만 정상인 서버는 그 뒤에 멈춘 것으로 보고되고, 그때 process는 이미 없다.
+// The stop_pid case takes stop_pid of test-servers.sh as it is and stops a fake server. Stopping a server is a long task,
+// so it has no deadline, and its end is learned from the operating system's exit event, not by polling. A slow but sound
+// server that ends 1.5 seconds after TERM is reported stopped after that, when its process is already gone.
 caseTest('stop_pid waits for the exit event of the server, with no polling', COMPUTE, () => {
   const script = readFileSync(new URL('./test-servers.sh', import.meta.url), 'utf8');
   const start = script.indexOf('stop_pid() {');
@@ -24,7 +24,7 @@ caseTest('stop_pid waits for the exit event of the server, with no polling', COM
   const dir = mkdtempSync(join(tmpdir(), 'orm-stop-'));
   try {
     for (const [name, delay] of [['quick', 0], ['slow', 1.5]]) {
-      // 서버는 TERM의 trap을 둔 뒤 FIFO에 준비를 쓰고, 바깥 shell은 그 쓰기를 읽어 시작을 안다.
+      // The server sets its TERM trap, then writes ready to the FIFO; the outer shell reads that write to learn the start.
       const pidFile = join(dir, `${name}.pid`), ready = join(dir, `${name}.ready`);
       const server = spawnSync('sh', ['-c', `mkfifo ${ready}
 sh -c 'trap "sleep ${delay}; kill \\$child; exit 0" TERM; sleep 30 & child=$!; echo ready > ${ready}; wait' >/dev/null 2>&1 &
@@ -45,9 +45,9 @@ read state < ${ready}`], { timeout: 10_000 });
   }
 });
 
-// lease case는 이 checkout의 script를 임시 root로 복사하고, 다른 실행이 서버의 shared lease를 가진 동안
-// `test-servers.sh stop`이 그 보유자를 적으며 거부되고 서버 directory를 남기는지, 보유가 끝나면 정지가
-// 진행되는지 확인한다. 보유자는 FIFO를 읽으며 기다리는 shell이고, 준비와 끝은 FIFO로 알린다.
+// The lease case copies the scripts of this checkout to a temporary root and checks that, while another run holds the
+// server's shared lease, `test-servers.sh stop` refuses naming that holder and keeps the server directory, and that the
+// stop proceeds once the hold ends. The holder is a shell that waits reading a FIFO; ready and end go through FIFOs.
 caseTest('stopping the test servers is refused while another run holds a lease, naming the holder', COMPUTE, () => {
   const { LEASE: lease, STOP_PROCESS: stopProcess } = process.env;
   assert.ok(lease && stopProcess, 'LEASE or STOP_PROCESS is unset; run make test-servers-check, which builds them');
@@ -69,26 +69,26 @@ caseTest('stopping the test servers is refused while another run holds a lease, 
     assert.match(refused.stderr, new RegExp(`^lease: refused the exclusive lease of ${leases.replace(/[.]/g, '\\.')}; held by:\n  shared lease of pid ${holder.pid} \\(running\\) from \\S+ since \\S+: sh -c `));
     assert.ok(existsSync(join(root, '.runtime/servers')), 'the refused stop removed the servers directory');
     execFileSync('sh', ['-c', `echo done > ${release}`]);
-    // 보유자 shell이 끝나면 releaser가 lease를 지운다. 그 뒤의 정지는 lease directory의 변경 알림을 기다리지
-    // 않고 곧바로 시도하므로, lease가 지워질 때까지 `lease run --wait`로 기다린 다음 정지한다.
+    // When the holder shell ends, the releaser removes its lease. The stop after it does not wait for a change event of the
+    // lease directory but tries at once, so it waits with `lease run --wait` until the lease is removed, then stops.
     execFileSync(lease, ['run', leases, 'exclusive', '--wait', '--', 'true']);
     const stopped = stop();
     assert.equal(stopped.status, 0, stopped.stdout + stopped.stderr);
     assert.match(stopped.stdout, /test-servers: removed .*\.runtime\/servers\n$/);
     assert.ok(!existsSync(join(root, '.runtime/servers')), 'the stop left the servers directory');
   } finally {
-    // 실패한 case가 남긴 보유자는 끝낸다. 보유자가 끝나면 releaser가 lease를 지운다.
+    // End a holder that a failed case left behind; when it ends, the releaser removes its lease.
     if (holder?.exitCode === null) holder.kill();
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-// 겹친 lease case는 exclusive를 가진 process 아래에서 동시에 실행되는 하위 process들(make feature-check의
-// 기능 단계들처럼)이 그 보유를 함께 쓰지 않고 그 안에서 다시 나누어 가지는지 확인한다. 바깥 shell이 exclusive를
-// 가진 채 하위 shell A가 exclusive를 얻고 FIFO를 읽으며 기다리는 동안, 다른 하위 shell의 exclusive와 shared는
-// A를 보유자로 적으며 거부된다. A가 끝나면 --wait인 하위 shell이 얻고, 같은 process가 다시 얻는 일은 그 보유를
-// 그대로 쓴다. 그 뒤 바깥 shell 아래의 하위 shell 두 개는 shared를 함께 가진다. 하위 shell의 보유는 그
-// process가 끝난 뒤 releaser가 지우므로, 앞선 보유 뒤의 첫 hold는 --wait로 그 해제를 기다린다.
+// The nested lease case checks that child processes running together under a process that holds exclusive (as the
+// feature steps of make feature-check do) do not share that hold but divide it again among themselves. While the outer
+// shell holds exclusive and child shell A holds exclusive waiting on a FIFO, the exclusive and shared requests of another
+// child refuse naming A. When A ends, a child with --wait takes it, and the same process taking it again reuses its
+// hold. Then two child shells under the outer shell hold shared together. The releaser removes a child's hold after its
+// process ends, so the first hold after an earlier one waits for that release with --wait.
 caseTest('children of an exclusive holder share its lease one exclusive holder at a time', COMPUTE, () => {
   const { LEASE: lease } = process.env;
   assert.ok(lease, 'LEASE is unset; run make test-servers-check, which builds it');
@@ -122,9 +122,9 @@ echo done > "$R/release"; wait
   }
 });
 
-// 죽은 보유 case(G5.56)는 보유 file을 직접 두고 lease가 그것을 어떻게 다루는지 본다. 보유자 pid는 이미 끝난
-// process의 것이다. releaser가 살아 있는 보유는 풀리는 중이므로 --wait가 기다리고, releaser가 보유를 지우지 못하고
-// 끝나면 가져간다. 보유자도 releaser도 없는 shared는 누구든, exclusive는 exclusive로 청한 실행만 가져간다.
+// The dead hold case (G5.56) places hold files directly and sees how lease treats them. Each holder pid is of a process
+// that has ended. A hold whose releaser is alive is being released, so --wait waits; when the releaser ends without
+// removing it, it is taken. A shared hold with neither holder nor releaser is taken by anyone, an exclusive one only by an exclusive request.
 function deadPid() {
   return spawnSync('true').pid;
 }
@@ -209,8 +209,8 @@ caseTest('hold records its releaser in the lease file before it returns', COMPUT
   }
 });
 
-// 공유 database case는 server 환경 file이 bench database를 정하지 않고, Makefile이 함께 쓰는 decimal
-// database를 두지 않는지 확인한다. 그 database는 실행마다 scripts/check/databases.sh가 만든다.
+// The shared database case checks that the server environment file names no bench database and creates no decimal
+// database that the Makefile shares; scripts/check/databases.sh creates that database for each run.
 caseTest('the server environment names no bench or decimal database that runs share', COMPUTE, () => {
   const script = readFileSync(new URL('./test-servers.sh', import.meta.url), 'utf8');
   const start = script.indexOf('write_env() {');
@@ -224,21 +224,22 @@ caseTest('the server environment names no bench or decimal database that runs sh
   assert.doesNotMatch(makefile, /^decimal-db-setup:/m, 'the Makefile sets up a shared decimal database');
 });
 
-// binary log 보존 case는 test-servers.sh가 mysqld에 주는 MYSQLD_BINLOG의 보존 option을 작은 값으로 바꿔 임시
-// data directory와 빈 port의 fixture 서버에 주고, 공유 서버는 건드리지 않는다. server는 만료된 binary log를
-// 시작할 때와 log를 회전할 때만 지우므로 보존에는 만료 시간과 회전하는 크기가 함께 필요하다. 쓰기 묶음 하나를 쓰고
-// 만료 시간보다 오래 기다린 뒤 다시 쓰면 첫 file은 server가 지워야 한다. 남으면 그 file과 남은 이유를 적고 실패한다.
+// The binary log retention case gives the retention options of MYSQLD_BINLOG that test-servers.sh passes to mysqld, with
+// small values, to a fixture server on a temporary data directory and a free port, leaving the shared servers alone. The
+// server removes expired binary logs only at start and when it rotates a log, so retention needs both an expiry and a
+// rotation size. After one batch of writes and a wait longer than the expiry, another write must make the server remove
+// the first file; if it stays, the case fails naming the file and why it stayed.
 caseTest('the test MySQL server removes an expired binary log by itself', DATABASE, async () => {
   const script = readFileSync(new URL('./test-servers.sh', import.meta.url), 'utf8');
   const declared = /^MYSQLD_BINLOG="([^"]*)"$/m.exec(script)?.[1] ?? '';
   const flags = declared.split(/\s+/).filter(Boolean);
   const expireFlag = flags.find(f => f.startsWith('--binlog-expire-logs-seconds='));
   const sizeFlag = flags.find(f => f.startsWith('--max-binlog-size='));
-  // fixture 값: 만료 2초, 크기는 mysqld가 받는 가장 작은 4096 byte다. 선언에 없는 option은 주지 않는다.
+  // Fixture values: an expiry of 2 seconds and the smallest size mysqld accepts, 4096 bytes; no option outside the declaration.
   const EXPIRE_SECONDS = 2;
   const fixtureFlags = [`--binlog-expire-logs-seconds=${EXPIRE_SECONDS}`, ...(sizeFlag ? ['--max-binlog-size=4096'] : [])];
   const root = mkdtempSync(join(tmpdir(), 'orm-binlog-'));
-  // unix socket 경로는 104 byte를 넘을 수 없으므로 짧은 directory에 둔다.
+  // A Unix socket path cannot exceed 104 bytes, so the socket goes in a short directory.
   const socketDir = mkdtempSync('/tmp/orm-binlog-');
   const port = await new Promise((resolve, reject) => {
     const server = createServer();
@@ -249,14 +250,14 @@ caseTest('the test MySQL server removes an expired binary log by itself', DATABA
   const data = join(root, 'data');
   try {
     execFileSync('mysqld', ['--no-defaults', '--initialize-insecure', `--datadir=${data}`, `--log-error=${join(root, 'init.log')}`]);
-    // --daemonize는 server가 연결을 받거나 실패한 뒤 돌아온다.
+    // --daemonize returns after the server accepts connections or fails.
     execFileSync('mysqld', ['--no-defaults', '--daemonize', `--datadir=${data}`, `--pid-file=${join(root, 'mysqld.pid')}`, `--log-error=${join(root, 'mysqld.log')}`,
       '--bind-address=127.0.0.1', `--port=${port}`, `--socket=${join(socketDir, 's')}`, '--mysqlx=OFF', '--server-id=1', ...fixtureFlags]);
     mysql('CREATE DATABASE b; CREATE TABLE b.t (v VARCHAR(1024))');
     const burst = () => { for (let i = 0; i < 10; i++) mysql("INSERT INTO b.t VALUES (REPEAT('x', 1000))"); };
     burst();
     const first = mysql('SHOW BINARY LOGS').trim().split('\n')[0].split('\t');
-    // 만료는 file의 마지막 쓰기 시각부터 센다. 그보다 1초 더 기다린다.
+    // The expiry counts from the file's last write; wait one second longer than it.
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, (EXPIRE_SECONDS + 1) * 1000);
     burst();
     const logs = mysql('SHOW BINARY LOGS').trim().split('\n').map(l => l.split('\t')[0]);
@@ -265,7 +266,7 @@ caseTest('the test MySQL server removes an expired binary log by itself', DATABA
       `${first[0]} (${first[1]} bytes, last written more than ${EXPIRE_SECONDS + 1} s ago) is kept past binlog_expire_logs_seconds=${EXPIRE_SECONDS}: ` +
       `the server removes expired logs only when it rotates the log, and max_binlog_size=${size} was never reached` +
       (expireFlag ? '' : '; scripts/test-servers.sh sets no --binlog-expire-logs-seconds') + (sizeFlag ? '' : '; scripts/test-servers.sh sets no --max-binlog-size'));
-    // 공유 서버의 두 mysqld가 같은 보존 option을 받는다.
+    // Both mysqld of the shared servers receive the same retention options.
     for (const command of ['--server-id=1', '--server-id=2']) {
       const line = script.split('\n').findIndex(l => l.includes(command));
       assert.ok(line >= 0 && /\$MYSQLD_BINLOG\b/.test(script.split('\n').slice(line - 2, line + 1).join('\n')), `the mysqld with ${command} in scripts/test-servers.sh does not take $MYSQLD_BINLOG`);
@@ -288,8 +289,8 @@ caseTest('the test MySQL server removes an expired binary log by itself', DATABA
   }
 });
 
-// socket 경로 case(T135)는 test-servers.sh의 경로 선언부를 긴 checkout 경로로 평가한다. Unix socket 경로는
-// sun_path 한도(macOS 103 byte, Linux 107 byte, NUL 제외) 안에 있어야 하고, checkout 깊이와 무관해야 한다.
+// The socket path case (T135) evaluates the path declarations of test-servers.sh with a long checkout path. A Unix socket
+// path must fit the sun_path limit (103 bytes on macOS, 107 on Linux, NUL excluded) and must not depend on the depth of the checkout.
 caseTest('test server sockets stay within the Unix socket path limit for a long checkout', COMPUTE, () => {
   const script = readFileSync(new URL('./test-servers.sh', import.meta.url), 'utf8');
   const start = script.indexOf('\nDIR=');
@@ -300,7 +301,7 @@ caseTest('test server sockets stay within the Unix socket path limit for a long 
   const sockets = run.stdout.trim().split('\n');
   assert.equal(sockets.length, 5);
   for (const socket of sockets) assert.ok(Buffer.byteLength(socket) <= 103, `socket path ${socket} is ${Buffer.byteLength(socket)} bytes; macOS allows at most 103`);
-  // 같은 checkout은 같은 directory를, 다른 checkout은 다른 directory를 얻는다.
+  // The same checkout gets the same directory, and another checkout another directory.
   const again = spawnSync('sh', ['-c', `set -eu\nROOT='${root}'\n${declarations}\necho "$MYSQL_SOCKET"`], { encoding: 'utf8' });
   assert.equal(again.stdout.trim(), sockets[0]);
   const other = spawnSync('sh', ['-c', `set -eu\nROOT='${root}x'\n${declarations}\necho "$MYSQL_SOCKET"`], { encoding: 'utf8' });

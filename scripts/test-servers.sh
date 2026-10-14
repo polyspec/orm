@@ -71,10 +71,10 @@ usage() {
   exit 2
 }
 
-# check_socket_paths는 서버를 시작하기 전에 Unix socket 경로마다 platform 한도를 확인한다. socket
-# 경로는 sockaddr_un의 sun_path에 NUL과 함께 들어가므로 Linux는 107 byte, macOS는 103 byte까지다.
-# socket은 checkout 깊이와 무관한 SOCKET_DIR에 있으므로 이 확인은 그 선언이 한도를 지키는지를 지키고,
-# 넘으면 잘라 내지 않고 경로와 한도를 말하며 실패한다.
+# check_socket_paths checks each Unix socket path against the platform limit before a server starts. A socket path
+# goes into sun_path of sockaddr_un with its NUL, so Linux allows 107 bytes and macOS 103. The sockets live in
+# SOCKET_DIR, which does not depend on the depth of the checkout, so the check guards that declaration; a path over
+# the limit fails with the path and the limit, never truncated.
 check_socket_paths() {
   case "$(uname -s)" in
     Linux) system=Linux limit=107 ;;
@@ -212,18 +212,19 @@ psql_cli() {
   PGTZ=UTC PGOPTIONS='-c client_min_messages=warning' psql -X -q -o /dev/null -v ON_ERROR_STOP=1 -h 127.0.0.1 -p "$POSTGRES_PORT" -U orm "$@"
 }
 
-# MYSQLD_FILES는 모든 mysqld 실행에 주는 secure_file_priv다. NULL은 파일 import·export를 끈다.
-# build마다 compile된 기본값이 다르므로(Homebrew는 NULL, Ubuntu package는 mysql-server package가
-# 만드는 /var/lib/mysql-files) 명시해 같은 서버를 만든다: 그 directory가 없으면 mysqld가 시작하지 않는다.
+# MYSQLD_FILES is the secure_file_priv of every mysqld run. NULL turns file import and export off. Builds compile
+# different defaults (NULL on Homebrew, /var/lib/mysql-files that the mysql-server package creates on Ubuntu), so it
+# is stated to make the same server: mysqld does not start when that directory is missing.
 MYSQLD_FILES=--secure-file-priv=NULL
-# MYSQL_LOWER_CASE는 MySQL data directory의 lower_case_table_names다. 1은 두 platform에서 모두 허용되는
-# 유일한 값이다(0은 대소문자를 구분하지 않는 파일 시스템, 2는 Linux에서 쓸 수 없다). 초기화할 때 정해지므로
-# data directory의 값과 다르면 start가 data를 옮긴다(scripts/test-servers-mysql.mjs).
+# MYSQL_LOWER_CASE is lower_case_table_names of the MySQL data directory. 1 is the one value both platforms accept
+# (0 needs a case-sensitive file system, 2 is not available on Linux). It is fixed when the data directory is
+# initialized, so start moves the data when the directory holds another value (scripts/test-servers-mysql.mjs).
 MYSQL_LOWER_CASE=1
 MYSQLD_NAMES=--lower-case-table-names=$MYSQL_LOWER_CASE
-# MYSQLD_BINLOG는 두 mysqld의 binary log 보존이다. server는 만료된 log를 시작할 때와 log를 회전할 때만
-# 지우므로 만료 시간(1시간)만으로는 기본 크기(1 GB)까지 회전하지 않는 log가 남는다. 64 MiB마다 회전해
-# 만료가 실제로 적용된다. option은 다음 `make test-servers`가 서버를 시작할 때 적용된다.
+# MYSQLD_BINLOG is the binary log retention of both mysqld. The server removes expired logs only at start and when it
+# rotates a log, so an expiry time (one hour) alone keeps a log that never reaches the default size (1 GB) to rotate.
+# Rotating every 64 MiB makes the expiry take effect. The options apply when the next `make test-servers` starts the
+# servers.
 MYSQLD_BINLOG="--binlog-expire-logs-seconds=3600 --max-binlog-size=67108864"
 
 start_mysql() {
@@ -287,10 +288,11 @@ start_logged() {
   line=$2
   shift 2
   mkfifo "$DIR/$name.ready"
-  # 읽는 쪽은 sh의 read다: read는 pipe에서 한 줄씩 읽어 그 줄이 쓰인 즉시 본다. awk는 쓰지
-  # 않는다. Ubuntu의 awk(mawk)는 pipe 입력을 큰 block으로 읽어 서버가 끝날 때까지 줄을 넘기지 않는다.
-  # 서버와 reader는 새 session(NEW_SESSION, tests/new-session)에서 실행한다: 서버는 시작한 명령보다 오래 살고
-  # 여러 실행이 함께 쓰므로, 시작한 shell의 process group을 끝내는 일이 서버와 그 log reader에 닿지 않는다.
+  # The reader is the read of sh: read takes one line at a time from the pipe and sees each line as soon as it is
+  # written. awk is not used: the awk of Ubuntu (mawk) reads pipe input in large blocks and passes no line until the
+  # server ends. The server and its reader run in a new session (NEW_SESSION, tests/new-session): the server outlives
+  # the command that started it and several runs share it, so ending the process group of the starting shell does
+  # not reach the server or its log reader.
   "${NEW_SESSION:?NEW_SESSION is unset; run this through make, which builds it}" sh -c '
     DIR=$1 name=$2 line=$3
     shift 3
@@ -307,10 +309,11 @@ start_logged() {
       done
       [ -n "$reported" ] || echo exited > "$DIR/$name.ready"
     }' sh "$DIR" "$name" "$line" "$@" >/dev/null &
-  # FIFO는 읽기와 쓰기로 한 번 열어 끝까지 둔다. read는 reader가 끝날 때 오는 SIGCHLD에 끊길 수
-  # 있다(EINTR). FIFO를 read마다 열고 닫으면, 끊긴 read가 닫은 뒤에 쓴 보고는 읽는 쪽이 없어
-  # 사라진다. 열린 fd가 남아 있으면 보고는 FIFO buffer에 남으므로 다시 읽으면 처음 보고된 한 줄을
-  # 받는다. reader는 준비 줄을 보거나 서버가 끝나면 반드시 쓰므로 반복은 그 사건으로 끝난다.
+  # The FIFO is opened once for reading and writing and kept open to the end. A read can be interrupted by the SIGCHLD
+  # that arrives when the reader ends (EINTR). If the FIFO were opened and closed for each read, a report written after
+  # an interrupted read closed it would have no reader and be lost. With the fd still open the report stays in the FIFO
+  # buffer, so reading again returns the first reported line. The reader always writes when it sees the ready line or
+  # when the server ends, so the loop ends on that event.
   exec 3<>"$DIR/$name.ready"
   state=
   while [ -z "$state" ]; do
