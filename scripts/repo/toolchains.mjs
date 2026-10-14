@@ -97,9 +97,9 @@ export function rustToolchainErrors(toolchain, makefile, workflows, running) {
         /^\s*RUSTUP_TOOLCHAIN\s*:/m.test(workflow))
       errors.push(`${path} chooses a Rust toolchain itself; rust-toolchain.toml declares it`);
     const usesRust = runs(workflow, /(^|[\s;&|(])cargo\s/m) || actionSteps(workflow, 'Swatinem/rust-cache').length > 0;
-    // CI의 step은 make target을 실행하므로, 인자 없는 rustup toolchain install은 make install-rust의 recipe에 있다.
+    // CI의 step은 make target을 실행하므로, 인자 없는 rustup toolchain install은 make install-rust-toolchain의 recipe에 있다.
     const installsRust = runs(workflow, /^rustup toolchain install\s*(&&|$)/m) ||
-      (runs(workflow, /^make\b.*\binstall-rust\b/m) && /^install-rust:[^\n]*\n(?:\t[^\n]*\n)*?\t[^\n]*\brustup toolchain install\s*\n/m.test(makefile));
+      (runs(workflow, /^make\b.*\binstall-rust-toolchain\b/m) && /^install-rust-toolchain:[^\n]*\n(?:\t[^\n]*\n)*?\t[^\n]*\brustup toolchain install\s*\n/m.test(makefile));
     if (usesRust && !installsRust)
       errors.push(`${path} does not install the toolchain of rust-toolchain.toml with rustup toolchain install`);
   }

@@ -1285,7 +1285,7 @@ rust-check/clippy-test-faults: lease-tool
 # and the parts are independent (make -k).
 
 .PHONY: docs-ci
-.PHONY: install install-interfaces-typescript install-php install-rust install-go install-node-min install-server-programs install-php-extension-tools ci-php-min-version ci-php-sqlite downloads-check
+.PHONY: install install-interfaces-typescript install-php install-rust install-rust-toolchain install-rust-crates install-go install-node-min install-server-programs install-php-extension-tools ci-php-min-version ci-php-sqlite downloads-check
 install: install-php install-rust install-go install-node-min install-php-extension-tools install-python install-flowmark install-interfaces-typescript
 # install-interfaces-typescript installs the TypeScript 6.0.3 that tests/interfaces/typescript.mjs reads declarations with
 # (config/toolchain.json exceptions): TypeScript 7.0 ships no JavaScript API of its compiler.
@@ -1293,9 +1293,14 @@ install-interfaces-typescript:
 	$(ONLINE) npm ci --prefix tests/interfaces/typescript --no-audit --no-fund
 install-php:
 	$(ONLINE) composer install --no-interaction --no-progress --prefer-dist
-install-rust:
+# install-rust installs the toolchain of rust-toolchain.toml, then downloads the crates of every Cargo.lock. CI runs the two
+# halves apart, install-rust-toolchain before its crate cache is restored and install-rust-crates after it, since a
+# restored registry replaces the crates downloaded before it.
+install-rust: install-rust-toolchain install-rust-crates
+install-rust-toolchain:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" rustup toolchain install
 	PATH="$(HOME)/.cargo/bin:$(PATH)" rustc --version
+install-rust-crates:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path packages/rust/Cargo.toml
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path bench/rust/Cargo.toml
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path tests/interfaces/rust/Cargo.toml
