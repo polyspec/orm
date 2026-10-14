@@ -422,7 +422,7 @@ func applyRequestHook(ex executor, r *request) error {
 	if hook == nil || r.err != nil {
 		return nil
 	}
-	if err := hook(&r.ir, r.param); err != nil {
+	if err := hook(&r.ir, r.param, slices.Clone(r.params)); err != nil {
 		return err
 	}
 	r.ir.NParams = len(r.params)

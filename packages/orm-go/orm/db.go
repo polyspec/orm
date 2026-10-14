@@ -407,9 +407,10 @@ func (d *DB) WithContext(ctx context.Context) *DB {
 
 // RequestHook receives each request of a handle right before the client plans
 // it (docs/usage.md "Request hook"). It changes r in place; addParam appends a
-// value to the request parameters and returns its index. An error it returns
-// fails the operation unchanged before any statement.
-type RequestHook func(r *ir.Request, addParam func(value any) int) error
+// value to the request parameters and returns its index, and params is a copy of
+// the parameters that the request binds, which the hook reads. An error it
+// returns fails the operation unchanged before any statement.
+type RequestHook func(r *ir.Request, addParam func(value any) int, params []any) error
 
 // WithRequestHook returns a handle on the same connection whose hook receives
 // each request of the handle before planning. The handle shares the pool, the
