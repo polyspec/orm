@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The conformance vector creates_and_save records the insert parts of T169. (#T169-1)
+- Multi-row inserts run as power-of-two parts capped by the bind limit (999 on SQLite, 65535 on MySQL and PostgreSQL) inside the transaction, so the PHP plan cache holds a bounded number of insert shapes in every client. (#T169)
 - TypeScript types a plain YAML map key by the yaml library's own core-schema tags instead of a case-insensitive regex, so tRUE, nULL and .InF stay string keys. (#T142-10)
 - Every client refuses a YAML anchor with or without an alias, every explicit tag including the core tags, and a text with no document, as docs/codec.md now states. (#T142-9)
 - Go reads YAML with goccy/go-yaml and Python with rapidyaml, both keeping U+0085 as content; Python writes with ruamel.yaml, and PyYAML is removed. The next_line exclusions are gone. (#T142-2)
