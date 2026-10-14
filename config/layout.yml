@@ -110,3 +110,55 @@ rules:
       - "!tests/lease"
       - "!tests/new-session"
       - "!tests/stop-process"
+
+  # S9 exceptions. Each test or tool below is of its own ecosystem, not cross-language infrastructure; the scripts that remain
+  # reported (scripts/ and the cross-language orchestrators tests/conformance/check and tests/interfaces/check) are ported.
+  - id: layout-infrastructure-typescript
+    paths:
+      - "scripts/**/*.{js,mjs,cjs,py,sh,bash,zsh,rb,pl,php,go,rs,ps1,bat,cmd}"
+      - "tests/**/*.{js,mjs,cjs,py,sh,bash,zsh,rb,pl,php,go,rs,ps1,bat,cmd}"
+      - "!tests/kit/fixture/**"
+      # The runners of one language: each drives the client of its language through the shared vectors and writes the
+      # form that the TypeScript comparators read, so it is a test of that language.
+      - "!tests/conformance/runner_go/**"
+      - "!tests/conformance/runner.php"
+      - "!tests/conformance/result_php_helpers.php"
+      - "!tests/conformance/runner_python.py"
+      - "!tests/conformance/result_python.py"
+      - "!tests/dbspec/apply/go/**"
+      - "!tests/dbspec/apply/php.php"
+      - "!tests/dbspec/apply/php-extension.php"
+      - "!tests/dbspec/compare/go/**"
+      - "!tests/dbspec/compare/php.php"
+      - "!tests/dbspec/compare/php-extension.php"
+      - "!tests/dbspec/compare/php-interface.php"
+      - "!tests/dbspec/compare/python.py"
+      - "!tests/dbspec/introspect/go/**"
+      - "!tests/dbspec/introspect/php.php"
+      - "!tests/dbspec/introspect/php-extension.php"
+      - "!tests/dbspec/cases.php"
+      - "!tests/dbspec/input.php"
+      # The symbol extractors of one language read its declarations with its own parser (PHP's tokens, Python's ast, Rust's
+      # syn), with the tests of the Python extractor.
+      - "!tests/interfaces/php.php"
+      - "!tests/interfaces/python.py"
+      - "!tests/interfaces/test_python_extractor.py"
+      - "!tests/interfaces/test_python_natives.py"
+      - "!tests/interfaces/rust/**"
+      # The Go tests of the engine's dialect rules: the probes of docs/dialects.md and the physical tests of the engine's
+      # DDL, plans, apply and introspection against the databases, which run the Go engine.
+      - "!tests/dialects/**"
+      # The table of Unicode letters and digits that every lexer reads is written from the data of Go's unicode package,
+      # the reference of engine/dbspec.
+      - "!tests/dbspec/unicode/**"
+      # The codec vectors are the output of the PHP codecs, the ground truth of docs/codec.md.
+      - "!tests/codec/gen.php"
+      # Programs that need operating-system calls Node does not offer: setsid for the lease releaser and new-session, and
+      # the exit notification of another process (kqueue, pidfd) for stop-process.
+      - "!tests/lease/**"
+      - "!tests/new-session/**"
+      - "!tests/stop-process/**"
+
+  # The Python symbol extractor runs as a program of its interpreter (its shebang), an exception of the rule above.
+  - id: layout-infrastructure-shebang
+    paths: ["scripts/**", "tests/**", "!tests/kit/fixture/**", "!tests/interfaces/python.py"]
