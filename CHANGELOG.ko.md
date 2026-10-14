@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8e9936969d0e13af659e8c1a673bf0028f6bf253cbd295d810d30969ebddf370 -->
+<!-- source-sha256: 8aaa1e3fbe7cd38442066cac20e8fbb855d2061d870baa00d66717ff8cbb3476 -->
 # 변경 이력
 
 ## Unreleased
 
+- conformance orchestrator와 interface checker는 TypeScript다(tests/conformance/check/main.mts, tests/interfaces/check/main.mts). 그 Go program과 internal/stmtdiff를 지웠다. (#T137-1-4-6)
 - test server의 socket folder는 checkout 경로의 SHA-256으로 이름 짓고, AGENTS.md는 worktree를 지우기 전에 그 server를 멈춘다고 적는다. 실행 중인 server는 이 변경을 받기 전에 멈춘다: 그 socket은 이전 이름을 쓴다. (#T137-1-4-10)
 
 ## 0.0.17
