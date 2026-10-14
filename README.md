@@ -50,7 +50,7 @@ authors = Author().connect(slave1).gets_by_service_seq_and_is_close(7, False)
 `get` returns one row and returns `NO_ROWS` when no row matches, `gets` returns a collection, and `getCount` returns a count. A model receives its database connection through `connect`; inside `connection.transaction(fn)`, a model without `connect` uses the active transaction. Relation children use the parent connection unless they call `connect`. A model without a connection outside a transaction returns `CONFIG`.
 
 ## How it works
-- **Schema**: a hand-written set of dbspec documents (`schema/*.dbs`, `docs/dbspec.md`); its manifest text and `manifestHash` are embedded in the generated models.
+- **Schema**: a hand-written set of dbspec documents (`contracts/fixtures/bench/*.dbs`, `docs/dbspec.md`); its manifest text and `manifestHash` are embedded in the generated models.
 - **Models**: each language generates its models with its own build tool: `go generate` (Go), `vendor/bin/orm-gen` (PHP), the `orm-gen` npm bin in `npm run build` (TypeScript), the `orm-gen` console script of the Python package (Python), and the `polyspec-orm-build` crate in `build.rs` (Rust).
 - **Runtime**: the client library validates each statement shape against the runtime model it builds from the embedded manifest, assembles the SQL in the calling process, caches the plan, and executes it through the language-native driver. No service or daemon runs beside the calling process.
 - **Databases**: MySQL 8, PostgreSQL 12+, and SQLite 3.46+ use the same request and result rules (`docs/dialects.md`).

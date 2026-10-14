@@ -1,22 +1,20 @@
 // The state check around a runner (main.mts runAndCheckState) on SQLite files: a failed runner that left a row behind
 // reports both failures, and one that rolled back reports only its own error.
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { DATABASE, caseTest } from '../../testcase.mts';
+import { DATABASE, caseTest, withTemporaryDirectory } from '../../testcase.mts';
 import { sqliteDatabase } from './database.mts';
 import { errorIncludes, runAndCheckState } from './main.mts';
 
-const bench = (): { sqlite: DatabaseSync; db: ReturnType<typeof sqliteDatabase> } => {
-  const sqlite = new DatabaseSync(join(mkdtempSync(join(tmpdir(), 'orm-state-run-test-')), 'bench.db'));
+const bench = (directory: string): { sqlite: DatabaseSync; db: ReturnType<typeof sqliteDatabase> } => {
+  const sqlite = new DatabaseSync(join(directory, 'bench.db'));
   sqlite.exec('CREATE TABLE author (seq INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)');
   return { sqlite, db: sqliteDatabase(sqlite) };
 };
 
-caseTest('TestFailedRunStillChecksRemainingDatabaseState', DATABASE, async () => {
-  const { sqlite, db } = bench();
+caseTest('TestFailedRunStillChecksRemainingDatabaseState', DATABASE, () => withTemporaryDirectory('orm-state-run-test-', async temp => {
+  const { sqlite, db } = bench(temp);
   try {
     await assert.rejects(runAndCheckState(db, 'sqlite', 'rust', 'first', async () => {
       sqlite.exec("INSERT INTO author(name) VALUES ('leftover')");
@@ -26,10 +24,10 @@ caseTest('TestFailedRunStillChecksRemainingDatabaseState', DATABASE, async () =>
   } finally {
     await db.close();
   }
-});
+}));
 
-caseTest('TestFailedRunReportsOriginalErrorAfterRollback', DATABASE, async () => {
-  const { sqlite, db } = bench();
+caseTest('TestFailedRunReportsOriginalErrorAfterRollback', DATABASE, () => withTemporaryDirectory('orm-state-run-test-', async temp => {
+  const { sqlite, db } = bench(temp);
   const runnerError = new Error('runner failed');
   try {
     await assert.rejects(runAndCheckState(db, 'sqlite', 'rust', 'first', async () => {
@@ -45,4 +43,4 @@ caseTest('TestFailedRunReportsOriginalErrorAfterRollback', DATABASE, async () =>
   } finally {
     await db.close();
   }
-});
+}));

@@ -289,7 +289,7 @@ DBSPEC_INTROSPECT_PROFILE ?= dev
 DBSPEC_INTROSPECT_DIR = $(if $(filter dev,$(DBSPEC_INTROSPECT_PROFILE)),debug,$(DBSPEC_INTROSPECT_PROFILE))
 .PHONY: dbspec-rust-check
 # dbspec-ddl-check는 tests/dbspec/ddl.json의 모든 vector를 TEST_ENV의 MySQL, PostgreSQL,
-# SQLite에 적용해 behavior step을 실행하고, 모든 schema/*.dbs와 contracts/fixtures/*.dbs의
+# SQLite에 적용해 behavior step을 실행하고, 모든 contracts/fixtures/bench/*.dbs와 contracts/fixtures/*.dbs의
 # 렌더링한 statement를 적용한다.
 .PHONY: dbspec-ddl-check
 dbspec-ddl-check:

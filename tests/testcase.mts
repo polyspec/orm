@@ -11,6 +11,9 @@
 //
 // 기한은 wall-clock 시간이다. 멈춘 case를 끝내는 timer이고 case 자신의 계산 시간을 재는
 // 제한이 아니기 때문이다(AGENTS.md testing rule).
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import test from 'node:test';
 
@@ -227,4 +230,17 @@ export function caseTest(name: string, deadline: number, body: CaseBody): void {
   test(name, { timeout: deadline + 2 * GRACE }, async () => {
     if (!(await runCase(name, deadline, body))) throw new Error(`${name} failed`);
   });
+}
+
+/**
+ * withTemporaryDirectory runs work with a new directory under the system's temporary directory, named by prefix, and removes
+ * the directory when work ends, whether it passes or fails, so a case leaves no temporary entry.
+ */
+export async function withTemporaryDirectory<T>(prefix: string, work: (directory: string) => T | Promise<T>): Promise<T> {
+  const directory = mkdtempSync(join(tmpdir(), prefix));
+  try {
+    return await work(directory);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 }

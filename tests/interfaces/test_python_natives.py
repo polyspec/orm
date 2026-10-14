@@ -43,7 +43,7 @@ class EntityRuleNativesTest(unittest.TestCase):
     def setUp(self):
         self.manifest = json.loads((ROOT / 'contracts' / 'interfaces.json').read_text(encoding='utf-8'))
         self.symbols = json.loads((ROOT / 'contracts' / 'symbols' / 'python.json').read_text(encoding='utf-8'))
-        validate = (ROOT / 'contracts' / 'validate.go').read_text(encoding='utf-8')
+        validate = (ROOT / 'tests' / 'interfaces' / 'contracts' / 'validate.go').read_text(encoding='utf-8')
         self.outputs = python_table(validate, 'outputs')
         self.inputs = python_table(validate, 'inputs')
 
@@ -69,7 +69,7 @@ class ConnectionAndToolRuleNativesTest(unittest.TestCase):
     def setUp(self):
         self.manifest = json.loads((ROOT / 'contracts' / 'interfaces.json').read_text(encoding='utf-8'))
         self.symbols = json.loads((ROOT / 'contracts' / 'symbols' / 'python.json').read_text(encoding='utf-8'))
-        validate = (ROOT / 'contracts' / 'validate.go').read_text(encoding='utf-8')
+        validate = (ROOT / 'tests' / 'interfaces' / 'contracts' / 'validate.go').read_text(encoding='utf-8')
         self.outputs = python_table(validate, 'outputs')
         self.inputs = python_table(validate, 'inputs')
 
@@ -105,7 +105,7 @@ class DbspecRuleNativesTest(unittest.TestCase):
     def setUp(self):
         self.manifest = json.loads((ROOT / 'contracts' / 'interfaces.json').read_text(encoding='utf-8'))
         self.symbols = json.loads((ROOT / 'contracts' / 'symbols' / 'python.json').read_text(encoding='utf-8'))
-        validate = (ROOT / 'contracts' / 'validate.go').read_text(encoding='utf-8')
+        validate = (ROOT / 'tests' / 'interfaces' / 'contracts' / 'validate.go').read_text(encoding='utf-8')
         self.outputs = python_table(validate, 'outputs')
         self.inputs = python_table(validate, 'inputs')
 

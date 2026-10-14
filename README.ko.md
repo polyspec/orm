@@ -1,5 +1,5 @@
 <!-- doc-id: readme -->
-<!-- source-sha256: 576c779a553cd41a914d66716b0d90a9abef379af39817101c6067335f6c70c2 -->
+<!-- source-sha256: c40fae2cee2f0784c086e5a94f74c49703af9ee80bff779595ed463ab0f5cc79 -->
 # orm
 
 **Go, PHP, Python, Rust, TypeScript**를 위한 스키마 기반 모델 query grammar다. 목표 문법은 [docs/dsl.ko.md](docs/dsl.ko.md), 작업 순서는 [docs/plan.ko.md](docs/plan.ko.md)에 명시되어 있다.
@@ -51,7 +51,7 @@ authors = Author().connect(slave1).gets_by_service_seq_and_is_close(7, False)
 `get`은 행 하나를 반환하며 일치하는 행이 없으면 `NO_ROWS`를 반환한다. `gets`는 컬렉션, `getCount`는 개수를 반환한다. 모델은 `connect`로 데이터베이스 연결을 받는다. `connection.transaction(fn)` 안에서 `connect`를 호출하지 않은 모델은 활성 트랜잭션을 사용한다. 관계 자식은 `connect`를 호출하지 않으면 부모 연결을 사용한다. 트랜잭션 밖에서 연결 없는 모델은 `CONFIG`를 반환한다.
 
 ## 동작 구조
-- **Schema**: 직접 작성한 dbspec document 집합(`schema/*.dbs`, `docs/dbspec.md`)이다. 생성된 모델이 그 manifest text와 `manifestHash`를 담는다.
+- **Schema**: 직접 작성한 dbspec document 집합(`contracts/fixtures/bench/*.dbs`, `docs/dbspec.md`)이다. 생성된 모델이 그 manifest text와 `manifestHash`를 담는다.
 - **Models**: 각 언어는 자기 빌드 도구로 모델을 생성한다: `go generate`(Go), `vendor/bin/orm-gen`(PHP), `npm run build` 안의 `orm-gen` npm bin(TypeScript), Python package의 `orm-gen` console script(Python), `build.rs`의 `polyspec-orm-build` crate(Rust).
 - **Runtime**: 클라이언트 라이브러리는 담긴 manifest로 만든 runtime model로 각 문장 구조를 검증하고, 호출한 프로세스 안에서 SQL을 조립하고, plan을 캐시하고, 각 언어의 native driver로 실행한다. 호출한 프로세스 옆에서 실행되는 서비스나 데몬은 없다.
 - **Databases**: MySQL 8, PostgreSQL 12+, SQLite 3.46+는 같은 request와 result 규칙을 사용한다(`docs/dialects.md`).

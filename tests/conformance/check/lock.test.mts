@@ -2,7 +2,7 @@
 // and the lock of a running holder refuses naming its pid.
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
@@ -51,5 +51,6 @@ caseTest('TestLockOfAnEndedRunDoesNotHold', PROCESS, async () => {
     releaseLocks();
     if (previous === undefined) delete process.env.TMPDIR;
     else process.env.TMPDIR = previous;
+    rmSync(directory, { recursive: true, force: true });
   }
 });
