@@ -644,8 +644,9 @@ def _active_for(db: 'Db') -> TxFrame | None:
 
 
 # Request hook: handle의 각 request를 plan 직전에 받아 plan할 request를 돌려준다. 두 번째 인자 add_param(value)는
-# value를 request parameter 끝에 더하고 그 index를 돌려준다 (docs/usage.md "Request hook").
-RequestHook = Callable[[IRRequest, Callable[[object], int]], IRRequest]
+# value를 request parameter 끝에 더하고 그 index를 돌려주며, 세 번째 인자는 request가 bind한 parameter의 읽기 전용
+# tuple이다 (docs/usage.md "Request hook").
+RequestHook = Callable[[IRRequest, Callable[[object], int], tuple], IRRequest]
 
 
 class _Shared:
@@ -1325,7 +1326,7 @@ def _hooked(db: Db, request: dict, params):
         values.append(value)
         return len(values) - 1
 
-    out = hook(request, add_param)
+    out = hook(request, add_param, tuple(params))
     if not isinstance(out, dict):
         raise OrmError('CONFIG', 'the request hook returns the request to plan')
     out['n_params'] = len(values)
