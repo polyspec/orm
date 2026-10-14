@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "The common interface manifest contracts/interfaces.json as tests/interfaces/check reads it",
+  "description": "The members that the interface check reads, each typed; their content (the version, the five languages, the methods of the components) is checked by the program, and other members are free.",
+  "type": "object",
+  "properties": {
+    "version": { "type": "integer" },
+    "schema": { "type": "string" },
+    "languages": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": { "roots": { "$ref": "#/$defs/strings" }, "symbols": { "type": "string" } }
+      }
+    },
+    "symbol_hashes": { "$ref": "#/$defs/stringMap" },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "description": { "type": "string" },
+          "syntax": { "type": "string" },
+          "roots": { "$ref": "#/$defs/strings" },
+          "symbols": { "type": "string" },
+          "symbol_hash": { "type": "string" },
+          "rules": { "$ref": "#/$defs/strings" },
+          "owners": { "$ref": "#/$defs/strings" }
+        }
+      }
+    },
+    "prohibited_symbols": { "$ref": "#/$defs/strings" },
+    "rules": { "type": "array", "items": { "$ref": "#/$defs/rule" } },
+    "storage": { "type": "array", "items": { "$ref": "#/$defs/rule" } },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "fields": { "$ref": "#/$defs/stringMap" },
+          "methods": { "$ref": "#/$defs/strings" },
+          "ownership": { "type": "string" },
+          "ownership_ko": { "type": "string" },
+          "internal": { "type": "string" },
+          "internal_ko": { "type": "string" }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "kind": { "type": "string" },
+          "role": { "type": "string" },
+          "role_ko": { "type": "string" }
+        }
+      }
+    },
+    "sequences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": { "id": { "type": "string" }, "expected": true, "statements": { "$ref": "#/$defs/strings" } }
+      }
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "native": { "$ref": "#/$defs/stringMap" },
+          "fields": { "$ref": "#/$defs/stringMap" },
+          "optional": { "$ref": "#/$defs/strings" },
+          "extends": { "type": "string" },
+          "union": { "type": "boolean" }
+        }
+      }
+    },
+    "owners": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "for": { "type": "string" },
+          "native": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": { "symbol": { "type": "string" }, "fields": { "$ref": "#/$defs/strings" } }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "strings": { "type": "array", "items": { "type": "string" } },
+    "stringMap": { "type": "object", "additionalProperties": { "type": "string" } },
+    "rule": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "for": { "type": "string" },
+        "inputs": { "$ref": "#/$defs/strings" },
+        "output": { "type": "string" },
+        "errors": { "$ref": "#/$defs/strings" },
+        "state": { "type": "string" },
+        "native": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": { "symbol": { "type": "string" }, "signature": { "type": "string" } }
+          }
+        }
+      }
+    }
+  }
+}

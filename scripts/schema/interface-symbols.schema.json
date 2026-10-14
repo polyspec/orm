@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "A native symbol inventory of tests/interfaces/check",
+  "description": "The output of a symbol extractor and a recorded snapshot (contracts/symbols/*.json): each declaration's symbol to its signature.",
+  "type": "object",
+  "additionalProperties": { "type": "string" }
+}

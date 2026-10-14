@@ -1,5 +1,5 @@
 <!-- doc-id: tests-interfaces-readme -->
-<!-- source-sha256: 183465b06909d77a4b02bfbd8d0a9b8340fbf3aef38188f299688e0cf0e86090 -->
+<!-- source-sha256: 0f8d85f67da003c92b74ba1c1a875670b1b328beccdffd99338c6b64f0425c6e -->
 # 공통 인터페이스 검사
 
 [contracts/interfaces.json](../../contracts/interfaces.json)이 인터페이스 구조를 정의한다. [인터페이스 구조 문서](../../docs/interfaces.ko.md)와 함께 변경한다.
@@ -17,19 +17,22 @@
 - 금지 심볼은 취소와 커서 페이지처럼 삭제되었거나 지원하지 않는 동작을 거부한다.
 - 소스 변이 검사는 메서드 누락, 인자 추가, 반환 타입 변경, 필드 타입 변경, receiver 변경, 선언되지 않은 상태를 검사기가 거부하는지 확인한다.
 
+검사기는 각 언어의 선언을 그 언어 자신의 추출기(`tests/interfaces/go`, `php.php`, `rust`, `typescript.mts`, `python.py`)로 읽는 TypeScript program(`tests/interfaces/check/main.mts`)이다. entity 단위 규칙은 dbspec 문서의 entity 순서로 펼치며 그 순서를 TypeScript client build에서 읽으므로 `npm run typescript:build`(또는 `make typescript-build`)를 먼저 실행한다. `make interface-check`는 그것을 build한다.
+
 데이터베이스 없이 구조 검사를 실행한다.
 
 ```sh
-go test ./contracts ./tests/interfaces/check
-go run ./tests/interfaces/check --self-test
-go run ./tests/interfaces/check --language php --self-test
-go run ./tests/interfaces/check --language php-extension
+go test ./contracts
+node --test tests/interfaces/check/*.test.mts
+node tests/interfaces/check/main.mts --self-test
+node tests/interfaces/check/main.mts --language php --self-test
+node tests/interfaces/check/main.mts --language php-extension
 ```
 
 적합성 결과를 공통 state contract(`contracts/interfaces.json`의 `sequences`)와 비교한다: `make conformance-check`가 적합성 실행기를 자기 실행의 directory에 실행한 뒤 다음을 실행한다.
 
 ```sh
-go run ./tests/interfaces/check --results "$RUN_DIR/out" --results "$RUN_DIR/out/postgres" --results "$RUN_DIR/out/sqlite"
+node tests/interfaces/check/main.mts --results "$RUN_DIR/out" --results "$RUN_DIR/out/postgres" --results "$RUN_DIR/out/sqlite"
 ```
 
 sequence는 자기가 보내는 statement의 kind를 순서대로 적고, utility statement는 적지 않는다. 그 수와 위치는 dialect마다 다르다(적합성 vector가 정확히 적는다). 차이는 더해지거나 빠진 statement를 위치, kind, SQL과 함께, 다른 결과는 두 값으로, 없는 출력은 그 경로로 적는다.
@@ -40,7 +43,7 @@ sequence는 자기가 보내는 statement의 kind를 순서대로 적고, utilit
 (cd packages/go/model && go generate ./)
 vendor-php/bin/orm-gen gen --set schema/dbspec-set.json --out packages/php/gen --namespace 'Polyspec\Orm\Tests\Model'
 npm run typescript:build
-go run ./tests/interfaces/check --generate --record --self-test
+node tests/interfaces/check/main.mts --generate --record --self-test
 ```
 
 `--record`는 검토할 파일을 작성한다. 소스 diff를 검토하고 매니페스트 해시를 갱신한다. CI는 `--record`와 `--generate`를 사용하지 않으며 생성 파일, 도표, 심볼 스냅샷, 실행 계약이 다르면 실패한다.

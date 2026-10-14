@@ -1,5 +1,5 @@
 <!-- doc-id: tests-conformance-readme -->
-<!-- source-sha256: db0dae496baf96b1d44a2ee04fe158cb3eed18a9c20d7245a772be5f675f492a -->
+<!-- source-sha256: 9f7d2df905c3def75a09622f672e8429140dfe9c5376bdebb2e56a929b26deb8 -->
 # 적합성 벡터
 
 한 문서와 다섯 실행기를 사용한다. 각 벡터는 Go, PHP, Rust, TypeScript, Python으로 같은 체인을 작성한다. 각 실행기는 데이터베이스에서 체인을 실행하고 다음 JSON을 출력한다.
@@ -37,7 +37,7 @@ make conformance-check
 
 ```sh
 node tests/conformance/check/main.mts run --out "$RUN_DIR/out" --driver mysql --dsn "$BENCH_MYSQL_DSN" --driver postgres --dsn "$BENCH_POSTGRES_DSN" --driver sqlite --dsn "$BENCH_SQLITE_DSN"
-go run ./tests/interfaces/check --results "$RUN_DIR/out" --results "$RUN_DIR/out/postgres" --results "$RUN_DIR/out/sqlite"
+node tests/interfaces/check/main.mts --results "$RUN_DIR/out" --results "$RUN_DIR/out/postgres" --results "$RUN_DIR/out/sqlite"
 ```
 
 `$RUN_DIR`은 그 실행 하나의 directory(`.runtime/run/conformance-check-<make pid>`)이고 target이 끝에 지운다: 모든 실행은 새 directory에 출력을 쓰고(`check run --out`은 이미 있는 directory를 거부한다), `contracts/interfaces.json`의 공통 state contract는 같은 실행의 출력과 비교하므로, 결과는 tree에만 달렸고 이전 실행이 남긴 출력에 달리지 않는다.

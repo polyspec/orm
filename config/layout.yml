@@ -112,8 +112,7 @@ rules:
       - "!tests/lease"
       - "!tests/stop-process"
 
-  # S9 exceptions. Each test or tool below is of its own ecosystem, not cross-language infrastructure; the scripts that remain
-  # reported (scripts/ and the cross-language orchestrator tests/interfaces/check) are ported.
+  # S9 exceptions. Each test or tool below is of its own ecosystem, not cross-language infrastructure.
   - id: layout-infrastructure-typescript
     paths:
       - "scripts/**/*.{js,mjs,cjs,py,sh,bash,zsh,rb,pl,php,go,rs,ps1,bat,cmd}"
@@ -139,8 +138,9 @@ rules:
       - "!tests/dbspec/introspect/php-extension.php"
       - "!tests/dbspec/cases.php"
       - "!tests/dbspec/input.php"
-      # The symbol extractors of one language read its declarations with its own parser (PHP's tokens, Python's ast, Rust's
-      # syn), with the tests of the Python extractor.
+      # The symbol extractors of one language read its declarations with its own parser (Go's go/parser, PHP's tokens,
+      # Python's ast, Rust's syn), with the tests of the Python extractor.
+      - "!tests/interfaces/go/**"
       - "!tests/interfaces/php.php"
       - "!tests/interfaces/python.py"
       - "!tests/interfaces/test_python_extractor.py"

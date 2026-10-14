@@ -6071,13 +6071,27 @@
       "verification": [
         {
           "id": "interface-self-test",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/go-run.mts interfaces-check ./tests/interfaces/check --self-test",
+          "command": "node tests/run-long.mts typescript-build -- npm run typescript:build && PATH=\"$HOME/.cargo/bin:$PATH\" node tests/interfaces/check/main.mts --self-test",
           "shard": "rust",
           "inputs": [
             "tests/interfaces/**",
             "contracts/interfaces.json",
             "contracts/symbols/*.json",
-            "packages/php-ext/stubs/orm_dbspec.stub.php"
+            "packages/php-ext/stubs/orm_dbspec.stub.php",
+            "scripts/schema/interface*.json"
+          ]
+        },
+        {
+          "id": "interface-check-tests",
+          "command": "node --test tests/interfaces/check/*.test.mts",
+          "shard": "other",
+          "inputs": [
+            "tests/interfaces/check/*.mts",
+            "tests/interfaces/php.php",
+            "contracts/interfaces.json",
+            "contracts/symbols/php-extension.json",
+            "packages/php-ext/stubs/orm_dbspec.stub.php",
+            "scripts/schema/interface*.json"
           ]
         },
         {
@@ -6112,7 +6126,8 @@
               "packages/go/orm/coverage_interface_contract_test.go"
             ],
             "inputs": [
-              "tests/interfaces/check/*.go",
+              "tests/interfaces/check/*.mts",
+              "tests/interfaces/go/*.go",
               "contracts/interfaces.json",
               "contracts/symbols/go.json"
             ],
@@ -6137,7 +6152,8 @@
               "packages/php/tests/CoverageInterfaceContractTest.php"
             ],
             "inputs": [
-              "tests/interfaces/check/*.go",
+              "tests/interfaces/check/*.mts",
+              "tests/interfaces/go/*.go",
               "contracts/interfaces.json",
               "contracts/symbols/php.json",
               "tests/interfaces/php.php"
@@ -6160,7 +6176,8 @@
               "packages/rust/orm/tests/coverage_interface_contract.rs"
             ],
             "inputs": [
-              "tests/interfaces/check/*.go",
+              "tests/interfaces/check/*.mts",
+              "tests/interfaces/go/*.go",
               "contracts/interfaces.json",
               "contracts/symbols/rust.json",
               "tests/interfaces/rust/**"
@@ -6186,7 +6203,8 @@
               "packages/ts/tests/coverage_interface_contract.mjs"
             ],
             "inputs": [
-              "tests/interfaces/check/*.go",
+              "tests/interfaces/check/*.mts",
+              "tests/interfaces/go/*.go",
               "contracts/interfaces.json",
               "contracts/symbols/typescript.json",
               "tests/interfaces/typescript.mts"

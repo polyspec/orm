@@ -1,12 +1,12 @@
-//! interface_contract: repository root에서 `go run ./tests/interfaces/check -language rust`를
+//! interface_contract: repository root에서 `node tests/interfaces/check/main.mts -language rust`를
 //! 실행하고 exit 0을 요구한다.
 use std::io::Read;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
-/// interface check의 기한. 다른 process(go build와 symbol 추출)가 하는 일이므로 wall-clock 시간이다.
-/// 그 check는 개발 machine에서 10 s 안에 끝나고(T27 측정 8 s), go build cache가 비면 1-2분 걸린다.
+/// interface check의 기한. 다른 process(추출기 build와 symbol 추출)가 하는 일이므로 wall-clock 시간이다.
+/// 그 check는 개발 machine에서 10 s 안에 끝나고(T27 측정 8 s), build cache가 비면 1-2분 걸린다.
 const DEADLINE: Duration = Duration::from_secs(300);
 
 #[test]
@@ -15,14 +15,14 @@ fn coverage_interface_symbols() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     let started = Instant::now();
     let root = polyspec_orm_testcase::manifest_dir().join("../../..");
-    let mut child = Command::new("go")
-        .args(["run", "./tests/interfaces/check", "-language", "rust"])
+    let mut child = Command::new("node")
+        .args(["tests/interfaces/check/main.mts", "-language", "rust"])
         .current_dir(&root)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .unwrap_or_else(|e| panic!("go run ./tests/interfaces/check: {e}"));
+        .unwrap_or_else(|e| panic!("node tests/interfaces/check/main.mts: {e}"));
     let (closed, events) = mpsc::channel();
     let pipes: [Box<dyn Read + Send>; 2] = [Box::new(child.stdout.take().expect("piped stdout")), Box::new(child.stderr.take().expect("piped stderr"))];
     for mut pipe in pipes {

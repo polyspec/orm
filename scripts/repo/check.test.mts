@@ -472,7 +472,7 @@ caseTest('the job ci-passed runs last under always() and needs every other job',
 // 중복 실행 case는 저장소의 workflow, Makefile, feature contract와 최소 workflow를 검사한다.
 caseTest('the CI workflow does not run a verification command of feature-check again', COMPUTE, () => {
   const commands = featureCommands(readFeatures(repository.pathname));
-  for (const command of ['node scripts/perf-test.mts', 'PATH="$HOME/.cargo/bin:$PATH" node tests/go-run.mts interfaces-check ./tests/interfaces/check --self-test'])
+  for (const command of ['node scripts/perf-test.mts', 'node tests/run-long.mts typescript-build -- npm run typescript:build && PATH="$HOME/.cargo/bin:$PATH" node tests/interfaces/check/main.mts --self-test'])
     assert.ok(commands.includes(command), `${command} is not a verification command of contracts/features.json`);
   assert.deepEqual(ciDuplicateCommandErrors(workflow, text('Makefile'), commands), []);
 });

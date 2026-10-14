@@ -178,7 +178,7 @@ text lives in T128's Cause and Acceptance, plus `docs/editor.md`.
   - `engine/dbspec/tokens.go` and `tokens_test.go`.
   - The 4 `contracts/features.json` entries.
   - The Makefile `dbspec-go-check/tools` target, its comment lines and `.PHONY` entries.
-  - The Go symbols: run `go run ./tests/interfaces/check -record`, review that the diff is
+  - The Go symbols: run `node tests/interfaces/check/main.mts -record`, review that the diff is
     exactly the 8 removed lines, and take the hash the checker computes. It should equal
     `sha256:a65cb65f…7bed`; any other value is a finding to explain, never a value to paste.
   - `docs/.vitepress/dbs.ts`, the `config.mts` import and fence, the `theme/style.css` dbs
@@ -522,7 +522,7 @@ One item at a time.
 - **orm:**
   - `make dbspec-go-check dbspec-ts-check dbspec-php-check dbspec-php-extension-check
     dbspec-rust-check python-check dbspec-compare-check`;
-  - `go run ./tests/interfaces/check --self-test`; `make parity-check`;
+  - `node tests/interfaces/check/main.mts --self-test`; `make parity-check`;
     `make feature-unit-check`;
   - the language, LSP, CodeMirror and vscode tests; the import check;
   - `npm run docs:check` (the built `dbspec.html` holds the class spans in both themes);

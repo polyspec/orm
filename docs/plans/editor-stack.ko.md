@@ -1,5 +1,5 @@
 <!-- doc-id: plans-editor-stack -->
-<!-- source-sha256: 454e3baba3842df1d0ef7c817a3f13563dba08f172746d335e69ba7c1308b723 -->
+<!-- source-sha256: 1a59bccf3d909575a25e6b470489d1fba0a5ea9a8adc101e3ce568e93460fbfe -->
 # 계획: 표준으로서의 dbspec editor stack
 
 [English](editor-stack.md)
@@ -163,7 +163,7 @@ Cause, Acceptance, 그리고 `docs/editor.md`에 있다.
   - `engine/dbspec/tokens.go`와 `tokens_test.go`.
   - `contracts/features.json`의 항목 4개.
   - Makefile의 `dbspec-go-check/tools` target, 그 주석 줄과 `.PHONY` 항목.
-  - Go symbol: `go run ./tests/interfaces/check -record`를 실행하고, diff가 정확히 제거된 8줄인지
+  - Go symbol: `node tests/interfaces/check/main.mts -record`를 실행하고, diff가 정확히 제거된 8줄인지
     검토한 뒤, checker가 계산한 hash를 쓴다. 그 값은 `sha256:a65cb65f…7bed`여야 한다; 다른 값은
     설명해야 할 발견이며, 붙여 넣을 값이 아니다.
   - `docs/.vitepress/dbs.ts`, `config.mts`의 import와 fence, `theme/style.css`의 dbs class,
@@ -468,7 +468,7 @@ Cause, Acceptance, 그리고 `docs/editor.md`에 있다.
 - **orm:**
   - `make dbspec-go-check dbspec-ts-check dbspec-php-check dbspec-php-extension-check
     dbspec-rust-check python-check dbspec-compare-check`;
-  - `go run ./tests/interfaces/check --self-test`; `make parity-check`;
+  - `node tests/interfaces/check/main.mts --self-test`; `make parity-check`;
     `make feature-unit-check`;
   - language, LSP, CodeMirror, vscode test; import 검사;
   - `npm run docs:check`(build된 `dbspec.html`이 두 theme 모두에서 class span을 가진다);
