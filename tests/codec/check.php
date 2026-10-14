@@ -43,7 +43,7 @@ $phpExclusions = array_fill_keys(
     ['yaml_core/underscore_int_like', 'yaml_core/date_like', 'yaml_core/timestamp_like', 'yaml_core/leading_zero_int', 'yaml_core/map'],
     'T142-1: symfony/yaml does not read plain scalars by the YAML 1.2 core schema',
 );
-// The vectors the Go runner skips (goCodecExclusions in packages/orm-go/orm/codec_test.go), so go.json lacks them.
+// The vectors the Go runner skips (goCodecExclusions in packages/go/orm/codec_test.go), so go.json lacks them.
 $goExclusions = ['yaml_core/next_line' => 'T142-2: the yaml.v3 scanner reads U+0085 as a line break'];
 testcase_begin('codec/php-vectors', TESTCASE_COMPUTE);
 foreach ($vectors as $v) {

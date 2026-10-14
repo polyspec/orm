@@ -470,7 +470,7 @@ PYTHON_VENV = $(abspath packages/python/.venv)
 install-python:
 	$(MAKE) --no-print-directory install-tools TOOLS="uv python"
 	$(MAKE) --no-print-directory python-venv DIR=$(PYTHON_VENV)
-	$(ONLINE) $(abspath var/tools/bin/python3) -m pip --python $(PYTHON_VENV)/bin/python install --quiet --editable packages/orm-python
+	$(ONLINE) $(abspath var/tools/bin/python3) -m pip --python $(PYTHON_VENV)/bin/python install --quiet --editable packages/python
 # python-venv-check는 install-python이 만든 venv가 있고 그 interpreter의 minor가 .python-version과 같은지 확인한다. 없거나
 # 다른 minor이면 내려받지도 고치지도 않고 실패하며, 고칠 방법(venv를 지우고 make install)을 적는다. .python-version은 minor를
 # 선언하고(requires-python도 그 minor), 정확한 release는 pythonBuild가 정하며 python-venv가 venv를 만들 때 확인한다.
@@ -482,7 +482,7 @@ python-venv-check:
 	test "$$minor" = "$$want" || { echo "python-venv-check: $(PYTHON_VENV) runs Python $$got, but .python-version declares $$want; remove $(PYTHON_VENV) and run make install, which builds it from var/tools/bin/python3"; exit 1; }
 
 # php-vendor-check fails when vendor-php/autoload.php, the autoloader install-php creates with Composer, is missing, and
-# names the make step that creates it; it installs nothing. A target that runs PHP through packages/orm-php/tests/autoload.php
+# names the make step that creates it; it installs nothing. A target that runs PHP through packages/php/tests/autoload.php
 # takes it as a prerequisite.
 .PHONY: php-vendor-check
 php-vendor-check:
@@ -1194,7 +1194,7 @@ codec-check: codec-check/compare codec-check/python
 # codec-check/python runs the shared vectors through the Python codec; it prints each vector of its
 # PYTHON_EXCLUSIONS as skipped.
 codec-check/python: python-venv-check
-	PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/codec_vector.py
+	PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/python/tests/codec_vector.py
 codec-check/go:
 	mkdir -p $(CODEC_OUT)
 	ORM_CODEC_OUT=$(CODEC_OUT) $(GO_TEST) ./packages/go/orm -run '^TestCodecVectors$$' -count=1
