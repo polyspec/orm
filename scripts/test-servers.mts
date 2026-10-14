@@ -299,10 +299,12 @@ function mysqlTimezones(p: Paths, port: number): void {
 export function startLogged(dir: string, name: string, line: string, command: string, args: string[]): Promise<void> {
   const log = join(dir, `${name}.log`);
   const fd = openSync(log, 'a');
+  // The server's lines start at the size of the log before the server starts: read after the spawn, the size could
+  // already hold its first lines, and a ready line written before it would never be read.
+  let offset = statSync(log).size, pending = '', done = false;
   const child = spawn(command, args, { detached: true, stdio: ['ignore', fd, fd] });
   closeSync(fd);
   return new Promise((resolveStart, rejectStart) => {
-    let offset = statSync(log).size, pending = '', done = false;
     const reader = openSync(log, 'r');
     const finish = (error?: TestServerError) => {
       if (done) return;

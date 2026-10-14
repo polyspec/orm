@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: e42bbde2b0ecd4dc5751b83bac4f6c2392c6003f4e3c5aa7de44628049cace12 -->
+<!-- source-sha256: 0841a8832eded5277bbe10484da82095b63a8823f9335de1c0e85504ad8e395d -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1116,6 +1116,8 @@
 - [ ] T177 0.0.17을 release한다. 원인: hyper module이 기다리는 호출한 model의 PHP orm-gen scan(T175), Python client의 SQLite version 검사(T176), limepie가 기다리는 모든 client의 ordered-json 0.0.9(T178), TypeScript infrastructure script(T137-1-4-5, T137-1-4-9)가 main에 있다. 완료 조건: version-bump commit이 모든 manifest를 0.0.17로 하고 Unreleased를 0.0.17로 옮기며, 바뀐 lock의 dependency review와 v0.0.17의 consumer lock을 기록한다. 그 commit에서 CI가 통과하고, annotated tag v0.0.17이 release asset을 게시한다.
   - [o] T177-1 0.0.17 release commit의 package check를 통과시킨다 (T177에 이어). 원인: 739f8709의 CI가 package-check에서 실패했다. Rust client를 path dependency로 검사하는 외부 crate에 lock이 없어, offline cargo가 git dependency polyspec-ordered-json을 tag v0.0.8로 해석하는데 runner가 되살린 git database에 그 tag가 없었다. 이전 실행은 cache에 tag가 있을 때만 통과했다. 완료 조건: 외부 crate가 packages/rust/Cargo.lock을 쓰고, client의 cargo fetch --locked가 받은 것만 있는 cargo home으로 검사가 통과한다.
     Evidence: cargo fetch --locked 뒤의 새 CARGO_HOME에서 변경 전 외부 crate의 cargo check가 "failed to find tag v0.0.8"로 실패했다. lock을 쓰면 통과하고, 그 cargo home으로 make package-check가 통과한다.
+  - [o] T177-2 Linux에서 시작한 server의 첫 줄을 읽는다 (T177에 이어). 원인: a7d4dac1의 CI가 repo-check에서 실패했다. startLogged case가 Linux에서 stderr에 아무것도 없이 멈췄다. startLogged는 server를 spawn한 뒤에 log 크기를 읽었는데, Linux에서는 그때 이미 server가 줄을 써서 읽기가 ready 줄 뒤에서 시작했고 이후 쓰기가 없어 깨어나지 않았다. macOS는 spawn이 느려 통과했을 뿐이다. 완료 조건: 읽기가 spawn 전의 log 크기에서 시작한다.
+    Evidence: CI log에서 case가 20초 제한에서 stderr가 빈 채로 끝났다. 즉 한 줄도 읽지 못했다. spawn 전에 크기를 읽으면 로컬에서 8회 중 8회 통과한다.
 - [o] T178 모든 client에서 ordered-json 0.0.9를 쓴다. 원인: ordered-json 0.0.9에는 limepie가 import 속도에 필요한 Python parser(T1.41)가 있는데, orm은 PHP(zip URL), TypeScript, Python wheel의 Requires-Dist에서 ordered-json 0.0.8을 정확히 고정해 consumer가 바꿀 수 없다(kit과 limepie가 보고). 완료 조건: PHP, TypeScript, Python, Rust, Go client가 0.0.9를 요구하고(Go는 새 module 경로 github.com/polyspec/ordered-json/packages/go로, Python은 sha256을 붙인 wheel URL로), lock과 dependency review를 기록하며, 각 client의 codec과 JSON 검사가 통과한다.
   Evidence: 내려받은 wheel의 sha256이 bc4d26a9…f01d다. test server에서 JSON, codec, AES case의 go test가 통과하고, PHP hostcodec unit 61건, Rust codec test 8건, python-unit-check, TypeScript codec vector가 통과한다. review 뒤 dependency-policy-check가 통과한다.
 - [o] T156 모든 생성기가 모든 key의 모든 prefix마다 유형 있는 메서드를 선언한다. 원인: scan한 소스가 호출하는 메서드만 생성되어, 어떤 소스도 호출하지 않는 key prefix에는 메서드가 없었다(hyper U-97). 완료 조건: Go, Rust, TypeScript model이 primary key, unique key, index의 모든 prefix마다 메서드를 선언하고, Python은 같은 이름을 실행 시점에 해석하며, symbol 기록과 docs/usage.md를 갱신한다.

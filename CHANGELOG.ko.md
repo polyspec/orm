@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c20bfc08d195bf718b60332ac058dbbd3ef37cff3d540b032e292e48e52c79a1 -->
+<!-- source-sha256: 14a8b3648812ed4234f5600b6aff5e5de01911421cb8bda0452a40476f2bbb63 -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.17
 
+- startLogged가 spawn 전의 크기부터 server log를 읽어, Linux에서 ready 줄을 바로 쓰는 server도 본다. (#T177-2)
 - 모든 client가 ordered-json 0.0.9를 요구한다. Go client는 module 경로 github.com/polyspec/ordered-json/packages/go에서 import한다. (#T178)
 - package check가 Rust client의 외부 crate에 그 lock을 주어, fetch한 git revision으로 offline build한다. (#T177-1)
 - scripts/bench-db.mts가 TypeScript client로 bench database를 설치하고 seed한다. Go program bench/install과 bench/seedaes를 지웠다. (#T137-1-4-9)

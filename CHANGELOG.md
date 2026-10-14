@@ -5,6 +5,7 @@
 
 ## 0.0.17
 
+- startLogged reads the server's log from its size before the spawn, so a server that writes its ready line at once on Linux is seen. (#T177-2)
 - Every client requires ordered-json 0.0.9; the Go client imports it from its module path github.com/polyspec/ordered-json/packages/go. (#T178)
 - The package check gives the external crate of the Rust client its lock, so it builds offline from the fetched git revisions. (#T177-1)
 - scripts/bench-db.mts installs and seeds the bench database through the TypeScript client; the Go programs bench/install and bench/seedaes are removed. (#T137-1-4-9)
