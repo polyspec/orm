@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T143: docs/dbspec.md states which Windows reparse tags each set reader detects: Go, Rust and the PHP extension every name surrogate, TypeScript and PHP symbolic links and junctions, which Node and PHP `lstat` expose.
 - T142-8: the targets whose node scripts run PHP check vendor-php first.
 - T142-7: every make target whose PHP script loads vendor-php checks it first (31 targets).
 - T134-1: the checkout wrapper packages/orm-python/bin/orm-gen is removed; the docs name the installed `orm-gen`.
