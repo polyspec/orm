@@ -1,6 +1,6 @@
 # The chain names of every key prefix resolve on an instance of a generated model without a scanned
 # call (T156): the generator declares them from the schema, and Python resolves them at run time.
-import os
+import importlib.util
 import subprocess
 import sys
 import tempfile
@@ -8,11 +8,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-PYTHON_SRC = Path(__file__).resolve().parents[1] / 'src'
-ORDERED_JSON = Path(__file__).resolve().parents[4] / 'ordered-json' / 'packages' / 'ordered-json-python' / 'src'
-ORM_GEN = [sys.executable, str(Path(__file__).resolve().parents[1] / 'bin' / 'orm-gen')]
-ENV = dict(os.environ, PYTHONPATH=os.pathsep.join(
-    p for p in [str(ORDERED_JSON), str(PYTHON_SRC), os.environ.get('PYTHONPATH', '')] if p))
+ORM_GEN = [sys.executable, '-m', 'polyspec.orm.bin_orm_gen']
 
 
 class KeyPrefixTest(unittest.TestCase):
@@ -27,14 +23,15 @@ class KeyPrefixTest(unittest.TestCase):
             empty.write_text('')
             out = Path(tmp) / 'out'
             result = subprocess.run(ORM_GEN + ['gen', '--set', str(set_dir / 'dbspec-set.json'), '--out', str(out),
-                                               '--scan', str(empty)], env=ENV, capture_output=True, text=True)
+                                               '--scan', str(empty)], capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
-            code = (
-                'import sys; sys.path.insert(0, %r); import out.models as m\n'
-                'print(callable(getattr(m.Card(), "audit_seq", None)), callable(getattr(m.CardHistory(), "seq", None)))\n'
-            ) % tmp
-            run = subprocess.run([sys.executable, '-c', code], env=ENV, capture_output=True, text=True)
-            self.assertEqual(run.stdout.strip(), 'True True', run.stderr)
+            spec = importlib.util.spec_from_file_location('key_prefix_models', str(out / 'models.py'))
+            models = importlib.util.module_from_spec(spec)
+            sys.modules['key_prefix_models'] = models
+            self.addCleanup(sys.modules.pop, 'key_prefix_models', None)
+            spec.loader.exec_module(models)
+            self.assertTrue(callable(getattr(models.Card(), 'audit_seq', None)))
+            self.assertTrue(callable(getattr(models.CardHistory(), 'seq', None)))
 
 
 if __name__ == '__main__':

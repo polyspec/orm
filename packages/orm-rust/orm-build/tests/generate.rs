@@ -411,6 +411,7 @@ fn impl_of<'a>(text: &'a str, name: &str) -> &'a str {
 
 #[test]
 fn key_prefix_methods_come_from_the_schema_without_a_scan() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     // The source calls no method of a model, so every method of a key prefix comes from the schema (T156).
     let schema = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/audit_columns.dbs");
     let text = generate_with_schema(schema, "fn main() {}\n").unwrap();

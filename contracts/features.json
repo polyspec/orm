@@ -2479,6 +2479,7 @@
       ],
       "tests": [
         "generator/gen_go_check_test.go",
+        "generator/gen_go_key_prefix_test.go",
         "generator/gen_go_output_test.go",
         "generator/gen_go_packages_test.go",
         "generator/gen_go_scan_test.go",

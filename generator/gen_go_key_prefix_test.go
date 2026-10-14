@@ -5,12 +5,15 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // TestGoGeneratesKeyPrefixMethodsWithoutScan checks that the methods of every
 // prefix of a key come from the schema, whether or not a scanned call names
 // them: Card has an index on audit_seq, and CardHistory an index on seq.
 func TestGoGeneratesKeyPrefixMethodsWithoutScan(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	document, err := os.ReadFile(filepath.Join("..", "contracts", "fixtures", "audit_columns.dbs"))
 	if err != nil {
 		t.Fatal(err)
