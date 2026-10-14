@@ -4,7 +4,7 @@
     "type": "project",
     "license": "MIT",
     "require": {
-        "polyspec/orm": "0.0.12"
+        "polyspec/orm": "0.0.13"
     },
     "require-dev": {
         "phpstan/phpstan": "2.3.1"
