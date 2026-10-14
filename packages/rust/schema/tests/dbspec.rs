@@ -221,8 +221,9 @@ fn vector_inputs(cases: &Value) -> Vec<(String, String, BTreeMap<String, String>
             }
             for (other_index, other) in all.iter().enumerate() {
                 if other_index != index {
-                    let name = other[0].as_str().unwrap().split(' ').nth(2).unwrap().to_owned();
-                    set.insert(name, joined(other, Ends::Lf));
+                    let text = joined(other, Ends::Lf);
+                    let name = dbspec::parse_set(&[&text], &[]).remove(0).name.expect("a set document has a header name");
+                    set.insert(name, text);
                 }
             }
             inputs.push((format!("sets/{id}/{}", index + 1), joined(lines, Ends::Lf), set));

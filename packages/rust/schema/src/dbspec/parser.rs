@@ -300,16 +300,33 @@ fn lines(text: &str) -> Result<Vec<Line<'_>>, Diag> {
     Ok(lines)
 }
 
-pub(crate) fn parse(text: &str) -> Result<Syntax, Stopped> {
+/// What the first steps of `parse` read: the lines of the text, the tokens of the header line and
+/// its document name token.
+struct Head<'a> {
+    lines: Vec<Line<'a>>,
+    tokens: Vec<Token<'a>>,
+    name: Token<'a>,
+}
+
+/// The first steps of `parse`: the lines of the text, a bare CR on the first line, and the header.
+fn head(text: &str) -> Result<Head<'_>, Stopped> {
     let lines = lines(text).map_err(stopping)?;
     if let Some((_, Some(column))) = lines.first() {
         return Err(stopping(bare_cr(1, *column)));
     }
-    let header_tokens = lines.first().map(|(l, _)| tokenize(l, 1)).unwrap_or_default();
-    let name = match header(lines.first().map_or("", |(l, _)| l), &header_tokens) {
-        Ok(name) => name,
-        Err(diag) => return Err(stopping(diag)),
-    };
+    let tokens = lines.first().map(|(l, _)| tokenize(l, 1)).unwrap_or_default();
+    let name = *header(lines.first().map_or("", |(l, _)| l), &tokens).map_err(stopping)?;
+    Ok(Head { lines, tokens, name })
+}
+
+/// The document name that the header step of `parse` reads from `text`, or `None` when that step
+/// fails. It runs the first steps of `parse` and stops after the header.
+pub(crate) fn header_name(text: &str) -> Option<String> {
+    head(text).ok().map(|head| head.name.text.to_owned())
+}
+
+pub(crate) fn parse(text: &str) -> Result<Syntax, Stopped> {
+    let Head { lines, tokens: header_tokens, name } = head(text)?;
     let mut parser = Parser {
         diags: Vec::new(),
         declarations: Vec::new(),
@@ -351,7 +368,7 @@ pub(crate) fn parse(text: &str) -> Result<Syntax, Stopped> {
         diagram_header_failed: false,
         settings_header_failed: false,
     };
-    let header = parser.define(name);
+    let header = parser.define(&name);
     parser.declare("document", vec![header.text.clone()], header.pos);
     parser.document.name = header;
     parser.mark(&header_tokens[0], Class::Keyword);

@@ -2827,6 +2827,7 @@
         "packages/php-ext/tests/dbspec_set_parse_test.php",
         "packages/ts/tests/dbspec-set-parse.mjs",
         "packages/rust/schema/tests/dbspec_set.rs",
+        "packages/rust/schema/tests/dbspec_set_parse.rs",
         "packages/ts/tests/dbspec-set.mjs",
         "packages/ts/tests/browser-entry.mjs",
         "packages/ts/tests/syntax-vectors.mjs",
@@ -2949,7 +2950,10 @@
             "packages/rust/schema/src/dbspec/unicode_word.rs",
             "tests/dbspec/show-create.json",
             "packages/rust/schema/tests/dbspec_set.rs",
-            "tests/dbspec/set-files.json"
+            "tests/dbspec/set-files.json",
+            "packages/rust/schema/src/dbspec/set.rs",
+            "packages/rust/schema/tests/dbspec_set_parse.rs",
+            "tests/dbspec/set-parse.json"
           ]
         },
         {

@@ -564,11 +564,11 @@ dbspec-rust-check/documents: cargo-downloads-check
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_analyze --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_analyze --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
 # dbspec-rust-check/set runs every file tree case of tests/dbspec/set-files.json through the set reader
-# dbspec::read_set, and its unit cases of the normal form, the nested JSON and the schema value.
+# dbspec::read_set, every case of tests/dbspec/set-parse.json through dbspec::parse_set, and its unit cases of the normal form, the nested JSON and the schema value.
 dbspec-rust-check/set: dbspec-rust-check/set/vectors dbspec-rust-check/set/unit
 .PHONY: dbspec-rust-check/set/vectors dbspec-rust-check/set/unit
 dbspec-rust-check/set/vectors: cargo-downloads-check
-	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --test dbspec_set -- --nocapture
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --test dbspec_set --test dbspec_set_parse -- --nocapture
 dbspec-rust-check/set/unit: cargo-downloads-check
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --lib dbspec::set -- --nocapture
 # dbspec-rust-check/unicode는 Go가 쓴 Unicode word rune 표(unicode_word.rs)가 모든 code point에서 구간과 같은지 본다.

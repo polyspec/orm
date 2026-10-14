@@ -46,8 +46,8 @@ pub use plan_steps::{plan_steps, Effect, NullCheck, PlanStep};
 pub use render::{render, render_statements, Dialect, RenderedStatement};
 pub use runtime::{parse_manifest, parse_manifest_set, runtime_model, Audit, Entity, Field, FieldDefault, ForeignKey, Key, RuntimeModel};
 pub use set::{
-    read_set, Set, SetError, SetFile, RULE_SET_DUPLICATE, RULE_SET_EMPTY, RULE_SET_FILE, RULE_SET_JSON, RULE_SET_KEY, RULE_SET_PATH, RULE_SET_SCHEMA,
-    RULE_SET_SYMLINK, SET_FILE_NAME,
+    parse_set, read_set, Set, SetDocument, SetError, SetFile, RULE_SET_DUPLICATE, RULE_SET_EMPTY, RULE_SET_FILE, RULE_SET_JSON, RULE_SET_KEY, RULE_SET_PATH,
+    RULE_SET_SCHEMA, RULE_SET_SYMLINK, SET_FILE_NAME,
 };
 
 use parser::Diag;
