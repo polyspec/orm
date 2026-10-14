@@ -844,6 +844,8 @@
   "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::packIp": "private static function packIp(string $s): string",
   "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::unpackIp": "private static function unpackIp(string $b): string",
   "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::validateYamlValue": "private static function validateYamlValue(mixed $value): void",
+  "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::yamlDecode": "private static function yamlDecode(string $text): mixed",
+  "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::yamlNode": "private static function yamlNode(Purr\\Yaml\\Node\\AbstractNode $node, Purr\\Yaml\\Schema\\CoreSchema $schema): mixed",
   "packages/php/src/Collection.php::Polyspec\\Orm\\Collection": "final class Polyspec\\Orm\\Collection extends  implements Countable,IteratorAggregate,JsonSerializable,Traversable uses ",
   "packages/php/src/Collection.php::Polyspec\\Orm\\Collection::$fetched": "private array",
   "packages/php/src/Collection.php::Polyspec\\Orm\\Collection::$items": "private array",

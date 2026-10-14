@@ -4,6 +4,13 @@ declare(strict_types=1);
 namespace Polyspec\Orm;
 
 use Polyspec\OrderedJson\Value;
+use Purr\Yaml\Node\AbstractNode;
+use Purr\Yaml\Node\AliasNode;
+use Purr\Yaml\Node\MappingNode;
+use Purr\Yaml\Node\ScalarNode;
+use Purr\Yaml\Node\SequenceNode;
+use Purr\Yaml\Schema\CoreSchema;
+use Purr\Yaml\YamlStream;
 use Symfony\Component\Yaml\Yaml;
 use function Polyspec\OrderedJson\parse as orderedJsonParse;
 use function Polyspec\OrderedJson\stringify as orderedJsonStringify;
@@ -70,8 +77,7 @@ final class Codec
                     break;
                 case 'yaml':
                     try {
-                        $v = Yaml::parse($v, Yaml::PARSE_EXCEPTION_ON_INVALID_TYPE | Yaml::PARSE_EXCEPTION_ON_ALIAS);
-                        $v = self::normalize($v);
+                        $v = self::yamlDecode($v);
                         self::validateYamlValue($v);
                     } catch (\Throwable $e) {
                         throw new OrmException(Code::CODEC_DECODE, 'yaml: ' . $e->getMessage());
@@ -180,6 +186,63 @@ final class Codec
             throw new OrmException(Code::CODEC_ENCODE, 'json: ' . get_debug_type($value) . ' is not a JSON value');
         }
         return json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * Reads one YAML 1.2 document with purrphp/yaml and resolves its plain scalars by the library's
+     * core schema. The codec's own rules (docs/codec.md, yaml) apply on the node model: one document,
+     * no aliases, anchors, explicit tags or merge keys, no duplicate keys, string or integral keys.
+     * A text without a document (empty or only comments) reads as null.
+     */
+    private static function yamlDecode(string $text): mixed
+    {
+        $documents = (new YamlStream())->fromString($text);
+        if (count($documents) > 1) {
+            throw new \InvalidArgumentException('multiple documents are not supported');
+        }
+        $document = $documents->at(0);
+        return $document === null ? null : self::yamlNode($document->getRoot(), new CoreSchema());
+    }
+
+    private static function yamlNode(AbstractNode $node, CoreSchema $schema): mixed
+    {
+        if ($node instanceof AliasNode) {
+            throw new \InvalidArgumentException("aliases are not supported at line {$node->getLine()}");
+        }
+        if ($node->hasAnchor()) {
+            throw new \InvalidArgumentException("anchors are not supported at line {$node->getLine()}");
+        }
+        if ($node->findTag() !== null) {
+            throw new \InvalidArgumentException("tag {$node->findTag()} at line {$node->getLine()} is not supported");
+        }
+        if ($node instanceof ScalarNode) {
+            return $schema->resolve($node);
+        }
+        if ($node instanceof SequenceNode) {
+            $out = [];
+            foreach ($node->getItems() as $item) {
+                $out[] = self::yamlNode($item, $schema);
+            }
+            return $out;
+        }
+        if ($node instanceof MappingNode) {
+            $out = [];
+            foreach ($node->getEntries() as $entry) {
+                if ($entry->isMerge()) {
+                    throw new \InvalidArgumentException("merge keys are not supported at line {$entry->getKey()->getLine()}");
+                }
+                $key = self::yamlNode($entry->getKey(), $schema);
+                if (!is_string($key) && !is_int($key)) {
+                    throw new \InvalidArgumentException("map keys must be strings or integers at line {$entry->getKey()->getLine()}");
+                }
+                if (array_key_exists($key, $out)) {
+                    throw new \InvalidArgumentException("duplicate map key {$key} at line {$entry->getKey()->getLine()}");
+                }
+                $out[$key] = self::yamlNode($entry->getValue(), $schema);
+            }
+            return $out;
+        }
+        throw new \InvalidArgumentException('node ' . get_debug_type($node) . ' is not supported');
     }
 
     private static function validateYamlValue(mixed $value): void
