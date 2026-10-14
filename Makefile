@@ -1086,12 +1086,23 @@ dbspec-vscode-check: lease-tool
 	npm run --workspace polyspec-dbspec build
 	node --test packages/dbspec-vscode/tests/manifest.test.mjs
 
-# dbspec-vscode-integration runs the editor fixtures through vscode.provideDocumentSemanticTokens inside VS Code. It
-# requires T137: kit's VS Code installer (scripts/kit/install-vscode.mts) and its install target, which put VS Code into
-# var/tools/vscode; the run reads that copy and never downloads. It joins the check targets with T137.
+# install-vscode installs the VS Code of the integration test into var/tools/vscode with kit's VS Code installer, at the
+# minimum release that packages/dbspec-vscode declares (engines.vscode); it downloads once and keeps a complete copy.
+.PHONY: install-vscode
+install-vscode:
+	$(ONLINE) node $(KIT)/install-vscode.$(KIT_EXT) packages/dbspec-vscode $(CURDIR)/var/tools/vscode
+
+# dbspec-vscode-integration runs the editor fixtures through vscode.provideDocumentSemanticTokens inside the VS Code that
+# make install-vscode installed; the run reads that copy and never downloads.
 .PHONY: dbspec-vscode-integration
 dbspec-vscode-integration: dbspec-vscode-check
-	node packages/dbspec-vscode/tests/integration/run.mjs --vscode var/tools/vscode
+	node packages/dbspec-vscode/tests/integration/run.mjs --vscode $(CURDIR)/var/tools/vscode
+
+# ci-vscode-integration runs dbspec-vscode-integration on a virtual X server (xvfb-run), since VS Code needs a display; the
+# editor job of CI runs it on Linux, and a desktop runs dbspec-vscode-integration itself.
+.PHONY: ci-vscode-integration
+ci-vscode-integration:
+	xvfb-run -a $(MAKE) --no-print-directory dbspec-vscode-integration
 
 dbspec-language-check: lease-tool
 	$(HOLD_TYPESCRIPT)

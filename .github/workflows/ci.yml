@@ -272,6 +272,42 @@ jobs:
           path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_docs/report/
           if-no-files-found: error
 
+  # The VS Code integration test of the dbspec extension: the editor fixtures through
+  # vscode.provideDocumentSemanticTokens inside the VS Code that make install-vscode installs (kit's installer, at the
+  # minimum release of packages/dbspec-vscode). VS Code needs a display, so the test runs on a virtual X server.
+  editor:
+    runs-on: ubuntu-26.04-arm
+    steps:
+      - uses: actions/checkout@v5
+        id: checkout
+      - uses: actions/setup-node@v7
+        id: node
+        if: ${{ !cancelled() }}
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: npm of packageManager
+        id: npm
+        if: ${{ !cancelled() }}
+        run: make install-tools TOOLS=npm
+      - name: install Node dependencies
+        id: node-modules
+        if: ${{ !cancelled() }}
+        run: make install-packages
+      # The TypeScript build of the extension takes the lease program, which make builds with the Go of mise.toml.
+      - name: tools of mise.toml
+        id: go
+        if: ${{ !cancelled() }}
+        run: make install-tools
+      - name: VS Code of the integration test
+        id: vscode
+        if: ${{ !cancelled() }}
+        run: make install-vscode
+      - name: VS Code integration test
+        id: integration
+        if: ${{ !cancelled() }}
+        run: make ci-vscode-integration
+
   # The one check of this workflow that the ruleset of main requires: it runs
   # after every other job, also after a failed or cancelled one (if: always()),
   # and passes only when each job of needs succeeded, every CI group of test
@@ -279,7 +315,7 @@ jobs:
   # lists every other job.
   ci-passed:
     if: ${{ always() }}
-    needs: [test, docs]
+    needs: [test, docs, editor]
     runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@v5
