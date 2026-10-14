@@ -186,9 +186,10 @@ CI_TARGETS_stress_mysql = feature-stress-mysql-check
 CI_TARGETS_stress_pg_sqlite = feature-stress-pg-sqlite-check
 # run-databases는 TARGETS의 make target을 실행 하나의 자기 bench database와 decimal database로 실행한다
 # (scripts/check/run.mjs, make check-run과 같은 runner). bench나 decimal database를 쓰는 target을 직접 실행할 때
-# 쓴다: TEST_ENV의 server 환경에는 그 database가 없다.
+# 쓴다: TEST_ENV의 server 환경에는 그 database가 없다. runner는 MAKEFLAGS를 넘기지 않으므로 conformance-check의
+# VECTOR와 RECORD는 환경으로 넘긴다.
 run-databases:
-	$(BUILD_LEASE) && node scripts/check/run.mjs --job-summary $(abspath $(TEST_ENV)) $(TARGETS)
+	$(BUILD_LEASE) && VECTOR='$(VECTOR)' RECORD='$(RECORD)' node scripts/check/run.mjs --job-summary $(abspath $(TEST_ENV)) $(TARGETS)
 
 # check is the guard of the full suite, the full-run tool of @polyspec/kit: it prints the reason and refuses while a checklist
 # item is [~], while tracked files have uncommitted changes, or when var/full-run.json records a full run of the same tree;
@@ -979,13 +980,35 @@ conformance-python-models: python-venv-check
 	rm -rf $(CONFORMANCE_PY_MODELS) && mv $(CONFORMANCE_PY_MODELS).tmp $(CONFORMANCE_PY_MODELS)
 
 conformance-check/%: RUN_DIR = $(abspath .runtime/run)/conformance-check-$$PPID
+# VECTOR는 실행할 vector 이름을 공백으로 나눈 목록이며, 이름마다 check run에 -vector를 준다(비면 모든 vector).
+# RECORD=1이면 VECTOR 없는 전체 실행에서 비교가 실패한 database의 진단 output(.run-*)을 check record로 그 database의 기대값에 기록한다
+# (VECTOR와 함께면 거부한다: 선택한 vector만의 실행은 전체 실행이라면 앞의 vector가 만든 각 연결의 첫 사용 statement도 기록한다):
+# record는 다섯 output이 일치할 때만 기록하고, 기록하지 못하거나 runner가 실패해 진단 output이 없으면 실패한다.
+# 기록한 뒤에는 같은 vector를 다시 실행해 새 기대값과 비교한다. contracts/interfaces.json의 state contract는
+# 모든 vector의 output을 읽으므로 VECTOR가 있으면 검사하지 않고 그렇다고 출력한다.
+CONFORMANCE_VECTORS = $(foreach name,$(VECTOR),-vector $(name))
+CONFORMANCE_RUN = node tests/go-run.mjs conformance-check ./tests/conformance/check run -out $(RUN_DIR)/out $(CONFORMANCE_VECTORS) -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
 .PHONY: conformance-check/run
 conformance-check: conformance-counter-check conformance-result-check conformance-result-physical-check conformance-check/run
 conformance-check/run: lease-tool conformance-python-models
+	$(if $(and $(VECTOR),$(RECORD)),@echo "conformance-check: RECORD=1 records only a full run; a run of selected vectors also records the first-use statements of each connection that the full run makes in an earlier vector" >&2; exit 2)
 	$(HOLD_TYPESCRIPT)
 	rm -rf $(RUN_DIR)
-	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) node tests/go-run.mjs conformance-check ./tests/conformance/check run -out $(RUN_DIR)/out -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
-	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results $(RUN_DIR)/out --results $(RUN_DIR)/out/postgres --results $(RUN_DIR)/out/sqlite
+	$(WITH_TEST_ENV) export ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) && if $(CONFORMANCE_RUN); then :; \
+	elif [ -n "$(RECORD)" ]; then \
+	  recorded=0; \
+	  for db in mysql postgres sqlite; do \
+	    dir=$(RUN_DIR)/out; [ $$db = mysql ] || dir=$$dir/$$db; \
+	    for pending in $$dir/.run-*; do \
+	      [ -d "$$pending" ] || continue; \
+	      node tests/go-run.mjs conformance-record ./tests/conformance/check record -driver $$db $(CONFORMANCE_VECTORS) $$pending/go.json $$pending/php.json $$pending/rust.json $$pending/typescript.json $$pending/python.json || exit 1; \
+	      recorded=1; \
+	    done; \
+	  done; \
+	  [ $$recorded = 1 ] || { echo "conformance-check: the run failed before any comparison, so RECORD=1 has nothing to record" >&2; exit 1; }; \
+	  rm -rf $(RUN_DIR)/out && $(CONFORMANCE_RUN); \
+	else exit 1; fi
+	$(if $(VECTOR),@echo "conformance-check: the state contracts of contracts/interfaces.json are not checked because VECTOR selects only some of their vectors",PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results $(RUN_DIR)/out --results $(RUN_DIR)/out/postgres --results $(RUN_DIR)/out/sqlite)
 	rm -rf $(RUN_DIR)
 
 # markdown-conformance-check는 tests/markdown/cases.json의 case를 client마다 FLOWMARK의 flowmark server에서
