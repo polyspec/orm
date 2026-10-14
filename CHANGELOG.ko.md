@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a7fe887ee2002f60676c9ea3de7e36f7211fa2a6c702ff5e20389ca1be6117f2 -->
+<!-- source-sha256: 07b8b8b12c164917ac0e5f0486750f53dba42020702019ac040d0acc38dd1962 -->
 # 변경 이력
 
 ## Unreleased
+
+## 0.0.13
 
 - T161: PHP 생성 model이 query 메서드(column 조건, order, 집계, key-prefix tuple, index hint)를 유형 있는 실제 메서드로 선언해 PHPStan이 그것을 본다. docs/usage.md가 `__call`에 남는 것을 적는다.
 ## 0.0.12

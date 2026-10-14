@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+## 0.0.13
+
 - T161: PHP generated models declare their query methods as real typed methods (column conditions, orders, aggregates, key-prefix tuples, index hints), so PHPStan sees them; docs/usage.md names what stays on `__call`.
 ## 0.0.12
 
