@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 9c228ca7a5db365fffc2842e66bd75de93839600fa37c1060736eb0297427055 -->
+<!-- source-sha256: ad626428c59b4ac9d3700b4c684ee8344fc43175cc942e4692de20391b0118ee -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1072,6 +1072,7 @@
 - [o] T170 TypeScript model을 쓰는 것만 담아 생성한다 (T137-1-3-1에 이어). 원인: kit 0.0.43의 fsm lint-ts가 orm-gen이 쓴 models.ts에서 쓰지 않는 import, 같은 이름의 class와 interface(declaration merging), 쓰지 않는 MANIFEST_* export를 찾는다. 완료 조건: TS emitter가 model이 쓰는 import와 export만 쓰고 type마다 한 번만 선언하며, generator test가 이를 확인하고, 생성 파일의 lint가 통과한다.
   Evidence: 쓰지 않는 import와 interface가 합쳐진 class를 거부하는 models-scan test가 수정 전 실패하고 수정 후 통과한다. ts-check/types와 ts-model-check가 통과한다. MANIFEST_TEXT와 MANIFEST_HASH는 docs/usage.md가 정한 대로 export를 유지한다.
   - [o] T170-1 생성 model의 TypeScript symbol을 기록한다 (T170에 이어). 원인: T170이 contracts/symbols/typescript.json을 기록하지 않고 model을 다시 생성해 main에서 make interface-check가 실패했다. Evidence: 기록은 생성 model과 declareMember만 다르다. interface-check 8개가 통과한다.
+  - [o] T170-2 TypeScript generator test가 선언된 chain method를 읽는다 (T170에 이어). 원인: generate.mjs와 generate-scan.mjs가 T170이 없앤 합쳐진 interface를 읽어, main에서 conformance와 feature_verify_other group이 실패했다. Evidence: 두 test가 각 model class의 declare field를 읽고 통과한다.
 - [o] T171 0.0.15를 릴리스한다. 원인: flowmark, fsm, hyper가 기다리는 문서별 set parse(T166), 모든 client의 YAML core schema(T142-1, T142-2, T142-9부터 T142-11까지), insert part(T169), allow와 쓰지 않는 import가 없는 생성 model(T137-1-3-1, T170)이 main에 있다. 완료 조건: version-bump commit이 모든 manifest를 0.0.15로 두고 Unreleased를 0.0.15로 옮기며, 바뀐 lock의 dependency review와 v0.0.15의 consumer lock을 기록한다; 그 CI가 성공한다; annotated tag v0.0.15를 push하고 release workflow가 게시한다. 증거: 그 commit에서 `make version-check`와 `make dependency-policy-check`가 통과한다.
   - [o] T171-1 CI cache 복원 뒤에 Rust crate를 받는다 (T171에 이어). 원인: 0.0.15 bump의 CI가 모든 Rust group에서 실패했다: Swatinem/rust-cache가 make install-rust가 받은 crate 위에 오래된 registry를 복원해 rustls 0.23.46이 없었다. Evidence: install-rust가 복원 전의 install-rust-toolchain과 복원 뒤의 install-rust-crates로 나뉜다. scripts/check와 scripts/repo test가 통과한다.
 - [o] T156 모든 생성기가 모든 key의 모든 prefix마다 유형 있는 메서드를 선언한다. 원인: scan한 소스가 호출하는 메서드만 생성되어, 어떤 소스도 호출하지 않는 key prefix에는 메서드가 없었다(hyper U-97). 완료 조건: Go, Rust, TypeScript model이 primary key, unique key, index의 모든 prefix마다 메서드를 선언하고, Python은 같은 이름을 실행 시점에 해석하며, symbol 기록과 docs/usage.md를 갱신한다.
