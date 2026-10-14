@@ -3228,6 +3228,7 @@
         "begin",
         "savepoint",
         "insert",
+        "insert",
         "release",
         "insert",
         "update",
