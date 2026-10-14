@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 2bda67a13877fce8cfe05a0a6d5ef4ff90154892324dfaadd43312789718de32 -->
+<!-- source-sha256: cd74cc0f8d0726dfb476d9844f91ea4f385d49e7160bce855ff7a440ef2b322e -->
 # dbspec
 
 [English](dbspec.md)
@@ -104,10 +104,10 @@ reader는 읽는 동안 바뀌지 않는 file tree를 읽는다. 각 component�
 
 ### Set parse {#parsing-a-set}
 
-도구는 set의 text를 직접 key로 묶지 않고 set parse로 parse한다: Go `dbspec.ParseSet`, PHP `Dbspec::parseSet`, TypeScript `parseDbspecSet`, Python `parse_dbspec_set`, Rust `dbspec::parse_set`. 소유한 text와 external text를 각각 set 순서로 받아, 소유한 것 먼저 그 순서로 text마다 결과 하나를 돌려주고, set 진단 목록을 돌려준다.
+도구는 set의 text를 직접 key로 묶지 않고 set parse로 parse한다: Go `dbspec.ParseSet`, PHP `Dbspec::parseSet`, TypeScript `parseDbspecSet`, Python `parse_dbspec_set`, Rust `dbspec::parse_set`. 소유한 text와 external text를 각각 set 순서로 받아, 소유한 것 먼저 그 순서로 text마다 결과 하나를 돌려준다.
 
 - 문서의 이름은 parser가 header 줄에서 읽은 이름이다. 어떤 도구도 다른 방법으로 읽지 않는다. header가 실패한 text는 이름이 없고, 그 결과가 `header` 진단을 갖는다.
-- 뒤의 text가 반복하는 이름은 그 뒤 text의 1행 10열에 위치한 set 진단 `name.duplicate` `document <name> appears twice in the document set`이며, 그 뒤 text는 parse하지 않는다.
+- 앞의 text가 가진 이름을 가진 text는 parse하지 않고, 그 결과는 1행 10열에 위치한 진단 하나 `name.duplicate` `document <name> appears twice in the document set`를 갖는다.
 - 그 밖의 text는 set의 다른 모든 이름 있는 문서의 text를 그 `use` 줄이 가리키는 문서로 삼아 parse하고, 그 결과는 그 text의 한 번의 parse가 돌려주는 대로 document, [선언 위치](#declaration-positions), 진단을 갖는다. external text의 document는 external로 표시한다.
 
 공유 vector `tests/dbspec/set-parse.json`은 이름, 반복, 실패한 header를 가진 set을 담으며 모든 client가 그것을 실행한다.

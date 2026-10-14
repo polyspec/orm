@@ -22,11 +22,10 @@
           "parsed": true,
           "diagnostics": []
         }
-      ],
-      "diagnostics": []
+      ]
     },
     {
-      "name": "a repeated name is a set diagnostic and the later text is not parsed",
+      "name": "a repeated name is the later text's diagnostic and that text is not parsed",
       "owned": [
         "dbspec 1 core\n\ntable account {\n  seq i64\n  primary key (seq)\n}\n",
         "dbspec 1 core\n\ntable account {\n  seq i64\n  primary key (seq)\n}\n"
@@ -43,15 +42,14 @@
           "name": "core",
           "external": false,
           "parsed": false,
-          "diagnostics": []
-        }
-      ],
-      "diagnostics": [
-        {
-          "rule": "name.duplicate",
-          "line": 1,
-          "column": 10,
-          "message": "document core appears twice in the document set"
+          "diagnostics": [
+            {
+              "rule": "name.duplicate",
+              "line": 1,
+              "column": 10,
+              "message": "document core appears twice in the document set"
+            }
+          ]
         }
       ]
     },
@@ -74,8 +72,7 @@
             }
           ]
         }
-      ],
-      "diagnostics": []
+      ]
     },
     {
       "name": "a use of a document outside the set is the document's diagnostic",
@@ -96,8 +93,7 @@
             }
           ]
         }
-      ],
-      "diagnostics": []
+      ]
     }
   ]
 }

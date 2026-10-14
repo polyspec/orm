@@ -11,18 +11,12 @@ type SetDocument struct {
 	Diagnostics []Diagnostic
 }
 
-// SetParse is the result of ParseSet: one SetDocument per text, owned first, each in set order, and the diagnostics of
-// the set as a whole.
-type SetParse struct {
-	Documents   []SetDocument
-	Diagnostics []Diagnostic
-}
-
-// ParseSet parses the texts of one document set (docs/dbspec.md "Parsing a set"). Each text's name is the name the
-// parser reads from its header; a name that a later text repeats is a set diagnostic and that text is not parsed.
-// Every other text is parsed with the texts of all other named documents as the documents its use lines name.
-func ParseSet(owned, external []string) SetParse {
-	var out SetParse
+// ParseSet parses the texts of one document set (docs/dbspec.md "Parsing a set") and returns one SetDocument per text,
+// owned first, each in set order. Each text's name is the name the parser reads from its header; a text whose name an
+// earlier text has is not parsed and carries the diagnostic name.duplicate. Every other text is parsed with the texts
+// of all other named documents as the documents its use lines name.
+func ParseSet(owned, external []string) []SetDocument {
+	var out []SetDocument
 	type entry struct {
 		text     string
 		external bool
@@ -32,11 +26,11 @@ func ParseSet(owned, external []string) SetParse {
 	var parse []entry
 	add := func(text string, isExternal bool) {
 		name := parseStructure(text, nil).document.name.text
-		out.Documents = append(out.Documents, SetDocument{Name: name, External: isExternal})
-		index := len(out.Documents) - 1
+		out = append(out, SetDocument{Name: name, External: isExternal})
+		index := len(out) - 1
 		if name != "" {
 			if _, repeated := named[name]; repeated {
-				out.Diagnostics = append(out.Diagnostics, Diagnostic{Rule: RuleNameDuplicate, Line: 1, Column: 10, Message: "document " + name + " appears twice in the document set"})
+				out[index].Diagnostics = []Diagnostic{{Rule: RuleNameDuplicate, Line: 1, Column: 10, Message: "document " + name + " appears twice in the document set"}}
 				return
 			}
 			named[name] = text
@@ -50,7 +44,7 @@ func ParseSet(owned, external []string) SetParse {
 		add(text, true)
 	}
 	for _, e := range parse {
-		d := &out.Documents[e.result]
+		d := &out[e.result]
 		others := map[string]string{}
 		for name, text := range named {
 			if name != d.Name {
