@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a83967406fa571e942be9a9f5c3633fb689958fe6ae8e5f65870166e68716417 -->
+<!-- source-sha256: 0781fdcf81806db29a8ac3937124bea014e683122c969b99ddf1f0046821ad92 -->
 # 변경 이력
 
 ## Unreleased
 
+- T135-1: scripts/test-servers.sh와 그 테스트의 주석이 영어다.
 - T128-8-3: make install-vscode가 kit 설치기로 extension의 최소 VS Code를 설치하고, make dbspec-vscode-integration이 그 안에서 editor fixture 다섯을 실행하며, CI의 editor job이 가상 X server에서 그것을 실행한다.
 - T165: orm이 kit 0.0.40을 받는다. mise.toml의 도구(Go, Python, uv, Composer, alint, govulncheck, cargo-audit)를 mise.lock에서 설치하고, `.python-version`을 지웠으며, install-python과 python-venv-check는 mise.toml의 Python을 읽고, CI는 make install-tools로 도구를 설치한다.
 - T137-4: CI Node step이 install-packages가 kit을 설치한 뒤 두 번째 make로 interface TypeScript를 설치한다.
