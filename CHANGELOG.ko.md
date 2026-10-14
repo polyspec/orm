@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 53640bda33f72595c6e031204c6e8f9226f11511d7f0d00ce3fecd83096b84f6 -->
+<!-- source-sha256: 09d53b7a84cfa38ebbad3a464b191ac9c11daf403edd4411d7bc23131d562a8c -->
 # 변경 이력
 
 ## Unreleased
 
+- introspection과 native rule test가 옮긴 schema와 contracts를 읽고, tests/testcase.mts가 case에 그 case가 끝나면 지우는 임시 folder를 준다. (#T137-1-8)
 - bench/는 benchmarks/, 공유 bench schema는 contracts/fixtures/bench/이고, Composer release는 mise.toml의 tool http:composer다. .composer-version을 지웠고 make layout-check가 통과한다. (#T137-1-7)
 - tests/와 examples/ 아래 Go program과 test는 root go.work의 module tests/go.mod와 examples/go.mod다. (#T137-1-6)
 - Go module은 tag packages/go/vX.Y.Z로 release하는 github.com/polyspec/orm/packages/go다. engine/*, generator, cmd/orm-gen은 packages/go/engine/*, packages/go/generator, packages/go/cmd/orm-gen이고, internal/testcase와 internal/procevent는 packages/go/testcase와 packages/go/procevent다. Go consumer는 새 module을 요구하고 그 경로를 import한다. (#T137-1-5)
