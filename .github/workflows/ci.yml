@@ -162,12 +162,6 @@ jobs:
           # The checks run PHP without a debugger or coverage driver, as the local
           # PHP does; Xdebug changes the ratios of the hot-path gate.
           coverage: none
-      - name: PHP releases and their SQLite
-        id: php-sqlite
-        if: ${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}
-        # Every client requires SQLite 3.46; PHP links the system SQLite of
-        # the runner.
-        run: make ci-php-sqlite
       - name: install PHP dependencies
         id: composer
         if: ${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}
@@ -177,13 +171,13 @@ jobs:
         if: ${{ !cancelled() && steps.group-needs.outputs.php-extension-tools == 'true' }}
         # make dbspec-php-extension-check and make dbspec-compare-check build
         # the PHP extension orm_dbspec with phpize and check its arginfo with
-        # gen_stub.php; scripts/ci/php-extension-tools.sh checks phpize and
+        # gen_stub.php; scripts/ci/php-extension-tools.mts checks phpize and
         # php-config and installs gen_stub.php with its PHP-Parser.
         run: make install-php-extension-tools
       - name: programs of the database servers
         id: server-programs
         if: ${{ !cancelled() && steps.group-needs.outputs.server-programs == 'true' }}
-        # scripts/ci/server-programs.sh installs the programs from which make
+        # scripts/ci/server-programs.mts installs the programs from which make
         # test-servers starts the servers.
         run: make install-server-programs
       - name: database servers

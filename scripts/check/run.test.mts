@@ -28,7 +28,7 @@ function named(record: CheckRecord, name: string): StepRecord {
 }
 const scope = { after: (f: () => void) => { after.push(f); } };
 
-// stub은 runChecks를 stub 명령으로 실행한다. database 명령(sh)은 log에 `sh <action>`을, make target은 자기
+// stub은 runChecks를 stub 명령으로 실행한다. database 명령(node scripts/check/databases.mts)은 log에 `databases <action>`을, make target은 자기
 // 이름을 적는다. `b`는 추적하지 않는 file `pass-b`가 있을 때만 통과하므로 case는 tree를 바꾸지 않고 결과를
 // 바꾼다. kill에 target 이름을 주면 그 target이 runner process를 SIGKILL로 끝낸다. 
 //
@@ -42,7 +42,7 @@ const failing = process.env.STUB_SUITE === 'failing';
 // runner의 콜백 밖에서 처리되지 않는 오류를 던지는 suite다(G5.43-1).
 const lost = process.env.STUB_SUITE === 'lost';
 const throws = process.env.STUB_SUITE === 'throws';
-// STUB_SUITE=drop은 database 지우기가 databases.sh처럼 받은 directory를 통째로 지우는 suite, STUB_SUITE=verbose는 target b가
+// STUB_SUITE=drop은 database 지우기가 databases.mts처럼 받은 directory를 통째로 지우는 suite, STUB_SUITE=verbose는 target b가
 // 3 MiB를 출력하는 suite다(G5.43-2).
 const drop = process.env.STUB_SUITE === 'drop';
 const verbose = process.env.STUB_SUITE === 'verbose';
@@ -55,9 +55,9 @@ const diskio = process.env.STUB_SUITE?.startsWith('diskio-');
 const npm = process.env.STUB_SUITE === 'npm';
 // STUB_SUITE=cisetup은 CI setup step rust가 실패한 실행이다(G5.52): a는 rust가, c는 go가 필요하고 b는 아무것도 필요하지 않다.
 const cisetup = process.env.STUB_SUITE === 'cisetup';
-// STUB_SUITE=composer는 CI group이 setup step composer를 건너뛴 실행이다(G5.127): a와 c는 databases만 선언하고, databases/create가
-// decimal database를 Composer autoload로 설치하므로 그것도 composer가 필요하다.
-const composer = process.env.STUB_SUITE === 'composer';
+// STUB_SUITE=server-programs는 CI group이 setup step server-programs를 건너뛴 실행이다(G5.127): a와 c는 databases만 선언하고,
+// servers와 databases/create가 server-programs의 program을 쓰므로 그것도 server-programs가 필요하다.
+const serverPrograms = process.env.STUB_SUITE === 'server-programs';
 // STUB_SUITE=group과 group-rust는 CI group의 job이다(G5.111): group-needs가 rust, php와 server의 setup step을 건너뛰게
 // 했고, 어느 target도 database가 필요하지 않다. group에서는 c만 go가 필요하고, group-rust에서는 a가 건너뛴 rust도 필요하다.
 const group = process.env.STUB_SUITE === 'group';
@@ -67,12 +67,12 @@ const skipped = { checkout: { outcome: 'success' }, node: { outcome: 'success' }
   'server-programs': { outcome: 'skipped' }, servers: { outcome: 'skipped' } };
 handleCrashes();
 const run = async (program, args, step, spawned = () => {}) => {
-  const name = program === 'sh' ? \`sh \${args[1]}\` : args.at(-1);
+  const name = args[1] === 'databases-create' ? 'databases create' : args[0] === 'scripts/check/databases.mts' ? \`databases \${args[1]}\` : args.at(-1);
   appendFileSync(log, name + '\\n');
   if (kill && name === kill) process.kill(process.pid, 'SIGKILL');
-  if (failing && name === 'sh create') {
+  if (failing && name === 'databases create') {
     step('databases: CREATE DATABASE orm_check_x_bench failed: ERROR 1045 (28000): Access denied for user');
-    throw new Error('sh scripts/check/databases.sh create exited with 1');
+    throw new Error('node scripts/check/databases.mts create exited with 1');
   }
   if (failing && name === 'b') {
     spawned(4242);
@@ -85,7 +85,7 @@ const run = async (program, args, step, spawned = () => {}) => {
       step(line);
     throw new Error('make --no-print-directory -k b exited with 2');
   }
-  if (drop && name === 'sh drop') rmSync(args[3], { recursive: true, force: true });
+  if (drop && name === 'databases drop') rmSync(args[3], { recursive: true, force: true });
   if (space && name === 'b') {
     step('STEP fuzz/engine-ir elapsed=33ms: write /tmp/go-build3971832083/b001/_testmain.go: disk quota exceeded');
     throw new Error('make --no-print-directory -k b exited with 2');
@@ -111,7 +111,7 @@ const run = async (program, args, step, spawned = () => {}) => {
   if (throws && name === 'b') {
     await new Promise(() => setImmediate(() => { throw new Error('boom outside the runner'); }));
   }
-  if (!failing && !lost && !throws && !verbose && !space && !diskio && !npm && !cisetup && !composer && !group && !groupRust && name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
+  if (!failing && !lost && !throws && !verbose && !space && !diskio && !npm && !cisetup && !serverPrograms && !group && !groupRust && name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
 };
 const targets = failing ? ['a', 'b', 'c', 'd'] : ['a', 'b', 'c'];
 const needs = cisetup || groupRust ? { a: ['rust'], b: [], c: ['go'] } : group ? { a: [], b: [], c: ['go'] } : { a: ['databases'], b: [], c: ['databases'], d: [] };
@@ -120,7 +120,7 @@ const removed = '## files under /tmp that were removed but are still open (lsof 
 const snapshot = space ? undefined
   : process.env.STUB_SUITE === 'diskio-full' ? () => ({ text: '## df -k / /tmp\\nstub\\n' + removed, places: { '/': 1, '/tmp': 0 } })
   : () => ({ text: '## df -k / /tmp\\nstub\\n', places: { '/': 1, '/tmp': 1 } });
-process.exitCode = await runChecks({ root, servers, targets, run, needs, snapshot, downloads: () => [], ciSetup: composer ? JSON.stringify({ checkout: { outcome: 'success' }, go: { outcome: 'success' }, php: { outcome: 'success' }, composer: { outcome: 'skipped' } }) : cisetup ? JSON.stringify({ checkout: { outcome: 'success' }, go: { outcome: 'success' }, rust: { outcome: 'failure' }, 'rust-cache': { outcome: 'failure' } }) : group || groupRust ? JSON.stringify(skipped) : '' });
+process.exitCode = await runChecks({ root, servers, targets, run, needs, snapshot, downloads: () => [], ciSetup: serverPrograms ? JSON.stringify({ checkout: { outcome: 'success' }, go: { outcome: 'success' }, 'server-programs': { outcome: 'skipped' } }) : cisetup ? JSON.stringify({ checkout: { outcome: 'success' }, go: { outcome: 'success' }, rust: { outcome: 'failure' }, 'rust-cache': { outcome: 'failure' } }) : group || groupRust ? JSON.stringify(skipped) : '' });
 `;
 
 function checkout(t: { after: (f: () => void) => void }) {
@@ -196,7 +196,7 @@ caseTest('a run records its setup steps and its targets', PROCESS, () => {
   try {
     const result = c.run();
     assert.equal(result.status, 1, result.stdout + result.stderr);
-    assert.deepEqual(c.ran(), ['sh create', 'a', 'b', 'c', 'sh drop']);
+    assert.deepEqual(c.ran(), ['databases create', 'a', 'b', 'c', 'databases drop']);
     const record = c.record();
     assert.deepEqual([record.result, record.failed], ['failed', ['b']]);
     assert.deepEqual(record.setup.map(step => [step.name, step.status]), [['downloads', 'passed'], ['servers', 'passed'], ['databases/create', 'passed'], ['databases/drop', 'passed']]);
@@ -251,7 +251,7 @@ caseTest('a failed setup step blocks only the targets that need it, and the repo
     const result = c.run('', env);
     step(`exit ${result.status}`);
     assert.equal(result.status, 1, result.stdout + result.stderr);
-    assert.deepEqual(c.ran(), ['sh create', 'b', 'd', 'sh drop']);
+    assert.deepEqual(c.ran(), ['databases create', 'b', 'd', 'databases drop']);
     const record = c.record();
     const status = (name: string) => named(record, name);
     assert.deepEqual(record.targets.map(target => [target.name, target.status]), [['a', 'not-run'], ['b', 'failed'], ['c', 'not-run'], ['d', 'passed']]);
@@ -406,7 +406,7 @@ caseTest('a report write that fails is recorded and does not stop the runner', P
     const result = c.run('', { STUB_SUITE: 'lost', ORM_CHECK_RUN_ID: '7-1', STUB_REPORT_RUN: 'ci_7_1' });
     assert.equal(result.signal, null, result.stdout + result.stderr);
     assert.equal(result.status, 1, result.stdout + result.stderr);
-    assert.deepEqual(c.ran(), ['sh create', 'a', 'b', 'c', 'sh drop']);
+    assert.deepEqual(c.ran(), ['databases create', 'a', 'b', 'c', 'databases drop']);
     const record = c.record();
     assert.equal(record.result, 'failed');
     const b = named(record, 'b');
@@ -437,7 +437,7 @@ caseTest('an unhandled error of the runner is recorded as the reason of a crashe
   }
 });
 
-// 보고서 위치 case(G5.43-2)는 database 지우기가 databases.sh drop처럼 받은 directory를 통째로 지우는 실행이다. 보고서는
+// 보고서 위치 case(G5.43-2)는 database 지우기가 databases.mts drop처럼 받은 directory를 통째로 지우는 실행이다. 보고서는
 // 그 directory 밖에 있으므로 environment.txt와 모든 단계의 log가 남고, 쓰기 실패는 없다.
 caseTest('removing the run databases leaves the report of the run', PROCESS, () => {
   const c = checkout(scope);
@@ -488,7 +488,7 @@ caseTest('the first failure lines of a target are its failure and error lines', 
     '[rust] FAIL columns_and_subqueries/sqlite elapsed=5ms: sqlite: schema().install: DRIVER: disk I/O error',
     '[rust] client-db-test: the rust lane failed:',
     '[rust]   /home/runner/work/orm/orm/.runtime/run/client-db-rust-20422/debug/integration /home/runner/work/orm/orm/schema/bench.dbs (exit 101)',
-    './scripts/client-db-test.sh: 107: echo: echo: I/O error',
+    'node scripts/client-db-test.mts: 107: echo: echo: I/O error',
     'client-db-test: failed lanes: rust',
     'make: *** [Makefile:549: client-db-check] Error 1',
     'make --no-print-directory -k client-db-check exited with 2',
@@ -656,18 +656,18 @@ caseTest('a failed CI setup step marks the targets that need it not-run and runs
 });
 
 
-// databases setup need case(G5.127)는 databases/create가 필요로 하는 setup step(composer)이 마련되지 않은 실행이다. runner는
+// databases setup need case(G5.127)는 databases/create가 필요로 하는 setup step(server-programs)이 마련되지 않은 실행이다. runner는
 // server를 읽거나 database를 만들지 않고, databases를 선언한 target을 그 step과 함께 not-run으로 기록하며, 나머지 target은 실행한다.
 caseTest('a run without the setup step that databases/create needs records the database targets as not-run', PROCESS, () => {
   const c = checkout(scope);
   try {
-    assert.equal(c.run('', { STUB_SUITE: 'composer', ORM_CHECK_RUN_ID: '17-1-stress' }).status, 1);
+    assert.equal(c.run('', { STUB_SUITE: 'server-programs', ORM_CHECK_RUN_ID: '17-1-stress' }).status, 1);
     const record = c.record();
-    assert.deepEqual(record.setup.map(({ name, status }) => [name, status]).filter(([name = '']) => name.startsWith('ci/') || name.startsWith('databases') || name === 'servers'), [['ci/composer', 'failed']]);
+    assert.deepEqual(record.setup.map(({ name, status }) => [name, status]).filter(([name = '']) => name.startsWith('ci/') || name.startsWith('databases') || name === 'servers'), [['ci/server-programs', 'failed']]);
     for (const name of ['a', 'c']) {
       const target = named(record, name);
       assert.equal(target.status, 'not-run', name);
-      assert.match(target.reason ?? '', /^the setup steps servers and databases\/create need composer: the CI setup step composer was skipped, and a target of this run needs composer/);
+      assert.match(target.reason ?? '', /^the setup steps servers and databases\/create need server-programs: the CI setup step server-programs was skipped, and a target of this run needs server-programs/);
     }
     assert.equal(named(record, 'b').status, 'passed');
     assert.deepEqual(c.ran(), ['b']);

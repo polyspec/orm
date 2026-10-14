@@ -429,14 +429,14 @@ func runLanguage(c *testcase.Case, stateDB *sql.DB, root, language, first, repea
 var goRunner, rustRunner string
 
 // buildRustRunner는 Rust runner를 공유 Rust target directory의 exclusive lease(LEASE, CARGO_LEASES, --wait)
-// 아래에서 build하고, 그 lease 안에서 directory로 복사한다(scripts/cargo-build-copy.sh). 실행은 그 복사본을
+// 아래에서 build하고, 그 lease 안에서 directory로 복사한다(scripts/cargo-build-copy.mts). 실행은 그 복사본을
 // 쓰므로 이 checkout의 다른 실행의 build가 target directory를 바꿔도 이 실행의 runner는 바뀌지 않는다.
 func buildRustRunner(c *testcase.Case, root, directory string) error {
 	lease, leases := os.Getenv("LEASE"), os.Getenv("CARGO_LEASES")
 	if lease == "" || leases == "" {
 		return fmt.Errorf("LEASE and CARGO_LEASES are unset; run this through make, which exports them")
 	}
-	if err := runCommand(c, root, "", 0, lease, "run", leases, "exclusive", "--wait", "--", "sh", filepath.Join(root, "scripts", "cargo-build-copy.sh"), directory, "debug/conformance", "--",
+	if err := runCommand(c, root, "", 0, lease, "run", leases, "exclusive", "--wait", "--", "node", filepath.Join(root, "scripts", "cargo-build-copy.mts"), directory, "debug/conformance", "--",
 		"cargo", "build", "--locked", "--manifest-path", "packages/rust/Cargo.toml", "-p", "polyspec-orm-tests", "--bin", "conformance"); err != nil {
 		return err
 	}

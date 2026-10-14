@@ -1,3 +1,4 @@
+import { SERVER_VARIABLES } from '../test-servers.mts';
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -11,7 +12,7 @@ import { composerVersionErrors, goModulePathErrors, goVersionErrors, phpVersionE
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { kitCopies } from './kit-copies.mts';
 import { callerPathErrors, deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mts';
-import { callerEnvironmentErrors, goCargoErrors, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
+import { callerEnvironmentErrors, goCargoErrors, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, scriptCommands, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
 import { checkInputErrors } from '../features/owners.mts';
 import { COMPUTE, sections } from '../../tests/testcase.mts';
 import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
@@ -34,7 +35,7 @@ const failures = [];
 const makefile = readFileSync(join(root, 'Makefile'), 'utf8');
 const ci = readFileSync(join(root, '.github/workflows/ci.yml'), 'utf8');
 // CI workflow는 database 검사의 서버와 변수를 make test-servers로 준다.
-failures.push(...ciServerErrors(ci, readFileSync(join(root, 'scripts/test-servers.sh'), 'utf8')));
+failures.push(...ciServerErrors(ci, SERVER_VARIABLES));
 
 // CI workflow는 로컬 make check와 같은 target(CHECK_TARGETS)을 모두 한 번씩 실행한다.
 failures.push(...ciCheckTargetErrors(ci, makefile));
@@ -47,7 +48,7 @@ const features = readFeatures(root);
 failures.push(...ciDuplicateCommandErrors(ci, makefile, featureCommands(features)));
 // make check는 helper check마다 한 번 실행한다: feature-helper-check, stress target, 또는 그 check가 make check의 target이나
 // setup 단계인 helper(FEATURE_SUITE_HELPERS)는 그 target이나 setup 단계에서다.
-failures.push(...helperRunErrors(features, makefile, readFileSync(join(root, 'scripts/check/databases.sh'), 'utf8')));
+
 // helper check의 make 명령이 읽는 shell 변수는 Makefile이 export한다.
 failures.push(...helperEnvironmentErrors(features, makefile));
 // make check를 실행하는 CI는 그 밖에서 test runner를 다시 실행하지 않는다(runner의 정체로 판단).
@@ -98,10 +99,13 @@ failures.push(...rustTestCaseErrors(trackedText(tracked.filter(path => path.ends
 // Makefile, contracts/features.json, scripts/의 shell script와 root package.json이 실행하는 PHP와
 // TypeScript test도 공유 case 보고를 쓴다.
 const trackedSet = new Set(tracked);
+const scripts = await scriptCommands(root, tracked);
+// The setup step databases/create runs the commands of scripts/check/databases.mts.
+failures.push(...helperRunErrors(features, makefile, scripts.get('scripts/check/databases.mts') ?? ''));
 const runCommands = [
   ...makefile.split('\n').filter(line => line.startsWith('\t')).map(line => ({ source: 'Makefile', command: line.slice(1) })),
   ...featureCommands(features).map(command => ({ source: 'contracts/features.json', command })),
-  ...tracked.filter(path => /^scripts\/.*\.sh$/.test(path)).flatMap(path => readFileSync(join(root, path), 'utf8').split('\n').map(command => ({ source: path, command }))),
+  ...[...scripts].flatMap(([path, text]) => text.split('\n').map(command => ({ source: path, command }))),
   ...Object.values(rootPackage.scripts ?? {}).map(command => ({ source: 'package.json', command })),
 ];
 failures.push(...reportingScriptErrors(runCommands, (path: string) => trackedSet.has(path) ? readFileSync(join(root, path), 'utf8') : undefined));
@@ -114,7 +118,8 @@ failures.push(...unwrappedToolErrors(featureUnits));
 // cargo test 실행 앞에는 같은 인자의 `cargo test --no-run` build가 RUN_LONG 아래에서 기한 없이 있다.
 // Makefile recipe, 검증 명령, root package.json script, 그리고 그 명령이 run-long 밖에서 실행하는
 // scripts/의 shell script를 본다.
-const readTracked = (path: string) => trackedSet.has(path) ? readFileSync(join(root, path), 'utf8') : undefined;
+// A script of scripts/ is read as its commands; a TypeScript file that is no command script runs none.
+const readTracked = (path: string) => scripts.get(path) ?? (trackedSet.has(path) && !path.endsWith('.mts') ? readFileSync(join(root, path), 'utf8') : undefined);
 const recipeUnits = makeRecipes(makefile);
 const scriptUnits = reachedScripts(runCommands, readTracked);
 const allPackageUnits = Object.entries(rootPackage.scripts ?? {}).map(([name, command]) => ({ name: `package.json ${name}`, commands: [command] }));
@@ -155,7 +160,7 @@ failures.push(...detachedGroupErrors(Object.fromEntries(tracked.filter(path => /
 failures.push(...sharedTargetErrors(makefile));
 // 실행 하나의 file은 그 실행의 RUN_DIR에 두고, TypeScript client를 build하는 target은 그 출력을 가진다.
 failures.push(...runtimePathErrors(makefile));
-// build 출력은 임시 file에 쓰고 rename으로 publish한다(scripts/publish-output.sh).
+// build 출력은 임시 file에 쓰고 rename으로 publish한다(scripts/publish-output.mts).
 failures.push(...unpublishedOutputErrors(makefile));
 // test server는 고정 port 대신 make test-servers가 고른 빈 port를 쓴다.
 failures.push(...fixedPortErrors(Object.fromEntries(tracked.filter(path => path === 'Makefile' || path.endsWith('.sh')).map(path => [path, readFileSync(join(root, path), 'utf8')]))));

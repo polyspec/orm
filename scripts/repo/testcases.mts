@@ -1,4 +1,5 @@
-import { posix } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { join, posix } from 'node:path';
 
 /** A unit of commands that run in order: a Makefile recipe, a script or a verification command. */
 export type Unit = { name: string; commands: string[] };
@@ -298,7 +299,7 @@ export function makeRecipes(makefile: string): Unit[] {
 }
 
 // reachedScripts는 명령(commands: {command})이 tests/run-long.mts 밖에서 실행하는 scripts/의 shell
-// script와, 그 script가 다시 그렇게 실행하는 script다. run-long 아래의 script는 전체가 장기 작업 하나로
+// script나 명령 script(scriptCommands)와, 그 script가 다시 그렇게 실행하는 script다. run-long 아래의 script는 전체가 장기 작업 하나로
 // 단계 로그를 가진다. throughLong이면 run-long 아래의 script도 담는다: 그 안의 명령도 기한을 두지 않는다.
 // read(path)는 tracked file의 text이거나 없으면 undefined다.
 export function reachedScripts(commands: { command: string }[], read: Read, { throughLong = false }: { throughLong?: boolean } = {}): Unit[] {
@@ -306,7 +307,7 @@ export function reachedScripts(commands: { command: string }[], read: Read, { th
   const visit = (command: string) => {
     for (const segment of segments(command)) {
       if (!throughLong && longRunner.test(segment)) continue;
-      for (const match of segment.matchAll(/(?:^|[\s"'/])(scripts\/[\w/.-]+\.sh)\b/g)) {
+      for (const match of segment.matchAll(/(?:^|[\s"'/])(scripts\/[\w/.-]+\.(?:sh|mts))\b/g)) {
         const path = match[1] ?? '';
         if (reached.has(path)) continue;
         const text = read(path);
@@ -418,14 +419,14 @@ export function runtimePathErrors(makefile: string): string[] {
 }
 
 // fixedPortErrors는 고정 TCP port를 정하는 줄마다 오류 하나를 돌려준다(files는 Makefile과 shell script의 {path: text}):
-// `<NAME>PORT = <number>` 같은 할당과 port를 인자로 주는 `test-servers.sh start`다. 두 checkout의 server가 같은 고정
+// `<NAME>PORT = <number>` 같은 할당과 port를 인자로 주는 `test-servers.mts start`다. 두 checkout의 server가 같은 고정
 // port를 다투므로, make test-servers는 빈 port를 고르고(scripts/free-ports.mts) 환경 file에 기록한다. 주석 줄은 보지 않는다.
 export function fixedPortErrors(files: Record<string, string>) {
   const errors: string[] = [];
   for (const [path, text] of Object.entries(files)) {
     text.split('\n').forEach((line: string, index: number) => {
       if (/^\s*#/.test(line)) return;
-      if (/^\s*(?:export\s+)?\w*PORT\s*[:?]?=\s*\d+\b/.test(line) || /test-servers\.sh start\s+(?:\$|\d)/.test(line))
+      if (/^\s*(?:export\s+)?\w*PORT\s*[:?]?=\s*\d+\b/.test(line) || /test-servers\.mts start\s+(?:\$|\d)/.test(line))
         errors.push(`${path}:${index + 1} fixes a TCP port that the servers of another checkout can hold; let make test-servers choose free ports (scripts/free-ports.mts) and read them from its environment file: ${line.trim()}`);
     });
   }
@@ -435,7 +436,7 @@ export function fixedPortErrors(files: Record<string, string>) {
 // unpublishedOutputErrors는 build 출력을 그 자리에 바로 쓰는 Makefile 줄마다 오류 하나를 돌려준다: `go build -o`나
 // `go test -c -o`의 출력이 @OUT@이 아닌 줄, 표준 출력을 file로 redirect하는 줄(`> file`), tsc를 직접 실행하는 줄.
 // 그런 출력은 끊긴 build가 반쪽 file을 남기고, 다른 실행이나 뒤의 단계가 쓰는 도중의 file을 읽는다. 출력은
-// $(PUBLISH)(scripts/publish-output.sh)로 임시 file에 쓰고 rename하며, TypeScript client는 scripts/typescript/build.mts로
+// $(PUBLISH)(scripts/publish-output.mts)로 임시 file에 쓰고 rename하며, TypeScript client는 scripts/typescript/build.mts로
 // build한다. 주석 줄과 stderr redirect(>&2), /dev/null은 보지 않는다.
 export function unpublishedOutputErrors(makefile: string): string[] {
   const errors: string[] = [];
@@ -451,7 +452,7 @@ export function unpublishedOutputErrors(makefile: string): string[] {
 }
 
 // typescriptHolderErrors는 TypeScript client를 build하는(TSC_BUILD, npm의 typescript:build, typescript:test,
-// typescript:check, 그것을 하는 scripts/client-db-test.sh) make target 가운데 첫 줄에서 그 build 출력의 보유
+// typescript:check, 그것을 하는 scripts/client-db-test.mts) make target 가운데 첫 줄에서 그 build 출력의 보유
 // ($(HOLD_TYPESCRIPT))를 얻지 않는 것마다 오류 하나를 돌려준다.
 export function typescriptHolderErrors(makefile: string): string[] {
   const builds = /\$\(TSC_BUILD\)|typescript:(?:build|test|check)\b|client-db-test\.sh|tests\/conformance\/check run\b/;
@@ -463,7 +464,7 @@ export function typescriptHolderErrors(makefile: string): string[] {
 // unleasedCargoErrors는 Makefile 밖의 명령(검증 명령, script, package.json script)이 공유 Rust target
 // directory(CARGO_TARGET_DIR)에 lease 없이 build하거나 그곳의 program을 실행하는 segment마다 오류 하나를 돌려준다.
 // build는 `"$LEASE" run "$CARGO_LEASES" exclusive --wait --` 아래에서 하고(tests/cargo-test.mts는 스스로 한다),
-// 실행할 program은 그 lease 안에서 실행 하나의 directory로 복사한다(scripts/cargo-build-copy.sh).
+// 실행할 program은 그 lease 안에서 실행 하나의 directory로 복사한다(scripts/cargo-build-copy.mts).
 export function unleasedCargoErrors(units: Unit[]): string[] {
   const errors: string[] = [];
   for (const { name, commands } of units)
@@ -475,7 +476,7 @@ export function unleasedCargoErrors(units: Unit[]): string[] {
         if (cargo && (!leased || leased.index > cargo.index))
           errors.push(`${name} builds into the shared Rust target directory without its lease; run the build under "$LEASE" run "$CARGO_LEASES" exclusive --wait --: ${segment}`);
         if (/\$\{CARGO_TARGET_DIR[^}]*\}\/|\$CARGO_TARGET_DIR\//.test(segment))
-          errors.push(`${name} runs a program of the shared Rust target directory; run a copy made under its lease (scripts/cargo-build-copy.sh): ${segment}`);
+          errors.push(`${name} runs a program of the shared Rust target directory; run a copy made under its lease (scripts/cargo-build-copy.mts): ${segment}`);
       }
   return errors;
 }
@@ -522,13 +523,13 @@ export function typescriptReaderErrors(makefile: string, read: Read): string[] {
 
 // goCargoErrors는 files({path: text})의 Go file이 cargo build나 cargo test를 실행하면서 공유 Rust target
 // directory의 lease(`lease run <CARGO_LEASES> exclusive --wait`)를 쓰지 않을 때마다 오류 하나를 돌려준다. build한
-// program은 그 lease 안에서 복사한 것을 실행한다(scripts/cargo-build-copy.sh).
+// program은 그 lease 안에서 복사한 것을 실행한다(scripts/cargo-build-copy.mts).
 export function goCargoErrors(files: Record<string, string>) {
   const errors: string[] = [];
   for (const [path, text] of Object.entries(files)) {
     if (!/"cargo",\s*"(?:build|test|check|clippy)"/.test(text)) continue;
-    if (!/"exclusive",\s*"--wait"/.test(text) || !/cargo-build-copy\.sh/.test(text))
-      errors.push(`${path} runs cargo without the lease of the shared Rust target directory and a copy of its program; run it through lease run and scripts/cargo-build-copy.sh`);
+    if (!/"exclusive",\s*"--wait"/.test(text) || !/cargo-build-copy\.mts/.test(text))
+      errors.push(`${path} runs cargo without the lease of the shared Rust target directory and a copy of its program; run it through lease run and scripts/cargo-build-copy.mts`);
   }
   return errors;
 }
@@ -544,4 +545,25 @@ export function goRunErrors(units: Unit[]): string[] {
         if (/(?:^|[\s=;&|(])go\s+run\b/.test(segment))
           errors.push(`${name} runs go run, whose build has no step log; run it through tests/go-run.mts: ${segment}`);
   return errors;
+}
+
+/**
+ * scriptCommands is the command text of every script of scripts/, by path: the lines of a shell script, and the COMMANDS
+ * that a TypeScript command script exports (scripts/check/commands.mts), one per line. A TypeScript file of scripts/
+ * that exports no COMMANDS runs no command of a check and is left out.
+ */
+export async function scriptCommands(root: string, tracked: readonly string[]): Promise<Map<string, string>> {
+  const scripts = new Map<string, string>();
+  for (const path of tracked) {
+    if (!path.startsWith('scripts/')) continue;
+    if (path.endsWith('.sh')) scripts.set(path, readFileSync(join(root, path), 'utf8'));
+    else if (path.endsWith('.mts') && /^export const COMMANDS\b/m.test(readFileSync(join(root, path), 'utf8'))) {
+      const module: unknown = await import(join(root, path));
+      const commands = typeof module === 'object' && module !== null && 'COMMANDS' in module ? module.COMMANDS : undefined;
+      if (!Array.isArray(commands) || !commands.every((command): command is string => typeof command === 'string'))
+        throw new Error(`${path} exports COMMANDS that are not a list of command lines`);
+      scripts.set(path, commands.join('\n'));
+    }
+  }
+  return scripts;
 }

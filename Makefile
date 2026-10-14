@@ -1,4 +1,4 @@
-.PHONY: check check-run ci-group-needs feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check runner-check version-check repo-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check scripts-typecheck typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-verify-idempotent docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check install-cli-check feature-unit-check feature-check feature-coverage feature-verify-rust feature-verify-other feature-docs package-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
+.PHONY: check check-run databases-create ci-group-needs feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check runner-check version-check repo-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check scripts-typecheck typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-verify-idempotent docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check install-cli-check feature-unit-check feature-check feature-coverage feature-verify-rust feature-verify-other feature-docs package-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
 # 실패에서 멈추지 않는 target의 독립된 부분이다(scripts/check/run.mts가 make -k로 실행한다).
 .PHONY: version-check/unit version-check/run repo-check/unit repo-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select testcase-check/go testcase-check/node testcase-check/runners testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/model-methods client-unit-check/orm-gen-scan client-unit-check/orm-gen-scan-parity client-unit-check/client-generics client-unit-check/perf-extensions
 .NOTPARALLEL: check check-run docs-check docs-verify-idempotent
@@ -21,7 +21,7 @@ TEST_ENV = .runtime/servers/env
 export ORM_TEST_ENV = $(abspath $(TEST_ENV))
 # DECIMAL_ENV는 decimal database의 DSN을 담은 file이다. decimal 검사와 feature-check의 decimal 명령이
 # 그것을 읽는다. 함께 쓰는 decimal database는 없다: make check, make owner-check, make run-databases가
-# 실행마다 자기 database와 file을 만들어(scripts/check/databases.sh) 이 변수와 TEST_ENV로 준다. bench
+# 실행마다 자기 database와 file을 만들어(scripts/check/databases.mts) 이 변수와 TEST_ENV로 준다. bench
 # database의 DSN(BENCH_*, ORM_BENCH_MYSQL_DSN)도 그 실행의 TEST_ENV에만 있다.
 DECIMAL_ENV =
 export DECIMAL_ENV
@@ -102,9 +102,9 @@ GO_TEST = node tests/go-test.mts -v -timeout 0
 # 기한은 test case 안에만 있다.
 RUN_LONG = node tests/run-long.mts
 # PUBLISH는 다른 실행이나 뒤의 단계가 읽는 build 출력 file을 같은 directory의 임시 file에 쓰고 rename으로
-# 바꾼다(scripts/publish-output.sh): `$(PUBLISH) <output> <command>`에서 명령의 인자 @OUT@이 임시 file이고,
+# 바꾼다(scripts/publish-output.mts): `$(PUBLISH) <output> <command>`에서 명령의 인자 @OUT@이 임시 file이고,
 # @OUT@이 없으면 명령의 표준 출력이 임시 file이다. 읽는 쪽은 끝난 build의 file만 본다.
-PUBLISH = sh $(abspath scripts/publish-output.sh)
+PUBLISH = node $(abspath scripts/publish-output.mts)
 # LEASE는 여러 실행이 함께 쓰는 test 자원의 보유를 다루는 program이다(tests/lease). 그 build는 장기
 # 작업이므로 RUN_LONG으로 기한 없이 실행한다.
 LEASE = $(abspath .runtime/bin/lease)
@@ -122,10 +122,10 @@ CARGO_TEST = node $(abspath tests/cargo-test.mts)
 # RUN_DIR은 target 실행 하나의 directory다($@와 make process id). 그 실행이 쓰는 stress 문서와 build한
 # program의 복사본(RUN_TARGET, CARGO_TARGET_DIR과 같은 배치)을 둔다. 실행은 공유 target directory의
 # program이 아니라 이 복사본을 실행한다. CARGO_COPY는 build와 복사를 한 lease 아래에서 한다
-# (scripts/cargo-build-copy.sh). target은 끝에 RUN_DIR을 지운다.
+# (scripts/cargo-build-copy.mts). target은 끝에 RUN_DIR을 지운다.
 RUN_DIR = $(abspath .runtime/run)/$@-$$PPID
 RUN_TARGET = $(RUN_DIR)/target
-CARGO_COPY = $(CARGO_LEASED) sh $(abspath scripts/cargo-build-copy.sh) $(RUN_TARGET)
+CARGO_COPY = $(CARGO_LEASED) node $(abspath scripts/cargo-build-copy.mts) $(RUN_TARGET)
 # HOLD_TYPESCRIPT은 이 checkout의 TypeScript build 출력(packages/ts의 dist와 생성한 model)을 make
 # process가 끝날 때까지 하나의 보유자로 가진다. 그 출력을 build하고 쓰는 target은 첫 줄에서 그것을 얻으므로,
 # 다른 실행의 build가 쓰는 도중의 출력을 바꾸지 않는다. 다른 실행이 가지면 directory 변경 알림을 기다린다. 조상
@@ -188,6 +188,13 @@ CI_TARGETS_stress_pg_sqlite = feature-stress-pg-sqlite-check
 # (scripts/check/run.mts, make check-run과 같은 runner). bench나 decimal database를 쓰는 target을 직접 실행할 때
 # 쓴다: TEST_ENV의 server 환경에는 그 database가 없다. runner는 MAKEFLAGS를 넘기지 않으므로 conformance-check의
 # VECTOR와 RECORD는 환경으로 넘긴다.
+# databases-create is the setup step databases/create of the runner (scripts/check/run.mts) and of make owner-check: it
+# builds the TypeScript client, whose decimal model installs the decimal database, and holds its shared lease while
+# scripts/check/databases.mts reads it.
+databases-create: typescript-build
+	$(READ_TYPESCRIPT)
+	node scripts/check/databases.mts create '$(SERVERS)' '$(DIRECTORY)' '$(NAME)'
+
 run-databases:
 	$(BUILD_LEASE) && VECTOR='$(VECTOR)' RECORD='$(RECORD)' node scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(TARGETS)
 
@@ -226,7 +233,7 @@ bench:
 	node scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(BENCH_TARGETS)
 
 # go-test-check는 다른 target이 실행하지 않는 Go package의 test를 실행한다. packages/go의
-# package는 client-db-check(scripts/client-db-test.sh), engine과 generator는 feature-check의
+# package는 client-db-check(scripts/client-db-test.mts), engine과 generator는 feature-check의
 # 검증 명령(engine package마다 planner-go-*, engine/dbspec은 schema-go의 dbspec-go-check,
 # generator는 generation-go), internal/testcase는 testcase-check가 같은 명령으로 실행한다.
 GO_TEST_CHECK_PACKAGES = $$(go list ./... | grep -v -e '/packages/go/' -e '/engine$$' -e '/engine/' -e '/generator$$' -e '/internal/testcase$$')
@@ -252,7 +259,7 @@ testcase-check/rust: cargo-downloads-check
 # pooler in transaction mode for PostgreSQL and the ProxySQL pooler for MySQL.
 client-pooler-check: lease-tool
 	$(HOLD_TYPESCRIPT)
-	$(WITH_TEST_ENV) ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" ./scripts/client-db-test.sh
+	$(WITH_TEST_ENV) ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" node scripts/client-db-test.mts
 
 # runner-check는 check runner(scripts/check/run.mts)와 그 실행 기록(scripts/check/record.mts)을 임시 git checkout과 stub 단계로
 # 검사한다. 실제 target과 database는 실행하지 않는다.
@@ -710,12 +717,11 @@ version-check/run:
 
 repo-check: repo-check/unit repo-check/run
 repo-check/unit:
-	$(BUILD_NEW_SESSION)
-	NEW_SESSION=$(NEW_SESSION) node --test scripts/repo/check.test.mts scripts/repo/python-venv.test.mts
+	node --test scripts/repo/check.test.mts scripts/repo/python-venv.test.mts
 repo-check/run:
 	node scripts/repo/check.mts
 
-# test-servers-check는 test-servers.sh의 MySQL 설정 migration(scripts/test-servers-mysql.mts)을 임시
+# test-servers-check는 test-servers.mts의 MySQL 설정 migration(scripts/test-servers-mysql.mts)을 임시
 # root의 서버로 검사한다: 다른 설정은 같은 수로 옮기고, 같은 설정은 아무것도 하지 않으며, 겹칠 이름은
 # 바꾸기 전에 거부한다.
 .PHONY: test-servers-check
@@ -723,10 +729,6 @@ repo-check/run:
 # (tests/stop-process). 그 build는 장기 작업이므로 RUN_LONG으로 기한 없이 실행한다.
 STOP_PROCESS = $(abspath .runtime/bin/stop-process)
 BUILD_STOP_PROCESS = $(RUN_LONG) go-build/stop-process -- $(PUBLISH) $(STOP_PROCESS) go build -o @OUT@ ./tests/stop-process
-# NEW_SESSION은 test server를 새 session에서 시작하는 program이다(tests/new-session): 시작한 shell의 process group을
-# 끝내는 일이 함께 쓰는 server에 닿지 않는다.
-NEW_SESSION = $(abspath .runtime/bin/new-session)
-BUILD_NEW_SESSION = $(RUN_LONG) go-build/new-session -- $(PUBLISH) $(NEW_SESSION) go build -o @OUT@ ./tests/new-session
 
 test-servers-check:
 	$(BUILD_STOP_PROCESS)
@@ -735,20 +737,19 @@ test-servers-check:
 
 test-servers:
 	$(BUILD_STOP_PROCESS)
-	$(BUILD_NEW_SESSION)
 	$(BUILD_LEASE)
-	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) NEW_SESSION=$(NEW_SESSION) ./scripts/test-servers.sh start
+	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) node scripts/test-servers.mts start
 
 # make test-servers-tls loads the TLS files of the MySQL TLS cases into running
 # servers and writes their DSNs into TEST_ENV; make test-servers does it at the
 # start.
 test-servers-tls:
-	./scripts/test-servers.sh tls
+	node scripts/test-servers.mts tls
 
 test-servers-stop:
 	$(BUILD_STOP_PROCESS)
 	$(BUILD_LEASE)
-	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) ./scripts/test-servers.sh stop
+	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) node scripts/test-servers.mts stop
 
 # test-servers-leases는 server의 lease 보유자를 적고, test-servers-leases-clear는 보유자 process가 없어진
 # 죽은 lease(보유자와 releaser가 모두 끝난 것)를 지우며 지운 것을 적는다. 죽은 lease는 다음 요청이 가져가기도 한다(tests/lease).
@@ -809,7 +810,7 @@ feature-verify-other: feature-check/build
 # CI group들이 기능의 검증 명령, helper, stress bench를 동시에 실행한다.
 # FEATURE_SUITE_HELPERS는 check가 make check의 다른 곳에서 실행되는 helper다: conformance-runners는 conformance-check,
 # conformance-result는 그 선행 target conformance-result-check, case-database는 case-database-check, bench-database
-# (scripts/bench-db.sh)는 runner의 setup 단계 databases/create(scripts/check/databases.sh)가 실행한다. feature-helper-check는
+# (scripts/bench-db.mts)는 runner의 setup 단계 databases/create(scripts/check/databases.mts)가 실행한다. feature-helper-check는
 # 그 helper를 빼므로 make check는 helper check마다 한 번 실행한다(make repo-check가 확인한다). make owner-check는 helper의
 # file이 바뀌면 그 helper check를 그대로 실행한다.
 FEATURE_STRESS_MYSQL_HELPERS = dbspec-apply-stress-mysql
@@ -827,7 +828,7 @@ feature-docs:
 	node scripts/features/build.mts
 
 package-check: lease-tool
-	$(RUN_LONG) package -- ./scripts/package-check.sh
+	$(RUN_LONG) package -- node scripts/package-check.mts
 
 # fuzz-check는 fuzzing용으로 instrument한 build와 1초의 fuzzing(-fuzztime)을 함께 하는 장기 작업이므로
 # 각 명령을 RUN_LONG으로 기한 없이 실행한다. fuzzing의 길이는 -fuzztime이 정한다.
@@ -872,7 +873,7 @@ client-unit-check/perf-extensions: php-vendor-check
 # php-min-check runs the PHP client unit tests on the lowest PHP release that
 # packages/php/composer.json supports.
 php-min-check:
-	PHP="$$(./scripts/php/php-min.sh)" && "$$PHP" --version && $(MAKE) --no-print-directory client-unit-check PHP="$$PHP"
+	PHP="$$(node scripts/php/php-min.mts)" && "$$PHP" --version && $(MAKE) --no-print-directory client-unit-check PHP="$$PHP"
 
 # php-without-mysql-check는 MySQL driver(mysqlnd, pdo_mysql, mysqli)를 load하지 않은 PHP에서
 # PHP client를 SQLite로 실행한다(N17): `php -n`에 client가 쓰는 확장만 명시한다. driver가
@@ -880,11 +881,11 @@ php-min-check:
 # Homebrew)에서는 그 이유로 실패한다. make check의 feature-check는 Linux가 아니면 이 검사를
 # 실행하지 않고 Linux runner에서 실행한다고 출력한다.
 php-without-mysql-check:
-	$(RUN_LONG) php-without-mysql -- ./scripts/php-without-mysql.sh
+	$(RUN_LONG) php-without-mysql -- node scripts/php-without-mysql.mts
 
 client-db-check: lease-tool python-statement-fault-check python-identity-load-check python-schema-inspection-check
 	$(HOLD_TYPESCRIPT)
-	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANES=parallel ./scripts/client-db-test.sh
+	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANES=parallel node scripts/client-db-test.mts
 
 # python-statement-fault-check runs the Python statement fault cases on SQLite, MySQL and PostgreSQL; it
 # needs the database variables of make test-servers (WITH_TEST_ENV).
@@ -1038,7 +1039,7 @@ markdown-conformance-check/typescript: lease-tool
 	FLOWMARK=$(FLOWMARK) node --conditions=orm-test packages/ts/tests/markdown_conformance.mjs
 
 decimal-bench-sqlite: lease-tool
-	./scripts/decimal-bench-sqlite.sh
+	node scripts/decimal-bench-sqlite.mts
 
 # decimal-physical-check의 case는 owner process마다 기한(scripts/physical.mts의 TIMEOUT_MS)을 가진다. 그 process가
 # 쓰는 build(Rust test binary decimal_physical, Go decimalmodel test, Go state reader BUILD_CONFORMANCE_STATE)는 장기
@@ -1067,7 +1068,7 @@ ts-model-check: lease-tool
 	node --test packages/ts/tests/models-scan.mjs
 
 perf-check:
-	$(WITH_TEST_ENV) ./scripts/perf-test.sh
+	$(WITH_TEST_ENV) node scripts/perf-test.mts
 
 # scripts-typecheck는 저장소의 TypeScript 기반 스크립트(scripts/와 tests/의 .mts, tsconfig.json)를 tsc로 검사한다.
 # 스크립트 일부는 packages/ts와 packages/dbspec-language(docs/.vitepress/dbs.ts를 거쳐)의 build 출력을 import하므로
@@ -1090,7 +1091,7 @@ ts-check/test: ts-check/hold
 # package.json supports.
 ts-min-check: lease-tool
 	$(HOLD_TYPESCRIPT)
-	$(WITH_TEST_ENV) PATH="$$(./scripts/typescript/node-min.sh):$$PATH" && export PATH && node --version && npm run typescript:test
+	$(WITH_TEST_ENV) PATH="$$(node scripts/typescript/node-min.mts):$$PATH" && export PATH && node --version && npm run typescript:test
 
 # dbspec-ts-check는 TypeScript client를 build하고, 공유 dbspec vector, set file vector, plan vector, Mermaid
 # vector, apply 정리 error, 그것들이 아직 다루지 않는 rule, Unicode word 표가 모든 code point에서 그 구간과
@@ -1280,7 +1281,7 @@ rust-fmt-check/interfaces:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/interfaces --cwd tests/interfaces/rust -- cargo fmt --all --check
 
 rust-150-check: lease-tool
-	$(RUN_LONG) rust-150 -- ./scripts/check-rust-150.sh
+	$(RUN_LONG) rust-150 -- node scripts/check-rust-150.mts
 
 rust-check: rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults
 rust-check/check: lease-tool
@@ -1299,7 +1300,7 @@ rust-check/clippy-test-faults: lease-tool
 # and the parts are independent (make -k).
 
 .PHONY: docs-ci
-.PHONY: install install-interfaces-typescript install-php install-rust install-rust-toolchain install-rust-crates install-go install-node-min install-server-programs install-php-extension-tools ci-php-min-version ci-php-sqlite downloads-check
+.PHONY: install install-interfaces-typescript install-php install-rust install-rust-toolchain install-rust-crates install-go install-node-min install-server-programs install-php-extension-tools ci-php-min-version downloads-check
 install: install-php install-rust install-go install-node-min install-php-extension-tools install-python install-flowmark install-interfaces-typescript
 # install-interfaces-typescript installs the TypeScript 6.0.3 that tests/interfaces/typescript.mts reads declarations with
 # (config/toolchain.json exceptions): TypeScript 7.0 ships no JavaScript API of its compiler.
@@ -1329,24 +1330,20 @@ install-flowmark:
 	$(ONLINE) GOBIN=$(dir $(FLOWMARK)) go install github.com/polyspec/flowmark/cmd/flowmark@$$(cat tests/markdown/flowmark.version)
 	$(ONLINE) go mod download github.com/polyspec/flowmark@$$(cat tests/markdown/flowmark.version)
 install-node-min:
-	$(ONLINE) ORM_NODE_MIN_INSTALL=1 ./scripts/typescript/node-min.sh
+	$(ONLINE) ORM_NODE_MIN_INSTALL=1 node scripts/typescript/node-min.mts
 # install-server-programs는 CI의 Linux runner에 make test-servers가 시작하는 server program을 설치한다
-# (scripts/ci/server-programs.sh).
+# (scripts/ci/server-programs.mts).
 install-server-programs:
-	$(ONLINE) ./scripts/ci/server-programs.sh
+	$(ONLINE) node scripts/ci/server-programs.mts
 # install-php-extension-tools는 PHP 확장 orm_dbspec의 build가 쓰는 phpize와 php-config가 PATH의 PHP 것인지 확인하고,
-# 그 PHP의 gen_stub.php와 PHP-Parser를 .runtime/bin/gen-stub에 둔다(scripts/ci/php-extension-tools.sh).
+# 그 PHP의 gen_stub.php와 PHP-Parser를 .runtime/bin/gen-stub에 둔다(scripts/ci/php-extension-tools.mts).
 install-php-extension-tools:
-	$(ONLINE) ./scripts/ci/php-extension-tools.sh
+	$(ONLINE) node scripts/ci/php-extension-tools.mts
 
 # CI의 setup step은 모두 make target을 실행한다(make repo-check). ci-php-min-version은 make php-min-check의 가장 낮은
-# PHP release를 setup-php의 입력(version=x.y)으로 적고, ci-php-sqlite는 PATH의 두 PHP와 그것이 link한 SQLite를
-# 확인한다.
+# PHP release를 setup-php의 입력(version=x.y)으로 적는다. 각 client는 연결할 때 SQLite 3.46 미만을 거부한다.
 ci-php-min-version:
-	@echo "version=$$(./scripts/php/php-min.sh --version)"
-ci-php-sqlite:
-	"$$(./scripts/php/php-min.sh)" --version
-	php scripts/ci/php-sqlite.php
+	@echo "version=$$(node scripts/php/php-min.mts --version)"
 
 # downloads-check는 check가 읽는 download가 모두 있는지 network 없이 확인하고, 빠진 것을 `run make install`과
 # 함께 적는다(scripts/check/downloads.mts). runner(scripts/check/run.mts)는 같은 확인을 setup 단계 downloads로 실행한다.

@@ -4,7 +4,8 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
-import { AFTER_GROUP_CHECK, CI_PASSED_STEP, CI_PASSED_STEPS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mts';
+import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
+import { AFTER_GROUP_CHECK, CI_PASSED_STEP, CI_PASSED_STEPS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
@@ -18,13 +19,13 @@ import { readComposer, readPackage } from '../json/formats.mts';
 import { kitCopies } from './kit-copies.mts';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { callerPathErrors, deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mts';
-import { callerEnvironmentErrors, generateRuns, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
+import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
 
 // The copies of @polyspec/kit (kit.copies of its package.json) are checked by make kit-check and never edited here, so the
 // rules of this repository do not read them.
 const copies = kitCopies(new URL('../..', import.meta.url).pathname);
 const notVendored = (path: string) => !Object.hasOwn(copies, path);
-const tracked = ['scripts/docs/rules.mts', 'packages/ts/package.json', 'scripts/typescript/sqlite-test.sh'];
+const tracked = ['scripts/docs/rules.mts', 'packages/ts/package.json', 'scripts/typescript/sqlite-test.mts'];
 
 caseTest('a script path must be a tracked file or directory', COMPUTE, () => {
   assert.deepEqual(scriptPathErrors({ 'schema:check': 'node scripts/schema/check.mts' }, tracked), [
@@ -35,7 +36,7 @@ caseTest('a script path must be a tracked file or directory', COMPUTE, () => {
       {
         'docs:rules-check': 'node scripts/docs/rules.mts',
         'typescript:build': 'npm --prefix packages/ts run build',
-        'typescript:test': 'npm run typescript:build && ./scripts/typescript/sqlite-test.sh',
+        'typescript:test': 'npm run typescript:build && node scripts/typescript/sqlite-test.mts',
         'docs:dev': 'vitepress dev docs',
       },
       tracked,
@@ -44,19 +45,18 @@ caseTest('a script path must be a tracked file or directory', COMPUTE, () => {
   );
 });
 
-const servers = readFileSync(new URL('../test-servers.sh', import.meta.url), 'utf8');
 const workflow = readFileSync(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8');
 
 caseTest('the CI workflow provides every variable of make test-servers', COMPUTE, () => {
-  const variables = serverVariables(servers);
+  const variables = SERVER_VARIABLES;
   for (const variable of ['ORM_TEST_MYSQL_REPLICA_DSN', 'ORM_TEST_POSTGRES_REPLICA_DSN', 'ORM_TEST_PROXYSQL_DSN',
     'ORM_TEST_PGBOUNCER_DSN', 'ORM_TEST_PGBOUNCER_SINGLE_DSN', 'ORM_TEST_MYSQL_TLS_DSN', 'ORM_RUN_MYSQL_DSN', 'ORM_RUN_POSTGRES_DSN',
     'ORM_RUN_SQLITE_QUERY', 'ORM_TEST_SERVERS_LEASES'])
-    assert.ok(variables.includes(variable), `${variable} is not read from scripts/test-servers.sh`);
-  assert.deepEqual(ciServerErrors(workflow, servers), []);
+    assert.ok(variables.includes(variable), `${variable} is not written by scripts/test-servers.mts`);
+  assert.deepEqual(ciServerErrors(workflow, SERVER_VARIABLES), []);
 });
 
-// steps와 script는 workflow와 test-servers.sh의 최소 형태다. 각 case는 그 하나를 바꾼다.
+// steps와 script는 workflow의 최소 형태와 test-servers.mts가 쓰는 변수 둘이다. 각 case는 그 하나를 바꾼다.
 const steps = [
   'jobs:',
   '  test:',
@@ -70,13 +70,7 @@ const steps = [
   '          go test ./...',
   '',
 ].join('\n');
-const script = [
-  `cat > "$ENV_FILE.tmp" <<END`,
-  `export ORM_TEST_MYSQL_DSN='$mysql/orm_test'`,
-  `export ORM_TEST_PGBOUNCER_DSN='postgres://orm@127.0.0.1:$PGBOUNCER_PORT/orm_test'`,
-  'END',
-  '',
-].join('\n');
+const script = ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_PGBOUNCER_DSN'];
 
 caseTest('a workflow that starts the servers with make test-servers passes', COMPUTE, () => {
   assert.deepEqual(ciServerErrors(steps, script), []);
@@ -397,11 +391,11 @@ caseTest('every CI group uploads the report directory that the runner writes', C
 });
 
 // group setup case(G5.127)는 CI_GROUPS의 모든 group이 그 target의 need와, 그 need의 setup 단계가 필요로 하는 need의 setup step을
-// 실행하는지 저장소의 Makefile과 contracts/check-inputs.json으로 본다. databases/create는 decimal database를 PHP와 Composer
-// autoload로 설치하므로 databases만 선언한 target의 group도 php output이 필요하다. 선언한 need만 보는 output(대조군)에서는
-// stress-mysql이 PHP와 Composer setup step을 건너뛴다.
+// 실행하는지 저장소의 Makefile과 contracts/check-inputs.json으로 본다. databases/create는 server를 server-programs의
+// program으로 시작하므로 databases만 선언한 target의 group도 server-programs output이 필요하다. 그 output이 databases를
+// 보지 않는 대조군에서는 stress-db가 server-programs setup step을 건너뛴다.
 caseTest('every CI group runs the setup steps of its needs and of the setup step databases/create', COMPUTE, () => {
-  assert.deepEqual(expandNeeds(['databases']), ['databases', 'go', 'php', 'composer', 'server-programs']);
+  assert.deepEqual(expandNeeds(['databases']), ['databases', 'go', 'node-modules', 'server-programs']);
   assert.deepEqual(expandNeeds(['rust', 'go']), ['rust', 'go']);
   const { groups, targets } = ciGroups(text('Makefile'));
   assert.ok(groups.length > 0 && groups.every(group => (targets[group]?.length ?? 0) > 0), groups.join(' '));
@@ -410,11 +404,10 @@ caseTest('every CI group runs the setup steps of its needs and of the setup step
   assert.deepEqual(groupSetupErrors(layout, needs), []);
   const declaredOnly = (names: readonly string[], declared: Record<string, string[]>) => {
     const wanted = new Set(names.flatMap(name => declared[name] ?? []));
-    return Object.fromEntries(Object.entries(GROUP_OUTPUTS).map(([output, from]) => [output, from.some(need => wanted.has(need))]));
+    return Object.fromEntries(Object.entries(GROUP_OUTPUTS).map(([output, from]) => [output, from.filter(need => output !== 'server-programs' || need !== 'databases').some(need => wanted.has(need))]));
   };
-  const skipped = (step: string, need: string) => `CI group stress-db skips the setup step ${step}, which installs ${need}: stress-only needs databases, whose setup step databases/create needs ${need}; scripts/check/ci-setup.mts must set the output php for it`;
-  assert.deepEqual(groupSetupErrors({ 'stress-db': ['stress-only'] }, { 'stress-only': ['go', 'databases'] }, declaredOnly),
-    [skipped('php', 'php'), skipped('php-sqlite', 'php'), skipped('composer', 'composer')]);
+  assert.deepEqual(groupSetupErrors({ 'stress-db': ['stress-only'] }, { 'stress-only': ['go', 'databases'] }, declaredOnly).map(line => line.replace(/ which installs.*/, '')),
+    ['CI group stress-db skips the setup step server-programs,']);
   assert.deepEqual(groupSetupErrors({ 'stress-db': ['stress-only'] }, { 'stress-only': ['go', 'databases'] }), []);
 });
 
@@ -425,9 +418,9 @@ caseTest('a CI group job runs each setup step under its declared condition and r
   assert.equal(stepCondition('composer'), "${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}");
   assert.equal(stepCondition('servers'), "${{ !cancelled() && steps.group-needs.outputs.databases == 'true' }}");
   assert.deepEqual(groupOutputs(['a', 'b'], { a: ['go', 'composer'], b: ['databases'] }),
-    { 'node-modules': false, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: false });
+    { 'node-modules': true, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: false });
   assert.deepEqual(groupOutputs(['b'], { b: ['databases'] }),
-    { 'node-modules': false, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: false });
+    { 'node-modules': true, rust: false, php: false, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false, flowmark: false });
   assert.deepEqual(groupOutputs(['c'], { c: ['go', 'flowmark'] }),
     { 'node-modules': false, rust: false, php: false, 'php-extension-tools': false, 'server-programs': false, databases: false, python: false, flowmark: true });
   assert.throws(() => groupOutputs(['x'], {}), /target x declares no needs in contracts\/check-inputs\.json; declare its scope and needs there/);
@@ -479,7 +472,7 @@ caseTest('the job ci-passed runs last under always() and needs every other job',
 // 중복 실행 case는 저장소의 workflow, Makefile, feature contract와 최소 workflow를 검사한다.
 caseTest('the CI workflow does not run a verification command of feature-check again', COMPUTE, () => {
   const commands = featureCommands(readFeatures(repository.pathname));
-  for (const command of ['./scripts/perf-test.sh', 'PATH="$HOME/.cargo/bin:$PATH" node tests/go-run.mts interfaces-check ./tests/interfaces/check --self-test'])
+  for (const command of ['node scripts/perf-test.mts', 'PATH="$HOME/.cargo/bin:$PATH" node tests/go-run.mts interfaces-check ./tests/interfaces/check --self-test'])
     assert.ok(commands.includes(command), `${command} is not a verification command of contracts/features.json`);
   assert.deepEqual(ciDuplicateCommandErrors(workflow, text('Makefile'), commands), []);
 });
@@ -490,34 +483,35 @@ caseTest('a workflow that runs a verification command of feature-check again fai
     'interface-check:',
     '\tPATH="$(HOME)/.cargo/bin:$(PATH)" go run ./tests/interfaces/check --self-test',
     'perf-check:',
-    '\t$(WITH_TEST_ENV) ./scripts/perf-test.sh',
+    '\t$(WITH_TEST_ENV) node scripts/perf-test.mts',
     'fuzz-check:',
     "\tgo test ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest",
     '',
   ].join('\n');
   const commands = featureCommands({ features: [{ verification: [
     { id: 'interfaces', command: 'PATH="$HOME/.cargo/bin:$PATH" go run ./tests/interfaces/check --self-test' },
-    { id: 'perf', command: './scripts/perf-test.sh' },
+    { id: 'perf', command: 'node scripts/perf-test.mts' },
     { id: 'elsewhere', command: 'php packages/php/tests/CodecVectorsTest.php', cwd: 'packages/php' },
   ] }] });
-  assert.deepEqual(commands, ['PATH="$HOME/.cargo/bin:$PATH" go run ./tests/interfaces/check --self-test', './scripts/perf-test.sh']);
-  const twice = steps.replace('make repo-check', 'make check\n          make interface-check fuzz-check\n          ./scripts/perf-test.sh\n          php packages/php/tests/CodecVectorsTest.php');
+  assert.deepEqual(commands, ['PATH="$HOME/.cargo/bin:$PATH" go run ./tests/interfaces/check --self-test', 'node scripts/perf-test.mts']);
+  const twice = steps.replace('make repo-check', 'make check\n          make interface-check fuzz-check\n          node scripts/perf-test.mts\n          php packages/php/tests/CodecVectorsTest.php');
   assert.deepEqual(ciDuplicateCommandErrors(twice, make, commands), [
     'ci.yml step "checks" runs make interface-check, whose commands make check runs in feature-check',
-    'ci.yml step "checks" runs ./scripts/perf-test.sh, which make check runs in feature-check',
+    'ci.yml step "checks" runs node scripts/perf-test.mts, which make check runs in feature-check',
   ]);
   assert.deepEqual(ciDuplicateCommandErrors(steps.replace('make repo-check', 'make check\n          make fuzz-check'), make, commands), []);
 });
 
 // helper 실행 case(G5.120)는 make check가 helper check마다 한 번 실행하는지 본다: 저장소의 Makefile, feature contract와
-// scripts/check/databases.sh, 그리고 helper를 두 번 실행하거나 한 번도 실행하지 않는 최소 Makefile이다.
+// scripts/check/databases.mts, 그리고 helper를 두 번 실행하거나 한 번도 실행하지 않는 최소 Makefile이다.
 caseTest('make check runs the check of every helper once', COMPUTE, () => {
-  assert.deepEqual(helperRunErrors(readFeatures(repository.pathname), text('Makefile'), text('scripts/check/databases.sh')), []);
+  assert.deepEqual(helperRunErrors(readFeatures(repository.pathname), text('Makefile'), scriptTexts.get('scripts/check/databases.mts') ?? ''), []);
   const manifest = { features: [], helpers: [
     { id: 'plain', command: 'php tests/plain_test.php' },
     { id: 'suite', command: 'make --no-print-directory TEST_ENV="$ORM_TEST_ENV" suite-check' },
     { id: 'nested', command: 'make --no-print-directory nested-check' },
     { id: 'seed', command: 'sh scripts/seed.sh' },
+    { id: 'seedts', command: 'node scripts/seedts.mts' },
     { id: 'stress', command: 'make stress-bench' },
   ] };
   const make = (suite: string, stress: string) => [
@@ -536,17 +530,18 @@ caseTest('make check runs the check of every helper once', COMPUTE, () => {
     '	go test ./nested',
     '',
   ].join('\n');
-  const setup = 'BENCH_MYSQL_DSN=x "$ROOT/scripts/seed.sh"\n';
-  assert.deepEqual(helperRunErrors(manifest, make('suite nested seed', 'stress'), setup), []);
+  const setup = 'BENCH_MYSQL_DSN=x "$ROOT/scripts/seed.sh"\nBENCH_MYSQL_DSN=x node "$ROOT/scripts/seedts.mts"\n';
+  assert.deepEqual(helperRunErrors(manifest, make('suite nested seed seedts', 'stress'), setup), []);
   const twice = (id: string, places: string) => `make check runs the check of helper ${id} 2 times: ${places}; run it once, and add a helper whose check a target or setup step of make check runs to FEATURE_SUITE_HELPERS, which make feature-helper-check leaves out`;
   assert.deepEqual(helperRunErrors(manifest, make('suite', 'stress'), setup), [
     twice('nested', 'make helper-check; make nested-check, a target of make check'),
-    twice('seed', 'make helper-check; the setup step databases/create of make check (scripts/check/databases.sh runs scripts/seed.sh)'),
+    twice('seed', 'make helper-check; the setup step databases/create of make check (scripts/check/databases.mts runs scripts/seed.sh)'),
+    twice('seedts', 'make helper-check; the setup step databases/create of make check (scripts/check/databases.mts runs scripts/seedts.mts)'),
   ]);
-  assert.deepEqual(helperRunErrors(manifest, make('suite nested seed plain', 'stress'), setup), [
+  assert.deepEqual(helperRunErrors(manifest, make('suite nested seed seedts plain', 'stress'), setup), [
     'make check runs no check of helper plain: no target of CHECK_TARGETS selects it and its command is no target or setup step of make check; leave it out of FEATURE_STRESS_HELPERS and FEATURE_SUITE_HELPERS so that make feature-helper-check runs it',
   ]);
-  assert.deepEqual(helperRunErrors(manifest, make('suite nested seed', 'stress').replace('--helpers $(addprefix --without-helper ,$(STRESS) $(SUITE))', '--helpers $(addprefix --without-helper ,$(SUITE))'), setup), [
+  assert.deepEqual(helperRunErrors(manifest, make('suite nested seed seedts', 'stress').replace('--helpers $(addprefix --without-helper ,$(STRESS) $(SUITE))', '--helpers $(addprefix --without-helper ,$(SUITE))'), setup), [
     twice('stress', 'make helper-check; make stress-check'),
   ]);
 });
@@ -632,7 +627,7 @@ caseTest('the lowest PHP release comes only from the php-min step', COMPUTE, () 
   ].join('\n');
   assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': minimum }, '8.5'), []);
   assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': minimum.replace('        id: php-min\n', '') }, '8.5'), [
-    'ci.yml reads steps.php-min.outputs.version without the step that writes it from ./scripts/php/php-min.sh',
+    'ci.yml reads steps.php-min.outputs.version without the step that writes it from node scripts/php/php-min.mts',
   ]);
   const reversed = minimum.replace('          php-version: ${{ steps.php-min.outputs.version }}', '          php-version-file: .php-version#')
     .replace('          php-version-file: .php-version\n          coverage: none\n      - run', '          php-version: ${{ steps.php-min.outputs.version }}\n          coverage: none\n      - run').replace('.php-version#', '.php-version');
@@ -641,27 +636,19 @@ caseTest('the lowest PHP release comes only from the php-min step', COMPUTE, () 
   ]);
 });
 
-// The socket case runs a copy of test-servers.sh whose declared socket folder
-// (SOCKET_DIR, T135) is long. Before any server starts, the script must fail
-// naming the first socket path over the platform limit (Linux 107, macOS 103
-// bytes) and that limit, creating neither the socket folder nor the servers
-// directory. That the real declaration fits for any checkout is the case of
+// The socket case starts the servers of a checkout whose socket folder (T135) is long. Before any server starts, start
+// must fail naming the first socket path over the platform limit (Linux 107, macOS 103 bytes) and that limit, creating
+// neither the socket folder nor the servers directory. That the real declaration fits for any checkout is the case of
 // scripts/test-servers.test.mts.
-caseTest('test-servers.sh refuses a socket path longer than the platform limit', PROCESS, () => {
+caseTest('test-servers.mts refuses a socket path longer than the platform limit', PROCESS, async () => {
   const limits: Partial<Record<NodeJS.Platform, number>> = { linux: 107, darwin: 103 };
   const limit = limits[process.platform];
   assert.ok(limit !== undefined, `the socket path limit of ${process.platform} is not known`);
-  assert.ok(limit, `no socket path limit for ${process.platform}`);
-  const script = readFileSync(new URL('../test-servers.sh', import.meta.url), 'utf8');
-  const declaration = /^SOCKET_DIR=.*$/m;
-  assert.match(script, declaration, 'test-servers.sh declares no SOCKET_DIR line');
   const base = mkdtempSync('/tmp/orm-sock-');
   try {
-    mkdirSync(join(base, 'scripts'));
-    const copy = join(base, 'scripts/test-servers.sh');
     const fits = (name: string) => (folder: string) => Buffer.byteLength(join(folder, name)) <= limit;
-    // The first folder puts even the shortest socket, mysql.sock, over the
-    // limit; the second only the longest, proxysql-admin-pgsql.sock.
+    // The first folder puts even the shortest socket, mysql.sock, over the limit; the second only the longest,
+    // proxysql-admin-pgsql.sock.
     const deep = (name: string, keep?: (folder: string) => boolean) => {
       let folder = join(base, 'sockets');
       while (fits(name)(folder)) {
@@ -672,11 +659,10 @@ caseTest('test-servers.sh refuses a socket path longer than the platform limit',
     };
     const system = process.platform === 'linux' ? 'Linux' : 'macOS';
     for (const [folder, name] of [[deep('mysql.sock'), 'mysql.sock'], [deep('proxysql-admin-pgsql.sock', fits('mysql.sock')), 'proxysql-admin-pgsql.sock']] as const) {
-      writeFileSync(copy, script.replace(declaration, `SOCKET_DIR='${folder}'`));
-      const result = spawnSync('sh', [copy, 'start'], { encoding: 'utf8' });
       const socket = join(folder, name);
-      assert.equal(result.status, 1, result.stderr);
-      assert.equal(result.stderr, `test-servers: socket path ${socket} is ${Buffer.byteLength(socket)} bytes; ${system} allows at most ${limit}\n`);
+      await assert.rejects(startServers(['start'], serverPaths(base, folder)),
+        (error: unknown) => error instanceof TestServerError && error.status === 1 &&
+          error.message === `test-servers: socket path ${socket} is ${Buffer.byteLength(socket)} bytes; ${system} allows at most ${limit}`);
       assert.equal(existsSync(join(base, 'sockets')), false, 'the socket folder was created');
       assert.equal(existsSync(join(base, '.runtime/servers')), false, 'the servers directory was created');
     }
@@ -736,7 +722,7 @@ caseTest('commands outside the Makefile build into the shared Rust target direct
   const { packageUnits } = runUnits();
   const files = new Set(trackedFiles('*'));
   const commands = [...makeRecipes(text('Makefile')), ...featureUnits(), ...packageUnits].flatMap(unit => unit.commands.map(command => ({ command })));
-  const scripts = reachedScripts(commands, (path: string) => files.has(path) ? text(path) : undefined, { throughLong: true });
+  const scripts = reachedScripts(commands, readScript, { throughLong: true });
   assert.deepEqual(unleasedCargoErrors([...featureUnits(), ...packageUnits, ...scripts]), []);
   const unit = (name: string, command: string) => ({ name, commands: [command] });
   const build = (segment: string) => `x builds into the shared Rust target directory without its lease; run the build under "$LEASE" run "$CARGO_LEASES" exclusive --wait --: ${segment}`;
@@ -746,7 +732,7 @@ caseTest('commands outside the Makefile build into the shared Rust target direct
     unit('x', 'node tests/cargo-test.mts a -- cargo test --locked --test a'),
     unit('x', '"${CARGO_TARGET_DIR:?unset; run make}/debug/integration" a'),
   ]), [build('node tests/run-long.mts b -- cargo build --locked'),
-    'x runs a program of the shared Rust target directory; run a copy made under its lease (scripts/cargo-build-copy.sh): "${CARGO_TARGET_DIR:?unset; run make}/debug/integration" a']);
+    'x runs a program of the shared Rust target directory; run a copy made under its lease (scripts/cargo-build-copy.mts): "${CARGO_TARGET_DIR:?unset; run make}/debug/integration" a']);
 });
 
 // TypeScript 읽기 case는 저장소의 Makefile과 최소 Makefile, file을 검사한다.
@@ -823,53 +809,42 @@ caseTest('every tool of the repository is written in Go, PHP, Rust or TypeScript
   ]);
 });
 
-// start_logged case는 test-servers.sh의 start_logged를 그대로 꺼내 가짜 서버로 실행한다. 서버 시작은 장기
-// 작업이므로 기한이 없다. 준비 줄을 쓰고 계속 실행하면 start_logged는 서버가 끝나기 전에 돌아와야 하고
-// (Ubuntu의 mawk처럼 pipe를 block 단위로 읽는 reader는 서버가 끝날 때까지 줄을 넘기지 않는다), 준비 줄
-// 앞의 줄은 stderr에 보인다. 1.5초 뒤에야 준비 줄을 쓰는 느리지만 정상인 서버도 시작하고, 준비 줄 없이
-// 끝나는 서버는 log와 함께 실패한다.
-caseTest('start_logged waits for a ready line or an exit, with no deadline', COMPUTE, () => {
-  const script = readFileSync(new URL('../test-servers.sh', import.meta.url), 'utf8');
-  const start = script.indexOf('start_logged() {');
-  const body = script.slice(start, script.indexOf('\n}\n', start) + 3);
-  assert.ok(start >= 0 && body.endsWith('}\n'), 'start_logged is absent from scripts/test-servers.sh');
-  assert.doesNotMatch(body, /\bsleep\b|\btimeout\b|deadline=/, 'start_logged has a timer');
-  assert.ok(!script.split('\n').some(text => !/^\s*#/.test(text) && /\bpg_ctl\b.*\s-w\b/.test(text)), 'pg_ctl -w waits at most 60 s');
+// startLogged case는 test-servers.mts의 startLogged로 가짜 서버를 시작한다. 서버 시작은 장기 작업이므로 기한이 없다. 준비
+// 줄을 쓰고 계속 실행하면 startLogged는 서버가 끝나기 전에 돌아와야 하고, 준비 줄까지의 줄은 stderr에 보인다. 1.5초
+// 뒤에야 준비 줄을 쓰는 느리지만 정상인 서버도 시작하고, 준비 줄 없이 끝나는 서버는 log와 함께 실패한다. 서버는 시작한
+// process의 process group 밖, 자기 session에서 실행된다(G5.62). 출력은 다른 node process의 file로 받는다.
+caseTest('startLogged waits for a ready line or an exit, with no deadline', PROCESS, () => {
   const dir = mkdtempSync(join(tmpdir(), 'orm-logged-'));
   try {
-    // 출력은 file로 받는다: 계속 실행하는 가짜 서버와 reader는 pipe를 열어 두므로, pipe로 받으면
-    // spawnSync가 shell이 끝난 뒤에도 서버가 끝날 때까지 기다린다.
-    const newSession = process.env.NEW_SESSION;
-    assert.ok(newSession, 'NEW_SESSION is unset; run make repo-check, which builds it');
+    const module = new URL('../test-servers.mts', import.meta.url).pathname;
     const run = (server: string) => {
       const out = join(dir, 'stdout'), err = join(dir, 'stderr');
-      const status = spawnSync('sh', ['-c', `set -eu\nDIR=${dir}\nNEW_SESSION=${newSession}\n${body}\nstart_logged fake 'accepting connections' sh -c '${server}'\necho returned`],
-        { stdio: ['ignore', openSync(out, 'w'), openSync(err, 'w')], timeout: 20_000 }).status;
+      const code = `const { startLogged, TestServerError } = await import(${JSON.stringify(module)});
+try { await startLogged(${JSON.stringify(dir)}, 'fake', 'accepting connections', 'sh', ['-c', ${JSON.stringify(server)}]); console.log('returned'); }
+catch (error) { if (!(error instanceof TestServerError)) throw error; console.error(error.message); process.exitCode = 1; }`;
+      const status = spawnSync(process.execPath, ['--input-type=module', '-e', code], { stdio: ['ignore', openSync(out, 'w'), openSync(err, 'w')], timeout: 20_000 }).status;
       return { status, stdout: readFileSync(out, 'utf8'), stderr: readFileSync(err, 'utf8') };
     };
-    const alive = () => spawnSync('sh', ['-c', `kill -0 $(cat ${dir}/fake.pid)`]).status === 0;
+    const pid = () => Number(readFileSync(join(dir, 'fake.pid'), 'utf8').trim());
+    const alive = () => { try { process.kill(pid(), 0); return true; } catch { return false; } };
     const ready = run('echo starting; echo now accepting connections; echo serving; exec sleep 30');
     assert.equal(ready.status, 0, ready.stderr);
     assert.equal(ready.stdout, 'returned\n');
     assert.equal(ready.stderr, 'test-servers: fake: starting\ntest-servers: fake: now accepting connections\n');
-    // start_logged는 서버가 끝나기 전에 돌아왔다: 돌아온 뒤에도 서버가 실행 중이다.
-    assert.ok(alive(), 'start_logged returned only after the server ended');
-    // 서버는 시작한 명령의 process group 밖, 자기 session에서 실행된다(G5.62).
-    const groupOf = (pid: string|number) => spawnSync('ps', ['-o', 'pgid=', '-p', String(pid)], { encoding: 'utf8' }).stdout.trim();
-    const server = readFileSync(join(dir, 'fake.pid'), 'utf8').trim();
-    assert.notEqual(groupOf(server), groupOf(process.pid), 'the server runs in the process group of the command that started it');
+    assert.ok(alive(), 'startLogged returned only after the server ended');
+    const groupOf = (id: number) => spawnSync('ps', ['-o', 'pgid=', '-p', String(id)], { encoding: 'utf8' }).stdout.trim();
+    assert.notEqual(groupOf(pid()), groupOf(process.pid), 'the server runs in the process group of the command that started it');
     assert.match(readFileSync(join(dir, 'fake.log'), 'utf8'), /^starting\nnow accepting connections\n/);
-    spawnSync('sh', ['-c', `kill $(cat ${dir}/fake.pid)`]);
+    process.kill(pid());
     rmSync(join(dir, 'fake.log'));
-    // 느린 서버는 준비 줄 바로 앞에 marker file을 만든다. start_logged가 돌아왔을 때 그 file이 있으면 준비 줄을
-    // 기다린 것이다. 앞의 줄에 돌아왔다면 file은 아직 없다.
+    // 느린 서버는 준비 줄 바로 앞에 marker file을 만든다. startLogged가 돌아왔을 때 그 file이 있으면 준비 줄을 기다린 것이다.
     const slow = run(`echo starting; sleep 1.5; echo still starting; sleep 1; touch ${dir}/ready-marker; echo now accepting connections; exec sleep 30`);
     assert.equal(slow.status, 0, slow.stderr);
     assert.equal(slow.stdout, 'returned\n');
     assert.equal(slow.stderr, 'test-servers: fake: starting\ntest-servers: fake: still starting\ntest-servers: fake: now accepting connections\n');
-    assert.ok(existsSync(join(dir, 'ready-marker')), 'start_logged returned before the slow server logged its ready line');
-    assert.ok(alive(), 'start_logged returned only after the slow server ended');
-    spawnSync('sh', ['-c', `kill $(cat ${dir}/fake.pid)`]);
+    assert.ok(existsSync(join(dir, 'ready-marker')), 'startLogged returned before the slow server logged its ready line');
+    assert.ok(alive(), 'startLogged returned only after the slow server ended');
+    process.kill(pid());
     rmSync(join(dir, 'fake.log'));
     const exited = run('echo starting; exit 3');
     assert.equal(exited.status, 1);
@@ -1007,6 +982,12 @@ caseTest('Rust tests read the paths of package programs when they run', COMPUTE,
 
 // test 선언 case는 저장소의 JavaScript file과 최소 file을 검사한다.
 const trackedFiles = (pattern: string) => execFileSync('git', ['ls-files', '-z', pattern], { cwd: repository }).toString().split('\0').filter(Boolean).filter(notVendored);
+
+// scriptTexts는 scripts/의 script마다 그 명령 text다(scriptCommands): shell script의 줄과 TypeScript 명령 script의 COMMANDS.
+// readScript는 reachedScripts가 따라가는 path를 그것으로 읽고, 명령 script가 아닌 TypeScript file은 읽지 않는다.
+const scriptTexts = await scriptCommands(repository.pathname, trackedFiles('*'));
+const trackedAll = new Set(trackedFiles('*'));
+const readScript = (path: string) => scriptTexts.get(path) ?? (trackedAll.has(path) && !path.endsWith('.mts') ? text(path) : undefined);
 const trackedTexts = (paths: string[]) => Object.fromEntries(paths.map((path: string) => [path, text(path)]));
 
 caseTest('every JavaScript test declares its cases with caseTest', COMPUTE, () => {
@@ -1087,7 +1068,7 @@ caseTest('every PHP and TypeScript test that a check runs reports its cases', CO
   const commands = [
     ...text('Makefile').split('\n').filter(line => line.startsWith('\t')).map(line => ({ source: 'Makefile', command: line.slice(1) })),
     ...featureCommands(readFeatures(repository.pathname)).map(command => ({ source: 'contracts/features.json', command })),
-    ...trackedFiles('scripts/*.sh').flatMap(path => text(path).split('\n').map(command => ({ source: path, command }))),
+    ...[...scriptTexts].flatMap(([path, lines]) => lines.split('\n').map(command => ({ source: path, command }))),
     ...Object.values(readPackage(join(repository.pathname, 'package.json')).scripts ?? {}).map(command => ({ source: 'package.json', command })),
   ];
   const files = new Set(trackedFiles('*'));
@@ -1166,13 +1147,13 @@ const runUnits = () => {
   const packageUnits = Object.entries(readPackage(join(repository.pathname, 'package.json')).scripts ?? {}).map(([name, command]) => ({ name: `package.json ${name}`, commands: [command] }));
   const files = new Set(trackedFiles('*'));
   const commands = [...recipes, ...featureUnits(), ...packageUnits].flatMap(unit => unit.commands.map(command => ({ command })));
-  return { recipes, packageUnits, scripts: reachedScripts(commands, (path: string) => files.has(path) ? text(path) : undefined) };
+  return { recipes, packageUnits, scripts: reachedScripts(commands, readScript) };
 };
 
 caseTest('every cargo test run goes through cargo-test.mts', COMPUTE, () => {
   const { recipes, packageUnits, scripts } = runUnits();
-  assert.ok(scripts.some(unit => unit.name === 'scripts/client-db-test.sh'));
-  assert.ok(!scripts.some(unit => unit.name === 'scripts/package-check.sh'), 'package-check.sh runs under run-long');
+  assert.ok(scripts.some(unit => unit.name === 'scripts/client-db-test.mts'));
+  assert.ok(!scripts.some(unit => unit.name === 'scripts/package-check.mts'), 'package-check.sh runs under run-long');
   assert.deepEqual(unbuiltCargoTestErrors([...recipes, ...featureUnits(), ...packageUnits, ...scripts]), []);
 });
 
@@ -1191,7 +1172,7 @@ caseTest('a cargo test run outside cargo-test.mts, or a build under a deadline, 
 
 caseTest('every build tool of the Makefile, package.json and the scripts runs under run-long', COMPUTE, () => {
   const { recipes, packageUnits, scripts } = runUnits();
-  assert.ok(scripts.some(unit => unit.name === 'scripts/typescript/sqlite-test.sh'));
+  assert.ok(scripts.some(unit => unit.name === 'scripts/typescript/sqlite-test.mts'));
   assert.deepEqual(unwrappedToolErrors([...recipes, ...packageUnits.filter(unit => segments(unit.commands[0] ?? '').length > 1), ...scripts]), []);
 });
 
@@ -1288,8 +1269,8 @@ caseTest('no check puts a deadline on a long operation', COMPUTE, () => {
   const { recipes, packageUnits } = runUnits();
   const files = new Set(trackedFiles('*'));
   const commands = [...recipes, ...featureUnits(), ...packageUnits].flatMap(unit => unit.commands.map(command => ({ command })));
-  const scripts = reachedScripts(commands, (path: string) => files.has(path) ? text(path) : undefined, { throughLong: true });
-  assert.ok(scripts.some(unit => unit.name === 'scripts/package-check.sh'), 'the scripts under run-long are checked');
+  const scripts = reachedScripts(commands, readScript, { throughLong: true });
+  assert.ok(scripts.some(unit => unit.name === 'scripts/package-check.mts'), 'the scripts under run-long are checked');
   const expanded = recipes.map(unit => ({ name: unit.name, commands: unit.commands.map(command => expand(command, variables)) }));
   assert.deepEqual(longDeadlineErrors([...expanded, ...featureUnits(), ...packageUnits, ...scripts]), []);
 });
@@ -1297,7 +1278,7 @@ caseTest('no check puts a deadline on a long operation', COMPUTE, () => {
 caseTest('a deadline on a long operation fails', COMPUTE, () => {
   const message = (name: string, form: string, segment: string) => `${name} puts a deadline (${form}) on a long operation; it gets step logs and no deadline, and only a test case has its own: ${segment}`;
   const units = {
-    'run-case': 'node tests/run-case.mjs package 8m -- ./scripts/package-check.sh',
+    'run-case': 'node tests/run-case.mjs package 8m -- node scripts/package-check.mts',
     make: '$(RUN_CASE) go-fmt $(TOOL_DEADLINE) -- gofmt -l .',
     variable: 'node tests/run-long.mts x -- sh -c "sleep $(BUILD_DEADLINE)"',
     timeout: 'timeout 600 cargo build --locked',
@@ -1624,7 +1605,7 @@ caseTest('a failure message for a missing condition names its fix', COMPUTE, () 
 });
 
 caseTest('no Makefile or script fixes a TCP port of the test servers', COMPUTE, () => {
-  const makefile = ['TEST_MYSQL_PORT = 33171', '# TEST_POSTGRES_PORT = 55471', 'test-servers:', '\t./scripts/test-servers.sh start $(TEST_MYSQL_PORT)', '\t./scripts/test-servers.sh start'].join('\n');
+  const makefile = ['TEST_MYSQL_PORT = 33171', '# TEST_POSTGRES_PORT = 55471', 'test-servers:', '\tnode scripts/test-servers.mts start $(TEST_MYSQL_PORT)', '\tnode scripts/test-servers.mts start'].join('\n');
   assert.deepEqual(fixedPortErrors({ Makefile: makefile, 'scripts/a.sh': 'export PGPORT=5432\nport=$(node scripts/free-ports.mts 1)\n' }).map(error => error.split(' fixes ')[0]), [
     'Makefile:1', 'Makefile:4', 'scripts/a.sh:1',
   ]);

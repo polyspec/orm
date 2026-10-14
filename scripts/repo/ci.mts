@@ -4,13 +4,9 @@ import { parseSelection, selectChecks } from '../features/select.mts';
 import { runName } from '../check/report.mts';
 
 // CI workflow의 database 서버 검사. make check의 database 검사는 make test-servers
-// (scripts/test-servers.sh)가 쓴 .runtime/servers/env의 변수를 읽으므로, workflow는 같은 정의로
+// (scripts/test-servers.mts)가 쓴 .runtime/servers/env의 변수를 읽으므로, workflow는 같은 정의로
 // 서버를 시작하고 그 모든 변수를 검사 단계에 준다.
 
-// serverVariables는 scripts/test-servers.sh가 환경 file에 쓰는 변수 이름을 돌려준다.
-export function serverVariables(serversScript: string): string[] {
-  return [...new Set([...serversScript.matchAll(/export ([A-Z][A-Z0-9_]*)=/g)].map(match => match[1] ?? ''))];
-}
 
 // workflowSteps는 workflow의 step마다 이름, id, timeout-minutes와 run text를 돌려준다. step은 `steps:` 아래 한 단계
 // 깊은 `- `로 시작하고, run text는 한 줄 값이거나 그 아래 더 깊은 block이다.
@@ -98,16 +94,15 @@ const startsServers = (run: string): boolean => /^make test-servers\s*$/m.test(r
 // make install과 그 부분(install-*)은 server 없이 download만 하므로 server보다 앞서도 된다.
 const runsMake = (run: string): boolean => /^make\s+(?!install(?:-[\w-]+)?(?:\s+install(?:-[\w-]+)?)*\s*$)/m.test(run) && !startsServers(run);
 
-// ciServerErrors는 workflow가 database 검사의 서버와 변수를 test-servers.sh와 같은 정의로 주지
+// ciServerErrors는 workflow가 database 검사의 서버와 변수를 test-servers.mts와 같은 정의로 주지
 // 않거나 symbolic link를 만드는 곳마다 오류 하나를 돌려준다.
 //   - make test-servers를 실행하는 step이 없으면 workflow가 적지 않은 각 변수가 오류다.
 //   - make를 실행하는 다른 step이 그 step보다 앞서면 오류다.
 //   - workflow가 그 변수를 직접 정의하거나 .runtime/servers/env를 직접 쓰면 오류다.
 //   - symbolic link를 만드는 step(ln -s, symlink)은 오류다.
-export function ciServerErrors(workflow: string, serversScript: string): string[] {
-  const variables = serverVariables(serversScript);
+export function ciServerErrors(workflow: string, variables: readonly string[]): string[] {
   const errors: string[] = [];
-  if (variables.length === 0) return ['scripts/test-servers.sh writes no environment variable'];
+  if (variables.length === 0) return ['scripts/test-servers.mts writes no environment variable'];
   const steps = workflowSteps(workflow);
   const server = steps.findIndex(step => startsServers(step.run));
   if (server === -1) {
@@ -351,7 +346,7 @@ export function helperEnvironmentErrors(manifest: HelperManifest, makefile: stri
 // helperRunErrors는 make check가 contracts/features.json의 helper check를 한 번이 아니게 실행하는 helper마다 오류 하나를
 // 돌려준다. helper check를 실행하는 곳은 셋이다: CHECK_TARGETS의 recipe가 `node scripts/features/check.mts --run`으로 그
 // helper를 고르는 target, helper의 명령이 `make ... <target>`이고 그 target이 make check의 target이나 그 선행 target인 경우의
-// 그 target, helper의 명령이 `sh <script>`이고 runner의 setup 단계 databases/create(setupScript, scripts/check/databases.sh)가
+// 그 target, helper의 명령이 `sh <script>`이고 runner의 setup 단계 databases/create(setupScript, the commands of scripts/check/databases.mts)가
 // 그 script를 실행하는 경우의 그 setup 단계다. 같은 일을 두 번 하는 실행은 시간만 쓰고, 한 번도 실행하지 않는 helper는
 // make check가 검사하지 않는다.
 export function helperRunErrors(manifest: HelperManifest & Parameters<typeof selectChecks>[0], makefile: string, setupScript: string): string[] {
@@ -377,8 +372,9 @@ export function helperRunErrors(manifest: HelperManifest & Parameters<typeof sel
     const make = /^make\s+(.*)$/.exec(helper.command.trim())?.[1];
     for (const word of make?.split(/\s+/) ?? [])
       if (!word.startsWith('-') && !word.includes('=') && reached.has(word)) places.get(helper.id)?.push(`make ${word}, a target of make check`);
-    const script = /^sh\s+(\S+\.sh)$/.exec(helper.command.trim())?.[1];
-    if (script && setupScript.includes(script)) places.get(helper.id)?.push(`the setup step databases/create of make check (scripts/check/databases.sh runs ${script})`);
+    // A helper that is a script (sh <file>.sh or node <file>.mts) is run by the setup step when that step runs the script.
+    const script = /^(?:sh\s+(\S+\.sh)|node\s+(\S+\.mts))$/.exec(helper.command.trim())?.slice(1).find(Boolean);
+    if (script && setupScript.includes(script)) places.get(helper.id)?.push(`the setup step databases/create of make check (scripts/check/databases.mts runs ${script})`);
   }
   const errors: string[] = [];
   for (const [id, runs] of places) {

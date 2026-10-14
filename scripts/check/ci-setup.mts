@@ -30,7 +30,6 @@ export const CI_SETUP: Record<string, string | null> = {
   'php-min': 'php-min',
   'php-min-release': 'php-min',
   php: 'php',
-  'php-sqlite': 'php',
   composer: 'composer',
   'php-extension-tools': 'php-extension-tools',
   'server-programs': 'server-programs',
@@ -48,11 +47,10 @@ export const RUNNER_STEPS = ['checkout', 'node'];
 export const NEEDS = ['databases', ...new Set(Object.values(CI_SETUP).filter(Boolean).filter(need => need !== 'databases'))];
 
 // GROUP_OUTPUTS는 step group-needs가 쓰는 output마다 그 output을 true로 만드는 need다. php는 PHP 두 release(가장 낮은
-// release와 .php-version), 그 SQLite 확인과 Composer를 함께 설치한다: Composer와 PHP 확장 도구는 PATH의 PHP로 실행하고,
-// ci-php-sqlite는 두 PHP를 모두 확인한다. server-programs는 make test-servers가 server를 시작하는 program이므로
-// databases도 그것을 필요로 한다.
+// release와 .php-version)와 Composer를 함께 설치한다: Composer와 PHP 확장 도구는 PATH의 PHP로 실행한다. server-programs는 make test-servers가 server를 시작하는 program이고 node-modules는
+// make databases-create가 build하는 TypeScript client의 의존성이므로 databases도 둘을 필요로 한다.
 export const GROUP_OUTPUTS: Record<string, string[]> = {
-  'node-modules': ['node-modules'],
+  'node-modules': ['node-modules', 'databases'],
   rust: ['rust'],
   php: ['php', 'php-min', 'composer', 'php-extension-tools'],
   'php-extension-tools': ['php-extension-tools'],
@@ -78,7 +76,6 @@ export const STEP_OUTPUT: Record<string, string | null> = {
   'php-min': 'php',
   'php-min-release': 'php',
   php: 'php',
-  'php-sqlite': 'php',
   composer: 'php',
   'php-extension-tools': 'php-extension-tools',
   'server-programs': 'server-programs',
@@ -95,11 +92,11 @@ export const stepCondition = (id: string): string => STEP_OUTPUT[id]
   : '${{ !cancelled() }}';
 
 // SETUP_NEEDS는 runner의 setup 단계가 마련하는 need마다 그 단계 자신이 필요로 하는 need다. databases는 setup 단계
-// servers와 databases/create(scripts/check/databases.sh)가 마련한다: server는 make test-servers가 server-programs의
-// program으로 시작하고, databases.sh는 bench database를 Go program으로(scripts/bench-db.sh), decimal database를
-// scripts/decimal-db-setup.php로 설치하며, 그 PHP는 packages/php의 Composer autoload(vendor)를 읽는다. 그래서 databases가
-// 필요한 target은 이 need도 필요하다(expandNeeds).
-export const SETUP_NEEDS: Record<string, string[]> = { databases: ['go', 'php', 'composer', 'server-programs'] };
+// servers와 databases/create(scripts/check/databases.mts)가 마련한다: server는 make test-servers가 server-programs의
+// program으로 시작하고, databases.mts는 bench database를 Go program으로(scripts/bench-db.mts),
+// decimal database를 TypeScript client의 decimal model로 설치하며, make databases-create가 그 client를 build한다. 그래서 databases가 필요한 target은 이 need도 필요하다(expandNeeds).
+// php-min은 그 release를 scripts/php/php-min.mts로 읽고, 그 script는 composer.json을 schema로 읽으므로 node_modules가 필요하다.
+export const SETUP_NEEDS: Record<string, string[]> = { databases: ['go', 'node-modules', 'server-programs'], 'php-min': ['node-modules'] };
 
 // expandNeeds는 need 목록에 SETUP_NEEDS가 적는 need를 끝까지 더한 목록이다(선언한 순서, 그다음 더한 순서).
 export function expandNeeds(needs: readonly string[]): string[] {
