@@ -186,7 +186,7 @@ func TestPlanVectors(t *testing.T) {
 		t.Run(c.ID, func(t *testing.T) { checkPlanCase(t, c) })
 	}
 	for _, c := range v.Invalid {
-		t.Run("invalid/"+c.ID, func(t *testing.T) { checkPlanInvalid(t, c) })
+		t.Run(c.ID, func(t *testing.T) { checkPlanInvalid(t, c) })
 	}
 }
 

@@ -10,6 +10,7 @@ from pathlib import Path
 from polyspec.ordered_json import Value as OrderedJson, stringify as ordered_json_stringify
 from polyspec.orm.codec import CodecError, blind_index, decode, encode, host_decode, host_encode
 from polyspec.orm.styled_value import StyledValue
+from vector_case import vector_tests
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -41,48 +42,52 @@ def stages_of(styles):
     return ['ordered_json' if style in ('json', 'jsons') else style for style in styles]
 
 
-class CodecVectorTest(unittest.TestCase):
-    def test_vectors(self):
-        with open(ROOT / 'tests' / 'codec' / 'vectors.json', encoding='utf-8') as handle:
-            vectors = json.load(handle)['vectors']
-        failures = []
-        for vector in vectors:
-            raw = None if vector['encoded_b64'] is None else base64.b64decode(
-                vector['encoded_b64'])
-            name = vector['name']
-            try:
-                decoded = decode(stages_of(vector['styles']), raw)
-            except Exception as error:
-                failures.append(f'{name}: decode {error}')
-                continue
-            kind = 'sql-null' if raw is None else 'value'
-            if not isinstance(decoded, StyledValue) or decoded.kind != kind:
-                failures.append(f'{name}: decoded state {shown(decoded)} want {kind}')
-                continue
-            payload = decoded.payload() if kind == 'value' else None
-            if 'ordered_json' in stages_of(vector['styles']) and kind == 'value':
-                if not isinstance(payload, OrderedJson):
-                    failures.append(f'{name}: a json stage decoded {type(payload).__name__}, '
-                                    f'not an ordered-json value')
-            if not same(payload, vector['value']):
-                failures.append(f'{name}: decoded {shown(payload)} want '
-                                f'{json.dumps(canonical(vector["value"]), sort_keys=True)}')
-            encoded = encode(stages_of(vector['styles']), decoded)
-            encoded_b64 = None if encoded is None else base64.b64encode(
-                encoded.encode('utf-8') if isinstance(encoded, str) else encoded).decode('ascii')
-            if vector['deterministic'] and encoded_b64 != vector['encoded_b64']:
-                failures.append(f'{name}: encoded {encoded_b64} want {vector["encoded_b64"]}')
-            round_trip = decode(stages_of(vector['styles']), encoded)
-            if not isinstance(round_trip, StyledValue) or round_trip.kind != kind \
-                    or not same(round_trip.payload() if kind == 'value' else None,
-                                vector['value']):
-                round_trip_payload = round_trip.payload() \
-                    if isinstance(round_trip, StyledValue) and round_trip.kind == 'value' else None
-                failures.append(f'{name}: round trip {shown(round_trip_payload)} want '
-                                f'{json.dumps(canonical(vector["value"]), sort_keys=True)}')
-        if failures:
-            self.fail('\n'.join(failures))
+def check_vector(test: unittest.TestCase, vector: dict) -> None:
+    failures = []
+    raw = None if vector['encoded_b64'] is None else base64.b64decode(
+        vector['encoded_b64'])
+    name = vector['name']
+    try:
+        decoded = decode(stages_of(vector['styles']), raw)
+    except Exception as error:
+        test.fail(f'{name}: decode {error}')
+    kind = 'sql-null' if raw is None else 'value'
+    if not isinstance(decoded, StyledValue) or decoded.kind != kind:
+        test.fail(f'{name}: decoded state {shown(decoded)} want {kind}')
+    payload = decoded.payload() if kind == 'value' else None
+    if 'ordered_json' in stages_of(vector['styles']) and kind == 'value':
+        if not isinstance(payload, OrderedJson):
+            failures.append(f'{name}: a json stage decoded {type(payload).__name__}, '
+                            f'not an ordered-json value')
+    if not same(payload, vector['value']):
+        failures.append(f'{name}: decoded {shown(payload)} want '
+                        f'{json.dumps(canonical(vector["value"]), sort_keys=True)}')
+    encoded = encode(stages_of(vector['styles']), decoded)
+    encoded_b64 = None if encoded is None else base64.b64encode(
+        encoded.encode('utf-8') if isinstance(encoded, str) else encoded).decode('ascii')
+    if vector['deterministic'] and encoded_b64 != vector['encoded_b64']:
+        failures.append(f'{name}: encoded {encoded_b64} want {vector["encoded_b64"]}')
+    round_trip = decode(stages_of(vector['styles']), encoded)
+    if not isinstance(round_trip, StyledValue) or round_trip.kind != kind \
+            or not same(round_trip.payload() if kind == 'value' else None,
+                        vector['value']):
+        round_trip_payload = round_trip.payload() \
+            if isinstance(round_trip, StyledValue) and round_trip.kind == 'value' else None
+        failures.append(f'{name}: round trip {shown(round_trip_payload)} want '
+                        f'{json.dumps(canonical(vector["value"]), sort_keys=True)}')
+    if failures:
+        test.fail('\n'.join(failures))
 
+
+def check_aes_vector(test: unittest.TestCase, vector: dict) -> None:
+    encoded = host_encode(vector['plain'], ['aes', 'hex'], vector['key'])
+    decoded = host_decode(encoded, ['aes', 'hex'], vector['key'])
+    test.assertEqual(decoded, vector['plain'])
+    fixed = host_decode(vector['envelope_hex'], ['aes', 'hex'], vector['key'])
+    test.assertEqual(fixed, vector['plain'])
+
+
+class CodecVectorTest(unittest.TestCase):
     def test_error_cases(self):
         cases = [
             ('bad JSON', lambda: decode(['ordered_json'], b'{bad'), 'CODEC_DECODE'),
@@ -122,19 +127,18 @@ class CodecVectorTest(unittest.TestCase):
         if failures:
             self.fail('\n'.join(failures))
 
-    def test_aes_vectors(self):
-        with open(ROOT / 'tests' / 'codec' / 'aes-vectors.json', encoding='utf-8') as handle:
-            vectors = json.load(handle)['vectors']
-        for vector in vectors:
-            encoded = host_encode(vector['plain'], ['aes', 'hex'], vector['key'])
-            decoded = host_decode(encoded, ['aes', 'hex'], vector['key'])
-            self.assertEqual(decoded, vector['plain'])
-            fixed = host_decode(vector['envelope_hex'], ['aes', 'hex'], vector['key'])
-            self.assertEqual(fixed, vector['plain'])
-
     def test_blind_index(self):
         self.assertEqual(blind_index('member@example.test', 'blind-key'),
                          '1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8')
+
+
+def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
+    """One test for each codec vector, named by the vector, and one for each AES vector, named by its key."""
+    with open(ROOT / 'tests' / 'codec' / 'vectors.json', encoding='utf-8') as handle:
+        tests.addTests(vector_tests(json.load(handle)['vectors'], check_vector, lambda vector: vector['name']))
+    with open(ROOT / 'tests' / 'codec' / 'aes-vectors.json', encoding='utf-8') as handle:
+        tests.addTests(vector_tests(json.load(handle)['vectors'], check_aes_vector, lambda vector: vector['key']))
+    return tests
 
 
 if __name__ == '__main__':

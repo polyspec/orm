@@ -140,16 +140,16 @@ func TestMermaidVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	v := loadMermaidVectors(t)
 	for _, c := range v.Export {
-		t.Run("export/"+c.ID, func(t *testing.T) { checkMermaidExport(t, c) })
+		t.Run(c.ID, func(t *testing.T) { checkMermaidExport(t, c) })
 	}
 	for _, c := range v.Import {
-		t.Run("import/"+c.ID, func(t *testing.T) { checkMermaidImport(t, c) })
+		t.Run(c.ID, func(t *testing.T) { checkMermaidImport(t, c) })
 	}
 	for _, c := range v.Invalid {
-		t.Run("invalid/"+c.ID, func(t *testing.T) { checkMermaidInvalid(t, c) })
+		t.Run(c.ID, func(t *testing.T) { checkMermaidInvalid(t, c) })
 	}
 	for _, c := range v.RoundTrip {
-		t.Run("round_trip/"+c.ID, func(t *testing.T) { checkMermaidRoundTrip(t, c) })
+		t.Run(c.ID, func(t *testing.T) { checkMermaidRoundTrip(t, c) })
 	}
 }
 

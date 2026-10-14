@@ -5,14 +5,14 @@
 // message, the statement event that carries the error, and a database that
 // the refused statement did not change. The four cases of the fixture run on
 // each of the three databases; a fixture case that did not pass on every
-// database fails the guard at the end. Each case runs on a case database of its
+// database fails its test. Each case runs on a case database of its
 // own (case-database.mjs); the test fails when ORM_TEST_MYSQL_DSN or
 // ORM_TEST_POSTGRES_DSN is unset.
 //
 // Usage: node --conditions=orm-test packages/ts/tests/statement_fault.mjs (after npm run typescript:build)
 import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
-import { runCase } from '../../../tests/testcase.mjs';
+import { caseTest, runCase } from '../../../tests/testcase.mjs';
 import { withCaseDatabase } from './case-database.mjs';
 import { Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel, CORE } from '../dist/index.js';
 import * as packageEntry from '../dist/index.js';
@@ -193,18 +193,18 @@ for (const name of fixture.cases) {
   if (!ok && failures === before) failures++;
 }
 
-// One line per fixture case: the case passes when it passes on SQLite, MySQL and PostgreSQL.
+if (failures > 0) process.exitCode = 1;
+
+// One test per fixture case, named by the case: the case passes when it passes on SQLite, MySQL and PostgreSQL.
 for (const name of fixture.cases) {
   const run = cases[name];
   if (run === undefined) continue;
-  const before = failures;
-  current = name;
-  const ok = await runCase(`statement-fault/${name}`, CASE_DEADLINE_MS * DRIVERS.length, async ({ step }) => {
+  caseTest(name, CASE_DEADLINE_MS * DRIVERS.length, async ({ step }) => {
+    const before = failures;
+    current = name;
     for (const driver of DRIVERS) {
       await withCaseDatabase(driver, step, database => run(driver, database.dsn));
     }
     if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
   });
-  if (!ok && failures === before) failures++;
 }
-if (failures > 0) process.exitCode = 1;

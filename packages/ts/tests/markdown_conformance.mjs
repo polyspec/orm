@@ -2,7 +2,7 @@
 // tests/markdown/cases.json의 모든 case를 그 순서대로, FLOWMARK가 가리키는 flowmark build의 server
 // 하나에서 실행하고 각 결과를 expect와 비교한다. 그 build는 tests/markdown/flowmark.version이 고정한
 // build여야 하고, 없거나 다른 build이면 실패한다(건너뛰지 않는다). 뒤의 case는 앞 case가 만든 corpus
-// 상태를 읽으므로 첫 실패에서 멈춘다.
+// 상태를 읽으므로 첫 실패 뒤의 case는 그 실패를 이유로 실패한다.
 //
 // 사용: FLOWMARK=<flowmark> node --conditions=orm-test packages/ts/tests/markdown_conformance.mjs
 // (npm run typescript:build 뒤; make markdown-conformance-check가 FLOWMARK를 준다)
@@ -13,7 +13,8 @@ import path from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual, promisify } from 'node:util';
-import { DATABASE, PROCESS, cases } from '../../../tests/testcase.mjs';
+import { after } from 'node:test';
+import { DATABASE, PROCESS, caseTest, cases } from '../../../tests/testcase.mjs';
 import { OrmError, StyledValue } from '../dist/index.js';
 import { Logs, People, Tasks, connect } from '../dist/models/markdown_fixture/models.js';
 
@@ -21,8 +22,6 @@ const run = promisify(execFile);
 const conformanceDir = fileURLToPath(new URL('../../../tests/markdown/', import.meta.url));
 // FLOWMARK가 가리키는 build의 main module이어야 하는 module path다.
 const flowmarkModule = 'github.com/polyspec/flowmark';
-// parity check(config/parity.json)가 읽는 case 줄의 unit이다: PASS markdown-conformance/<case>.
-const unit = 'markdown-conformance';
 
 const runner = cases();
 
@@ -258,9 +257,13 @@ await runner.run('markdown/setup', PROCESS, async ({ step }) => {
   ready = true;
 });
 if (ready) {
-  try {
-    for (const c of all) {
-      const passed = await runner.run(`${unit}/${c.id}`, DATABASE, async () => {
+  // Each case is one test named by its id. A later case reads the corpus state that the cases before it made, so after
+  // a failure the later cases fail with the case that stopped them.
+  let stopped;
+  for (const c of all) {
+    caseTest(c.id, DATABASE, async () => {
+      if (stopped !== undefined) throw new Error(`not run: ${stopped} failed, and this case reads the corpus state it leaves`);
+      try {
         let got;
         try {
           got = await conformanceCases[c.id](served);
@@ -272,11 +275,13 @@ if (ready) {
         }
         const actual = normalize(got);
         if (!isDeepStrictEqual(actual, c.expect)) throw new Error(`${c.id}: got ${JSON.stringify(actual)}, want ${JSON.stringify(c.expect)}`);
-      });
-      if (!passed) break;
-    }
-  } finally {
-    await runner.run('markdown/stop', PROCESS, () => served.stop());
+      } catch (error) {
+        stopped = c.id;
+        throw error;
+      }
+    });
   }
+  // The server stops after the last case; a failed stop fails the run.
+  after(() => served.stop());
 }
 runner.finish();

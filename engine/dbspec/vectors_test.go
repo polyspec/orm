@@ -363,8 +363,8 @@ func TestSharedVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	vectors := loadVectors(t)
 	for _, c := range vectors.Canonical {
-		t.Run("canonical/"+c.ID, func(t *testing.T) {
-			runTimed(t, "canonical/"+c.ID, 5*time.Second, func() error {
+		t.Run(c.ID, func(t *testing.T) {
+			runTimed(t, c.ID, 5*time.Second, func() error {
 				text, set, err := c.documentSet()
 				if err != nil {
 					return err
@@ -381,8 +381,8 @@ func TestSharedVectors(t *testing.T) {
 		})
 	}
 	for _, c := range vectors.Normalize {
-		t.Run("normalize/"+c.ID, func(t *testing.T) {
-			runTimed(t, "normalize/"+c.ID, 5*time.Second, func() error {
+		t.Run(c.ID, func(t *testing.T) {
+			runTimed(t, c.ID, 5*time.Second, func() error {
 				text, set, err := c.documentSet()
 				if err != nil {
 					return err
@@ -399,8 +399,8 @@ func TestSharedVectors(t *testing.T) {
 		})
 	}
 	for _, c := range vectors.Invalid {
-		t.Run("invalid/"+c.ID, func(t *testing.T) {
-			runTimed(t, "invalid/"+c.ID, 5*time.Second, func() error {
+		t.Run(c.ID, func(t *testing.T) {
+			runTimed(t, c.ID, 5*time.Second, func() error {
 				text, set, err := c.documentSet()
 				if err != nil {
 					return err
@@ -420,7 +420,7 @@ func TestPositionVectors(t *testing.T) {
 		t.Fatal("tests/dbspec/cases.json has no positions cases")
 	}
 	for _, c := range vectors.Positions {
-		t.Run("positions/"+c.ID, func(t *testing.T) {
+		t.Run(c.ID, func(t *testing.T) {
 			set := map[string]string{}
 			for name, lines := range c.Documents {
 				if name != c.Main {
@@ -464,18 +464,19 @@ func TestFileVectors(t *testing.T) {
 				return text, diagnostics, nil
 			}},
 		}
-		for _, reader := range readers {
-			id := "files/" + c.ID + "/" + reader.kind
-			t.Run(id, func(t *testing.T) {
-				runTimed(t, id, 5*time.Second, func() error {
-					text, diagnostics, err := reader.read()
-					if err != nil {
-						return err
-					}
-					return expectFileRead(path, reader.name, text, diagnostics, c.Errors)
+		t.Run(c.ID, func(t *testing.T) {
+			for _, reader := range readers {
+				t.Run(reader.kind, func(t *testing.T) {
+					runTimed(t, c.ID+" "+reader.kind, 5*time.Second, func() error {
+						text, diagnostics, err := reader.read()
+						if err != nil {
+							return err
+						}
+						return expectFileRead(path, reader.name, text, diagnostics, c.Errors)
+					})
 				})
-			})
-		}
+			}
+		})
 	}
 }
 

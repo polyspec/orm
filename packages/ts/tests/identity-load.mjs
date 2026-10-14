@@ -1,5 +1,5 @@
 // contracts/fixtures/identity_load.json의 공유 case를 TypeScript client로 실행한다. case id 하나가
-// case 하나(identity-load/<case id>)다. compile case는 세 dialect의 Engine으로 request를 compile해
+// case 하나(node:test의 test <case id>)다. compile case는 세 dialect의 Engine으로 request를 compile해
 // statement나 오류를 비교하고, execute case는 MySQL, PostgreSQL, SQLite마다 새 case
 // database(case-database.mjs)에 fixture를 설치한 뒤 각 step의 request를 그 database의 Engine으로
 // compile해 Db.execute로 실행하고, 마지막에 file의 read SQL을 native 연결로 실행해 load_probe의 행을
@@ -11,7 +11,7 @@
 import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { Db, Engine, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
-import { COMPUTE, DATABASE, runCase } from '../../../tests/testcase.mjs';
+import { COMPUTE, DATABASE, caseTest } from '../../../tests/testcase.mjs';
 import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
 
 const DIALECTS = ['mysql', 'postgres', 'sqlite'];
@@ -152,10 +152,9 @@ async function executeCase(c, dialect, step) {
   });
 }
 
-let failures = 0;
 for (const c of cases) {
   const deadline = c.operation === 'compile' ? COMPUTE : DATABASE;
-  const passed = await runCase(`identity-load/${c.id}`, deadline, async ({ step }) => {
+  caseTest(c.id, deadline, async ({ step }) => {
     const problems = [];
     for (const dialect of DIALECTS) {
       if (c.operation === 'compile') compileCase(c, dialect, step, problems);
@@ -165,6 +164,4 @@ for (const c of cases) {
     }
     if (problems.length > 0) throw new Error(problems.join('\n'));
   });
-  if (!passed) failures++;
 }
-if (failures > 0) process.exitCode = 1;

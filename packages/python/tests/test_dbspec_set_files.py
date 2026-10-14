@@ -13,6 +13,7 @@ from pathlib import Path
 
 
 from polyspec.orm.dbspec import read_dbspec_set
+from vector_case import vector_tests
 
 ROOT = Path(__file__).resolve().parents[3]
 VECTORS = ROOT / 'tests' / 'dbspec' / 'set-files.json'
@@ -125,36 +126,33 @@ def build_tree(root, entries):
     return contents
 
 
-class SetFilesTest(unittest.TestCase):
-    def test_every_case(self):
-        cases = load_cases()
-        ran = 0
-        for case_id, entries, set_path, want in cases:
-            with self.subTest(case_id):
-                root = tempfile.mkdtemp(prefix='orm-set-')
-                try:
-                    self.run_case(root, entries, set_path, want)
-                finally:
-                    shutil.rmtree(root)
-            ran += 1
-        self.assertEqual(ran, len(cases))
-
-    def run_case(self, root, entries, set_path, want):
+def check_case(test: unittest.TestCase, case) -> None:
+    """Builds the case's tree in a fresh temporary directory and reads its set."""
+    _case_id, entries, set_path, want = case
+    root = tempfile.mkdtemp(prefix='orm-set-')
+    try:
         contents = build_tree(root, entries)
         result, errors = read_dbspec_set(root + '/' + set_path)
         got_errors = [(error.rule, error.path) for error in errors]
         if want[0] == 'errors':
-            self.assertIsNone(result)
-            self.assertEqual(got_errors, [(rule, root + '/' + path) for rule, path in want[1]])
+            test.assertIsNone(result)
+            test.assertEqual(got_errors, [(rule, root + '/' + path) for rule, path in want[1]])
             for error in errors:
-                self.assertIn(error.path, error.message)
+                test.assertIn(error.path, error.message)
             return
-        self.assertEqual(got_errors, [])
+        test.assertEqual(got_errors, [])
         for files, paths in ((result.documents, want[1]), (result.external, want[2])):
-            self.assertEqual([file.path for file in files], [root + '/' + path for path in paths])
+            test.assertEqual([file.path for file in files], [root + '/' + path for path in paths])
             for file, path in zip(files, paths):
-                self.assertEqual(file.data, contents[posixpath.normpath(path)])
+                test.assertEqual(file.data, contents[posixpath.normpath(path)])
+    finally:
+        shutil.rmtree(root)
 
+
+def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
+    """One test for each case of set-files.json, named by the case id."""
+    tests.addTests(vector_tests(load_cases(), check_case, lambda case: case[0]))
+    return tests
 
 if __name__ == '__main__':
     unittest.main()

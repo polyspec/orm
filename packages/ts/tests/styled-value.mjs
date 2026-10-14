@@ -1,13 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import { decode, encode } from '../dist/codec.js';
 import * as orm from '../dist/index.js';
-import { cases as caseRunner, COMPUTE } from '../../../tests/testcase.mjs';
+import { caseTest, cases as caseRunner, COMPUTE } from '../../../tests/testcase.mjs';
 
 const fixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/styled_column_states.json', import.meta.url), 'utf8'));
 if (typeof orm.StyledValue !== 'function') throw new Error('the TypeScript client exports no StyledValue class');
 
 const suite = caseRunner();
-for (const entry of fixture.cases) await suite.run(`styled-value/${entry.id}`, COMPUTE, () => {
+for (const entry of fixture.cases) caseTest(entry.id, COMPUTE, () => {
   if (!Object.hasOwn(entry, 'stored_text') && !Object.hasOwn(entry, 'write_text')) {
     if (!['unselected', 'nonnull_sql_null'].includes(entry.id)) throw new Error(`${entry.id}: fixture case has no codec operation`);
     return;

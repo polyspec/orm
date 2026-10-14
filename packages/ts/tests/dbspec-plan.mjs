@@ -57,7 +57,7 @@ assert.equal(vectors.version, 1, 'plans.json version');
 assert(vectors.cases.length > 0 && vectors.invalid.length > 0 && vectors.chains.length > 0 && vectors.parse.length > 0 && vectors.comparisons.length > 0, 'plans.json cases');
 
 for (const c of vectors.cases) {
-  vector(`plan ${c.id}`, () => {
+  vector(c.id, () => {
     const from = source(c.source);
     const p = plan(c.plan);
     assert.equal(emitPlan(p), text(c.plan), 'emitPlan');
@@ -74,7 +74,7 @@ for (const c of vectors.cases) {
 }
 
 for (const c of vectors.invalid) {
-  vector(`plan invalid ${c.id}`, () => {
+  vector(c.id, () => {
     const from = source(c.source);
     let { plan: p, diagnostics } = parsePlan(text(c.plan));
     if (p !== null) diagnostics = diffPlan(from, p).diagnostics;
@@ -84,7 +84,7 @@ for (const c of vectors.invalid) {
 }
 
 for (const c of vectors.chains) {
-  vector(`plan chain ${c.id}`, () => {
+  vector(c.id, () => {
     const result = chainPlans(c.plans.map(plan));
     for (const d of result.diagnostics) assert.equal(d.rule, 'chain', d.message);
     assert.deepEqual(result.diagnostics.map(d => d.message), c.errors ?? []);
@@ -93,7 +93,7 @@ for (const c of vectors.chains) {
 }
 
 for (const c of vectors.parse) {
-  vector(`plan parse ${c.id}`, () => {
+  vector(c.id, () => {
     const { diagnostics } = parsePlan(text(c.plan));
     // plan diagnostic은 message까지, target diagnostic은 rule, 줄, 칸까지 비교한다.
     assert.deepEqual(diagnostics.map(d => [d.rule, d.line, d.column, d.rule === 'plan' ? d.message : null]), c.errors);
@@ -101,7 +101,7 @@ for (const c of vectors.parse) {
 }
 
 for (const c of vectors.comparisons) {
-  vector(`plan comparison ${c.id}`, () => {
+  vector(c.id, () => {
     const result = compareSchemas(source(c.source), source(c.target));
     assert.deepEqual((result.differences ?? []).map(d => [d.kind, d.table, d.name]), c.differences);
     assert.deepEqual(result.diagnostics.map(d => [d.rule, d.line, d.column, d.message]), c.errors);

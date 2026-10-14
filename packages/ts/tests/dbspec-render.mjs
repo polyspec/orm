@@ -36,14 +36,14 @@ function parseSet(c) {
 assert(ddl.cases.length > 0, 'ddl cases');
 for (const c of ddl.cases) {
   assert.deepEqual(Object.keys(c.statements).sort(), DIALECTS, `dialects of ${c.id}`);
-  for (const dialect of DIALECTS) {
-    vector(`render ${c.id} ${dialect}`, () => {
+  vector(c.id, () => {
+    for (const dialect of DIALECTS) {
       const documents = parseSet(c);
-      assert.deepEqual(renderDbspec(documents, dialect), { statements: c.statements[dialect], diagnostics: [] });
+      assert.deepEqual(renderDbspec(documents, dialect), { statements: c.statements[dialect], diagnostics: [] }, dialect);
       // The rendered order does not depend on the order of the given documents.
-      assert.deepEqual(renderDbspec([...documents].reverse(), dialect), { statements: c.statements[dialect], diagnostics: [] });
-    });
-  }
+      assert.deepEqual(renderDbspec([...documents].reverse(), dialect), { statements: c.statements[dialect], diagnostics: [] }, dialect);
+    }
+  });
 }
 
 vector('render rejects an unknown dialect', () => {

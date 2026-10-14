@@ -3,12 +3,14 @@
 # 실행)는 conformance가 검사한다.
 import json
 import sys
+import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 
 from polyspec.orm.dbspec import parse_dbspec  # noqa: E402
 from polyspec.orm.dbspec.render import render_dbspec  # noqa: E402
+from vector_case import vector_tests  # noqa: E402
 
 
 def parse_set(documents: dict) -> list:
@@ -24,27 +26,30 @@ def parse_set(documents: dict) -> list:
     return out
 
 
-def main() -> None:
-    data = json.loads((ROOT / 'tests' / 'dbspec' / 'ddl.json').read_text())
-    cases = statements = 0
-    for case in data['cases']:
-        documents = parse_set(case['documents'])
-        for dialect in ('mysql', 'postgres', 'sqlite'):
-            result = render_dbspec(documents, dialect)
-            assert result['statements'] is not None, \
-                f'{case["id"]} {dialect}: {result["diagnostics"][:1]}'
-            assert result['statements'] == case['statements'][dialect], \
-                f'{case["id"]} {dialect}: rendered statements differ'
-            statements += len(case['statements'][dialect])
-        cases += 1
-    try:
-        render_dbspec(documents, 'oracle')
-    except TypeError:
-        pass
-    else:
-        raise AssertionError('unknown dialect is a TypeError')
-    print(f'ddl: {cases} cases, {statements} statements agree')
+DATA = json.loads((ROOT / 'tests' / 'dbspec' / 'ddl.json').read_text())
+
+
+def check_case(test: unittest.TestCase, case: dict) -> None:
+    documents = parse_set(case['documents'])
+    for dialect in ('mysql', 'postgres', 'sqlite'):
+        result = render_dbspec(documents, dialect)
+        test.assertIsNotNone(result['statements'], f'{case["id"]} {dialect}: {result["diagnostics"][:1]}')
+        test.assertEqual(result['statements'], case['statements'][dialect],
+                         f'{case["id"]} {dialect}: rendered statements differ')
+
+
+class RenderDialectTest(unittest.TestCase):
+    def test_unknown_dialect_is_a_type_error(self):
+        documents = parse_set(DATA['cases'][-1]['documents'])
+        with self.assertRaises(TypeError):
+            render_dbspec(documents, 'oracle')
+
+
+def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
+    """One test for each ddl case, named by the case id."""
+    tests.addTests(vector_tests(DATA['cases'], check_case))
+    return tests
 
 
 if __name__ == '__main__':
-    main()
+    unittest.main()

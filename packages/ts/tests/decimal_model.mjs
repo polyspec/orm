@@ -1,12 +1,12 @@
 import { readFile } from 'node:fs/promises';
 import { normalizeDecimal, decimalScaled, decimalFromScaled } from '../dist/decimal.js';
 import { parseDbspec, renderDbspec } from '../dist/dbspec/index.js';
-import { cases, COMPUTE } from '../../../tests/testcase.mjs';
+import { caseTest, cases, COMPUTE } from '../../../tests/testcase.mjs';
 
 const fixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/decimal_model.json', import.meta.url), 'utf8'));
 const columns = new Map(fixture.columns.map(column => [column.id, column]));
 const run = cases();
-for (const testCase of fixture.cases) await run.run(`decimal_model/${testCase.id}`, COMPUTE, () => {
+for (const testCase of fixture.cases) caseTest(testCase.id, COMPUTE, () => {
   const column = columns.get(testCase.column);
   if (!column) throw new Error(`${testCase.id}: unknown column ${testCase.column}`);
   try {

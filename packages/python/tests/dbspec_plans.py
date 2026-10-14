@@ -3,6 +3,7 @@
 # 확인한다. step의 database 실행(before/after)은 conformance가 검사한다.
 import json
 import sys
+import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -12,6 +13,7 @@ from polyspec.orm.dbspec.compare import compare_schemas  # noqa: E402
 from polyspec.orm.dbspec.plan import chain_plans, parse_plan  # noqa: E402
 from polyspec.orm.dbspec.plan_diff import diff_plan  # noqa: E402
 from polyspec.orm.dbspec.plan_steps import effect_text, plan_steps  # noqa: E402
+from vector_case import vector_tests  # noqa: E402
 
 
 def _text(value) -> str:
@@ -52,73 +54,81 @@ def _plain_step(s: dict) -> dict:
     return out
 
 
-def main() -> None:
+def check_case(_test: unittest.TestCase, case: dict) -> None:
+    source = _source(case)
+    result = parse_plan(_text(case['plan']))
+    assert result['plan'] is not None, (case['id'], result['diagnostics'][:1])
+    plan = result['plan']
+    changes = diff_plan(source, plan)
+    assert changes['changes'] is not None, \
+        (case['id'], changes['diagnostics'][:1])
+    assert [[c['kind'], c['table'], c['name']] for c in changes['changes']] \
+        == [list(c) for c in case['changes']], f'{case["id"]}: changes differ'
+    for dialect in ('mysql', 'postgres', 'sqlite'):
+        steps = plan_steps(source, plan, dialect)
+        assert steps['steps'] is not None, \
+            (case['id'], dialect, steps['diagnostics'][:1])
+        assert [_plain_step(s) for s in steps['steps']] == case['steps'][dialect], \
+            f'{case["id"]} {dialect}: steps differ'
+
+
+def check_invalid(_test: unittest.TestCase, case: dict) -> None:
+    source = _source(case)
+    result = parse_plan(_text(case['plan']))
+    if result['plan'] is not None:
+        result = diff_plan(source, result['plan'])
+    # invalid 사례의 errors는 message만 담는다.
+    assert [d.message for d in result['diagnostics']] == case['errors'], \
+        f'{case["id"]}: diagnostics differ'
+
+
+def check_chain(_test: unittest.TestCase, case: dict) -> None:
+    plans = []
+    for text in case['plans']:
+        result = parse_plan(_text(text))
+        assert result['plan'] is not None, \
+            (case['id'], result['diagnostics'][:1])
+        plans.append(result['plan'])
+    chained = chain_plans(plans)
+    assert [d.message for d in chained['diagnostics']] == case.get('errors', []), \
+        f'{case["id"]}: chain diagnostics differ'
+    if chained['plans'] is not None:
+        assert [p['name'] for p in chained['plans']] == case['order'], \
+            f'{case["id"]}: chain order differs'
+
+
+def check_parse(_test: unittest.TestCase, case: dict) -> None:
+    result = parse_plan(_text(case['plan']))
+    assert result['plan'] is None, case['id']
+    for want, got in zip(case['errors'], _errors(result['diagnostics'])):
+        # message가 null인 사례는 위치만 비교한다.
+        assert want[:3] == got[:3] and (want[3] is None or want[3] == got[3]), \
+            f'{case["id"]}: parse diagnostics differ'
+    assert len(case['errors']) == len(result['diagnostics']), \
+        f'{case["id"]}: parse diagnostic count differs'
+
+
+def check_comparison(_test: unittest.TestCase, case: dict) -> None:
+    source, _positions, _ = parse_dbspec(_text(case['source']), {})
+    target, _positions, _ = parse_dbspec(_text(case['target']), {})
+    result = compare_schemas(source, target)
+    assert _errors(result['diagnostics']) == case.get('errors', []), \
+        f'{case["id"]}: comparison diagnostics differ'
+    if result['differences'] is not None:
+        assert [[d['kind'], d['table'], d['name']]
+                for d in result['differences']] \
+            == [list(d) for d in case['differences']], \
+            f'{case["id"]}: differences differ'
+
+
+def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
+    """One test for each case of every section, named by the case id."""
     data = json.loads((ROOT / 'tests' / 'dbspec' / 'plans.json').read_text())
-    cases = 0
-    for case in data['cases']:
-        source = _source(case)
-        result = parse_plan(_text(case['plan']))
-        assert result['plan'] is not None, (case['id'], result['diagnostics'][:1])
-        plan = result['plan']
-        changes = diff_plan(source, plan)
-        assert changes['changes'] is not None, \
-            (case['id'], changes['diagnostics'][:1])
-        assert [[c['kind'], c['table'], c['name']] for c in changes['changes']] \
-            == [list(c) for c in case['changes']], f'{case["id"]}: changes differ'
-        for dialect in ('mysql', 'postgres', 'sqlite'):
-            steps = plan_steps(source, plan, dialect)
-            assert steps['steps'] is not None, \
-                (case['id'], dialect, steps['diagnostics'][:1])
-            assert [_plain_step(s) for s in steps['steps']] == case['steps'][dialect], \
-                f'{case["id"]} {dialect}: steps differ'
-        cases += 1
-    for case in data['invalid']:
-        source = _source(case)
-        result = parse_plan(_text(case['plan']))
-        if result['plan'] is not None:
-            result = diff_plan(source, result['plan'])
-        # invalid 사례의 errors는 message만 담는다.
-        assert [d.message for d in result['diagnostics']] == case['errors'], \
-            f'{case["id"]}: diagnostics differ'
-        cases += 1
-    for case in data['chains']:
-        plans = []
-        for text in case['plans']:
-            result = parse_plan(_text(text))
-            assert result['plan'] is not None, \
-                (case['id'], result['diagnostics'][:1])
-            plans.append(result['plan'])
-        chained = chain_plans(plans)
-        assert [d.message for d in chained['diagnostics']] == case.get('errors', []), \
-            f'{case["id"]}: chain diagnostics differ'
-        if chained['plans'] is not None:
-            assert [p['name'] for p in chained['plans']] == case['order'], \
-                f'{case["id"]}: chain order differs'
-        cases += 1
-    for case in data['parse']:
-        result = parse_plan(_text(case['plan']))
-        assert result['plan'] is None, case['id']
-        for want, got in zip(case['errors'], _errors(result['diagnostics'])):
-            # message가 null인 사례는 위치만 비교한다.
-            assert want[:3] == got[:3] and (want[3] is None or want[3] == got[3]), \
-                f'{case["id"]}: parse diagnostics differ'
-        assert len(case['errors']) == len(result['diagnostics']), \
-            f'{case["id"]}: parse diagnostic count differs'
-        cases += 1
-    for case in data['comparisons']:
-        source, _positions, _ = parse_dbspec(_text(case['source']), {})
-        target, _positions, _ = parse_dbspec(_text(case['target']), {})
-        result = compare_schemas(source, target)
-        assert _errors(result['diagnostics']) == case.get('errors', []), \
-            f'{case["id"]}: comparison diagnostics differ'
-        if result['differences'] is not None:
-            assert [[d['kind'], d['table'], d['name']]
-                    for d in result['differences']] \
-                == [list(d) for d in case['differences']], \
-                f'{case["id"]}: differences differ'
-        cases += 1
-    print(f'plans: {cases} cases agree')
+    for section, check in (('cases', check_case), ('invalid', check_invalid), ('chains', check_chain),
+                           ('parse', check_parse), ('comparisons', check_comparison)):
+        tests.addTests(vector_tests(data[section], check))
+    return tests
 
 
 if __name__ == '__main__':
-    main()
+    unittest.main()

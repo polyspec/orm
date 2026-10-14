@@ -109,30 +109,29 @@ function checkMessages(errors) {
   }
 }
 
-for (const c of all) {
-  caseTest(`set-files ${c.id} readDbspecSet`, TIMEOUT, () => {
-    const root = build(c.tree);
-    try {
-      const result = readDbspecSet(`${root}/${c.set}`);
-      if ('errors' in c.want) {
-        assert.equal(result.documents, null);
-        assert.equal(result.external, null);
-        assert.deepEqual(result.errors.map(e => ({ rule: e.rule, path: e.path })), c.want.errors.map(e => ({ rule: e.rule, path: `${root}/${e.path}` })));
-        checkMessages(result.errors);
-        return;
-      }
-      assert.deepEqual(result.errors, []);
-      for (const list of ['documents', 'external']) {
-        assert.deepEqual(result[list].map(f => f.path), c.want[list].map(p => `${root}/${p}`), `${list} paths`);
-        result[list].forEach((f, i) => {
-          assert.ok(f.bytes instanceof Uint8Array, `${list}[${i}] bytes are a Uint8Array`);
-          assert.deepEqual(Buffer.from(f.bytes), treeBytes(c.tree, posix.normalize(c.want[list][i])), `${list}[${i}] bytes`);
-        });
-      }
-    } finally {
-      rmSync(root, { recursive: true, force: true });
+// readSet reads the case's file tree with readDbspecSet.
+function readSet(c) {
+  const root = build(c.tree);
+  try {
+    const result = readDbspecSet(`${root}/${c.set}`);
+    if ('errors' in c.want) {
+      assert.equal(result.documents, null);
+      assert.equal(result.external, null);
+      assert.deepEqual(result.errors.map(e => ({ rule: e.rule, path: e.path })), c.want.errors.map(e => ({ rule: e.rule, path: `${root}/${e.path}` })));
+      checkMessages(result.errors);
+      return;
     }
-  });
+    assert.deepEqual(result.errors, []);
+    for (const list of ['documents', 'external']) {
+      assert.deepEqual(result[list].map(f => f.path), c.want[list].map(p => `${root}/${p}`), `${list} paths`);
+      result[list].forEach((f, i) => {
+        assert.ok(f.bytes instanceof Uint8Array, `${list}[${i}] bytes are a Uint8Array`);
+        assert.deepEqual(Buffer.from(f.bytes), treeBytes(c.tree, posix.normalize(c.want[list][i])), `${list}[${i}] bytes`);
+      });
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 }
 
 /**
@@ -147,27 +146,33 @@ function needsNoTree(c) {
 
 const treeless = all.filter(needsNoTree);
 assert.ok(treeless.length > 0, 'some cases need no file tree');
-for (const c of treeless) {
+// parseTreeless rejects a case that needs no file tree with parseSet of both entries.
+function parseTreeless(c) {
   for (const [entry, parse] of [['node', parseSet], ['browser', browserParseSet]]) {
-    caseTest(`set-files ${c.id} parseSet ${entry}`, TIMEOUT, () => {
-      // The set file of a case named otherwise is still read for its bytes; the name alone rejects it.
-      const bytes = new Uint8Array(treeBytes(c.tree, c.set));
-      const result = parse(bytes, c.set);
-      assert.deepEqual(result.errors.map(e => ({ rule: e.rule, path: e.path })), c.want.errors);
-      checkMessages(result.errors);
-    });
+    // The set file of a case named otherwise is still read for its bytes; the name alone rejects it.
+    const bytes = new Uint8Array(treeBytes(c.tree, c.set));
+    const result = parse(bytes, c.set);
+    assert.deepEqual(result.errors.map(e => ({ rule: e.rule, path: e.path })), c.want.errors, entry);
+    checkMessages(result.errors);
   }
 }
 
-// parseSet of an accepting case gives no error and the joined paths that the reader returns.
-for (const c of all.filter(c => !('errors' in c.want))) {
-  caseTest(`set-files ${c.id} parseSet paths`, TIMEOUT, () => {
-    const result = browserParseSet(new Uint8Array(treeBytes(c.tree, c.set)), c.set);
-    assert.deepEqual(result.errors, []);
-    for (const list of ['documents', 'external']) {
-      assert.deepEqual(result[list].map(p => p.path), c.want[list], `${list} paths`);
-      for (const p of result[list]) assert.equal(p.error, null);
-    }
+// parsePaths: parseSet of an accepting case gives no error and the joined paths that the reader returns.
+function parsePaths(c) {
+  const result = browserParseSet(new Uint8Array(treeBytes(c.tree, c.set)), c.set);
+  assert.deepEqual(result.errors, []);
+  for (const list of ['documents', 'external']) {
+    assert.deepEqual(result[list].map(p => p.path), c.want[list], `${list} paths`);
+    for (const p of result[list]) assert.equal(p.error, null);
+  }
+}
+
+// Each case is one test: the reader, then parseSet where it decides the case.
+for (const c of all) {
+  caseTest(c.id, TIMEOUT, () => {
+    readSet(c);
+    if (treeless.includes(c)) parseTreeless(c);
+    if (!('errors' in c.want)) parsePaths(c);
   });
 }
 

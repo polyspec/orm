@@ -9,27 +9,34 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 
 from polyspec.orm.codec import CodecError, decode, host_decode  # noqa: E402
+from vector_case import vector_tests  # noqa: E402
 
 
-class CodecDecodeVectorTest(unittest.TestCase):
-    def test_every_vector(self):
-        vectors = json.loads((ROOT / 'tests' / 'codec' / 'decode-vectors.json').read_text())['vectors']
-        self.assertTrue(vectors, 'decode-vectors.json has no vectors')
-        for vector in vectors:
-            with self.subTest(vector['name']):
-                raw = vector['stored'] if 'stored' in vector else bytes.fromhex(vector['stored_hex'])
-                host = all(style in ('hex', 'ip') for style in vector['styles'])
-                if 'error' in vector:
-                    with self.assertRaises(CodecError) as raised:
-                        if host:
-                            host_decode(raw, vector['styles'], '')
-                        else:
-                            decode(vector['styles'], raw)
-                    self.assertEqual(raised.exception.code, vector['error'])
-                    continue
-                got = host_decode(raw, vector['styles'], '') if host \
-                    else decode(vector['styles'], raw).payload()
-                self.assertEqual(got, vector['value'])
+VECTORS = json.loads((ROOT / 'tests' / 'codec' / 'decode-vectors.json').read_text())['vectors']
+
+
+def check_vector(test: unittest.TestCase, vector: dict) -> None:
+    raw = vector['stored'] if 'stored' in vector else bytes.fromhex(vector['stored_hex'])
+    host = all(style in ('hex', 'ip') for style in vector['styles'])
+    if 'error' in vector:
+        with test.assertRaises(CodecError) as raised:
+            if host:
+                host_decode(raw, vector['styles'], '')
+            else:
+                decode(vector['styles'], raw)
+        test.assertEqual(raised.exception.code, vector['error'])
+        return
+    got = host_decode(raw, vector['styles'], '') if host \
+        else decode(vector['styles'], raw).payload()
+    test.assertEqual(got, vector['value'])
+
+
+def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
+    """One test for each decode vector, named by the vector."""
+    if not VECTORS:
+        raise AssertionError('decode-vectors.json has no vectors')
+    tests.addTests(vector_tests(VECTORS, check_vector, lambda vector: vector['name']))
+    return tests
 
 
 if __name__ == '__main__':

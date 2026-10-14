@@ -73,38 +73,41 @@ func TestCodecDecodeVectors(t *testing.T) {
 		t.Fatal("decode-vectors.json has no vectors")
 	}
 	for _, v := range f.Vectors {
-		var raw any
-		switch {
-		case v.Stored != nil:
-			raw = *v.Stored
-		case v.StoredHex != nil:
-			b, err := hex.DecodeString(*v.StoredHex)
-			if err != nil {
-				t.Fatalf("%s: stored_hex: %v", v.Name, err)
+		t.Run(v.Name, func(t *testing.T) {
+			var raw any
+			var err error
+			switch {
+			case v.Stored != nil:
+				raw = *v.Stored
+			case v.StoredHex != nil:
+				b, err := hex.DecodeString(*v.StoredHex)
+				if err != nil {
+					t.Fatalf("stored_hex: %v", err)
+				}
+				raw = b
+			default:
+				t.Fatal("no stored cell")
 			}
-			raw = b
-		default:
-			t.Fatalf("%s: no stored cell", v.Name)
-		}
-		var got any
-		codec, host := splitHost(v.Styles)
-		if len(codec) == 0 {
-			got, err = HostDecode(raw, host, "")
-		} else {
-			var styled StyledValue
-			styled, err = Decode(v.Styles, raw)
-			got, _ = styled.Data()
-		}
-		switch {
-		case v.Error != "":
-			if err == nil || ErrorCode(err) != v.Error {
-				t.Errorf("%s: got %#v, %v; want %s", v.Name, got, err, v.Error)
+			var got any
+			codec, host := splitHost(v.Styles)
+			if len(codec) == 0 {
+				got, err = HostDecode(raw, host, "")
+			} else {
+				var styled StyledValue
+				styled, err = Decode(v.Styles, raw)
+				got, _ = styled.Data()
 			}
-		case err != nil:
-			t.Errorf("%s: %v", v.Name, err)
-		case v.Value == nil || canon(t, got) != canon(t, v.Value):
-			t.Errorf("%s: got %s, want %s", v.Name, canon(t, got), canon(t, v.Value))
-		}
+			switch {
+			case v.Error != "":
+				if err == nil || ErrorCode(err) != v.Error {
+					t.Errorf("got %#v, %v; want %s", got, err, v.Error)
+				}
+			case err != nil:
+				t.Error(err)
+			case v.Value == nil || canon(t, got) != canon(t, v.Value):
+				t.Errorf("got %s, want %s", canon(t, got), canon(t, v.Value))
+			}
+		})
 	}
 }
 

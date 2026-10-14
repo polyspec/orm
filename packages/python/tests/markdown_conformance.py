@@ -6,15 +6,16 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 import tempfile
 import threading
 import time
+import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 
 from test_sqlite import generate  # noqa: E402
+from vector_case import vector_tests  # noqa: E402
 
 from polyspec.orm import Collection, Model, OrmError  # noqa: E402
 
@@ -361,44 +362,57 @@ def run_case(s: Served, case: dict, run) -> str | None:
     return None
 
 
-def main() -> int:
-    started = time.monotonic()
-    cleanups: list = []
-    workdir = Path(tempfile.mkdtemp(prefix='orm-markdown-conformance-'))
+STATE: dict = {}
+
+
+def setUpModule():
+    """Starts the server of the pinned flowmark build on a new corpus; the cases of cases.json run against it."""
+    STATE['cleanups'] = []
+    STATE['workdir'] = Path(tempfile.mkdtemp(prefix='orm-markdown-conformance-'))
     try:
         binary = pinned_flowmark()
-        cases = load_cases()
+        ids = [case['id'] for case in load_cases()]
         funcs = conformance_cases()
-        ids = [case['id'] for case in cases]
         missing = [i for i in ids if i not in funcs]
         extra = sorted(i for i in funcs if i not in ids)
         if missing or extra:
             raise AssertionError(f'cases.json and the Python cases differ: missing in Python {missing}, '
                                  f'not in cases.json {extra}')
-        models = generate(str(workdir / 'models'), CONFORMANCE_DIR / 'corpus' / 'dbspec' / 'dbspec-set.json')
-        s = serve(binary, workdir, models, cleanups)
-        passed = 0
-        for case in cases:
-            print(f'RUN  markdown-conformance/{case["id"]}', flush=True)
-            case_started = time.monotonic()
-            reason = run_case(s, case, funcs[case['id']])
-            elapsed = time.monotonic() - case_started
-            if reason is not None:
-                print(f'FAIL markdown-conformance/{case["id"]} elapsed={elapsed:.3f}s: {reason}', flush=True)
-                # 뒤의 case는 앞 case가 만든 corpus 상태를 읽으므로 첫 실패에서 멈춘다.
-                return 1
-            passed += 1
-            print(f'PASS markdown-conformance/{case["id"]} elapsed={elapsed:.3f}s', flush=True)
-        print(f'PASS markdown-conformance {passed} cases elapsed={time.monotonic() - started:.3f}s', flush=True)
-        return 0
-    except AssertionError as error:
-        print(f'FAIL markdown-conformance: {error}', flush=True)
-        return 1
-    finally:
-        for cleanup in reversed(cleanups):
-            cleanup()
-        shutil.rmtree(workdir, ignore_errors=True)
+        models = generate(str(STATE['workdir'] / 'models'), CONFORMANCE_DIR / 'corpus' / 'dbspec' / 'dbspec-set.json')
+        STATE['funcs'] = funcs
+        STATE['served'] = serve(binary, STATE['workdir'], models, STATE['cleanups'])
+    except BaseException:
+        tearDownModule()
+        raise
+
+
+def tearDownModule():
+    for cleanup in reversed(STATE['cleanups']):
+        cleanup()
+    shutil.rmtree(STATE['workdir'], ignore_errors=True)
+
+
+def check_case(test: unittest.TestCase, case: dict) -> None:
+    """Runs one case on the server. A later case reads the corpus state that the cases before it made, so after a
+    failure the later cases fail with the case that stopped them."""
+    if 'stopped' in STATE:
+        test.fail(f'not run: {STATE["stopped"]} failed, and this case reads the corpus state it leaves')
+    print(f'RUN  {case["id"]}', flush=True)
+    case_started = time.monotonic()
+    reason = run_case(STATE['served'], case, STATE['funcs'][case['id']])
+    elapsed = time.monotonic() - case_started
+    if reason is not None:
+        STATE['stopped'] = case['id']
+        print(f'FAIL {case["id"]} elapsed={elapsed:.3f}s: {reason}', flush=True)
+        test.fail(reason)
+    print(f'PASS {case["id"]} elapsed={elapsed:.3f}s', flush=True)
+
+
+def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
+    """One test for each case of cases.json, named by the case id, in the order of the file."""
+    tests.addTests(vector_tests(load_cases(), check_case))
+    return tests
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    unittest.main()
