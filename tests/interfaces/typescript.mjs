@@ -2,8 +2,8 @@ import { createRequire } from 'node:module';
 import { readFile, readdir } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
 
-// typescript는 packages/ts workspace의 dependency다: 그 package에서 찾는다.
-const ts = createRequire(new URL('../../packages/ts/package.json', import.meta.url))('typescript');
+// typescript는 tests/interfaces/typescript project의 dependency다(TypeScript 6.0.3, config/toolchain.json의 예외): 그 project에서 찾는다.
+const ts = createRequire(new URL('./typescript/package.json', import.meta.url))('typescript');
 
 const root = resolve(process.argv[2] ?? '.');
 const roots = process.argv.slice(3);
