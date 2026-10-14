@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T135-1: the comments of scripts/test-servers.sh and its tests are in English.
 - T128-8-3: make install-vscode installs the minimum VS Code of the extension with kit's installer, make dbspec-vscode-integration runs the five editor fixtures inside it, and the editor job of CI runs it on a virtual X server.
 - T165: orm takes kit 0.0.40: the tools of mise.toml (Go, Python, uv, Composer, alint, govulncheck, cargo-audit) install from mise.lock, `.python-version` is removed, install-python and python-venv-check read the Python of mise.toml, and CI installs the tools with make install-tools.
 - T137-4: the CI Node step installs the interface TypeScript in a second make, after install-packages has installed kit.

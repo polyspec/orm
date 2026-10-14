@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 103858497aa40ffae9e3cf4164068931a49bfb9ac0cb4c5f435512149ff5bc62 -->
+<!-- source-sha256: cb9eb5e20a24269a1ee4155586d4f36bb212228995467c5a2ec3a0807a1d79b1 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -981,7 +981,7 @@
 - [o] T134 Python test를 설치된 package에 대해 실행한다. 원인: test 파일 54개가 `src`를 `sys.path`에 넣는데, S3는 이를 금지한다(test는 설치된 package를 대상으로 하며 경로를 바꾸지 않는다). 인수 조건: test는 venv에 설치된 package를 import하고, `sys.path` 변경이 남지 않으며, 검사가 그것을 거부한다.
   - [o] T134-1 packages/orm-python/bin/orm-gen의 `sys.path` 삽입을 없앤다 (T134에 이어). 원인: venv가 `orm-gen` console script를 설치하는데도 이 script가 여전히 `src`를 삽입한다. 완료 조건: wrapper를 없애거나 설치된 package를 import하고, 모든 호출자가 console script를 쓴다.
 - [o] T135 test 서버 socket을 Unix socket 경로 한도 안에 둔다. 원인: scripts/test-servers.sh가 socket을 checkout 아래에 두어, 긴 worktree 경로에서 `proxysql-admin-pgsql.sock`이 104 byte로 macOS 한도 103을 넘어 database test가 시작되지 못했다(T128-3p Python agent가 찾음). 인수 조건: socket 경로는 길이를 검사하는 짧은 선언된 장소에서 오며 넘으면 이름을 댄 오류를 내고, 긴 경로로 red를 먼저 본다.
-  - [ ] T135-1 scripts/test-servers.sh와 그 테스트의 주석을 영어로 쓴다 (T135에 이어). 원인: `check_socket_paths`와 테스트 주석이 한국어인데 AGENTS는 code 주석을 영어로 정한다. 완료 조건: 그곳의 모든 주석이 영어다.
+  - [o] T135-1 scripts/test-servers.sh와 그 테스트의 주석을 영어로 쓴다 (T135에 이어). 원인: `check_socket_paths`와 테스트 주석이 한국어인데 AGENTS는 code 주석을 영어로 정한다. 완료 조건: 그곳의 모든 주석이 영어다.
 - [o] T136 새 worktree에서 `make install`을 재현하고 고친다. 원인: T128-3p agent가 새 worktree에서 `make install`이 Python 도구에서 실패하며 uv가 선언되지 않았다고 보고했다; uv는 선언되어 있으므로(config/toolchain.json) 보고된 원인은 틀렸고 진짜 원인은 모른다. 인수 조건: 새 worktree에서 실패를 정확한 출력과 함께 재현하고, 원인을 고치거나 보고가 틀렸음을 보이며, red를 먼저 본다. 증거: 원인은 kit v0.0.31(T126-1)이다. 그 install-tools는 Python을 uv로 설치하며 uv 없이 요청한 python을 거부하는데, `install-python`은 `TOOLS=python`을 요청했다; CI run 38413640279에서 Python이 필요한 모든 group이 `Python client dependencies` 단계에서 실패했다. 변경 전 새 checkout의 `make install-python`이 install-tools에서 실패했고, 변경 후(`TOOLS="uv python"`) uv Python으로 packages/orm-python/.venv를 만든다.
 - [o] T136-1 install-python test에서 uv를 Python 앞에 고정한다(T136에 이어). 원인: scripts/repo/python-venv.test.mjs가 아직 `install-tools.mjs python`을 대조해 T136 뒤 CI run 38421077014의 repo-check가 실패했다. 인수 조건: test가 `install-tools.mjs uv python`을 요구한다. 증거: `make repo-check/unit`이 그 case를 통과한다; `make -n install-python`이 `install-tools.mjs uv python`을 출력한다.
 - [o] T137 kit의 현재 release와 그 표준을 받아들인다. 원인: orm은 kit이 표준 S1–S9를 담은 PRINCIPLES.md와 TypeScript 도구를 갖기 전의 v0.0.31을 vendor한다; orm AGENTS.md:31은 아직 `packages/orm-<kind>`를 정하는데, 폴더 표준 S5는 이를 거부한다(repository prefix 없음, runtime port는 `packages/<runtime>/`). 인수 조건: kit 최신 release로 `make kit-sync`; AGENTS.md(+ko)가 vendor한 PRINCIPLES.md를 link하고 orm 고유 규칙만 남긴다; `config/layout.yml`이 kit 공통 규칙 위에 orm을 매핑하며 예외마다 이유를 단다; runtime package를 `packages/<runtime>/`(go, ts, php, php-ext, python, rust)로 옮기고 모든 경로, manifest, module path, workflow를 호환 경로 없이 갱신한다; `make layout-check`와 `make kit-check`가 통과한다.
