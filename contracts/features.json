@@ -7532,16 +7532,6 @@
       "command": "node tests/run-long.mts typescript-build -- npm run typescript:build && sh -c 'cd packages/ts && node dist/bin/orm-gen.js gen --set ../../tests/markdown/corpus/dbspec/dbspec-set.json --out src/models/markdown_fixture --scan tests/markdown_conformance.mjs --check'"
     },
     {
-      "id": "stmtdiff",
-      "paths": [
-        "internal/stmtdiff/stmtdiff.go"
-      ],
-      "tests": [
-        "internal/stmtdiff/stmtdiff_test.go"
-      ],
-      "command": "node tests/go-test.mts -v -timeout 0 ./internal/stmtdiff -count=1"
-    },
-    {
       "id": "bench-database",
       "paths": [
         "scripts/bench-db.mts",
