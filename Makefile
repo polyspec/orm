@@ -1327,7 +1327,17 @@ typescript-build: lease-tool
 # installation and no remote package enters the tree (the same setting as hyper, H13.5-14 of hyper).
 release-consumer release-proof: export npm_config_allow_remote := root
 
-# The archive of the npm package holds the build of the TypeScript client (the release tool of @polyspec/kit packs the tree as it is).
-# release-assets builds on the installs it declares, the Go modules of the lease tool; the release workflow installs the npm
-# packages of the TypeScript build first with make install-packages. The checks run offline (GOPROXY=off).
-release-assets: install-go typescript-build
+# The archives of the npm packages hold the builds of the TypeScript client and of the editor packages (the release tool of
+# @polyspec/kit packs each tree as it is). release-assets builds on the installs it declares, the Go modules of the lease
+# tool; the release workflow installs the npm packages of the TypeScript build first with make install-packages. The checks
+# run offline (GOPROXY=off). The consumer projects install the archives, so their targets build the same trees.
+release-assets: install-go typescript-build editor-build
+release-consumer release-consumer-lock: typescript-build editor-build
+
+# editor-build builds the editor packages that the release publishes: the language service, the language server and the
+# CodeMirror extension, each on the TypeScript build.
+.PHONY: editor-build
+editor-build: typescript-build
+	npm run --workspace @polyspec/dbspec-language build
+	npm run --workspace @polyspec/dbspec-lsp build
+	npm run --workspace @polyspec/dbspec-codemirror build
