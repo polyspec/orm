@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d2ae4059d5ce6a7629984fb7cdca1e8fe11ac6c8e26583ed76acee53078b7cfe -->
+<!-- source-sha256: 2e674401c2d785455e28af04a1d8bd4a198e9aca04d1bfae23297dbaefb77b43 -->
 # 변경 이력
 
 ## Unreleased
 
+- T167: PHP client가 Db::transaction의 결과와 model row(Collection, Page, gets, getsPage)에 @template generic을 선언해 PHPStan level 9가 그 type을 안다.
 - T168: python-venv-check가 파일을 sed로 읽지 않고 mise.toml의 Python을 mise에게 묻는다.
 - T165-3: orm이 kit 0.0.42를 받아, go vet과 go test가 mise가 var/tools 아래 설치한 Go를 더는 지나지 않는다.
 - T165-2: npm package 검사가 npm 12 형태의 npm pack --json을 읽고, install-cli가 URL 의존성을 루트에서 허용하며, workflow는 mise.toml에서 Go를 받고, editor job이 Go module을 내려받는다.

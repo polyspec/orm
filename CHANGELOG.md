@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T167: the PHP client declares @template generics for the result of Db::transaction and the rows of a model (Collection, Page, gets, getsPage), so PHPStan level 9 types them.
 - T168: python-venv-check asks mise for the Python of mise.toml instead of reading the file with sed.
 - T165-3: orm takes kit 0.0.42, so go vet and go test no longer walk the Go that mise installs under var/tools.
 - T165-2: the npm package checks read the npm 12 form of npm pack --json, install-cli admits its URL dependency at the root, workflows take Go from mise.toml, and the editor job downloads the Go modules.
