@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 06b3a8333a2993afb3f55440ace4c3c23010a7fbd88a95b0f44d0e260549301d -->
+<!-- source-sha256: ac5fba0d963e9606335b66043cc66cc97daa1ca7a4de07653b2b65fced9b3d19 -->
 # 변경 이력
 
 ## Unreleased
 
+- Python client가 다른 client처럼 3.46보다 오래된 SQLite를 CAPABILITY_UNSUPPORTED로 거부한다. (#T176)
 - scripts/ 아래 infrastructure script는 TypeScript다: 실행의 database(scripts/check/databases.mts, make databases-create), test server(scripts/test-servers.mts)와 모든 명령 script. decimal database는 TypeScript decimal model이 설치하므로 database 준비에 PHP와 Composer가 필요 없다. tests/new-session과 PHP의 CI SQLite 검사를 지웠다. (#T137-1-4-5)
 - PHP orm-gen scan이 `(new C)`, 호출한 model `(new C)($db)`, 그리고 둘의 chain에 대한 호출을 해석한다. (#T175)
 - make scripts-typecheck는 타입 검사에 쓰는 dbspec language service를 먼저 build하고, MySQL migration case는 checkout의 migration 스크립트를 실행한다. (#T137-1-4-8)
