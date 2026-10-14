@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 43c14b4bf424bfaac05b9f8f71627eab39e820701da6588b1d94d6916c145eae -->
+<!-- source-sha256: 50bb2563dcc0a973dd4768d8387313dfccf1809b6bfa0ce4eb8354b9ba86285f -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -69,7 +69,7 @@ import하지 않으면 `orm.Open`은 필요한 import를 포함한 `CONFIG`를 �
 | MySQL | 8.4.11, `sql_mode`에 `STRICT_TRANS_TABLES` 포함, `lower_case_table_names=1`, `log_bin=1`, `log_bin_trust_function_creators=0`, `explicit_defaults_for_timestamp=1`, 서버 시간대 `SYSTEM`(KST) (`mysql.env.server`) |
 | PostgreSQL | 17.11, `TimeZone=Asia/Seoul`, database collation `C`, `max_identifier_length=63` (`postgres.env.server`) |
 | SQLite (probe) | `modernc.org/sqlite` v1.58.0의 3.53.4 (`sqlite.env.library`) |
-| SQLite, Go client | `modernc.org/sqlite` v1.58.0(`go.mod`), `select sqlite_version()` 결과 3.53.4 |
+| SQLite, Go client | `modernc.org/sqlite` v1.58.0(`packages/go/go.mod`), `select sqlite_version()` 결과 3.53.4 |
 | SQLite, PHP client | PHP 8.5.10의 `pdo_sqlite`, `select sqlite_version()` 결과 3.53.4 |
 | SQLite, TypeScript client | Node 26.11.1의 `node:sqlite`, `select sqlite_version()` 결과 3.53.4. `package.json`은 Node 26.11.1 이상을 허용하며 그 뒤 release의 bundled version은 측정하지 않았다 |
 | SQLite 파일 이름 | DSN query가 남아 있는 파일 이름은 PHP PDO, `node:sqlite`, `sqlite3` shell이 그대로 열어 `bench.sqlite?_pragma=…`를 만든다. `modernc.org/sqlite`는 query를 해석한다(`TestSQLiteFileNameWithQuery`의 `sqlite.filename.*` case). 클라이언트는 파일 이름을 정하기 전에 query를 제거한다 |

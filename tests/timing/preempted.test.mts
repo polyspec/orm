@@ -94,7 +94,7 @@ async function passesPreempted(step: { (text: string): void; (text: string): voi
 const stressDocument = () => declared('DBSPEC_STRESS_DOCUMENT');
 
 caseTest('go: the stress test passes while preempted', TIMEOUT, async ({ step }) => {
-  await passesPreempted(step, declared('TIMING_GO_DBSPEC_TEST'), ['-test.run', '^TestStressDocument$', '-test.count', '1', '-test.v'], `${root}engine/dbspec`);
+  await passesPreempted(step, declared('TIMING_GO_DBSPEC_TEST'), ['-test.run', '^TestStressDocument$', '-test.count', '1', '-test.v'], `${root}packages/go/engine/dbspec`);
 });
 
 caseTest('rust: the stress test passes while preempted', TIMEOUT, async ({ step }) => {

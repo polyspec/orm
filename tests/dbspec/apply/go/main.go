@@ -29,7 +29,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "modernc.org/sqlite"
 
-	"github.com/polyspec/orm/engine/dbspec"
+	"github.com/polyspec/orm/packages/go/engine/dbspec"
 )
 
 // connectionRules는 모든 client가 새 connection에서 실행하는 statement다

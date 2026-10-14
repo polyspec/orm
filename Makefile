@@ -92,7 +92,7 @@ TEST_TZ = Asia/Seoul
 
 # GO_TEST는 Go test를 case마다 보고하게 실행한다. tests/go-test.mts는 먼저 같은 package와 build
 # tag의 build를 기한 없는 장기 작업 `go-build/<packages>`로 실행하고 그 뒤 go test를 실행한다. -v는 각
-# case가 internal/testcase로 내는 RUN, STEP, PASS, FAIL 줄을 실행 중에 보이고, 각 case가 자기 기한을
+# case가 packages/go/testcase로 내는 RUN, STEP, PASS, FAIL 줄을 실행 중에 보이고, 각 case가 자기 기한을
 # 가지므로 -timeout 0이 test binary 전체의 기한(기본 10분)을 끈다.
 GO_TEST = node tests/go-test.mts -v -timeout 0
 
@@ -232,11 +232,15 @@ bench:
 	test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }
 	node scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(BENCH_TARGETS)
 
-# go-test-check는 다른 target이 실행하지 않는 Go package의 test를 실행한다. packages/go의
+# GO_PACKAGES는 go.work의 세 module(packages/go, tests, examples)의 모든 package다. root는 module이
+# 아니므로 root의 ./...는 아무 package도 가리키지 않는다.
+GO_PACKAGES = ./packages/go/... ./tests/... ./examples/...
+
+# go-test-check는 다른 target이 실행하지 않는 Go package의 test를 실행한다. packages/go의 client
 # package는 client-db-check(scripts/client-db-test.mts), engine과 generator는 feature-check의
-# 검증 명령(engine package마다 planner-go-*, engine/dbspec은 schema-go의 dbspec-go-check,
-# generator는 generation-go), internal/testcase는 testcase-check가 같은 명령으로 실행한다.
-GO_TEST_CHECK_PACKAGES = $$(go list ./... | grep -v -e '/packages/go/' -e '/engine$$' -e '/engine/' -e '/generator$$' -e '/internal/testcase$$')
+# 검증 명령(engine package마다 planner-go-*, packages/go/engine/dbspec은 schema-go의 dbspec-go-check,
+# generator는 generation-go), packages/go/testcase는 testcase-check가 같은 명령으로 실행한다.
+GO_TEST_CHECK_PACKAGES = $$(go list ./packages/go/cmd/... ./packages/go/procevent/... ./packages/go/internal/... ./tests/... ./examples/...)
 .PHONY: go-test-check
 go-test-check:
 	$(WITH_TEST_ENV) $(GO_TEST) $(GO_TEST_CHECK_PACKAGES)
@@ -247,7 +251,7 @@ go-test-check:
 .PHONY: testcase-check
 testcase-check: testcase-check/go testcase-check/node testcase-check/runners testcase-check/rust
 testcase-check/go:
-	$(GO_TEST) ./internal/testcase -count=1
+	$(GO_TEST) ./packages/go/testcase -count=1
 testcase-check/node:
 	node --test tests/testcase.test.mts
 testcase-check/runners:
@@ -547,8 +551,8 @@ dbspec-stress-bench/prepare:
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))
 	$(PUBLISH) $(DBSPEC_STRESS_DOCUMENT) node tests/dbspec/stress.mts
 dbspec-stress-bench/go: dbspec-stress-bench/prepare
-	$(GO_TEST) -tags bench ./engine/dbspec -run '^TestStressDocument$$' -count=1
-	$(GO_TEST) -tags bench ./engine/dbspec -run '^TestStressDocument$$' -count=1
+	$(GO_TEST) -tags bench ./packages/go/engine/dbspec -run '^TestStressDocument$$' -count=1
+	$(GO_TEST) -tags bench ./packages/go/engine/dbspec -run '^TestStressDocument$$' -count=1
 dbspec-stress-bench/php: php-vendor-check dbspec-stress-bench/prepare
 	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecStressTest.php
 	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecStressTest.php
@@ -834,7 +838,7 @@ package-check: lease-tool
 # 각 명령을 RUN_LONG으로 기한 없이 실행한다. fuzzing의 길이는 -fuzztime이 정한다.
 fuzz-check: fuzz-check/engine-ir fuzz-check/clients-go-orm
 fuzz-check/engine-ir:
-	$(RUN_LONG) fuzz/engine-ir -- go test -v -timeout 0 ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s
+	$(RUN_LONG) fuzz/engine-ir -- go test -v -timeout 0 ./packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s
 fuzz-check/clients-go-orm:
 	$(RUN_LONG) fuzz/clients-go-orm -- go test -v -timeout 0 ./packages/go/orm -run '^$$' -fuzz FuzzDecodeCiphertext -fuzztime=1s
 
@@ -1183,14 +1187,14 @@ install-cli-check: lease-tool
 	npm run --workspace @polyspec/dbspec-language build
 	$(ONLINE) node --test tests/cli/install-cli.test.mts
 
-# dbspec-go-check는 Go dbspec engine package(engine/dbspec)의 test를 모두 실행한다: tests/dbspec/cases.json의
+# dbspec-go-check는 Go dbspec engine package(packages/go/engine/dbspec)의 test를 모두 실행한다: tests/dbspec/cases.json의
 # 공유 vector, 자기 rule case, manifest, statement, plan, comparison, Mermaid vector, apply 정리 error,
 # case harness, 그리고 모든 vector file의 빠지거나 type이 틀린 field를 위치와 함께 거부하는지. stress
 # 문서(TestStressDocument, build tag bench)는 make bench가 실행한다.
 .PHONY: dbspec-go-check dbspec-go-check/engine dbspec-go-check/unicode
 dbspec-go-check: dbspec-go-check/engine dbspec-go-check/unicode
 dbspec-go-check/engine:
-	$(GO_TEST) ./engine/dbspec -count=1
+	$(GO_TEST) ./packages/go/engine/dbspec -count=1
 # dbspec-go-check/unicode는 tests/dbspec/unicode의 생성기가 쓴 표 세 파일이 현재 Go 표와 같고, C 확장과 Python 모듈이
 # 모든 code point에서 Go와 같은 분류를 내는지 본다.
 dbspec-go-check/unicode:
@@ -1236,11 +1240,11 @@ markdown-table-check:
 go-fmt-check:
 	@$(RUN_LONG) go-fmt -- sh -c 'files=$$(gofmt -l $$(git ls-files "*.go")); if [ -n "$$files" ]; then echo "gofmt would change:"; echo "$$files"; exit 1; fi; echo "every tracked Go source is gofmt formatted"'
 
-# go-vet-check runs go vet over every Go package of the module, test files
+# go-vet-check runs go vet over every Go package of the modules of go.work, test files
 # included.
 .PHONY: go-vet-check
 go-vet-check:
-	$(RUN_LONG) go-vet -- go vet ./...
+	$(RUN_LONG) go-vet -- go vet $(GO_PACKAGES)
 
 # codec-check는 PHP codec으로 tests/codec/vectors.json을 decode하고 encode한 뒤, 이 target이 실행한 Go, Rust,
 # TypeScript codec test가 이 make 실행의 directory(CODEC_OUT, ORM_CODEC_OUT)에 쓴 출력을 decode한다
@@ -1373,7 +1377,7 @@ timing-check: cargo-downloads-check lease-tool
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT)) $(dir $(TIMING_GO_DBSPEC_TEST))
 	$(PUBLISH) $(DBSPEC_STRESS_DOCUMENT) node tests/dbspec/stress.mts
-	$(RUN_LONG) go-build/dbspec-test -- $(PUBLISH) $(TIMING_GO_DBSPEC_TEST) go test -c -tags bench -o @OUT@ ./engine/dbspec
+	$(RUN_LONG) go-build/dbspec-test -- $(PUBLISH) $(TIMING_GO_DBSPEC_TEST) go test -c -tags bench -o @OUT@ ./packages/go/engine/dbspec
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/dbspec_stress --cwd packages/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- cargo build --release --locked --offline -p polyspec-orm-schema --example dbspec_stress
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/orm-schema-tests --cwd packages/rust -- $(CARGO_LEASED) cargo test --locked --offline -p polyspec-orm-schema --no-run
 	$(RUN_LONG) typescript-build -- npm run typescript:build

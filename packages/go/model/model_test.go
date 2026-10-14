@@ -14,8 +14,8 @@ import (
 	_ "github.com/polyspec/orm/packages/go/orm/pg"
 	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
 
-	"github.com/polyspec/orm/internal/testcase"
-	"github.com/polyspec/orm/internal/testdb"
+	"github.com/polyspec/orm/packages/go/internal/testdb"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // databases returns a case database of its own (internal/testdb) for SQLite,

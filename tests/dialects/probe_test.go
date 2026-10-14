@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // TestProbeIDs verifies that probe IDs are unique, well formed and name the

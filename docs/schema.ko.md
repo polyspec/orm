@@ -1,5 +1,5 @@
 <!-- doc-id: schema -->
-<!-- source-sha256: de1614f7f57e25588ad9fb9453aa6499ed2ca20c2f76ae53e59c5b9b7a440f81 -->
+<!-- source-sha256: 5140e4a487d1c06eb6d086cc65fcf511891763549f44848251605012df456212 -->
 # 스키마
 
 스키마 source는 dbspec document(`.dbs`)의 집합이다. [dbspec.md](dbspec.md)가 언어, 검증 규칙, manifest text와 두 hash를 정의한다. `schema/bench.dbs`는 테스트와 벤치마크의 스키마다. 다른 스키마 파일은 없으며 모든 generator, runtime, 스키마 작업이 document set을 읽는다.
@@ -18,13 +18,13 @@
 
 각 도구는 document set을 [set 파일](dbspec.ko.md#document-sets)로만 받고 자기 client의 set reader로 읽는다. set 파일에 error가 있으면 도구는 모든 error를 출력하고 아무것도 쓰지 않는다. 그다음 각 도구는 나열된 모든 문서 파일을 자기 client의 file reader로 읽는다. reader는 dbspec signature로 시작하지 않는 파일을 parse 전에 `signature` error로 거부하며([파일](dbspec.md#files)), 그러면 도구는 `SCHEMA_INVALID`로 실패하고 모델을 쓰지 않는다.
 
-`github.com/polyspec/orm/generator` 패키지는 다른 프로그램에 Go 생성을 제공한다. `generator.Generate`는 document set의 runtime model, 출력 디렉터리, `PackageName`(기본값은 디렉터리 이름), 호출을 생성할 패키지 패턴인 `Scan`을 받는다. 이름 규칙, 필드 대응, 출력은 ORM generator가 책임진다.
+`github.com/polyspec/orm/packages/go/generator` 패키지는 다른 프로그램에 Go 생성을 제공한다. `generator.Generate`는 document set의 runtime model, 출력 디렉터리, `PackageName`(기본값은 디렉터리 이름), 호출을 생성할 패키지 패턴인 `Scan`을 받는다. 이름 규칙, 필드 대응, 출력은 ORM generator가 책임진다.
 
 ## 2. 스키마 작업 {#_2-schema-operations}
 
 스키마 작업은 각 클라이언트 라이브러리의 함수다. 함수는 parse한 document와 dialect(`mysql`, `postgres`, `sqlite`)를 받아 statement나 위치가 있는 diagnostic을 돌려준다.
 
-| 작업 | Go `engine/dbspec` | PHP `Polyspec\Orm\Dbspec\Dbspec` | TypeScript | Rust |
+| 작업 | Go `packages/go/engine/dbspec` | PHP `Polyspec\Orm\Dbspec\Dbspec` | TypeScript | Rust |
 |---|---|---|---|---|
 | document set의 statement 렌더링([방언](dialects.md#rendered-statements)) | `Render` | `render` | `renderDbspec` | `polyspec_orm_schema::dbspec::render` |
 | 데이터베이스를 document로 introspect([방언](dialects.md#introspection)) | `Introspect` | `introspect` | `introspectDbspec` | `polyspec_orm::dbspec::introspect` |

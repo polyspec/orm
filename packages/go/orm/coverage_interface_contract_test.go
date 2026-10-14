@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // TestCoverageInterfaceSymbols는 repository root에서 Go client의 interface

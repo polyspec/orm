@@ -485,7 +485,7 @@ caseTest('a workflow that runs a verification command of feature-check again fai
     'perf-check:',
     '\t$(WITH_TEST_ENV) node scripts/perf-test.mts',
     'fuzz-check:',
-    "\tgo test ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest",
+    "\tgo test ./packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest",
     '',
   ].join('\n');
   const commands = featureCommands({ features: [{ verification: [
@@ -1044,8 +1044,8 @@ caseTest('a Go or Rust test without a case of its own fails', COMPUTE, () => {
     '}',
     '',
   ].join('\n');
-  assert.deepEqual(goTestCaseErrors({ 'packages/go/orm/a_test.go': go, 'internal/testcase/testcase_test.go': 'func TestBare(t *testing.T) {\n}\n' }), [
-    'packages/go/orm/a_test.go: TestBare does not start its case with internal/testcase, so it runs without a deadline or RUN line',
+  assert.deepEqual(goTestCaseErrors({ 'packages/go/orm/a_test.go': go, 'packages/go/testcase/testcase_test.go': 'func TestBare(t *testing.T) {\n}\n' }), [
+    'packages/go/orm/a_test.go: TestBare does not start its case with packages/go/testcase, so it runs without a deadline or RUN line',
   ]);
   const rust = [
     '#[tokio::test]',
@@ -1117,7 +1117,7 @@ caseTest('a build tool outside run-long or under a deadline fails', COMPUTE, () 
   const timed = (name: string, tool: string, form: string, segment: string) => `${name} runs ${tool} under a deadline (${form}); a long operation gets step logs and no deadline: ${segment}`;
   assert.deepEqual(unwrappedToolErrors([
     unit('tsc', 'node packages/ts/node_modules/typescript/bin/tsc -p packages/ts/tsconfig.json --noEmit'),
-    unit('generate', 'go test ./generator && cd packages/go/model && go generate ./'),
+    unit('generate', 'go test ./packages/go/generator && cd packages/go/model && go generate ./'),
     unit('vet', 'go vet ./tests/conformance/runner_go'),
     unit('build', 'PATH="$HOME/.cargo/bin:$PATH" cargo build --locked -p polyspec-orm-tests --bin integration && ./integration'),
     unit('npm', 'npm run typescript:build >/dev/null'),
@@ -1183,19 +1183,19 @@ caseTest('the CI workflow runs no test runner outside make check', COMPUTE, () =
 
 caseTest('a workflow that runs a test runner after make check fails by identity', COMPUTE, () => {
   assert.equal(runnerIdentity('PATH="$HOME/.cargo/bin:$PATH" cargo +1.98.1 test --locked -p polyspec-orm codec'), 'cargo test');
-  assert.equal(runnerIdentity("go test -v -timeout 0 ./engine/ir -run '^$' -fuzz FuzzDecodeRequest -fuzztime=1s"), undefined);
+  assert.equal(runnerIdentity("go test -v -timeout 0 ./packages/go/engine/ir -run '^$' -fuzz FuzzDecodeRequest -fuzztime=1s"), undefined);
   assert.equal(runnerIdentity('go run ./tests/interfaces/check --results tests/conformance/out'), undefined);
-  assert.equal(runnerIdentity('node tests/go-test.mts -v -timeout 0 ./engine -count=1'), 'go test');
+  assert.equal(runnerIdentity('node tests/go-test.mts -v -timeout 0 ./packages/go/engine -count=1'), 'go test');
   assert.equal(runnerIdentity('node tests/conformance/check/main.mts record --driver mysql out/go.json'), undefined);
   assert.equal(runnerIdentity('node --test tests/conformance/check/main.test.mts'), 'node test');
   assert.equal(runnerIdentity('php -d extension=x.so vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecTest.php'), 'phpunit vendor-php/bin/phpunit');
-  assert.equal(runnerIdentity("node tests/run-long.mts fuzz/ir -- go test -v ./engine/ir -run '^$' -fuzz FuzzDecodeRequest"), undefined);
+  assert.equal(runnerIdentity("node tests/run-long.mts fuzz/ir -- go test -v ./packages/go/engine/ir -run '^$' -fuzz FuzzDecodeRequest"), undefined);
   assert.equal(runnerIdentity('node tests/run-long.mts rust-build/x -- cargo test --no-run --locked'), 'cargo test');
   const make = [
     'CHECK_TARGETS = repo-check',
     'GO_TEST = go test -v -timeout 0',
     'fuzz-check:',
-    "\t$(GO_TEST) ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s",
+    "\t$(GO_TEST) ./packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s",
     'vet-again:',
     '\t$(GO_TEST) ./packages/go/orm -run TestCodec',
     '',
@@ -1231,7 +1231,7 @@ caseTest('make check runs each go generate once', COMPUTE, () => {
 
 caseTest('a go generate that make check runs twice fails', COMPUTE, () => {
   assert.deepEqual(generateRuns(`$(RUN_LONG) go-model -- sh -c 'cd packages/go/model && go generate ./ && git diff --exit-code -- .'`), ['packages/go/model']);
-  assert.deepEqual(generateRuns(`go test ./generator && node tests/run-long.mts g --cwd packages/go/model -- sh -c 'go generate ./ && git diff'`), ['packages/go/model']);
+  assert.deepEqual(generateRuns(`go test ./packages/go/generator && node tests/run-long.mts g --cwd packages/go/model -- sh -c 'go generate ./ && git diff'`), ['packages/go/model']);
   assert.deepEqual(generateRuns('cd packages/go/other && go generate ./'), ['packages/go/other']);
   assert.deepEqual(repeatedGenerateErrors([
     { name: 'Makefile go-model-check', commands: [`$(RUN_LONG) go-model -- sh -c 'cd packages/go/model && go generate ./ && git diff --exit-code -- .'`] },
@@ -1251,13 +1251,13 @@ caseTest('every go test runs through go-test.mts or run-long', COMPUTE, () => {
 
 caseTest('a go test without its build step, or under a deadline, fails', COMPUTE, () => {
   const message = (name: string, segment: string) => `${name} runs go test outside tests/go-test.mts, so its compile has no RUN line or step log: ${segment}`;
-  const fuzz = "$(RUN_CASE) fuzz/ir 8m -- go test -v -timeout 0 ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s";
+  const fuzz = "$(RUN_CASE) fuzz/ir 8m -- go test -v -timeout 0 ./packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s";
   assert.deepEqual(rawGoTestErrors([
     { name: 'raw', commands: ['go test -v -timeout 0 ./packages/go/orm -run X -count=1'] },
     { name: 'env', commands: ['ORM_RUN_PERF_GATE=1 go test -v ./packages/go/bench'] },
-    { name: 'wrapped', commands: ['node tests/go-test.mts -v -timeout 0 ./engine -count=1'] },
-    { name: 'fuzz', commands: ["$(RUN_LONG) fuzz/ir -- go test -v -timeout 0 ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s"] },
-    { name: 'build', commands: ['node tests/run-long.mts go-build -- go test -c -o x ./engine/dbspec'] },
+    { name: 'wrapped', commands: ['node tests/go-test.mts -v -timeout 0 ./packages/go/engine -count=1'] },
+    { name: 'fuzz', commands: ["$(RUN_LONG) fuzz/ir -- go test -v -timeout 0 ./packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s"] },
+    { name: 'build', commands: ['node tests/run-long.mts go-build -- go test -c -o x ./packages/go/engine/dbspec'] },
     { name: 'timed', commands: [fuzz] },
   ]), [message('raw', 'go test -v -timeout 0 ./packages/go/orm -run X -count=1'), message('env', 'ORM_RUN_PERF_GATE=1 go test -v ./packages/go/bench'),
     `timed runs go test under a deadline ($(RUN_CASE)); a long operation gets step logs and no deadline: ${fuzz}`]);
@@ -1285,10 +1285,10 @@ caseTest('a deadline on a long operation fails', COMPUTE, () => {
     variable: 'node tests/run-long.mts x -- sh -c "sleep $(BUILD_DEADLINE)"',
     timeout: 'timeout 600 cargo build --locked',
     'go-default': 'go test ./...',
-    'go-timeout': 'node tests/go-test.mts -v -timeout 10m ./engine',
+    'go-timeout': 'node tests/go-test.mts -v -timeout 10m ./packages/go/engine',
     'go-none': 'go test -timeout 0 ./...',
-    'go-build': 'go test -c -o x ./engine/dbspec',
-    'go-runner': 'node tests/go-test.mts -v -timeout 0 ./engine -count=1',
+    'go-build': 'go test -c -o x ./packages/go/engine/dbspec',
+    'go-runner': 'node tests/go-test.mts -v -timeout 0 ./packages/go/engine -count=1',
     long: 'node tests/run-long.mts rust-build/x -- cargo test --no-run --locked',
   };
   assert.deepEqual(longDeadlineErrors(Object.entries(units).map(([name, command]) => ({ name, commands: [command] }))), [
@@ -1354,7 +1354,7 @@ caseTest('a recipe or a command that runs independent tests in sequence is refus
     'GO_TEST = node tests/go-test.mts -v -timeout 0',
     'two:', "\t$(GO_TEST) ./a -count=1", '\tphp packages/php/tests/b_test.php',
     'again:', '\tphp packages/php/tests/b_test.php', '\tphp packages/php/tests/b_test.php',
-    'built:', '\tnode tests/dbspec/stress.mts > out.dbs', '\tgo test -c -o x ./engine', '\tnode packages/ts/node_modules/typescript/bin/tsc -p x', '\tnode --test tests/x.test.mjs',
+    'built:', '\tnode tests/dbspec/stress.mts > out.dbs', '\tgo test -c -o x ./packages/go/engine', '\tnode packages/ts/node_modules/typescript/bin/tsc -p x', '\tnode --test tests/x.test.mjs',
     'linted:', '\tcargo +$(shell sed -n \'s/x/\\1/p\' f) clippy -p polyspec-orm -- -D warnings', '\tnode $(abspath tests/cargo-test.mts) y -- cargo test -p polyspec-orm',
     'parts: parts/a parts/b', 'parts/a:', "\t$(GO_TEST) ./a -count=1", 'parts/b:', '\tphp packages/php/tests/b_test.php',
   ].join('\n');
@@ -1545,7 +1545,7 @@ caseTest('every workflow runs the Go of mise.toml', COMPUTE, () => {
 // path를 선언한 root와 하위 directory의 go.mod를 거부한다.
 caseTest('every go.mod declares the module path of its directory', COMPUTE, () => {
   const paths = execFileSync('git', ['ls-files', '-z'], { cwd: repository }).toString().split('\0').filter(path => /(?:^|\/)go\.mod$/.test(path) && notVendored(path));
-  assert.ok(paths.includes('go.mod'), paths.join(' '));
+  assert.ok(paths.includes('packages/go/go.mod') && paths.includes('tests/go.mod') && paths.includes('examples/go.mod'), paths.join(' '));
   assert.deepEqual(goModulePathErrors(Object.fromEntries(paths.map(path => [path, text(path)]))), []);
   assert.deepEqual(goModulePathErrors({ 'go.mod': 'module github.com/polyspec/orm\n', 'tools/gen/go.mod': 'module github.com/polyspec/orm/tools/gen\n', 'README.md': '' }), []);
   assert.deepEqual(goModulePathErrors({ 'go.mod': 'module github.com/polyspec/orm/v2\n', 'packages/go/go.mod': 'module github.com/polyspec/orm\n', 'x/go.mod': 'go 1.27\n' }), [

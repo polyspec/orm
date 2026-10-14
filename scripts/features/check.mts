@@ -113,7 +113,8 @@ for (const feature of manifest.features) {
 // covers all clients because the conformance comparator fails when one
 // language does not run the declared vectors.
 const languageTests: Record<string, { roots: string[]; match: (file: string) => boolean }> = {
-  go: { roots: ['packages/go', 'engine', 'generator', 'cmd'], match: (file: string) => file.endsWith('_test.go') },
+  // packages/go/testcase is the case harness of every Go test, checked by make testcase-check, not a feature of the client.
+  go: { roots: ['packages/go'], match: (file: string) => file.endsWith('_test.go') && !file.startsWith('packages/go/testcase/') },
   php: { roots: ['packages/php/tests', 'tests/interfaces/php.php'], match: () => true },
   rust: { roots: ['packages/rust/orm/tests', 'packages/rust/build/tests', 'packages/rust/tests', 'tests/interfaces/rust'], match: (file: string) => file.endsWith('.rs') && !file.endsWith('build.rs') },
   typescript: { roots: ['packages/ts', 'tests/interfaces/typescript.mts'], match: (file: string) => file.endsWith('.test.ts') || (file.startsWith('packages/ts/tests/') && file.endsWith('.mjs')) },

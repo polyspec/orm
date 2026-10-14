@@ -23,7 +23,7 @@ Dialect differences are in [dialects.md](dialects.md), configuration is in [conf
 
 ```sh
 git clone https://github.com/polyspec/orm && cd orm
-go build ./...
+go build ./packages/go/... ./tests/... ./examples/...
 ```
 
 ---
@@ -81,7 +81,7 @@ Every generator takes the document set as its [set file](dbspec.md#document-sets
 ```
 
 ```sh
-go run github.com/polyspec/orm/cmd/orm-gen gen --set schema/dbspec-set.json --lang go --out model --scan ./...
+go run github.com/polyspec/orm/packages/go/cmd/orm-gen gen --set schema/dbspec-set.json --lang go --out model --scan ./...
 vendor/bin/orm-gen gen --set schema/dbspec-set.json --out src/Model --namespace 'Example\Model' --scan src
 npx orm-gen gen --set schema/dbspec-set.json --out src/models --scan src
 orm-gen gen --set schema/dbspec-set.json --out model --scan src
@@ -109,7 +109,7 @@ fn main() {
 - `--check` compares the output with the existing files without writing: `gen` of the Go, PHP, TypeScript and Python `orm-gen`. The command prints `differs: <path>` for a file whose content differs, `missing: <path>` for a file that does not exist, and `extra: <path>` for a file of the output directory that holds the generated-code comment and that the generation no longer writes, ordered by path, and exits with status 1 when it prints a line. Current files print nothing and exit with status 0. Python writes one file, `models.py`, so its check prints `missing` or `differs` for it and has no `extra` line. Go `gen --check` runs the same scan as `gen` in a directory under the system temporary directory, so the model package keeps the name and import path of `--out`; its generation failures and status 3 are the same as those of `gen`. Rust generates its models in `build.rs` and has no `gen` command.
 
 ```sh
-go run github.com/polyspec/orm/cmd/orm-gen gen --set schema/dbspec-set.json --lang go --out model --scan ./... --check
+go run github.com/polyspec/orm/packages/go/cmd/orm-gen gen --set schema/dbspec-set.json --lang go --out model --scan ./... --check
 ```
 - The scan generates a called method when an argument of the call has an unresolved type, such as a value computed with a method that another model package does not have yet; a join or relation argument must resolve to a model of the generated package. One `go generate` run over several model packages therefore writes the final models of each package. A generation that runs before another package's methods exist still exits with status 3 for the calls of that package.
 - After changing the schema or adding a chain call, **regenerate and deploy the models with the schema**. A request whose `manifest_hash` differs from the model the client loaded fails with `SCHEMA_HASH_MISMATCH`.
@@ -476,7 +476,7 @@ A program that compiles requests itself, such as a load that writes rows with th
 
 | Client | Handle | Hook |
 |---|---|---|
-| Go | `h := db.WithRequestHook(hook)` | `func(r *ir.Request, addParam func(value any) int, params []any) error` of `orm.RequestHook`, which changes `r` in place and reads the bound values in `params`, a copy; `ir` is `github.com/polyspec/orm/engine/ir` |
+| Go | `h := db.WithRequestHook(hook)` | `func(r *ir.Request, addParam func(value any) int, params []any) error` of `orm.RequestHook`, which changes `r` in place and reads the bound values in `params`, a copy; `ir` is `github.com/polyspec/orm/packages/go/engine/ir` |
 | PHP | `$h = $db->withRequestHook($hook)` | `\Closure(Polyspec\Orm\Request $r): void`, which changes `$r->ir` in place, adds a parameter with `$r->param($value)` and reads the bound values in `$r->params` |
 | Rust | `let h = db.with_request_hook(hook);` | `Fn(&mut polyspec_orm::ir::Request, &mut polyspec_orm::RequestParams) -> polyspec_orm::Result<()>`, which changes the request in place, adds a parameter with `params.add(value)` and reads a bound value with `params.get(index)` |
 | TypeScript | `const h = db.withRequestHook(hook)` | `(request: Request, addParam: (value: unknown) => number, params: readonly unknown[]) => Request` of `RequestHook`, which returns the request to plan and reads the bound values in `params`, a frozen copy |
@@ -520,7 +520,7 @@ A program that compiles requests itself, such as a load that writes rows with th
 ```sh
 make test-servers                                        # MySQL, PostgreSQL, their replicas, ProxySQL, PgBouncer, and the seeded bench databases
 . .runtime/servers/env                                   # the DSN variables of the tests
-go test ./...                                            # engine, generator, and Go client
+go test ./packages/go/... ./tests/... ./examples/...    # engine, generator, Go client, Go runners and examples
 npm run typescript:test                                  # TypeScript client
 (cd packages/rust && cargo test --workspace)              # Rust client
 node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH_MYSQL_DSN"   # five clients, identical results on MySQL

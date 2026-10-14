@@ -1,5 +1,5 @@
 // cases.mts reads tests/dbspec/cases.json against its schema (schema/cases.schema.json), as strictly as the Go reader
-// (engine/dbspec/vectors_test.go decodeCaseVectors): every section and every field of the format is present with its type,
+// (packages/go/engine/dbspec/vectors_test.go decodeCaseVectors): every section and every field of the format is present with its type,
 // a section or field the format does not name is refused, and every section has a case. The schema cannot state that the
 // main document of a case is one of its documents; checkCases checks it.
 import { readFileSync } from 'node:fs';

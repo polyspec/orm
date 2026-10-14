@@ -4,13 +4,13 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/testcase"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/engine/ir"
+	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/orm"
 )
 

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/polyspec/orm/engine/ir"
+	"github.com/polyspec/orm/packages/go/engine/ir"
 )
 
 var (

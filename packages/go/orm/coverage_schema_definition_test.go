@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/engine/dbspec"
-	"github.com/polyspec/orm/engine/runtimemodel"
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // schemaDocuments는 fixture input이 repository root 기준으로 나열한 dbspec

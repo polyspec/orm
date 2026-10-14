@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // TestBenchDSNIsRequired fails the bench database lookup when

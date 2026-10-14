@@ -12,7 +12,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // TestCoverageConformanceVector는 Go conformance runner가 고른 database에서

@@ -9,8 +9,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/polyspec/orm/internal/testcase"
 	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // statementFaultFixture는 contracts/fixtures/statement_fault.json이다. code와

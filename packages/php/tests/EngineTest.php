@@ -120,7 +120,7 @@ final class EngineTest extends TestCase
         }
 
         // restore 는 set 값과 and 로 이은 where 의 eq 조건이 덮는 primary key 나 unique key 하나로 soft delete column 을 NULL 로
-        // 되돌리는 update 하나다(engine/planner/restore_test.go 와 같은 case). 지워진 행만 고치고,
+        // 되돌리는 update 하나다(packages/go/engine/planner/restore_test.go 와 같은 case). 지워진 행만 고치고,
         // audit table 이면 audit 기록 entity 를 이름한 audit slot 으로 audit column 도 쓴다.
         $restoreDocument = <<<'DBS'
         dbspec 1 restore

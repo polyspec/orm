@@ -7,7 +7,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // request_hook coverage: feature-check가 고른 database(ORM_FEATURE_DATABASE)에서 공유 case 하나를

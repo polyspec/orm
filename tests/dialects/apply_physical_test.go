@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/engine/dbspec"
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // planCaseText는 tests/dbspec/plans.json case의 source와 plan text다.

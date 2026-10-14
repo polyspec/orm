@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 func TestMapMySQLErrClassifiesCheckConstraint(t *testing.T) {

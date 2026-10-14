@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // TestExampleOutputsAreIdentical는 README가 diff로 비교하는 대로 각 예제의 Go, PHP,

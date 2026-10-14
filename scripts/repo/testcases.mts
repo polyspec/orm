@@ -60,19 +60,19 @@ function body(text: string, index: number): string {
   return text.slice(start);
 }
 
-// goTestCaseErrors는 Go의 Test나 Fuzz 함수가 internal/testcase(testcase.Start, Group, Run, Of)를 쓰지
+// goTestCaseErrors는 Go의 Test나 Fuzz 함수가 packages/go/testcase(testcase.Start, Group, Run, Of)를 쓰지
 // 않을 때마다 오류 하나를 돌려준다. 그런 test는 RUN 줄과 기한 없이 실행된다. files는 {path: text}이고,
-// 그 형식을 정의하는 internal/testcase의 test는 검사하지 않는다.
+// 그 형식을 정의하는 packages/go/testcase의 test는 검사하지 않는다.
 export function goTestCaseErrors(files: Record<string, string>) {
   const errors: string[] = [];
   for (const [path, text] of Object.entries(files)) {
-    if (!path.endsWith('_test.go') || path.startsWith('internal/testcase/')) continue;
+    if (!path.endsWith('_test.go') || path.startsWith('packages/go/testcase/')) continue;
     // raw string literal 안의 Go source(생성기 test가 쓰는 file)는 이 file의 test가 아니다. 같은 길이의
     // 공백으로 바꾸어 위치를 지킨다.
     const code = text.replace(/`[^`]*`/g, literal => literal.replace(/[^\n]/g, ' '));
     for (const match of code.matchAll(/^func ((?:Test|Fuzz)\w*)\(\w+ \*testing\.[TF]\) \{/gm))
       if (!/\btestcase\.(?:Start|Group|Run|Of)\(/.test(body(code, match.index ?? 0)))
-        errors.push(`${path}: ${match[1] ?? ''} does not start its case with internal/testcase, so it runs without a deadline or RUN line`);
+        errors.push(`${path}: ${match[1] ?? ''} does not start its case with packages/go/testcase, so it runs without a deadline or RUN line`);
   }
   return errors;
 }

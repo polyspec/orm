@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 46db1d7a40ff231ff28bced9edb54f81bf585df1e772e51e681a9b3c777c41ca -->
+<!-- source-sha256: 5de02c90cb24d3c3d5ff07dc494ac385c881f15768e3ad1966bcb9637b7dc50b -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
@@ -24,7 +24,7 @@
 
 ```sh
 git clone https://github.com/polyspec/orm && cd orm
-go build ./...
+go build ./packages/go/... ./tests/... ./examples/...
 ```
 
 ---
@@ -82,7 +82,7 @@ table authors {
 ```
 
 ```sh
-go run github.com/polyspec/orm/cmd/orm-gen gen --set schema/dbspec-set.json --lang go --out model --scan ./...
+go run github.com/polyspec/orm/packages/go/cmd/orm-gen gen --set schema/dbspec-set.json --lang go --out model --scan ./...
 vendor/bin/orm-gen gen --set schema/dbspec-set.json --out src/Model --namespace 'Example\Model' --scan src
 npx orm-gen gen --set schema/dbspec-set.json --out src/models --scan src
 orm-gen gen --set schema/dbspec-set.json --out model --scan src
@@ -110,7 +110,7 @@ fn main() {
 - `--check`는 출력을 쓰지 않고 기존 파일과 비교한다. 대상은 Go·PHP·TypeScript·Python `orm-gen`의 `gen`이다. 명령은 내용이 다른 파일에 `differs: <path>`, 없는 파일에 `missing: <path>`, 출력 디렉터리에서 생성 코드 주석을 가지고 있지만 생성이 더 이상 쓰지 않는 파일에 `extra: <path>`를 경로 순서로 출력하고, 한 줄이라도 출력하면 상태 1로 종료한다. 파일이 최신이면 아무것도 출력하지 않고 상태 0으로 종료한다. Python은 파일 하나 `models.py`를 쓰므로 그 검사는 그 파일에 `missing`이나 `differs`를 출력하며 `extra` 줄은 없다. Go `gen --check`는 `gen`과 같은 scan을 시스템 임시 디렉터리 아래의 디렉터리에서 실행하므로 모델 패키지는 `--out`의 이름과 import 경로를 유지한다. 생성 실패와 상태 3은 `gen`과 같다. Rust는 `build.rs`에서 모델을 생성하며 `gen` 명령이 없다.
 
 ```sh
-go run github.com/polyspec/orm/cmd/orm-gen gen --set schema/dbspec-set.json --lang go --out model --scan ./... --check
+go run github.com/polyspec/orm/packages/go/cmd/orm-gen gen --set schema/dbspec-set.json --lang go --out model --scan ./... --check
 ```
 - 호출 인자의 타입이 확정되지 않아도 scan은 호출한 메서드를 생성한다. 예를 들어 다른 모델 패키지에 아직 없는 메서드로 계산한 값이 이런 인자다. join과 relation 인자는 생성하는 패키지의 모델로 확정되어야 한다. 따라서 여러 모델 패키지에 대한 `go generate` 한 번으로 각 패키지의 최종 모델을 쓴다. 다른 패키지의 메서드가 생기기 전에 실행한 생성은 그 패키지 호출 때문에 여전히 상태 3으로 종료한다.
 - 스키마를 바꾸거나 새 체인 호출을 추가한 뒤에는 **모델을 다시 생성하고 스키마와 함께 배포**한다. 요청의 `manifest_hash`가 클라이언트가 읽은 모델과 다르면 `SCHEMA_HASH_MISMATCH`로 실패한다.
@@ -477,7 +477,7 @@ request를 직접 compile하는 program은, 예를 들어 행을 identity key와
 
 | Client | Handle | Hook |
 |---|---|---|
-| Go | `h := db.WithRequestHook(hook)` | `orm.RequestHook`인 `func(r *ir.Request, addParam func(value any) int, params []any) error`이며 `r`을 직접 고치고 사본인 `params`에서 bind된 값을 읽는다. `ir`은 `github.com/polyspec/orm/engine/ir`이다 |
+| Go | `h := db.WithRequestHook(hook)` | `orm.RequestHook`인 `func(r *ir.Request, addParam func(value any) int, params []any) error`이며 `r`을 직접 고치고 사본인 `params`에서 bind된 값을 읽는다. `ir`은 `github.com/polyspec/orm/packages/go/engine/ir`이다 |
 | PHP | `$h = $db->withRequestHook($hook)` | `\Closure(Polyspec\Orm\Request $r): void`이며 `$r->ir`을 직접 고치고 `$r->param($value)`로 매개변수를 더하며 `$r->params`에서 bind된 값을 읽는다 |
 | Rust | `let h = db.with_request_hook(hook);` | `Fn(&mut polyspec_orm::ir::Request, &mut polyspec_orm::RequestParams) -> polyspec_orm::Result<()>`이며 request를 직접 고치고 `params.add(value)`로 매개변수를 더하며 `params.get(index)`로 bind된 값을 읽는다 |
 | TypeScript | `const h = db.withRequestHook(hook)` | `RequestHook`인 `(request: Request, addParam: (value: unknown) => number, params: readonly unknown[]) => Request`이며 plan할 request를 돌려주고 고정된 사본인 `params`에서 bind된 값을 읽는다 |
@@ -521,7 +521,7 @@ request를 직접 compile하는 program은, 예를 들어 행을 identity key와
 ```sh
 make test-servers                                        # MySQL, PostgreSQL, their replicas, ProxySQL, PgBouncer, and the seeded bench databases
 . .runtime/servers/env                                   # the DSN variables of the tests
-go test ./...                                            # engine, generator, and Go client
+go test ./packages/go/... ./tests/... ./examples/...    # engine, generator, Go client, Go runners and examples
 npm run typescript:test                                  # TypeScript client
 (cd packages/rust && cargo test --workspace)              # Rust client
 node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH_MYSQL_DSN"   # five clients, identical results on MySQL

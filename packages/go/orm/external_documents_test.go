@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/internal/testcase"
 	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // externalCase는 외부 문서를 쓰는 set을 dsn의 database에서 확인한다

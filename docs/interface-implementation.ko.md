@@ -1,5 +1,5 @@
 <!-- doc-id: interface-implementation -->
-<!-- source-sha256: e0587f83922e7230727a70a085c4d414246f393e4cfa67c21c6021499c18cc9c -->
+<!-- source-sha256: 1a21b28f817a56103f55c6a3806556cb954ea2de8447d5d3a6ef7cf599e00888 -->
 # 공통 인터페이스 구현 대조표
 
 기준: [공통 인터페이스 v1](interfaces.md), [기계 명세](../contracts/interfaces.json), [생성 도표](interfaces-model.md). 재현 명령과 검사 범위는 [검사 안내](../tests/interfaces/README.md)에 있다.
@@ -42,7 +42,7 @@ PostgreSQL·MySQL·SQLite 사례가 이 호출을 실행하고, pooler 사례는
 
 | 클라이언트 | Planner와 생성 모델 소유 위치 | 실행 소유 테스트 | 사용 부분·공유 검사 |
 |---|---|---|---|
-| Go | `engine/*`을 `packages/go/orm`이 직접 호출하며 생성 모델은 `packages/go/model`에 있다 | `packages/go/orm/*_test.go`, `packages/go/model/*_test.go` | `tests/conformance/runner.go`, `tests/interfaces/check` |
+| Go | `packages/go/engine/*`을 `packages/go/orm`이 직접 호출하며 생성 모델은 `packages/go/model`에 있다 | `packages/go/orm/*_test.go`, `packages/go/model/*_test.go` | `tests/conformance/runner.go`, `tests/interfaces/check` |
 | PHP | `packages/php/src`가 PDO를 통해 계획·실행하며 생성 모델은 `packages/php/gen`에 있다 | `packages/php/tests/*.php` | `tests/conformance/runner.php`, `tests/interfaces/php.php` |
 | Rust | `packages/rust/orm`이 sqlx를 통해 계획·실행하며 `polyspec-orm-build`가 모델을 생성한다 | `packages/rust/tests/src`, `packages/rust/orm/src/*_test.rs` | `tests/conformance/runner_rust.rs`, `tests/interfaces/rust` |
 | TypeScript | `packages/ts/src`가 네이티브 driver를 통해 계획·실행하며 생성 모델은 `packages/ts/src/models`에 있다 | `packages/ts/tests` | `tests/conformance/runner_typescript.mts`, `tests/interfaces/typescript.mts` |

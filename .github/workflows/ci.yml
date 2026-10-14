@@ -94,7 +94,7 @@ jobs:
         if: ${{ !cancelled() }}
         run: make install-tools
       # make check runs go with GOPROXY=off; make install-go downloads the
-      # modules of go.mod.
+      # modules of go.work.
       - name: Go modules
         id: go-modules
         if: ${{ !cancelled() }}
@@ -297,7 +297,7 @@ jobs:
         id: go
         if: ${{ !cancelled() }}
         run: make install-tools
-      # make check runs go with GOPROXY=off; make install-go downloads the modules of go.mod for the lease program.
+      # make check runs go with GOPROXY=off; make install-go downloads the modules of go.work for the lease program.
       - name: Go modules
         id: go-modules
         if: ${{ !cancelled() }}

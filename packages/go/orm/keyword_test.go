@@ -8,7 +8,7 @@ import (
 	_ "github.com/polyspec/orm/packages/go/orm/pg"
 	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
 
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // keywordRow is a hand-written model for a table and columns named with SQL

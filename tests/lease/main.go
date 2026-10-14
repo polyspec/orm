@@ -55,7 +55,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/polyspec/orm/internal/procevent"
+	"github.com/polyspec/orm/packages/go/procevent"
 )
 
 const exclusiveName = "exclusive.json"

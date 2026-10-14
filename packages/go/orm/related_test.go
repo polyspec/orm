@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // TestRelatedAsReportsMismatch는 relation result를 T로 읽을 때 저장된 값,

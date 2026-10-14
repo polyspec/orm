@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/internal/testcase"
-	"github.com/polyspec/orm/internal/testdb"
+	"github.com/polyspec/orm/packages/go/internal/testdb"
 	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 var zoneColumns = []string{"seq", "start_dt", "created_ts"}

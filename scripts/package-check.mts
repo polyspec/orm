@@ -26,8 +26,8 @@ const COMPOSER: Command = { program: 'composer', args: ['validate', `--working-d
 const CARGO: Command = { program: variable('LEASE'), args: ['run', variable('CARGO_LEASES'), 'exclusive', '--wait', '--', 'cargo', 'check', '--manifest-path', join(rust, 'Cargo.toml'), '--quiet'], cwd: root };
 const GO: Command[] = [
   { program: 'go', args: ['mod', 'init', 'example.com/orm-external-check'], cwd: go },
-  { program: 'go', args: ['mod', 'edit', '-replace', `github.com/polyspec/orm=${root}`], cwd: go },
-  { program: 'go', args: ['get', `github.com/polyspec/orm@v${version}`], cwd: go },
+  { program: 'go', args: ['mod', 'edit', '-replace', `github.com/polyspec/orm/packages/go=${join(root, 'packages/go')}`], cwd: go },
+  { program: 'go', args: ['get', `github.com/polyspec/orm/packages/go@v${version}`], cwd: go },
   { program: 'go', args: ['mod', 'tidy'], cwd: go },
   { program: 'go', args: ['test', '-timeout', '0', './...'], cwd: go },
 ];

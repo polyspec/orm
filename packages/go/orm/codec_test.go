@@ -16,7 +16,7 @@ import (
 
 	orderedjson "github.com/polyspec/ordered-json/packages/go"
 
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 type codecVector struct {

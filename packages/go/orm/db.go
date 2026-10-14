@@ -19,10 +19,10 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 
-	"github.com/polyspec/orm/engine"
-	"github.com/polyspec/orm/engine/ir"
-	"github.com/polyspec/orm/engine/plan"
-	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/packages/go/engine"
+	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/engine/plan"
+	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 )
 
 // Config is the connection configuration. Paths and secrets are declared,

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // generateCommand는 generate.go의 go:generate 줄에 선언된 생성 명령이다.
@@ -58,15 +58,19 @@ func runCheck(t *testing.T, dir string, command []string) (string, string, int) 
 }
 
 // copyModule는 생성 명령이 읽는 module 부분의 Go source를 dst에 복사한다:
-// go.mod, go.sum, orm-gen과 generator, engine, Go client, 그리고 scan이 읽는
-// examples와 Go conformance runner, 그리고 set file schema/dbspec-set.json과 그것이 적은
-// document schema/bench.dbs다.
+// go.work와 그 세 module의 go.mod, go.sum, packages/go module(orm-gen, generator, engine,
+// Go client), 그리고 scan이 읽는 examples와 Go conformance runner, 그리고 set file
+// schema/dbspec-set.json과 그것이 적은 document schema/bench.dbs다.
 func copyModule(t *testing.T, root, dst string) {
 	t.Helper()
-	for _, file := range []string{"go.mod", "go.sum", filepath.Join("schema", "dbspec-set.json"), filepath.Join("schema", "bench.dbs")} {
+	files := []string{"go.work", filepath.Join("schema", "dbspec-set.json"), filepath.Join("schema", "bench.dbs")}
+	for _, module := range []string{filepath.Join("packages", "go"), "tests", "examples"} {
+		files = append(files, filepath.Join(module, "go.mod"), filepath.Join(module, "go.sum"))
+	}
+	for _, file := range files {
 		copyFile(t, filepath.Join(root, file), filepath.Join(dst, file))
 	}
-	for _, dir := range []string{"cmd", "generator", "engine", filepath.Join("packages", "go"), "examples", filepath.Join("tests", "conformance", "runner_go")} {
+	for _, dir := range []string{filepath.Join("packages", "go"), "examples", filepath.Join("tests", "conformance", "runner_go")} {
 		err := filepath.WalkDir(filepath.Join(root, dir), func(path string, entry fs.DirEntry, err error) error {
 			if err != nil {
 				return err

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 func TestStyledColumnStateFixture(t *testing.T) {

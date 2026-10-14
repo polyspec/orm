@@ -67,7 +67,7 @@ export function missingDownloads(root: string, { run = spawnSync, env = process.
   };
   // The crates of every Cargo.lock are checked by make cargo-downloads-check, a target of the kit.mk of @polyspec/kit.
   tool('rust', 'the crates of every Cargo.lock', 'make', ['--no-print-directory', 'cargo-downloads-check']);
-  if (existsSync(join(root, 'go.mod'))) tool('go', 'the Go modules of go.mod', 'go', ['mod', 'download']);
+  if (existsSync(join(root, 'go.work'))) tool('go', 'the Go modules of go.work', 'go', ['mod', 'download']);
   for (const directory of NPM_ROOTS) {
     const missing = npmMissing(root, directory);
     if (missing.length) out.push({ need: 'node-modules', message: `the npm packages of ${join(directory, 'package-lock.json')} are not installed: ${missing.slice(0, 5).join('; ')}${missing.length > 5 ? `; and ${missing.length - 5} more` : ''}; ${fix}` });

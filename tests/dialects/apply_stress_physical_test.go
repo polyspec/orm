@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/engine/dbspec"
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // stressStallLimit는 step이 하나도 적용되지 않은 채 지날 수 있는 시간이다. step마다 statement 하나와 그 commit이므로

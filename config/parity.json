@@ -5,7 +5,7 @@
     {
       "name": "go",
       "runner": "go",
-      "roots": ["packages/go", "engine", "generator", "cmd", "internal", "contracts"],
+      "roots": ["packages/go", "tests/interfaces/contracts"],
       "tests": ["packages/go/**/coverage_*_test.go"],
       "args": ["-tags", "physical,ormtest,markdown"],
       "errors": { "file": "packages/go/orm/codes.go", "pattern": "^\\tCode\\w+\\s+= \"(\\w+)\"" }
@@ -68,7 +68,7 @@
   ],
   "comparators": ["tests/conformance/check", "tests/interfaces/check"],
   "testPatterns": [
-    { "runner": "go", "globs": ["packages/**/*_test.go", "engine/**/*_test.go", "generator/**/*_test.go", "cmd/**/*_test.go", "internal/**/*_test.go", "contracts/**/*_test.go", "tests/**/*_test.go"] },
+    { "runner": "go", "globs": ["packages/**/*_test.go", "tests/**/*_test.go", "examples/**/*_test.go"] },
     { "runner": "cargo", "globs": ["packages/**/tests/**/*.rs", "tests/**/*.rs"] },
     { "runner": "node", "globs": ["packages/ts/tests/**/*.mjs", "tests/*/**/*.mjs"] },
     { "runner": "php", "globs": ["packages/php/tests/**/*.php", "packages/php-ext/tests/**/*.php", "tests/**/*.php"] },
@@ -190,7 +190,7 @@
       "id": "ir-validate", "kind": "suite", "profile": "client",
       "file": "tests/ir/validate.json", "cases": "$.cases[*].name",
       "bindings": [
-        { "implementation": "go", "test": "engine/ir/validate_test.go", "symbol": "TestValidateVectors" },
+        { "implementation": "go", "test": "packages/go/engine/ir/validate_test.go", "symbol": "TestValidateVectors" },
         { "implementation": "php", "test": "packages/php/tests/EngineTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/engine.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_ir_validate.py" },
@@ -234,7 +234,7 @@
       "id": "dbspec-canonical", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/cases.json", "cases": "$.canonical[*].id",
       "bindings": [
-        { "implementation": "go", "test": "engine/dbspec/vectors_test.go", "symbol": "TestSharedVectors" },
+        { "implementation": "go", "test": "packages/go/engine/dbspec/vectors_test.go", "symbol": "TestSharedVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecTest.php" },
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec.mjs" },
@@ -246,7 +246,7 @@
       "id": "dbspec-normalize", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/cases.json", "cases": "$.normalize[*].id",
       "bindings": [
-        { "implementation": "go", "test": "engine/dbspec/vectors_test.go", "symbol": "TestSharedVectors" },
+        { "implementation": "go", "test": "packages/go/engine/dbspec/vectors_test.go", "symbol": "TestSharedVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecTest.php" },
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec.mjs" },
@@ -258,7 +258,7 @@
       "id": "dbspec-invalid", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/cases.json", "cases": "$.invalid[*].id",
       "bindings": [
-        { "implementation": "go", "test": "engine/dbspec/vectors_test.go", "symbol": "TestSharedVectors" },
+        { "implementation": "go", "test": "packages/go/engine/dbspec/vectors_test.go", "symbol": "TestSharedVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecTest.php" },
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec.mjs" },
@@ -270,7 +270,7 @@
       "id": "dbspec-hashes", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/cases.json", "cases": "$.hashes[*].id",
       "bindings": [
-        { "implementation": "go", "test": "engine/dbspec/manifest_test.go", "symbol": "TestManifestVectors" },
+        { "implementation": "go", "test": "packages/go/engine/dbspec/manifest_test.go", "symbol": "TestManifestVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecManifestTest.php" },
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec.mjs" },
@@ -282,7 +282,7 @@
       "id": "dbspec-sets", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/cases.json", "cases": "$.sets[*].id",
       "bindings": [
-        { "implementation": "go", "test": "engine/dbspec/manifest_test.go", "symbol": "TestDocumentSets" },
+        { "implementation": "go", "test": "packages/go/engine/dbspec/manifest_test.go", "symbol": "TestDocumentSets" },
         { "implementation": "php", "test": "packages/php/tests/DbspecManifestTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec.mjs" },
         { "implementation": "python", "test": "packages/python/tests/dbspec_cases.py" },
@@ -293,7 +293,7 @@
       "id": "dbspec-files", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/cases.json", "cases": "$.files[*].id",
       "bindings": [
-        { "implementation": "go", "test": "engine/dbspec/vectors_test.go", "symbol": "TestFileVectors" },
+        { "implementation": "go", "test": "packages/go/engine/dbspec/vectors_test.go", "symbol": "TestFileVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecTest.php" },
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec.mjs" },
@@ -305,7 +305,7 @@
       "id": "dbspec-positions", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/cases.json", "cases": "$.positions[*].id",
       "bindings": [
-        { "implementation": "go", "test": "engine/dbspec/vectors_test.go", "symbol": "TestPositionVectors" },
+        { "implementation": "go", "test": "packages/go/engine/dbspec/vectors_test.go", "symbol": "TestPositionVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecTest.php" },
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec.mjs" },
@@ -317,7 +317,7 @@
       "id": "dbspec-set-files", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/set-files.json", "cases": "$.cases[*].id",
       "bindings": [
-        { "implementation": "go", "test": "engine/dbspec/set_test.go", "symbol": "TestReadSetVectors" },
+        { "implementation": "go", "test": "packages/go/engine/dbspec/set_test.go", "symbol": "TestReadSetVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecSetTest.php" },
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecSetTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-set.mjs" },
@@ -340,7 +340,7 @@
       "id": "dbspec-ddl", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/ddl.json", "cases": "$.cases[*].id",
       "bindings": [
-        { "implementation": "go", "test": "engine/dbspec/render_test.go", "symbol": "TestRenderVectors" },
+        { "implementation": "go", "test": "packages/go/engine/dbspec/render_test.go", "symbol": "TestRenderVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecRenderTest.php" },
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-render.mjs" },
@@ -364,7 +364,7 @@
       "id": "dbspec-show-create", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/show-create.json", "cases": "$.cases[*].id",
       "bindings": [
-        { "implementation": "go", "test": "engine/dbspec/show_create_test.go", "symbol": "TestMySQLShownCheckVectors" },
+        { "implementation": "go", "test": "packages/go/engine/dbspec/show_create_test.go", "symbol": "TestMySQLShownCheckVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecShowCreateTest.php" },
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecShowCreateTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-show-create.mjs" },
@@ -376,7 +376,7 @@
       "id": "dbspec-mermaid-export", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/mermaid.json", "cases": "$.export[*].id",
       "bindings": [
-        { "implementation": "go", "test": "engine/dbspec/mermaid_test.go", "symbol": "TestMermaidVectors" },
+        { "implementation": "go", "test": "packages/go/engine/dbspec/mermaid_test.go", "symbol": "TestMermaidVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecMermaidTest.php" },
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecMermaidTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-mermaid.mjs" },
@@ -388,7 +388,7 @@
       "id": "dbspec-mermaid-import", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/mermaid.json", "cases": "$.import[*].id",
       "bindings": [
-        { "implementation": "go", "test": "engine/dbspec/mermaid_test.go", "symbol": "TestMermaidVectors" },
+        { "implementation": "go", "test": "packages/go/engine/dbspec/mermaid_test.go", "symbol": "TestMermaidVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecMermaidTest.php" },
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecMermaidTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-mermaid.mjs" },
@@ -400,7 +400,7 @@
       "id": "dbspec-mermaid-invalid", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/mermaid.json", "cases": "$.invalid[*].id",
       "bindings": [
-        { "implementation": "go", "test": "engine/dbspec/mermaid_test.go", "symbol": "TestMermaidVectors" },
+        { "implementation": "go", "test": "packages/go/engine/dbspec/mermaid_test.go", "symbol": "TestMermaidVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecMermaidTest.php" },
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecMermaidTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-mermaid.mjs" },
@@ -412,7 +412,7 @@
       "id": "dbspec-mermaid-round-trip", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/mermaid.json", "cases": "$.round_trip[*].id",
       "bindings": [
-        { "implementation": "go", "test": "engine/dbspec/mermaid_test.go", "symbol": "TestMermaidVectors" },
+        { "implementation": "go", "test": "packages/go/engine/dbspec/mermaid_test.go", "symbol": "TestMermaidVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecMermaidTest.php" },
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecMermaidTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-mermaid.mjs" },
@@ -424,7 +424,7 @@
       "id": "dbspec-plans", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/plans.json", "cases": "$.cases[*].id",
       "bindings": [
-        { "implementation": "go", "test": "engine/dbspec/plan_test.go", "symbol": "TestPlanVectors" },
+        { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestPlanVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecPlanTest.php" },
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecPlanTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-plan.mjs" },
@@ -436,7 +436,7 @@
       "id": "dbspec-plans-invalid", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/plans.json", "cases": "$.invalid[*].id",
       "bindings": [
-        { "implementation": "go", "test": "engine/dbspec/plan_test.go", "symbol": "TestPlanVectors" },
+        { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestPlanVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecPlanTest.php" },
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecPlanTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-plan.mjs" },
@@ -448,7 +448,7 @@
       "id": "dbspec-plan-chains", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/plans.json", "cases": "$.chains[*].id",
       "bindings": [
-        { "implementation": "go", "test": "engine/dbspec/plan_test.go", "symbol": "TestPlanChains" },
+        { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestPlanChains" },
         { "implementation": "php", "test": "packages/php/tests/DbspecPlanTest.php" },
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecPlanTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-plan.mjs" },
@@ -460,7 +460,7 @@
       "id": "dbspec-plan-parse", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/plans.json", "cases": "$.parse[*].id",
       "bindings": [
-        { "implementation": "go", "test": "engine/dbspec/plan_test.go", "symbol": "TestPlanParseErrors" },
+        { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestPlanParseErrors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecPlanTest.php" },
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecPlanTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-plan.mjs" },
@@ -472,7 +472,7 @@
       "id": "dbspec-plan-comparisons", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/plans.json", "cases": "$.comparisons[*].id",
       "bindings": [
-        { "implementation": "go", "test": "engine/dbspec/plan_test.go", "symbol": "TestCompareSchemas" },
+        { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestCompareSchemas" },
         { "implementation": "php", "test": "packages/php/tests/DbspecPlanTest.php" },
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecPlanTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-plan.mjs" },
@@ -528,7 +528,7 @@
     "catalog": { "file": "docs/errors.yaml", "pattern": "^codes:$|^  - code: (\\w+)(?:\\s+#.*)?$|^    origin: \\w+$" }
   },
   "languageLists": [
-    { "file": "contracts/validate.go", "pattern": "^var languages = \\[\\]string\\{(.*)\\}$", "profile": "client" },
+    { "file": "tests/interfaces/contracts/validate.go", "pattern": "^var languages = \\[\\]string\\{(.*)\\}$", "profile": "client" },
     { "file": "scripts/features/build.mts", "pattern": "^const clients = \\[(.*)\\];$", "profile": "client" },
     { "file": "scripts/features/check.mts", "pattern": "^const clients = \\[(.*)\\];$", "profile": "client" },
     { "file": "scripts/features/coverage.mts", "pattern": "^export const languages = \\[(.*)\\];$", "profile": "client" },

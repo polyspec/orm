@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/internal/testcase"
 	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // featureDatabase는 feature coverage checker가 고른 database와 DSN이다.

@@ -8,8 +8,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/polyspec/orm/engine/ir"
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // TestShapeCoversEveryField mutates every reachable field of ir.Request (through

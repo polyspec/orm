@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mts) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-14T22:22:13.358Z",
+  "reviewed": "2026-10-14T22:47:26.988Z",
   "locks": [
     {
       "lock": "package-lock.json",
@@ -28,8 +28,18 @@
       "advisories": []
     },
     {
-      "lock": "go.sum",
+      "lock": "examples/go.sum",
+      "sha256": "490489fee9a8c18911d6c50658de08c876fd2810e283c8bab07202ae90cad76f",
+      "advisories": []
+    },
+    {
+      "lock": "packages/go/go.sum",
       "sha256": "9545122fa0eb0ffd811a65adba688aa6b1bff4acde4d97e3212f11a07e145ab9",
+      "advisories": []
+    },
+    {
+      "lock": "tests/go.sum",
+      "sha256": "97caff8f7e3ba9dda6b7a4d1725af2b1d49bf4725991e729769c51a6137714da",
       "advisories": []
     },
     {
@@ -338,56 +348,91 @@
     },
     {
       "ecosystem": "go",
-      "manifest": "go.mod",
+      "manifest": "examples/go.mod",
       "package": "github.com/go-sql-driver/mysql",
       "version": "v1.10.1",
       "latest": "v1.10.1"
     },
     {
       "ecosystem": "go",
-      "manifest": "go.mod",
+      "manifest": "packages/go/go.mod",
+      "package": "github.com/go-sql-driver/mysql",
+      "version": "v1.10.1",
+      "latest": "v1.10.1"
+    },
+    {
+      "ecosystem": "go",
+      "manifest": "packages/go/go.mod",
       "package": "github.com/goccy/go-yaml",
       "version": "v1.19.2",
       "latest": "v1.19.2"
     },
     {
       "ecosystem": "go",
-      "manifest": "go.mod",
+      "manifest": "packages/go/go.mod",
       "package": "github.com/jackc/pgx/v5",
       "version": "v5.11.0",
       "latest": "v5.11.0"
     },
     {
       "ecosystem": "go",
-      "manifest": "go.mod",
+      "manifest": "packages/go/go.mod",
       "package": "github.com/polyspec/ordered-json/packages/go",
       "version": "v0.0.9",
       "latest": "v0.0.9"
     },
     {
       "ecosystem": "go",
-      "manifest": "go.mod",
+      "manifest": "packages/go/go.mod",
       "package": "go.yaml.in/yaml/v3",
       "version": "v3.0.5",
       "latest": "v3.0.5"
     },
     {
       "ecosystem": "go",
-      "manifest": "go.mod",
+      "manifest": "packages/go/go.mod",
       "package": "golang.org/x/sys",
       "version": "v0.49.0",
       "latest": "v0.49.0"
     },
     {
       "ecosystem": "go",
-      "manifest": "go.mod",
+      "manifest": "packages/go/go.mod",
       "package": "golang.org/x/tools",
       "version": "v0.52.0",
       "latest": "v0.52.0"
     },
     {
       "ecosystem": "go",
-      "manifest": "go.mod",
+      "manifest": "packages/go/go.mod",
+      "package": "modernc.org/sqlite",
+      "version": "v1.60.1",
+      "latest": "v1.60.1"
+    },
+    {
+      "ecosystem": "go",
+      "manifest": "tests/go.mod",
+      "package": "github.com/go-sql-driver/mysql",
+      "version": "v1.10.1",
+      "latest": "v1.10.1"
+    },
+    {
+      "ecosystem": "go",
+      "manifest": "tests/go.mod",
+      "package": "github.com/jackc/pgx/v5",
+      "version": "v5.11.0",
+      "latest": "v5.11.0"
+    },
+    {
+      "ecosystem": "go",
+      "manifest": "tests/go.mod",
+      "package": "golang.org/x/sys",
+      "version": "v0.49.0",
+      "latest": "v0.49.0"
+    },
+    {
+      "ecosystem": "go",
+      "manifest": "tests/go.mod",
       "package": "modernc.org/sqlite",
       "version": "v1.60.1",
       "latest": "v1.60.1"

@@ -7,10 +7,10 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/polyspec/orm/engine/runtimemodel"
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/orm"
 	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // TestSQLiteFileNameIsThePath는 query가 붙은 SQLite DSN이 path만으로 file을

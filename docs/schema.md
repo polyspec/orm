@@ -17,13 +17,13 @@ Each language generates its models from the document set with its own tool ([usa
 
 Each tool takes the document set only as its [set file](dbspec.md#document-sets) and reads it with its client's set reader; a set file with an error makes the tool print every error and write nothing. Each tool then reads every listed document file with the file reader of its client, which rejects a file that does not start with the dbspec signature as a `signature` error before parsing ([files](dbspec.md#files)); the tool then fails with `SCHEMA_INVALID` and writes no model.
 
-The `github.com/polyspec/orm/generator` package exposes Go generation to other programs. `generator.Generate` takes the runtime model of the document set, the output directory, `PackageName` (the directory name by default) and `Scan`, the package patterns whose calls are generated. Naming, field mapping and output stay in the ORM generator.
+The `github.com/polyspec/orm/packages/go/generator` package exposes Go generation to other programs. `generator.Generate` takes the runtime model of the document set, the output directory, `PackageName` (the directory name by default) and `Scan`, the package patterns whose calls are generated. Naming, field mapping and output stay in the ORM generator.
 
 ## 2. Schema operations
 
 The schema operations are functions of each client library. They take parsed documents and a dialect (`mysql`, `postgres` or `sqlite`) and return statements or located diagnostics.
 
-| Operation | Go `engine/dbspec` | PHP `Polyspec\Orm\Dbspec\Dbspec` | TypeScript | Rust |
+| Operation | Go `packages/go/engine/dbspec` | PHP `Polyspec\Orm\Dbspec\Dbspec` | TypeScript | Rust |
 |---|---|---|---|---|
 | Render the statements of a document set ([dialects](dialects.md#rendered-statements)) | `Render` | `render` | `renderDbspec` | `polyspec_orm_schema::dbspec::render` |
 | Introspect a database into a document ([dialects](dialects.md#introspection)) | `Introspect` | `introspect` | `introspectDbspec` | `polyspec_orm::dbspec::introspect` |

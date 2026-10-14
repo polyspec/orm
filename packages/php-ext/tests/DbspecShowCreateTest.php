@@ -4,7 +4,7 @@ declare(strict_types=1);
 // (T62-4-8). The double CannedCatalogPdo answers each catalog query of mysql_read with the rows of
 // tests/dbspec/show-create.json ("catalog" and each case), so the reader of shown_check goes to SHOW CREATE TABLE
 // for the body of the one CHECK. Each case expects the same checks and unsupported objects as the Go introspection
-// of the same answers (engine/dbspec show_create_introspect_test.go reads the same file), or the error of a CHECK
+// of the same answers (packages/go/engine/dbspec show_create_introspect_test.go reads the same file), or the error of a CHECK
 // the statement lacks.
 
 use PHPUnit\Framework\Attributes\DataProvider;

@@ -6,8 +6,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/polyspec/orm/internal/testcase"
 	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 var errRollbackFaultCallback = errors.New("rollback fault callback failed")

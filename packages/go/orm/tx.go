@@ -17,8 +17,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/polyspec/orm/engine/ir"
-	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 )
 
 // executor is where a statement runs: a connection or an active transaction.

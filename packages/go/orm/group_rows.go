@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/polyspec/orm/engine/plan"
-	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/packages/go/engine/plan"
+	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 )
 
 type groupValue struct {

@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/polyspec/orm/internal/testcase"
 	"github.com/polyspec/orm/packages/go/model"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 func TestGeneratedDecimalFieldUsesExactText(t *testing.T) {

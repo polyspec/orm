@@ -15,9 +15,9 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	sqlite "modernc.org/sqlite"
 
-	"github.com/polyspec/orm/engine/runtimemodel"
-	"github.com/polyspec/orm/internal/testcase"
-	"github.com/polyspec/orm/internal/testdb"
+	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/packages/go/internal/testdb"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // sentStatements는 countingDriver가 database에 보낸 statement와 transaction 시작 수다.
