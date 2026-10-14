@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b8f3c67206f9125bae4a587bb5898368d48a65f09aab1e5bf5272f137374409d -->
+<!-- source-sha256: 53640bda33f72595c6e031204c6e8f9226f11511d7f0d00ce3fecd83096b84f6 -->
 # 변경 이력
 
 ## Unreleased
 
+- bench/는 benchmarks/, 공유 bench schema는 contracts/fixtures/bench/이고, Composer release는 mise.toml의 tool http:composer다. .composer-version을 지웠고 make layout-check가 통과한다. (#T137-1-7)
 - tests/와 examples/ 아래 Go program과 test는 root go.work의 module tests/go.mod와 examples/go.mod다. (#T137-1-6)
 - Go module은 tag packages/go/vX.Y.Z로 release하는 github.com/polyspec/orm/packages/go다. engine/*, generator, cmd/orm-gen은 packages/go/engine/*, packages/go/generator, packages/go/cmd/orm-gen이고, internal/testcase와 internal/procevent는 packages/go/testcase와 packages/go/procevent다. Go consumer는 새 module을 요구하고 그 경로를 import한다. (#T137-1-5)
 - conformance orchestrator와 interface checker는 TypeScript다(tests/conformance/check/main.mts, tests/interfaces/check/main.mts). 그 Go program과 internal/stmtdiff를 지웠다. (#T137-1-4-6)

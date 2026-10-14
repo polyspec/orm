@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 576bc2d1d4f95b5040d86679f0463afa82b89753924223bcff71d267e6d566d9 -->
+<!-- source-sha256: d3885ed35bc76cea1b4b0591ed3ce6ea7634e0db26b48bd8a96b1c0dd2341932 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -993,6 +993,8 @@
     Evidence: packages/go에서 go build와 go vet이 통과한다. database 없이 engine과 그 하위 package 여섯, generator, testcase의 go test가 통과하고 model generation coverage test가 통과한다. Go symbol을 다시 기록해(경로 접두어만 바뀜) make interface-check가 통과하고, repo, feature, release-coverage, dependency-policy, 문서 검사가 통과한다.
   - [o] T137-1-6 tests/와 examples/의 Go program에 workspace 안의 자기 module을 준다 (T137-1-5에 이어). 원인: root module을 옮긴 뒤 tests/와 examples/ 아래 Go program과 test는 어느 module에도 속하지 않았고, kit의 Go lint는 replace를 금지한다. 완료 조건: tests/go.mod와 examples/go.mod가 config/layout.yml이 선언한 root go.work의 module이고, replace가 필요 없으며, contracts/의 Go test는 tests/interfaces/contracts에 있다.
     Evidence: tests와 examples에서 go build와 go vet이 통과하고, tag를 붙인 vet(physical, bench, markdown, decimalphysical, examples, featurecoverage, ormtest)이 세 module에서 통과한다. database 없이 tests/interfaces/contracts, tests/dbspec/unicode, tests/conformance/runner_go, tests/dialects의 go test가 통과하고, make go-vet-check, go-fmt-check, testcase-check/go가 통과한다.
+  - [o] T137-1-7 bench folder와 root file을 layout으로 옮긴다 (T137-1에 이어). 원인: layout-check가 root의 bench/와 schema/(S5), tests/schema(S7), 그리고 mise.toml이 선언한 Composer release를 되풀이하는 .composer-version(S5)을 보고했다. 완료 조건: bench/는 benchmarks/, 공유 bench schema와 그 set은 contracts/fixtures/bench/, cargo runner의 binaries schema는 scripts/schema/binaries.schema.json이고, .composer-version을 지우고 repository 검사는 smol-toml로 mise.toml의 Composer release를 읽으며, make layout-check가 통과한다.
+    Evidence: make layout-check가 finding 없이 통과한다. 옮긴 경로로 python-unit-check, PHP engine, runtime-model, orm-gen-scan unit, TypeScript engine, generate, generate-scan test, Rust dbspec_runtime과 ir_validate test, benchmarks/rust의 cargo check, engine과 generator의 go test, model generation coverage test가 통과한다. scripts/repo와 scripts/check 143건이 통과하고, smol-toml 1.9.1을 review해 dependency-policy-check가 통과한다.
   - [o] T137-1-3-1 Rust model을 allow attribute 없이 생성한다 (T137-1-3에 이어). 원인: orm-build가 모든 model에 #[allow(unused_mut)]와 #[allow(clippy::new_without_default)]를 써서, allow attribute를 거부하는 consumer(kit workspace lint를 쓰는 fsm)가 실패했다. Evidence: build test generated_code_carries_no_allow_attribute가 수정 전 실패하고 수정 후 통과한다. rust-check, rust-fmt-check, interface-check가 통과한다.
   Evidence: make layout-check가 lint-cargo-lints finding을 보고하지 않는다(이전 11건). rust-check, rust-fmt-check, dbspec-rust-check, interface-check, dependency-policy-check가 통과한다.
   - [ ] T137-1-4 언어를 넘는 infrastructure를 TypeScript로 쓴다 (T137-1에 이어). 원인: S9(layout-infrastructure-typescript, layout-infrastructure-shebang)가 scripts/와 tests/ 아래 다른 interpreter의 script 198개를 거부한다. 완료 조건: 각각을 TypeScript로 옮기거나 config/layout.yml에 이유와 함께 S9 예외로 선언한다.
