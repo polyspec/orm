@@ -3089,7 +3089,6 @@
   "packages/go/orm/codec.go::yamlMapping": "func(values []*ast.MappingValueNode) (map[string]any, error)",
   "packages/go/orm/codec.go::yamlNode": "func(node ast.Node) (any, error)",
   "packages/go/orm/codec.go::yamlScalar": "func(node ast.Node) (string, bool, bool)",
-  "packages/go/orm/codec.go::yamlTagged": "func(n *ast.TagNode) (any, error)",
   "packages/go/orm/collection.go::AsBool": "func(v any) (bool, error)",
   "packages/go/orm/collection.go::AsBytes": "func(v any) ([]byte, error)",
   "packages/go/orm/collection.go::AsFloat64": "func(v any) (float64, error)",

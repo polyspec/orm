@@ -45,6 +45,12 @@
     {"name": "hex-non-hex", "styles": ["hex"], "stored": "68zz", "error": "CODEC_DECODE"},
     {"name": "ip-v4", "styles": ["ip"], "stored_hex": "7f000001", "value": "127.0.0.1"},
     {"name": "ip-v6", "styles": ["ip"], "stored_hex": "00000000000000000000000000000001", "value": "::1"},
-    {"name": "ip-short", "styles": ["ip"], "stored_hex": "7f0000", "error": "CODEC_DECODE"}
+    {"name": "ip-short", "styles": ["ip"], "stored_hex": "7f0000", "error": "CODEC_DECODE"},
+    {"name": "yaml-anchor-without-alias", "styles": ["yaml"], "stored": "&a 1\n", "error": "CODEC_DECODE"},
+    {"name": "yaml-anchor-in-mapping", "styles": ["yaml"], "stored": "a: &x 1\n", "error": "CODEC_DECODE"},
+    {"name": "yaml-core-tag-str", "styles": ["yaml"], "stored": "!!str a\n", "error": "CODEC_DECODE"},
+    {"name": "yaml-core-tag-int", "styles": ["yaml"], "stored": "!!int 1\n", "error": "CODEC_DECODE"},
+    {"name": "yaml-empty-stream", "styles": ["yaml"], "stored": "", "error": "CODEC_DECODE"},
+    {"name": "yaml-comments-only-stream", "styles": ["yaml"], "stored": "# only a comment\n", "error": "CODEC_DECODE"}
   ]
 }
