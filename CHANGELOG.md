@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T161-1: Python generated models declare the condition method of every column and the tuple method of every key prefix, and every chain method is typed to return the model.
 - T128-9: the release publishes @polyspec/dbspec-language, @polyspec/dbspec-lsp and @polyspec/dbspec-codemirror as npm archives with a consumer smoke each, and the VS Code extension keeps the release version; make release-assets builds them, and AGENTS names the editor packages.
 - T137-2: the dependency review records every lock of the kit switch; the TypeScript 6 interface reader and the sprintf-js advisory that kit accepts are stated exceptions.
 - T137: orm takes kit 0.0.38 as the package @polyspec/kit and follows its standards: the client folders are named by runtime (packages/go, packages/php, packages/python, …), AGENTS.md links the kit principles, the toolchain floors follow the kit pins, and the TypeScript interface reader runs on TypeScript 6 until TypeScript 7 has a stable API; the layout findings are T137-1.
