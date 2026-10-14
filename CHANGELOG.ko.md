@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 39c0b05a8e83daf3fe51f8c25bbabbdf421b7254bb6ad5d3cf67b0f830a9e7a0 -->
+<!-- source-sha256: fe01d6ccb5c25ade6ed74fd5286be6f5159f5dc5018f687ac0afa61324580dcf -->
 # 변경 이력
 
 ## Unreleased
 
+- conformance vector creates_and_save가 T169의 insert part를 기록한다. (#T169-1)
+- 여러 행 insert가 bind 한도(SQLite 999, MySQL과 PostgreSQL 65535)로 제한된 2의 거듭제곱 크기 part로 transaction 안에서 실행되어, 모든 client에서 PHP plan cache가 유한한 수의 insert 모양만 가진다. (#T169)
 - TypeScript가 plain YAML map key의 type을 대소문자를 무시하던 regex 대신 yaml library 자신의 core schema tag로 정해, tRUE, nULL, .InF가 문자열 key로 남는다. (#T142-10)
 - 모든 client가 alias 유무와 관계없이 YAML anchor를, core tag를 포함한 모든 explicit tag를, 그리고 document가 없는 text를 거부한다. docs/codec.md가 이를 명시한다. (#T142-9)
 - Go는 goccy/go-yaml로, Python은 rapidyaml로 YAML을 읽어 둘 다 U+0085를 내용으로 유지한다. Python은 ruamel.yaml로 쓰고 PyYAML을 없앴다. next_line 제외를 없앴다. (#T142-2)
