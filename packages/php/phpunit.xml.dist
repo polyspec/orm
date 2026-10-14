@@ -6,7 +6,7 @@
   own computation: a case over its limit fails. PHPUnit enforces them where pcntl is loaded (php-invoker).
 -->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         xsi:noNamespaceSchemaLocation="../../vendor-php/phpunit/phpunit/phpunit.xsd"
          bootstrap="tests/bootstrap.php"
          recordTestRunHistory="false"
          colors="false"

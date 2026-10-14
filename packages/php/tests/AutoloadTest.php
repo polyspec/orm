@@ -3,7 +3,7 @@
 // on, and autoload.php, the autoloader of the repository root that the programs outside the tests (conformance runners,
 // examples) require. Every PHP test uses an autoloader, so a change to one is checked by this test, not by the
 // verification of every feature (the helpers of contracts/features.json). make check runs the full verification.
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AutoloadTest.php
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AutoloadTest.php
 declare(strict_types=1);
 
 use PHPUnit\Framework\Attributes\Large;

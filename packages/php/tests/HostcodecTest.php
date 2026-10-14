@@ -1,6 +1,6 @@
 <?php
 // Host-side codec stages: AES uses the authenticated v2 envelope and ip packs like INET6_ATON.
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/HostcodecTest.php
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/HostcodecTest.php
 declare(strict_types=1);
 
 use PHPUnit\Framework\Attributes\DataProvider;

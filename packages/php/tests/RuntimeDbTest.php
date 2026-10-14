@@ -11,7 +11,7 @@ declare(strict_types=1);
 // Each case runs in a case database of its own (case_database.php) created
 // through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the test fails when either
 // is unset.
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeDbTest.php [--filter <case>]
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeDbTest.php [--filter <case>]
 // bench model은 읽지 않는다: 이 test는 자기 document set의 model만 쓴다.
 require_once __DIR__ . '/case_database.php';
 require_once __DIR__ . '/restore_case.php';

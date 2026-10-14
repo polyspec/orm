@@ -2,7 +2,7 @@
 // Parity of the PHP and the node orm-gen scan: for each case of tests/generator/php-scan-vectors.json the two generators
 // declare the same chain methods on the model and reject the same names. The node generator is the built packages/ts
 // (npm run typescript:build); it does not check argument counts, so the cases marked parity false are left out.
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanParityTest.php
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanParityTest.php
 declare(strict_types=1);
 
 use PHPUnit\Framework\Attributes\DataProvider;

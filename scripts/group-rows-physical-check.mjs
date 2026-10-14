@@ -62,7 +62,7 @@ for (const database of databases) {
   for (const language of ['php', 'typescript']) {
     const program = language === 'php' ? 'php' : 'node';
     const args = language === 'php'
-      ? ['packages/php/vendor/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--teamcity', 'packages/php/tests/GroupRowsDbTest.php']
+      ? ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--teamcity', 'packages/php/tests/GroupRowsDbTest.php']
       : [`${packageDirectory[language]}/tests/group_rows_db.mjs`];
     for (let attempt = 1; attempt <= 2; attempt++) {
       await step(`group-rows/${database}/${language}/${attempt}`, 2 * timeoutMs, async ({ step: progress }) => {

@@ -3,7 +3,7 @@ declare(strict_types=1);
 // SQLite locking: several processes commit read-then-write transactions on one file without
 // transaction retries, a second connection reads while a write transaction is open, and a write
 // that waits longer than busy_timeout returns CANCELED.
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/SqliteConcurrencyTest.php [--filter <case>]
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/SqliteConcurrencyTest.php [--filter <case>]
 // The writer processes run sqlite_concurrency_writer.php <dsn> <name> <count>.
 
 use Polyspec\Orm\Tests\Model\Service;

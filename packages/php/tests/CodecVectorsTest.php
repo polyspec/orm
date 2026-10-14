@@ -3,7 +3,7 @@
 // every encoding produced by the other runners (tests/codec/out/<lang>.json, written by make codec-check into
 // ORM_CODEC_OUT) decodes to the same value. Each data set is a vector name.
 // Usage: make codec-check (the outputs of the other languages), or
-//   packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecVectorsTest.php
+//   vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecVectorsTest.php
 declare(strict_types=1);
 
 use PHPUnit\Framework\Attributes\DataProvider;

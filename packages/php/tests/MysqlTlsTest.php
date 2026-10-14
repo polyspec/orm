@@ -4,7 +4,7 @@
 // mode이며, 다른 parameter와 mode는 모두 CONFIG다. 연결 case는 `make test-servers`의
 // ORM_TEST_MYSQL_TLS_DSN, ORM_TEST_MYSQL_TLS_OTHER_CA_DSN, ORM_TEST_MYSQL_TLS_MISMATCH_DSN이
 // 필요하며, 하나라도 없으면 실패한다.
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/MysqlTlsTest.php
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/MysqlTlsTest.php
 declare(strict_types=1);
 
 use PHPUnit\Framework\Attributes\Medium;

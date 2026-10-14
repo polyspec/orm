@@ -1,7 +1,7 @@
 <?php
 // Engine test: manifest hash check, request validation, and statement forms of
 // each dialect for the runtime model of schema/bench.dbs.
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php
 declare(strict_types=1);
 
 use PHPUnit\Framework\Attributes\DataProvider;

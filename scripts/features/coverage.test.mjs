@@ -273,13 +273,13 @@ caseTest('a slow but healthy coverage build runs to its end without a deadline',
   }
 });
 
-// phpunitStub writes, under root, a packages/php/vendor/bin/phpunit that stands for PHPUnit: it requires the arguments with
+// phpunitStub writes, under root, a vendor-php/bin/phpunit that stands for PHPUnit: it requires the arguments with
 // which coverage.mjs runs the test file of a PHP case `first` (the TeamCity output, the package configuration, the anchored
 // filter of test_first and the file), runs the PHP code `before`, and writes the TeamCity events `events` to stdout.
 async function phpunitStub(root, file, events, before = '') {
   const want = ['--teamcity', '--configuration', join(root, 'packages/php/phpunit.xml.dist'), '--filter', '/::(test_first)$/', join(root, file)];
-  await mkdir(join(root, 'packages/php/vendor/bin'), { recursive: true });
-  await writeFile(join(root, 'packages/php/vendor/bin/phpunit'), `<?php\nif (array_slice($argv, 1) !== ${phpArray(want)}) exit(2);\n${before}echo ${JSON.stringify(events.map(e => `##teamcity[${e} flowId='1']`).join('\n') + '\n')};\n`);
+  await mkdir(join(root, 'vendor-php/bin'), { recursive: true });
+  await writeFile(join(root, 'vendor-php/bin/phpunit'), `<?php\nif (array_slice($argv, 1) !== ${phpArray(want)}) exit(2);\n${before}echo ${JSON.stringify(events.map(e => `##teamcity[${e} flowId='1']`).join('\n') + '\n')};\n`);
 }
 
 function phpArray(list) {

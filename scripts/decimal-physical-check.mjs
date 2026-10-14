@@ -48,7 +48,7 @@ function command(language, database) {
     return ['go', ['test', '-json', '-tags', 'decimalphysical', './packages/go/decimalmodel', '-run', `^TestDecimalPhysical${suffix}$`, '-count=1', '-timeout', '0']];
   }
   if (language === 'php') {
-    return ['php', ['packages/php/vendor/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--teamcity',
+    return ['php', ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--teamcity',
       '--filter', `with data set "${database}"$`, 'packages/php/tests/DecimalModelDbTest.php']];
   }
   if (language === 'rust') {

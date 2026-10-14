@@ -255,7 +255,7 @@ async function nativeTest(item, command, root) {
     const phpPackage = resolve(root, packageDirectory.php);
     if (!testPath.startsWith(`${phpPackage}/`)) throw new Error(`PHP test ${command.test} is outside ${packageDirectory.php}`);
     return { format: 'phpunit', program: 'php', cwd: root,
-      args: [resolve(phpPackage, 'vendor/bin/phpunit'), '--teamcity', '--configuration', resolve(phpPackage, 'phpunit.xml.dist'),
+      args: [resolve(root, 'vendor-php/bin/phpunit'), '--teamcity', '--configuration', resolve(phpPackage, 'phpunit.xml.dist'),
         '--filter', `/::(${command.cases.map(id => `test_${id}`).join('|')})$/`, testPath],
       symbols: command.cases.map(id => `test_${id}`) };
   }

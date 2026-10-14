@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 38bc297c529dbf8b003689c820ca9392b906d0d23afcf485236440ec50555208 -->
+<!-- source-sha256: 77115ba57d1e0c39b5feda8018e53d90dd53c65dadd65c1b16854aceda80c0d5 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1033,6 +1033,8 @@
   우회. Cause: R3는 각 case가 그 생태계의 표준 runner에서 case id로 실행되기를 요구한다. orm은 PHP test를 자체 script runner(packages/php/tests/*.php)로 실행하는데, 이것은 다시 만든 test runner다. 또 Go, TypeScript, Python, Rust의 공유 vector test는 test 하나 안에서 vector를 순회해 어떤 case id도 runner에 닿지 않는다. Retry: kit 0.0.43(K136, K137)이 나오고 T148-1부터 T148-3까지 끝났을 때.
   - [o] T148-1 PHP client와 extension의 test를 PHPUnit으로 실행한다 (T148에 이어). 원인: packages/php/tests와 packages/php-ext/tests가 PHP 생태계의 표준 runner인 PHPUnit이 아니라 orm 자체 script runner로 실행된다. 완료 조건: test가 PHPUnit test case이고, 공유 vector는 data set 이름이 case id인 data provider로 실행되며, make target이 PHPUnit을 실행하고, 손으로 쓴 runner를 없앤다.
     Evidence: client-unit-check, codec-check, dbspec-php-check, dbspec-php-extension-check, php-min-check, interface-check, dependency-policy-check가 통과한다. PHPUnit이 각 공유 vector case를 그 id로 이름 붙인다.
+    - [o] T148-1-1 PHP 개발 도구를 저장소 root에 설치한다 (T148-1에 이어). 원인: T148-1이 PHPUnit을 위해 packages/php와 packages/php-ext에 각자 Composer project를 주어, 릴리스되는 composer.json이 repositories(ordered-json package와 packages/php path), require-dev, platform 설정을 선언했고, v0.0.16의 make release-assets가 이를 거부했다: 릴리스 zip은 repository를 선언하지 않는다. 완료 조건: 개발 root(vendor-php)가 PHPUnit과 path repository의 packages/php를 설치하고, 두 package의 test는 자기 phpunit.xml.dist로 vendor-php/bin/phpunit을 실행하며, 두 package lock을 지우고, 릴리스 manifest는 소비자가 설치하는 것만 선언하며, make release-assets가 archive를 만든다.
+      Evidence: client-unit-check와 dbspec-php-extension-check가 vendor-php/bin/phpunit으로 통과하고, commit의 로컬 tag에서 make release-assets TAG=v0.0.16이 모든 archive를 쓴다.
   - [!] T148-2 Go, TypeScript, Python, Rust에서 모든 공유 vector case를 그 id로 보고한다 (T148에 이어). 원인: 각각 vector 파일을 test 하나 안에서 순회한다. 완료 조건: Go `t.Run(<id>)`, TypeScript는 id마다 top-level test, Python은 unittest load_tests로 case마다 id가 case id인 TestCase, Rust는 id로 이름 지은 libtest-mimic trial이다. method 이름을 생성하지 않는다.
     우회. Cause: Go, TypeScript, Python, Rust가 Rust show-create case를 빼고 모든 공유 vector case를 그 id로 보고한다. Rust show-create case는 orm 설계 결정(T148-2-1)을 기다린다. Retry: T148-2-1이 결정될 때.
     - [ ] T148-2-1 Rust show-create case를 그 id로 보고한다 (T148-2에 이어). 원인: Rust는 tests/dbspec/show-create.json을 crate 밖에서 보이지 않는 shown_checks로 읽고 lib unit test 하나로 확인한다. libtest는 unit test 이름에 하이픈 id를 쓸 수 없고, 공개 경로 read_catalog는 읽은 본문을 dbspec 문서로 바꾸므로 vector를 표현하지 못한다(kit 판정: spec 단위가 공개 경로보다 넓으며 orm의 설계 문제다). 완료 조건: orm이 SHOW CREATE reader가 API의 어디에 속하는지 정하고, Rust binding이 각 case를 그 id로 보고한다.

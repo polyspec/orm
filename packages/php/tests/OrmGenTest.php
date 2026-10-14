@@ -1,7 +1,7 @@
 <?php
 // orm-gen command line test: gen writes and checks the models of a dbspec
 // document set.
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php
 declare(strict_types=1);
 
 use PHPUnit\Framework\Attributes\Small;

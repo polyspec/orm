@@ -1086,7 +1086,7 @@ caseTest('every PHP and TypeScript test that a check runs reports its cases', CO
     ...Object.values(JSON.parse(text('package.json')).scripts).map(command => ({ source: 'package.json', command })),
   ];
   const files = new Set(trackedFiles('*'));
-  assert.ok(commands.some(({ command }) => /packages\/php\/vendor\/bin\/phpunit .*packages\/php\/tests\/DecimalModelDbTest\.php/.test(command)));
+  assert.ok(commands.some(({ command }) => /vendor-php\/bin\/phpunit .*packages\/php\/tests\/DecimalModelDbTest\.php/.test(command)));
   assert.deepEqual(reportingScriptErrors(commands, path => files.has(path) ? text(path) : undefined), []);
 });
 
@@ -1100,12 +1100,12 @@ caseTest('a PHP test outside PHPUnit or a TypeScript test without the shared cas
   const read = path => files[path];
   assert.deepEqual(testEntries('. "$DECIMAL_ENV" && node --conditions=orm-test packages/ts/tests/bare.mjs --dialect mysql'), ['packages/ts/tests/bare.mjs']);
   assert.deepEqual(reportingScriptErrors([
-    { source: 'Makefile', command: 'php packages/php/tests/BareTest.php && php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/BareTest.php' },
+    { source: 'Makefile', command: 'php packages/php/tests/BareTest.php && php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/BareTest.php' },
     { source: 'contracts/features.json', command: 'node --test packages/ts/tests/bare.mjs packages/ts/tests/cased.mjs' },
     { source: 'scripts/x.sh', command: 'php packages/php/tests/missing.php' },
     { source: 'scripts/y.sh', command: 'php scripts/setup.php' },
   ], read), [
-    'Makefile runs packages/php/tests/BareTest.php with php, not with the PHPUnit of its package (packages/<package>/vendor/bin/phpunit), so it runs without a deadline or a case report',
+    'Makefile runs packages/php/tests/BareTest.php with php, not with PHPUnit (vendor-php/bin/phpunit with the phpunit.xml.dist of its package), so it runs without a deadline or a case report',
     'contracts/features.json runs packages/ts/tests/bare.mjs, which reports no case through tests/testcase.mjs, so it runs without a deadline or RUN line',
     'scripts/x.sh runs packages/php/tests/missing.php, which is not a tracked file',
   ]);
@@ -1200,7 +1200,7 @@ caseTest('a workflow that runs a test runner after make check fails by identity'
   assert.equal(runnerIdentity("go test -v -timeout 0 ./engine/ir -run '^$' -fuzz FuzzDecodeRequest -fuzztime=1s"), undefined);
   assert.equal(runnerIdentity('go run ./tests/interfaces/check --results tests/conformance/out'), undefined);
   assert.equal(runnerIdentity('node tests/go-test.mjs -v -timeout 0 ./engine -count=1'), 'go test');
-  assert.equal(runnerIdentity('php -d extension=x.so packages/php-ext/vendor/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecTest.php'), 'phpunit packages/php-ext/vendor/bin/phpunit');
+  assert.equal(runnerIdentity('php -d extension=x.so vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecTest.php'), 'phpunit vendor-php/bin/phpunit');
   assert.equal(runnerIdentity("node tests/run-long.mjs fuzz/ir -- go test -v ./engine/ir -run '^$' -fuzz FuzzDecodeRequest"), undefined);
   assert.equal(runnerIdentity('node tests/run-long.mjs rust-build/x -- cargo test --no-run --locked'), 'cargo test');
   const make = [

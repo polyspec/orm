@@ -3,7 +3,7 @@
 // (scripts/group-rows-physical-check.mjs sets them): getsCount returns group rows whose grouped values keep their types
 // (boolean, integer, SQL NULL), that hold only the grouped columns and the count, and whose counts sum to the row count.
 // The test only reads.
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsDbTest.php
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsDbTest.php
 declare(strict_types=1);
 
 use PHPUnit\Framework\Attributes\Medium;

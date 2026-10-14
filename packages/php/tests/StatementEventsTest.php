@@ -5,7 +5,7 @@
 // case ids as its data sets, and the vector's server_transactions on
 // PostgreSQL. The test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN
 // is unset.
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/StatementEventsTest.php [--filter <method or data set>]
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/StatementEventsTest.php [--filter <method or data set>]
 declare(strict_types=1);
 
 require_once __DIR__ . '/statement_events_run.php';

@@ -1,6 +1,6 @@
 <?php
 // DSN parsing: the scheme selects the driver; the timezone parameter accepts only UTC.
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DsnTest.php
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DsnTest.php
 declare(strict_types=1);
 
 use PHPUnit\Framework\Attributes\DataProvider;

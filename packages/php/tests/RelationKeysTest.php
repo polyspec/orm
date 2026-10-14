@@ -1,6 +1,6 @@
 <?php
 // Row keys that match relation children to parents and key collections.
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php
 declare(strict_types=1);
 
 use PHPUnit\Framework\Attributes\Small;

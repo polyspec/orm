@@ -2,7 +2,7 @@
 // Generic types of the PHP client: Db::transaction returns the type of its callback's result, and the rows that a
 // model reads (gets, getsPage, and a Collection's get, first, all and iteration) carry the model's own class, so that
 // PHPStan at level 9 reports no method.nonObject and no mixed on the calls a module makes on them.
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ClientGenericsTest.php
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ClientGenericsTest.php
 declare(strict_types=1);
 
 use PHPUnit\Framework\Attributes\Small;
