@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cf4b3996d3ba27122d71f67cad3f43da794d7a1ae14cb661b506025c6ddb41c0 -->
+<!-- source-sha256: 86abc592f7ef5ad838653e058e23444d76d12bd0ad9039220f9af7135ace1394 -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP orm-gen scan이 `(new C)`, 호출한 model `(new C)($db)`, 그리고 둘의 chain에 대한 호출을 해석한다. (#T175)
 - make scripts-typecheck는 타입 검사에 쓰는 dbspec language service를 먼저 build하고, MySQL migration case는 checkout의 migration 스크립트를 실행한다. (#T137-1-4-8)
 - TypeScript symbol 기록이 conformance runner가 부르는 chain method를 담는다. (#T174-1)
 - config/layout.yml이 PHP 생성기와 node 생성기의 scan vector를 담은 tests/generator를 선언한다. (#T172-3)
