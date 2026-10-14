@@ -917,7 +917,7 @@ dialect-facts-check/facts:
 	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^(TestDialectFacts|TestSQLiteFileNameWithQuery)$$' -count=1
 
 conformance-counter-check:
-	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysical(CounterCleanup|FailedRunnerStateCheck|PostgresCounterOwner)$$' -count=1
+	$(WITH_TEST_ENV) node --test tests/conformance/check/counters.physical.test.mts
 
 # conformance-result-check는 TypeScript client를 build하고 PHP, TypeScript, Go conformance result
 # test를 실행한다. 각 runner가 자기 case를 기한과 함께 보고한다.
@@ -936,21 +936,15 @@ conformance-result-check/python: python-venv-check
 
 conformance-result-physical-check: lease-tool conformance-python-models
 	$(HOLD_TYPESCRIPT)
-	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysicalResultRunners$$' -count=1
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) node --test tests/conformance/check/result.physical.test.mts
 
 conformance-rust-group-check: lease-tool
-	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysicalRustGroupBoolean$$' -count=1
+	$(WITH_TEST_ENV) node --test tests/conformance/check/rust-group.physical.test.mts
 
-# BUILD_CONFORMANCE_STATE는 physical 검사의 state reader(`go run ./tests/conformance/check state`, case마다 기한이 있다)를
-# case 앞에서 기한 없이 build한다: .runtime/bin에 publish하고 Go build cache가 그것을 가지므로 case의 go run은 build된 것을
-# 실행한다.
-BUILD_CONFORMANCE_STATE = $(RUN_LONG) go-build/conformance-state -- $(PUBLISH) $(abspath .runtime/bin/conformance-state) go build -o @OUT@ ./tests/conformance/check
 group-rows-physical-check: php-vendor-check
-	$(BUILD_CONFORMANCE_STATE)
 	$(WITH_TEST_ENV) node scripts/group-rows-physical-check.mts
 
 unselected-column-physical-check: php-vendor-check
-	$(BUILD_CONFORMANCE_STATE)
 	$(WITH_TEST_ENV) node scripts/unselected-column-physical-check.mts
 
 # case-database-check는 공유 test database 두 곳에 table 하나를 남겨 둔 채 네 client의 model
@@ -986,14 +980,14 @@ conformance-python-models: python-venv-check
 	rm -rf $(CONFORMANCE_PY_MODELS) && mv $(CONFORMANCE_PY_MODELS).tmp $(CONFORMANCE_PY_MODELS)
 
 conformance-check/%: RUN_DIR = $(abspath .runtime/run)/conformance-check-$$PPID
-# VECTOR는 실행할 vector 이름을 공백으로 나눈 목록이며, 이름마다 check run에 -vector를 준다(비면 모든 vector).
+# VECTOR는 실행할 vector 이름을 공백으로 나눈 목록이며, 이름마다 check run에 --vector를 준다(비면 모든 vector).
 # RECORD=1이면 VECTOR 없는 전체 실행에서 비교가 실패한 database의 진단 output(.run-*)을 check record로 그 database의 기대값에 기록한다
 # (VECTOR와 함께면 거부한다: 선택한 vector만의 실행은 전체 실행이라면 앞의 vector가 만든 각 연결의 첫 사용 statement도 기록한다):
 # record는 다섯 output이 일치할 때만 기록하고, 기록하지 못하거나 runner가 실패해 진단 output이 없으면 실패한다.
 # 기록한 뒤에는 같은 vector를 다시 실행해 새 기대값과 비교한다. contracts/interfaces.json의 state contract는
 # 모든 vector의 output을 읽으므로 VECTOR가 있으면 검사하지 않고 그렇다고 출력한다.
-CONFORMANCE_VECTORS = $(foreach name,$(VECTOR),-vector $(name))
-CONFORMANCE_RUN = node tests/go-run.mts conformance-check ./tests/conformance/check run -out $(RUN_DIR)/out $(CONFORMANCE_VECTORS) -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
+CONFORMANCE_VECTORS = $(foreach name,$(VECTOR),--vector $(name))
+CONFORMANCE_RUN = node tests/conformance/check/main.mts run --out $(RUN_DIR)/out $(CONFORMANCE_VECTORS) --driver mysql --dsn "$$BENCH_MYSQL_DSN" --driver postgres --dsn "$$BENCH_POSTGRES_DSN" --driver sqlite --dsn "$$BENCH_SQLITE_DSN"
 .PHONY: conformance-check/run
 conformance-check: conformance-counter-check conformance-result-check conformance-result-physical-check conformance-check/run
 conformance-check/run: lease-tool conformance-python-models
@@ -1007,7 +1001,7 @@ conformance-check/run: lease-tool conformance-python-models
 	    dir=$(RUN_DIR)/out; [ $$db = mysql ] || dir=$$dir/$$db; \
 	    for pending in $$dir/.run-*; do \
 	      [ -d "$$pending" ] || continue; \
-	      node tests/go-run.mts conformance-record ./tests/conformance/check record -driver $$db $(CONFORMANCE_VECTORS) $$pending/go.json $$pending/php.json $$pending/rust.json $$pending/typescript.json $$pending/python.json || exit 1; \
+	      node tests/conformance/check/main.mts record --driver $$db $(CONFORMANCE_VECTORS) $$pending/go.json $$pending/php.json $$pending/rust.json $$pending/typescript.json $$pending/python.json || exit 1; \
 	      recorded=1; \
 	    done; \
 	  done; \
@@ -1043,7 +1037,7 @@ decimal-bench-sqlite: typescript-build
 	node scripts/decimal-bench-sqlite.mts
 
 # decimal-physical-check의 case는 owner process마다 기한(scripts/physical.mts의 TIMEOUT_MS)을 가진다. 그 process가
-# 쓰는 build(Rust test binary decimal_physical, Go decimalmodel test, Go state reader BUILD_CONFORMANCE_STATE)는 장기
+# 쓰는 build(Rust test binary decimal_physical, Go decimalmodel test)는 장기
 # 작업이므로 case 앞에서 기한 없이 RUN_LONG으로 먼저 하고(Go build는 .runtime/bin에 publish하며 build cache를 채운다), case는
 # build된 것을 실행한다.
 decimal-physical-check: php-vendor-check cargo-downloads-check lease-tool
@@ -1051,7 +1045,6 @@ decimal-physical-check: php-vendor-check cargo-downloads-check lease-tool
 	test -n "$(DECIMAL_ENV)" -a -f "$(DECIMAL_ENV)" || { echo 'DECIMAL_ENV names no decimal database of this run; run make run-databases TARGETS=$@' >&2; exit 1; }
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/decimal-physical -- $(CARGO_LEASED) cargo test --no-run --offline --locked --manifest-path packages/rust/Cargo.toml -p polyspec-orm-tests --bin decimal_physical
 	$(RUN_LONG) go-build/decimal-physical -- $(PUBLISH) $(abspath .runtime/bin/decimalmodel.test) go test -c -o @OUT@ -tags decimalphysical ./packages/go/decimalmodel
-	$(BUILD_CONFORMANCE_STATE)
 	. $(DECIMAL_ENV) && node scripts/decimal-physical-check.mts
 
 interface-check: php-vendor-check lease-tool

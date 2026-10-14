@@ -1118,7 +1118,7 @@ caseTest('a build tool outside run-long or under a deadline fails', COMPUTE, () 
   assert.deepEqual(unwrappedToolErrors([
     unit('tsc', 'node packages/ts/node_modules/typescript/bin/tsc -p packages/ts/tsconfig.json --noEmit'),
     unit('generate', 'go test ./generator && cd packages/go/model && go generate ./'),
-    unit('vet', 'go vet ./tests/conformance/check'),
+    unit('vet', 'go vet ./tests/conformance/runner_go'),
     unit('build', 'PATH="$HOME/.cargo/bin:$PATH" cargo build --locked -p polyspec-orm-tests --bin integration && ./integration'),
     unit('npm', 'npm run typescript:build >/dev/null'),
     unit('later', 'node tests/run-long.mts a -- go vet ./a && go vet ./b'),
@@ -1131,7 +1131,7 @@ caseTest('a build tool outside run-long or under a deadline fails', COMPUTE, () 
   ]), [
     outside('tsc', 'tsc', 'node packages/ts/node_modules/typescript/bin/tsc -p packages/ts/tsconfig.json --noEmit'),
     outside('generate', 'go generate', 'go generate ./'),
-    outside('vet', 'go vet', 'go vet ./tests/conformance/check'),
+    outside('vet', 'go vet', 'go vet ./tests/conformance/runner_go'),
     outside('build', 'cargo build', 'PATH="$HOME/.cargo/bin:$PATH" cargo build --locked -p polyspec-orm-tests --bin integration'),
     outside('npm', 'a TypeScript build', 'npm run typescript:build >/dev/null'),
     outside('later', 'go vet', 'go vet ./b'),
@@ -1186,6 +1186,8 @@ caseTest('a workflow that runs a test runner after make check fails by identity'
   assert.equal(runnerIdentity("go test -v -timeout 0 ./engine/ir -run '^$' -fuzz FuzzDecodeRequest -fuzztime=1s"), undefined);
   assert.equal(runnerIdentity('go run ./tests/interfaces/check --results tests/conformance/out'), undefined);
   assert.equal(runnerIdentity('node tests/go-test.mts -v -timeout 0 ./engine -count=1'), 'go test');
+  assert.equal(runnerIdentity('node tests/conformance/check/main.mts record --driver mysql out/go.json'), undefined);
+  assert.equal(runnerIdentity('node --test tests/conformance/check/main.test.mts'), 'node test');
   assert.equal(runnerIdentity('php -d extension=x.so vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecTest.php'), 'phpunit vendor-php/bin/phpunit');
   assert.equal(runnerIdentity("node tests/run-long.mts fuzz/ir -- go test -v ./engine/ir -run '^$' -fuzz FuzzDecodeRequest"), undefined);
   assert.equal(runnerIdentity('node tests/run-long.mts rust-build/x -- cargo test --no-run --locked'), 'cargo test');

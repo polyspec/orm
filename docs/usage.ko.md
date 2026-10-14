@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: aa1bedd93bc90085623c26de9af87c0e693a27d9ba23dbed3124f81d66dc606f -->
+<!-- source-sha256: 46db1d7a40ff231ff28bced9edb54f81bf585df1e772e51e681a9b3c777c41ca -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
@@ -524,8 +524,8 @@ make test-servers                                        # MySQL, PostgreSQL, th
 go test ./...                                            # engine, generator, and Go client
 npm run typescript:test                                  # TypeScript client
 (cd packages/rust && cargo test --workspace)              # Rust client
-go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"   # four clients, identical results on MySQL
-go run ./tests/conformance/check run -driver postgres -dsn "$BENCH_POSTGRES_DSN"
+node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH_MYSQL_DSN"   # five clients, identical results on MySQL
+node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --driver postgres --dsn "$BENCH_POSTGRES_DSN"
 ```
 
 예제: [`examples/thin-slice`](../examples/thin-slice)(Go·PHP·Rust, 같은 JSON), [`examples/complex`](../examples/complex)(조인·그룹·2단 관계·집계).

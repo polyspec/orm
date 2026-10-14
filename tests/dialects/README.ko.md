@@ -1,5 +1,5 @@
 <!-- doc-id: tests-dialects-readme -->
-<!-- source-sha256: 22afc5e0ea8b6eb6a5dcde71bda545e207e6d83c9d423a84f3a3719ca308ffc6 -->
+<!-- source-sha256: 07da29e91fb55eaf1d487d77b87f9b50900c4f12a435d60c92b7e7ae14153c96 -->
 # 스키마 dialect 사실 probe
 
 [English](README.md)
@@ -55,8 +55,8 @@ elapsed=<elapsed>` 또는 `FAIL <probe> elapsed=<elapsed>: <reason>`을
 
 ## 언어
 
-Probe는 공통 `tests/`의 Go test다. 적합성 검사기(`tests/conformance/check`)
-도 같은 방식이다. 이 사실은
+Probe는 공통 `tests/`의 Go test다. 적합성 검사기(`tests/conformance/check`)는
+언어 사이의 기반 도구이므로 TypeScript다. 이 사실은
 클라이언트가 아니라 데이터베이스의 성질이므로 실행기 하나가 한 번
 기록한다. 모듈은 이미 MySQL(`go-sql-driver/mysql`), PostgreSQL(`pgx`),
 SQLite(`modernc.org/sqlite`) driver를 링크하며 Go 오류 타입은 확인에 쓰는

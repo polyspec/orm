@@ -69,7 +69,7 @@ make python-check                                                     # Python c
 go test ./...
 npm run typescript:test
 (cd packages/rust && cargo test --workspace)
-go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # compares the five clients
+node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH_MYSQL_DSN"   # compares the five clients
 ```
 
 ## Documents
@@ -89,7 +89,7 @@ go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # compares t
 
 ## Tooling
 `orm-gen gen --lang go | errors --lang` (Go), `vendor/bin/orm-gen gen` (PHP), `orm-gen gen` (TypeScript), `orm-gen gen` of the Python package (Python), `polyspec-orm-build` (Rust),
-`tests/conformance/check run|compare|record`.
+`tests/conformance/check/main.mts run|compare|record|state`.
 
 ## License
 MIT — see [LICENSE](LICENSE).

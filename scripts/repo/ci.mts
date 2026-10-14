@@ -457,6 +457,8 @@ export function runnerIdentity(segment: string): string | undefined {
   if (wrapped) return runnerIdentity(wrapped[1] ?? '');
   // tests/go-run.mts는 Go program(checker)을 build해 실행한다. test runner가 아니다.
   if (/^node\s+tests\/go-run\.mts\b/.test(command)) return undefined;
+  // tests/conformance/check/main.mts는 runner를 build하고 실행해 output을 비교하고 기록하는 checker다. test runner가 아니다.
+  if (/^node\s+tests\/conformance\/check\/main\.mts\b/.test(command)) return undefined;
   if (/^(?:go\s+test|node\s+tests\/go-test\.mts)\b/.test(command)) return /\s-fuzz[\s=]/.test(command) ? undefined : 'go test';
   if (/^go\s+vet\b/.test(command)) return 'go vet';
   if (/^cargo\s+(?:\+\S+\s+)?test\b/.test(command)) return 'cargo test';

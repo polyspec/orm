@@ -44,7 +44,7 @@ type Built = { binary: string; error?: undefined } | { error: string; binary?: u
 /** The Rust builds of a crate. */
 type CargoBuilt = { files: Map<string, string[]>; programs: Record<string, string>; error?: undefined } | { error: string; files?: undefined; programs?: undefined };
 /** The builds that the executions share. */
-type Builds = { state: Built | null; test2json: Built | null; go: Map<string, Built>; cargo: Map<string, CargoBuilt>; cargoReady: Promise<void> };
+type Builds = { test2json: Built | null; go: Map<string, Built>; cargo: Map<string, CargoBuilt>; cargoReady: Promise<void> };
 /** The planned executions of one item. */
 type Plan = { feature: Feature; item: Item; native: Spec[]; dsn: string | null | undefined };
 /** A process of a planned execution. */
@@ -64,6 +64,7 @@ const validTests = (part: string, tests: unknown): tests is string[] => Array.is
     file.slice(part.length + 1).split('/').every(segment =>
       segment && segment !== '.' && segment !== '..' && /^[A-Za-z0-9_.-]+$/.test(segment)));
 const checkerRoot = resolve(new URL('../..', import.meta.url).pathname);
+const stateReader = resolve(checkerRoot, 'tests/conformance/check/main.mts');
 
 function requirements(feature: Feature, coverage: Coverage, errors: string[]): Item[] {
   const required = coverage.kind === 'database' ? databases : ['none'];
@@ -391,11 +392,11 @@ async function dependencyFiles(executable: string, workspace: string): Promise<s
   return rule.slice(separator + 2).split(/(?<!\\) +/).filter(Boolean).map(path => resolve(workspace, path.replaceAll('\\ ', ' ')));
 }
 
-// buildNative는 coverage case보다 먼저 build를 한 번씩 한다. state reader binary, Go
+// buildNative는 coverage case보다 먼저 build를 한 번씩 한다. Go
 // package마다 `go test -c` test binary와 test2json, Rust crate마다 `cargo test --no-run`의
 // test binary다. 두 번의 실행과 모든 database가 같은 binary를 실행한다. build 하나는 장기 작업
 // 하나로 시작, 진행(compiler 출력), 종료 코드, 결과와 경과 시간을 보고하고 기한이 없다(runLong). 실패한
-// build는 builds의 error로 남고 그 build를 쓰는 실행이 그 error로 실패한다. state reader와 Go build는
+// build는 builds의 error로 남고 그 build를 쓰는 실행이 그 error로 실패한다. Go build는
 // 끝난 뒤 돌아오고, 가장 긴 Rust build는 시작만 하고 돌아온다: builds.cargoReady가 그 build가 끝나고
 // builds.cargo를 채우면 끝나는 promise다. 그래서 cargo를 쓰지 않는 실행은 Rust build와 함께 진행한다.
 /** The plans of one coverage run, with the repository root they resolve against. */
@@ -404,7 +405,7 @@ type Plans = Plan[] & { root: string };
 type Build = (name: string, work: (step: StepWriter) => Promise<void>) => Promise<string | null | undefined>;
 
 async function buildNative(plans: Plans, directory: string): Promise<Builds> {
-  const builds: Builds = { state: null, test2json: null, go: new Map(), cargo: new Map(), cargoReady: Promise.resolve() };
+  const builds: Builds = { test2json: null, go: new Map(), cargo: new Map(), cargoReady: Promise.resolve() };
   const build: Build = async (name, work) => {
     let failure: string | undefined;
     const passed = await runLong(`features/coverage/build/${name}`, async ({ step }) => {
@@ -418,11 +419,6 @@ async function buildNative(plans: Plans, directory: string): Promise<Builds> {
     const result = await run('go', args, cwd, null, process.env, step);
     if (result.error) throw new Error(result.error);
   };
-  if (plans.some(plan => plan.dsn)) {
-    const binary = resolve(directory, 'state');
-    const error = await build('state-reader', step => go(['build', '-o', binary, './tests/conformance/check'], checkerRoot, step));
-    builds.state = error ? { error } : { binary };
-  }
   const specs = plans.flatMap(plan => plan.native);
   if (specs.some(spec => spec.format === 'go')) {
     const binary = resolve(directory, 'test2json');
@@ -513,10 +509,9 @@ function prepared(spec: Spec, builds: Builds): Prepared[] {
     env: { ...crate.programs, CARGO_MANIFEST_DIR: spec.cwd } }));
 }
 
-async function state(builds: Builds, database: string, dsn: string, timeoutMs: number): Promise<string> {
-  const reader = builds.state;
-  if (!reader || reader.error !== undefined) throw new Error(`database state reader build failed: ${reader?.error ?? 'it was not built'}`);
-  const result = await run(reader.binary, ['state', '-driver', database, '-dsn', dsn], checkerRoot, timeoutMs);
+// state is the digest of the database that the state reader (tests/conformance/check/main.mts state) prints.
+async function state(database: string, dsn: string, timeoutMs: number): Promise<string> {
+  const result = await run(process.execPath, [stateReader, 'state', '--driver', database, '--dsn', dsn], checkerRoot, timeoutMs);
   if (result.error) throw new Error(`database state reader: ${result.error.replaceAll(dsn, '[redacted]')}`);
   const match = new RegExp(`^${database} state ([a-f0-9]{64})\\n$`).exec(result.value ?? '');
   if (!match?.[1]) throw new Error('database state reader returned an invalid digest');
@@ -626,7 +621,7 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
           let failure: string | undefined;
           const passed = await runCase(`${key} run ${attempt}`, count * timeoutMs, async ({ step }) => {
             try {
-              const stateBefore = dsn ? await state(shared, item.database, dsn, timeoutMs) : null;
+              const stateBefore = dsn ? await state(item.database, dsn, timeoutMs) : null;
               if (dsn) step(`state before ${stateBefore}`);
               const results: CaseResult[] = [];
               for (let index = 0; index < native.length; index++) {
@@ -644,7 +639,7 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
                 }
                 results.push(...observedCases(spec.format, output, entry.cases, spec.format === 'case' ? entry.cases : spec.symbols));
               }
-              const stateAfter = dsn ? await state(shared, item.database, dsn, timeoutMs) : null;
+              const stateAfter = dsn ? await state(item.database, dsn, timeoutMs) : null;
               if (dsn) step(`state after ${stateAfter}`);
               executions.push({ feature: feature.id, role: item.role, language: item.language,
                 database: item.database, part: item.part, tests: item.tests, success: true,

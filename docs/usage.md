@@ -523,8 +523,8 @@ make test-servers                                        # MySQL, PostgreSQL, th
 go test ./...                                            # engine, generator, and Go client
 npm run typescript:test                                  # TypeScript client
 (cd packages/rust && cargo test --workspace)              # Rust client
-go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"   # four clients, identical results on MySQL
-go run ./tests/conformance/check run -driver postgres -dsn "$BENCH_POSTGRES_DSN"
+node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH_MYSQL_DSN"   # five clients, identical results on MySQL
+node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --driver postgres --dsn "$BENCH_POSTGRES_DSN"
 ```
 
 Examples: [`examples/thin-slice`](../examples/thin-slice) (Go, PHP, and Rust, the same JSON) and [`examples/complex`](../examples/complex) (joins, groups, two-level relations, and aggregates).
