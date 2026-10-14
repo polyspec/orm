@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 09d53b7a84cfa38ebbad3a464b191ac9c11daf403edd4411d7bc23131d562a8c -->
+<!-- source-sha256: d9273063824a8d3939e61cb41fb74260f0543e3ca7650ade2c4b0ceac8a26bea -->
 # 변경 이력
 
 ## Unreleased
 
+- repository 검사는 workflow를 YAML document로, shell 명령을 unbash parser로, Go source를 go vet이 실행하는 go/analysis analyzer로 읽는다(make go-vet-check). (#T137-1-4-2)
 - introspection과 native rule test가 옮긴 schema와 contracts를 읽고, tests/testcase.mts가 case에 그 case가 끝나면 지우는 임시 folder를 준다. (#T137-1-8)
 - bench/는 benchmarks/, 공유 bench schema는 contracts/fixtures/bench/이고, Composer release는 mise.toml의 tool http:composer다. .composer-version을 지웠고 make layout-check가 통과한다. (#T137-1-7)
 - tests/와 examples/ 아래 Go program과 test는 root go.work의 module tests/go.mod와 examples/go.mod다. (#T137-1-6)
