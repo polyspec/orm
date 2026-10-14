@@ -3894,7 +3894,7 @@
         },
         {
           "id": "planner-rust-validate",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs planner-rust-validate -- cargo test --manifest-path packages/rust/Cargo.toml --locked -p polyspec-orm --features \"$ORM_RUST_TEST_FEATURES\" --test ir_validate",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs planner-rust-validate -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test ir_validate",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/src/engine/validate.rs",
@@ -4790,7 +4790,7 @@
         },
         {
           "id": "encryption-codec-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs encryption-codec-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked -p polyspec-orm --features \"$ORM_RUST_TEST_FEATURES\" --lib codec",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs encryption-codec-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib codec",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/src/codec.rs"
@@ -4798,7 +4798,7 @@
         },
         {
           "id": "codec-vectors-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs codec-vectors-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked -p polyspec-orm --features \"$ORM_RUST_TEST_FEATURES\" --test codec_vectors",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs codec-vectors-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test codec_vectors",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/codec_vectors.rs",

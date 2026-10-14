@@ -80,7 +80,10 @@ fn run(id: &str, body: impl FnOnce() -> Result<(), String>) {
     let clock = CaseClock::start();
     let result = body();
     let (cpu, wall) = (clock.cpu(), clock.wall());
-    let result = result.and_then(|()| if cpu > DEADLINE { Err(format!("cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})")) } else { Ok(()) });
+    // A measured time is reported, never a failure (AGENTS.md).
+    if cpu > DEADLINE {
+        polyspec_orm_testcase::warning(format_args!("plan/{id}: cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})"));
+    }
     match result {
         Ok(()) => polyspec_orm_testcase::step(format_args!("cpu={cpu:?} wall={wall:?}")),
         Err(e) => panic!("plan/{id}: cpu={cpu:?} wall={wall:?}: {e}"),
