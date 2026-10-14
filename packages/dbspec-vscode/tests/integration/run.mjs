@@ -2,7 +2,7 @@
 // Runs the integration suite (suite/index.cjs) inside VS Code with @vscode/test-electron's runTests: the extension
 // of this package is the development extension, and the folder tests/editor is the opened workspace, whose fixtures
 // the suite reads through `vscode.provideDocumentSemanticTokens` (docs/editor.md "Fixtures").
-// The VS Code build is the one that kit's installer (scripts/kit/install-vscode.mts, received through T137) put into the
+// The VS Code build is the one that kit's installer (@polyspec/kit/install-vscode, from kit 0.0.39; T165) put into the
 // tools directory of the required option --vscode; the run only reads it with installedExecutable and never downloads.
 // Without that copy, installedExecutable fails and names `make install-vscode`.
 //
@@ -13,7 +13,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { runTests } from '@vscode/test-electron';
-import { installedExecutable } from '../../../../scripts/kit/install-vscode.mts';
+import { installedExecutable } from '@polyspec/kit/install-vscode';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const root = fileURLToPath(new URL('../..', import.meta.url));
