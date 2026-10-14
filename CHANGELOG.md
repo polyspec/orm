@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T137-3: CI installs the TypeScript of the interface reader, and the PHP extension's arginfo header matches its stub after the rename.
 - T161-1: Python generated models declare the condition method of every column and the tuple method of every key prefix, and every chain method is typed to return the model.
 - T128-9: the release publishes @polyspec/dbspec-language, @polyspec/dbspec-lsp and @polyspec/dbspec-codemirror as npm archives with a consumer smoke each, and the VS Code extension keeps the release version; make release-assets builds them, and AGENTS names the editor packages.
 - T137-2: the dependency review records every lock of the kit switch; the TypeScript 6 interface reader and the sprintf-js advisory that kit accepts are stated exceptions.

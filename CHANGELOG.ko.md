@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: bf363f51415b34aef80516eb398601ffc148744c81ae24fb78e85c9bea97d685 -->
+<!-- source-sha256: 960006ae0d214c5de8b4502d3dc43407d6b70a3b43dee7f28a20d449ee97aa6b -->
 # 변경 이력
 
 ## Unreleased
 
+- T137-3: CI가 interface reader의 TypeScript를 설치하고, PHP extension의 arginfo header가 이름 변경 뒤의 stub과 맞는다.
 - T161-1: Python 생성 model이 모든 column의 조건 메서드와 모든 key prefix의 tuple 메서드를 선언하고, 모든 체인 메서드가 model을 반환하는 유형을 갖는다.
 - T128-9: release가 @polyspec/dbspec-language, @polyspec/dbspec-lsp, @polyspec/dbspec-codemirror를 consumer smoke와 함께 npm archive로 게시하고, VS Code extension은 릴리스 버전을 유지한다. make release-assets가 그것을 build하고, AGENTS가 editor package를 적는다.
 - T137-2: dependency review가 kit 전환의 모든 lock을 기록한다. TypeScript 6 interface reader와 kit이 받아들인 sprintf-js advisory는 근거를 적은 예외다.
