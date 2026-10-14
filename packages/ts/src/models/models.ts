@@ -529,89 +529,88 @@ export class Author extends Model {
   public forceIndexIxService(): this { this[CORE].index = 'ix_service'; return this; }
   public forceIndexIxUser(): this { this[CORE].index = 'ix_user'; return this; }
   public forceIndexUqAuthorUuid(): this { this[CORE].index = 'uq_author_uuid'; return this; }
-}
-export interface Author {
-  addColumnStartDtAliasStartMonth(fn: ColumnFunction): this;
-  addColumnStartDtAliasStartYear(fn: ColumnFunction): this;
-  aesHexEmail(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
-  andAesHexEmail(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
-  andBetweenReadCount(v0: readonly [number, number]): this;
-  andEqStartDt(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]): this;
-  andGeReadCount(v0: number | ValueFunction): this;
-  andGtReadCount(v0: number | ValueFunction): this;
-  andGtStartDt(...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]): this;
-  andIsClose(v0: boolean | readonly (boolean)[] | ValueFunction | Model): this;
-  andLbName(v0: string): this;
-  andLeReadCount(v0: number | ValueFunction): this;
-  andLkName(v0: string): this;
-  andLtReadCount(v0: number | ValueFunction): this;
-  andLtSeq(v0: number | ValueFunction): this;
-  andLtStartDt(...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]): this;
-  andName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  andNeIsClose(v0: boolean | readonly (boolean)[] | ValueFunction | Model): this;
-  andNePhotoUrl(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
-  andNeReadCount(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  andServiceSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  andStartDt(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]): this;
-  andSuccessCountLtSeq(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell): this;
-  andUuid(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
-  betweenReadCount(v0: readonly [number, number]): this;
-  betweenStartDt(v0: readonly [string | Date, string | Date]): this;
-  emailBlindIndex(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
-  geReadCount(v0: number | ValueFunction): this;
-  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this>;
-  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
-  getCountByIsClose(v0: boolean | readonly (boolean)[] | ValueFunction | Model): Promise<number>;
-  getCountByServiceSeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<number>;
-  getsBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<Collection<this>>;
-  getsBySeqAndNeName(v0: number | readonly (number)[] | ValueFunction | Model, v1: string | readonly (string)[] | ValueFunction | Model): Promise<Collection<this>>;
-  getsByServiceSeqAndIsClose(v0: number | readonly (number)[] | ValueFunction | Model, v1: boolean | readonly (boolean)[] | ValueFunction | Model): Promise<Collection<this>>;
-  gtStartDt(...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]): this;
-  isClose(v0: boolean | readonly (boolean)[] | ValueFunction | Model): this;
-  isDisplay(v0: boolean | readonly (boolean)[] | ValueFunction | Model): this;
-  joinServiceMemberSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell): this;
-  joinServiceSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell): this;
-  joinUserSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell): this;
-  leftJoinServiceRegionSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell): this;
-  leftJoinUserSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell): this;
-  matchSeqWithUserSeq(): this;
-  name(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  nePhotoUrl(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
-  newLabel(value: unknown): this;
-  orIsClose(v0: boolean | readonly (boolean)[] | ValueFunction | Model): this;
-  orderByReadCountDescAndSeqAsc(): this;
-  phoneBlindIndex(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
-  photoUrl(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
-  readCount(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  readCountGtSeq(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell): this;
-  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  serviceMemberSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  serviceRegionSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  serviceSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  startDt(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]): this;
-  userSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  userSeqEqSeq(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell): this;
-  uuid(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
+
+  declare addColumnStartDtAliasStartMonth: (fn: ColumnFunction) => this;
+  declare addColumnStartDtAliasStartYear: (fn: ColumnFunction) => this;
+  declare aesHexEmail: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
+  declare andAesHexEmail: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
+  declare andBetweenReadCount: (v0: readonly [number, number]) => this;
+  declare andEqStartDt: (...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) => this;
+  declare andGeReadCount: (v0: number | ValueFunction) => this;
+  declare andGtReadCount: (v0: number | ValueFunction) => this;
+  declare andGtStartDt: (...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) => this;
+  declare andIsClose: (v0: boolean | readonly (boolean)[] | ValueFunction | Model) => this;
+  declare andLbName: (v0: string) => this;
+  declare andLeReadCount: (v0: number | ValueFunction) => this;
+  declare andLkName: (v0: string) => this;
+  declare andLtReadCount: (v0: number | ValueFunction) => this;
+  declare andLtSeq: (v0: number | ValueFunction) => this;
+  declare andLtStartDt: (...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) => this;
+  declare andName: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
+  declare andNeIsClose: (v0: boolean | readonly (boolean)[] | ValueFunction | Model) => this;
+  declare andNePhotoUrl: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
+  declare andNeReadCount: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  declare andServiceSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  declare andStartDt: (...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) => this;
+  declare andSuccessCountLtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell) => this;
+  declare andUuid: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
+  declare betweenReadCount: (v0: readonly [number, number]) => this;
+  declare betweenStartDt: (v0: readonly [string | Date, string | Date]) => this;
+  declare emailBlindIndex: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
+  declare geReadCount: (v0: number | ValueFunction) => this;
+  declare getByName: (v0: string | readonly (string)[] | ValueFunction | Model) => Promise<this>;
+  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
+  declare getCountByIsClose: (v0: boolean | readonly (boolean)[] | ValueFunction | Model) => Promise<number>;
+  declare getCountByServiceSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<number>;
+  declare getsBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<Collection<this>>;
+  declare getsBySeqAndNeName: (v0: number | readonly (number)[] | ValueFunction | Model, v1: string | readonly (string)[] | ValueFunction | Model) => Promise<Collection<this>>;
+  declare getsByServiceSeqAndIsClose: (v0: number | readonly (number)[] | ValueFunction | Model, v1: boolean | readonly (boolean)[] | ValueFunction | Model) => Promise<Collection<this>>;
+  declare gtStartDt: (...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) => this;
+  declare isClose: (v0: boolean | readonly (boolean)[] | ValueFunction | Model) => this;
+  declare isDisplay: (v0: boolean | readonly (boolean)[] | ValueFunction | Model) => this;
+  declare joinServiceMemberSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell) => this;
+  declare joinServiceSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell) => this;
+  declare joinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell) => this;
+  declare leftJoinServiceRegionSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell) => this;
+  declare leftJoinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell) => this;
+  declare matchSeqWithUserSeq: () => this;
+  declare name: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
+  declare nePhotoUrl: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
+  declare newLabel: (value: unknown) => this;
+  declare orIsClose: (v0: boolean | readonly (boolean)[] | ValueFunction | Model) => this;
+  declare orderByReadCountDescAndSeqAsc: () => this;
+  declare phoneBlindIndex: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
+  declare photoUrl: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
+  declare readCount: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  declare readCountGtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell) => this;
+  declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  declare serviceMemberSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  declare serviceRegionSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  declare serviceSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  declare startDt: (...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) => this;
+  declare userSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  declare userSeqEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell) => this;
+  declare uuid: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   /** Returns the author relation result; T is its model type. */
-  getAuthorModels<T = unknown>(): T;
+  declare getAuthorModels: <T = unknown>() => T;
   /** Returns the value or relation result named Members. */
-  getMembers<T = unknown>(): T;
+  declare getMembers: <T = unknown>() => T;
   /** Returns the value or relation result named Module. */
-  getModule<T = unknown>(): T;
+  declare getModule: <T = unknown>() => T;
   /** Returns the value or relation result named Owner. */
-  getOwner<T = unknown>(): T;
+  declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
-  getReadTotal<T = unknown>(): T;
+  declare getReadTotal: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
-  getServiceMemberModels<T = unknown>(): T;
+  declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
-  getServiceRegionModel<T = unknown>(): T;
+  declare getServiceRegionModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
-  getStartMonth<T = unknown>(): T;
+  declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
-  getUserModel<T = unknown>(): T;
+  declare getUserModel: <T = unknown>() => T;
   /** Returns the value or relation result named Writer. */
-  getWriter<T = unknown>(): T;
+  declare getWriter: <T = unknown>() => T;
 }
 
 /** A user model or row. */
@@ -637,38 +636,37 @@ export class User extends Model {
   public keyNameName(): this { this[CORE].keyName = 'name'; return this; }
   public orderByNameAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', false, fn); return this; }
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
-}
-export interface User {
-  addColumnReadTotal(fn: (model: this) => Model): this;
-  aliasOwner(): this;
-  aliasWriter(): this;
-  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
-  matchUserSeqWithSeq(): this;
-  name(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  neName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
+
+  declare addColumnReadTotal: (fn: (model: this) => Model) => this;
+  declare aliasOwner: () => this;
+  declare aliasWriter: () => this;
+  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
+  declare matchUserSeqWithSeq: () => this;
+  declare name: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
+  declare neName: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
+  declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   /** Returns the value or relation result named AesHexEmail. */
-  getAesHexEmail<T = unknown>(): T;
+  declare getAesHexEmail: <T = unknown>() => T;
   /** Returns the author relation result; T is its model type. */
-  getAuthorModels<T = unknown>(): T;
+  declare getAuthorModels: <T = unknown>() => T;
   /** Returns the value or relation result named Members. */
-  getMembers<T = unknown>(): T;
+  declare getMembers: <T = unknown>() => T;
   /** Returns the value or relation result named Module. */
-  getModule<T = unknown>(): T;
+  declare getModule: <T = unknown>() => T;
   /** Returns the value or relation result named Owner. */
-  getOwner<T = unknown>(): T;
+  declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
-  getReadTotal<T = unknown>(): T;
+  declare getReadTotal: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
-  getServiceMemberModels<T = unknown>(): T;
+  declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
-  getServiceRegionModel<T = unknown>(): T;
+  declare getServiceRegionModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
-  getStartMonth<T = unknown>(): T;
+  declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
-  getUserModel<T = unknown>(): T;
+  declare getUserModel: <T = unknown>() => T;
   /** Returns the value or relation result named Writer. */
-  getWriter<T = unknown>(): T;
+  declare getWriter: <T = unknown>() => T;
 }
 
 /** A service model or row. */
@@ -694,35 +692,34 @@ export class Service extends Model {
   public keyNameName(): this { this[CORE].keyName = 'name'; return this; }
   public orderByNameAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', false, fn); return this; }
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
-}
-export interface Service {
-  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
-  gtSeq(v0: number | ValueFunction): this;
-  matchServiceSeqWithSeq(): this;
-  name(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
+
+  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
+  declare gtSeq: (v0: number | ValueFunction) => this;
+  declare matchServiceSeqWithSeq: () => this;
+  declare name: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
+  declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   /** Returns the value or relation result named AesHexEmail. */
-  getAesHexEmail<T = unknown>(): T;
+  declare getAesHexEmail: <T = unknown>() => T;
   /** Returns the author relation result; T is its model type. */
-  getAuthorModels<T = unknown>(): T;
+  declare getAuthorModels: <T = unknown>() => T;
   /** Returns the value or relation result named Members. */
-  getMembers<T = unknown>(): T;
+  declare getMembers: <T = unknown>() => T;
   /** Returns the value or relation result named Module. */
-  getModule<T = unknown>(): T;
+  declare getModule: <T = unknown>() => T;
   /** Returns the value or relation result named Owner. */
-  getOwner<T = unknown>(): T;
+  declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
-  getReadTotal<T = unknown>(): T;
+  declare getReadTotal: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
-  getServiceMemberModels<T = unknown>(): T;
+  declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
-  getServiceRegionModel<T = unknown>(): T;
+  declare getServiceRegionModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
-  getStartMonth<T = unknown>(): T;
+  declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
-  getUserModel<T = unknown>(): T;
+  declare getUserModel: <T = unknown>() => T;
   /** Returns the value or relation result named Writer. */
-  getWriter<T = unknown>(): T;
+  declare getWriter: <T = unknown>() => T;
 }
 
 /** A service_region model or row. */
@@ -761,35 +758,34 @@ export class ServiceRegion extends Model {
   public orderByNameAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', false, fn); return this; }
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
   public forceIndexIxServiceRegionService(): this { this[CORE].index = 'ix_service_region_service'; return this; }
-}
-export interface ServiceRegion {
-  aliasModule(): this;
-  matchServiceRegionSeqWithSeq(): this;
-  possibleIsClose(value: unknown): this;
-  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  serviceSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
+
+  declare aliasModule: () => this;
+  declare matchServiceRegionSeqWithSeq: () => this;
+  declare possibleIsClose: (value: unknown) => this;
+  declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  declare serviceSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   /** Returns the value or relation result named AesHexEmail. */
-  getAesHexEmail<T = unknown>(): T;
+  declare getAesHexEmail: <T = unknown>() => T;
   /** Returns the author relation result; T is its model type. */
-  getAuthorModels<T = unknown>(): T;
+  declare getAuthorModels: <T = unknown>() => T;
   /** Returns the value or relation result named Members. */
-  getMembers<T = unknown>(): T;
+  declare getMembers: <T = unknown>() => T;
   /** Returns the value or relation result named Module. */
-  getModule<T = unknown>(): T;
+  declare getModule: <T = unknown>() => T;
   /** Returns the value or relation result named Owner. */
-  getOwner<T = unknown>(): T;
+  declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
-  getReadTotal<T = unknown>(): T;
+  declare getReadTotal: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
-  getServiceMemberModels<T = unknown>(): T;
+  declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
-  getServiceRegionModel<T = unknown>(): T;
+  declare getServiceRegionModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
-  getStartMonth<T = unknown>(): T;
+  declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
-  getUserModel<T = unknown>(): T;
+  declare getUserModel: <T = unknown>() => T;
   /** Returns the value or relation result named Writer. */
-  getWriter<T = unknown>(): T;
+  declare getWriter: <T = unknown>() => T;
 }
 
 /** A service_member model or row. */
@@ -833,40 +829,39 @@ export class ServiceMember extends Model {
   public avgUserSeq(): this { this[CORE].aggregate('avg', 'user_seq'); return this; }
   public forceIndexIxServiceMemberService(): this { this[CORE].index = 'ix_service_member_service'; return this; }
   public forceIndexIxServiceMemberUser(): this { this[CORE].index = 'ix_service_member_user'; return this; }
-}
-export interface ServiceMember {
-  aliasMembers(): this;
-  getCountByServiceSeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<number>;
-  matchSeqWithServiceSeq(): this;
-  matchServiceSeqWithServiceSeq(): this;
-  matchUserSeqWithUserSeq(): this;
-  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  serviceSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  userSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
+
+  declare aliasMembers: () => this;
+  declare getCountByServiceSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<number>;
+  declare matchSeqWithServiceSeq: () => this;
+  declare matchServiceSeqWithServiceSeq: () => this;
+  declare matchUserSeqWithUserSeq: () => this;
+  declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  declare serviceSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  declare userSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   /** Returns the value or relation result named AesHexEmail. */
-  getAesHexEmail<T = unknown>(): T;
+  declare getAesHexEmail: <T = unknown>() => T;
   /** Returns the author relation result; T is its model type. */
-  getAuthorModels<T = unknown>(): T;
+  declare getAuthorModels: <T = unknown>() => T;
   /** Returns the value or relation result named Members. */
-  getMembers<T = unknown>(): T;
+  declare getMembers: <T = unknown>() => T;
   /** Returns the value or relation result named Module. */
-  getModule<T = unknown>(): T;
+  declare getModule: <T = unknown>() => T;
   /** Returns the value or relation result named Name. */
-  getName<T = unknown>(): T;
+  declare getName: <T = unknown>() => T;
   /** Returns the value or relation result named Owner. */
-  getOwner<T = unknown>(): T;
+  declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
-  getReadTotal<T = unknown>(): T;
+  declare getReadTotal: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
-  getServiceMemberModels<T = unknown>(): T;
+  declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
-  getServiceRegionModel<T = unknown>(): T;
+  declare getServiceRegionModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
-  getStartMonth<T = unknown>(): T;
+  declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
-  getUserModel<T = unknown>(): T;
+  declare getUserModel: <T = unknown>() => T;
   /** Returns the value or relation result named Writer. */
-  getWriter<T = unknown>(): T;
+  declare getWriter: <T = unknown>() => T;
 }
 
 /** A composite_account model or row. */
@@ -904,34 +899,33 @@ export class CompositeAccount extends Model {
   public keyNameName(): this { this[CORE].keyName = 'name'; return this; }
   public orderByNameAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', false, fn); return this; }
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
-}
-export interface CompositeAccount {
-  andAccountId(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  getByTenantIdAndAccountId(v0: number | readonly (number)[] | ValueFunction | Model, v1: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
-  tenantId(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  tupleTenantIdWithAccountId(v0: ReadonlyArray<readonly [number, number]>): this;
+
+  declare andAccountId: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  declare getByTenantIdAndAccountId: (v0: number | readonly (number)[] | ValueFunction | Model, v1: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
+  declare tenantId: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  declare tupleTenantIdWithAccountId: (v0: ReadonlyArray<readonly [number, number]>) => this;
   /** Returns the value or relation result named AesHexEmail. */
-  getAesHexEmail<T = unknown>(): T;
+  declare getAesHexEmail: <T = unknown>() => T;
   /** Returns the author relation result; T is its model type. */
-  getAuthorModels<T = unknown>(): T;
+  declare getAuthorModels: <T = unknown>() => T;
   /** Returns the value or relation result named Members. */
-  getMembers<T = unknown>(): T;
+  declare getMembers: <T = unknown>() => T;
   /** Returns the value or relation result named Module. */
-  getModule<T = unknown>(): T;
+  declare getModule: <T = unknown>() => T;
   /** Returns the value or relation result named Owner. */
-  getOwner<T = unknown>(): T;
+  declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
-  getReadTotal<T = unknown>(): T;
+  declare getReadTotal: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
-  getServiceMemberModels<T = unknown>(): T;
+  declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
-  getServiceRegionModel<T = unknown>(): T;
+  declare getServiceRegionModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
-  getStartMonth<T = unknown>(): T;
+  declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
-  getUserModel<T = unknown>(): T;
+  declare getUserModel: <T = unknown>() => T;
   /** Returns the value or relation result named Writer. */
-  getWriter<T = unknown>(): T;
+  declare getWriter: <T = unknown>() => T;
 }
 
 /** A composite_membership model or row. */
@@ -969,37 +963,36 @@ export class CompositeMembership extends Model {
   public keyNameRole(): this { this[CORE].keyName = 'role'; return this; }
   public orderByRoleAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('role', false, fn); return this; }
   public orderByRoleDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('role', true, fn); return this; }
-}
-export interface CompositeMembership {
-  aliasMemberships(): this;
-  matchAccountIdWithAccountId(): this;
-  matchTenantIdWithTenantId(): this;
-  tenantId(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  tupleTenantIdWithAccountId(v0: ReadonlyArray<readonly [number, number]>): this;
+
+  declare aliasMemberships: () => this;
+  declare matchAccountIdWithAccountId: () => this;
+  declare matchTenantIdWithTenantId: () => this;
+  declare tenantId: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  declare tupleTenantIdWithAccountId: (v0: ReadonlyArray<readonly [number, number]>) => this;
   /** Returns the value or relation result named AesHexEmail. */
-  getAesHexEmail<T = unknown>(): T;
+  declare getAesHexEmail: <T = unknown>() => T;
   /** Returns the author relation result; T is its model type. */
-  getAuthorModels<T = unknown>(): T;
+  declare getAuthorModels: <T = unknown>() => T;
   /** Returns the value or relation result named Members. */
-  getMembers<T = unknown>(): T;
+  declare getMembers: <T = unknown>() => T;
   /** Returns the value or relation result named Module. */
-  getModule<T = unknown>(): T;
+  declare getModule: <T = unknown>() => T;
   /** Returns the value or relation result named Name. */
-  getName<T = unknown>(): T;
+  declare getName: <T = unknown>() => T;
   /** Returns the value or relation result named Owner. */
-  getOwner<T = unknown>(): T;
+  declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
-  getReadTotal<T = unknown>(): T;
+  declare getReadTotal: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
-  getServiceMemberModels<T = unknown>(): T;
+  declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
-  getServiceRegionModel<T = unknown>(): T;
+  declare getServiceRegionModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
-  getStartMonth<T = unknown>(): T;
+  declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
-  getUserModel<T = unknown>(): T;
+  declare getUserModel: <T = unknown>() => T;
   /** Returns the value or relation result named Writer. */
-  getWriter<T = unknown>(): T;
+  declare getWriter: <T = unknown>() => T;
 }
 
 /** A soft_record model or row. */
@@ -1033,33 +1026,32 @@ export class SoftRecord extends Model {
   public keyNameDeletedAt(): this { this[CORE].keyName = 'deleted_at'; return this; }
   public orderByDeletedAtAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('deleted_at', false, fn); return this; }
   public orderByDeletedAtDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('deleted_at', true, fn); return this; }
-}
-export interface SoftRecord {
-  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
-  name(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
+
+  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
+  declare name: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
+  declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   /** Returns the value or relation result named AesHexEmail. */
-  getAesHexEmail<T = unknown>(): T;
+  declare getAesHexEmail: <T = unknown>() => T;
   /** Returns the author relation result; T is its model type. */
-  getAuthorModels<T = unknown>(): T;
+  declare getAuthorModels: <T = unknown>() => T;
   /** Returns the value or relation result named Members. */
-  getMembers<T = unknown>(): T;
+  declare getMembers: <T = unknown>() => T;
   /** Returns the value or relation result named Module. */
-  getModule<T = unknown>(): T;
+  declare getModule: <T = unknown>() => T;
   /** Returns the value or relation result named Owner. */
-  getOwner<T = unknown>(): T;
+  declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
-  getReadTotal<T = unknown>(): T;
+  declare getReadTotal: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
-  getServiceMemberModels<T = unknown>(): T;
+  declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
-  getServiceRegionModel<T = unknown>(): T;
+  declare getServiceRegionModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
-  getStartMonth<T = unknown>(): T;
+  declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
-  getUserModel<T = unknown>(): T;
+  declare getUserModel: <T = unknown>() => T;
   /** Returns the value or relation result named Writer. */
-  getWriter<T = unknown>(): T;
+  declare getWriter: <T = unknown>() => T;
 }
 
 /** A account model or row. */
@@ -1085,33 +1077,32 @@ export class Account extends Model {
   public keyNameName(): this { this[CORE].keyName = 'name'; return this; }
   public orderByNameAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', false, fn); return this; }
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
-}
-export interface Account {
-  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
-  newLabel(value: unknown): this;
-  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
+
+  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
+  declare newLabel: (value: unknown) => this;
+  declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   /** Returns the value or relation result named AesHexEmail. */
-  getAesHexEmail<T = unknown>(): T;
+  declare getAesHexEmail: <T = unknown>() => T;
   /** Returns the author relation result; T is its model type. */
-  getAuthorModels<T = unknown>(): T;
+  declare getAuthorModels: <T = unknown>() => T;
   /** Returns the value or relation result named Members. */
-  getMembers<T = unknown>(): T;
+  declare getMembers: <T = unknown>() => T;
   /** Returns the value or relation result named Module. */
-  getModule<T = unknown>(): T;
+  declare getModule: <T = unknown>() => T;
   /** Returns the value or relation result named Owner. */
-  getOwner<T = unknown>(): T;
+  declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
-  getReadTotal<T = unknown>(): T;
+  declare getReadTotal: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
-  getServiceMemberModels<T = unknown>(): T;
+  declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
-  getServiceRegionModel<T = unknown>(): T;
+  declare getServiceRegionModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
-  getStartMonth<T = unknown>(): T;
+  declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
-  getUserModel<T = unknown>(): T;
+  declare getUserModel: <T = unknown>() => T;
   /** Returns the value or relation result named Writer. */
-  getWriter<T = unknown>(): T;
+  declare getWriter: <T = unknown>() => T;
 }
 
 /** A project model or row. */
@@ -1137,31 +1128,30 @@ export class Project extends Model {
   public keyNameName(): this { this[CORE].keyName = 'name'; return this; }
   public orderByNameAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', false, fn); return this; }
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
-}
-export interface Project {
-  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
+
+  declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   /** Returns the value or relation result named AesHexEmail. */
-  getAesHexEmail<T = unknown>(): T;
+  declare getAesHexEmail: <T = unknown>() => T;
   /** Returns the author relation result; T is its model type. */
-  getAuthorModels<T = unknown>(): T;
+  declare getAuthorModels: <T = unknown>() => T;
   /** Returns the value or relation result named Members. */
-  getMembers<T = unknown>(): T;
+  declare getMembers: <T = unknown>() => T;
   /** Returns the value or relation result named Module. */
-  getModule<T = unknown>(): T;
+  declare getModule: <T = unknown>() => T;
   /** Returns the value or relation result named Owner. */
-  getOwner<T = unknown>(): T;
+  declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
-  getReadTotal<T = unknown>(): T;
+  declare getReadTotal: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
-  getServiceMemberModels<T = unknown>(): T;
+  declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
-  getServiceRegionModel<T = unknown>(): T;
+  declare getServiceRegionModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
-  getStartMonth<T = unknown>(): T;
+  declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
-  getUserModel<T = unknown>(): T;
+  declare getUserModel: <T = unknown>() => T;
   /** Returns the value or relation result named Writer. */
-  getWriter<T = unknown>(): T;
+  declare getWriter: <T = unknown>() => T;
 }
 
 /** A account_project model or row. */
@@ -1192,35 +1182,34 @@ export class AccountProject extends Model {
   public sumProjectSeq(): this { this[CORE].aggregate('sum', 'project_seq'); return this; }
   public avgProjectSeq(): this { this[CORE].aggregate('avg', 'project_seq'); return this; }
   public forceIndexIxAccountProjectProject(): this { this[CORE].index = 'ix_account_project_project'; return this; }
-}
-export interface AccountProject {
-  accountSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  projectSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  tupleAccountSeqWithProjectSeq(v0: ReadonlyArray<readonly [number, number]>): this;
+
+  declare accountSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  declare projectSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  declare tupleAccountSeqWithProjectSeq: (v0: ReadonlyArray<readonly [number, number]>) => this;
   /** Returns the value or relation result named AesHexEmail. */
-  getAesHexEmail<T = unknown>(): T;
+  declare getAesHexEmail: <T = unknown>() => T;
   /** Returns the author relation result; T is its model type. */
-  getAuthorModels<T = unknown>(): T;
+  declare getAuthorModels: <T = unknown>() => T;
   /** Returns the value or relation result named Members. */
-  getMembers<T = unknown>(): T;
+  declare getMembers: <T = unknown>() => T;
   /** Returns the value or relation result named Module. */
-  getModule<T = unknown>(): T;
+  declare getModule: <T = unknown>() => T;
   /** Returns the value or relation result named Name. */
-  getName<T = unknown>(): T;
+  declare getName: <T = unknown>() => T;
   /** Returns the value or relation result named Owner. */
-  getOwner<T = unknown>(): T;
+  declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
-  getReadTotal<T = unknown>(): T;
+  declare getReadTotal: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
-  getServiceMemberModels<T = unknown>(): T;
+  declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
-  getServiceRegionModel<T = unknown>(): T;
+  declare getServiceRegionModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
-  getStartMonth<T = unknown>(): T;
+  declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
-  getUserModel<T = unknown>(): T;
+  declare getUserModel: <T = unknown>() => T;
   /** Returns the value or relation result named Writer. */
-  getWriter<T = unknown>(): T;
+  declare getWriter: <T = unknown>() => T;
 }
 
 /** A task model or row. */
@@ -1254,33 +1243,32 @@ export class Task extends Model {
   public keyNameState(): this { this[CORE].keyName = 'state'; return this; }
   public orderByStateAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('state', false, fn); return this; }
   public orderByStateDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('state', true, fn); return this; }
-}
-export interface Task {
-  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
+
+  declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   /** Returns the value or relation result named AesHexEmail. */
-  getAesHexEmail<T = unknown>(): T;
+  declare getAesHexEmail: <T = unknown>() => T;
   /** Returns the author relation result; T is its model type. */
-  getAuthorModels<T = unknown>(): T;
+  declare getAuthorModels: <T = unknown>() => T;
   /** Returns the value or relation result named Members. */
-  getMembers<T = unknown>(): T;
+  declare getMembers: <T = unknown>() => T;
   /** Returns the value or relation result named Module. */
-  getModule<T = unknown>(): T;
+  declare getModule: <T = unknown>() => T;
   /** Returns the value or relation result named Name. */
-  getName<T = unknown>(): T;
+  declare getName: <T = unknown>() => T;
   /** Returns the value or relation result named Owner. */
-  getOwner<T = unknown>(): T;
+  declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
-  getReadTotal<T = unknown>(): T;
+  declare getReadTotal: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
-  getServiceMemberModels<T = unknown>(): T;
+  declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
-  getServiceRegionModel<T = unknown>(): T;
+  declare getServiceRegionModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
-  getStartMonth<T = unknown>(): T;
+  declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
-  getUserModel<T = unknown>(): T;
+  declare getUserModel: <T = unknown>() => T;
   /** Returns the value or relation result named Writer. */
-  getWriter<T = unknown>(): T;
+  declare getWriter: <T = unknown>() => T;
 }
 
 /** A hex_cell model or row. */
@@ -1314,32 +1302,31 @@ export class HexCell extends Model {
   public keyNameValue(): this { this[CORE].keyName = 'value'; return this; }
   public orderByValueAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('value', false, fn); return this; }
   public orderByValueDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('value', true, fn); return this; }
-}
-export interface HexCell {
-  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
-  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
+
+  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
+  declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   /** Returns the value or relation result named AesHexEmail. */
-  getAesHexEmail<T = unknown>(): T;
+  declare getAesHexEmail: <T = unknown>() => T;
   /** Returns the author relation result; T is its model type. */
-  getAuthorModels<T = unknown>(): T;
+  declare getAuthorModels: <T = unknown>() => T;
   /** Returns the value or relation result named Members. */
-  getMembers<T = unknown>(): T;
+  declare getMembers: <T = unknown>() => T;
   /** Returns the value or relation result named Module. */
-  getModule<T = unknown>(): T;
+  declare getModule: <T = unknown>() => T;
   /** Returns the value or relation result named Name. */
-  getName<T = unknown>(): T;
+  declare getName: <T = unknown>() => T;
   /** Returns the value or relation result named Owner. */
-  getOwner<T = unknown>(): T;
+  declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
-  getReadTotal<T = unknown>(): T;
+  declare getReadTotal: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
-  getServiceMemberModels<T = unknown>(): T;
+  declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
-  getServiceRegionModel<T = unknown>(): T;
+  declare getServiceRegionModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
-  getStartMonth<T = unknown>(): T;
+  declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
-  getUserModel<T = unknown>(): T;
+  declare getUserModel: <T = unknown>() => T;
   /** Returns the value or relation result named Writer. */
-  getWriter<T = unknown>(): T;
+  declare getWriter: <T = unknown>() => T;
 }
