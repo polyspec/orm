@@ -92,20 +92,6 @@ await suite.run('codec-vector', COMPUTE, async () => {
     }
   }
 
-  // docs/codec.md (yaml): only plain keys that the core schema resolves to bool, null or float are
-  // refused; a key the core schema reads as a string or an integer decodes.
-  for (const [stored, want] of [
-    ['1: 1\n', { 1: 1 }],
-    ['"true": 1\n', { true: 1 }],
-    ['tRUE: 1\n', { tRUE: 1 }],
-    ['nULL: 1\n', { nULL: 1 }],
-    ['.InF: 1\n', { '.InF': 1 }],
-  ]) {
-    let got;
-    try { got = decodeCodec(['yaml'], stored).payload(); } catch (error) { got = String(error); }
-    if (!isDeepStrictEqual(got, want)) { console.error(`YAML key ${JSON.stringify(stored)}: got ${JSON.stringify(got)} want ${JSON.stringify(want)}`); failures++; }
-  }
-
   for (const vector of aesVectors) {
     const encoded = hostEncode(vector.plain, ['aes', 'hex'], vector.key);
     const decoded = hostDecode(encoded, ['aes', 'hex'], vector.key);
@@ -182,7 +168,7 @@ await suite.run('codec-decode-vector', COMPUTE, async () => {
     } catch (error) {
       code = error instanceof CodecError ? error.code : String(error);
     }
-    if (vector.error !== undefined ? code !== vector.error : (code !== '' || got !== vector.value)) {
+    if (vector.error !== undefined ? code !== vector.error : (code !== '' || !isDeepStrictEqual(got, vector.value))) {
       wrong.push(`${vector.name}: got ${code || JSON.stringify(got)}, want ${vector.error ?? JSON.stringify(vector.value)}`);
     }
   }

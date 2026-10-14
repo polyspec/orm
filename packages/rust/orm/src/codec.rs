@@ -750,6 +750,18 @@ mod tests {
         }
     }
 
+    /// The JSON value a decoded cell stands for, for comparison with a vector's `value`; a cell kind
+    /// that has no JSON form is `None`.
+    fn json_of(val: &Val) -> Option<Value> {
+        match val {
+            Val::Null => Some(Value::Null),
+            Val::Str(s) => Some(Value::String(s.clone())),
+            Val::Json(j) => Some(j.clone()),
+            Val::Ordered(o) => crate::value::ordered_to_json(o).ok(),
+            _ => None,
+        }
+    }
+
     /// 공유 decode vector(tests/codec/decode-vectors.json): 저장 cell은 encoder가 쓰는 형태로만 decode되고
     /// 그 밖의 형태는 CODEC_DECODE다. aes가 없는 host stage 목록은 key 없는 `host_decode`로, 나머지는
     /// `decode`로 읽는다.
@@ -772,14 +784,9 @@ mod tests {
             };
             let host = styles.iter().all(|s| s == "hex" || s == "ip");
             let got = if host { host_decode(&raw, &styles, "") } else { decode(&styles, &raw) };
-            let text = |val: &Val| match val {
-                Val::Str(s) => Some(s.clone()),
-                Val::Json(Value::String(s)) => Some(s.clone()),
-                _ => None,
-            };
-            match (&got, v["error"].as_str(), v["value"].as_str()) {
+            match (&got, v["error"].as_str(), v.get("value")) {
                 (Err(e), Some(code), _) if e.code() == code => {}
-                (Ok(val), None, Some(want)) if text(val).as_deref() == Some(want) => {}
+                (Ok(val), None, Some(want)) if json_of(val).as_ref() == Some(want) => {}
                 _ => wrong.push(format!("{name}: got {got:?}, want {}", v.get("error").or(v.get("value")).unwrap())),
             }
         }
