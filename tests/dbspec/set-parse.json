@@ -94,6 +94,69 @@
           ]
         }
       ]
+    },
+    {
+      "name": "a byte order mark stops before the header, so the text has no name",
+      "owned": [
+        "﻿dbspec 1 bom\n\ntable t {\n  id i64\n  primary key (id)\n}\n"
+      ],
+      "external": [],
+      "documents": [
+        {
+          "name": "",
+          "external": false,
+          "parsed": false,
+          "diagnostics": [
+            {
+              "rule": "encoding",
+              "line": 1,
+              "column": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "a bare carriage return in the header line leaves the text without a name",
+      "owned": [
+        "dbspec 1 crhead\rx\n\ntable t {\n  id i64\n  primary key (id)\n}\n"
+      ],
+      "external": [],
+      "documents": [
+        {
+          "name": "",
+          "external": false,
+          "parsed": false,
+          "diagnostics": [
+            {
+              "rule": "encoding",
+              "line": 1,
+              "column": 16
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "a bare carriage return after the header keeps the name",
+      "owned": [
+        "dbspec 1 crlater\n\ntable t {\r  id i64\n  primary key (id)\n}\n"
+      ],
+      "external": [],
+      "documents": [
+        {
+          "name": "crlater",
+          "external": false,
+          "parsed": false,
+          "diagnostics": [
+            {
+              "rule": "encoding",
+              "line": 3,
+              "column": 10
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -104,7 +104,7 @@ A generator that gets a set file with an error, or a listed file with a diagnost
 
 A tool parses the texts of a set with the set parse, never by keying the texts itself: Go `dbspec.ParseSet`, PHP `Dbspec::parseSet`, TypeScript `parseDbspecSet`, Python `parse_dbspec_set` and Rust `dbspec::parse_set`. It takes the owned texts and the external texts, each in set order, and returns one result per text in that order, owned first.
 
-- The name of a document is the name that the parser reads from its header line; no tool reads it otherwise. A text whose header fails has no name, and its result carries the `header` diagnostic.
+- The name of a document is the name that the parser reads from its header line; no tool reads it otherwise. A text has no name when its header fails (a `header` diagnostic) or when its parse stops before its header line is read: the 32 MiB `limit`, a byte order mark, or an `encoding` error in the header line. A defect after the header line leaves the name.
 - A text whose name an earlier text has is not parsed; its result carries the one diagnostic `name.duplicate` at line 1, column 10, `document <name> appears twice in the document set`.
 - Every other text is parsed with the texts of all other named documents of the set as the documents its `use` lines name, and its result carries its document, its [declaration positions](#declaration-positions) and its diagnostics, as one parse of that text returns them. An external text's document is marked external.
 
