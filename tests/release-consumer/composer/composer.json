@@ -3,7 +3,7 @@
     "description": "A project that installs polyspec/orm from the release zips",
     "type": "project",
     "require": {
-        "polyspec/orm": "0.0.11",
+        "polyspec/orm": "0.0.12",
         "polyspec/ordered-json": "0.0.8"
     },
     "repositories": [

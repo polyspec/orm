@@ -1,16 +1,16 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mjs) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-14T03:07:18.615Z",
+  "reviewed": "2026-10-14T03:42:59.862Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "c550ee89dabeac8ec95f0a5fcdef52e1f44cf1451dc3f196956f55e6f1e1f3f8",
+      "sha256": "0896118e50b2527958b545241bafff7b625bb0b83f35eb0560341fa2c60c63ed",
       "advisories": []
     },
     {
       "lock": "composer.lock",
-      "sha256": "cf3555bde2d31219cd98c484d889b3ac81b0d5a1e11a5905ff2090a70fcfae6c",
+      "sha256": "9fabcdcd3a4a435d23c0bb08857b933d71222dde327b8ee004d1769595f49677",
       "advisories": []
     },
     {
@@ -20,17 +20,17 @@
     },
     {
       "lock": "bench/rust/Cargo.lock",
-      "sha256": "4336b33bc7aba8b71e7f9ced5cf22b538570feca90812ac3e3034b09b23a527e",
+      "sha256": "3cc7459ffa9b6307f523e347cc4b8e68093bc2f47620ff193ce4a99249917d54",
       "advisories": []
     },
     {
       "lock": "packages/orm-rust/Cargo.lock",
-      "sha256": "c3410d67065642534e9261d5f3c067c244193aea53f8a1193a1a3e7a6b5945f8",
+      "sha256": "a76d8eefb8e059faa1fb3ce069f5b65d37d23b4e1c9d6dffe82cc508b883dfdd",
       "advisories": []
     },
     {
       "lock": "tests/interfaces/rust/Cargo.lock",
-      "sha256": "6ad855cc39af882e1ec2e900e3039c02a7ab962a1b5d92155c04264a5a055eef",
+      "sha256": "ab1a842d8ca7f5673f85dd37fad21fa12701877a2096db05ad8619bbff200126",
       "advisories": []
     }
   ],

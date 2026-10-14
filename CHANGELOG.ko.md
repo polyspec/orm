@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 613fbc907dc7fa976a96827db7ce8da4fff8fbb343236c224fad21cf6b142755 -->
+<!-- source-sha256: 500c8252df09c278e85ee8aa8b886541238c4f30f3029cf8379824efe657582a -->
 # 변경 이력
 
 ## Unreleased
+
+## 0.0.12
 
 - T159: request hook이 모든 client에서 요청의 묶인 parameter를 읽기 전용으로 받는다. Node와 Python은 세 번째 인자로, Go는 복사한 slice로, Rust는 `RequestParams::get`으로 받는다. PHP에는 이미 `$r->params`가 있었다.
 - T156-2: commit된 Go markdown model이 key-prefix 메서드를 갖는다.
