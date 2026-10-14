@@ -44,11 +44,11 @@ rules:
     kind: dir_absent
     level: error
     root_only: true
-    paths: ["*", "!packages", "!contracts", "!docs", "!scripts", "!tests", "!examples", "!benchmarks", "!config", "!.github", "!.githooks", "!.kit"]
+    paths: ["*", "!packages", "!contracts", "!docs", "!scripts", "!tests", "!examples", "!benchmarks", "!config", "!.github", "!.githooks", "!.kit", "!.mise"]
     message: "S5: the root holds only packages/, contracts/, docs/, scripts/, tests/, examples/, benchmarks/ and config/"
 
   # S5: the root files that kit defines or reads: the documents, the manifests of the TypeScript infrastructure and the
-  # toolchain files of toolchain-declared.mts.
+  # toolchain files of toolchain-declared.mts and of mise (mise.toml, mise.lock).
   - id: layout-root-files
     kind: file_absent
     level: error
@@ -75,6 +75,8 @@ rules:
       - "!.python-version"
       - "!.php-version"
       - "!rust-toolchain.toml"
+      - "!mise.toml"
+      - "!mise.lock"
       - "!ruff.toml"
       - "!phpcs.xml.dist"
       - "!phpstan.dist.neon"
