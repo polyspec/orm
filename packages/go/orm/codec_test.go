@@ -52,7 +52,7 @@ type decodeVector struct {
 	Styles    []string `json:"styles"`
 	Stored    *string  `json:"stored"`
 	StoredHex *string  `json:"stored_hex"`
-	Value     *string  `json:"value"`
+	Value     any      `json:"value"`
 	Error     string   `json:"error"`
 }
 
@@ -102,8 +102,8 @@ func TestCodecDecodeVectors(t *testing.T) {
 			}
 		case err != nil:
 			t.Errorf("%s: %v", v.Name, err)
-		case v.Value == nil || got != *v.Value:
-			t.Errorf("%s: got %#v, want %v", v.Name, got, v.Value)
+		case v.Value == nil || canon(t, got) != canon(t, v.Value):
+			t.Errorf("%s: got %s, want %s", v.Name, canon(t, got), canon(t, v.Value))
 		}
 	}
 }

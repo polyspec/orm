@@ -1,5 +1,5 @@
 {
-  "comment": "Decoding of a stored cell is exact: a cell decodes only in the form the encoder writes, and anything else is CODEC_DECODE (docs/codec.md, Decoding is exact). A case gives the stage list in write order, the stored cell as text (stored) or as the hex of its bytes (stored_hex), and the decoded value or the error code. A list of host stages without aes (hex, ip) decodes with the host decode of the client and no key; any other list decodes with the codec decode. Base64 is the padded standard alphabet with zero padding bits, without white space or line breaks; hex is upper-case hex digits only, as every encoder and MySQL HEX() write it.",
+  "comment": "Decoding of a stored cell is exact: a cell decodes only in the form the encoder writes, and anything else is CODEC_DECODE (docs/codec.md, Decoding is exact). A case gives the stage list in write order, the stored cell as text (stored) or as the hex of its bytes (stored_hex), and the decoded value as a JSON value, compared by value, or the error code. A list of host stages without aes (hex, ip) decodes with the host decode of the client and no key; any other list decodes with the codec decode. Base64 is the padded standard alphabet with zero padding bits, without white space or line breaks; hex is upper-case hex digits only, as every encoder and MySQL HEX() write it.",
   "vectors": [
     {"name": "base64-exact", "styles": ["serialize", "base64"], "stored": "czoyOiJoaSI7", "value": "hi"},
     {"name": "base64-exact-padded", "styles": ["serialize", "base64"], "stored": "czoxOiJoIjs=", "value": "h"},
@@ -55,6 +55,11 @@
     {"name": "yaml-key-plain-true", "styles": ["yaml"], "stored": "true: 1\n", "error": "CODEC_DECODE"},
     {"name": "yaml-key-plain-tilde", "styles": ["yaml"], "stored": "~: 1\n", "error": "CODEC_DECODE"},
     {"name": "yaml-key-plain-float", "styles": ["yaml"], "stored": "1.5: 1\n", "error": "CODEC_DECODE"},
-    {"name": "yaml-key-plain-exponent", "styles": ["yaml"], "stored": "1e3: 1\n", "error": "CODEC_DECODE"}
+    {"name": "yaml-key-plain-exponent", "styles": ["yaml"], "stored": "1e3: 1\n", "error": "CODEC_DECODE"},
+    {"name": "yaml-key-plain-integer", "styles": ["yaml"], "stored": "1: 1\n", "value": {"1": 1}},
+    {"name": "yaml-key-quoted-true", "styles": ["yaml"], "stored": "\"true\": 1\n", "value": {"true": 1}},
+    {"name": "yaml-key-plain-mixed-case-true", "styles": ["yaml"], "stored": "tRUE: 1\n", "value": {"tRUE": 1}},
+    {"name": "yaml-key-plain-mixed-case-null", "styles": ["yaml"], "stored": "nULL: 1\n", "value": {"nULL": 1}},
+    {"name": "yaml-key-plain-mixed-case-infinity", "styles": ["yaml"], "stored": ".InF: 1\n", "value": {".InF": 1}}
   ]
 }
