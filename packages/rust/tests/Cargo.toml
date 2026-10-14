@@ -36,6 +36,8 @@ path = "../../../examples/thin-slice/rust/main.rs"
 name = "markdown_conformance"
 path = "tests/markdown_conformance.rs"
 test = false
+# Each case of tests/markdown/cases.json is a libtest-mimic trial named by its id (polyspec_orm_testcase::trial).
+harness = false
 
 [dependencies]
 # integration program이 case마다 시작, 결과, 경과 시간과 자기 기한을 보고한다.

@@ -13,7 +13,7 @@ from pathlib import Path
 
 
 from polyspec.orm.dbspec import read_dbspec_set
-from vector_case import vector_tests
+from vector_case import VectorCase, vector_tests
 
 ROOT = Path(__file__).resolve().parents[3]
 VECTORS = ROOT / 'tests' / 'dbspec' / 'set-files.json'
@@ -149,9 +149,13 @@ def check_case(test: unittest.TestCase, case) -> None:
         shutil.rmtree(root)
 
 
+class Case(VectorCase):
+    """A case of the vector file of this module."""
+
+
 def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
     """One test for each case of set-files.json, named by the case id."""
-    tests.addTests(vector_tests(load_cases(), check_case, lambda case: case[0]))
+    tests.addTests(vector_tests(Case, load_cases(), check_case, lambda case: case[0]))
     return tests
 
 if __name__ == '__main__':

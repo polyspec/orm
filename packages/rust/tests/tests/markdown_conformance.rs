@@ -17,6 +17,7 @@ use std::collections::BTreeSet;
 use std::io::BufRead;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
+use std::sync::{Mutex, PoisonError};
 
 use markdown_model::{Logs, People, Tasks};
 use polyspec_orm::chrono::NaiveDate;
@@ -102,27 +103,61 @@ impl Served {
     }
 }
 
-#[tokio::test]
-async fn markdown_conformance() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
+/// The flowmark server that the cases share, on the runtime that runs them. A later case reads the corpus state that the
+/// cases before it made, so after a failure the later cases fail with the case that stopped them.
+struct Shared {
+    runtime: tokio::runtime::Runtime,
+    served: Served,
+    _server: Server,
+    _scratch: Scratch,
+    stopped: Option<String>,
+}
+
+static SHARED: Mutex<Option<Shared>> = Mutex::new(None);
+
+/// Starts the pinned flowmark build on a new corpus. The Rust cases are exactly the cases of cases.json.
+fn start() -> Shared {
     let bin = pinned_flowmark();
-    let cases = load_cases();
-    let ids: Vec<&str> = cases.iter().map(|(id, _)| id.as_str()).collect();
-    let missing: Vec<&str> = ids.iter().copied().filter(|id| !CASES.contains(id)).collect();
-    let extra: BTreeSet<&str> = CASES.iter().copied().filter(|id| !ids.contains(id)).collect();
+    let ids: Vec<String> = load_cases().into_iter().map(|(id, _)| id).collect();
+    let missing: Vec<&str> = ids.iter().map(String::as_str).filter(|id| !CASES.contains(id)).collect();
+    let extra: BTreeSet<&str> = CASES.iter().copied().filter(|id| !ids.iter().any(|i| i == id)).collect();
     assert!(missing.is_empty() && extra.is_empty(), "cases.json and the Rust cases differ: missing in Rust {missing:?}, not in cases.json {extra:?}");
+    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("a current-thread runtime");
     let scratch = Scratch(std::env::temp_dir().join(format!("orm-markdown-{}-{}", std::process::id(), unique())));
-    let (served, _server) = serve(&bin, &scratch.0).await;
-    for (id, expect) in &cases {
-        polyspec_orm_testcase::step(format_args!("case {id}"));
-        let got = match run_case(id, &served).await {
-            Ok(value) => value,
-            Err(error) => json!({ "error": error.code() }),
-        };
-        // 뒤의 case는 앞 case가 만든 corpus 상태를 읽으므로 첫 실패에서 멈춘다.
-        assert!(same(&got, expect), "{id}: got {got}, want {expect}");
+    let (served, server) = runtime.block_on(serve(&bin, &scratch.0));
+    Shared { runtime, served, _server: server, _scratch: scratch, stopped: None }
+}
+
+/// Runs one case of cases.json on the shared server, which the first case starts.
+fn markdown_conformance_case(id: &str, expect: &Value) {
+    let mut guard = SHARED.lock().unwrap_or_else(PoisonError::into_inner);
+    let shared = guard.get_or_insert_with(start);
+    if let Some(stopped) = &shared.stopped {
+        panic!("not run: {stopped} failed, and this case reads the corpus state it leaves");
     }
-    served.db.close().await;
+    let got = match shared.runtime.block_on(run_case(id, &shared.served)) {
+        Ok(value) => value,
+        Err(error) => json!({ "error": error.code() }),
+    };
+    if !same(&got, expect) {
+        shared.stopped = Some(id.to_owned());
+        panic!("{id}: got {got}, want {expect}");
+    }
+}
+
+/// Each case of tests/markdown/cases.json is the trial `markdown_conformance::<id>`, in the order of the file.
+fn main() {
+    let trials = load_cases()
+        .into_iter()
+        .map(|(id, expect)| {
+            polyspec_orm_testcase::trial(format!("markdown_conformance::{id}"), polyspec_orm_testcase::PROCESS, move || markdown_conformance_case(&id, &expect))
+        })
+        .collect();
+    polyspec_orm_testcase::run_in_order_then(trials, || {
+        if let Some(shared) = SHARED.lock().unwrap_or_else(PoisonError::into_inner).take() {
+            shared.runtime.block_on(shared.served.db.close());
+        }
+    });
 }
 
 /// 이름이 겹치지 않도록 directory 이름에 붙이는 시각이다.

@@ -26,5 +26,37 @@ serde_json = { version = "1", features = ["raw_value"] }
 polyspec-orm-testcase = { path = "../testcase" }
 polyspec-orm-case-clock = { path = "../case-clock" }
 
+# These test targets run a shared vector file with one libtest-mimic trial per case id
+# (polyspec_orm_testcase::trial), so their harness is libtest-mimic.
+[[test]]
+name = "dbspec"
+path = "tests/dbspec.rs"
+harness = false
+
+[[test]]
+name = "dbspec_manifest"
+path = "tests/dbspec_manifest.rs"
+harness = false
+
+[[test]]
+name = "dbspec_mermaid"
+path = "tests/dbspec_mermaid.rs"
+harness = false
+
+[[test]]
+name = "dbspec_plan"
+path = "tests/dbspec_plan.rs"
+harness = false
+
+[[test]]
+name = "dbspec_render"
+path = "tests/dbspec_render.rs"
+harness = false
+
+[[test]]
+name = "dbspec_set"
+path = "tests/dbspec_set.rs"
+harness = false
+
 [lints]
 workspace = true

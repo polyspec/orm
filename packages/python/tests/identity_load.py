@@ -27,7 +27,7 @@ from polyspec.orm.database import Db  # noqa: E402
 from polyspec.orm.engine import Engine, model_of_documents, parse_document_set  # noqa: E402
 from polyspec.orm.errors import OrmError  # noqa: E402
 from polyspec.orm.schema import Schema  # noqa: E402
-from vector_case import vector_tests  # noqa: E402
+from vector_case import VectorCase, vector_tests  # noqa: E402
 
 CASES = json.loads((ROOT / 'contracts' / 'fixtures' / 'identity_load.json').read_text())
 MODEL = model_of_documents(parse_document_set([(ROOT / CASES['fixture']).read_text()]))
@@ -260,9 +260,13 @@ def check_case(test: unittest.TestCase, case: dict) -> None:
     print(f'PASS {name} elapsed={elapsed:.3f}s', flush=True)
 
 
+class Case(VectorCase):
+    """A case of the vector file of this module."""
+
+
 def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
     """One test for each case of the file, named by the case id."""
-    tests.addTests(vector_tests(CASES['cases'], check_case))
+    tests.addTests(vector_tests(Case, CASES['cases'], check_case))
     return tests
 
 if __name__ == '__main__':

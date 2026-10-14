@@ -13,7 +13,7 @@ from polyspec.orm.dbspec.compare import compare_schemas  # noqa: E402
 from polyspec.orm.dbspec.plan import chain_plans, parse_plan  # noqa: E402
 from polyspec.orm.dbspec.plan_diff import diff_plan  # noqa: E402
 from polyspec.orm.dbspec.plan_steps import effect_text, plan_steps  # noqa: E402
-from vector_case import vector_tests  # noqa: E402
+from vector_case import VectorCase, vector_tests  # noqa: E402
 
 
 def _text(value) -> str:
@@ -121,12 +121,16 @@ def check_comparison(_test: unittest.TestCase, case: dict) -> None:
             f'{case["id"]}: differences differ'
 
 
+class Case(VectorCase):
+    """A case of the vector file of this module."""
+
+
 def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
     """One test for each case of every section, named by the case id."""
     data = json.loads((ROOT / 'tests' / 'dbspec' / 'plans.json').read_text())
     for section, check in (('cases', check_case), ('invalid', check_invalid), ('chains', check_chain),
                            ('parse', check_parse), ('comparisons', check_comparison)):
-        tests.addTests(vector_tests(data[section], check))
+        tests.addTests(vector_tests(Case, data[section], check))
     return tests
 
 

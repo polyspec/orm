@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[3]
 from polyspec.orm.engine import model_of_documents, parse_document_set  # noqa: E402
 from polyspec.orm.engine.validate import validate  # noqa: E402
 from polyspec.orm.errors import OrmError  # noqa: E402
-from vector_case import vector_tests  # noqa: E402
+from vector_case import VectorCase, vector_tests  # noqa: E402
 
 
 FILE = json.loads((ROOT / 'tests' / 'ir' / 'validate.json').read_text())
@@ -27,13 +27,17 @@ def check_case(test: unittest.TestCase, case: dict) -> None:
     test.assertEqual(raised.exception.code, case['error'])
 
 
+class Case(VectorCase):
+    """A case of the vector file of this module."""
+
+
 def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
     """One test for each validation case, named by the case."""
     global MODEL
     if FILE['schema'] != 'schema/bench.dbs' or not FILE['cases']:
         raise AssertionError('validate.json names schema/bench.dbs and has cases')
     MODEL = model_of_documents(parse_document_set([(ROOT / FILE['schema']).read_text()]))
-    tests.addTests(vector_tests(FILE['cases'], check_case, lambda case: case['name']))
+    tests.addTests(vector_tests(Case, FILE['cases'], check_case, lambda case: case['name']))
     return tests
 
 

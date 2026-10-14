@@ -7,6 +7,7 @@
 //! objects and gets back its tables, columns, primary keys and foreign keys.
 
 use polyspec_orm_case_clock::CaseClock;
+use polyspec_orm_testcase::Trial;
 use polyspec_orm_schema::dbspec::model::{DefaultValue, Document};
 use polyspec_orm_schema::dbspec::{self, export_mermaid, import_mermaid, Unsupported};
 use serde_json::{json, Value};
@@ -67,9 +68,8 @@ fn skeleton(document: &Document) -> Vec<String> {
     out
 }
 
-/// case 하나를 실행하고 시작, 결과, 경과 시간을 쓴다.
-fn run(id: &str, failures: &mut Vec<String>, body: impl FnOnce() -> Result<(), String>) {
-    let mut inner = polyspec_orm_testcase::start(format!("mermaid/{id}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE));
+/// case 하나를 실행하고 그 결과와 CPU 시간을 쓴다. 실패한 case는 이유와 함께 panic한다.
+fn run(body: impl FnOnce() -> Result<(), String>) {
     let clock = CaseClock::start();
     let mut result = body();
     let (cpu, wall) = (clock.cpu(), clock.wall());
@@ -77,91 +77,84 @@ fn run(id: &str, failures: &mut Vec<String>, body: impl FnOnce() -> Result<(), S
         result = Err(format!("cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})"));
     }
     match result {
-        Ok(()) => inner.step(format_args!("cpu={cpu:?} wall={wall:?}")),
-        Err(e) => {
-            inner.fail(format_args!("cpu={cpu:?} wall={wall:?}: {e}"));
-            failures.push(format!("{id}: {e}"));
-        }
+        Ok(()) => polyspec_orm_testcase::step(format_args!("cpu={cpu:?} wall={wall:?}")),
+        Err(e) => panic!("cpu={cpu:?} wall={wall:?}: {e}"),
     }
 }
 
-#[test]
-fn mermaid_vectors() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+/// Each case of tests/dbspec/mermaid.json, of every kind, is the trial `mermaid_vectors::<id>`.
+fn mermaid_vectors() -> Vec<Trial> {
     let vectors = vectors();
-    let mut failures = Vec::new();
-    let mut count = 0;
-    for case in cases(&vectors, "export") {
-        let id = format!("export/{}", case["id"].as_str().expect("id"));
-        count += 1;
-        run(&id, &mut failures, || {
-            let set: BTreeMap<String, String> =
-                case["documents"].as_object().expect("documents").iter().map(|(name, text)| (name.clone(), lines(text))).collect();
-            let document = dbspec::parse(&lines(&case["document"]), &set).map(|parsed| parsed.document).map_err(|e| format!("document: {e:?}"))?;
-            let (text, dropped) = export_mermaid(&document);
-            let want = lines(&case["mermaid"]);
-            if text != want {
-                return Err(format!("mermaid\n--- want\n{want}--- got\n{text}"));
-            }
-            if drops(&dropped) != case["dropped"] {
-                return Err(format!("dropped\nwant {}\ngot  {}", case["dropped"], drops(&dropped)));
-            }
-            Ok(())
-        });
+    let mut trials = Vec::new();
+    for (kind, check) in [("export", export_case as fn(&Value) -> Result<(), String>), ("import", import_case), ("invalid", invalid_case), ("round_trip", round_trip_case)] {
+        for case in cases(&vectors, kind) {
+            let id = case["id"].as_str().expect("id").to_owned();
+            let case = case.clone();
+            trials.push(polyspec_orm_testcase::trial(format!("mermaid_vectors::{id}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || run(|| check(&case))));
+        }
     }
-    for case in cases(&vectors, "import") {
-        let id = format!("import/{}", case["id"].as_str().expect("id"));
-        count += 1;
-        run(&id, &mut failures, || {
-            let (document, dropped) = import_mermaid(&lines(&case["mermaid"]), "imported").map_err(|e| format!("diagnostics: {e:?}"))?;
-            let (got, want) = (dbspec::emit(&document), lines(&case["document"]));
-            if got != want {
-                return Err(format!("document\n--- want\n{want}--- got\n{got}"));
-            }
-            if drops(&dropped) != case["dropped"] {
-                return Err(format!("dropped\nwant {}\ngot  {}", case["dropped"], drops(&dropped)));
-            }
-            Ok(())
-        });
+    trials
+}
+
+fn export_case(case: &Value) -> Result<(), String> {
+    let set: BTreeMap<String, String> =
+        case["documents"].as_object().expect("documents").iter().map(|(name, text)| (name.clone(), lines(text))).collect();
+    let document = dbspec::parse(&lines(&case["document"]), &set).map(|parsed| parsed.document).map_err(|e| format!("document: {e:?}"))?;
+    let (text, dropped) = export_mermaid(&document);
+    let want = lines(&case["mermaid"]);
+    if text != want {
+        return Err(format!("mermaid\n--- want\n{want}--- got\n{text}"));
     }
-    for case in cases(&vectors, "invalid") {
-        let id = format!("invalid/{}", case["id"].as_str().expect("id"));
-        count += 1;
-        run(&id, &mut failures, || {
-            let diagnostics = match import_mermaid(&lines(&case["mermaid"]), "imported") {
-                Ok(_) => Vec::new(),
-                Err(diagnostics) => diagnostics,
-            };
-            let got = Value::Array(diagnostics.iter().map(|d| json!([d.rule, d.line, d.column])).collect());
-            if got != case["errors"] {
-                return Err(format!("errors\nwant {}\ngot  {}", case["errors"], got));
-            }
-            Ok(())
-        });
+    if drops(&dropped) != case["dropped"] {
+        return Err(format!("dropped\nwant {}\ngot  {}", case["dropped"], drops(&dropped)));
     }
-    for case in cases(&vectors, "round_trip") {
-        let id = format!("round_trip/{}", case["id"].as_str().expect("id"));
-        count += 1;
-        run(&id, &mut failures, || {
-            let path = polyspec_orm_testcase::manifest_dir().join("../../..").join(case["path"].as_str().expect("path"));
-            let source = dbspec::read_file(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-            let document = dbspec::parse(&source, &BTreeMap::new()).map(|parsed| parsed.document).map_err(|e| format!("document: {e:?}"))?;
-            let (text, dropped) = export_mermaid(&document);
-            if drops(&dropped) != case["dropped"] {
-                return Err(format!("export dropped {}\nwant {}\ngot  {}", dropped.len(), case["dropped"], drops(&dropped)));
-            }
-            let (imported, reported) = import_mermaid(&text, &document.name.text).map_err(|e| format!("diagnostics: {e:?}"))?;
-            if drops(&reported) != case["imported"] {
-                return Err(format!("import dropped {}\nwant {}\ngot  {}", reported.len(), case["imported"], drops(&reported)));
-            }
-            let (want, got) = (skeleton(&document), skeleton(&imported));
-            if got != want {
-                return Err(format!("tables, columns, primary keys and foreign keys\n--- want\n{}\n--- got\n{}", want.join("\n"), got.join("\n")));
-            }
-            polyspec_orm_testcase::step(format_args!("round_trip exported={} imported={}", dropped.len(), reported.len()));
-            Ok(())
-        });
+    Ok(())
+}
+
+fn import_case(case: &Value) -> Result<(), String> {
+    let (document, dropped) = import_mermaid(&lines(&case["mermaid"]), "imported").map_err(|e| format!("diagnostics: {e:?}"))?;
+    let (got, want) = (dbspec::emit(&document), lines(&case["document"]));
+    if got != want {
+        return Err(format!("document\n--- want\n{want}--- got\n{got}"));
     }
-    assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
-    polyspec_orm_testcase::step(format_args!("mermaid vectors: {count} cases"));
+    if drops(&dropped) != case["dropped"] {
+        return Err(format!("dropped\nwant {}\ngot  {}", case["dropped"], drops(&dropped)));
+    }
+    Ok(())
+}
+
+fn invalid_case(case: &Value) -> Result<(), String> {
+    let diagnostics = match import_mermaid(&lines(&case["mermaid"]), "imported") {
+        Ok(_) => Vec::new(),
+        Err(diagnostics) => diagnostics,
+    };
+    let got = Value::Array(diagnostics.iter().map(|d| json!([d.rule, d.line, d.column])).collect());
+    if got != case["errors"] {
+        return Err(format!("errors\nwant {}\ngot  {}", case["errors"], got));
+    }
+    Ok(())
+}
+
+fn round_trip_case(case: &Value) -> Result<(), String> {
+    let path = polyspec_orm_testcase::manifest_dir().join("../../..").join(case["path"].as_str().expect("path"));
+    let source = dbspec::read_file(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let document = dbspec::parse(&source, &BTreeMap::new()).map(|parsed| parsed.document).map_err(|e| format!("document: {e:?}"))?;
+    let (text, dropped) = export_mermaid(&document);
+    if drops(&dropped) != case["dropped"] {
+        return Err(format!("export dropped {}\nwant {}\ngot  {}", dropped.len(), case["dropped"], drops(&dropped)));
+    }
+    let (imported, reported) = import_mermaid(&text, &document.name.text).map_err(|e| format!("diagnostics: {e:?}"))?;
+    if drops(&reported) != case["imported"] {
+        return Err(format!("import dropped {}\nwant {}\ngot  {}", reported.len(), case["imported"], drops(&reported)));
+    }
+    let (want, got) = (skeleton(&document), skeleton(&imported));
+    if got != want {
+        return Err(format!("tables, columns, primary keys and foreign keys\n--- want\n{}\n--- got\n{}", want.join("\n"), got.join("\n")));
+    }
+    polyspec_orm_testcase::step(format_args!("round_trip exported={} imported={}", dropped.len(), reported.len()));
+    Ok(())
+}
+
+fn main() {
+    polyspec_orm_testcase::run(mermaid_vectors());
 }

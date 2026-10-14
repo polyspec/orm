@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 
 from polyspec.orm.dbspec.introspect_mysql import _create_checks  # noqa: E402
-from vector_case import vector_tests  # noqa: E402
+from vector_case import VectorCase, vector_tests  # noqa: E402
 
 
 DATA = json.loads((ROOT / 'tests' / 'dbspec' / 'show-create.json').read_text(encoding='utf-8'))
@@ -24,11 +24,15 @@ def check_case(test: unittest.TestCase, case: dict) -> None:
         test.assertEqual(got, case['expected'])
 
 
+class Case(VectorCase):
+    """A case of the vector file of this module."""
+
+
 def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
     """Every case reads to its expected body: one test for each case, named by the case."""
     if not DATA['cases']:
         raise AssertionError('tests/dbspec/show-create.json has no cases')
-    tests.addTests(vector_tests(DATA['cases'], check_case))
+    tests.addTests(vector_tests(Case, DATA['cases'], check_case))
     return tests
 
 

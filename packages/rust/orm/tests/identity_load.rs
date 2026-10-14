@@ -12,14 +12,13 @@ use std::time::Duration;
 use polyspec_orm::db::Pool;
 use polyspec_orm::{engine, ir, plan, Db, Dialect, Manifest, Param, Schema};
 use polyspec_orm_case_database::CaseDatabase;
+use polyspec_orm_testcase::Trial;
 use serde_json::{json, Map, Value};
 use sqlx::Row;
 
 static LOAD_SCHEMA: Schema =
     Schema::new(include_str!("../../../../contracts/fixtures/identity_load.dbs"), "sha256:5b9923a69ed67de11e46bc3b825656d177d6e3664a867ca4d4d779b2677f97de");
 const CASES: &str = include_str!("../../../../contracts/fixtures/identity_load.json");
-/// parity unit의 이름이며 보고 줄의 case 이름 앞부분이다.
-const UNIT: &str = "identity-load";
 /// execute case가 database 하나에서 쓰는 기한이다. 세 database의 합이 case 기한 DATABASE 안에 든다.
 const DATABASE_DEADLINE: Duration = Duration::from_secs(35);
 const DRIVERS: [&str; 3] = ["mysql", "postgres", "sqlite"];
@@ -219,41 +218,47 @@ async fn execute_on(driver: &'static str, doc: &Value, m: &Manifest, c: &Value) 
     result.map_err(|e| format!("{driver}: {e}"))
 }
 
-// identity_load.json의 모든 case를 실행한다. language parity unit "identity-load"가 이 함수 하나를 실행하고
-// case마다 보고 줄을 읽는다.
-#[tokio::test]
-async fn identity_load() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+// identity_load.json의 case마다 trial `identity_load::<id>` 하나다. compile case의 기한은 COMPUTE, execute case의
+// 기한은 DATABASE다. execute case는 한 database의 실패 뒤에도 나머지 database를 실행해 모든 database의 결과를 적는다.
+fn identity_load() -> Vec<Trial> {
     let doc: Value = serde_json::from_str(CASES).expect("contracts/fixtures/identity_load.json");
-    let m = manifest();
-    let mut failed = Vec::new();
-    for c in doc["cases"].as_array().expect("cases") {
-        let id = c["id"].as_str().expect("case id");
-        let mut case = match c["operation"].as_str() {
-            Some("compile") => polyspec_orm_testcase::start(format!("{UNIT}/{id}"), polyspec_orm_testcase::COMPUTE),
-            Some("execute") => polyspec_orm_testcase::start(format!("{UNIT}/{id}"), polyspec_orm_testcase::DATABASE),
-            other => panic!("{id}: unknown operation {other:?}"),
-        };
-        let result = if c["operation"] == "compile" {
-            compile_case(&m, c)
-        } else {
-            // 한 database의 실패 뒤에도 나머지 database를 실행해 모든 database의 결과를 적는다.
-            let mut errors = Vec::new();
-            for driver in DRIVERS {
-                if let Err(e) = execute_on(driver, &doc, &m, c).await {
-                    errors.push(e);
+    doc["cases"]
+        .as_array()
+        .expect("cases")
+        .iter()
+        .map(|c| {
+            let id = c["id"].as_str().expect("case id").to_owned();
+            let deadline = match c["operation"].as_str() {
+                Some("compile") => polyspec_orm_testcase::COMPUTE,
+                Some("execute") => polyspec_orm_testcase::DATABASE,
+                other => panic!("{id}: unknown operation {other:?}"),
+            };
+            let (doc, c) = (doc.clone(), c.clone());
+            polyspec_orm_testcase::async_trial(format!("identity_load::{id}"), deadline, move || async move {
+                let m = manifest();
+                let result = if c["operation"] == "compile" {
+                    compile_case(&m, &c)
+                } else {
+                    let mut errors = Vec::new();
+                    for driver in DRIVERS {
+                        if let Err(e) = execute_on(driver, &doc, &m, &c).await {
+                            errors.push(e);
+                        }
+                    }
+                    if errors.is_empty() {
+                        Ok(())
+                    } else {
+                        Err(errors.join("; "))
+                    }
+                };
+                if let Err(reason) = result {
+                    panic!("{reason}");
                 }
-            }
-            if errors.is_empty() {
-                Ok(())
-            } else {
-                Err(errors.join("; "))
-            }
-        };
-        if let Err(reason) = result {
-            case.fail(&reason);
-            failed.push(format!("{id}: {reason}"));
-        }
-    }
-    assert!(failed.is_empty(), "identity_load cases failed:\n{}", failed.join("\n"));
+            })
+        })
+        .collect()
+}
+
+fn main() {
+    polyspec_orm_testcase::run_in_order(identity_load());
 }

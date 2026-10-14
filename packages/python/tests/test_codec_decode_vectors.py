@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 
 from polyspec.orm.codec import CodecError, decode, host_decode  # noqa: E402
-from vector_case import vector_tests  # noqa: E402
+from vector_case import VectorCase, vector_tests  # noqa: E402
 
 
 VECTORS = json.loads((ROOT / 'tests' / 'codec' / 'decode-vectors.json').read_text())['vectors']
@@ -31,11 +31,15 @@ def check_vector(test: unittest.TestCase, vector: dict) -> None:
     test.assertEqual(got, vector['value'])
 
 
+class Case(VectorCase):
+    """A case of the vector file of this module."""
+
+
 def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
     """One test for each decode vector, named by the vector."""
     if not VECTORS:
         raise AssertionError('decode-vectors.json has no vectors')
-    tests.addTests(vector_tests(VECTORS, check_vector, lambda vector: vector['name']))
+    tests.addTests(vector_tests(Case, VECTORS, check_vector, lambda vector: vector['name']))
     return tests
 
 

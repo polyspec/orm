@@ -3,6 +3,7 @@
 //! `dbspec::manifest` and `dbspec::render`.
 
 use polyspec_orm_case_clock::CaseClock;
+use polyspec_orm_testcase::Trial;
 use polyspec_orm_schema::dbspec::{self, Diagnostic, Dialect, Document};
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -60,40 +61,38 @@ fn located(errors: &[Diagnostic]) -> Vec<(String, usize, usize)> {
     errors.iter().map(|e| (e.rule.clone(), e.line, e.column)).collect()
 }
 
-#[test]
-fn manifest_vectors() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
-    let clock = CaseClock::start();
+fn manifest_vectors() -> Vec<Trial> {
     let cases = cases();
     let hashes = cases["hashes"].as_array().expect("hashes cases");
     assert!(!hashes.is_empty(), "tests/dbspec/cases.json has no hashes cases");
+    let mut trials = Vec::new();
     for case in hashes {
-        let id = case["id"].as_str().unwrap();
-        let documents_value = case["documents"].as_object().unwrap();
-        let documents: Vec<Document> = documents_value
-            .iter()
-            .map(|(name, lines)| {
-                let set = documents_value.iter().filter(|(other, _)| *other != name).map(|(other, l)| (other.clone(), text(l))).collect();
-                parsed(id, &text(lines), &set)
-            })
-            .collect();
-        let mut refs: Vec<&Document> = documents.iter().collect();
-        expect(case, &refs);
-        // The set is ordered by document name, not by the order given.
-        refs.reverse();
-        expect(case, &refs);
-        polyspec_orm_testcase::step(format_args!("hashes/{id}"));
+        let id = case["id"].as_str().unwrap().to_owned();
+        let case = case.clone();
+        trials.push(polyspec_orm_testcase::trial(format!("manifest_vectors::{id}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || manifest_vectors_case(&case)));
     }
-    let (cpu, wall) = (clock.cpu(), clock.wall());
-    if cpu >= DEADLINE {
-        polyspec_orm_testcase::warning(format_args!("dbspec manifest vectors exceeded {DEADLINE:?} (cpu {cpu:?}, wall {wall:?})"));
-    }
-    polyspec_orm_testcase::step(format_args!("dbspec manifest vectors {} cases cpu={cpu:?} wall={wall:?}", hashes.len()));
+    trials
 }
 
-#[test]
+fn manifest_vectors_case(case: &Value) {
+    let id = case["id"].as_str().unwrap();
+    let documents_value = case["documents"].as_object().unwrap();
+    let documents: Vec<Document> = documents_value
+        .iter()
+        .map(|(name, lines)| {
+            let set = documents_value.iter().filter(|(other, _)| *other != name).map(|(other, l)| (other.clone(), text(l))).collect();
+            parsed(id, &text(lines), &set)
+        })
+        .collect();
+    let mut refs: Vec<&Document> = documents.iter().collect();
+    expect(case, &refs);
+    // The set is ordered by document name, not by the order given.
+    refs.reverse();
+    expect(case, &refs);
+    polyspec_orm_testcase::step(format_args!("hashes/{id}"));
+}
+
 fn manifest_rejects_repeated_document_name() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
     let source = "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  primary key (id)\n}\n";
     let first = parsed("first", source, &BTreeMap::new());
@@ -108,81 +107,88 @@ fn manifest_rejects_repeated_document_name() {
     polyspec_orm_testcase::step(format_args!("dbspec manifest repeated name cpu={cpu:?} wall={wall:?}"));
 }
 
-#[test]
-fn set_vectors() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
-    let clock = CaseClock::start();
+fn set_vectors() -> Vec<Trial> {
     let cases = cases();
     let sets = cases["sets"].as_array().expect("sets cases");
     assert!(!sets.is_empty(), "tests/dbspec/cases.json has no sets cases");
+    let mut trials = Vec::new();
     for case in sets {
-        let id = case["id"].as_str().unwrap();
-        // 각 문서는 다른 소유 문서, 외부 문서, parsing 문서를 집합으로 parse한다.
-        let owned = case["documents"].as_array().unwrap().len();
-        let texts: Vec<String> =
-            case["documents"].as_array().unwrap().iter().chain(case.get("external").and_then(Value::as_array).into_iter().flatten()).map(text).collect();
-        let parsing: BTreeMap<String, String> = case["parsing"].as_object().unwrap().iter().map(|(name, l)| (name.clone(), text(l))).collect();
-        let documents: Vec<Document> = texts
-            .iter()
-            .enumerate()
-            .map(|(i, source)| {
-                let mut set = parsing.clone();
-                for (j, other) in texts.iter().enumerate() {
-                    if j != i {
-                        let header = other.lines().next().unwrap();
-                        let name = header.strip_prefix("dbspec 1 ").unwrap_or_else(|| panic!("{id}: header {header:?}"));
-                        set.insert(name.to_owned(), other.clone());
-                    }
+        let id = case["id"].as_str().unwrap().to_owned();
+        let case = case.clone();
+        trials.push(polyspec_orm_testcase::trial(format!("set_vectors::{id}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || set_vectors_case(&case)));
+    }
+    trials
+}
+
+fn set_vectors_case(case: &Value) {
+    let id = case["id"].as_str().unwrap();
+    // 각 문서는 다른 소유 문서, 외부 문서, parsing 문서를 집합으로 parse한다.
+    let owned = case["documents"].as_array().unwrap().len();
+    let texts: Vec<String> =
+        case["documents"].as_array().unwrap().iter().chain(case.get("external").and_then(Value::as_array).into_iter().flatten()).map(text).collect();
+    let parsing: BTreeMap<String, String> = case["parsing"].as_object().unwrap().iter().map(|(name, l)| (name.clone(), text(l))).collect();
+    let documents: Vec<Document> = texts
+        .iter()
+        .enumerate()
+        .map(|(i, source)| {
+            let mut set = parsing.clone();
+            for (j, other) in texts.iter().enumerate() {
+                if j != i {
+                    let header = other.lines().next().unwrap();
+                    let name = header.strip_prefix("dbspec 1 ").unwrap_or_else(|| panic!("{id}: header {header:?}"));
+                    set.insert(name.to_owned(), other.clone());
                 }
-                let mut document = parsed(id, source, &set);
-                document.external = i >= owned;
-                document
-            })
-            .collect();
-        let refs: Vec<&Document> = documents.iter().collect();
-        let want: Vec<(String, usize, usize)> = case["errors"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|e| (e["rule"].as_str().unwrap().to_owned(), e["line"].as_u64().unwrap() as usize, e["column"].as_u64().unwrap() as usize))
-            .collect();
-        let expected = case.get("manifest");
-        match dbspec::manifest(&refs) {
-            Ok(manifest) => {
-                assert!(want.is_empty(), "{id}: manifest gave no errors, want {want:?}");
+            }
+            let mut document = parsed(id, source, &set);
+            document.external = i >= owned;
+            document
+        })
+        .collect();
+    let refs: Vec<&Document> = documents.iter().collect();
+    let want: Vec<(String, usize, usize)> = case["errors"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| (e["rule"].as_str().unwrap().to_owned(), e["line"].as_u64().unwrap() as usize, e["column"].as_u64().unwrap() as usize))
+        .collect();
+    let expected = case.get("manifest");
+    match dbspec::manifest(&refs) {
+        Ok(manifest) => {
+            assert!(want.is_empty(), "{id}: manifest gave no errors, want {want:?}");
+            if let Some(m) = expected {
+                assert_eq!(manifest.manifest_text, lines_text(&m["manifestText"]), "{id}: manifestText");
+                assert_eq!(manifest.external_text, lines_text(&m["externalText"]), "{id}: externalText");
+                assert_eq!(manifest.schema_text, lines_text(&m["schemaText"]), "{id}: schemaText");
+                assert_eq!(manifest.manifest_hash, m["manifestHash"].as_str().unwrap(), "{id}: manifestHash");
+                assert_eq!(manifest.schema_hash, m["schemaHash"].as_str().unwrap(), "{id}: schemaHash");
+            }
+        }
+        Err(errors) => {
+            assert!(!want.is_empty(), "{id}: manifest gave {errors:?}");
+            assert_eq!(located(&errors), want, "{id}: manifest");
+        }
+    }
+    for (dialect_name, dialect) in DIALECTS {
+        match dbspec::render(&refs, dialect) {
+            Ok(statements) => {
+                assert!(want.is_empty(), "{id}: {dialect_name} rendered, want {want:?}");
                 if let Some(m) = expected {
-                    assert_eq!(manifest.manifest_text, lines_text(&m["manifestText"]), "{id}: manifestText");
-                    assert_eq!(manifest.external_text, lines_text(&m["externalText"]), "{id}: externalText");
-                    assert_eq!(manifest.schema_text, lines_text(&m["schemaText"]), "{id}: schemaText");
-                    assert_eq!(manifest.manifest_hash, m["manifestHash"].as_str().unwrap(), "{id}: manifestHash");
-                    assert_eq!(manifest.schema_hash, m["schemaHash"].as_str().unwrap(), "{id}: schemaHash");
+                    let created: Vec<&str> = m["created"].as_array().unwrap().iter().map(|v| v.as_str().unwrap()).collect();
+                    assert_eq!(created_tables(&statements), created, "{id}: {dialect_name} created tables");
                 }
             }
             Err(errors) => {
-                assert!(!want.is_empty(), "{id}: manifest gave {errors:?}");
-                assert_eq!(located(&errors), want, "{id}: manifest");
+                assert!(!want.is_empty(), "{id}: {dialect_name} gave {errors:?}");
+                assert_eq!(located(&errors), want, "{id}: {dialect_name}");
             }
         }
-        for (dialect_name, dialect) in DIALECTS {
-            match dbspec::render(&refs, dialect) {
-                Ok(statements) => {
-                    assert!(want.is_empty(), "{id}: {dialect_name} rendered, want {want:?}");
-                    if let Some(m) = expected {
-                        let created: Vec<&str> = m["created"].as_array().unwrap().iter().map(|v| v.as_str().unwrap()).collect();
-                        assert_eq!(created_tables(&statements), created, "{id}: {dialect_name} created tables");
-                    }
-                }
-                Err(errors) => {
-                    assert!(!want.is_empty(), "{id}: {dialect_name} gave {errors:?}");
-                    assert_eq!(located(&errors), want, "{id}: {dialect_name}");
-                }
-            }
-        }
-        polyspec_orm_testcase::step(format_args!("sets/{id}"));
     }
-    let (cpu, wall) = (clock.cpu(), clock.wall());
-    if cpu >= DEADLINE {
-        polyspec_orm_testcase::warning(format_args!("dbspec set vectors exceeded {DEADLINE:?} (cpu {cpu:?}, wall {wall:?})"));
-    }
-    polyspec_orm_testcase::step(format_args!("dbspec set vectors {} cases cpu={cpu:?} wall={wall:?}", sets.len()));
+    polyspec_orm_testcase::step(format_args!("sets/{id}"));
+}
+
+fn main() {
+    let mut trials = manifest_vectors();
+    trials.push(polyspec_orm_testcase::trial("manifest_rejects_repeated_document_name", polyspec_orm_testcase::wall_for_cpu(DEADLINE), manifest_rejects_repeated_document_name));
+    trials.extend(set_vectors());
+    polyspec_orm_testcase::run(trials);
 }

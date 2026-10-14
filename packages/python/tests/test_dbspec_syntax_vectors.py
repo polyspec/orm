@@ -8,7 +8,7 @@ from pathlib import Path
 
 from polyspec.orm.dbspec import analyze_dbspec
 from dbspec_cases_reader import read_cases  # noqa: E402
-from vector_case import vector_tests  # noqa: E402
+from vector_case import VectorCase, vector_tests  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[3]
 SECTIONS = ('canonical', 'normalize', 'invalid')
@@ -73,6 +73,10 @@ class SyntaxVectorFileTest(unittest.TestCase):
                          'the vector ids and the cases of cases.json differ')
 
 
+class Case(VectorCase):
+    """A case of the vector file of this module."""
+
+
 def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
     """The tokens of each case match the shared vectors: one test for each case, named by the case id."""
     inputs = {case_id: (text, documents) for case_id, text, documents in vector_inputs(read_cases())}
@@ -83,7 +87,7 @@ def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: 
         found = [[t.line, t.start, t.end, t.token_class] for t in analyze_dbspec(text, documents).tokens]
         test.assertEqual(found, case['tokens'])
 
-    tests.addTests(vector_tests(read_vectors()['cases'], check_case))
+    tests.addTests(vector_tests(Case, read_vectors()['cases'], check_case))
     return tests
 
 if __name__ == '__main__':

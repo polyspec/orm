@@ -12,6 +12,7 @@ mod dbspec_probe;
 
 use dbspec_probe::{connection_rules, lines, repository, run_probe, strings, Servers, DIALECTS};
 use polyspec_orm_schema::dbspec::{self, Document};
+use polyspec_orm_testcase::Trial;
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -102,9 +103,7 @@ fn expected_schema_text(id: &str, documents: &[Document]) -> String {
     dbspec::manifest(&[&combined]).unwrap_or_else(|e| panic!("{id}: {e:?}")).schema_text
 }
 
-#[tokio::test]
 async fn introspect_round_trip() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let started = Instant::now();
     let mut servers = Servers::open("rt").await;
     let sets = round_trip_sets();
@@ -162,65 +161,76 @@ async fn introspect_round_trip() {
     polyspec_orm_testcase::step(format_args!("dbspec introspect round trip: {} sets on three databases in {:?}", sets.len(), started.elapsed()));
 }
 
-#[tokio::test]
-async fn introspect_unsupported() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let started = Instant::now();
+/// Each case of tests/dbspec/introspect.json is the trial `introspect_unsupported::<id>`: it gives its document and its
+/// unsupported objects on a database of its own.
+fn introspect_unsupported() -> Vec<Trial> {
     let path = repository().join("tests/dbspec/introspect.json");
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).expect("introspect.json")).expect("introspect.json");
     let cases = vectors["cases"].as_array().expect("introspect cases");
     assert!(!cases.is_empty(), "tests/dbspec/introspect.json has no cases");
-    let mut servers = Servers::open("iu").await;
-    let mut failures = Vec::new();
-    for (index, case) in cases.iter().enumerate() {
-        let case_id = case["id"].as_str().expect("id");
-        let dialect_name = case["dialect"].as_str().expect("dialect");
-        let (db, dialect) = *DIALECTS.iter().find(|(name, _)| *name == dialect_name).unwrap_or_else(|| panic!("{case_id}: unknown dialect {dialect_name}"));
-        let documents_text = case["documents"].as_object().expect("documents").iter().map(|(name, l)| (name.clone(), lines(l))).collect();
-        let documents = parse_set(case_id, &documents_text);
-        let refs: Vec<&Document> = documents.iter().collect();
-        let statements = dbspec::render(&refs, dialect).unwrap_or_else(|e| panic!("{case_id}: {e:?}"));
-        // {schema}는 이 case의 database 또는 schema 이름이다.
-        let schema = servers.name(index);
-        let extra: Vec<String> = strings(&case["statements"]).iter().map(|s| s.replace("{schema}", &schema)).collect();
-        let want_document = lines(&case["document"]);
-        let want_unsupported: Vec<Vec<String>> = case["unsupported"].as_array().expect("unsupported").iter().map(strings).collect();
-        let id = format!("{db}.introspect.{case_id}");
-        let result = run_probe(&mut servers, &id, db, index, |conn| {
-            Box::pin(async move {
-                conn.exec_all(&connection_rules(db).iter().map(|s| (*s).to_owned()).collect::<Vec<_>>()).await?;
-                conn.exec_all(&statements).await?;
-                conn.exec_all(&extra).await?;
-                let (introspection, _) = conn.introspect().await.map_err(|e| format!("introspect: {e}"))?;
-                let got_document = dbspec::emit(&introspection.document);
-                if got_document != want_document {
-                    return Err(format!("document differs\n--- want\n{want_document}--- got\n{got_document}"));
-                }
-                let got: Vec<Vec<String>> = introspection.unsupported.iter().map(|u| vec![u.kind.clone(), u.table.clone(), u.name.clone()]).collect();
-                let want_triples: Vec<Vec<String>> = want_unsupported.iter().map(|w| w.iter().take(3).cloned().collect()).collect();
-                if got != want_triples {
-                    return Err(format!("unsupported differs\nwant {want_unsupported:?}\ngot  {:?}", introspection.unsupported));
-                }
-                // 네 번째 원소는 reason이 포함해야 하는 rule이다. 없으면 reason은 비교하지 않는다.
-                for (w, u) in want_unsupported.iter().zip(&introspection.unsupported) {
-                    if let Some(rule) = w.get(3) {
-                        if !u.reason.contains(rule.as_str()) {
-                            return Err(format!("reason of {} {} {} differs\nwant rule {rule:?}\ngot  {:?}", u.kind, u.table, u.name, u.reason));
-                        }
-                    }
-                }
-                Ok(())
+    cases
+        .iter()
+        .enumerate()
+        .map(|(index, case)| {
+            let id = case["id"].as_str().expect("id").to_owned();
+            let case = case.clone();
+            polyspec_orm_testcase::async_trial(format!("introspect_unsupported::{id}"), polyspec_orm_testcase::DATABASE, move || async move {
+                introspect_unsupported_case(index, &case).await
             })
         })
-        .await;
-        if let Err(e) = result {
-            failures.push(format!("{id}: {e}"));
-        }
-    }
+        .collect()
+}
+
+async fn introspect_unsupported_case(index: usize, case: &Value) {
+    let mut servers = Servers::open("iu").await;
+    let case_id = case["id"].as_str().expect("id");
+    let dialect_name = case["dialect"].as_str().expect("dialect");
+    let (db, dialect) = *DIALECTS.iter().find(|(name, _)| *name == dialect_name).unwrap_or_else(|| panic!("{case_id}: unknown dialect {dialect_name}"));
+    let documents_text = case["documents"].as_object().expect("documents").iter().map(|(name, l)| (name.clone(), lines(l))).collect();
+    let documents = parse_set(case_id, &documents_text);
+    let refs: Vec<&Document> = documents.iter().collect();
+    let statements = dbspec::render(&refs, dialect).unwrap_or_else(|e| panic!("{case_id}: {e:?}"));
+    // {schema}는 이 case의 database 또는 schema 이름이다.
+    let schema = servers.name(index);
+    let extra: Vec<String> = strings(&case["statements"]).iter().map(|s| s.replace("{schema}", &schema)).collect();
+    let want_document = lines(&case["document"]);
+    let want_unsupported: Vec<Vec<String>> = case["unsupported"].as_array().expect("unsupported").iter().map(strings).collect();
+    let id = format!("{db}.introspect.{case_id}");
+    let result = run_probe(&mut servers, &id, db, index, |conn| {
+        Box::pin(async move {
+            conn.exec_all(&connection_rules(db).iter().map(|s| (*s).to_owned()).collect::<Vec<_>>()).await?;
+            conn.exec_all(&statements).await?;
+            conn.exec_all(&extra).await?;
+            let (introspection, _) = conn.introspect().await.map_err(|e| format!("introspect: {e}"))?;
+            let got_document = dbspec::emit(&introspection.document);
+            if got_document != want_document {
+                return Err(format!("document differs\n--- want\n{want_document}--- got\n{got_document}"));
+            }
+            let got: Vec<Vec<String>> = introspection.unsupported.iter().map(|u| vec![u.kind.clone(), u.table.clone(), u.name.clone()]).collect();
+            let want_triples: Vec<Vec<String>> = want_unsupported.iter().map(|w| w.iter().take(3).cloned().collect()).collect();
+            if got != want_triples {
+                return Err(format!("unsupported differs\nwant {want_unsupported:?}\ngot  {:?}", introspection.unsupported));
+            }
+            // 네 번째 원소는 reason이 포함해야 하는 rule이다. 없으면 reason은 비교하지 않는다.
+            for (w, u) in want_unsupported.iter().zip(&introspection.unsupported) {
+                if let Some(rule) = w.get(3) {
+                    if !u.reason.contains(rule.as_str()) {
+                        return Err(format!("reason of {} {} {} differs\nwant rule {rule:?}\ngot  {:?}", u.kind, u.table, u.name, u.reason));
+                    }
+                }
+            }
+            Ok(())
+        })
+    })
+    .await;
     servers.close().await;
-    assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
-    if started.elapsed() >= Duration::from_secs(300) {
-        polyspec_orm_testcase::warning(format_args!("unsupported cases exceeded 300s"));
+    if let Err(e) = result {
+        panic!("{id}: {e}");
     }
-    polyspec_orm_testcase::step(format_args!("dbspec introspect unsupported: {} cases in {:?}", cases.len(), started.elapsed()));
+}
+
+fn main() {
+    let mut trials = vec![polyspec_orm_testcase::async_trial("introspect_round_trip", polyspec_orm_testcase::DATABASE, introspect_round_trip)];
+    trials.extend(introspect_unsupported());
+    polyspec_orm_testcase::run_in_order(trials);
 }

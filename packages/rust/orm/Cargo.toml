@@ -58,5 +58,37 @@ polyspec-orm-case-database = { path = "../case-database" }
 # 등록 test가 sqlx의 statement log record를 세는 logger를 설치한다. sqlx가 쓰는 version이다.
 log = "0.4"
 
+# These test targets run a shared vector file with one libtest-mimic trial per case id
+# (polyspec_orm_testcase::trial), so their harness is libtest-mimic.
+[[test]]
+name = "dbspec_introspect"
+path = "tests/dbspec_introspect.rs"
+harness = false
+
+[[test]]
+name = "decimal_model"
+path = "tests/decimal_model.rs"
+harness = false
+
+[[test]]
+name = "identity_load"
+path = "tests/identity_load.rs"
+harness = false
+
+[[test]]
+name = "install"
+path = "tests/install.rs"
+harness = false
+
+[[test]]
+name = "sqlite_file_name"
+path = "tests/sqlite_file_name.rs"
+harness = false
+
+[[test]]
+name = "statement_fault"
+path = "tests/statement_fault.rs"
+harness = false
+
 [lints]
 workspace = true

@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[3]
 
 from polyspec.orm.dbspec import emit_dbspec, parse_dbspec, read_dbspec_file  # noqa: E402
 from polyspec.orm.dbspec.mermaid import export_mermaid, import_mermaid  # noqa: E402
-from vector_case import vector_tests  # noqa: E402
+from vector_case import VectorCase, vector_tests  # noqa: E402
 
 
 class CheckFailed(Exception):
@@ -102,6 +102,10 @@ def run_round_trip(c) -> None:
           f'imported={len(imported["dropped"])}')
 
 
+class Case(VectorCase):
+    """A case of the vector file of this module."""
+
+
 def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
     """One test for each case of every kind, named by the case id."""
     vectors = json.loads((ROOT / 'tests' / 'dbspec' / 'mermaid.json').read_text(encoding='utf-8'))
@@ -110,7 +114,7 @@ def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: 
           'mermaid vectors have export, import, invalid and round trip cases')
     for kind, run in (('export', run_export), ('import', run_import), ('invalid', run_invalid),
                       ('round_trip', run_round_trip)):
-        tests.addTests(vector_tests(vectors[kind], lambda _test, c, run=run: run(c)))
+        tests.addTests(vector_tests(Case, vectors[kind], lambda _test, c, run=run: run(c)))
     return tests
 
 

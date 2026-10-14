@@ -7,6 +7,12 @@ publish = false
 description = "Case reports and per-case deadlines for the Rust ORM tests"
 license = "MIT"
 
+[dependencies]
+# A test target with harness = false runs its cases as libtest-mimic trials, one trial per case id of a vector file.
+libtest-mimic = "0.8.2"
+# An async trial runs its future on its own current-thread runtime, as #[tokio::test] does.
+tokio = { version = "1", features = ["rt"] }
+
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }
 
