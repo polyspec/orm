@@ -5,6 +5,7 @@
 
 ## 0.0.13
 
+- T161-2: the model-methods case keeps PHPStan's cache in its own folder, and the runner's parts table names it.
 - T161: PHP generated models declare their query methods as real typed methods (column conditions, orders, aggregates, key-prefix tuples, index hints), so PHPStan sees them; docs/usage.md names what stays on `__call`.
 ## 0.0.12
 
