@@ -6,6 +6,7 @@
 # kit with TAG from the environment. The first two install the package in the bootstrap order of a repository:
 #   install-tools TOOLS=npm installs the npm of packageManager with the copied installer of scripts/kit/bootstrap
 #   install-packages installs package-lock.json with that npm, @polyspec/kit included, whose kit.mk has the targets below
+#   release-prepare  the preparation that the release of the repository declares with release-prepare:: (none by default)
 #   release-tools    installs the tools that config/release.json needs for the packages and proof of this repository
 #   release-tools-path puts var/tools/bin on the PATH of the steps that follow, through GITHUB_PATH
 #   release-verify   the tagged commit is on origin/main and its check runs concluded success, without running the tests again
@@ -53,9 +54,11 @@ jobs:
         run: make install-tools TOOLS=npm
       - name: install packages
         run: make install-packages
+      - name: prepare the release of the repository
+        run: make release-prepare
       - name: make release-tools
         run: make release-tools
-      # The tools of var/tools/bin — the Go of .go-version the release builds with, and whatever else the packages
+      # The tools of var/tools/bin — the Go of the kit pin (toolchain-pins.json) that the release builds with, and whatever else the packages
       # need — join PATH for the steps that follow; a step's PATH is its own, so the export goes to the file the
       # runner reads between steps.
       - name: put the installed tools on PATH

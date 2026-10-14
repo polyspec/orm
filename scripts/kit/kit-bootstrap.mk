@@ -17,7 +17,7 @@ endif
 .PHONY: install-tools
 install-tools: ## Install the npm of packageManager into var/tools, before the package is installed; only TOOLS=npm; ONLINE
 ifeq ($(TOOLS),npm)
-	$(ONLINE) node scripts/kit/bootstrap/bootstrap-npm.mts
+	$(ONLINE) node scripts/kit/bootstrap/bootstrap.mts
 else
 	@echo "install-tools: only TOOLS=npm runs before the package is installed; run make install-tools TOOLS=npm, then make install-packages" >&2; exit 2
 endif

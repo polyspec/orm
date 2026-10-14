@@ -54,7 +54,7 @@ authors = Author().connect(slave1).gets_by_service_seq_and_is_close(7, False)
 - **Models**: each language generates its models with its own build tool: `go generate` (Go), `vendor/bin/orm-gen` (PHP), the `orm-gen` npm bin in `npm run build` (TypeScript), the `orm-gen` console script of the Python package (Python), and the `polyspec-orm-build` crate in `build.rs` (Rust).
 - **Runtime**: the client library validates each statement shape against the runtime model it builds from the embedded manifest, assembles the SQL in the calling process, caches the plan, and executes it through the language-native driver. No service or daemon runs beside the calling process.
 - **Databases**: MySQL 8, PostgreSQL 12+, and SQLite 3.46+ use the same request and result rules (`docs/dialects.md`).
-- **Python**: the Python client supports Python 3.14 (CPython), the release of `.python-version` that CI tests; `requires-python` states it (`docs/packaging.md`).
+- **Python**: the Python client supports Python 3.14 (CPython), the release of `mise.toml` that CI tests; `requires-python` states it (`docs/packaging.md`).
 - **Equality**: `tests/conformance` runs the same vectors in the five clients and compares the SQL, binds, and results.
 
 ## Quick start (MySQL 8.4 and PostgreSQL 17)

@@ -1,0 +1,12 @@
+# The tools of orm that mise installs into var/tools/mise (kit K127): `make toolchain-lock` writes their digests into
+# mise.lock and `make install-tools` installs them with `mise install --locked`. go and python are at the pins of kit.
+[tools]
+go = "1.27.2"
+python = "3.14.8"
+uv = "0.12.24"
+"github:asamarts/alint" = "0.18.2"
+"go:golang.org/x/vuln/cmd/govulncheck" = "1.8.0"
+"github:rustsec/rustsec" = { version = "0.22.2", version_prefix = "cargo-audit/v" }
+# composer.phar is one file, so its sha256 is declared here, from getcomposer.org/download/<version>/composer.phar.sha256sum,
+# and mise.lock records it.
+"http:composer" = { version = "2.10.3", url = "https://getcomposer.org/download/{{ version }}/composer.phar", checksum = "sha256:7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6", bin = "composer" }

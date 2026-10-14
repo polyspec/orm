@@ -87,13 +87,12 @@ jobs:
         id: group-needs
         if: ${{ !cancelled() }}
         run: make --no-print-directory ci-group-needs GROUP=${{ matrix.group }} >> "$GITHUB_OUTPUT"
-      # make check builds the lease program with Go in every group.
-      - uses: actions/setup-go@v6
+      # make check builds the lease program with Go in every group. make install-tools installs the tools of mise.toml
+      # (Go, Python, uv, Composer, alint, govulncheck, cargo-audit) at the releases and digests of mise.lock.
+      - name: tools of mise.toml
         id: go
         if: ${{ !cancelled() }}
-        # The go line of go.mod declares the one Go release of the checks,
-        # locally and here; make repo-check requires it.
-        with: { go-version-file: go.mod }
+        run: make install-tools
       # make check runs go with GOPROXY=off; make install-go downloads the
       # modules of go.mod.
       - name: Go modules
@@ -126,8 +125,8 @@ jobs:
             packages/rust -> target
             bench/rust -> target
             tests/interfaces/rust -> target
-      # make install-python installs the Python of config/toolchain.json pythonBuild (the interpreter of make python-venv) and
-      # builds the venv from it, so CI and a local check use the same interpreter; setup-python is not used.
+      # make install-python builds the venv from the Python of mise.toml (the interpreter of make python-venv), so CI and a
+      # local check use the same interpreter; setup-python is not used.
       - name: Python client dependencies
         id: install-python
         if: ${{ !cancelled() && steps.group-needs.outputs.python == 'true' }}

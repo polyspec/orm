@@ -462,24 +462,23 @@ dbspec-compare-check/unit:
 # with the pinned dependencies of its pyproject.toml (ordered-json, cryptography, PyMySQL, psycopg, PyYAML); the checks
 # take this interpreter as ORM_PYTHON and import the installed package, never a source path.
 PYTHON_VENV = $(abspath packages/python/.venv)
-# install-python은 config/toolchain.json의 pythonBuild를 var/tools/bin/python3에 설치하고(install-tools), kit의 python-venv로
-# 그 interpreter의 venv를 만든다(PATH의 python3은 쓰지 않는다).
-# The client is installed with that pip as an editable package (pip install --editable), so the tests import the installed
-# package and a source change needs no reinstall.
+# install-python installs the tools of mise.toml (install-tools), among them the Python that mise.lock pins, and makes the
+# venv of that interpreter with kit's python-venv; no other python3 of PATH is used. The client is installed with that pip as
+# an editable package (pip install --editable), so the tests import the installed package and a source change needs no
+# reinstall.
 .PHONY: install-python
 install-python:
-	$(MAKE) --no-print-directory install-tools TOOLS="uv python"
+	$(MAKE) --no-print-directory install-tools
 	$(MAKE) --no-print-directory python-venv DIR=$(PYTHON_VENV)
-	$(ONLINE) $(abspath var/tools/bin/python3) -m pip --python $(PYTHON_VENV)/bin/python install --quiet --editable packages/python
-# python-venv-check는 install-python이 만든 venv가 있고 그 interpreter의 minor가 .python-version과 같은지 확인한다. 없거나
-# 다른 minor이면 내려받지도 고치지도 않고 실패하며, 고칠 방법(venv를 지우고 make install)을 적는다. .python-version은 minor를
-# 선언하고(requires-python도 그 minor), 정확한 release는 pythonBuild가 정하며 python-venv가 venv를 만들 때 확인한다.
+	$(ONLINE) python3 -m pip --python $(PYTHON_VENV)/bin/python install --quiet --editable packages/python
+# python-venv-check checks that the venv of install-python exists and runs the Python release of mise.toml. A missing venv
+# or another release fails without a download or a repair, and names the fix: remove the venv and run make install.
 .PHONY: python-venv-check
 python-venv-check:
 	@test -x $(PYTHON_VENV)/bin/python || { echo "python-venv-check: $(PYTHON_VENV)/bin/python is missing; run make install, which creates it"; exit 1; }
-	@got=$$($(PYTHON_VENV)/bin/python -c 'import platform; print(platform.python_version())') || { echo "python-venv-check: $(PYTHON_VENV)/bin/python does not run; remove $(PYTHON_VENV) and run make install, which builds it from var/tools/bin/python3"; exit 1; }; \
-	want=$$(cut -d. -f1,2 .python-version); minor=$${got%.*}; \
-	test "$$minor" = "$$want" || { echo "python-venv-check: $(PYTHON_VENV) runs Python $$got, but .python-version declares $$want; remove $(PYTHON_VENV) and run make install, which builds it from var/tools/bin/python3"; exit 1; }
+	@got=$$($(PYTHON_VENV)/bin/python -c 'import platform; print(platform.python_version())') || { echo "python-venv-check: $(PYTHON_VENV)/bin/python does not run; remove $(PYTHON_VENV) and run make install, which builds it from the Python of mise.toml"; exit 1; }; \
+	want=$$(sed -n 's/^python = "\(.*\)"$$/\1/p' mise.toml); \
+	test "$$got" = "$$want" || { echo "python-venv-check: $(PYTHON_VENV) runs Python $$got, but mise.toml declares $$want; remove $(PYTHON_VENV) and run make install, which builds it from the Python of mise.toml"; exit 1; }
 
 # php-vendor-check fails when vendor-php/autoload.php, the autoloader install-php creates with Composer, is missing, and
 # names the make step that creates it; it installs nothing. A target that runs PHP through packages/php/tests/autoload.php

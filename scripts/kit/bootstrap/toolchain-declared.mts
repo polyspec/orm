@@ -1,22 +1,17 @@
-// The toolchain versions that a checkout declares, read from the files that declare them. Each entry names its version
-// and the declaring file, so that an install and a check name the file in a message:
+// The toolchain versions that a checkout declares for the bootstrap and for the tools that mise does not install, read from
+// the files that declare them. Each entry names its version and the declaring file, so that an install and a check name the
+// file in a message:
 //   node         .node-version
 //   npm          packageManager of package.json: npm@<version>, optionally +sha512.<digest of the registry tarball>
+//   mise         config/toolchain.json mise: the exact version and the sha256 of the release archive of each platform, installed by
+//                the bootstrap; mise installs the tools of mise.toml at the digests of mise.lock (toolchain-mise.mts)
 //   php          config/toolchain.json php (minor releases), else .php-version
-//   python       config/toolchain.json python (minor release), else .python-version
-//   pythonBuild  config/toolchain.json pythonBuild: the exact Python release of the python minor, which the declared uv installs
 //   pythonBackend config/toolchain.json pythonBackend: the requirement name==version of the build backend of the Python wheels and its sha256
-//   composer     config/toolchain.json composer
 //   phpunit      config/toolchain.json phpunit: the exact release, installed from the composer.json and composer.lock of config/phpunit
-//   uv           config/toolchain.json uv: the exact version and the sha256 of the release archive of each platform
-//   alint        config/toolchain.json alint: the exact version and the sha256 of the release archive of each platform
-//   cargoAudit   config/toolchain.json cargoAudit
-//   govulncheck  config/toolchain.json govulncheck
 //   symbolExtractors config/toolchain.json symbolExtractors: the symbol extractors of the parity check that install-tools builds
-// Go and Rust are read by toolchain-files.mts with the tools of their ecosystems, and the lint tools (ruff, vulture,
-// golangci-lint, deadcode, the PHP lint) by toolchain-lint.mts, after the bootstrap.
-// A tool is declared when its file exists (node) or its config key is present; an undeclared tool is absent from the
-// result. A malformed declaration throws an error with the file, the expected form and the actual value.
+// The tools of mise.toml are read by toolchain-mise.mts, Rust by toolchain-files.mts and the PHP lint by toolchain-lint.mts,
+// after the bootstrap. A tool is declared when its file exists (node) or its config key is present; an undeclared tool is
+// absent from the result. A malformed declaration throws an error with the file, the expected form and the actual value.
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -39,15 +34,9 @@ export type DeclaredToolchain = {
   node?: Declared;
   npm?: Declared & { sha512: string | undefined };
   php?: { minors: string[]; source: string };
-  python?: { minor: string; source: string };
-  uv?: PlatformRelease;
-  alint?: PlatformRelease;
-  pythonBuild?: Declared;
+  mise?: PlatformRelease;
   pythonBackend?: { requirement: string; sha256: string; source: string };
-  composer?: Declared & { sha256: unknown };
   phpunit?: Declared & { manifest: string };
-  cargoAudit?: Declared;
-  govulncheck?: Declared;
   symbolExtractors?: { extractors: InstalledExtractor[]; source: string };
 };
 
@@ -80,31 +69,17 @@ export function toolchainConfig(root: string): Record<string, unknown> {
   return existsSync(path.join(root, 'config/toolchain.json')) ? JSON.parse(read(root, 'config/toolchain.json')) : {};
 }
 
-/** The exact release that config/toolchain.json of `root` records for `key`; an error names the expected form when it is missing or not exact. */
-export const recordedRelease = (root: string, key: string): string => exact('config/toolchain.json', key, toolchainConfig(root)[key]);
-
-// The exact Python release of pythonBuild, which must be a release of the declared python minor: { version }. uv installs it,
-// so pythonBuild needs the declaration uv.
-function pythonBuild(value: unknown, minor: string | undefined, uv: PlatformRelease | undefined): Declared {
-  const file = 'config/toolchain.json pythonBuild';
-  if (!minor) throw new Error(`${file} needs python, the minor release of the checks; declare python in config/toolchain.json or write .python-version`);
-  const version = exact(file, 'the Python release', field(value, 'version'));
-  if (version.split('.').slice(0, 2).join('.') !== minor) throw new Error(`${file} declares ${version}, but python declares ${minor}; declare a release of ${minor}`);
-  if (!uv) throw new Error(`${file} needs uv, which installs the Python; declare uv in config/toolchain.json`);
-  return { version, source: file };
-}
-
 /**
- * The release of a tool of config/toolchain.json `key` that is installed from a file of each platform, its archive or its
- * wheel (`kind`): its exact version and the sha256 of the file of each platform key, each read as 64 hexadecimal digits.
+ * The release of a tool of config/toolchain.json `key` that is installed from an archive of each platform: its exact version
+ * and the sha256 of the archive of each platform key, each read as 64 hexadecimal digits.
  */
-export function platformRelease(key: string, kind: 'archive' | 'wheel', value: unknown): PlatformRelease {
+function platformRelease(key: string, value: unknown): PlatformRelease {
   const file = `config/toolchain.json ${key}`;
   const version = field(value, 'version');
   if (!matches(EXACT, version)) throw new Error(`${file} must record version as <major>.<minor>.<patch>; it records ${JSON.stringify(version)}`);
   // Object.keys and Object.entries read any value: a text fails the digest check on its characters and a number has no keys.
   const digests = (field(value, 'sha256') ?? {}) as Record<string, unknown>;
-  if (Object.keys(digests).length === 0) throw new Error(`${file} must record the sha256 of the ${key} ${kind} of each platform, for example linux-x64; it records none`);
+  if (Object.keys(digests).length === 0) throw new Error(`${file} must record the sha256 of the ${key} archive of each platform, for example linux-x64; it records none`);
   for (const [platform, digest] of Object.entries(digests)) {
     if (!matches(/^[0-9a-f]{64}$/, digest)) throw new Error(`${file} must record the sha256 of ${platform} as 64 lowercase hexadecimal digits; it records ${JSON.stringify(digest)}`);
   }
@@ -153,29 +128,11 @@ export function declaredToolchain(root: string): DeclaredToolchain {
   } else if (phpFile) {
     declared.php = { minors: [phpFile], source: '.php-version' };
   }
-  const pythonFile = existsSync(path.join(root, '.python-version')) ? minor('.python-version', 'the Python minor release', read(root, '.python-version').trim()) : undefined;
-  if (config.python) {
-    const python = minor('config/toolchain.json', 'python', config.python);
-    if (pythonFile && pythonFile !== config.python) throw new Error(`.python-version declares ${pythonFile}, but config/toolchain.json python declares ${config.python}; declare one minor release`);
-    declared.python = { minor: python, source: 'config/toolchain.json python' };
-  } else if (pythonFile) {
-    declared.python = { minor: pythonFile, source: '.python-version' };
-  }
-  if (config.uv) declared.uv = platformRelease('uv', 'archive', config.uv);
-  if (config.alint) declared.alint = platformRelease('alint', 'archive', config.alint);
-  if (config.pythonBuild) {
-    declared.pythonBuild = pythonBuild(config.pythonBuild, declared.python?.minor, declared.uv);
-  }
+  if (config.mise) declared.mise = platformRelease('mise', config.mise);
   if (config.pythonBackend) {
     declared.pythonBackend = pythonBackend(config.pythonBackend);
   }
-  if (config.composer) {
-    declared.composer = { version: exact('config/toolchain.json', 'composer', field(config.composer, 'version')), sha256: field(config.composer, 'sha256'), source: 'config/toolchain.json composer' };
-  }
   if (config.phpunit) declared.phpunit = phpunit(config.phpunit);
-  for (const key of ['cargoAudit', 'govulncheck'] as const) {
-    if (config[key]) declared[key] = { version: recordedRelease(root, key), source: `config/toolchain.json ${key}` };
-  }
   if (config.symbolExtractors !== undefined) {
     const extractors: unknown = config.symbolExtractors;
     if (!Array.isArray(extractors) || !extractors.length || extractors.some(name => !EXTRACTORS.includes(name))) throw new Error(`config/toolchain.json symbolExtractors is ${JSON.stringify(extractors)}; expected a list of ${EXTRACTORS.join(', ')}`);

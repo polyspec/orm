@@ -15,6 +15,9 @@ trim_trailing_whitespace = true
 [*.go]
 indent_style = tab
 
+[{go.mod,go.work}]
+indent_style = tab
+
 [*.{php,rs,py,c,h}]
 indent_size = 4
 
