@@ -66,7 +66,7 @@ vendor-php/bin/orm-gen gen --set schema/dbspec-set.json --out packages/php/gen -
 (cd packages/ts && npm run build)                            # TypeScript models and library
 (cd packages/rust && cargo build --release)                          # build.rs generates the Rust models
 make python-check                                                     # Python client: unit, interfaces, models
-go test ./...
+go test ./packages/go/... ./tests/... ./examples/...
 npm run typescript:test
 (cd packages/rust && cargo test --workspace)
 node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH_MYSQL_DSN"   # compares the five clients

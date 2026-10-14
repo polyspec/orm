@@ -35,7 +35,7 @@ caseTest('the npm and Composer packages of a lock file must be installed at thei
 caseTest('a crate or Go module that is not downloaded names make install, never a retry online', PROCESS, () => {
   const root = mkdtempSync(join(tmpdir(), 'orm-downloads-'));
   try {
-    write(join(root, 'go.mod'), 'module x\n');
+    write(join(root, 'go.work'), 'go 1.27.2\n');
     // make cargo-downloads-check of @polyspec/kit answers as it does for a crate that is not in the registry, and go as an
     // offline go does for a module that is not downloaded.
     const calls: string[] = [];
@@ -50,7 +50,7 @@ caseTest('a crate or Go module that is not downloaded names make install, never 
     const [rust, go] = missing;
     assert.ok(rust && go, 'both downloads are missing');
     assert.equal(rust.message, 'the crates of every Cargo.lock are not downloaded (packages/rust/Cargo.lock: error: failed to download `serde v1.0.0`); run make install, which downloads it');
-    assert.equal(go.message, 'the Go modules of go.mod are not downloaded (go: example.com/m@v1.0.0: module lookup disabled by GOPROXY=off); run make install, which downloads it');
+    assert.equal(go.message, 'the Go modules of go.work are not downloaded (go: example.com/m@v1.0.0: module lookup disabled by GOPROXY=off); run make install, which downloads it');
     for (const { message } of missing) assert.doesNotMatch(message, /retry/i);
   } finally {
     rmSync(root, { recursive: true, force: true });

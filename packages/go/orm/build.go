@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/polyspec/orm/engine/ir"
+	"github.com/polyspec/orm/packages/go/engine/ir"
 )
 
 // request is one statement under construction: the value-free IR plus values.

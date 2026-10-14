@@ -620,7 +620,7 @@
         "packages/ts/tests/aggregate_numeric.mjs",
         "packages/ts/tests/styled-value.mjs",
         "packages/rust/tests/src/integration.rs",
-        "engine/engine_test.go",
+        "packages/go/engine/engine_test.go",
         "packages/go/orm/jsontext_order_test.go",
         "packages/rust/orm/tests/model_output.rs",
         "packages/rust/orm/tests/value_decode.rs",
@@ -2492,13 +2492,13 @@
         "tests/generator/php-scan-vectors.json"
       ],
       "tests": [
-        "generator/gen_go_check_test.go",
-        "generator/gen_go_key_prefix_test.go",
-        "generator/gen_go_output_test.go",
-        "generator/gen_go_packages_test.go",
-        "generator/gen_go_scan_test.go",
-        "generator/gen_go_test.go",
-        "generator/generator_test.go",
+        "packages/go/generator/gen_go_check_test.go",
+        "packages/go/generator/gen_go_key_prefix_test.go",
+        "packages/go/generator/gen_go_output_test.go",
+        "packages/go/generator/gen_go_packages_test.go",
+        "packages/go/generator/gen_go_scan_test.go",
+        "packages/go/generator/gen_go_test.go",
+        "packages/go/generator/generator_test.go",
         "packages/php/tests/EngineTest.php",
         "packages/ts/tests/generate.mjs",
         "packages/rust/build/tests/generate.rs",
@@ -2520,15 +2520,15 @@
       "verification": [
         {
           "id": "generation-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./generator -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/generator -count=1",
           "shard": "other",
           "inputs": [
-            "generator/gen_go_check_test.go",
-            "generator/gen_go_output_test.go",
-            "generator/gen_go_packages_test.go",
-            "generator/gen_go_scan_test.go",
-            "generator/gen_go_test.go",
-            "generator/generator_test.go"
+            "packages/go/generator/gen_go_check_test.go",
+            "packages/go/generator/gen_go_output_test.go",
+            "packages/go/generator/gen_go_packages_test.go",
+            "packages/go/generator/gen_go_scan_test.go",
+            "packages/go/generator/gen_go_test.go",
+            "packages/go/generator/generator_test.go"
           ]
         },
         {
@@ -2758,7 +2758,7 @@
         "tests/dbspec/show-create.json",
         "tests/dbspec/syntax.json",
         "tests/dbspec/set-files.json",
-        "engine/dbspec/case_clock_test.go",
+        "packages/go/engine/dbspec/case_clock_test.go",
         "packages/php/tests/case_clock.php",
         "contracts/fixtures/schema_definition.json",
         "packages/go/orm/coverage_fixture_test.go",
@@ -2802,25 +2802,25 @@
         "packages/ts/tests/dbspec-stress.mjs",
         "packages/ts/tests/dbspec.mjs",
         "packages/ts/tests/dbspec_runtime_db.mjs",
-        "engine/dbspec/apply_test.go",
-        "engine/dbspec/harness_test.go",
-        "engine/dbspec/literal_test.go",
-        "engine/dbspec/manifest_test.go",
-        "engine/dbspec/mermaid_test.go",
-        "engine/dbspec/plan_test.go",
-        "engine/dbspec/render_test.go",
-        "engine/dbspec/rules_test.go",
-        "engine/dbspec/stress_test.go",
-        "engine/dbspec/vectors_test.go",
-        "engine/runtimemodel/runtimemodel_test.go",
-        "engine/dbspec/vector_loaders_test.go",
-        "engine/dbspec/vector_reader_test.go",
+        "packages/go/engine/dbspec/apply_test.go",
+        "packages/go/engine/dbspec/harness_test.go",
+        "packages/go/engine/dbspec/literal_test.go",
+        "packages/go/engine/dbspec/manifest_test.go",
+        "packages/go/engine/dbspec/mermaid_test.go",
+        "packages/go/engine/dbspec/plan_test.go",
+        "packages/go/engine/dbspec/render_test.go",
+        "packages/go/engine/dbspec/rules_test.go",
+        "packages/go/engine/dbspec/stress_test.go",
+        "packages/go/engine/dbspec/vectors_test.go",
+        "packages/go/engine/runtimemodel/runtimemodel_test.go",
+        "packages/go/engine/dbspec/vector_loaders_test.go",
+        "packages/go/engine/dbspec/vector_reader_test.go",
         "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
         "packages/ts/tests/dbspec-apply-cleanup.mjs",
         "packages/ts/tests/dbspec-unicode.mjs",
         "packages/php/tests/DbspecUnicodeTest.php",
-        "engine/dbspec/show_create_test.go",
-        "engine/dbspec/show_create_introspect_test.go",
+        "packages/go/engine/dbspec/show_create_test.go",
+        "packages/go/engine/dbspec/show_create_introspect_test.go",
         "packages/php/tests/DbspecShowCreateTest.php",
         "packages/ts/tests/dbspec-show-create.mjs",
         "packages/go/orm/coverage_schema_definition_test.go",
@@ -2828,7 +2828,7 @@
         "packages/rust/schema/tests/coverage_schema_definition.rs",
         "packages/ts/tests/coverage_schema_definition.mjs",
         "packages/ts/tests/package-declarations.mjs",
-        "engine/dbspec/case_clock_test.go",
+        "packages/go/engine/dbspec/case_clock_test.go",
         "packages/php-ext/tests/declarations.php",
         "packages/php-ext/tests/DeclarationsTest.php",
         "packages/php-ext/tests/DbspecTest.php",
@@ -2839,16 +2839,16 @@
         "packages/php/tests/dbspec_set_cases.php",
         "packages/php/tests/DbspecSetTest.php",
         "packages/php-ext/tests/DbspecSetTest.php",
-        "engine/dbspec/analyze_test.go",
-        "engine/dbspec/syntax_vectors_test.go",
+        "packages/go/engine/dbspec/analyze_test.go",
+        "packages/go/engine/dbspec/syntax_vectors_test.go",
         "packages/php/tests/DbspecAnalyzeTest.php",
         "packages/php/tests/dbspec_analysis_cases.php",
         "packages/php/tests/dbspec_syntax_vectors.php",
         "packages/php-ext/tests/DbspecAnalyzeTest.php",
         "packages/rust/schema/tests/dbspec_analyze.rs",
         "packages/ts/tests/dbspec-analyze.mjs",
-        "engine/dbspec/set_test.go",
-        "engine/dbspec/parseset_test.go",
+        "packages/go/engine/dbspec/set_test.go",
+        "packages/go/engine/dbspec/parseset_test.go",
         "packages/php/tests/dbspec_set_parse_cases.php",
         "packages/php/tests/DbspecSetParseTest.php",
         "packages/php-ext/tests/DbspecSetParseTest.php",
@@ -2883,37 +2883,37 @@
           "command": "make dbspec-go-check",
           "shard": "other",
           "inputs": [
-            "engine/dbspec/apply_test.go",
-            "engine/dbspec/harness_test.go",
-            "engine/dbspec/literal_test.go",
-            "engine/dbspec/manifest_test.go",
-            "engine/dbspec/mermaid_test.go",
-            "engine/dbspec/plan_test.go",
-            "engine/dbspec/render_test.go",
-            "engine/dbspec/rules_test.go",
-            "engine/dbspec/vector_loaders_test.go",
-            "engine/dbspec/vectors_test.go",
+            "packages/go/engine/dbspec/apply_test.go",
+            "packages/go/engine/dbspec/harness_test.go",
+            "packages/go/engine/dbspec/literal_test.go",
+            "packages/go/engine/dbspec/manifest_test.go",
+            "packages/go/engine/dbspec/mermaid_test.go",
+            "packages/go/engine/dbspec/plan_test.go",
+            "packages/go/engine/dbspec/render_test.go",
+            "packages/go/engine/dbspec/rules_test.go",
+            "packages/go/engine/dbspec/vector_loaders_test.go",
+            "packages/go/engine/dbspec/vectors_test.go",
             "tests/dbspec/cases.json",
             "tests/dbspec/ddl.json",
             "tests/dbspec/plans.json",
             "tests/dbspec/mermaid.json",
-            "engine/dbspec/case_clock_test.go",
-            "engine/dbspec/vector_reader_test.go",
+            "packages/go/engine/dbspec/case_clock_test.go",
+            "packages/go/engine/dbspec/vector_reader_test.go",
             "tests/dbspec/unicode/main.go",
             "tests/dbspec/unicode/main_test.go",
-            "engine/dbspec/show_create_test.go",
-            "engine/dbspec/show_create_introspect_test.go",
-            "engine/dbspec/analyze_test.go",
-            "engine/dbspec/syntax_vectors_test.go",
+            "packages/go/engine/dbspec/show_create_test.go",
+            "packages/go/engine/dbspec/show_create_introspect_test.go",
+            "packages/go/engine/dbspec/analyze_test.go",
+            "packages/go/engine/dbspec/syntax_vectors_test.go",
             "tests/dbspec/syntax.json",
             "tests/dbspec/show-create.json",
             "packages/php-ext/src/unicode_word.h",
             "packages/python/src/polyspec/orm/dbspec/unicode_word.py",
             "packages/php/src/Dbspec/UnicodeWord.php",
             "packages/ts/src/dbspec/unicode_word.ts",
-            "engine/dbspec/set_test.go",
+            "packages/go/engine/dbspec/set_test.go",
             "tests/dbspec/set-files.json",
-            "engine/dbspec/parseset_test.go",
+            "packages/go/engine/dbspec/parseset_test.go",
             "tests/dbspec/set-parse.json"
           ]
         },
@@ -3784,29 +3784,29 @@
         "packages/ts/tests/coverage_case.mjs"
       ],
       "tests": [
-        "engine/engine_test.go",
-        "engine/query_forms_test.go",
-        "engine/planner/soft_delete_test.go",
+        "packages/go/engine/engine_test.go",
+        "packages/go/engine/query_forms_test.go",
+        "packages/go/engine/planner/soft_delete_test.go",
         "packages/php/tests/EngineTest.php",
         "packages/ts/tests/engine.mjs",
-        "engine/functions_physical_test.go",
-        "engine/interface_test.go",
-        "engine/plan/plan_test.go",
-        "engine/ir/fuzz_test.go",
-        "engine/ir/operators_test.go",
-        "engine/dialect/sqlite_test.go",
+        "packages/go/engine/functions_physical_test.go",
+        "packages/go/engine/interface_test.go",
+        "packages/go/engine/plan/plan_test.go",
+        "packages/go/engine/ir/fuzz_test.go",
+        "packages/go/engine/ir/operators_test.go",
+        "packages/go/engine/dialect/sqlite_test.go",
         "packages/rust/tests/src/conformance.rs",
-        "engine/planner/runtime_model_test.go",
+        "packages/go/engine/planner/runtime_model_test.go",
         "packages/php/tests/RuntimeModelTest.php",
         "packages/go/orm/coverage_planner_test.go",
         "packages/php/tests/CoveragePlannerTest.php",
         "packages/rust/orm/tests/unit/coverage_planner.rs",
         "packages/ts/tests/coverage_planner.mjs",
-        "engine/planner/restore_test.go",
+        "packages/go/engine/planner/restore_test.go",
         "packages/python/tests/test_planner_fixture.py",
-        "engine/ir/validate_test.go",
+        "packages/go/engine/ir/validate_test.go",
         "packages/python/tests/test_ir_validate.py",
-        "engine/ir/params_test.go",
+        "packages/go/engine/ir/params_test.go",
         "packages/rust/orm/tests/unit/param_uses.rs",
         "packages/ts/tests/param-uses.mjs",
         "packages/rust/orm/tests/ir_validate.rs",
@@ -3819,11 +3819,11 @@
       "verification": [
         {
           "id": "param-uses-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./engine/ir -run '^TestParamUses$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/engine/ir -run '^TestParamUses$' -count=1",
           "shard": "other",
           "inputs": [
-            "engine/ir/params_test.go",
-            "engine/ir/params.go"
+            "packages/go/engine/ir/params_test.go",
+            "packages/go/engine/ir/params.go"
           ]
         },
         {
@@ -3846,58 +3846,58 @@
         },
         {
           "id": "planner-go-engine",
-          "command": "node tests/go-test.mts -v -timeout 0 ./engine -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/engine -count=1",
           "shard": "other",
           "inputs": [
-            "engine/engine_test.go",
-            "engine/functions_physical_test.go",
-            "engine/interface_test.go",
-            "engine/query_forms_test.go"
+            "packages/go/engine/engine_test.go",
+            "packages/go/engine/functions_physical_test.go",
+            "packages/go/engine/interface_test.go",
+            "packages/go/engine/query_forms_test.go"
           ]
         },
         {
           "id": "planner-go-planner",
-          "command": "node tests/go-test.mts -v -timeout 0 ./engine/planner -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/engine/planner -count=1",
           "shard": "other",
           "inputs": [
-            "engine/planner/restore_test.go",
-            "engine/planner/runtime_model_test.go",
-            "engine/planner/soft_delete_test.go"
+            "packages/go/engine/planner/restore_test.go",
+            "packages/go/engine/planner/runtime_model_test.go",
+            "packages/go/engine/planner/soft_delete_test.go"
           ]
         },
         {
           "id": "planner-go-ir",
-          "command": "node tests/go-test.mts -v -timeout 0 ./engine/ir -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/engine/ir -count=1",
           "shard": "other",
           "inputs": [
-            "engine/ir/fuzz_test.go",
-            "engine/ir/operators_test.go",
-            "engine/ir/validate_test.go",
+            "packages/go/engine/ir/fuzz_test.go",
+            "packages/go/engine/ir/operators_test.go",
+            "packages/go/engine/ir/validate_test.go",
             "tests/ir/validate.json"
           ]
         },
         {
           "id": "planner-go-plan",
-          "command": "node tests/go-test.mts -v -timeout 0 ./engine/plan -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/engine/plan -count=1",
           "shard": "other",
           "inputs": [
-            "engine/plan/plan_test.go"
+            "packages/go/engine/plan/plan_test.go"
           ]
         },
         {
           "id": "planner-go-dialect",
-          "command": "node tests/go-test.mts -v -timeout 0 ./engine/dialect -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/engine/dialect -count=1",
           "shard": "other",
           "inputs": [
-            "engine/dialect/sqlite_test.go"
+            "packages/go/engine/dialect/sqlite_test.go"
           ]
         },
         {
           "id": "planner-go-runtimemodel",
-          "command": "node tests/go-test.mts -v -timeout 0 ./engine/runtimemodel -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/engine/runtimemodel -count=1",
           "shard": "other",
           "inputs": [
-            "engine/runtimemodel/runtimemodel_test.go"
+            "packages/go/engine/runtimemodel/runtimemodel_test.go"
           ]
         },
         {
@@ -4492,10 +4492,10 @@
       "verification": [
         {
           "id": "composite-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./engine -run 'Composite' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/engine -run 'Composite' -count=1",
           "shard": "other",
           "inputs": [
-            "engine/engine_test.go"
+            "packages/go/engine/engine_test.go"
           ]
         }
       ],
@@ -5339,12 +5339,12 @@
         "packages/ts/tests/coverage_case.mjs"
       ],
       "tests": [
-        "engine/planner/soft_delete_test.go",
+        "packages/go/engine/planner/soft_delete_test.go",
         "packages/go/orm/sqlite/sqlite_test.go",
         "packages/go/orm/driver_error_test.go",
         "packages/go/orm/pg/pg_test.go",
         "packages/rust/orm/tests/soft_delete.rs",
-        "engine/dbspec/render_test.go",
+        "packages/go/engine/dbspec/render_test.go",
         "packages/php/tests/DbspecRenderTest.php",
         "packages/ts/tests/dbspec-render.mjs",
         "packages/rust/schema/tests/dbspec_render.rs",
@@ -5365,10 +5365,10 @@
       "verification": [
         {
           "id": "constraints-engine-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./engine/... -run 'External|Immutable|Overlapping|SoftDelete|Check' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/engine/... -run 'External|Immutable|Overlapping|SoftDelete|Check' -count=1",
           "shard": "other",
           "inputs": [
-            "engine/planner/soft_delete_test.go"
+            "packages/go/engine/planner/soft_delete_test.go"
           ]
         },
         {
@@ -6049,7 +6049,7 @@
         "packages/ts/tests/coverage_case.mjs"
       ],
       "tests": [
-        "engine/interface_test.go",
+        "packages/go/engine/interface_test.go",
         "packages/go/orm/shape_test.go",
         "tests/interfaces/php.php",
         "tests/interfaces/rust/src/main.rs",
@@ -6058,9 +6058,9 @@
         "packages/php/tests/CoverageInterfaceContractTest.php",
         "packages/rust/orm/tests/coverage_interface_contract.rs",
         "packages/ts/tests/coverage_interface_contract.mjs",
-        "contracts/generate.go",
-        "contracts/validate.go",
-        "contracts/generate_test.go",
+        "tests/interfaces/contracts/generate.go",
+        "tests/interfaces/contracts/validate.go",
+        "tests/interfaces/contracts/generate_test.go",
         "packages/ts/tests/package-declarations.mjs",
         "packages/ts/src/index.ts"
       ],
@@ -6096,12 +6096,12 @@
         },
         {
           "id": "contracts-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./contracts -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./tests/interfaces/contracts -count=1",
           "shard": "other",
           "inputs": [
-            "contracts/generate.go",
-            "contracts/validate.go",
-            "contracts/generate_test.go"
+            "tests/interfaces/contracts/generate.go",
+            "tests/interfaces/contracts/validate.go",
+            "tests/interfaces/contracts/generate_test.go"
           ]
         },
         {
@@ -7485,10 +7485,10 @@
         "packages/go/orm/codes.go",
         "packages/php/src/Code.php",
         "packages/rust/orm/src/codes.rs",
-        "cmd/orm-gen/errors.go"
+        "packages/go/cmd/orm-gen/errors.go"
       ],
       "tests": [],
-      "command": "sh -c 'dir=$(mktemp -d) && trap \"rm -rf \\\"$dir\\\"\" EXIT && for pair in go:packages/go/orm/codes.go php:packages/php/src/Code.php rust:packages/rust/orm/src/codes.rs; do node tests/go-run.mts orm-gen ./cmd/orm-gen errors --lang \"${pair%%:*}\" --out \"$dir/${pair%%:*}\" && diff -u \"${pair#*:}\" \"$dir/${pair%%:*}\" || exit 1; done'"
+      "command": "sh -c 'dir=$(mktemp -d) && trap \"rm -rf \\\"$dir\\\"\" EXIT && for pair in go:packages/go/orm/codes.go php:packages/php/src/Code.php rust:packages/rust/orm/src/codes.rs; do node tests/go-run.mts orm-gen ./packages/go/cmd/orm-gen errors --lang \"${pair%%:*}\" --out \"$dir/${pair%%:*}\" && diff -u \"${pair#*:}\" \"$dir/${pair%%:*}\" || exit 1; done'"
     },
     {
       "id": "go-decimal-model-generated",
@@ -7604,7 +7604,7 @@
         "packages/php/tests/DbspecStressTest.php",
         "packages/php/tests/DbspecIntrospectStressTest.php",
         "packages/ts/tests/dbspec-stress.mjs",
-        "engine/dbspec/stress_test.go"
+        "packages/go/engine/dbspec/stress_test.go"
       ],
       "tests": [],
       "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" dbspec-stress-bench"

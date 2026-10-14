@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/polyspec/orm/engine/runtimemodel"
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // TestCancelledTransactionClearsSessionState는 callback 중에 context가 취소된

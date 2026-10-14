@@ -5,9 +5,9 @@ package model_test
 import (
 	"testing"
 
-	"github.com/polyspec/orm/internal/testcase"
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // TestCoverageConstraintErrors는 seed 행에 대한 foreign key, check, unique

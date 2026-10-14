@@ -76,7 +76,7 @@ export function failureLine(text: string): boolean {
   return FAILURE.some(pattern => pattern.test(message));
 }
 
-// failures는 target 출력 줄을 받아 실패를 모은다. case runner(tests/testcase.mts, internal/testcase, PHP와 Rust의
+// failures는 target 출력 줄을 받아 실패를 모은다. case runner(tests/testcase.mts, packages/go/testcase, PHP와 Rust의
 // testcase)는 case마다 `RUN <case>`, `STEP <case> ...`, `PASS <case>`나 `FAIL <case> ...: <이유>`를 쓴다. 끝나지
 // 않은 case(기한 초과로 멈춘 process, 죽은 process)는 RUN 뒤에 결과가 없으므로 그 case와 마지막 단계를 적는다.
 // lane 접두사가 붙은 줄도 같은 case 줄로 읽는다.

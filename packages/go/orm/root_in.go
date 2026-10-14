@@ -3,8 +3,8 @@ package orm
 import (
 	"fmt"
 
-	"github.com/polyspec/orm/engine/ir"
-	"github.com/polyspec/orm/engine/plan"
+	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/engine/plan"
 )
 
 // rootINParts splits a root IN list that exceeds the driver bind limit into

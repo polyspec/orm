@@ -13,8 +13,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/engine/dbspec"
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // hiddenLeft는 dialect에서 이름이 dbspec$로 시작하는 table과 column의 수를 읽는다.

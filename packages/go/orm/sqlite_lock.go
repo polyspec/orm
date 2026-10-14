@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/polyspec/orm/engine/ir"
+	"github.com/polyspec/orm/packages/go/engine/ir"
 )
 
 // rowLockTables는 row lock statement가 가리키는 table이다.

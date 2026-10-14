@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // TestRollbackFaultEntry는 FailNextRollback이 build tag ormtest가 있는 build에만

@@ -141,6 +141,9 @@ rules:
       # The symbol extractors of one language read its declarations with its own parser (Go's go/parser, PHP's tokens,
       # Python's ast, Rust's syn), with the tests of the Python extractor.
       - "!tests/interfaces/go/**"
+      # The Go tests of the interface manifest contracts/interfaces.json: they read it and refuse a native adapter that
+      # drifts from its logical signature, as a test of the Go tests module.
+      - "!tests/interfaces/contracts/**"
       - "!tests/interfaces/php.php"
       - "!tests/interfaces/python.py"
       - "!tests/interfaces/test_python_extractor.py"
@@ -150,7 +153,7 @@ rules:
       # DDL, plans, apply and introspection against the databases, which run the Go engine.
       - "!tests/dialects/**"
       # The table of Unicode letters and digits that every lexer reads is written from the data of Go's unicode package,
-      # the reference of engine/dbspec.
+      # the reference of packages/go/engine/dbspec.
       - "!tests/dbspec/unicode/**"
       # The codec vectors are the output of the PHP codecs, the ground truth of docs/codec.md.
       - "!tests/codec/gen.php"

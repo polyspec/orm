@@ -9,8 +9,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/polyspec/orm/internal/testcase"
 	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // tests/events/vectors.json의 case를 이 client로 실행해 statement event를 비교한다.

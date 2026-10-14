@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// Reads tests/dbspec/cases.json strictly, as the Go reader does (engine/dbspec/vectors_test.go decodeCaseVectors):
+// Reads tests/dbspec/cases.json strictly, as the Go reader does (packages/go/engine/dbspec/vectors_test.go decodeCaseVectors):
 // every section and every field of the format must be present with its type, and a section or field the format does
 // not name is refused. A refusal is a RuntimeException with the message "<file>: <location> <problem>".
 

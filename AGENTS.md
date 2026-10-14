@@ -33,10 +33,14 @@ vendors; this file states only the rules of orm.
 - The client packages are `packages/<runtime>` with the runtime `go`, `ts` (the TypeScript client),
   `php`, `php-ext` (the PHP extension), `python` and `rust` (S5 of PRINCIPLES.md): a folder name
   carries no repository prefix, and the distribution names (`@polyspec/orm`, `polyspec/orm`,
-  `polyspec-orm`) keep it. The Go module `github.com/polyspec/orm` (`go.mod`, `engine/`, `generator/`,
-  `cmd/`, `internal/` and the Go files of `contracts/`, `tests/`, `examples/` and `bench/`) stays at
-  the repository root, which S5 refuses: moving it under `packages/` gives it a new module path and
-  needs a decision on where the engine, the generator and the Go programs of `tests/` live (T137-1).
+  `polyspec-orm`) keep it. The Go module is `github.com/polyspec/orm/packages/go`
+  (`packages/go/go.mod`): it holds the client (`orm`, `model` and the other generated models), the
+  engine (`engine/`), the generator (`generator/`), `cmd/orm-gen`, the case harness `testcase` and
+  the process events `procevent`, which the Go programs of `tests/` import and so are public
+  packages, and `internal/testdb`. The Go runners, physical tests and tool programs of `tests/`
+  are the module `github.com/polyspec/orm/tests` (`tests/go.mod`), the examples are
+  `github.com/polyspec/orm/examples` (`examples/go.mod`), and the root `go.work` joins the three,
+  so they resolve `packages/go` from the checkout with no replace directive.
 - The editor packages of dbspec are `packages/dbspec-language` (the language service and the `dbspec-fmt`
   command), `packages/dbspec-lsp` (the language server), `packages/dbspec-codemirror` (the CodeMirror
   extension) and `packages/dbspec-vscode` (the VS Code extension). The first three are released as the
@@ -124,7 +128,7 @@ vendors; this file states only the rules of orm.
   `make dependency-policy-check` and `make dependency-policy-mutation-check` read that record and
   the manifests and locks and query no registry.
 - Every toolchain the checks use is pinned in one declaration and checked: `.node-version`, the
-  `go` line of `go.mod`, `.composer-version` and `rust-toolchain.toml` hold exact releases,
+  `go` line of `packages/go/go.mod`, `.composer-version` and `rust-toolchain.toml` hold exact releases,
   `.php-version` and the PostgreSQL major release are as exact as their installers allow, CI
   installs what they declare, and `make toolchain-check` and `make repo-check` fail when a running
   tool differs. A new release is adopted by
@@ -215,7 +219,7 @@ vendors; this file states only the rules of orm.
 - Go, PHP, Rust, and TypeScript share one behavior contract. A database-dependent feature requires executable evidence on MySQL, PostgreSQL, and SQLite in every client. A database-independent feature requires equivalent executable cases in every client. Missing environment or a case that did not execute is a failure.
 - Record a conformance expectation only when the Go, PHP, Rust, and TypeScript outputs contain exactly the declared vectors and agree on each result. A rejected recording leaves the expectation file unchanged.
 - Conformance comparison and recording require nonempty, unique vector names and exactly the same vector names in each database expectation file; an omitted or extra name is an error.
-- Define common planner, dialect, schema, and error behavior in `engine/*`, `cmd/orm-gen`, and the protocol documents. Implement client behavior in its owning `packages/<runtime>/*` directory; shared verification belongs in `tests/*`, `schema/*`, and `scripts/*`. A feature remains incomplete until every supported client has its required executable cases.
+- Define common planner, dialect, schema, and error behavior in `packages/go/engine/*`, `packages/go/cmd/orm-gen`, and the protocol documents. Implement client behavior in its owning `packages/<runtime>/*` directory; shared verification belongs in `tests/*`, `schema/*`, and `scripts/*`. A feature remains incomplete until every supported client has its required executable cases.
 - Feature coverage evidence comes from commands executed in the current check, with exact case IDs and two equal result and database-state runs. A named test file or saved output is not execution evidence. The coverage checker runs in `make feature-coverage`, and its mutation tests run in `make feature-unit-check`. `make check` runs the verification commands in `make feature-verify-rust` and `make feature-verify-other`, as the `shard` of each command declares (`rust` for a command that builds and runs Rust with cargo), and `make feature-check` runs the three.
 - The coverage checker invokes declared native test files and exact case filters itself, and derives success from process exit and observed test events. Test output cannot supply a success report or database-state digest. For database cases the checker reads the declared database state before and after each run with its own state reader.
 - A coverage case ID names shared behavior. Go and Rust commands map that ID to the exact native test symbol in their owning file; the checker accepts the ID only after that symbol passes. The checker supplies the selected database and DSN to the native process for database cases.
@@ -244,12 +248,12 @@ vendors; this file states only the rules of orm.
   renames `## Unreleased` to `## X.Y.Z` in CHANGELOG.md and CHANGELOG.ko.md, below a new empty
   `## Unreleased`.
 - After the CI of that commit succeeded (`push-gate` and `ci-passed`), the maintainer tags it
-  `vX.Y.Z` and pushes the tag; the tag releases the Go module `github.com/polyspec/orm` of the
-  repository root too. Only the maintainer creates, moves or pushes a tag.
+  `vX.Y.Z` and pushes it with the Go module tag `packages/go/vX.Y.Z` at the same commit, which
+  releases the Go module `github.com/polyspec/orm/packages/go`. Only the maintainer creates, moves or pushes a tag.
 - The push of the tag runs `.github/workflows/release.yml`, which publishes the GitHub Release:
   `make release-verify` (the commit is on `main` and its checks `push-gate` and `ci-passed`
   succeeded), `make release-versions` (every released manifest carries X.Y.Z, the module path of
-  `go.mod` is `github.com/polyspec/orm` and the changelogs have its section), `make release-assets`
+  `packages/go/go.mod` is `github.com/polyspec/orm/packages/go` and the changelogs have its section), `make release-assets`
   (`polyspec-orm-npm-X.Y.Z.tgz` of `@polyspec/orm`, `polyspec-orm-php-X.Y.Z.zip` of `polyspec/orm`,
   `polyspec-orm-dbspec-php-X.Y.Z.zip` of `polyspec/orm-dbspec` and `polyspec_orm-X.Y.Z-py3-none-any.whl` of
   `polyspec-orm`) and `make release-publish` (the release

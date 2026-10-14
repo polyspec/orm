@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/polyspec/orm/engine/ir"
+	"github.com/polyspec/orm/packages/go/engine/ir"
 )
 
 // Model is implemented by every generated model. Orm_ returns the model core;

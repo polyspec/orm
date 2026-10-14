@@ -44,7 +44,7 @@ openers keep a DSN query in the file name: it opens
 `modernc.org/sqlite`, PHP PDO, `node:sqlite` and the `sqlite3` shell and
 asserts the file names created in its own temporary directory.
 
-Every probe is a case of `internal/testcase`: it prints `RUN <probe>
+Every probe is a case of `packages/go/testcase`: it prints `RUN <probe>
 deadline=1m0s`, a `STEP` line for its start and for each `observed` value,
 and `PASS <probe> elapsed=<elapsed>` or `FAIL <probe> elapsed=<elapsed>:
 <reason>` while the run continues. Each probe has its own 30-second deadline

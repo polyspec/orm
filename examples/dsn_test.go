@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // withoutBenchDSN은 ORM_BENCH_MYSQL_DSN을 뺀 환경이다. empty면 빈 값으로 둔다.

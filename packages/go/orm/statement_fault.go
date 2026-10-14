@@ -1,7 +1,7 @@
 package orm
 
 import (
-	"github.com/polyspec/orm/engine/ir"
+	"github.com/polyspec/orm/packages/go/engine/ir"
 )
 
 // stmtFault는 FailNextStatement이 설정한 code와 message다.

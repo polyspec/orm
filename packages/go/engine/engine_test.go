@@ -1,0 +1,554 @@
+package engine
+
+import (
+	"encoding/json"
+	"fmt"
+	"slices"
+	"strings"
+	"testing"
+
+	"github.com/polyspec/orm/packages/go/engine/plan"
+	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/packages/go/testcase"
+)
+
+// benchModel은 schema/bench.dbs의 runtime model이다.
+func benchModel(t *testing.T) *runtimemodel.Model {
+	t.Helper()
+	m, err := runtimemodel.LoadFiles("../../../schema/bench.dbs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return m
+}
+
+func testEngine(t *testing.T) *Engine {
+	t.Helper()
+	e, err := New(benchModel(t), "mysql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return e
+}
+
+func compile(t *testing.T, e *Engine, irBody string) *plan.Plan {
+	t.Helper()
+	full := `{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `","n_params":64,` + irBody + `}`
+	out, err := e.Compile([]byte(full))
+	if err != nil {
+		t.Fatalf("compile %s: %v", irBody, err)
+	}
+	var p plan.Plan
+	if err := json.Unmarshal(out, &p); err != nil {
+		t.Fatal(err)
+	}
+	return &p
+}
+
+func TestSelectAll(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	e := testEngine(t)
+	p := compile(t, e, `"kind":"all","entity":"author",
+	 "where":{"items":[
+	   {"pred":{"column":"service_seq","op":"eq","p":0}},
+	   {"pred":{"conn":"and","column":"is_close","op":"eq","p":1}},
+	   {"group":{"conn":"and","items":[
+	     {"pred":{"column":"is_display","op":"eq","p":2}},
+	     {"group":{"conn":"or","items":[
+	       {"pred":{"column":"is_display","op":"eq","p":3}},
+	       {"pred":{"conn":"and","column":"display_start_dt","op":"lt","p":4}}]}}]}},
+	   {"pred":{"conn":"and","column":"seq","op":"in","ps":[5,6,7]}},
+	   {"pred":{"conn":"and","column":"aes_hex_email","op":"eq","p":8}},
+	   {"pred":{"conn":"and","column":"name","op":"contains","p":9}}]},
+	 "order":[{"column":"seq","desc":true}],"limit":{"offset":0,"count":100}`)
+	sql := p.Steps[0].SQL
+	wantParts := []string{
+		"SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, ",
+		// MySQL도 hex를 SQL에서 풀지 않는다: executor가 HostDecode로 정확히 읽는다(docs/codec.md).
+		"`a`.`aes_hex_email` AS `a__aes_hex_email`",
+		" FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`a`.`is_display` = ? AND `a`.`display_start_dt` < ?)) AND `a`.`seq` IN (?, ?, ?) AND `a`.`email_blind_index` = ? AND `a`.`name` LIKE ? ORDER BY `a`.`seq` DESC LIMIT 0, 100",
+	}
+	for _, w := range wantParts {
+		if !strings.Contains(sql, w) {
+			t.Errorf("sql missing %q\n got: %s", w, sql)
+		}
+	}
+	if strings.Contains(sql, "`a`.`description`") {
+		t.Error("lazy column selected by default")
+	}
+	// Binds preserve parameter order; equality on AES uses the blind-index target.
+	var kinds []string
+	for _, b := range p.Steps[0].BindSlots {
+		k := b.From
+		if b.From == "param" {
+			k = fmt.Sprintf("p%d", b.Param)
+		}
+		if b.Transform != "" {
+			k += ":" + b.Transform
+		}
+		kinds = append(kinds, k)
+	}
+	if got := strings.Join(kinds, " "); got != "p0 p1 p2 p3 p4 p5 p6 p7 p8 p9:like_contains" {
+		t.Errorf("bind kinds: %s", got)
+	}
+	asm := p.Steps[0].Assemble
+	// default select set의 26개 column과 숨은 AES version column이다. select
+	// explicit column(ip 등)은 빠진다.
+	if asm == nil || asm.Columns[0].Name != "seq" || asm.Columns[0].Index != 0 || len(asm.Columns) != 27 || asm.Columns[26].Name != "aes_key_version" || !asm.Columns[26].Hidden || strings.Contains(sql, "`a`.`ip`") {
+		t.Errorf("assemble: %+v", asm)
+	}
+	// 읽은 aes_hex column은 executor가 hex와 aes를 모두 decode한다.
+	for _, c := range asm.Columns {
+		if c.Name == "aes_hex_email" && !slices.Equal(c.Styles, []string{"aes", "hex"}) {
+			t.Errorf("aes_hex_email styles %v, want [aes hex]", c.Styles)
+		}
+	}
+}
+
+func TestRowLock(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	e := testEngine(t)
+	p := compile(t, e, `"kind":"all","entity":"author","lock":"update","limit":{"offset":0,"count":1}`)
+	if !strings.HasSuffix(p.Steps[0].SQL, " LIMIT 0, 1 FOR UPDATE") {
+		t.Fatalf("mysql row lock: %s", p.Steps[0].SQL)
+	}
+
+	m := benchModel(t)
+	sqliteEngine, err := New(m, "sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	full := `{"ir_version":1,"manifest_hash":"` + sqliteEngine.M.ManifestHash + `","n_params":0,"kind":"all","entity":"author","lock":"share"}`
+	if plan, err := sqliteEngine.Compile([]byte(full)); err != nil || strings.Contains(string(plan), "CAPABILITY_UNSUPPORTED") {
+		t.Fatalf("sqlite transaction-level row lock: %v", err)
+	}
+	sqliteNowait := `{"ir_version":1,"manifest_hash":"` + sqliteEngine.M.ManifestHash + `","n_params":0,"kind":"all","entity":"author","lock":"update_nowait"}`
+	if plan, err := sqliteEngine.Compile([]byte(sqliteNowait)); err != nil || strings.Contains(string(plan), "CAPABILITY_UNSUPPORTED") {
+		t.Fatalf("sqlite nowait lock: %v", err)
+	}
+	postgresEngine, err := New(m, "postgres")
+	if err != nil {
+		t.Fatal(err)
+	}
+	nowait := `{"ir_version":1,"manifest_hash":"` + postgresEngine.M.ManifestHash + `","n_params":0,"kind":"one","entity":"author","lock":"update_nowait"}`
+	plan, err := postgresEngine.Compile([]byte(nowait))
+	if err != nil || !strings.Contains(string(plan), "FOR UPDATE NOWAIT") {
+		t.Fatalf("postgres nowait row lock: %v", err)
+	}
+}
+
+func mustCompileError(t *testing.T, e *Engine, input string) error {
+	t.Helper()
+	_, err := e.Compile([]byte(input))
+	if err == nil {
+		t.Fatal("expected compile error")
+	}
+	return err
+}
+
+func TestJoinAndPlacement(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	e := testEngine(t)
+	p := compile(t, e, `"kind":"count","entity":"author",
+	 "joins":[{"rel":"service_region","kind":"left","left":"service_region_seq","right":"seq","query":{"entity":"service_region",
+	    "on":{"items":[{"pred":{"column":"name","op":"eq","p":0}}]},
+	    "where":{"items":[{"pred":{"column":"seq","op":"gt","p":3}}]},
+	    "joins":[{"rel":"service","kind":"inner","left":"service_seq","right":"seq","query":{"entity":"service",
+	       "where":{"items":[{"pred":{"column":"name","op":"eq","p":4}}]}}}]}}],
+	 "where":{"items":[
+	   {"pred":{"column":"user_seq","op":"eq","p":2}},
+	   {"group":{"conn":"and","items":[
+	     {"pred":{"column":"is_close","op":"eq","p":1}},
+	     {"joined":{"conn":"or","join":"service_region"}}]}}]}`)
+	want := "SELECT COUNT(*) FROM `author` AS `a` LEFT JOIN `service_region` AS `service_region` ON `a`.`service_region_seq` = `service_region`.`seq` AND `service_region`.`name` = ? INNER JOIN `service` AS `service_region__service` ON `service_region`.`service_seq` = `service_region__service`.`seq` WHERE `a`.`user_seq` = ? AND (`a`.`is_close` = ? OR (`service_region`.`seq` > ?)) AND (`service_region__service`.`name` = ?)"
+	if p.Steps[0].SQL != want {
+		t.Errorf("sql:\n got  %s\n want %s", p.Steps[0].SQL, want)
+	}
+}
+
+func TestWrites(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	e := testEngine(t)
+	p := compile(t, e, `"kind":"insert","entity":"author","set":[
+	  {"column":"name","p":0},{"column":"aes_hex_email","p":1},{"column":"user_seq","p":2},
+	  {"column":"service_seq","p":3},{"column":"service_region_seq","p":4},{"column":"service_member_seq","p":5},
+	  {"column":"start_dt","p":6},{"column":"end_dt","p":7}]`)
+	if want := "INSERT INTO `author` (`name`, `aes_hex_email`, `user_seq`, `service_seq`, `service_region_seq`, `service_member_seq`, `start_dt`, `end_dt`, `email_blind_index`, `aes_key_version`) VALUES (?, HEX(?), ?, ?, ?, ?, ?, ?, ?, ?)"; p.Steps[0].SQL != want {
+		t.Errorf("insert: %s", p.Steps[0].SQL)
+	}
+	if len(p.Steps[0].BindSlots) < 9 || !slices.Equal(p.Steps[0].BindSlots[8].HostStyles, []string{"blind_index"}) {
+		t.Errorf("insert blind-index bind: %+v", p.Steps[0].BindSlots)
+	}
+	p = compile(t, e, `"kind":"update","entity":"author","set":[{"column":"name","p":0},{"column":"like_count","plus_p":1},{"column":"read_count","minus_p":2}],
+	  "where":{"items":[{"pred":{"column":"seq","op":"eq","p":3}}]},"optimistic":{"column":"updated_ts","p":4}`)
+	if want := "UPDATE `author` SET `name` = ?, `like_count` = `author`.`like_count` + ?, `read_count` = CASE WHEN `author`.`read_count` > ? THEN `author`.`read_count` - ? ELSE 0 END, `updated_ts` = CURRENT_TIMESTAMP(6) WHERE `author`.`seq` = ? AND `author`.`updated_ts` = ?"; p.Steps[0].SQL != want {
+		t.Errorf("update: %s", p.Steps[0].SQL)
+	}
+	p = compile(t, e, `"kind":"update","entity":"author","set":[{"column":"aes_hex_email","p":0},{"column":"aes_hex_phone","p":1}],"where":{"items":[{"pred":{"column":"seq","op":"eq","p":2}}]}`)
+	if !strings.Contains(p.Steps[0].SQL, "`aes_key_version` = ?") || !slices.ContainsFunc(p.Steps[0].BindSlots, func(b plan.BindSlot) bool { return b.From == "config" && b.Name == "aes_version" }) {
+		t.Errorf("AES update must store the configured key version: %+v", p.Steps[0])
+	}
+	p = compile(t, e, `"kind":"delete","entity":"author","where":{"items":[{"pred":{"column":"seq","op":"in","ps":[0,1]}}]}`)
+	if want := "DELETE FROM `author` WHERE `author`.`seq` IN (?, ?)"; p.Steps[0].SQL != want {
+		t.Errorf("delete: %s", p.Steps[0].SQL)
+	}
+	p = compile(t, e, `"kind":"paginate","entity":"author","where":{"items":[{"pred":{"column":"service_seq","op":"eq","p":2}}]},"order":[{"column":"seq","desc":true}],"limit":{"offset":20,"count":20}`)
+	if len(p.Steps) != 2 || p.Steps[1].Role != "count" || !strings.HasPrefix(p.Steps[1].SQL, "SELECT COUNT(*)") || !strings.HasSuffix(p.Steps[0].SQL, "LIMIT 20, 20") {
+		t.Errorf("paginate: %+v", p.Steps)
+	}
+}
+
+func TestUpsertAndCascade(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	e := testEngine(t)
+	p := compile(t, e, `"kind":"insert","entity":"author","set":[{"column":"uuid","p":0},{"column":"name","p":1},{"column":"user_seq","p":2},{"column":"service_seq","p":2},{"column":"service_region_seq","p":2},{"column":"service_member_seq","p":2},{"column":"start_dt","p":3},{"column":"end_dt","p":3}],
+	  "on_duplicate":[{"column":"name","p":1},{"column":"read_count","plus_p":4}]`)
+	if want := "INSERT INTO `author` (`uuid`, `name`, `user_seq`, `service_seq`, `service_region_seq`, `service_member_seq`, `start_dt`, `end_dt`, `aes_key_version`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE `name` = ?, `read_count` = `author`.`read_count` + ?, `seq` = LAST_INSERT_ID(`seq`)"; p.Steps[0].SQL != want {
+		t.Errorf("upsert:\n got  %s\n want %s", p.Steps[0].SQL, want)
+	}
+	if got := len(p.Steps[0].BindSlots); got != 11 {
+		t.Errorf("upsert binds: %d", got)
+	}
+	// cascade: service → members (owned) yes; member → user (parent) no; no_cascade_delete stops it
+	p = compile(t, e, `"kind":"one","entity":"service","where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]},
+	  "relations":[{"rel":"members","kind":"many","keys":[{"left":"seq","right":"service_seq"}],"query":{"entity":"service_member","relations":[{"rel":"user","kind":"one","keys":[{"left":"user_seq","right":"seq"}],"query":{"entity":"user"}}]}},
+	               {"rel":"modules","kind":"many","keys":[{"left":"seq","right":"service_seq"}],"query":{"entity":"service_region","no_cascade_delete":true}}]`)
+	root := p.Steps[0].Assemble
+	if !root.Children[0].Cascade || root.Children[1].Cascade {
+		t.Errorf("cascade flags: members=%v modules=%v", root.Children[0].Cascade, root.Children[1].Cascade)
+	}
+	if mc := p.Steps[1].Assemble.Children; len(mc) != 1 || mc[0].Cascade {
+		t.Errorf("member → user must not cascade: %+v", mc)
+	}
+	for irs, code := range map[string]string{
+		`"kind":"update","entity":"author","n_params":2,"set":[{"column":"name","p":0}],"where":{"items":[{"pred":{"column":"seq","op":"eq","p":1}}]},"on_duplicate":[{"column":"name","p":0}]`:                                                                                                                                                                 "IR_INVALID: on_duplicate is only valid on insert",
+		`"kind":"insert","entity":"author","n_params":2,"set":[{"column":"name","p":0}],"on_duplicate":[{"column":"seq","p":1}]`:                                                                                                                                                                                                                                "IR_INVALID: on_duplicate cannot assign",
+		`"kind":"update","entity":"author","n_params":2,"set":[{"column":"aes_hex_email","p":0}],"where":{"items":[{"pred":{"column":"seq","op":"eq","p":1}}]}`:                                                                                                                                                                                                 "IR_INVALID: AES update must assign every AES column; missing aes_hex_phone",
+		`"kind":"update","entity":"author","n_params":2,"set":[{"column":"aes_key_version","p":0}],"where":{"items":[{"pred":{"column":"seq","op":"eq","p":1}}]}`:                                                                                                                                                                                               "IR_INVALID: aes_key_version is managed by the AES writer",
+		`"kind":"insert","entity":"author","n_params":2,"set":[{"column":"name","p":0},{"column":"aes_key_version","p":1}]`:                                                                                                                                                                                                                                     "IR_INVALID: aes_key_version is managed by the AES writer",
+		`"kind":"insert","entity":"author","n_params":8,"set":[{"column":"name","p":0},{"column":"user_seq","p":1},{"column":"service_seq","p":2},{"column":"service_region_seq","p":3},{"column":"service_member_seq","p":4},{"column":"start_dt","p":5},{"column":"end_dt","p":6},{"column":"uuid","p":0}],"on_duplicate":[{"column":"aes_hex_email","p":7}]`: "IR_INVALID: AES update must assign every AES column; missing aes_hex_phone",
+		`"kind":"insert","entity":"task","n_params":1,"set":[{"column":"title","p":0}]`:                                                                                                                                                                                                                                                                         "IR_INVALID: required column task.state is not set",
+		`"kind":"insert","entity":"author","n_params":1,"set":[{"column":"name","p":0}]`:                                                                                                                                                                                                                                                                        "IR_INVALID: required column author.user_seq is not set",
+		`"kind":"all","entity":"author","no_cascade_delete":true`:                                                                                                                                                                                                                                                                                               "IR_INVALID: relation-only options",
+	} {
+		_, err := e.Compile([]byte(`{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `",` + irs + `}`))
+		if err == nil || !strings.HasPrefix(err.Error(), code) {
+			t.Errorf("%s\n got %v\n want %s", irs, err, code)
+		}
+	}
+}
+
+func TestAggregates(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	e := testEngine(t)
+	cases := map[string]string{
+		`"kind":"count","entity":"author","group_by":["service_seq"],"n_params":0`: "SELECT COUNT(*) FROM (SELECT 1 FROM `author` AS `a` GROUP BY `a`.`service_seq`) AS `orm_g`",
+	}
+	for irs, want := range cases {
+		p := compile(t, e, irs)
+		if p.Steps[0].SQL != want {
+			t.Errorf("%s\n got  %s\n want %s", irs, p.Steps[0].SQL, want)
+		}
+	}
+	grouped := compile(t, e, `"kind":"group_count","entity":"author","group_by":["service_seq","user_seq"]`)
+	if got := grouped.Steps[0].Assemble.Key; len(got) != 2 || got[0].Column != "service_seq" || got[0].Index != 0 || got[1].Column != "user_seq" || got[1].Index != 1 {
+		t.Fatalf("group_count collection key = %#v", got)
+	}
+	rows := compile(t, e, `"kind":"all","entity":"composite_account"`)
+	if got := rows.Steps[0].Assemble.Key; len(got) != 2 || got[0].Column != "tenant_id" || got[1].Column != "account_id" {
+		t.Fatalf("composite row collection key = %#v", got)
+	}
+}
+
+func testEngineFor(t *testing.T, dialect string) *Engine {
+	t.Helper()
+	e := testEngine(t)
+	pg, err := New(e.M, dialect)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return pg
+}
+
+func TestPostgresAndSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	pg := testEngineFor(t, "postgres")
+	p := compile(t, pg, `"kind":"all","entity":"author","columns":{"mode":"none"},"n_params":3,
+	 "where":{"items":[{"pred":{"column":"name","op":"contains","p":0}},{"pred":{"conn":"and","column":"name","op":"contains_binary","p":1}},{"pred":{"conn":"and","column":"aes_hex_email","op":"eq","p":2}}]},
+	 "order":[{"column":"seq","desc":true}],"limit":{"offset":20,"count":10},"force_index":"ik"`)
+	if want := "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\" FROM \"author\" AS \"a\" WHERE \"a\".\"name\" ILIKE $1 AND \"a\".\"name\" LIKE $2 AND \"a\".\"email_blind_index\" = $3 ORDER BY \"a\".\"seq\" DESC LIMIT 10 OFFSET 20"; p.Steps[0].SQL != want {
+		t.Errorf("postgres select:\n got  %s\n want %s", p.Steps[0].SQL, want)
+	}
+	// aes/hex are client-side on postgres: the read is the bare column and the styles reach the executor
+	p = compile(t, pg, `"kind":"one","entity":"author","n_params":1,"columns":{"add":["ip"]},"where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]}`)
+	var aes, ip *plan.OutCol
+	for i := range p.Steps[0].Assemble.Columns {
+		c := &p.Steps[0].Assemble.Columns[i]
+		if c.Name == "aes_hex_email" {
+			aes = c
+		}
+		if c.Name == "ip" {
+			ip = c
+		}
+	}
+	if aes == nil || strings.Join(aes.Styles, ",") != "aes,hex" || !strings.Contains(p.Steps[0].SQL, "\"a\".\"aes_hex_email\" AS \"a__aes_hex_email\"") {
+		t.Errorf("postgres aes read: %+v", aes)
+	}
+	// ip는 bytea column의 packed byte이므로 executor가 address text로 바꾼다.
+	if ip == nil || strings.Join(ip.Styles, ",") != "ip" || !strings.Contains(p.Steps[0].SQL, "\"a\".\"ip\" AS \"a__ip\"") {
+		t.Errorf("postgres ip read: %+v", ip)
+	}
+	// upsert: RETURNING, ON CONFLICT on the unique key covered by the insert (uuid), no LAST_INSERT_ID idiom
+	p = compile(t, pg, `"kind":"insert","entity":"author","n_params":3,"set":[{"column":"uuid","p":0},{"column":"name","p":1},{"column":"user_seq","p":2},{"column":"service_seq","p":2},{"column":"service_region_seq","p":2},{"column":"service_member_seq","p":2},{"column":"start_dt","p":2},{"column":"end_dt","p":2}],"on_duplicate":[{"column":"name","p":1}]`)
+	if want := "INSERT INTO \"author\" (\"uuid\", \"name\", \"user_seq\", \"service_seq\", \"service_region_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_key_version\") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (\"uuid\") DO UPDATE SET \"name\" = $10 RETURNING \"seq\""; p.Steps[0].SQL != want {
+		t.Errorf("postgres upsert:\n got  %s\n want %s", p.Steps[0].SQL, want)
+	}
+
+	lite := testEngineFor(t, "sqlite")
+	p = compile(t, lite, `"kind":"all","entity":"author","columns":{"mode":"none"},"n_params":1,"where":{"items":[{"pred":{"column":"name","op":"contains","p":0}}]},"limit":{"offset":0,"count":5},"force_index":"ik"`)
+	if want := "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\" FROM \"author\" AS \"a\" INDEXED BY \"ik\" WHERE \"a\".\"name\" LIKE ? ESCAPE '\\' LIMIT 5 OFFSET 0"; p.Steps[0].SQL != want {
+		t.Errorf("sqlite select:\n got  %s\n want %s", p.Steps[0].SQL, want)
+	}
+	for irs, code := range map[string]string{
+		// fulltext 조건은 protocol에 없다.
+		`"kind":"count","entity":"author","n_params":1,"where":{"items":[{"pred":{"op":"match","match":["name","description"],"p":0}}]}`: "IR_INVALID",
+	} {
+		_, err := lite.Compile([]byte(`{"ir_version":1,"manifest_hash":"` + lite.M.ManifestHash + `",` + irs + `}`))
+		if err == nil || !strings.HasPrefix(err.Error(), code) {
+			t.Errorf("sqlite %s\n got %v\n want %s", irs, err, code)
+		}
+	}
+	// the relation window survives quoting
+	p = compile(t, lite, `"kind":"all","entity":"service","n_params":1,"where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]},"relations":[{"rel":"modules","kind":"many","keys":[{"left":"seq","right":"service_seq"}],"query":{"entity":"service_region","limit_per_parent":2,"order":[{"column":"seq","desc":true}]}}]`)
+	if !strings.Contains(p.Steps[1].SQL, "ROW_NUMBER() OVER (PARTITION BY \"a\".\"service_seq\" ORDER BY \"a\".\"seq\" DESC) AS \"orm_rn\"") || !strings.Contains(p.Steps[1].SQL, "\"a\".\"service_seq\" IN (?)") {
+		t.Errorf("sqlite relation window: %s", p.Steps[1].SQL)
+	}
+}
+
+// Joins nest by relation name and aliases are path-derived, so two levels of the
+// same target stay distinct and each keeps its own projection namespace.
+func TestJoinAliasNamespaces(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	e := testEngine(t)
+	p := compile(t, e, `"kind":"one","entity":"author","columns":{"mode":"none","add":["name"]},"n_params":1,
+	 "where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]},
+	 "joins":[{"rel":"service_member","kind":"inner","left":"service_member_seq","right":"seq","query":{"entity":"service_member","columns":{"mode":"none"},
+	     "joins":[{"rel":"service","kind":"inner","left":"service_seq","right":"seq","query":{"entity":"service","columns":{"mode":"none","add":["name"]}}},
+	              {"rel":"user","kind":"inner","left":"user_seq","right":"seq","query":{"entity":"user","columns":{"mode":"none","add":["name"]}}}]}},
+	          {"rel":"service","kind":"inner","left":"service_seq","right":"seq","query":{"entity":"service","columns":{"mode":"none","add":["name"]}}}]`)
+	sql := p.Steps[0].SQL
+	for _, want := range []string{
+		"INNER JOIN `service` AS `service_member__service` ON `service_member`.`service_seq` = `service_member__service`.`seq`",
+		"INNER JOIN `user` AS `service_member__user` ON `service_member`.`user_seq` = `service_member__user`.`seq`",
+		"INNER JOIN `service` AS `service` ON `a`.`service_seq` = `service`.`seq`",
+		"`service_member__service`.`name` AS `service_member__service__name`",
+		"`service_member__user`.`name` AS `service_member__user__name`",
+		"`service`.`name` AS `service__name`",
+		"`a`.`name` AS `a__name`",
+	} {
+		if !strings.Contains(sql, want) {
+			t.Errorf("missing %q in\n%s", want, sql)
+		}
+	}
+	// the two joins of the same target are separate assemble children with distinct aliases
+	root := p.Steps[0].Assemble
+	aliases := map[string]bool{}
+	var walk func(a *plan.Assemble)
+	walk = func(a *plan.Assemble) {
+		if aliases[a.Alias] {
+			t.Errorf("duplicate alias %s", a.Alias)
+		}
+		aliases[a.Alias] = true
+		for _, ch := range a.Children {
+			if ch.Assemble != nil {
+				walk(ch.Assemble)
+			}
+		}
+	}
+	walk(root)
+	if len(aliases) != 5 {
+		t.Errorf("aliases: %v", aliases)
+	}
+}
+
+func TestCompileErrors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	e := testEngine(t)
+	h := e.M.ManifestHash
+	cases := map[string]string{
+		`{"ir_version":2,"manifest_hash":"` + h + `","kind":"all","entity":"author"}`:                                                                                                                                                        "VERSION_MISMATCH",
+		`{"ir_version":1,"manifest_hash":"nope","kind":"all","entity":"author"}`:                                                                                                                                                             "SCHEMA_HASH_MISMATCH",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"nope"}`:                                                                                                                                                          "ENTITY_UNKNOWN",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","n_params":8,"where":{"items":[{"pred":{"column":"nope","op":"eq","p":2}}]}}`:                                                                            "COLUMN_UNKNOWN",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","n_params":8,"where":{"items":[{"pred":{"column":"name","op":"between","p":0,"ps":[1,2]}}]}}`:                                                            "OPERATOR_NOT_ALLOWED",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","n_params":8,"where":{"items":[{"pred":{"column":"aes_hex_email","op":"contains","p":0}}]}}`:                                                             "OPERATOR_NOT_ALLOWED",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","where":{"items":[{"pred":{"conn":"or","column":"seq","op":"eq","p":2}}]}}`:                                                                              "OR_AT_GROUP_START",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","where":{"items":[{"pred":{"column":"seq","op":"in","ps":[]}}]}}`:                                                                                        "EMPTY_IN",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","where":{"items":[{"pred":{"column":"seq","op":"gt"}}]}}`:                                                                                                "IR_INVALID",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","n_params":1,"where":{"items":[{"pred":{"column":"seq","op":"eq","p":7}}]}}`:                                                                             "IR_INVALID: param index 7 out of range",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","where":{"items":[{"joined":{"join":"service"}}]}}`:                                                                                                      "ENTITY_NOT_JOINED",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","joins":[{"rel":"nope","kind":"inner","query":{"entity":"service"}}]}`:                                                                                   "IR_INVALID: join nope: left, right and query are required",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"update","entity":"author","n_params":1,"set":[{"column":"name","p":0}]}`:                                                                                                        "IR_INVALID: update without where",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","force_index":"nope"}`:                                                                                                                                   "INDEX_UNKNOWN",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","order":[{"column":"nope"}]}`:                                                                                                                            "COLUMN_UNKNOWN",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","relations":[{"rel":"service","kind":"one","keys":[{"left":"service_seq","right":"seq"}],"query":{"entity":"service","limit":{"offset":0,"count":1}}}]}`: "LIMIT_IN_RELATION",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","multi_statement":true}`:                                                                                                                                 "IR_INVALID",
+	}
+	for irs, code := range cases {
+		_, err := e.Compile([]byte(irs))
+		if err == nil || !strings.HasPrefix(err.Error(), code) {
+			t.Errorf("%s\n got %v\n want %s", irs, err, code)
+		}
+	}
+}
+
+func BenchmarkCompileList(b *testing.B) {
+	e := testEngine(&testing.T{})
+	in := []byte(`{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `","kind":"all","entity":"author","n_params":8,
+	 "where":{"items":[{"pred":{"column":"service_seq","op":"eq","p":0}},{"pred":{"conn":"and","column":"is_close","op":"eq","p":1}},
+	 {"group":{"conn":"and","items":[{"pred":{"column":"is_display","op":"eq","p":2}},{"group":{"conn":"or","items":[{"pred":{"column":"is_display","op":"eq","p":3}},{"pred":{"conn":"and","column":"display_start_dt","op":"lt","p":4}}]}}]}},
+	 {"pred":{"conn":"and","column":"seq","op":"in","ps":[5,6,7]}}]},"order":[{"column":"seq","desc":true}],"limit":{"offset":0,"count":100}}`)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if _, err := e.Compile(in); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func TestRelations(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	e := testEngine(t)
+	// root author → one user (if_parent, flatten) ; join service → many modules (key_by, limit_per_parent, nested one service)
+	p := compile(t, e, `"kind":"all","entity":"author",
+	 "columns":{"mode":"none"},
+	 "where":{"items":[{"pred":{"column":"service_seq","op":"eq","p":0}}]},
+	 "order":[{"column":"seq","desc":true}],"limit":{"offset":0,"count":20},
+	 "joins":[{"rel":"service","kind":"inner","left":"service_seq","right":"seq","query":{"entity":"service",
+	    "relations":[{"rel":"modules","kind":"many","keys":[{"left":"seq","right":"service_seq"}],"query":{"entity":"service_region","key_by":"name","limit_per_parent":3,
+	       "order":[{"column":"seq","desc":true}],
+	       "relations":[{"rel":"service","kind":"one","keys":[{"left":"service_seq","right":"seq"}],"query":{"entity":"service","order":[{"column":"seq","desc":false}]}}]}}]}}],
+	 "relations":[{"rel":"user","kind":"one","keys":[{"left":"user_seq","right":"seq"}],"query":{"entity":"user","flatten":true,"if_parent":{"column":"is_close","p":1},
+	    "where":{"items":[{"pred":{"column":"name","op":"contains","p":2}}]}}}]`)
+	if len(p.Steps) != 4 {
+		t.Fatalf("steps: %d", len(p.Steps))
+	}
+	main := p.Steps[0]
+	// mode none = PK + FK; is_close is added because the user relation's if_parent needs it
+	if want := "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`is_close` AS `a__is_close`, `service`.`seq` AS `service__seq`, `service`.`name` AS `service__name` FROM `author` AS `a` INNER JOIN `service` AS `service` ON `a`.`service_seq` = `service`.`seq` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 20"; main.SQL != want {
+		t.Errorf("main:\n got  %s\n want %s", main.SQL, want)
+	}
+	// step 1: user rows for the authors (parent index 1 = user_seq), only for closed authors
+	u := p.Steps[1]
+	if want := "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`seq` IN (?) AND (`a`.`name` LIKE ?)"; u.SQL != want || u.Role != "relation" {
+		t.Errorf("user step:\n got  %s (%s)\n want %s", u.SQL, u.Role, want)
+	}
+	if u.Parent == nil || u.Parent.Step != 0 || len(u.Parent.Keys) != 1 || u.Parent.Keys[0].Index != 1 || u.Parent.Keys[0].Column != "user_seq" || u.Parent.IfParent == nil || u.Parent.IfParent.Index != 5 || u.Parent.IfParent.Param != 1 {
+		t.Errorf("user parent: %+v", u.Parent)
+	}
+	if len(u.BindSlots) != 2 || u.BindSlots[0].From != "parent" || u.BindSlots[0].Step != 0 || u.BindSlots[1].Transform != "like_contains" {
+		t.Errorf("user binds: %+v", u.BindSlots)
+	}
+	// step 2: modules per service, 3 per parent by seq desc; step 3: nested one service ordered → per-parent 1
+	m := p.Steps[2]
+	if want := "SELECT `orm_w`.`a__seq`, `orm_w`.`a__service_seq`, `orm_w`.`a__name` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`name` AS `a__name`, ROW_NUMBER() OVER (PARTITION BY `a`.`service_seq` ORDER BY `a`.`seq` DESC) AS `orm_rn` FROM `service_region` AS `a` WHERE `a`.`service_seq` IN (?)) AS `orm_w` WHERE `orm_w`.`orm_rn` <= 3 ORDER BY `orm_w`.`a__service_seq`, `orm_w`.`orm_rn`"; m.SQL != want {
+		t.Errorf("modules step:\n got  %s\n want %s", m.SQL, want)
+	}
+	if m.Parent.Step != 0 || len(m.Parent.Keys) != 1 || m.Parent.Keys[0].Index != 6 {
+		t.Errorf("modules parent: %+v", m.Parent)
+	}
+	sv := p.Steps[3]
+	if !strings.Contains(sv.SQL, "ROW_NUMBER() OVER (PARTITION BY `a`.`seq` ORDER BY `a`.`seq` ASC)") || !strings.Contains(sv.SQL, "`orm_rn` <= 1") || sv.Parent.Step != 2 || len(sv.Parent.Keys) != 1 || sv.Parent.Keys[0].Index != 1 {
+		t.Errorf("nested service step: %s %+v", sv.SQL, sv.Parent)
+	}
+	// children wiring
+	root := main.Assemble
+	if len(root.Children) != 2 || root.Children[0].Kind != "join" || root.Children[1].Kind != "one" || root.Children[1].Step != 1 || root.Children[1].ParentKeys[0].Index != 1 || root.Children[1].ChildKeys[0].Index != 0 || !root.Children[1].Flatten {
+		t.Errorf("root children: %+v", root.Children)
+	}
+	js := root.Children[0].Assemble
+	if len(js.Children) != 1 || js.Children[0].Kind != "many" || js.Children[0].Step != 2 || js.Children[0].ParentKeys[0].Index != 6 || js.Children[0].ChildKeys[0].Index != 1 || js.Children[0].Key[0].Index != 2 || js.Children[0].Key[0].Column != "name" {
+		t.Errorf("join children: %+v", js.Children[0])
+	}
+	if mc := p.Steps[2].Assemble.Children; len(mc) != 1 || mc[0].Kind != "one" || mc[0].Step != 3 || mc[0].ParentKeys[0].Index != 1 {
+		t.Errorf("modules children: %+v", mc)
+	}
+	// paginate: main, its relation, then count
+	p = compile(t, e, `"kind":"paginate","entity":"service","limit":{"offset":0,"count":10},"relations":[{"rel":"modules","kind":"many","keys":[{"left":"seq","right":"service_seq"}],"query":{"entity":"service_region"}}]`)
+	if len(p.Steps) != 3 || p.Steps[1].Role != "relation" || p.Steps[2].Role != "count" {
+		t.Errorf("paginate roles: %s %s %s", p.Steps[0].Role, p.Steps[1].Role, p.Steps[2].Role)
+	}
+	// zero-order one relation: plain IN, executor takes the first row
+	p = compile(t, e, `"kind":"one","entity":"author","where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]},"relations":[{"rel":"user","kind":"one","keys":[{"left":"user_seq","right":"seq"}],"query":{"entity":"user"}}]`)
+	if want := "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`seq` IN (?)"; p.Steps[1].SQL != want {
+		t.Errorf("plain relation: %s", p.Steps[1].SQL)
+	}
+	for irs, code := range map[string]string{
+		`"kind":"all","entity":"author","relations":[{"rel":"user","kind":"one","keys":[{"left":"user_seq","right":"seq"}],"query":{"entity":"user","key_by":"name"}}]`:                                  "IR_INVALID",
+		`"kind":"all","entity":"service","relations":[{"rel":"modules","kind":"many","keys":[{"left":"seq","right":"service_seq"}],"query":{"entity":"service_region","flatten":true}}]`:                 "IR_INVALID",
+		`"kind":"all","entity":"author","n_params":2,"relations":[{"rel":"user","kind":"one","keys":[{"left":"user_seq","right":"seq"}],"query":{"entity":"user","if_parent":{"column":"nope","p":0}}}]`: "COLUMN_UNKNOWN",
+	} {
+		_, err := e.Compile([]byte(`{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `",` + irs + `}`))
+		if err == nil || !strings.HasPrefix(err.Error(), code) {
+			t.Errorf("%s\n got %v\n want %s", irs, err, code)
+		}
+	}
+}
+
+// TestCompositeRelationKeys는 relation이 foreign key의 모든 성분을 key 순서대로
+// 이어 composite_account에서 composite_membership을 (tenant_id, account_id)로
+// 함께 읽는지, 그리고 잘못된 key 목록을 거절하는지 확인한다.
+func TestCompositeRelationKeys(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	e := testEngine(t)
+	p := compile(t, e, `"kind":"all","entity":"composite_account","relations":[{"rel":"memberships","kind":"many","keys":[{"left":"tenant_id","right":"tenant_id"},{"left":"account_id","right":"account_id"}],"query":{"entity":"composite_membership"}}]`)
+	if len(p.Steps) != 2 || p.Steps[1].Parent == nil || len(p.Steps[1].Parent.Keys) != 2 {
+		t.Fatalf("relation step: %+v", p.Steps)
+	}
+	if !strings.Contains(p.Steps[1].SQL, "WHERE (`a`.`tenant_id`, `a`.`account_id`) IN ((?))") {
+		t.Fatalf("composite relation SQL: %s", p.Steps[1].SQL)
+	}
+	child := p.Steps[0].Assemble.Children[0]
+	var parent, own []string
+	for i := range child.ParentKeys {
+		parent = append(parent, child.ParentKeys[i].Column)
+		own = append(own, child.ChildKeys[i].Column)
+	}
+	if strings.Join(parent, ",") != "tenant_id,account_id" || strings.Join(own, ",") != "tenant_id,account_id" {
+		t.Fatalf("relation keys: parent %v, child %v", parent, own)
+	}
+	for keys, code := range map[string]string{
+		`[]`: "IR_INVALID",
+		`[{"left":"tenant_id","right":"tenant_id"},{"left":"tenant_id","right":"account_id"}]`: "IR_INVALID",
+		`[{"left":"tenant_id","right":"tenant_id"},{"left":"account_id","right":"tenant_id"}]`: "IR_INVALID",
+		`[{"left":"tenant_id","right":""}]`:                                                    "IR_INVALID",
+		`[{"left":"tenant_id","right":"tenant_id"},{"left":"nope","right":"account_id"}]`:      "COLUMN_UNKNOWN",
+	} {
+		irs := `"kind":"all","entity":"composite_account","relations":[{"rel":"memberships","kind":"many","keys":` + keys + `,"query":{"entity":"composite_membership"}}]`
+		_, err := e.Compile([]byte(`{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `",` + irs + `}`))
+		if err == nil || !strings.HasPrefix(err.Error(), code) {
+			t.Errorf("keys %s\n got %v\n want %s", keys, err, code)
+		}
+	}
+}
+
+// TestAllColumnsSelectAESVersionOnce는 모든 column을 고른 node가 AES key
+// version column을 한 번만 읽고, 그 column을 version으로 표시하는지 확인한다.
+func TestAllColumnsSelectAESVersionOnce(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	e := testEngine(t)
+	p := compile(t, e, `"kind":"one","entity":"author","columns":{"mode":"all"},
+	 "where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]}`)
+	sql := p.Steps[0].SQL
+	if n := strings.Count(sql, "`a`.`aes_key_version` AS"); n != 1 {
+		t.Fatalf("aes_key_version selected %d times: %s", n, sql)
+	}
+	asm := p.Steps[0].Assemble
+	if asm.AESVersion == nil {
+		t.Fatalf("no AES version column marked: %+v", asm)
+	}
+	col := asm.Columns[*asm.AESVersion]
+	if col.Column != "aes_key_version" || col.Hidden {
+		t.Fatalf("AES version column %+v", col)
+	}
+}

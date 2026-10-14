@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/engine/runtimemodel"
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // TestTransactionReportsFailedLocalReset는 transaction 끝의 MySQL local 값

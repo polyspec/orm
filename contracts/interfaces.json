@@ -6,7 +6,7 @@
       "roots": [
         "packages/go/orm",
         "packages/go/model",
-        "engine"
+        "packages/go/engine"
       ],
       "symbols": "contracts/symbols/go.json"
     },
@@ -39,7 +39,7 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:5b6b3360b5b340ca4cfb72f6d3beb5a18fd2889569614fbaa7ff408446d9a687",
+    "go": "sha256:21f13ba0500fa927a5ffc9e4bd897a93c96d6035ada667d024b6b6dc7a3c7200",
     "php": "sha256:231b9486559070c1ab3c61e69b875f36c47d32d8eb975e0676cefd7dc98cd16e",
     "rust": "sha256:eec18b8be19a4e3a46bf524a23ac7a894a6c5760f4dc838f388423e535d797ec",
     "typescript": "sha256:cc2878fa1515f1bd0c658e0256bc4d197a5fce8e7062d2920a69d02c32aa477f",
@@ -2262,7 +2262,7 @@
       "state": "Reads the document file at the path and gives its bytes to Dbspec.readBytes with the path as name. A file that cannot be read is the read error of the platform",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/file.go::ReadFile",
+          "symbol": "packages/go/engine/dbspec/file.go::ReadFile",
           "signature": "func(path string) (string, []Diagnostic, error)"
         },
         "php": {
@@ -2298,7 +2298,7 @@
       "state": "Checks the bytes of a document file that the caller read, before any parse. Bytes that do not start with `dbspec ` return exactly one signature diagnostic at line 1, column 1 with the message `<name> is not a dbspec document` and no text; bytes that are not UTF-8 return exactly one encoding diagnostic at the line and column of the first invalid byte with the message `<name> is not valid UTF-8` and no text; otherwise the bytes as text and no diagnostic",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/file.go::ReadBytes",
+          "symbol": "packages/go/engine/dbspec/file.go::ReadBytes",
           "signature": "func(name string, b []byte) (string, []Diagnostic)"
         },
         "php": {
@@ -2334,7 +2334,7 @@
       "state": "Reads the set file `dbspec-set.json` at the path by the steps of docs/dbspec.md \"Document sets\": the set file, its JSON, each listed path and each file's identity, never following a symbolic link. On success the `documents` and the `external` files in written order, each with its joined path and its bytes, which it does not check; on failure every error with its rule (`set.file`, `set.symlink`, `set.json`, `set.schema`, `set.key`, `set.empty`, `set.path`, `set.duplicate`), its path and a message, by step and then by path",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/set.go::ReadSet",
+          "symbol": "packages/go/engine/dbspec/set.go::ReadSet",
           "signature": "func(path string) (Set, []SetError)"
         },
         "php": {
@@ -2370,7 +2370,7 @@
       "state": "Parses and validates the text; documents maps each other document name of the declared set to its text for use lines. Returns the document and the positions of its declarations in source order when it has no diagnostic (docs/dbspec.md Declaration positions), otherwise every diagnostic in source order, no document and no positions",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/dbspec.go::Parse",
+          "symbol": "packages/go/engine/dbspec/dbspec.go::Parse",
           "signature": "func(text string, documents map[string]string) (*Document, []Position, []Diagnostic)"
         },
         "php": {
@@ -2406,7 +2406,7 @@
       "state": "Parses the text as parse does and returns its result unchanged with the tokens of the text, each with its line, start and end in code points and its class (docs/dbspec.md Syntax analysis)",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/analyze.go::Analyze",
+          "symbol": "packages/go/engine/dbspec/analyze.go::Analyze",
           "signature": "func(text string, documents map[string]string) Analysis"
         },
         "php": {
@@ -2442,7 +2442,7 @@
       "state": "Returns emit(parse(text)) when the text has no diagnostic, otherwise every diagnostic and no text; a document with a diagnostic is never rewritten (docs/dbspec.md Formatting)",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/analyze.go::Format",
+          "symbol": "packages/go/engine/dbspec/analyze.go::Format",
           "signature": "func(text string, documents map[string]string) (string, []Diagnostic)"
         },
         "php": {
@@ -2478,7 +2478,7 @@
       "state": "Writes the canonical text of the document; emitting a parsed canonical text returns the same bytes",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/dbspec.go::Emit",
+          "symbol": "packages/go/engine/dbspec/dbspec.go::Emit",
           "signature": "func(document *Document) string"
         },
         "php": {
@@ -2514,7 +2514,7 @@
       "state": "Orders the documents by name and returns their manifest text, schema text, manifestHash and schemaHash; a document name that repeats returns one name.duplicate diagnostic and no manifest",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/dbspec.go::ManifestOf",
+          "symbol": "packages/go/engine/dbspec/dbspec.go::ManifestOf",
           "signature": "func(documents []*Document) (*Manifest, []Diagnostic)"
         },
         "php": {
@@ -2550,7 +2550,7 @@
       "state": "Checks the document set like Dbspec.manifest and returns its diagnostics, or the statements that create its tables in the dialect, in the order and text of docs/dialects.md Rendered statements; an unknown dialect is a programming error",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/render.go::Render",
+          "symbol": "packages/go/engine/dbspec/render.go::Render",
           "signature": "func(documents []*Document, dialect Dialect) ([]string, []Diagnostic)"
         },
         "php": {
@@ -2586,7 +2586,7 @@
       "state": "Reads the current database (MySQL), the current schema (PostgreSQL) or the main database (SQLite) of the connection into one document with the given name and lists, ordered by table, kind and name, the objects it leaves out (docs/dialects.md Introspection); the number of catalog queries does not depend on the table count, and a failing query or a catalog that yields no document is an error",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/introspect.go::Introspect",
+          "symbol": "packages/go/engine/dbspec/introspect.go::Introspect",
           "signature": "func(ctx context.Context, q Querier, dialect Dialect, name string) (*Document, []Unsupported, error)"
         },
         "php": {
@@ -2622,7 +2622,7 @@
       "state": "Compares the tables that the owned documents of the set use from external documents with the introspected document: a missing table or column, another type or nullability, another primary key or a missing unique key is one text in table and column order; no external document gives none (docs/dbspec.md External documents)",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/dbspec.go::ExternalDifferences",
+          "symbol": "packages/go/engine/dbspec/dbspec.go::ExternalDifferences",
           "signature": "func(live *Document, documents []*Document) []string"
         },
         "php": {
@@ -2658,7 +2658,7 @@
       "state": "Reads a plan document: the plan and no diagnostic, or the diagnostics located in the plan, a target diagnostic moved to its plan line, and no plan (docs/plans.md Plan document)",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/plan.go::ParsePlan",
+          "symbol": "packages/go/engine/dbspec/plan.go::ParsePlan",
           "signature": "func(text string) (*Plan, []Diagnostic)"
         },
         "php": {
@@ -2694,7 +2694,7 @@
       "state": "Writes the canonical text of the plan; emitting a parsed canonical plan returns the same bytes",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/plan.go::EmitPlan",
+          "symbol": "packages/go/engine/dbspec/plan.go::EmitPlan",
           "signature": "func(p *Plan) string"
         },
         "php": {
@@ -2730,7 +2730,7 @@
       "state": "Orders the plans into one chain from the empty database, or returns the chain diagnostics that name the plans; no plan gives the empty chain (docs/plans.md Chain)",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/plan.go::Chain",
+          "symbol": "packages/go/engine/dbspec/plan.go::Chain",
           "signature": "func(plans []*Plan) ([]*Plan, []Diagnostic)"
         },
         "php": {
@@ -2766,7 +2766,7 @@
       "state": "The changes from the source schema, none for the empty database, to the target of the plan in the order of docs/plans.md Diff, or the plan diagnostics",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/plan_diff.go::Diff",
+          "symbol": "packages/go/engine/dbspec/plan_diff.go::Diff",
           "signature": "func(source *Document, p *Plan) ([]Change, []Diagnostic)"
         },
         "php": {
@@ -2802,7 +2802,7 @@
       "state": "Every difference from the source schema text to the target schema text without a plan, ordered by table and kind, or the compare diagnostic of each side that is not a schema text (docs/plans.md Comparison)",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/compare.go::CompareSchemas",
+          "symbol": "packages/go/engine/dbspec/compare.go::CompareSchemas",
           "signature": "func(source, target *Document) ([]Difference, []Diagnostic)"
         },
         "php": {
@@ -2838,7 +2838,7 @@
       "state": "Compares the tables of the set that the introspected database has with the schema text of the set: an unsupported object of a set table, or else every difference, as one text each; none means the database holds the set (docs/schema.md Schema installation)",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/add_tables_and_columns.go::InstalledDifferences",
+          "symbol": "packages/go/engine/dbspec/add_tables_and_columns.go::InstalledDifferences",
           "signature": "func(live *Document, unsupported []Unsupported, target *Document) []string"
         },
         "php": {
@@ -2874,7 +2874,7 @@
       "state": "The tables, columns and indexes that adding the set creates and the plan steps that create them, when every difference is a missing table, a column with null or a default or a non-unique index; otherwise no step and the differences (docs/schema.md Adding tables and columns)",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/add_tables_and_columns.go::AddTablesAndColumnsSteps",
+          "symbol": "packages/go/engine/dbspec/add_tables_and_columns.go::AddTablesAndColumnsSteps",
           "signature": "func(live *Document, unsupported []Unsupported, target *Document, dialect Dialect) (added []string, steps []PlanStep, differences []string)"
         },
         "php": {
@@ -2910,7 +2910,7 @@
       "state": "The steps of the plan from the source schema in the dialect, each with its statement, rollback or irreversible reason, effect, restore statements, null checks and finalize mark, or the diff diagnostics; an unknown dialect is a programming error (docs/plans.md Steps)",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/plan_steps.go::PlanSteps",
+          "symbol": "packages/go/engine/dbspec/plan_steps.go::PlanSteps",
           "signature": "func(source *Document, p *Plan, dialect Dialect) ([]PlanStep, []Diagnostic)"
         },
         "php": {
@@ -2946,7 +2946,7 @@
       "state": "Applies the plans of the chain that the database has not applied, step by step up to their finalize steps, under the lock and the history table, with the events of docs/plans.md Apply; a database that applied the whole chain stays unchanged",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/apply.go::Apply",
+          "symbol": "packages/go/engine/dbspec/apply.go::Apply",
           "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error"
         },
         "php": {
@@ -2982,7 +2982,7 @@
       "state": "Continues the interrupted plan forward from the step whose effect the catalog shows, up to applied, or to done for a finalizing plan; without an interrupted plan nothing changes (docs/plans.md Apply)",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/apply.go::Recover",
+          "symbol": "packages/go/engine/dbspec/apply.go::Recover",
           "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error"
         },
         "php": {
@@ -3018,7 +3018,7 @@
       "state": "Undoes the last plan of the history with its rollback statements down to its first step and deletes its row; an applied plan is checked for drift and NULL rows first, and a step without rollback stops it (docs/plans.md Apply)",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/apply.go::Rollback",
+          "symbol": "packages/go/engine/dbspec/apply.go::Rollback",
           "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error"
         },
         "php": {
@@ -3054,7 +3054,7 @@
       "state": "Runs the finalize steps of every applied plan in chain order, dropping the hidden tables and columns, and records the plans done (docs/plans.md Apply)",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/apply.go::Finalize",
+          "symbol": "packages/go/engine/dbspec/apply.go::Finalize",
           "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error"
         },
         "php": {
@@ -3090,7 +3090,7 @@
       "state": "Writes the document as a standard Mermaid erDiagram and lists what the diagram leaves out in table, kind and name order (docs/mermaid.md Export)",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/mermaid.go::ExportMermaid",
+          "symbol": "packages/go/engine/dbspec/mermaid.go::ExportMermaid",
           "signature": "func(d *Document) (string, []Unsupported)"
         },
         "php": {
@@ -3126,7 +3126,7 @@
       "state": "Reads a standard Mermaid erDiagram into a document with the given name and lists what import leaves out, or returns the mermaid diagnostic of a line outside the grammar (docs/mermaid.md Import)",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/mermaid.go::ImportMermaid",
+          "symbol": "packages/go/engine/dbspec/mermaid.go::ImportMermaid",
           "signature": "func(text, name string) (*Document, []Unsupported, []Diagnostic)"
         },
         "php": {
@@ -3499,7 +3499,7 @@
     {
       "id": "IRRequest",
       "native": {
-        "go": "engine/ir/ir.go::Request",
+        "go": "packages/go/engine/ir/ir.go::Request",
         "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Request",
         "rust": "packages/rust/orm/src/ir.rs::Request",
         "typescript": "packages/ts/src/ir.ts::Request",
@@ -3530,7 +3530,7 @@
     {
       "id": "IRQuery",
       "native": {
-        "go": "engine/ir/ir.go::Query",
+        "go": "packages/go/engine/ir/ir.go::Query",
         "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Query",
         "rust": "packages/rust/orm/src/ir.rs::Query",
         "typescript": "packages/ts/src/ir.ts::RequestQuery",
@@ -3575,7 +3575,7 @@
     {
       "id": "IRColumns",
       "native": {
-        "go": "engine/ir/ir.go::Columns",
+        "go": "packages/go/engine/ir/ir.go::Columns",
         "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Columns",
         "rust": "packages/rust/orm/src/ir.rs::Columns",
         "typescript": "packages/ts/src/ir.ts::Projection",
@@ -3599,7 +3599,7 @@
     {
       "id": "IRJoin",
       "native": {
-        "go": "engine/ir/ir.go::Join",
+        "go": "packages/go/engine/ir/ir.go::Join",
         "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Join",
         "rust": "packages/rust/orm/src/ir.rs::Join",
         "typescript": "packages/ts/src/ir.ts::Join",
@@ -3620,7 +3620,7 @@
     {
       "id": "IRRelation",
       "native": {
-        "go": "engine/ir/ir.go::Relation",
+        "go": "packages/go/engine/ir/ir.go::Relation",
         "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Relation",
         "rust": "packages/rust/orm/src/ir.rs::Relation",
         "typescript": "packages/ts/src/ir.ts::Relation",
@@ -3639,7 +3639,7 @@
     {
       "id": "IRKeyPair",
       "native": {
-        "go": "engine/ir/ir.go::KeyPair",
+        "go": "packages/go/engine/ir/ir.go::KeyPair",
         "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::KeyPair",
         "rust": "packages/rust/orm/src/ir.rs::KeyPair",
         "typescript": "packages/ts/src/ir.ts::KeyPair",
@@ -3653,7 +3653,7 @@
     {
       "id": "IRGroup",
       "native": {
-        "go": "engine/ir/ir.go::Group",
+        "go": "packages/go/engine/ir/ir.go::Group",
         "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Group",
         "rust": "packages/rust/orm/src/ir.rs::Group",
         "typescript": "packages/ts/src/ir.ts::Group",
@@ -3672,7 +3672,7 @@
     {
       "id": "IRItem",
       "native": {
-        "go": "engine/ir/ir.go::Item",
+        "go": "packages/go/engine/ir/ir.go::Item",
         "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Item",
         "rust": "packages/rust/orm/src/ir.rs::Item",
         "typescript": "packages/ts/src/ir.ts::Item",
@@ -3693,7 +3693,7 @@
     {
       "id": "IRPred",
       "native": {
-        "go": "engine/ir/ir.go::Pred",
+        "go": "packages/go/engine/ir/ir.go::Pred",
         "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Pred",
         "rust": "packages/rust/orm/src/ir.rs::Pred",
         "typescript": "packages/ts/src/ir.ts::Predicate",
@@ -3727,7 +3727,7 @@
     {
       "id": "IRColRef",
       "native": {
-        "go": "engine/ir/ir.go::ColRef",
+        "go": "packages/go/engine/ir/ir.go::ColRef",
         "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::ColRef",
         "rust": "packages/rust/orm/src/ir.rs::ColRef",
         "typescript": "packages/ts/src/ir.ts::ColumnReferenceIR",
@@ -3744,7 +3744,7 @@
     {
       "id": "IRFunc",
       "native": {
-        "go": "engine/ir/ir.go::Func",
+        "go": "packages/go/engine/ir/ir.go::Func",
         "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Func",
         "rust": "packages/rust/orm/src/ir.rs::Func",
         "typescript": "packages/ts/src/ir.ts::OrmFunction",
@@ -3761,7 +3761,7 @@
     {
       "id": "IRColFunc",
       "native": {
-        "go": "engine/ir/ir.go::ColFunc",
+        "go": "packages/go/engine/ir/ir.go::ColFunc",
         "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::ColFunc",
         "rust": "packages/rust/orm/src/ir.rs::ColFunc",
         "typescript": "packages/ts/src/ir.ts::ColumnFunction",
@@ -3776,7 +3776,7 @@
     {
       "id": "IRSub",
       "native": {
-        "go": "engine/ir/ir.go::Sub",
+        "go": "packages/go/engine/ir/ir.go::Sub",
         "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Sub",
         "rust": "packages/rust/orm/src/ir.rs::Sub",
         "typescript": "packages/ts/src/ir.ts::Subquery",
@@ -3794,7 +3794,7 @@
     {
       "id": "IRJoinedRef",
       "native": {
-        "go": "engine/ir/ir.go::JoinedRef",
+        "go": "packages/go/engine/ir/ir.go::JoinedRef",
         "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::JoinedRef",
         "rust": "packages/rust/orm/src/ir.rs::JoinedRef",
         "typescript": "packages/ts/src/ir.ts::JoinedReference",
@@ -3811,7 +3811,7 @@
     {
       "id": "IROrder",
       "native": {
-        "go": "engine/ir/ir.go::Order",
+        "go": "packages/go/engine/ir/ir.go::Order",
         "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Order",
         "rust": "packages/rust/orm/src/ir.rs::Order",
         "typescript": "packages/ts/src/ir.ts::Order",
@@ -3833,7 +3833,7 @@
     {
       "id": "IRLimit",
       "native": {
-        "go": "engine/ir/ir.go::Limit",
+        "go": "packages/go/engine/ir/ir.go::Limit",
         "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Limit",
         "rust": "packages/rust/orm/src/ir.rs::Limit",
         "typescript": "packages/ts/src/ir.ts::Limit",
@@ -3848,7 +3848,7 @@
     {
       "id": "IRIfParent",
       "native": {
-        "go": "engine/ir/ir.go::IfParent",
+        "go": "packages/go/engine/ir/ir.go::IfParent",
         "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::IfParent",
         "rust": "packages/rust/orm/src/ir.rs::IfParent",
         "typescript": "packages/ts/src/ir.ts::IfParent",
@@ -3863,7 +3863,7 @@
     {
       "id": "IRAssign",
       "native": {
-        "go": "engine/ir/ir.go::Assign",
+        "go": "packages/go/engine/ir/ir.go::Assign",
         "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Assign",
         "rust": "packages/rust/orm/src/ir.rs::Assign",
         "typescript": "packages/ts/src/ir.ts::Assignment",
@@ -3886,7 +3886,7 @@
     {
       "id": "IROptimist",
       "native": {
-        "go": "engine/ir/ir.go::Optimist",
+        "go": "packages/go/engine/ir/ir.go::Optimist",
         "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Optimist",
         "rust": "packages/rust/orm/src/ir.rs::Optimist",
         "typescript": "packages/ts/src/ir.ts::Optimistic",
@@ -4013,7 +4013,7 @@
       "for": "once",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/dbspec.go::Diagnostic",
+          "symbol": "packages/go/engine/dbspec/dbspec.go::Diagnostic",
           "fields": [
             "Rule",
             "Line",
@@ -4073,7 +4073,7 @@
       "for": "once",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/dbspec.go::Manifest",
+          "symbol": "packages/go/engine/dbspec/dbspec.go::Manifest",
           "fields": [
             "ManifestText",
             "ExternalText",
@@ -4139,7 +4139,7 @@
       "for": "once",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/plan.go::Plan",
+          "symbol": "packages/go/engine/dbspec/plan.go::Plan",
           "fields": [
             "DropColumns",
             "DropTables",
@@ -4225,7 +4225,7 @@
       "for": "once",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/plan_steps.go::PlanStep",
+          "symbol": "packages/go/engine/dbspec/plan_steps.go::PlanStep",
           "fields": [
             "Effect",
             "Finalize",
@@ -4315,7 +4315,7 @@
       "for": "once",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/plan_steps.go::Effect",
+          "symbol": "packages/go/engine/dbspec/plan_steps.go::Effect",
           "fields": [
             "Kind",
             "Name",
@@ -4375,7 +4375,7 @@
       "for": "once",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/plan_steps.go::NullCheck",
+          "symbol": "packages/go/engine/dbspec/plan_steps.go::NullCheck",
           "fields": [
             "Column",
             "Default",
@@ -4430,7 +4430,7 @@
       "for": "once",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/plan_diff.go::Change",
+          "symbol": "packages/go/engine/dbspec/plan_diff.go::Change",
           "fields": [
             "Kind",
             "Name",
@@ -4484,7 +4484,7 @@
       "for": "once",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/compare.go::Difference",
+          "symbol": "packages/go/engine/dbspec/compare.go::Difference",
           "fields": [
             "Kind",
             "Name",
@@ -4538,7 +4538,7 @@
       "for": "once",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/introspect.go::Unsupported",
+          "symbol": "packages/go/engine/dbspec/introspect.go::Unsupported",
           "fields": [
             "Kind",
             "Name",
@@ -4598,7 +4598,7 @@
       "for": "once",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/plan.go::TableRename",
+          "symbol": "packages/go/engine/dbspec/plan.go::TableRename",
           "fields": [
             "New",
             "Old"
@@ -4646,7 +4646,7 @@
       "for": "once",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/plan.go::ColumnRename",
+          "symbol": "packages/go/engine/dbspec/plan.go::ColumnRename",
           "fields": [
             "New",
             "Old",
@@ -4700,7 +4700,7 @@
       "for": "once",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/plan.go::ColumnName",
+          "symbol": "packages/go/engine/dbspec/plan.go::ColumnName",
           "fields": [
             "Name",
             "Table"
@@ -4748,7 +4748,7 @@
       "for": "once",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/apply.go::ApplyEvent",
+          "symbol": "packages/go/engine/dbspec/apply.go::ApplyEvent",
           "fields": [
             "Kind",
             "Plan",
@@ -4804,7 +4804,7 @@
       "for": "once",
       "native": {
         "go": {
-          "symbol": "engine/dbspec/apply.go::ApplyError",
+          "symbol": "packages/go/engine/dbspec/apply.go::ApplyError",
           "fields": [
             "Code",
             "Err",

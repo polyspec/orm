@@ -21,7 +21,7 @@ The checker is a TypeScript program (`tests/interfaces/check/main.mts`) that rea
 Run the structure checks without a database:
 
 ```sh
-go test ./contracts
+go test ./tests/interfaces/contracts
 node --test tests/interfaces/check/*.test.mts
 node tests/interfaces/check/main.mts --self-test
 node tests/interfaces/check/main.mts --language php --self-test

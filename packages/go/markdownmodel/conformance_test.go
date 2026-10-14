@@ -23,9 +23,9 @@ import (
 
 	"debug/buildinfo"
 
-	"github.com/polyspec/orm/internal/testcase"
 	"github.com/polyspec/orm/packages/go/markdownmodel"
 	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // conformanceDir는 공유 suite의 directory다: cases.json, flowmark.version, corpus/.

@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/internal/testcase"
 	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // AddTablesAndColumns를 SQLite, MySQL, PostgreSQL에서 확인한다. case database는 다른

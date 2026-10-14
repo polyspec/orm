@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/engine/ir"
-	"github.com/polyspec/orm/engine/plan"
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/engine/plan"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 func TestTypedKeyValuesCannotCollide(t *testing.T) {

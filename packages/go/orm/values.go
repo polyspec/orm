@@ -1,6 +1,6 @@
 package orm
 
-import "github.com/polyspec/orm/engine/ir"
+import "github.com/polyspec/orm/packages/go/engine/ir"
 
 // NullType is the type of Null.
 type NullType struct{}

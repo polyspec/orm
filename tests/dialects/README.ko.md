@@ -1,5 +1,5 @@
 <!-- doc-id: tests-dialects-readme -->
-<!-- source-sha256: 07da29e91fb55eaf1d487d77b87f9b50900c4f12a435d60c92b7e7ae14153c96 -->
+<!-- source-sha256: 6f891b1ebf9e1933f2e8a0171043ff570830f5fe8b01cbf3b5b4b8509c321565 -->
 # 스키마 dialect 사실 probe
 
 [English](README.md)
@@ -44,7 +44,7 @@ version을 기록한다.
 `<dir>/bench.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00`을 열고
 자기 임시 디렉터리에 생긴 파일 이름을 확인한다.
 
-각 probe는 `internal/testcase`의 case다. 실행 중에 `RUN <probe>
+각 probe는 `packages/go/testcase`의 case다. 실행 중에 `RUN <probe>
 deadline=1m0s`, 시작과 각 `observed` 값의 `STEP` 줄, `PASS <probe>
 elapsed=<elapsed>` 또는 `FAIL <probe> elapsed=<elapsed>: <reason>`을
 출력한다. 각 probe는 자기 30초 deadline을 가지며 정리 단계도 별도 30초를

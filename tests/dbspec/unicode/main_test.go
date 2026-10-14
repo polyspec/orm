@@ -11,7 +11,7 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // repoRoot는 이 test package(tests/dbspec/unicode)에서 저장소 root다.

@@ -2,7 +2,7 @@
 // compile하고, 그 compile은 case를 보고하지 않는다. 그래서 먼저 같은 package, build tag와 build flag로
 // test를 하나도 실행하지 않는 `go test -run '^$' -count=1`을 장기 작업 `go-build/<packages>`로
 // 기한 없이 실행해(runLong: compiler 출력과 종료 코드를 STEP 줄로) build cache를 채우고, 그 뒤 받은
-// 인자 그대로 `go test`를 실행한다. 실행 단계의 test는 internal/testcase로 case마다 자기 기한을 가진다.
+// 인자 그대로 `go test`를 실행한다. 실행 단계의 test는 packages/go/testcase로 case마다 자기 기한을 가진다.
 // 실행 단계는 `go test -json`(test2json)으로 실행하고, 그 event의 Output을 사람이 읽는 출력으로 그대로 잇는다.
 // `-run`으로 test를 고른 실행은 실행된 test(`"Action":"run"` event)가 하나도 없으면 실패한다: 이름을 잘못 쓴
 // pattern은 아무것도 실행하지 않고도 0으로 끝나므로, 실패로 보지 않으면 아무것도 시험하지 않은 채 통과한다. 수는

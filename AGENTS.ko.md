@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 06c7a77986ac25def47a3cd7934bd67ad0c3533ed636c11900d80f1ab78348ad -->
+<!-- source-sha256: 373a971c4dbb06f6701316a0ce82bfd3455dcb30f97190e5978fe304126f7c90 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -26,10 +26,12 @@ orm 자신의 규칙만 적는다.
   kit에 없거나 잘못된 도구는 kit에 알리고, 여기서 복사하거나 고치지 않는다. 이 저장소의 규칙은 사본을 읽지 않는다.
 - client package는 `packages/<runtime>`이고 runtime은 `go`, `ts`(TypeScript client), `php`, `php-ext`(PHP 확장),
   `python`, `rust`다(PRINCIPLES.md의 S5): folder 이름은 저장소 prefix를 갖지 않고, 배포 이름(`@polyspec/orm`,
-  `polyspec/orm`, `polyspec-orm`)은 그것을 유지한다. Go module `github.com/polyspec/orm`(`go.mod`, `engine/`,
-  `generator/`, `cmd/`, `internal/`, 그리고 `contracts/`, `tests/`, `examples/`, `bench/`의 Go file)은 저장소 root에
-  남으며 S5는 이를 거부한다: 그것을 `packages/` 아래로 옮기면 module path가 새로 바뀌고, engine, generator와
-  `tests/`의 Go program을 어디에 둘지 결정해야 한다(T137-1).
+  `polyspec/orm`, `polyspec-orm`)은 그것을 유지한다. Go module은 `github.com/polyspec/orm/packages/go`
+  (`packages/go/go.mod`)다: client(`orm`, `model`과 다른 생성 model), engine(`engine/`), generator(`generator/`),
+  `cmd/orm-gen`, `tests/`의 Go program이 import하므로 공개 package인 case harness `testcase`와 process event
+  `procevent`, 그리고 `internal/testdb`를 가진다. `tests/`의 Go runner, physical test, 도구 program은 module
+  `github.com/polyspec/orm/tests`(`tests/go.mod`)이고, example은 `github.com/polyspec/orm/examples`(`examples/go.mod`)이며,
+  root의 `go.work`가 셋을 묶으므로 replace directive 없이 checkout의 `packages/go`를 쓴다.
 - dbspec의 editor package는 `packages/dbspec-language`(language service와 `dbspec-fmt` 명령),
   `packages/dbspec-lsp`(language server), `packages/dbspec-codemirror`(CodeMirror extension),
   `packages/dbspec-vscode`(VS Code extension)다. 앞의 셋은 client와 함께 npm archive
@@ -99,7 +101,7 @@ orm 자신의 규칙만 적는다.
   registry와 advisory database에 묻고 `config/dependency-review.json`을 쓴다.
   `make dependency-policy-check`와 `make dependency-policy-mutation-check`는 그 기록과 manifest와 lock을 읽고
   registry에 묻지 않는다.
-- 검사가 쓰는 모든 toolchain은 선언 하나로 고정하고 확인한다: `.node-version`, `go.mod`의 `go` 줄,
+- 검사가 쓰는 모든 toolchain은 선언 하나로 고정하고 확인한다: `.node-version`, `packages/go/go.mod`의 `go` 줄,
   `.composer-version`, `rust-toolchain.toml`은 정확한 release를, `.php-version`과 PostgreSQL major release는
   설치 도구가 허용하는 만큼 정확한 release를 적고, CI는 선언한 것을 설치하며, 실행 중인 도구가 다르면
   `make toolchain-check`와 `make repo-check`가 실패한다. 새 release는 그 release의 CI 증거와 함께 선언을 바꾸어 들인다.
@@ -175,7 +177,7 @@ orm 자신의 규칙만 적는다.
 - Go, PHP, Rust, TypeScript는 하나의 동작 계약을 공유한다. 데이터베이스 의존 기능은 모든 클라이언트의 MySQL, PostgreSQL, SQLite 실행 증거가 필요하다. 데이터베이스 비의존 기능은 모든 클라이언트의 동등한 실행 사례가 필요하다. 환경 부재나 실행되지 않은 사례는 실패다.
 - Go, PHP, Rust, TypeScript 출력에 선언된 벡터만 정확히 들어 있고 각 결과가 같을 때만 적합성 기대값을 기록한다. 거부된 기록은 기대값 파일을 변경하지 않는다.
 - 적합성 비교와 기록은 비어 있지 않고 중복 없는 벡터 이름 및 각 데이터베이스 기대값 파일에서 정확히 같은 벡터 이름을 요구한다. 누락되거나 추가된 이름은 오류다.
-- 공통 계획·방언·스키마·오류 동작은 `engine/*`, `cmd/orm-gen`, 계약 문서에서 정의한다. 클라이언트 동작은 소유하는 `packages/<runtime>/*` 폴더에 구현하고 공통 검증은 `tests/*`, `schema/*`, `scripts/*`에 둔다. 지원하는 모든 클라이언트에서 필요한 실행 사례가 통과하기 전에는 기능을 완료하지 않는다.
+- 공통 계획·방언·스키마·오류 동작은 `packages/go/engine/*`, `packages/go/cmd/orm-gen`, 계약 문서에서 정의한다. 클라이언트 동작은 소유하는 `packages/<runtime>/*` 폴더에 구현하고 공통 검증은 `tests/*`, `schema/*`, `scripts/*`에 둔다. 지원하는 모든 클라이언트에서 필요한 실행 사례가 통과하기 전에는 기능을 완료하지 않는다.
 - 기능 coverage 증거는 현재 검사에서 실행한 명령의 정확한 사례 ID와 결과·데이터베이스 상태가 같은 두 번의 실행에서 얻는다. 이름만 있는 테스트 파일이나 저장된 출력은 실행 증거가 아니다. coverage 검사기는 `make feature-coverage`에서, 그 변경 반례 테스트는 `make feature-unit-check`에서 실행한다. `make check`는 검증 명령을 각 명령이 선언한 `shard`(cargo로 Rust를 build하고 실행하는 명령은 `rust`)에 따라 `make feature-verify-rust`와 `make feature-verify-other`에서 실행하고, `make feature-check`는 그 셋을 실행한다.
 - coverage 검사기는 선언된 각 언어의 테스트 파일과 정확한 사례 필터를 직접 실행하고 종료 코드와 관찰한 테스트 이벤트에서 성공을 판단한다. 테스트 출력은 성공 보고서나 데이터베이스 상태 digest를 제공할 수 없다. 데이터베이스 사례에서는 검사기 자체 상태 판독기로 매 실행 전후의 선언된 데이터베이스 상태를 읽는다.
 - coverage 사례 ID는 언어에 공통인 동작을 가리킨다. Go와 Rust 명령은 해당 ID를 소유 파일의 정확한 실제 테스트 심볼에 연결하며, 검사기는 그 심볼의 통과를 확인한 뒤에만 ID를 수용한다. 데이터베이스 사례에서 검사기는 선택한 데이터베이스와 DSN을 실제 테스트 프로세스에 전달한다.
@@ -202,11 +204,11 @@ orm 자신의 규칙만 적는다.
   commit의 CI가 성공한 뒤 `main`에 둔다: VERSION과 `config/release.json`의 `manifests`가 이름을 적은 모든 package file을
   X.Y.Z로 바꾸고(`make version-check`), CHANGELOG.md와 CHANGELOG.ko.md에서 `## Unreleased`를 새 빈 `## Unreleased`
   아래의 `## X.Y.Z`로 바꾼다.
-- 그 commit의 CI(`push-gate`와 `ci-passed`)가 성공한 뒤 maintainer가 그 commit에 `vX.Y.Z`를 tag하고 push한다. 그 tag는
-  저장소 root의 Go module `github.com/polyspec/orm`도 release한다. tag를 만들고 옮기고 push하는 것은 maintainer뿐이다.
+- 그 commit의 CI(`push-gate`와 `ci-passed`)가 성공한 뒤 maintainer가 그 commit에 `vX.Y.Z`를 tag하고 같은 commit의 Go module
+  tag `packages/go/vX.Y.Z`와 함께 push한다. 그 tag가 Go module `github.com/polyspec/orm/packages/go`를 release한다. tag를 만들고 옮기고 push하는 것은 maintainer뿐이다.
 - tag의 push는 `.github/workflows/release.yml`을 실행하고, 그것이 GitHub Release를 게시한다: `make release-verify`
   (commit이 `main`에 있고 그 check `push-gate`와 `ci-passed`가 성공했다), `make release-versions`(release하는 모든
-  manifest가 X.Y.Z를 가지고, `go.mod`의 module path가 `github.com/polyspec/orm`이며, 변경 이력에 그 section이 있다),
+  manifest가 X.Y.Z를 가지고, `packages/go/go.mod`의 module path가 `github.com/polyspec/orm/packages/go`이며, 변경 이력에 그 section이 있다),
   `make release-assets`(`@polyspec/orm`의 `polyspec-orm-npm-X.Y.Z.tgz`, `polyspec/orm`의 `polyspec-orm-php-X.Y.Z.zip`,
   `polyspec/orm-dbspec`의 `polyspec-orm-dbspec-php-X.Y.Z.zip`, `polyspec-orm`의 `polyspec_orm-X.Y.Z-py3-none-any.whl`), `make release-publish`(그 section의 notes로 만든
   release이며, GitHub release 본문의 한도인 125000자를 넘는 section은 tag의 CHANGELOG.md에서 그 section을 가리키는 한 줄이

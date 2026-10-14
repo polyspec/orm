@@ -37,7 +37,7 @@ caseTest('a changed file selects the transaction end tests that it holds or that
 });
 
 caseTest('a whole-suite command is split by package', 5000, async () => {
-  assert.deepEqual(selected(await selectOwners(manifest, root, ['engine/ir/operators_test.go'])), ['planner/planner-go-ir']);
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/engine/ir/operators_test.go'])), ['planner/planner-go-ir']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/DbspecRenderTest.php'])), ['schema_definition/schema-php']);
 });
 
@@ -252,7 +252,7 @@ caseTest('a path that only a lint selects is untested unless its scope is declar
 
 caseTest('a generator source selects the check that regenerates the models', 5000, () => {
   const { targets: declared } = readCheckInputs(root);
-  const selected = selectTargets(declared, ['generator/gen_go.go']).filter(({ tested }) => tested.length).map(({ target }) => target);
+  const selected = selectTargets(declared, ['packages/go/generator/gen_go.go']).filter(({ tested }) => tested.length).map(({ target }) => target);
   assert.deepEqual(selected, ['go-model-check']);
 });
 

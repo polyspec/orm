@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/internal/testcase"
 	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // sqlitePathCase는 tests/dsn/sqlite-paths.json의 case 하나다.

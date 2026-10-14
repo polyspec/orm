@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/polyspec/orm/engine/ir"
-	"github.com/polyspec/orm/engine/plan"
+	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/engine/plan"
 )
 
 // cached is one plan-cache entry with the facts every execution needs.

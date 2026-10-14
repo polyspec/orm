@@ -6,8 +6,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/polyspec/orm/internal/testcase"
 	"github.com/polyspec/orm/packages/go/model"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // TestCoverageModelQueryRows는 seed bench database의 author을 generated

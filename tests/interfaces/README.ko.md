@@ -1,5 +1,5 @@
 <!-- doc-id: tests-interfaces-readme -->
-<!-- source-sha256: 0f8d85f67da003c92b74ba1c1a875670b1b328beccdffd99338c6b64f0425c6e -->
+<!-- source-sha256: a0b1231242acfd7df810f49de0717bd7c1cec16046d0ff1e925a38795470ba72 -->
 # 공통 인터페이스 검사
 
 [contracts/interfaces.json](../../contracts/interfaces.json)이 인터페이스 구조를 정의한다. [인터페이스 구조 문서](../../docs/interfaces.ko.md)와 함께 변경한다.
@@ -22,7 +22,7 @@
 데이터베이스 없이 구조 검사를 실행한다.
 
 ```sh
-go test ./contracts
+go test ./tests/interfaces/contracts
 node --test tests/interfaces/check/*.test.mts
 node tests/interfaces/check/main.mts --self-test
 node tests/interfaces/check/main.mts --language php --self-test

@@ -74,7 +74,7 @@ Notation: "renderer CHECK" is a CHECK constraint that the renderer writes for a 
 | MySQL | 8.4.11; `sql_mode` includes `STRICT_TRANS_TABLES`; `lower_case_table_names=1`; `log_bin=1`; `log_bin_trust_function_creators=0`; `explicit_defaults_for_timestamp=1`; server time zone `SYSTEM` (KST) (`mysql.env.server`) |
 | PostgreSQL | 17.11; `TimeZone=Asia/Seoul`; database collation `C`; `max_identifier_length=63` (`postgres.env.server`) |
 | SQLite (probes) | 3.53.4 through `modernc.org/sqlite` v1.58.0 (`sqlite.env.library`) |
-| SQLite, Go client | `modernc.org/sqlite` v1.58.0 (`go.mod`): 3.53.4 from `select sqlite_version()` |
+| SQLite, Go client | `modernc.org/sqlite` v1.58.0 (`packages/go/go.mod`): 3.53.4 from `select sqlite_version()` |
 | SQLite, PHP client | `pdo_sqlite` of PHP 8.5.10: 3.53.4 from `select sqlite_version()` |
 | SQLite, TypeScript client | `node:sqlite` of Node 26.11.1: 3.53.4 from `select sqlite_version()`; `package.json` accepts Node 26.11.1 and later, whose later bundled versions were not measured |
 | SQLite file name | A file name that still carries the DSN query is opened literally by PHP PDO, `node:sqlite` and the `sqlite3` shell, which create `bench.sqlite?_pragma=…`; `modernc.org/sqlite` parses the query (`sqlite.filename.*` cases of `TestSQLiteFileNameWithQuery`). A client removes the query before it names the file |

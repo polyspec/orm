@@ -1,7 +1,7 @@
 # The python native entries of the entity rules of contracts/interfaces.json: each names a symbol of
 # the Python snapshot (contracts/symbols/python.json), its signature equals that snapshot value
 # without spaces, and its parameters and return type are the python entries of the common input and
-# output tables of contracts/validate.go, as contracts/validate.go and tests/interfaces/check require
+# output tables of tests/interfaces/contracts/validate.go, as tests/interfaces/contracts/validate.go and tests/interfaces/check require
 # of the native entries of the other clients.
 import json
 import re
@@ -16,7 +16,7 @@ def compact(text: str) -> str:
 
 
 def python_table(validate: str, name: str) -> dict:
-    """The python entry of each key of a table of contracts/validate.go (outputs or inputs)."""
+    """The python entry of each key of a table of tests/interfaces/contracts/validate.go (outputs or inputs)."""
     start = validate.index(f'var {name} = map[string]map[string]string{{')
     end = validate.index('\n}\n', start)
     table = {}

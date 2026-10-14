@@ -11,8 +11,8 @@ import (
 	_ "github.com/polyspec/orm/packages/go/orm/pg"
 	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
 
-	"github.com/polyspec/orm/internal/testcase"
-	"github.com/polyspec/orm/internal/testdb"
+	"github.com/polyspec/orm/packages/go/internal/testdb"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // schemaSetDatabase는 case가 혼자 쓰는 database(internal/testdb)의 DSN이다.

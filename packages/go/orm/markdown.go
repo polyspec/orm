@@ -17,9 +17,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/polyspec/orm/engine/ir"
-	"github.com/polyspec/orm/engine/plan"
-	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/engine/plan"
+	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 )
 
 // markdownDSN은 markdown:// DSN의 flowmark server 주소, corpus 이름, token이다

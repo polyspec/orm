@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // ddlVectors is tests/dbspec/ddl.json (docs/dialects.md "Rendered

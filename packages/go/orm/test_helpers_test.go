@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/internal/testdb"
+	"github.com/polyspec/orm/packages/go/internal/testdb"
 )
 
 // requireDSN returns the DSN in env; an unset variable fails the test.

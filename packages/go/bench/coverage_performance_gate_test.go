@@ -5,7 +5,7 @@ package bench
 import (
 	"testing"
 
-	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // TestCoveragePerformanceGate는 ORM_BENCH_MYSQL_DSN의 seed bench database에서

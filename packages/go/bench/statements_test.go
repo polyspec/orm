@@ -5,9 +5,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/polyspec/orm/internal/testcase"
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // TestNativeStatementsEqualClient는 hot-path gate의 native 쪽이 generated

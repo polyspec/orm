@@ -20,8 +20,8 @@ import (
 	yamlparser "github.com/goccy/go-yaml/parser"
 	"github.com/goccy/go-yaml/token"
 	orderedjson "github.com/polyspec/ordered-json/packages/go"
-	"github.com/polyspec/orm/engine/ir"
-	"github.com/polyspec/orm/engine/plan"
+	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/engine/plan"
 	goyaml "go.yaml.in/yaml/v3"
 )
 

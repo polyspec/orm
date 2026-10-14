@@ -1,5 +1,5 @@
 <!-- doc-id: readme -->
-<!-- source-sha256: 17732a1064064ef4ce6b095e40c57cb15081158f0005b94a97880022cfdd5e30 -->
+<!-- source-sha256: f4d9993b8bf21788353a6333f27c1093da26b4e12308be9af607872a732d55bb -->
 # orm
 
 **Go, PHP, Python, Rust, TypeScript**를 위한 스키마 기반 모델 query grammar다. 목표 문법은 [docs/dsl.ko.md](docs/dsl.ko.md), 작업 순서는 [docs/plan.ko.md](docs/plan.ko.md)에 명시되어 있다.
@@ -67,7 +67,7 @@ vendor-php/bin/orm-gen gen --set schema/dbspec-set.json --out packages/php/gen -
 (cd packages/ts && npm run build)                            # TypeScript models and library
 (cd packages/rust && cargo build --release)                          # build.rs generates the Rust models
 make python-check                                                     # Python client: unit, interfaces, models
-go test ./...
+go test ./packages/go/... ./tests/... ./examples/...
 npm run typescript:test
 (cd packages/rust && cargo test --workspace)
 node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH_MYSQL_DSN"   # compares the five clients

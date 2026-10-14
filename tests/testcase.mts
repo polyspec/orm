@@ -1,5 +1,5 @@
 // JavaScript test와 check runner가 case마다 쓰는 진행 보고 형식과 case별 기한이다
-// (internal/testcase의 Go 형식과 같다).
+// (packages/go/testcase의 Go 형식과 같다).
 //
 //   RUN <case> deadline=<기한>
 //   STEP <case> elapsed=<경과>: <단계>
