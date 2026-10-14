@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1c2ae48719ce95825895420d32de7233f192d74f3b9ecee47629ca87c434f8a3 -->
+<!-- source-sha256: edad7018d536bc1eefcf934274504ac70710f66af1dd23fd316157a2f64a536f -->
 # 변경 이력
 
 ## Unreleased
 
+- T137-2: dependency review가 kit 전환의 모든 lock을 기록한다. TypeScript 6 interface reader와 kit이 받아들인 sprintf-js advisory는 근거를 적은 예외다.
 - T137: orm이 kit 0.0.38을 package @polyspec/kit로 받고 그 표준을 따른다. client 폴더 이름은 runtime 이름이고(packages/go, packages/php, packages/python, …), AGENTS.md는 kit 원칙에 연결하며, toolchain floor는 kit pin을 따르고, TypeScript interface reader는 TypeScript 7에 안정 API가 생길 때까지 TypeScript 6으로 돈다. layout 결과는 T137-1이다.
 - T137 (breaking): orm은 kit을 vendored 사본 대신 npm package `@polyspec/kit`으로 받고(`make install-tools TOOLS=npm`, `make install-packages`) 그 PRINCIPLES.md를 link한다. client folder는 runtime 이름이다: `packages/go`, `packages/ts`, `packages/php`, `packages/php-ext`, `packages/python`(Python client의 subdirectory), `packages/rust`이며 그 crate는 `build/`와 `schema/`에 있다. Go import path는 `github.com/polyspec/orm/packages/go/...`다. toolchain 하한은 kit의 pin이다: Node.js 26.11.1, PHP 8.5, Python 3.14, Go 1.27.2, Rust 1.99.0, TypeScript 7.0.2. TypeScript client의 `orm-gen --scan`은 oxc-parser로 parse하므로 `@polyspec/orm`은 더는 TypeScript compiler에 의존하지 않는다.
 
