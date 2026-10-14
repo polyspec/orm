@@ -82,7 +82,7 @@ func seedDeletedEntries(t *testing.T, entry *orm.Entity, db *orm.DB) map[string]
 
 // partScope adds part = value to the where of every read and restore.
 func partScope(value string) orm.RequestHook {
-	return func(r *ir.Request, addParam func(any) int) error {
+	return func(r *ir.Request, addParam func(any) int, params []any) error {
 		if r.Kind == "restore" || slices.Contains(hookReadKinds, r.Kind) {
 			andWhere(&r.Query, partIs(addParam, value))
 		}
@@ -157,7 +157,7 @@ var hookReadKinds = []string{"one", "all", "count", "group_count", "sum", "avg",
 
 // partFilter는 read에 part = value를 더하는 hook이다.
 func partFilter(value string) orm.RequestHook {
-	return func(r *ir.Request, addParam func(any) int) error {
+	return func(r *ir.Request, addParam func(any) int, params []any) error {
 		if slices.Contains(hookReadKinds, r.Kind) {
 			andWhere(&r.Query, partIs(addParam, value))
 		}
@@ -217,8 +217,37 @@ var requestHookCases = []struct {
 		}
 	}},
 
+	{"reads_params", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
+		// The hook reads the value that the model bound to the assignment of the insert, on a copy of the parameters.
+		var seen any
+		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int, params []any) error {
+			if r.Kind == "insert" {
+				for _, a := range r.Set {
+					if a.Column == "label" && a.P != nil {
+						seen = params[*a.P]
+						params[*a.P] = "changed"
+					}
+				}
+			}
+			return nil
+		})
+		if _, err := hookItem(e, hooked, map[string]any{"part": "r", "label": "read"}).Create(); err != nil {
+			t.Fatal(err)
+		}
+		if seen != "read" {
+			t.Fatalf("the hook read %v, want read", seen)
+		}
+		stored := false
+		for _, row := range hookRows(t, e, db) {
+			stored = stored || row["label"] == "read"
+		}
+		if !stored {
+			t.Fatal("a change of the parameters that the hook reads reached the request")
+		}
+	}},
+
 	{"insert_assign", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
-		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int) error {
+		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int, params []any) error {
 			if r.Kind != "insert" {
 				return nil
 			}
@@ -253,7 +282,7 @@ var requestHookCases = []struct {
 	{"loaded_row_writes", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
 		seedHookItems(t, e, db)
 		var kinds []string
-		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int) error {
+		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int, params []any) error {
 			kinds = append(kinds, r.Kind)
 			if r.Kind == "update" || r.Kind == "delete" {
 				andWhere(&r.Query, partIs(addParam, "none"))
@@ -301,7 +330,7 @@ var requestHookCases = []struct {
 	}},
 
 	{"invalid_param", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
-		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int) error {
+		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int, params []any) error {
 			p := r.NParams + 5
 			andWhere(&r.Query, ir.Pred{Column: "part", Op: "eq", P: &p})
 			return nil
@@ -321,7 +350,7 @@ var requestHookCases = []struct {
 		}
 		// hook의 오류는 그대로 돌아온다.
 		failing := errors.New("hook refused")
-		_, err = hookItem(e, db.WithRequestHook(func(*ir.Request, func(any) int) error { return failing }), nil).GetCount()
+		_, err = hookItem(e, db.WithRequestHook(func(*ir.Request, func(any) int, []any) error { return failing }), nil).GetCount()
 		if !errors.Is(err, failing) || statements != 0 {
 			t.Fatalf("count with a failing hook = %v after %d statements, want the hook error and none", err, statements)
 		}
@@ -385,7 +414,7 @@ var requestHookCases = []struct {
 		ids := seedDeletedEntries(t, entry, db)
 		// The hook scopes the restore to part a and gives the model's label its own value y.
 		scope := partScope("a")
-		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int) error {
+		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int, params []any) error {
 			if r.Kind == "restore" {
 				for i := range r.Set {
 					if r.Set[i].Column == "label" {
@@ -394,7 +423,7 @@ var requestHookCases = []struct {
 					}
 				}
 			}
-			return scope(r, addParam)
+			return scope(r, addParam, params)
 		})
 		row, err := hookEntry(entry, hooked, map[string]any{"label": "x", "note": "n4"}).Restore()
 		if err != nil {
@@ -411,7 +440,7 @@ var requestHookCases = []struct {
 	{"restore_hook_set_key", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
 		ids := seedDeletedEntries(t, entry, db)
 		// The hook puts part a first in the set; the model's label completes the unique key.
-		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int) error {
+		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int, params []any) error {
 			if r.Kind == "restore" {
 				p := addParam("a")
 				r.Set = append([]ir.Assign{{Column: "part", P: &p}}, r.Set...)
