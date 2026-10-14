@@ -64,3 +64,30 @@ caseTest('the committed models equal the generator output', 30000, () => {
   assert.equal(result.error, undefined);
   assert.deepEqual({ status: result.status, stdout: result.stdout, stderr: result.stderr }, { status: 0, stdout: '', stderr: '' });
 });
+
+// Collects the identifier names an AST node refers to, outside its import declarations.
+function referencedNames(node, names = new Set()) {
+  if (Array.isArray(node)) {
+    for (const child of node) referencedNames(child, names);
+  } else if (node && typeof node === 'object') {
+    if (node.type === 'ImportDeclaration') return names;
+    if (typeof node.name === 'string' && /Identifier|TSTypeReference/.test(node.type)) names.add(node.name);
+    for (const value of Object.values(node)) if (value && typeof value === 'object') referencedNames(value, names);
+  }
+  return names;
+}
+
+// 기한 10 s: committed generated file을 oxc-parser로 읽기만 한다.
+caseTest('a generated model file imports only what it uses and declares each type once', 10000, () => {
+  for (const file of ['src/models/models.ts', 'src/models/decimal_fixture/models.ts', 'src/models/markdown_fixture/models.ts']) {
+    const { program, errors } = parseSync(file, readFileSync(join(client, file), 'utf8'));
+    assert.deepEqual(errors.map(error => error.message), [], `${file} parses`);
+    const used = referencedNames(program.body);
+    const imported = program.body.filter(s => s.type === 'ImportDeclaration').flatMap(s => s.specifiers.map(specifier => specifier.local.name));
+    assert.deepEqual(imported.filter(name => !used.has(name)), [], `${file} imports names it does not use`);
+    const declared = node => node.declaration ?? node;
+    const classes = new Set(program.body.map(declared).filter(d => d.type === 'ClassDeclaration').map(d => d.id.name));
+    const merged = program.body.map(declared).filter(d => d.type === 'TSInterfaceDeclaration' && classes.has(d.id.name)).map(d => d.id.name);
+    assert.deepEqual(merged, [], `${file} merges an interface into a class`);
+  }
+});
