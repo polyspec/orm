@@ -7,9 +7,9 @@
 //! objects and gets back its tables, columns, primary keys and foreign keys.
 
 use polyspec_orm_case_clock::CaseClock;
-use polyspec_orm_testcase::Trial;
 use polyspec_orm_schema::dbspec::model::{DefaultValue, Document};
 use polyspec_orm_schema::dbspec::{self, export_mermaid, import_mermaid, Unsupported};
+use polyspec_orm_testcase::Trial;
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::time::Duration;
@@ -86,19 +86,22 @@ fn run(body: impl FnOnce() -> Result<(), String>) {
 fn mermaid_vectors() -> Vec<Trial> {
     let vectors = vectors();
     let mut trials = Vec::new();
-    for (kind, check) in [("export", export_case as fn(&Value) -> Result<(), String>), ("import", import_case), ("invalid", invalid_case), ("round_trip", round_trip_case)] {
+    for (kind, check) in
+        [("export", export_case as fn(&Value) -> Result<(), String>), ("import", import_case), ("invalid", invalid_case), ("round_trip", round_trip_case)]
+    {
         for case in cases(&vectors, kind) {
             let id = case["id"].as_str().expect("id").to_owned();
             let case = case.clone();
-            trials.push(polyspec_orm_testcase::trial(format!("mermaid_vectors::{id}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || run(|| check(&case))));
+            trials.push(polyspec_orm_testcase::trial(format!("mermaid_vectors::{id}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || {
+                run(|| check(&case))
+            }));
         }
     }
     trials
 }
 
 fn export_case(case: &Value) -> Result<(), String> {
-    let set: BTreeMap<String, String> =
-        case["documents"].as_object().expect("documents").iter().map(|(name, text)| (name.clone(), lines(text))).collect();
+    let set: BTreeMap<String, String> = case["documents"].as_object().expect("documents").iter().map(|(name, text)| (name.clone(), lines(text))).collect();
     let document = dbspec::parse(&lines(&case["document"]), &set).map(|parsed| parsed.document).map_err(|e| format!("document: {e:?}"))?;
     let (text, dropped) = export_mermaid(&document);
     let want = lines(&case["mermaid"]);

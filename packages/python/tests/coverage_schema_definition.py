@@ -4,7 +4,7 @@
 # fixture.
 import json
 
-from coverage_case import REPOSITORY_ROOT, run_cases
+from .coverage_case import REPOSITORY_ROOT, run_cases
 from polyspec.orm.dbspec import analyze_dbspec, dbspec_manifest, emit_dbspec, format_dbspec, parse_dbspec, \
     render_dbspec
 

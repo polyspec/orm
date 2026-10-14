@@ -47,42 +47,65 @@ mod checked_value_tests {
         assert_eq!(transform("unknown", "input").unwrap_err().code(), crate::codes::CONFIG);
     }
 
+    /// The checked values outside the shared cases: integers past 2^53 round, and other kinds are refused.
     #[test]
-    fn aggregate_numbers_follow_shared_binary64_cases_without_changing_checked_values() {
+    fn aggregate_numbers_round_integers_and_refuse_other_kinds() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let fixture: serde_json::Value =
-            serde_json::from_str(include_str!("../../../../contracts/fixtures/aggregate_numeric.json")).expect("aggregate fixture");
-        assert_eq!(fixture["feature"], "model_queries");
-        let cases = fixture["cases"].as_array().expect("aggregate cases");
-        assert_eq!(cases.len(), 9);
         assert_eq!(Val::Str("48.0450".into()).as_f64().unwrap_err().code(), crate::codes::CODEC_DECODE);
-        for case in cases {
-            let id = case["id"].as_str().expect("case id");
-            assert_eq!(case["operation"], "aggregate_numeric", "{id}");
-            let value = match case["input_type"].as_str().expect("input type") {
-                "decimal_text" | "integer_text" => Val::Str(case["input"].as_str().expect("numeric text").into()),
-                "null" => {
-                    assert!(case["input"].is_null(), "{id}");
-                    Val::Null
-                }
-                other => panic!("{id}: unsupported input type {other}"),
-            };
-            match (case["expected"]["bits"].as_str(), case["expected"]["error"].as_str()) {
-                (Some(bits), None) => {
-                    let expected = u64::from_str_radix(bits, 16).expect("binary64 bits");
-                    let number = value.as_aggregate_f64().unwrap_or_else(|error| panic!("{id}: {error}"));
-                    assert!(number.is_finite(), "{id}");
-                    assert_eq!(number.to_bits(), expected, "{id}");
-                }
-                (None, Some("CODEC_DECODE")) => assert_eq!(value.as_aggregate_f64().unwrap_err().code(), crate::codes::CODEC_DECODE, "{id}"),
-                other => panic!("{id}: invalid expected result {other:?}"),
-            }
-        }
         assert_eq!(Val::I64((1i64 << 53) + 1).as_aggregate_f64().unwrap().to_bits(), 0x4340_0000_0000_0000);
         assert_eq!(Val::F64(f64::INFINITY).as_aggregate_f64().unwrap_err().code(), crate::codes::CODEC_DECODE);
         assert_eq!(Val::Bool(true).as_aggregate_f64().unwrap_err().code(), crate::codes::CODEC_DECODE);
         assert_eq!(Val::Bytes(b"48.0450".to_vec()).as_aggregate_f64().unwrap_err().code(), crate::codes::CODEC_DECODE);
     }
+}
+
+/// contracts/fixtures/aggregate_numeric.json, one test per case named by its id (`value::aggregate_numeric::<id>`).
+#[cfg(test)]
+mod aggregate_numeric {
+    use super::Val;
+
+    /// Runs the case `id` of the fixture: its numeric text reads to the expected binary64 bits, or fails with CODEC_DECODE.
+    fn run(id: &str) {
+        let fixture: serde_json::Value =
+            serde_json::from_str(include_str!("../../../../contracts/fixtures/aggregate_numeric.json")).expect("aggregate fixture");
+        assert_eq!(fixture["feature"], "model_queries");
+        let cases: Vec<&serde_json::Value> = fixture["cases"].as_array().expect("aggregate cases").iter().filter(|c| c["id"] == id).collect();
+        let [case] = cases.as_slice() else { panic!("{id}: the fixture holds the case {} times", cases.len()) };
+        assert_eq!(case["operation"], "aggregate_numeric", "{id}");
+        let value = match case["input_type"].as_str().expect("input type") {
+            "decimal_text" | "integer_text" => Val::Str(case["input"].as_str().expect("numeric text").into()),
+            "null" => {
+                assert!(case["input"].is_null(), "{id}");
+                Val::Null
+            }
+            other => panic!("{id}: unsupported input type {other}"),
+        };
+        match (case["expected"]["bits"].as_str(), case["expected"]["error"].as_str()) {
+            (Some(bits), None) => {
+                let expected = u64::from_str_radix(bits, 16).expect("binary64 bits");
+                let number = value.as_aggregate_f64().unwrap_or_else(|error| panic!("{id}: {error}"));
+                assert!(number.is_finite(), "{id}");
+                assert_eq!(number.to_bits(), expected, "{id}");
+            }
+            (None, Some("CODEC_DECODE")) => assert_eq!(value.as_aggregate_f64().unwrap_err().code(), crate::codes::CODEC_DECODE, "{id}"),
+            other => panic!("{id}: invalid expected result {other:?}"),
+        }
+    }
+
+    /// One test per case id; the parity check compares these names with the ids of the fixture.
+    macro_rules! cases {
+        ($($id:ident),* $(,)?) => {
+            $(
+                #[test]
+                fn $id() {
+                    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+                    run(stringify!($id));
+                }
+            )*
+        };
+    }
+
+    cases!(decimal_average, integer_tie_even, integer_next, largest_finite, overflow, invalid_text, not_a_number, infinity, null);
 }
 
 /// A bound parameter. Generated code converts typed arguments into this.

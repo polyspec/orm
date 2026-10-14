@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from test_sqlite import generate_document
+from .test_sqlite import generate_document
 
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = Path(__file__).resolve().parents[1]

@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 
 from polyspec.orm.dbspec.introspect_mysql import _create_checks  # noqa: E402
-from vector_case import VectorCase, vector_tests  # noqa: E402
+from .vector_case import VectorCase, vector_tests  # noqa: E402
 
 
 DATA = json.loads((ROOT / 'tests' / 'dbspec' / 'show-create.json').read_text(encoding='utf-8'))

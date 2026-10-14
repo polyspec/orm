@@ -1,6 +1,6 @@
 use polyspec_orm_case_clock::CaseClock;
-use polyspec_orm_testcase::Trial;
 use polyspec_orm_schema::dbspec::{self, Document};
+use polyspec_orm_testcase::Trial;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -309,7 +309,9 @@ fn shared_dbspec_files(file: &Value, seen: &mut std::collections::BTreeSet<Strin
         let id = case["id"].as_str().unwrap();
         assert!(!id.is_empty() && seen.insert(id.to_owned()), "case id {id} is nonempty and unique");
         let (case, path) = (case.clone(), path.clone());
-        trials.push(polyspec_orm_testcase::trial(format!("shared_dbspec_files::{id}"), polyspec_orm_testcase::wall_for_cpu(CASE_DEADLINE), move || read_file_case(&case, &path)));
+        trials.push(polyspec_orm_testcase::trial(format!("shared_dbspec_files::{id}"), polyspec_orm_testcase::wall_for_cpu(CASE_DEADLINE), move || {
+            read_file_case(&case, &path)
+        }));
     }
     trials
 }
@@ -396,7 +398,11 @@ fn main() {
     let mut trials = shared_dbspec_vectors(&file, &mut seen);
     trials.extend(shared_dbspec_files(&file, &mut seen));
     trials.extend(shared_dbspec_syntax(&file));
-    trials.push(polyspec_orm_testcase::trial("syntax_entries_match_the_analyses", polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE), syntax_entries_match_the_analyses));
+    trials.push(polyspec_orm_testcase::trial(
+        "syntax_entries_match_the_analyses",
+        polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE),
+        syntax_entries_match_the_analyses,
+    ));
     trials.push(polyspec_orm_testcase::trial(
         "shared_dbspec_cases_reader_refuses_missing_and_unknown_fields",
         polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE),

@@ -8,8 +8,8 @@
 //! diagnostics.
 
 use polyspec_orm_case_clock::CaseClock;
-use polyspec_orm_testcase::Trial;
 use polyspec_orm_schema::dbspec::{self, chain, compare_schemas, diff, emit_plan, parse_plan, plan_steps, Dialect, Document, Plan, PlanStep};
+use polyspec_orm_testcase::Trial;
 use serde_json::Value;
 
 /// step의 plans.json object다(docs/plans.md "Steps").
@@ -96,12 +96,16 @@ fn plan_vectors() -> Vec<Trial> {
     for case in cases {
         let name = case["id"].as_str().expect("id").to_owned();
         let case = case.clone();
-        trials.push(polyspec_orm_testcase::trial(format!("plan_vectors::{name}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || plan_vectors_cases(&case)));
+        trials.push(polyspec_orm_testcase::trial(format!("plan_vectors::{name}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || {
+            plan_vectors_cases(&case)
+        }));
     }
     for case in invalid {
         let name = case["id"].as_str().expect("id").to_owned();
         let case = case.clone();
-        trials.push(polyspec_orm_testcase::trial(format!("plan_vectors::{name}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || plan_vectors_invalid(&case)));
+        trials.push(polyspec_orm_testcase::trial(format!("plan_vectors::{name}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || {
+            plan_vectors_invalid(&case)
+        }));
     }
     trials
 }
@@ -165,7 +169,9 @@ fn plan_chains() -> Vec<Trial> {
     for case in chains {
         let name = case["id"].as_str().expect("id").to_owned();
         let case = case.clone();
-        trials.push(polyspec_orm_testcase::trial(format!("plan_chains::{name}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || plan_chains_chains(&case)));
+        trials.push(polyspec_orm_testcase::trial(format!("plan_chains::{name}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || {
+            plan_chains_chains(&case)
+        }));
     }
     trials
 }
@@ -173,12 +179,8 @@ fn plan_chains() -> Vec<Trial> {
 fn plan_chains_chains(case: &Value) {
     let id = format!("chain/{}", case["id"].as_str().expect("id"));
     run(&id, || {
-        let plans: Vec<Plan> = case["plans"]
-            .as_array()
-            .expect("plans")
-            .iter()
-            .map(|p| parse_plan(&lines(p)).map_err(|e| format!("parse: {e:?}")))
-            .collect::<Result<_, _>>()?;
+        let plans: Vec<Plan> =
+            case["plans"].as_array().expect("plans").iter().map(|p| parse_plan(&lines(p)).map_err(|e| format!("parse: {e:?}"))).collect::<Result<_, _>>()?;
         let (order, errors): (Vec<String>, Vec<String>) = match chain(&plans) {
             Ok(ordered) => (ordered.iter().map(|p| p.name().to_owned()).collect(), Vec::new()),
             Err(diagnostics) => {
@@ -205,7 +207,9 @@ fn plan_parse_errors() -> Vec<Trial> {
     for case in parse {
         let name = case["id"].as_str().expect("id").to_owned();
         let case = case.clone();
-        trials.push(polyspec_orm_testcase::trial(format!("plan_parse_errors::{name}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || plan_parse_errors_parse(&case)));
+        trials.push(polyspec_orm_testcase::trial(format!("plan_parse_errors::{name}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || {
+            plan_parse_errors_parse(&case)
+        }));
     }
     trials
 }
@@ -239,7 +243,9 @@ fn plan_comparisons() -> Vec<Trial> {
     for case in comparisons {
         let name = case["id"].as_str().expect("id").to_owned();
         let case = case.clone();
-        trials.push(polyspec_orm_testcase::trial(format!("plan_comparisons::{name}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || plan_comparisons_comparisons(&case)));
+        trials.push(polyspec_orm_testcase::trial(format!("plan_comparisons::{name}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || {
+            plan_comparisons_comparisons(&case)
+        }));
     }
     trials
 }

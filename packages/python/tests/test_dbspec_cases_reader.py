@@ -4,7 +4,7 @@ import json
 import unittest
 from pathlib import Path
 
-from dbspec_cases_reader import CasesError, check_cases
+from .dbspec_cases_reader import CasesError, check_cases
 
 ROOT = Path(__file__).resolve().parents[3]
 

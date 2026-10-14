@@ -22,7 +22,7 @@ import pymysql  # noqa: E402
 from polyspec.orm.dbspec import emit_dbspec, parse_dbspec  # noqa: E402
 from polyspec.orm.dbspec.introspect import introspect_dbspec  # noqa: E402
 from polyspec.orm.dbspec.render import render_dbspec  # noqa: E402
-from vector_case import VectorCase, vector_tests  # noqa: E402
+from .vector_case import VectorCase, vector_tests  # noqa: E402
 
 # tests/dbspec/introspect의 연결 규칙과 같다(packages/ts/tests/dbspec-introspect.mjs).
 CONNECTION_RULES = {

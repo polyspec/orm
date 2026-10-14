@@ -3780,7 +3780,9 @@
         "packages/python/tests/test_ir_validate.py",
         "engine/ir/params_test.go",
         "packages/rust/orm/tests/unit/param_uses.rs",
-        "packages/ts/tests/param-uses.mjs"
+        "packages/ts/tests/param-uses.mjs",
+        "packages/rust/orm/tests/ir_validate.rs",
+        "packages/rust/orm/tests/unit/ir_request.rs"
       ],
       "docs": [
         "docs/protocol.md",
@@ -3890,11 +3892,12 @@
         },
         {
           "id": "planner-rust-validate",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs planner-rust-validate -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib engine::validate::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs planner-rust-validate -- cargo test --manifest-path packages/rust/Cargo.toml --locked -p polyspec-orm --features \"$ORM_RUST_TEST_FEATURES\" --test ir_validate",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/src/engine/validate.rs",
-            "packages/rust/orm/tests/unit/coverage_planner.rs",
+            "packages/rust/orm/tests/ir_validate.rs",
+            "packages/rust/orm/tests/unit/ir_request.rs",
             "tests/ir/validate.json"
           ]
         }
@@ -4721,7 +4724,8 @@
         "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
         "packages/ts/tests/coverage_authenticated_encryption.mjs",
         "contracts/fixtures/secret_config.dbs",
-        "packages/python/tests/test_codec_decode_vectors.py"
+        "packages/python/tests/test_codec_decode_vectors.py",
+        "packages/rust/orm/tests/codec_vectors.rs"
       ],
       "docs": [
         "docs/codec.md",
@@ -4774,11 +4778,21 @@
         },
         {
           "id": "encryption-codec-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs encryption-codec-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" codec",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs encryption-codec-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked -p polyspec-orm --features \"$ORM_RUST_TEST_FEATURES\" --lib codec",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/src/codec.rs",
-            "tests/codec/decode-vectors.json"
+            "packages/rust/orm/src/codec.rs"
+          ]
+        },
+        {
+          "id": "codec-vectors-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs codec-vectors-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked -p polyspec-orm --features \"$ORM_RUST_TEST_FEATURES\" --test codec_vectors",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/orm/tests/codec_vectors.rs",
+            "tests/codec/vectors.json",
+            "tests/codec/decode-vectors.json",
+            "contracts/fixtures/styled_column_states.json"
           ]
         },
         {

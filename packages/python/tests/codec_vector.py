@@ -10,7 +10,7 @@ from pathlib import Path
 from polyspec.ordered_json import Value as OrderedJson, stringify as ordered_json_stringify
 from polyspec.orm.codec import CodecError, blind_index, decode, encode, host_decode, host_encode
 from polyspec.orm.styled_value import StyledValue
-from vector_case import VectorCase, vector_tests
+from .vector_case import VectorCase, vector_tests
 
 ROOT = Path(__file__).resolve().parents[3]
 

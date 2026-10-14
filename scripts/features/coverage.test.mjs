@@ -447,7 +447,8 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', 12
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-// A Python owner runs on the interpreter that make names in ORM_PYTHON, with the test file and its case IDs. The
+// A Python owner runs on the interpreter that make names in ORM_PYTHON, as its module of the test package from the checkout
+// root, with its case IDs. The
 // interpreter here is a stand-in that checks those arguments, so the checker's part is tested without a Python.
 caseTest('Python cases execute on the interpreter of ORM_PYTHON', 8000, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-python-')));
@@ -462,7 +463,7 @@ caseTest('Python cases execute on the interpreter of ORM_PYTHON', 8000, async ()
     await mkdir(join(root, 'packages/python/tests'), { recursive: true });
     await mkdir(join(root, 'bin'));
     await writeFile(join(root, owner), '');
-    await writeFile(interpreter, `#!/bin/sh\n[ "$#" = 2 ] && [ "$1" = ${JSON.stringify(join(root, owner))} ] && [ "$2" = first ] || exit 2\necho 'CASE first PASS'\n`);
+    await writeFile(interpreter, `#!/bin/sh\n[ "$#" = 3 ] && [ "$1" = -m ] && [ "$2" = packages.python.tests.owner ] && [ "$3" = first ] && [ "$PWD" = ${JSON.stringify(root)} ] || exit 2\necho 'CASE first PASS'\n`);
     await chmod(interpreter, 0o755);
     process.env.ORM_PYTHON = interpreter;
     assert.deepEqual(await executeCoverage(manifest, root, 4000), []);
