@@ -69,11 +69,11 @@ final class OrmGenScanTest extends TestCase
     public function test_vector(array $case): void
     {
         $args = fn(int $n): string => implode(', ', array_fill(0, $n, '1'));
-        $calls = '';
-        foreach ($case['calls'] as $call) {
-            $calls .= "\$m->{$call['name']}({$args($call['args'])});\n";
-        }
-        $source = "<?php\nuse " . self::NS . "\\{$case['model']};\n\n\$m = new {$case['model']}();\n$calls";
+        $receiver = str_replace('{model}', $case['model'], $case['receiver'] ?? '$m');
+        $steps = array_map(static fn(array $call): string => "{$call['name']}({$args($call['args'])})", $case['calls']);
+        $calls = ($case['chain'] ?? false) ? "$receiver->" . implode('->', $steps) . ";\n"
+            : implode('', array_map(static fn(string $step): string => "$receiver->$step;\n", $steps));
+        $source = "<?php\nuse " . self::NS . "\\{$case['model']};\n\n\$db = null;\n\$m = new {$case['model']}();\n$calls";
         [$code, $err, $dir] = self::generate('vector-' . $case['id'], ['usage.php' => $source]);
         if (isset($case['expected']['rejected'])) {
             self::assertSame(1, $code, $case['id'] . ' status');
@@ -225,13 +225,15 @@ declare(strict_types=1);
 use $ns\\Author;
 use $ns\\User;
 
-function calls(Author \$a, User \$u): Author
+function calls(Author \$a, User \$u, Polyspec\\Orm\\Db \$db): Author
 {
     \$a->ltSeq(1)->andGeReadCount(2)->orNeIsClose(true)->lkName('n')->seqAndName(1, 'a')->betweenReadCount([1, 5]);
     \$a->gtStartDt(\\Polyspec\\Orm\\Func::class === '' ? new DateTimeImmutable() : new DateTimeImmutable());
     \$a->getsBySeqAndIsClose(1, false);
     \$a->orderBySeqDescAndNameAsc()->joinUserSeqWithSeq(\$u)->tupleUserSeqWithServiceSeq([[1, 2]]);
     \$a->aliasMine()->newExtra(1)->possibleSeq(1);
+    (new Author())->gtSeq(1)->andLeReadCount(2);
+    (new Author())(\$db)->andLtEndDt(new DateTimeImmutable())->orderBySeqAsc();
     \$u->neName('x');
     return \$a;
 }

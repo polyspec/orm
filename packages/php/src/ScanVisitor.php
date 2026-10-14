@@ -197,6 +197,10 @@ final class ScanVisitor extends NodeVisitorAbstract
         if ($e instanceof Node\Expr\FuncCall && $e->name instanceof Node\Name) {
             return $this->functions[strtolower($e->name->getLast())] ?? null;
         }
+        if ($e instanceof Node\Expr\FuncCall && $e->name instanceof Node\Expr) {
+            // A model is invocable: (new C)($db) returns the model, as a collection returns itself.
+            return $this->valueOf($e->name);
+        }
         if ($e instanceof Node\Expr\PropertyFetch || $e instanceof Node\Expr\NullsafePropertyFetch) {
             if ($e->var instanceof Node\Expr\Variable && $e->var->name === 'this' && $e->name instanceof Node\Identifier && $this->properties !== []) {
                 return $this->properties[count($this->properties) - 1][$e->name->toString()] ?? null;
