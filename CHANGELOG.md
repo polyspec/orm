@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Rust workspaces deny unsafe code and allow attributes without a reason. The planner's lifetime transmute is removed, the thread CPU clock reads through rustix, and only the SQLite authorizer callback keeps unsafe code, with its reason. (#T137-1-3)
 - T166: every client parses a document set through one set parse (Go dbspec.ParseSet, TypeScript parseDbspecSet, Python parse_dbspec_set, PHP and the extension Dbspec::parseSet, Rust dbspec::parse_set): each text is named by its parser's header, a repeated name is the later text's diagnostic, and the shared vectors tests/dbspec/set-parse.json hold the rule; every header read by string matching is removed.
 - T165-4: kit-check takes mise.toml and mise.lock as its inputs.
 - T167: the PHP client declares @template generics for the result of Db::transaction and the rows of a model (Collection, Page, gets, getsPage), so PHPStan level 9 types them.
