@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The PHP orm-gen scan resolves calls on `(new C)`, on the invoked model `(new C)($db)` and on chains of either. (#T175)
 - make scripts-typecheck builds the dbspec language service it type-checks against, and the MySQL migration case runs the migration script of the checkout. (#T137-1-4-8)
 - The TypeScript symbol record holds the chain methods that the conformance runner calls. (#T174-1)
 - config/layout.yml declares tests/generator, the scan vectors of the PHP and the node generator. (#T172-3)
