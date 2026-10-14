@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- make run-databases TARGETS=conformance-check VECTOR="..." runs the named conformance vectors on the provisioned bench databases, and RECORD=1 records a full run; RECORD with VECTOR is refused. The conformance README describes five clients. (#T169-2)
 - The shared decode vectors compare JSON values in every client, and the accepted YAML keys 1, "true", tRUE, nULL and .InF are shared vectors. PHP skips the three mixed-case keys for the purrphp defect of T142-1-1. (#T142-11)
 - The conformance vector creates_and_save records the insert parts of T169. (#T169-1)
 - Multi-row inserts run as power-of-two parts capped by the bind limit (999 on SQLite, 65535 on MySQL and PostgreSQL) inside the transaction, so the PHP plan cache holds a bounded number of insert shapes in every client. (#T169)
