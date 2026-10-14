@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mts) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-14T21:55:39.222Z",
+  "reviewed": "2026-10-14T22:22:13.358Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "24b3ad58ba4a5bee88f5370c855a98f08fbcc13ba7415d2864df15c0a73e95f1",
+      "sha256": "9c9b290ad58485032da55d6cd690536e65f4b9ffb0868a50d66e59699abd88c5",
       "advisories": [
         {
           "package": "sprintf-js",
@@ -104,6 +104,13 @@
       "package": "vitepress",
       "version": "1.6.4",
       "latest": "1.6.4"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "package.json",
+      "package": "yaml",
+      "version": "2.9.1",
+      "latest": "2.9.1"
     },
     {
       "ecosystem": "npm",

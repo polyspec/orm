@@ -45,7 +45,7 @@ make conformance-check
 
 ```sh
 node tests/conformance/check/main.mts run --out "$RUN_DIR/out" --driver mysql --dsn "$BENCH_MYSQL_DSN" --driver postgres --dsn "$BENCH_POSTGRES_DSN" --driver sqlite --dsn "$BENCH_SQLITE_DSN"
-go run ./tests/interfaces/check --results "$RUN_DIR/out" --results "$RUN_DIR/out/postgres" --results "$RUN_DIR/out/sqlite"
+node tests/interfaces/check/main.mts --results "$RUN_DIR/out" --results "$RUN_DIR/out/postgres" --results "$RUN_DIR/out/sqlite"
 ```
 `$RUN_DIR` is the directory of that one run (`.runtime/run/conformance-check-<make pid>`),
 which the target removes at its end: every run writes its outputs into a new

@@ -14,7 +14,7 @@ import (
 // check를 실행하고 성공하는지 확인한다.
 func TestCoverageInterfaceSymbols(t *testing.T) {
 	testcase.Start(t, testcase.Process)
-	cmd := exec.Command("go", "run", "./tests/interfaces/check", "-language", "go")
+	cmd := exec.Command("node", "tests/interfaces/check/main.mts", "-language", "go")
 	cmd.Dir = filepath.Join("..", "..", "..")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("interface check: %v\n%s", err, output)

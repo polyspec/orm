@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "The state contracts of contracts/interfaces.json read with their numbers as source text",
+  "description": "tests/interfaces/check reads the manifest a second time with every number kept as its source text, and takes from it only the expected value of each state contract, which it compares with conformance results as written.",
+  "type": "object",
+  "properties": {
+    "sequences": { "type": "array", "items": { "type": "object", "properties": { "expected": true } } }
+  }
+}

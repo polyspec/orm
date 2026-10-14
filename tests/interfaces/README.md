@@ -16,19 +16,22 @@ The checker verifies these requirements:
 - Prohibited symbols reject removed or unsupported operations such as cancellation and cursor pages.
 - Source mutations verify that the checker rejects missing methods, additional parameters, changed return types, changed field types, changed receivers, and undeclared state.
 
+The checker is a TypeScript program (`tests/interfaces/check/main.mts`) that reads each language's declarations with that language's own extractor (`tests/interfaces/go`, `php.php`, `rust`, `typescript.mts`, `python.py`). It expands the per-entity rules in the entity order of the dbspec document, which it reads from the TypeScript client build, so `npm run typescript:build` (or `make typescript-build`) comes first; `make interface-check` builds it.
+
 Run the structure checks without a database:
 
 ```sh
-go test ./contracts ./tests/interfaces/check
-go run ./tests/interfaces/check --self-test
-go run ./tests/interfaces/check --language php --self-test
-go run ./tests/interfaces/check --language php-extension
+go test ./contracts
+node --test tests/interfaces/check/*.test.mts
+node tests/interfaces/check/main.mts --self-test
+node tests/interfaces/check/main.mts --language php --self-test
+node tests/interfaces/check/main.mts --language php-extension
 ```
 
 Check the conformance results against the common state contracts (`sequences` of `contracts/interfaces.json`): `make conformance-check` runs the conformance runners into a directory of its own run and then
 
 ```sh
-go run ./tests/interfaces/check --results "$RUN_DIR/out" --results "$RUN_DIR/out/postgres" --results "$RUN_DIR/out/sqlite"
+node tests/interfaces/check/main.mts --results "$RUN_DIR/out" --results "$RUN_DIR/out/postgres" --results "$RUN_DIR/out/sqlite"
 ```
 
 A sequence lists the kinds of the statements it sends, in order, except utility statements, whose number and place differ per dialect (the conformance vectors list them exactly). A difference names the added and missing statements with their position, kind and SQL, a different result with both values, and a missing output with its path.
@@ -39,7 +42,7 @@ Regenerate the contract outputs after an interface change:
 (cd packages/go/model && go generate ./)
 vendor-php/bin/orm-gen gen --set schema/dbspec-set.json --out packages/php/gen --namespace 'Polyspec\Orm\Tests\Model'
 npm run typescript:build
-go run ./tests/interfaces/check --generate --record --self-test
+node tests/interfaces/check/main.mts --generate --record --self-test
 ```
 
 `--record` writes review candidates. Review the source diff and update the manifest hash. CI does not use `--record` or `--generate`; it fails when generated files, diagrams, symbol snapshots, or execution contracts differ.

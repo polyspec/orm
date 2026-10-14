@@ -1008,7 +1008,7 @@ conformance-check/run: lease-tool conformance-python-models
 	  [ $$recorded = 1 ] || { echo "conformance-check: the run failed before any comparison, so RECORD=1 has nothing to record" >&2; exit 1; }; \
 	  rm -rf $(RUN_DIR)/out && $(CONFORMANCE_RUN); \
 	else exit 1; fi
-	$(if $(VECTOR),@echo "conformance-check: the state contracts of contracts/interfaces.json are not checked because VECTOR selects only some of their vectors",PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mts interfaces-check ./tests/interfaces/check --results $(RUN_DIR)/out --results $(RUN_DIR)/out/postgres --results $(RUN_DIR)/out/sqlite)
+	$(if $(VECTOR),@echo "conformance-check: the state contracts of contracts/interfaces.json are not checked because VECTOR selects only some of their vectors",PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/interfaces/check/main.mts --results $(RUN_DIR)/out --results $(RUN_DIR)/out/postgres --results $(RUN_DIR)/out/sqlite)
 	rm -rf $(RUN_DIR)
 
 # markdown-conformance-check는 tests/markdown/cases.json의 case를 client마다 FLOWMARK의 flowmark server에서
@@ -1047,8 +1047,15 @@ decimal-physical-check: php-vendor-check cargo-downloads-check lease-tool
 	$(RUN_LONG) go-build/decimal-physical -- $(PUBLISH) $(abspath .runtime/bin/decimalmodel.test) go test -c -o @OUT@ -tags decimalphysical ./packages/go/decimalmodel
 	. $(DECIMAL_ENV) && node scripts/decimal-physical-check.mts
 
-interface-check: php-vendor-check lease-tool
-	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mts interfaces-check ./tests/interfaces/check --self-test
+# interface-check는 interface checker(tests/interfaces/check)의 test와 checker 자신을 --self-test로 실행한다. checker는 entity
+# 단위 rule을 TypeScript client의 build(packages/ts/dist)가 읽는 dbspec entity 순서로 펼친다.
+.PHONY: interface-check/tests interface-check/self-test
+interface-check: interface-check/tests interface-check/self-test
+interface-check/tests: php-vendor-check
+	node --test tests/interfaces/check/*.test.mts
+interface-check/self-test: php-vendor-check lease-tool typescript-build
+	$(READ_TYPESCRIPT)
+	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/interfaces/check/main.mts --self-test
 
 go-model-check:
 	$(RUN_LONG) go-model -- sh -c 'cd packages/go/model && go generate ./ && git diff --exit-code -- .'

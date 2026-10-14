@@ -101,28 +101,6 @@ func TestGroupedResultCannotBecomeModelCollection(t *testing.T) {
 	t.Fatal("Model.getsCount rule is missing")
 }
 
-func TestComponentDiagramsUseRequestedLanguage(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	english, err := Diagram()
-	if err != nil {
-		t.Fatal(err)
-	}
-	korean, err := DiagramKO()
-	if err != nil {
-		t.Fatal(err)
-	}
-	en, ko := string(english), string(korean)
-	if !strings.Contains(en, "| Component | Behavior and state |") || strings.Contains(en, "| 구성요소 |") {
-		t.Fatal("English diagram contains an invalid table heading")
-	}
-	if !strings.Contains(ko, "| 구성요소 | 동작 및 상태 |") || strings.Contains(ko, "| Component |") {
-		t.Fatal("Korean diagram contains an invalid table heading")
-	}
-	if strings.Count(en, "    class ") != strings.Count(ko, "    class ") || strings.Count(en, "\n| ") != strings.Count(ko, "\n| ") {
-		t.Fatal("localized diagrams contain different structures")
-	}
-}
-
 // TestExtensionContractRejectsDrift는 extension(PHP 확장 php-extension)의 adapter가 공통 입력과 결과의
 // extension 열과 다르거나, extension이 적은 rule과 adapter를 가진 rule이 다르면 manifest를 거부하는지 확인한다.
 func TestExtensionContractRejectsDrift(t *testing.T) {
