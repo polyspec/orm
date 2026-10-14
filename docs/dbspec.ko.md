@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 882eba34001f4a429cc887d31fed180c14f1cdaaf511b6a9f95bef1157d1d7f7 -->
+<!-- source-sha256: fc1ef970fbdf29d5264775f3d526e79ad416bf15802b42bbb3d0f2910a988906 -->
 # dbspec
 
 [English](dbspec.md)
