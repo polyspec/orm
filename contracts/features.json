@@ -609,6 +609,7 @@
         "packages/go/orm/conversion_error_test.go",
         "packages/go/orm/collection_key_test.go",
         "packages/php/tests/model_test.php",
+        "packages/php/tests/client_generics_test.php",
         "packages/php/tests/group_rows.php",
         "packages/php/tests/group_rows_db.php",
         "packages/php/tests/aggregate_numeric.php",
@@ -679,6 +680,14 @@
           "shard": "other",
           "inputs": [
             "packages/go/model/model_test.go"
+          ]
+        },
+        {
+          "id": "client-generics-php",
+          "command": "php packages/php/tests/client_generics_test.php",
+          "shard": "other",
+          "inputs": [
+            "packages/php/tests/client_generics_test.php"
           ]
         },
         {
