@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: f0c706aaec13f0d443dab4d07fe05fd005e69eb994fbfbe20d9098103a0eefe3 -->
+<!-- source-sha256: d1f1d614ef6615c029a6f55adc7b40ce87c6e5761f73cab525313abc0d379512 -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
@@ -477,15 +477,15 @@ request를 직접 compile하는 program은, 예를 들어 행을 identity key와
 
 | Client | Handle | Hook |
 |---|---|---|
-| Go | `h := db.WithRequestHook(hook)` | `orm.RequestHook`인 `func(r *ir.Request, addParam func(value any) int) error`이며 `r`을 직접 고친다. `ir`은 `github.com/polyspec/orm/engine/ir`이다 |
-| PHP | `$h = $db->withRequestHook($hook)` | `\Closure(Polyspec\Orm\Request $r): void`이며 `$r->ir`을 직접 고치고 `$r->param($value)`로 매개변수를 더한다 |
-| Rust | `let h = db.with_request_hook(hook);` | `Fn(&mut polyspec_orm::ir::Request, &mut polyspec_orm::RequestParams) -> polyspec_orm::Result<()>`이며 request를 직접 고치고 `params.add(value)`로 매개변수를 더한다 |
-| TypeScript | `const h = db.withRequestHook(hook)` | `RequestHook`인 `(request: Request, addParam: (value: unknown) => number) => Request`이며 plan할 request를 돌려준다 |
-| Python | `h = db.with_request_hook(hook)` | `RequestHook`인 `Callable[[IRRequest, Callable[[object], int]], IRRequest]`이며 plan할 request를 돌려준다. `IRRequest`는 `polyspec.orm.ir`의 것이다 |
+| Go | `h := db.WithRequestHook(hook)` | `orm.RequestHook`인 `func(r *ir.Request, addParam func(value any) int, params []any) error`이며 `r`을 직접 고치고 사본인 `params`에서 bind된 값을 읽는다. `ir`은 `github.com/polyspec/orm/engine/ir`이다 |
+| PHP | `$h = $db->withRequestHook($hook)` | `\Closure(Polyspec\Orm\Request $r): void`이며 `$r->ir`을 직접 고치고 `$r->param($value)`로 매개변수를 더하며 `$r->params`에서 bind된 값을 읽는다 |
+| Rust | `let h = db.with_request_hook(hook);` | `Fn(&mut polyspec_orm::ir::Request, &mut polyspec_orm::RequestParams) -> polyspec_orm::Result<()>`이며 request를 직접 고치고 `params.add(value)`로 매개변수를 더하며 `params.get(index)`로 bind된 값을 읽는다 |
+| TypeScript | `const h = db.withRequestHook(hook)` | `RequestHook`인 `(request: Request, addParam: (value: unknown) => number, params: readonly unknown[]) => Request`이며 plan할 request를 돌려주고 고정된 사본인 `params`에서 bind된 값을 읽는다 |
+| Python | `h = db.with_request_hook(hook)` | `RequestHook`인 `Callable[[IRRequest, Callable[[object], int], tuple], IRRequest]`이며 plan할 request를 돌려주고 tuple에서 bind된 값을 읽는다. `IRRequest`는 `polyspec.orm.ir`의 것이다 |
 
 - handle은 연결의 모든 것을 공유한다: pool(PHP에서는 PDO 연결), plan cache와 statement cache, statement event subscriber, 활성 transaction이다. handle은 자기가 나온 handle의 다른 속성(Go context, TypeScript signal)을 지키며, 그 handle에서 `WithContext`나 `withSignal`로 만든 handle도 hook을 지킨다. handle은 hook 하나를 가진다: hook이 있는 handle의 `withRequestHook`은 새 hook을 가진 handle을 돌려준다. `Root()`(Go)와 `root()`(Python, TypeScript)는 연결을 돌려준다.
 - client는 handle을 거쳐 실행되는 model 종단의 request마다 hook을 한 번 부른다: `one`과 `all` 읽기, `count`, `group_count`, `sum`, `avg`, `paginate`(page statement와 count statement에 한 번), 행 하나나 `rows`의 `insert`, `update`, `delete`, soft delete, `restore`, `on_duplicate`가 있는 insert, `getQuery`다. client가 model을 위해 만드는 request에도 부른다: 재귀 delete의 자식 delete와, handle에서 시작한 audit 값이 있는 transaction의 audit 기록 insert다. 자식이 자기 연결을 가진 relation은 그 연결을 거친다. `execute`, schema utility와 다른 utility는 request를 보내지 않으므로 hook을 부르지 않는다.
-- hook은 model이 만든 request와 매개변수를 더하는 수단을 받는다: `addParam(value)`는 value를 request 매개변수 끝에 더하고 그 index를 돌려준다. hook은 protocol이 허용하는 어떤 방식으로든 request를 바꿀 수 있다. 예를 들어 root, join, relation의 `where`에 predicate를, `set`에 assignment와 `rows`의 각 항목에 매개변수 하나를, `on_duplicate`에 항목을 더한다. client는 그 뒤 `n_params`를 매개변수 수로 쓰고 request를 다른 request처럼 plan한다. planner가 request를 검증하므로 매개변수 밖의 index는 `IR_INVALID`로, 모르는 column은 `COLUMN_UNKNOWN`으로 statement 전에 실패한다. plan cache는 값이 아니라 request로 key를 정하므로, hook이 같은 모양으로 바꾼 두 request는 hook이 더한 값과 관계없이 plan 하나를 함께 쓴다.
+- hook은 model이 만든 request, 그것이 bind한 매개변수(읽기 전용이라 hook이 호출자가 준 값을 확인할 수 있다), 매개변수를 더하는 수단을 받는다: `addParam(value)`는 value를 request 매개변수 끝에 더하고 그 index를 돌려준다. hook은 protocol이 허용하는 어떤 방식으로든 request를 바꿀 수 있다. 예를 들어 root, join, relation의 `where`에 predicate를, `set`에 assignment와 `rows`의 각 항목에 매개변수 하나를, `on_duplicate`에 항목을 더한다. client는 그 뒤 `n_params`를 매개변수 수로 쓰고 request를 다른 request처럼 plan한다. planner가 request를 검증하므로 매개변수 밖의 index는 `IR_INVALID`로, 모르는 column은 `COLUMN_UNKNOWN`으로 statement 전에 실패한다. plan cache는 값이 아니라 request로 key를 정하므로, hook이 같은 모양으로 바꾼 두 request는 hook이 더한 값과 관계없이 plan 하나를 함께 쓴다.
 - hook의 오류(PHP, Python, TypeScript는 throw, Go와 Rust는 반환)는 바뀌지 않은 채 statement 전에 operation을 실패시킨다.
 - model은 자기가 연결된 handle을 거친다. transaction 안에서 연결이 없는 model은 transaction을 시작한 handle을 거친다. hook이 있는 handle로 읽거나 만든 행은 그 handle을 지키므로, 그 뒤의 `update`, `delete`, `restore`도 hook을 지난다. hook이 있는 handle에서 시작한 transaction은 callback의 model에 hook을 지키며, 그 안에서 연결의 다른 handle에 연결한 model은 그 handle의 hook으로 실행된다.
 - 만든 행은 호출자가 지정한 값을 가진다. hook이 지정한 값은 써지지만 행으로 다시 읽히지 않는다.
