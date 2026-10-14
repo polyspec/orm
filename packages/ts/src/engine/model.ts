@@ -1,7 +1,7 @@
 // dbspec 문서 집합에서 만드는 runtime model (docs/dbspec.md "Runtime model").
 // generated code는 manifest text와 manifestHash를 담고, runtime은 그 text를
 // 한 번 parse해서 entity, field, key, codec stage와 setting을 얻는다.
-import { dbspecManifest, parseDbspec } from '../dbspec/index.js';
+import { dbspecManifest, parseDbspecSet } from '../dbspec/index.js';
 import type { DbspecCodecStage, DbspecDocument, DbspecTable, DbspecType } from '../dbspec/model.js';
 import { OrmError } from '../runtime_error.js';
 
@@ -107,10 +107,6 @@ export function splitDocuments(text: string): string[] {
   return out;
 }
 
-function headerName(text: string): string {
-  return text.slice(HEADER.length, text.indexOf('\n'));
-}
-
 function typeSizes(t: DbspecType): { precision: number; scale: number; length: number } {
   switch (t.kind) {
     case 'decimal': return { precision: t.precision, scale: t.scale, length: 0 };
@@ -203,24 +199,18 @@ export function modelOfDocuments(documents: readonly DbspecDocument[]): RuntimeM
 }
 
 /**
- * Parses dbspec texts of one document set: the documents the set owns and the external documents it uses; each
- * text is parsed with all others as its used documents, and the external documents are marked external.
+ * Parses dbspec texts of one document set with the set parse (docs/dbspec.md "Parsing a set"): the documents the set
+ * owns and the external documents it uses, the external documents marked external. A text that fails, or repeats a
+ * name, is SCHEMA_INVALID naming its document and the first diagnostic.
  */
 export function parseDocumentSet(texts: readonly string[], externalTexts: readonly string[] = []): DbspecDocument[] {
-  const named: Record<string, string> = {};
   for (const text of [...texts, ...externalTexts]) {
-    if (typeof text !== 'string' || !text.startsWith(HEADER)) throw new OrmError('SCHEMA_INVALID', 'a dbspec text does not start with its header');
-    named[headerName(text)] = text;
+    if (typeof text !== 'string') throw new OrmError('SCHEMA_INVALID', 'a dbspec text does not start with its header');
   }
-  return [...texts, ...externalTexts].map((text, i) => {
-    const others = Object.fromEntries(Object.entries(named).filter(([name]) => name !== headerName(text)));
-    const parsed = parseDbspec(text, others);
-    if (parsed.document === null) {
-      const d = parsed.diagnostics[0]!;
-      throw new OrmError('SCHEMA_INVALID', `document ${headerName(text)}: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
-    }
-    // 외부 문서는 set이 소유하지 않으므로 external로 표시한다.
-    return i >= texts.length ? Object.freeze({ ...parsed.document, external: true }) : parsed.document;
+  return parseDbspecSet(texts, externalTexts).map(d => {
+    if (d.document !== null) return d.document;
+    const first = d.diagnostics[0]!;
+    throw new OrmError('SCHEMA_INVALID', `document ${d.name}: ${first.rule} at ${first.line}:${first.column}: ${first.message}`);
   });
 }
 

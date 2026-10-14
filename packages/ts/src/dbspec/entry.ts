@@ -4,5 +4,6 @@
 export { analyzeDbspec, emitDbspec, formatDbspec, parseDbspec, type DbspecAnalysis, type DbspecFormatResult, type DbspecParseResult, type DbspecPosition, type DbspecToken } from './document.js';
 export { readDbspecBytes, type DbspecReadResult } from './read_bytes.js';
 export { parseSet, type DbspecSetError, type DbspecSetParseResult, type DbspecSetPath, type DbspecSetRule } from './set_file.js';
+export { parseDbspecSet, type DbspecSetDocument } from './set_parse.js';
 export type { DbspecTokenClass } from './parse.js';
 export type * from './model.js';

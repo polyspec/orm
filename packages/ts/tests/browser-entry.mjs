@@ -124,6 +124,6 @@ caseTest('the subpath module exports exactly the parser functions', TIMEOUT, asy
   const entry = await import(start);
   assert.deepEqual(
     Object.keys(entry).sort(),
-    ['analyzeDbspec', 'emitDbspec', 'formatDbspec', 'parseDbspec', 'parseSet', 'readDbspecBytes'],
+    ['analyzeDbspec', 'emitDbspec', 'formatDbspec', 'parseDbspec', 'parseDbspecSet', 'parseSet', 'readDbspecBytes'],
   );
 });

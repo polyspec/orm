@@ -33,6 +33,7 @@ export { DBSPEC_SIGNATURE, readDbspecBytes, type DbspecReadResult } from './read
 export { readDbspecFile } from './file.js';
 export { parseSet, type DbspecSetError, type DbspecSetParseResult, type DbspecSetPath, type DbspecSetRule } from './set_file.js';
 export { readDbspecSet, type DbspecSetFile, type DbspecSetResult } from './set_read.js';
+export { parseDbspecSet, type DbspecSetDocument } from './set_parse.js';
 export {
   introspectDbspec,
   type DbspecIntrospection,

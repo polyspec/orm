@@ -4,7 +4,7 @@
 // parseSet's; the steps that read the file tree run here through an injected host, so this module reads no Node
 // module and no Node global and runs in a browser as in Node. The command line passes a node:fs host (cli/host.ts).
 import {
-  analyzeDbspec,
+  parseDbspecSet,
   parseSet,
   readDbspecBytes,
   type DbspecRule,
@@ -15,10 +15,8 @@ import {
 
 /** The name of every set file. */
 const SET_NAME = 'dbspec-set.json';
-/** The header prefix of a document whose header names it: `dbspec 1 <document>`. */
-const HEADER = 'dbspec 1 ';
-/** The column of the document name in the header line, where a repeated document name is reported. */
-const HEADER_NAME_COLUMN = HEADER.length + 1;
+/** The column of the document name in the header line `dbspec 1 <document>`, where a repeated name is reported. */
+const HEADER_NAME_COLUMN = 10;
 
 /** The kind of an entry that the host examines without following a symbolic link. */
 export type SetHostEntry = 'file' | 'directory' | 'symlink' | 'other';
@@ -265,15 +263,14 @@ function readListed(host: SetHost, owner: Owner): { files: ListedFile[] } | { er
 }
 
 /**
- * The header name of a document text, or the diagnostic of a header that names none. The parser decides the header
- * (its rule `header`); a header it accepts is `dbspec 1 <document>` on the first line.
+ * The name that the parser reads from the header of a document text (docs/dbspec.md "Parsing a set"), or the
+ * diagnostic of a header that names none.
  */
 function headerName(text: string, path: string): string | SetFileDiagnostic {
-  const header = analyzeDbspec(text, {}).diagnostics.find(d => d.rule === 'header');
-  if (header !== undefined) return Object.freeze({ path, rule: header.rule, line: header.line, column: header.column, message: header.message });
-  const end = text.indexOf('\n');
-  const line = end < 0 ? text : text.slice(0, end);
-  return line.slice(HEADER.length).replace(/\r$/, '');
+  const parsed = parseDbspecSet([text], [])[0]!;
+  if (parsed.name !== '') return parsed.name;
+  const d = parsed.diagnostics.find(x => x.rule === 'header') ?? parsed.diagnostics[0]!;
+  return Object.freeze({ path, rule: d.rule, line: d.line, column: d.column, message: d.message });
 }
 
 /**

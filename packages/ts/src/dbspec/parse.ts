@@ -3069,8 +3069,11 @@ function encodingError(lines: string[]): RawDiagnostic | null {
   return null;
 }
 
-/** Parses and validates one document text; parents are the names of the documents that use it. */
-function parseText(text: string, context: ParseContext, parents: readonly string[]): Parsed {
+/**
+ * Parses one document text and, unless `validate` is false, validates it; parents are the names of the documents that
+ * use it.
+ */
+function parseText(text: string, context: ParseContext, parents: readonly string[], validate = true): Parsed {
   const empty: IDocument = { name: '', nameTok: null, uses: [], tables: [], diagrams: [], closing: [], failed: new Set(), constraints: new Map() };
   if (utf8Length(text) > MAX_BYTES) {
     const diagnostics: RawDiagnostic[] = [{ rule: 'limit', line: 1, column: 1, message: 'a document has at most 32 MiB' }];
@@ -3084,7 +3087,7 @@ function parseText(text: string, context: ParseContext, parents: readonly string
   const lines = raw.slice(0, complete).map(line => (line.endsWith('\r') ? line.slice(0, -1) : line));
   const parser = new DocumentParser(lines, context, parents, encoding);
   parser.parse();
-  if (!parser.halted) parser.validate();
+  if (validate && !parser.halted) parser.validate();
   // A stopping error comes after the diagnostics found before it; the others
   // are ordered by line, column and the order of the rule table.
   const found = parser.diagnostics.slice();
@@ -3108,6 +3111,14 @@ function resultOf(parsed: Parsed): ParsedDocument {
 /** The document of a text and its declared document set, or every diagnostic in source order. */
 export function parseDocument(text: string, documents: Readonly<Record<string, string>>): ParsedDocument {
   return resultOf(parseText(text, { documents, cache: new Map() }, []));
+}
+
+/**
+ * The document name that the header step of the parser reads from a text (Go's parseStructure name), or '' when the
+ * header fails. It reads the structure only and validates nothing, so it needs no document set.
+ */
+export function headerName(text: string): string {
+  return parseText(text, { documents: {}, cache: new Map() }, [], false).document.name;
 }
 
 /** A token of a text: its 1-based line, its start and end in code points on the line, and its class. */

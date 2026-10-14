@@ -26,6 +26,7 @@ export {
   installedDifferences,
   introspectDbspec,
   parseDbspec,
+  parseDbspecSet,
   parsePlan,
   planSteps,
   effectText,
