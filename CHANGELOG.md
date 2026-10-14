@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- make scripts-typecheck builds the dbspec language service it type-checks against, and the MySQL migration case runs the migration script of the checkout. (#T137-1-4-8)
 - The TypeScript symbol record holds the chain methods that the conformance runner calls. (#T174-1)
 - config/layout.yml declares tests/generator, the scan vectors of the PHP and the node generator. (#T172-3)
 - config/layout.yml declares the S9 exceptions with their reasons: the runners and symbol extractors of one language, the Go tests of the dialect rules, the Unicode table and codec vector generators, and the programs that need setsid or process exit notifications; tests/codec/gen-aes.sh, which generated nothing, is removed. (#T137-1-4-4)

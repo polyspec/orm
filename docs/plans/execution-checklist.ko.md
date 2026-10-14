@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: fe3639ea95337dd053ca8e9ec4c6620d5352366d20276712800a505c9536fc2e -->
+<!-- source-sha256: aa88599dac84486e043cf5226db117ee40cf321ce95be83d40f9462243f6382b -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1001,6 +1001,8 @@
     - [ ] T137-1-4-5 scripts/의 셸과 PHP 스크립트를 TypeScript로 옮긴다 (T137-1-4-1에 이어). 원인: scripts/의 셸 스크립트 18개와 PHP 스크립트 2개는 다른 interpreter의 기반 스크립트다(S9). 완료 조건: 각각이 같은 동작의 .mts 스크립트이고, 호출하는 곳이 그것을 실행하며, layout-check가 그 무엇도 보고하지 않는다.
     - [ ] T137-1-4-6 여러 언어를 다루는 Go orchestrator를 TypeScript로 옮긴다 (T137-1-4-1에 이어). 원인: tests/conformance/check와 tests/interfaces/check는 모든 언어를 실행하고 비교하므로 S9에서 TypeScript 기반 스크립트인데 Go program이다. 완료 조건: 각각이 같은 출력과 기록의 .mts program이고, layout-check가 둘 다 보고하지 않는다.
     - [ ] T137-1-4-7 기반 스크립트가 kit 0.0.46의 TypeScript lint 규칙을 통과한다 (T137-1-4-1에 이어). 원인: kit 0.0.46은 no-explicit-any, no-unsafe 규칙, no-non-null-assertion, type assertion 규칙을 오류로 만드는데, test는 아직 JSON.parse 값과 any 매개변수 두 개를 쓴다. 완료 조건: make kit-sync KIT_TAG=v0.0.46과 scripts/, tests/의 lint가 통과한다. Retry: kit 0.0.46이 release될 때.
+    - [o] T137-1-4-8 TypeScript 이전 뒤 main의 CI를 통과시킨다 (T137-1-4-1에 이어). 원인: 297b6afd에서 CI가 T137-1-4-1이 남긴 네 가지로 실패했다: documents 밖의 main document를 다루는 packages/ts/tests/dbspec.mjs의 변형이 이전 초안의 pointer를 기대했고(ts-check, ts-min-check, schema-typescript), make scripts-typecheck가 docs/.vitepress/dbs.ts가 import하는 packages/dbspec-language의 build 전에 실행됐으며(conformance), MySQL migration case가 scripts/test-servers-mysql.mts를 그 import가 풀리지 않는 임시 root로 복사했다(static). 완료 조건: 변형은 cases.mts가 주는 거부를 기대하고, scripts-typecheck는 dbspec-language를 먼저 build하며, migration case는 checkout의 스크립트를 임시 root의 경로로 실행하고, 세 검사가 통과한다.
+      Evidence: packages/ts/tests/dbspec.mjs가 310 case를 통과하고, packages/dbspec-language/dist가 없는 checkout에서 make scripts-typecheck가 통과하며, LEASE를 준 node --test scripts/test-servers-mysql.test.mts가 실제 MySQL server로 5 case를 통과한다.
   - [o] T137-2 kit 전환의 lock을 검토한다 (T137에 이어). 원인: T137이 package-lock.json과 composer.lock을 바꾸고 tests/interfaces/typescript/package-lock.json을 검토 기록 없이 더했으며, composer.lock을 composer.json보다 뒤에 두었고, interface reader의 TypeScript 6 예외를 지웠다. 또 kit의 @microsoft/api-extractor 의존성이 sprintf-js advisory 1241202를 orm lock에 들인다. make dependency-policy-check가 실패했다. 완료 조건: 검토가 모든 lock을 기록하고, 예외는 kit처럼 근거를 적으며, dependency-policy-check가 통과한다.
   - [o] T137-3 T137 이후 orm main CI를 다시 green으로 만든다 (T137에 이어). 원인: run 38517144969가 실패했다. CI가 tests/interfaces/typescript를 설치하지 않아 interface reader가 TypeScript 7로 돌았고(`ts.NewLineKind` undefined), packages/php-ext/src/orm_dbspec_arginfo.h가 옛 경로의 stub hash를 유지했다. 완료 조건: CI step이 interface TypeScript를 설치하고 arginfo 검사가 통과하며, 먼저 red를 확인한다.
   - [o] T137-4 interface TypeScript 설치를 별도 make로 실행한다 (T137-3에 이어). 원인: run 38519188361의 모든 job이 Node step에서 멈췄다. `make install-packages install-interfaces-typescript`는 install-packages가 kit.mk를 설치하기 전에 그것을 읽는다(`kit.mk is missing`). 완료 조건: step이 make를 두 번 실행한다. node_modules가 없을 때 합친 형태는 실패하고 나눈 형태는 통과한다.
