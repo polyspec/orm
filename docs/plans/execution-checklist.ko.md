@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: e35c407166fe47dab56c9a1b9ea5a25bf6085e8cd4e5fb6527309117ce075c7a -->
+<!-- source-sha256: b868611a22166cd839ad2bedc843ea02a654bad7cf95dbcd6d0c7e995695daf8 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1079,6 +1079,7 @@
   - [o] T170-2 TypeScript generator test가 선언된 chain method를 읽는다 (T170에 이어). 원인: generate.mjs와 generate-scan.mjs가 T170이 없앤 합쳐진 interface를 읽어, main에서 conformance와 feature_verify_other group이 실패했다. Evidence: 두 test가 각 model class의 declare field를 읽고 통과한다.
 - [o] T171 0.0.15를 릴리스한다. 원인: flowmark, fsm, hyper가 기다리는 문서별 set parse(T166), 모든 client의 YAML core schema(T142-1, T142-2, T142-9부터 T142-11까지), insert part(T169), allow와 쓰지 않는 import가 없는 생성 model(T137-1-3-1, T170)이 main에 있다. 완료 조건: version-bump commit이 모든 manifest를 0.0.15로 두고 Unreleased를 0.0.15로 옮기며, 바뀐 lock의 dependency review와 v0.0.15의 consumer lock을 기록한다; 그 CI가 성공한다; annotated tag v0.0.15를 push하고 release workflow가 게시한다. 증거: 그 commit에서 `make version-check`와 `make dependency-policy-check`가 통과한다.
   - [o] T171-1 CI cache 복원 뒤에 Rust crate를 받는다 (T171에 이어). 원인: 0.0.15 bump의 CI가 모든 Rust group에서 실패했다: Swatinem/rust-cache가 make install-rust가 받은 crate 위에 오래된 registry를 복원해 rustls 0.23.46이 없었다. Evidence: install-rust가 복원 전의 install-rust-toolchain과 복원 뒤의 install-rust-crates로 나뉜다. scripts/check와 scripts/repo test가 통과한다.
+- [ ] T172 생성된 PHP model에 scan한 chain method를 선언한다. 원인: PHP orm-gen에 `--scan`이 없어(`gen --set --out --namespace [--check]`) module code가 부르는 chain method(`ltSeq`, `andSlotNumber`)가 어디에도 선언되지 않으며, 실행은 맞는 호출에 PHPStan이 method.notFound를 보고한다. Go, TypeScript, Rust는 scan이 찾은 method를 생성하고 Python은 맞지 않는 method를 보고하는데, docs/dsl.md 2.2는 PHP만 scan 없이 둔다(hyper가 0.0.15에서 보고, 호출 8개). 완료 조건: PHP orm-gen이 `--scan`을 받아 source를 nikic/php-parser로 읽고, 찾은 chain method마다 정확한 parameter와 return type의 `@method` tag를 model class에 선언하며, 다른 generator처럼 모르는 column, operator, 인자 수를 생성 중에 거부한다. docs/dsl.md(+ko)가 이를 적는다. 받는 case와 거부하는 case의 generator vector, parity unit, fixture에 대한 PHPStan 실행에서 method.notFound 0건.
 - [o] T156 모든 생성기가 모든 key의 모든 prefix마다 유형 있는 메서드를 선언한다. 원인: scan한 소스가 호출하는 메서드만 생성되어, 어떤 소스도 호출하지 않는 key prefix에는 메서드가 없었다(hyper U-97). 완료 조건: Go, Rust, TypeScript model이 primary key, unique key, index의 모든 prefix마다 메서드를 선언하고, Python은 같은 이름을 실행 시점에 해석하며, symbol 기록과 docs/usage.md를 갱신한다.
   - [o] T156-1 T156 이후 orm main CI를 다시 green으로 만든다 (T156에 이어). 원인: run 38502539388이 실패했다. Python key-prefix 테스트가 PYTHONPATH를 바꾸고 지워진 packages/orm-python/bin/orm-gen을 실행했고, Go와 Rust key-prefix 테스트가 testcase를 시작하지 않았으며, generator/gen_go_key_prefix_test.go가 어떤 feature에도 속하지 않았고, src/models/markdown_fixture에 key-prefix 메서드가 없었다. 완료 조건: 각각을 고치고 그 소유 검사가 통과한다.
   - [o] T156-2 Go markdown model을 다시 생성한다 (T156에 이어). 원인: run 38504701356이 go-markdown-model-generated에서 실패했다. packages/orm-go/markdownmodel에 key-prefix 메서드가 없었다. 완료 조건: go generate가 폴더를 바꾸지 않는다.
