@@ -1543,6 +1543,7 @@
   "packages/orm-npm/src/engine/model.ts::entityOfTable": "function entityOfTable(t: DbspecTable): Entity",
   "packages/orm-npm/src/engine/model.ts::fieldOf": "export function fieldOf(e: Entity, name: string): Field | undefined",
   "packages/orm-npm/src/engine/model.ts::headerName": "function headerName(text: string): string",
+  "packages/orm-npm/src/engine/model.ts::loadSet": "export function loadSet(manifestText: string, externalText: string): DbspecDocument[]",
   "packages/orm-npm/src/engine/model.ts::modelOfDocuments": "export function modelOfDocuments(documents: readonly DbspecDocument[]): RuntimeModel",
   "packages/orm-npm/src/engine/model.ts::modelOfManifest": "export function modelOfManifest(manifestText: string, manifestHash: string, externalText = ''): RuntimeModel",
   "packages/orm-npm/src/engine/model.ts::parseDocumentSet": "export function parseDocumentSet(texts: readonly string[], externalTexts: readonly string[] = []): DbspecDocument[]",

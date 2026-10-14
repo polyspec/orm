@@ -83,6 +83,15 @@ class RuntimeModel:
     # 소유한 문서의 entity들, 이름 순서. 외부 table은 entity가 아니다.
     entities: dict
 
+    @staticmethod
+    def load_set(manifest_text: str, external_text: str) -> list:
+        """The parsed documents of a generated schema value: the documents of the manifest
+        text, then those of the external text marked external, as PHP's RuntimeModel::loadSet
+        returns them. A text that does not start with a dbspec header, or a document with a
+        diagnostic, is SCHEMA_INVALID."""
+        return parse_document_set(split_documents(manifest_text),
+                                  [] if external_text == '' else split_documents(external_text))
+
 
 def field_of(e: Entity, name: str) -> Field | None:
     for field in e.fields:

@@ -6,6 +6,7 @@ export type { AesRotationColumn, AesRowCodec } from './aes.js';
 export type * from './ir.js';
 export { Engine } from './engine/index.js';
 export type { Entity, Field, FieldType, RuntimeModel } from './engine/index.js';
+export { loadSet } from './engine/index.js';
 export { OrmError } from './runtime_error.js';
 export { Db, registerModel } from './database.js';
 export type { ConnectOptions, Key, RequestHook, Schema, TransactionOptions } from './database.js';

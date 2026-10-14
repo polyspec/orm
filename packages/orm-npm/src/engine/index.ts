@@ -8,6 +8,7 @@ import { validate } from './validate.js';
 
 export { opAllowed } from './validate.js';
 export type { Entity, Field, FieldType, RuntimeModel } from './model.js';
+export { loadSet } from './model.js';
 
 export class Engine {
   private readonly planner: Planner;

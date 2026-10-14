@@ -42,8 +42,8 @@
     "go": "sha256:aa27a3777df336da0e54c039b25312af4fe7a940228fe016a9df388bb7a3c476",
     "php": "sha256:6b2553ee4028717d4905cbe8ab7a93e6b77dcd3412072dc5ca84f6e96b20b293",
     "rust": "sha256:a17d95e9031ef66a95efd858b8a04ebf7e667aac80602c582acd862c0f47a990",
-    "typescript": "sha256:89363c1d3a1653cef816ab2221e2a26b7808a58462be630adf0365ffb77afb93",
-    "python": "sha256:e4ec675e4b239dee1ffc166700091456d108559cef95b16d9024daea3cf8b923"
+    "typescript": "sha256:652470c0b8991ec892f82f7487acc7df4621c0e7cdc1ece9f6e08c0424179f53",
+    "python": "sha256:54f531aeff8d9a5bd2cb3eb99097e0ba7ca33e64e5c7cfe06936e5897978b0d7"
   },
   "extensions": {
     "php-extension": {
