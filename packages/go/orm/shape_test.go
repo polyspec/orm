@@ -2,7 +2,10 @@ package orm
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/polyspec/orm/engine/ir"
@@ -104,5 +107,42 @@ func TestShapeIgnoresParamValues(t *testing.T) {
 	}
 	if PlanID(0x1f) != "000000000000001f" {
 		t.Errorf("PlanID: %s", PlanID(0x1f))
+	}
+}
+
+// TestInsertPartsFixture는 공유 case contracts/fixtures/insert_parts.json의 각 행 수를 그 driver와 column
+// 수에서 같은 부분으로 나누는지 확인한다(docs/protocol.md 여러 행 insert).
+func TestInsertPartsFixture(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	text, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", "insert_parts.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Cases []struct {
+			ID        string `json:"id"`
+			Operation string `json:"operation"`
+			Input     struct {
+				Driver  string `json:"driver"`
+				Columns int    `json:"columns"`
+				Rows    int    `json:"rows"`
+			} `json:"input"`
+			Expected []int `json:"expected"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(text, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.Cases) == 0 {
+		t.Fatal("insert_parts.json has no cases")
+	}
+	for _, c := range doc.Cases {
+		if c.Operation != "insert_parts" {
+			t.Fatalf("%s: unknown operation %q", c.ID, c.Operation)
+		}
+		got := insertParts(c.Input.Rows, insertChunk(c.Input.Driver, c.Input.Columns))
+		if !slices.Equal(got, c.Expected) {
+			t.Errorf("%s: parts %v, want %v", c.ID, got, c.Expected)
+		}
 	}
 }

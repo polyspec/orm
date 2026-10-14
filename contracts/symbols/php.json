@@ -920,6 +920,7 @@
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::hook": "private function hook(Polyspec\\Orm\\Request $r): void",
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::inTransaction": "public static function inTransaction(?Polyspec\\Orm\\Db $conn, Closure $fn): void",
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::insertAudit": "private function insertAudit(Polyspec\\Orm\\TxFrame $frame, array $record): array",
+  "packages/php/src/Db.php::Polyspec\\Orm\\Db::insertParts": "public static function insertParts(int $rows, int $columns, string $driver): array",
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::invalidTimeText": "private static function invalidTimeText(string $v, string $colType): Polyspec\\Orm\\OrmException",
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::joined": "private static function joined(array $errors): ?Throwable",
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::markdownSession": "public function markdownSession(): Polyspec\\Orm\\MarkdownSession",

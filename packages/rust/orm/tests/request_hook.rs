@@ -611,3 +611,80 @@ async fn coverage_request_hook_restore_hook_set_key() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     restore_hook_set_key_case(feature_database()).await;
 }
+
+// 여러 행 insert의 부분(docs/protocol.md §2.1, contracts/fixtures/insert_parts.json): creates는 행을 주어진 순서대로
+// 2의 거듭제곱 크기의 부분으로 나눠 한 transaction에서 실행한다. hook 없는 연결에서 확인한다.
+
+/// db의 INSERT statement SQL을 실행 순서대로 모으는 구독이다.
+fn insert_statements(db: &Db) -> (Arc<Mutex<Vec<String>>>, polyspec_orm::Subscription) {
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    let sink = seen.clone();
+    let subscription = db
+        .subscribe(move |event: &polyspec_orm::StatementEvent<'_>| {
+            if event.sql.starts_with("INSERT") {
+                sink.lock().unwrap().push(event.sql.to_owned());
+            }
+            Ok(())
+        })
+        .expect("subscribe");
+    (seen, subscription)
+}
+
+fn labelled(labels: &[String]) -> Vec<HookItem> {
+    labels.iter().map(|label| with_values(unconnected(), &[("part", "p"), ("label", label)])).collect()
+}
+
+/// 1..=40행의 creates는 크기 구간 1, 2, 4, 8, 16, 32의 INSERT 여섯 개만 만든다.
+#[tokio::test]
+async fn creates_parts_shapes() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let database = CaseDatabase::create("sqlite").await;
+    let db = installed(&database).await;
+    let (seen, subscription) = insert_statements(&db);
+    for n in 1..=40 {
+        let rows = labelled(&(0..n).map(|i| format!("s{n}-{i}")).collect::<Vec<_>>());
+        assert_eq!(polyspec_orm::model::creates(&item(&db), rows).await.expect("creates"), n as u64);
+    }
+    drop(subscription);
+    let distinct: std::collections::BTreeSet<String> = seen.lock().unwrap().iter().cloned().collect();
+    eprintln!("creates 1..=40: {} distinct INSERT statements", distinct.len());
+    assert_eq!(distinct.len(), 6, "distinct INSERT statements");
+    db.close().await;
+    database.drop().await;
+}
+
+/// 13행은 8, 4, 1행의 부분으로 주어진 순서대로 삽입되고 key는 그 순서로 오른다.
+#[tokio::test]
+async fn creates_parts_order() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let database = CaseDatabase::create("sqlite").await;
+    let db = installed(&database).await;
+    let (seen, subscription) = insert_statements(&db);
+    let given: Vec<String> = (0..13).map(|i| format!("r{:02}", 12 - i)).collect();
+    assert_eq!(polyspec_orm::model::creates(&item(&db), labelled(&given)).await.expect("creates"), 13);
+    drop(subscription);
+    let sizes: Vec<usize> = seen.lock().unwrap().iter().map(|sql| sql.matches("(?").count()).collect();
+    assert_eq!(sizes, [8, 4, 1], "INSERT parts in order");
+    let rows = polyspec_orm::model::gets(&item(&db)).await.expect("gets");
+    let mut stored: Vec<(i64, String)> = rows.models().map(|m| (id_of(m), text_of(m, "label"))).collect();
+    stored.sort();
+    assert_eq!(stored.iter().map(|(_, label)| label.clone()).collect::<Vec<_>>(), given, "rows in the given order");
+    db.close().await;
+    database.drop().await;
+}
+
+/// 둘째 부분이 실패하면 첫 부분도 rollback되어 행이 남지 않는다.
+#[tokio::test]
+async fn creates_parts_rollback() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let database = CaseDatabase::create("sqlite").await;
+    let db = installed(&database).await;
+    let mut rows = labelled(&(0..8).map(|i| format!("ok{i}")).collect::<Vec<_>>());
+    let mut failing = with_values(unconnected(), &[("part", "p")]);
+    failing.core_mut().set("label", Param::Null);
+    rows.push(failing);
+    polyspec_orm::model::creates(&item(&db), rows).await.expect_err("the second part fails");
+    assert_eq!(count(&db).await, 0, "no row of the call remains");
+    db.close().await;
+    database.drop().await;
+}

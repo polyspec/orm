@@ -3667,6 +3667,8 @@
   "packages/go/orm/model.go::collection.put": "receiver=*collection func(k Key, m *Core)",
   "packages/go/orm/model.go::encodeValue": "func(ent *runtimemodel.Entity, column string, v any) (any, error)",
   "packages/go/orm/model.go::inTransaction": "func(conn *DB, fn func() error) error",
+  "packages/go/orm/model.go::insertChunk": "func(driver string, columns int) int",
+  "packages/go/orm/model.go::insertParts": "func(n, chunk int) []int",
   "packages/go/orm/model.go::isZero": "func(v any) bool",
   "packages/go/orm/model.go::keyWhere": "func(r *request, ent *runtimemodel.Entity, keys map[string]any)",
   "packages/go/orm/model.go::marshalValue": "func(v any) ([]byte, error)",

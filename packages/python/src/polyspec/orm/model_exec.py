@@ -404,15 +404,18 @@ def creates(c: Core, models) -> int:
             raise OrmError('CONFIG', 'creates accepts stored values only')
         columns.append(s.column)
     schema = c.ent.entity
-    per = (999 if ex.db.driver == 'sqlite' else 65535) // len(columns)
+    per = max(1, (999 if ex.db.driver == 'sqlite' else 65535) // len(columns))
     total = 0
 
     def insert_all():
         nonlocal total
-        for start in range(0, len(models), per):
+        start = 0
+        for size in _insert_parts(len(models), per):
             r = _write_request(c, 'insert')
             rows: list = []
-            for i, model in enumerate(models[start:start + per]):
+            part = models[start:start + size]
+            start += size
+            for i, model in enumerate(part):
                 mc = model.core
                 if len(mc.sets) != len(columns) or any(
                         s.column != columns[j] or s.plus or s.minus
@@ -436,6 +439,17 @@ def creates(c: Core, models) -> int:
 
     _in_transaction(c.conn, insert_all)
     return total
+
+
+def _insert_parts(rows: int, per: int) -> list:
+    """The row counts of the parts of a multi-row insert, in row order (docs/protocol.md 2.1): each part is
+    the largest power of two at most the rows left and at most per, the bind-limit chunk."""
+    parts = []
+    while rows > 0:
+        size = 1 << (min(rows, per).bit_length() - 1)
+        parts.append(size)
+        rows -= size
+    return parts
 
 
 def _key_values(c: Core, schema: Entity) -> dict:

@@ -1626,6 +1626,7 @@
   "packages/rust/orm/src/model.rs::hook_request": " fn hook_request (conn : \u0026 Option \u003c Db \u003e , ex : \u0026 Executor , req : \u0026 mut Req) -\u003e Result \u003c () \u003e",
   "packages/rust/orm/src/model.rs::in_transaction": "pub (crate) async fn in_transaction \u003c T , F , Fut \u003e (conn : \u0026 Option \u003c Db \u003e , f : F) -\u003e Result \u003c T \u003e where F : Fn () -\u003e Fut + Send + Sync , Fut : Future \u003c Output = Result \u003c T \u003e \u003e + Send , T : Send ,",
   "packages/rust/orm/src/model.rs::insert_audit": "pub (crate) async fn insert_audit (ex : \u0026 Executor , a : \u0026 crate :: tx :: AuditInsert) -\u003e Result \u003c crate :: tx :: AuditKey \u003e",
+  "packages/rust/orm/src/model.rs::insert_parts": " fn insert_parts (driver : \u0026 str , columns : usize , rows : usize) -\u003e Vec \u003c usize \u003e",
   "packages/rust/orm/src/model.rs::json_members": " fn json_members (m : \u0026 dyn AnyModel) -\u003e Result \u003c Vec \u003c (String , String) \u003e \u003e",
   "packages/rust/orm/src/model.rs::key_values": " fn key_values (c : \u0026 Core , ent : \u0026 dbspec :: Entity) -\u003e Result \u003c HashMap \u003c String , Param \u003e \u003e",
   "packages/rust/orm/src/model.rs::key_where": " fn key_where (req : \u0026 mut Req , ent : \u0026 dbspec :: Entity , keys : \u0026 HashMap \u003c String , Param \u003e)",

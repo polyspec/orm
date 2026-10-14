@@ -638,13 +638,13 @@ async function creates(c: Core, models: readonly Model[]): Promise<number> {
     return s.column;
   });
   const schema = c.ent.entity;
-  const per = Math.floor((ex.db.driver === 'sqlite' ? 999 : 65535) / columns.length);
   let total = 0;
   await inTransaction(c.conn, async () => {
-    for (let start = 0; start < models.length; start += per) {
+    let start = 0;
+    for (const part of insertParts(models.length, columns.length, ex.db.driver)) {
       const r = writeRequest(c, 'insert');
       const rows: number[][] = [];
-      models.slice(start, start + per).forEach((model, i) => {
+      models.slice(start, start + part).forEach((model, i) => {
         const mc = model[CORE];
         if (mc.sets.length !== columns.length || mc.sets.some((s, j) => s.column !== columns[j] || s.plus || s.minus)) {
           throw configError('every model of creates must set the same columns in the same order');
@@ -656,9 +656,27 @@ async function creates(c: Core, models: readonly Model[]): Promise<number> {
       if (rows.length > 0) r.ir.rows = rows;
       const { affected } = await write(resolve(c.conn), finishWrite(r), r.params);
       total += affected;
+      start += part;
     }
   });
   return total;
+}
+
+/**
+ * The row counts of the parts a multi-row insert of rows rows with columns columns runs as, in row order
+ * (docs/protocol.md "Relation steps"): each the largest power of two that is at most the rows left and at most
+ * the bind-limit chunk, floor(bind limit / columns) and at least 1.
+ */
+export function insertParts(rows: number, columns: number, driver: string): number[] {
+  const chunk = Math.max(1, Math.floor((driver === 'sqlite' ? 999 : 65535) / columns));
+  const parts: number[] = [];
+  for (let left = rows; left > 0;) {
+    let part = 1;
+    while (part * 2 <= Math.min(left, chunk)) part *= 2;
+    parts.push(part);
+    left -= part;
+  }
+  return parts;
 }
 
 function keyValues(c: Core, schema: Entity): Map<string, unknown> {

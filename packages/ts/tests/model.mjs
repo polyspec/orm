@@ -18,6 +18,7 @@ import {
 } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { DATABASE, sections } from '../../../tests/testcase.mjs';
+import * as modelModule from '../dist/model.js';
 import { caseName, mysqlConnection, postgresClient, relatedDsn, withCaseDatabase } from './case-database.mjs';
 
 const require = createRequire(new URL('../package.json', import.meta.url));
@@ -556,6 +557,45 @@ async function bindLimitSplitting(db) {
   }
 }
 
+/**
+ * A multi-row insert runs as power-of-two parts in row order inside one transaction (docs/protocol.md "Relation
+ * steps", contracts/fixtures/insert_parts.json): batches of 1 to 40 rows use the six statements of 1, 2, 4, 8, 16
+ * and 32 rows, 13 rows run as parts of 8, 4 and 1 and keep their order and ascending keys, and a failing part
+ * leaves no row of the call.
+ */
+async function insertParts(db) {
+  const inserts = [];
+  const unsubscribe = db.subscribe(event => { if (event.sql.startsWith('INSERT INTO')) inserts.push(event); });
+  try {
+    for (let n = 1; n <= 40; n++) {
+      const rows = Array.from({ length: n }, (_, i) => new Service().setName(`shape-${n}-${i}`));
+      check(await new Service().connect(db).creates(rows) === n, `creates ${n} rows`);
+    }
+    const shapes = new Set(inserts.map(e => e.sql));
+    check(shapes.size === 6, `batches of 1 to 40 rows use ${shapes.size} insert statements, want 6`);
+    inserts.length = 0;
+    const labels = Array.from({ length: 13 }, (_, i) => `order-${String.fromCharCode(109 - i)}`);
+    check(await new Service().connect(db).creates(labels.map(name => new Service().setName(name))) === 13, 'creates 13 rows');
+    const parts = inserts.map(e => e.binds.length);
+    check(JSON.stringify(parts) === '[8,4,1]', `13 rows run as parts ${JSON.stringify(parts)}, want [8,4,1]`);
+    check(JSON.stringify(inserts.flatMap(e => e.binds)) === JSON.stringify(labels), 'the parts bind the rows in the given order');
+    const stored = Array.from(await new Service().connect(db).name(labels).orderBySeqAsc().gets(), r => r.toArray());
+    check(JSON.stringify(stored.map(r => r.name)) === JSON.stringify(labels), `stored order ${stored.map(r => r.name)}`);
+    check(stored.every((r, i) => i === 0 || Number(r.seq) > Number(stored[i - 1].seq)), 'the generated keys ascend in row order');
+  } finally { unsubscribe(); }
+  const before = await new Service().connect(db).getCount();
+  const failing = Array.from({ length: 9 }, (_, i) => new Service().setName(`rollback-${i}`));
+  failing[8][CORE].setValue('name', null);
+  check(await code(new Service().connect(db).creates(failing)) !== null, 'a null name in the second part fails');
+  check(await new Service().connect(db).getCount() === before, 'the failing call leaves no row');
+  const fixture = JSON.parse(await readFile(join(root, 'contracts/fixtures/insert_parts.json'), 'utf8'));
+  for (const c of fixture.cases) {
+    check(c.operation === 'insert_parts', `insert_parts ${c.id}: operation ${c.operation}`);
+    const got = modelModule.insertParts(c.input.rows, c.input.columns, c.input.driver);
+    check(JSON.stringify(got) === JSON.stringify(c.expected), `insert_parts ${c.id}: ${JSON.stringify(got)}, want ${JSON.stringify(c.expected)}`);
+  }
+}
+
 /** A MySQL install inside a transaction returns CONFIG: schema statements commit implicitly. */
 async function mysqlInstallInsideTransaction(db) {
   let inside = null;
@@ -653,7 +693,7 @@ if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is requ
 if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers');
 targets.push(['mysql', process.env.ORM_TEST_MYSQL_DSN]);
 targets.push(['postgres', process.env.ORM_TEST_POSTGRES_DSN]);
-const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, styledStates, transactions, aesRotation, bindLimitSplitting };
+const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, styledStates, transactions, aesRotation, bindLimitSplitting, insertParts };
 if (selectedCase !== undefined) targets.splice(0, targets.length, ...targets.filter(([dialect]) => dialect === args[3]));
 const dialects = targets.map(([dialect]) => dialect);
 

@@ -1,0 +1,130 @@
+{
+  "feature": "model_writes",
+  "rule": "docs/protocol.md \"Multi-row inserts\": a multi-row insert of n rows with c columns runs as parts in the given row order; each part is the largest power of two that is at most the rows left and at most floor(bind limit / c), the bind limit being 999 on SQLite and 65535 on MySQL and PostgreSQL.",
+  "cases": [
+    {
+      "id": "empty",
+      "operation": "insert_parts",
+      "input": {
+        "driver": "sqlite",
+        "columns": 2,
+        "rows": 0
+      },
+      "expected": []
+    },
+    {
+      "id": "one_row",
+      "operation": "insert_parts",
+      "input": {
+        "driver": "sqlite",
+        "columns": 2,
+        "rows": 1
+      },
+      "expected": [
+        1
+      ]
+    },
+    {
+      "id": "power_of_two",
+      "operation": "insert_parts",
+      "input": {
+        "driver": "sqlite",
+        "columns": 2,
+        "rows": 64
+      },
+      "expected": [
+        64
+      ]
+    },
+    {
+      "id": "sqlite_two_columns",
+      "operation": "insert_parts",
+      "input": {
+        "driver": "sqlite",
+        "columns": 2,
+        "rows": 1000
+      },
+      "expected": [
+        256,
+        256,
+        256,
+        128,
+        64,
+        32,
+        8
+      ]
+    },
+    {
+      "id": "sqlite_wide_row",
+      "operation": "insert_parts",
+      "input": {
+        "driver": "sqlite",
+        "columns": 300,
+        "rows": 10
+      },
+      "expected": [
+        2,
+        2,
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "id": "postgres_one_column",
+      "operation": "insert_parts",
+      "input": {
+        "driver": "postgres",
+        "columns": 1,
+        "rows": 70000
+      },
+      "expected": [
+        32768,
+        32768,
+        4096,
+        256,
+        64,
+        32,
+        16
+      ]
+    },
+    {
+      "id": "mysql_three_columns",
+      "operation": "insert_parts",
+      "input": {
+        "driver": "mysql",
+        "columns": 3,
+        "rows": 21845
+      },
+      "expected": [
+        16384,
+        4096,
+        1024,
+        256,
+        64,
+        16,
+        4,
+        1
+      ]
+    },
+    {
+      "id": "mysql_chunk_edge",
+      "operation": "insert_parts",
+      "input": {
+        "driver": "mysql",
+        "columns": 3,
+        "rows": 21846
+      },
+      "expected": [
+        16384,
+        4096,
+        1024,
+        256,
+        64,
+        16,
+        4,
+        2
+      ]
+    }
+  ]
+}

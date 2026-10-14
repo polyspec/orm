@@ -984,11 +984,11 @@ func Creates[T Model](c *Core, models []T) (int64, error) {
 		}
 		columns[i] = s.column
 	}
-	per := driverBindLimit(d.driver) / len(columns)
 	var total int64
 	err = inTransaction(c.conn, func() error {
-		for start := 0; start < len(models); start += per {
-			end := min(start+per, len(models))
+		start := 0
+		for _, part := range insertParts(len(models), insertChunk(d.driver, len(columns))) {
+			end := start + part
 			r, ent, err := c.writeRequest("insert", d)
 			if err != nil {
 				return err
@@ -1031,10 +1031,32 @@ func Creates[T Model](c *Core, models []T) (int64, error) {
 				return err
 			}
 			total += n
+			start = end
 		}
 		return nil
 	})
 	return total, err
+}
+
+// insertChunk is the most rows of columns values one statement binds on driver, at least 1.
+func insertChunk(driver string, columns int) int {
+	return max(1, driverBindLimit(driver)/columns)
+}
+
+// insertParts splits n rows into the parts of a multi-row insert (docs/protocol.md): in row
+// order, each part is the largest power of two at most the rows left and at most chunk, so
+// the insert statements stay in the same size classes as the IN lists.
+func insertParts(n, chunk int) []int {
+	var parts []int
+	for n > 0 {
+		part := 1
+		for part*2 <= min(n, chunk) {
+			part *= 2
+		}
+		parts = append(parts, part)
+		n -= part
+	}
+	return parts
 }
 
 func (c *Core) keyValues(ent *runtimemodel.Entity) (map[string]any, error) {
