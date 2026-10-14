@@ -3,7 +3,7 @@
 // getter and setter take exact strings and refuse other values, and a row written and read in a transaction keeps its
 // exact values in the model, its row output and the database, and is gone after the rollback. Each dialect is a data
 // set; its database is DECIMAL_<DIALECT>_DSN (make decimal-physical-check), which the test requires.
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter '@<dialect>$' packages/php/tests/DecimalModelDbTest.php
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter '@<dialect>$' packages/php/tests/DecimalModelDbTest.php
 declare(strict_types=1);
 
 use PHPUnit\Framework\Attributes\DataProvider;

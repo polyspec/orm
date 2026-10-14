@@ -9,7 +9,7 @@
 // first step of the plan with Db::execute, then the rows of load_probe read
 // through PDO are compared. The test fails when ORM_TEST_MYSQL_DSN or
 // ORM_TEST_POSTGRES_DSN is unset.
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/IdentityLoadTest.php [--filter <case id>]
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/IdentityLoadTest.php [--filter <case id>]
 declare(strict_types=1);
 
 require_once __DIR__ . '/case_database.php';

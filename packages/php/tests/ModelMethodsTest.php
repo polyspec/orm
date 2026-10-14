@@ -2,7 +2,7 @@
 // Query methods of the generated PHP models: orm-gen declares the condition method of every column, the tuple
 // method of every key prefix, the column methods and the orders, and forceIndex of every index, so that PHPStan at
 // level 9 finds each method on the model, and each method builds the query that the chain of its name builds.
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelMethodsTest.php
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelMethodsTest.php
 declare(strict_types=1);
 
 use PHPUnit\Framework\Attributes\Small;

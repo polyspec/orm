@@ -47,9 +47,9 @@ caseTest('the PHP lane of client-db-test runs every test after a failed one and 
     const result = f.run(['scripts/client-db-test.sh', '--lane', 'php'], { ORM_RUST_TEST_FEATURES: 'none' });
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
     const expected = declared('scripts/client-db-test.sh', 'php', 'php_lane() {');
-    assert.equal(expected[0], 'php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTest.php');
+    assert.equal(expected[0], 'php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTest.php');
     assert.deepEqual(f.ran(), expected);
-    assert.match(result.stderr, /client-db-test: the php lane failed:\n {2}php packages\/php\/vendor\/bin\/phpunit --configuration packages\/php\/phpunit\.xml\.dist packages\/php\/tests\/ModelTest\.php \(exit 3\)/);
+    assert.match(result.stderr, /client-db-test: the php lane failed:\n {2}php vendor-php\/bin\/phpunit --configuration packages\/php\/phpunit\.xml\.dist packages\/php\/tests\/ModelTest\.php \(exit 3\)/);
   } finally {
     rmSync(f.base, { recursive: true, force: true });
   }

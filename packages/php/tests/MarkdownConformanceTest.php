@@ -7,7 +7,7 @@ declare(strict_types=1);
  * 읽으므로 첫 실패에서 멈춘다(make target이 PHPUnit을 --stop-on-defect로 실행한다). case마다 cases.json의 id로
  * 이름 붙은 data set이다.
  *
- * Usage: FLOWMARK=<flowmark> packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist --stop-on-defect packages/php/tests/MarkdownConformanceTest.php
+ * Usage: FLOWMARK=<flowmark> vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --stop-on-defect packages/php/tests/MarkdownConformanceTest.php
  */
 require_once dirname(__DIR__) . '/markdownmodel/bootstrap.php';
 

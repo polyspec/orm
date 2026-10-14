@@ -16,7 +16,7 @@ declare(strict_types=1);
 // one of the four is unset. The case first_statement_lost ends the session of
 // a new Db before its first statement, which then fails with CONNECTION_LOST
 // and is sent once.
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RollbackTest.php [--filter <case>]
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RollbackTest.php [--filter <case>]
 require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Code;

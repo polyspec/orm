@@ -13,8 +13,8 @@ keep() {
 }
 keep node tests/go-test.mjs -v -timeout 0 ./packages/go/bench -run '^TestNative' -count=1
 keep env ORM_RUN_PERF_GATE=1 node tests/go-test.mjs -v -timeout 0 ./packages/go/bench -run '^TestHotPathGate(UnderLoad)?$' -count=1
-keep php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/PerfGateTest.php
-keep env ORM_PERF_CPU_LOAD=1 php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/PerfGateTest.php
+keep php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/PerfGateTest.php
+keep env ORM_PERF_CPU_LOAD=1 php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/PerfGateTest.php
 if [ -n "$FAILED" ]; then
   printf 'perf-test: failed:%s\n' "$FAILED" >&2
   exit 1

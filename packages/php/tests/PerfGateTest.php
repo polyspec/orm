@@ -4,7 +4,7 @@
 // data set; the measurement is written to standard error, and a ratio above its reference is a
 // warning there (`WARNING ...`), not a failure: performance is measured and reported, never a
 // failed test (AGENTS.md).
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/PerfGateTest.php
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/PerfGateTest.php
 // ORM_BENCH_MYSQL_DSN names the seeded bench database; the gate fails without it.
 // ORM_PERF_CPU_LOAD=1 runs the gate beside one busy process per CPU.
 declare(strict_types=1);

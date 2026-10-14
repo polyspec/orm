@@ -4,7 +4,7 @@ declare(strict_types=1);
 // entities, the default select set, codec value types, the generated models
 // and their manifest hash, i16 fields, and a connection configuration without
 // a schema path. Database behavior is in RuntimeDbTest.php.
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeModelTest.php
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeModelTest.php
 
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;

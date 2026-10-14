@@ -61,7 +61,7 @@ for (const database of ['mysql', 'postgres', 'sqlite']) {
     await step(`unselected-column/${database}/php/${attempt}`, 2 * timeoutMs, async ({ step: progress }) => {
       let output;
       try {
-        output = await run('php', ['packages/php/vendor/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--teamcity', 'packages/php/tests/UnselectedColumnDbTest.php'], {
+        output = await run('php', ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--teamcity', 'packages/php/tests/UnselectedColumnDbTest.php'], {
           ...process.env, ORM_UNSELECTED_DATABASE: database, ORM_UNSELECTED_DSN: dsn,
         });
       } catch (error) { throw new Error(String(error.message).replaceAll(dsn, '[redacted]')); }

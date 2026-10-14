@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The PHP tests run on the PHPUnit of the development root (vendor-php), and the released composer.json of polyspec/orm and polyspec/orm-dbspec declare no repositories, development requirements or platform settings again. (#T148-1-1)
 - The review record lists nikic/php-parser, which the PHP orm-gen scan requires. (#T172-1)
 - The PHP orm-gen takes `--scan`: it reads the sources with nikic/php-parser, declares each chain method they call on a model as a typed `@method` tag, so PHPStan finds it, and rejects an unknown column, operator or argument count during generation; a symlink in a scanned directory is an error. (#T172)
 - The Rust validate and codec vectors run on the workspace with its test features, and the plan vectors report a measured CPU time above its bound as a warning. (#T148-2-2)

@@ -5,7 +5,7 @@ declare(strict_types=1);
 // through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the cases that only
 // connect use those databases and create nothing there. The test fails when
 // either is unset.
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTest.php [--filter <case>]
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTest.php [--filter <case>]
 require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Tests\Model\Account;

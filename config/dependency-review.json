@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mts) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-14T18:06:24.422Z",
+  "reviewed": "2026-10-14T18:24:23.064Z",
   "locks": [
     {
       "lock": "package-lock.json",
@@ -24,17 +24,7 @@
     },
     {
       "lock": "composer.lock",
-      "sha256": "3dbfa5add7956be36eb813fe720a73f5c841afb2b07139b663755d7197044720",
-      "advisories": []
-    },
-    {
-      "lock": "packages/php/composer.lock",
-      "sha256": "f1140f02eb1778727663e1b0d57444663a4be1e18faef98d00d0d3afcf387caa",
-      "advisories": []
-    },
-    {
-      "lock": "packages/php-ext/composer.lock",
-      "sha256": "183916f7daa0e4aafb935cafae5560677c7db8c7fda845a2dc134f5c12606223",
+      "sha256": "8a29002c7a69400ea1ba3d342baff8e99217d34d8dec32a2f6fd0b5d39d6b034",
       "advisories": []
     },
     {
@@ -285,42 +275,7 @@
     },
     {
       "ecosystem": "composer",
-      "manifest": "packages/php/composer.json",
-      "package": "polyspec/ordered-json",
-      "version": "0.0.8",
-      "latest": "0.0.8"
-    },
-    {
-      "ecosystem": "composer",
-      "manifest": "packages/php/composer.json",
-      "package": "nikic/php-parser",
-      "version": "v5.9.0",
-      "latest": "v5.9.0"
-    },
-    {
-      "ecosystem": "composer",
-      "manifest": "packages/php/composer.json",
-      "package": "purrphp/yaml",
-      "version": "1.0.0",
-      "latest": "1.0.0"
-    },
-    {
-      "ecosystem": "composer",
-      "manifest": "packages/php/composer.json",
-      "package": "symfony/yaml",
-      "version": "v8.1.9",
-      "latest": "v8.1.9"
-    },
-    {
-      "ecosystem": "composer",
-      "manifest": "packages/php/composer.json",
-      "package": "phpunit/phpunit",
-      "version": "13.4.2",
-      "latest": "13.4.2"
-    },
-    {
-      "ecosystem": "composer",
-      "manifest": "packages/php-ext/composer.json",
+      "manifest": "composer.json",
       "package": "phpunit/phpunit",
       "version": "13.4.2",
       "latest": "13.4.2"

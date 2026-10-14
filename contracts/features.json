@@ -114,7 +114,7 @@
         },
         {
           "id": "markdown-session-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/MarkdownTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/MarkdownTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/MarkdownTest.php",
@@ -153,7 +153,7 @@
         },
         {
           "id": "dsn-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DsnTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DsnTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/DsnTest.php",
@@ -200,7 +200,7 @@
         },
         {
           "id": "dsn-mysql-tls-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/MysqlTlsTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/MysqlTlsTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/MysqlTlsTest.php"
@@ -684,7 +684,7 @@
         },
         {
           "id": "client-generics-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ClientGenericsTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ClientGenericsTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/ClientGenericsTest.php"
@@ -692,7 +692,7 @@
         },
         {
           "id": "queries-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/ModelTest.php",
@@ -702,7 +702,7 @@
         },
         {
           "id": "group-rows-php-unit",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/GroupRowsTest.php"
@@ -710,7 +710,7 @@
         },
         {
           "id": "aggregate-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AggregateNumericTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AggregateNumericTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/AggregateNumericTest.php",
@@ -779,7 +779,7 @@
         },
         {
           "id": "decimal-php-unit",
-          "command": ". \"$DECIMAL_ENV\" && packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DecimalModelTest.php",
+          "command": ". \"$DECIMAL_ENV\" && vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DecimalModelTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/DecimalModelTest.php"
@@ -787,7 +787,7 @@
         },
         {
           "id": "decimal-php-mysql",
-          "command": ". \"$DECIMAL_ENV\" && php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'with data set \"mysql\"$' packages/php/tests/DecimalModelDbTest.php",
+          "command": ". \"$DECIMAL_ENV\" && php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'with data set \"mysql\"$' packages/php/tests/DecimalModelDbTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/DecimalModelDbTest.php",
@@ -796,7 +796,7 @@
         },
         {
           "id": "decimal-php-postgres",
-          "command": ". \"$DECIMAL_ENV\" && php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'with data set \"postgres\"$' packages/php/tests/DecimalModelDbTest.php",
+          "command": ". \"$DECIMAL_ENV\" && php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'with data set \"postgres\"$' packages/php/tests/DecimalModelDbTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/DecimalModelDbTest.php"
@@ -804,7 +804,7 @@
         },
         {
           "id": "decimal-php-sqlite",
-          "command": ". \"$DECIMAL_ENV\" && php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'with data set \"sqlite\"$' packages/php/tests/DecimalModelDbTest.php",
+          "command": ". \"$DECIMAL_ENV\" && php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'with data set \"sqlite\"$' packages/php/tests/DecimalModelDbTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/DecimalModelDbTest.php"
@@ -901,7 +901,7 @@
         },
         {
           "id": "runtime-db-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeDbTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeDbTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/RuntimeDbTest.php"
@@ -1250,7 +1250,7 @@
         },
         {
           "id": "decimal-php-unit",
-          "command": ". \"$DECIMAL_ENV\" && packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DecimalModelTest.php",
+          "command": ". \"$DECIMAL_ENV\" && vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DecimalModelTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/DecimalModelTest.php",
@@ -1259,7 +1259,7 @@
         },
         {
           "id": "decimal-php-mysql",
-          "command": ". \"$DECIMAL_ENV\" && php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'with data set \"mysql\"$' packages/php/tests/DecimalModelDbTest.php",
+          "command": ". \"$DECIMAL_ENV\" && php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'with data set \"mysql\"$' packages/php/tests/DecimalModelDbTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/DecimalModelDbTest.php"
@@ -1267,7 +1267,7 @@
         },
         {
           "id": "decimal-php-postgres",
-          "command": ". \"$DECIMAL_ENV\" && php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'with data set \"postgres\"$' packages/php/tests/DecimalModelDbTest.php",
+          "command": ". \"$DECIMAL_ENV\" && php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'with data set \"postgres\"$' packages/php/tests/DecimalModelDbTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/DecimalModelDbTest.php"
@@ -1275,7 +1275,7 @@
         },
         {
           "id": "decimal-php-sqlite",
-          "command": ". \"$DECIMAL_ENV\" && php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'with data set \"sqlite\"$' packages/php/tests/DecimalModelDbTest.php",
+          "command": ". \"$DECIMAL_ENV\" && php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'with data set \"sqlite\"$' packages/php/tests/DecimalModelDbTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/DecimalModelDbTest.php"
@@ -1354,7 +1354,7 @@
         },
         {
           "id": "clock-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ClockTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ClockTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/ClockTest.php",
@@ -1364,7 +1364,7 @@
         },
         {
           "id": "styled-value-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/StyledValueTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/StyledValueTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/StyledValueTest.php",
@@ -1412,7 +1412,7 @@
         },
         {
           "id": "identity-load-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/IdentityLoadTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/IdentityLoadTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/IdentityLoadTest.php",
@@ -1788,7 +1788,7 @@
         },
         {
           "id": "rollback-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RollbackTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RollbackTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/RollbackTest.php",
@@ -1808,7 +1808,7 @@
         },
         {
           "id": "statement-fault-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/StatementFaultTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/StatementFaultTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/StatementFaultTest.php",
@@ -1894,7 +1894,7 @@
         },
         {
           "id": "sqlite-concurrency-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/SqliteConcurrencyTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/SqliteConcurrencyTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/SqliteConcurrencyTest.php",
@@ -2214,7 +2214,7 @@
         },
         {
           "id": "statement-events-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/StatementEventsTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/StatementEventsTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/StatementEventsTest.php",
@@ -2553,7 +2553,7 @@
         },
         {
           "id": "generation-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/OrmGenTest.php",
@@ -2563,7 +2563,7 @@
         },
         {
           "id": "generation-methods-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelMethodsTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelMethodsTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/ModelMethodsTest.php"
@@ -2571,7 +2571,7 @@
         },
         {
           "id": "generation-scan-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/OrmGenScanTest.php",
@@ -2581,7 +2581,7 @@
         },
         {
           "id": "generation-scan-parity-php",
-          "command": "node tests/run-long.mjs typescript-build -- node scripts/typescript/build.mjs && packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanParityTest.php",
+          "command": "node tests/run-long.mjs typescript-build -- node scripts/typescript/build.mjs && vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanParityTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/OrmGenScanParityTest.php",
@@ -3404,7 +3404,7 @@
         },
         {
           "id": "install-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/EngineTest.php",
@@ -3422,7 +3422,7 @@
         },
         {
           "id": "install-add-tables-and-columns-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AddTablesAndColumnsTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AddTablesAndColumnsTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/AddTablesAndColumnsTest.php",
@@ -3464,7 +3464,7 @@
         },
         {
           "id": "install-register-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test_(register_sends_no_statement|install_verifies_the_database|external_documents)' packages/php/tests/SchemaSetTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test_(register_sends_no_statement|install_verifies_the_database|external_documents)' packages/php/tests/SchemaSetTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/SchemaSetTest.php",
@@ -3899,7 +3899,7 @@
         },
         {
           "id": "planner-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/EngineTest.php",
@@ -4784,7 +4784,7 @@
         },
         {
           "id": "encryption-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/HostcodecTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/HostcodecTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/HostcodecTest.php",
@@ -4793,7 +4793,7 @@
         },
         {
           "id": "encryption-codec-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test_php_' packages/php/tests/CodecVectorsTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test_php_' packages/php/tests/CodecVectorsTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/CodecVectorsTest.php",
@@ -4840,7 +4840,7 @@
         },
         {
           "id": "aes-json-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AesJsonTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AesJsonTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/AesJsonTest.php",
@@ -5072,7 +5072,7 @@
         },
         {
           "id": "chunking-php-keys",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/RelationKeysTest.php"
@@ -5080,7 +5080,7 @@
         },
         {
           "id": "chunking-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/ModelTest.php",
@@ -5388,7 +5388,7 @@
         },
         {
           "id": "driver-error-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DriverErrorTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DriverErrorTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/DriverErrorTest.php",
@@ -5700,7 +5700,7 @@
         },
         {
           "id": "audit-external-sets-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AuditExternalSetsTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AuditExternalSetsTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/AuditExternalSetsTest.php",
@@ -6989,7 +6989,7 @@
         },
         {
           "id": "request-hook-php",
-          "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/RequestHookTest.php",
@@ -7385,7 +7385,7 @@
       "tests": [
         "packages/php/tests/CoverageCasesTest.php"
       ],
-      "command": "php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CoverageCasesTest.php"
+      "command": "php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CoverageCasesTest.php"
     },
     {
       "id": "coverage-runner-typescript",
@@ -7419,7 +7419,7 @@
       "tests": [
         "packages/php/tests/AutoloadTest.php"
       ],
-      "command": "packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AutoloadTest.php"
+      "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AutoloadTest.php"
     },
     {
       "id": "go-test-helpers",

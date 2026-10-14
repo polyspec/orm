@@ -15,7 +15,7 @@ declare(strict_types=1);
 // new SQLite file, or a database the case creates on the server of
 // ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN); the test fails when either
 // variable is unset.
-// Usage: packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/SchemaSetTest.php [--filter <case>]
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/SchemaSetTest.php [--filter <case>]
 require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Tests\Model\User;

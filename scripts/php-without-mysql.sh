@@ -28,4 +28,4 @@ for extension in $EXTENSIONS; do
   compiled "$extension" || set -- "$@" -d "extension=$extension"
 done
 echo "php $(php -n -r 'echo PHP_VERSION;') -n $*"
-exec php -n "$@" "$ROOT/packages/php/vendor/bin/phpunit" --configuration "$ROOT/packages/php/phpunit.xml.dist" "$ROOT/packages/php/tests/SqliteWithoutMysqlTest.php"
+exec php -n "$@" "$ROOT/vendor-php/bin/phpunit" --configuration "$ROOT/packages/php/phpunit.xml.dist" "$ROOT/packages/php/tests/SqliteWithoutMysqlTest.php"

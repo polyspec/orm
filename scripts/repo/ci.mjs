@@ -450,8 +450,8 @@ export function runnerIdentity(segment) {
   if (/^(?:go\s+test|node\s+tests\/go-test\.mjs)\b/.test(command)) return /\s-fuzz[\s=]/.test(command) ? undefined : 'go test';
   if (/^go\s+vet\b/.test(command)) return 'go vet';
   if (/^cargo\s+(?:\+\S+\s+)?test\b/.test(command)) return 'cargo test';
-  // PHPUnit of a package (`php [-d ...] packages/<package>/vendor/bin/phpunit ... <file>`) runs PHP tests.
-  const phpunit = /^(?:\S*php\s+(?:-d\s+\S+\s+|-\S+\s+)*)?(packages\/[\w-]+\/vendor\/bin\/phpunit)\b/.exec(command);
+  // PHPUnit of the development root (`php [-d ...] vendor-php/bin/phpunit ... <file>`) runs PHP tests.
+  const phpunit = /^(?:\S*php\s+(?:-d\s+\S+\s+|-\S+\s+)*)?(vendor-php\/bin\/phpunit)\b/.exec(command);
   if (phpunit) return `phpunit ${phpunit[1]}`;
   const php = /^php\s+(?:-\S+\s+)*([\w./-]+\.php)\b/.exec(command);
   if (php) return `php ${php[1]}`;
