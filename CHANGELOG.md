@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- T163: Python `RuntimeModel.load_set` and TypeScript `loadSet` return the parsed documents of a generated schema value, as PHP, Go and Rust do.
+
 ## 0.0.13
 
 - T161-2: the model-methods case keeps PHPStan's cache in its own folder, and the runner's parts table names it.
