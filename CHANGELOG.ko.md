@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6ccb89ee4b1a1e9dfd7df5f2c3a63308dbf71630cb391e716e88ce15966c6b3f -->
+<!-- source-sha256: dad0fe2b32be5c3eb69583fbf9b7cfa24787f425701ff5dcc9870a5315ff59d0 -->
 # 변경 이력
 
 ## Unreleased
 
+- T156-2: commit된 Go markdown model이 key-prefix 메서드를 갖는다.
 - T139-2: Rust symbol 기록이 saphyr YAML reader를 담는다.
 - T156-1: key-prefix 테스트가 설치된 Python package와 testcase 규칙을 따르고, markdown fixture model이 key-prefix 메서드를 갖는다.
 - T139-1: Rust codec이 YAML을 serde-saphyr로 쓰고 saphyr-parser로 읽어, 다른 client처럼 공통 값 모델의 모든 문자열(`0o17`, 제어 문자와 C1 문자, U+FEFF, U+FFFE, U+FFFF)을 저장한다. yaml-rust2를 뺐다.

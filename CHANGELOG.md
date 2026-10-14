@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T156-2: the committed Go markdown model carries the key-prefix methods.
 - T139-2: the Rust symbol record holds the saphyr YAML reader.
 - T156-1: the key-prefix tests follow the installed Python package and the testcase rule, and the markdown fixture models carry the key-prefix methods.
 - T139-1: the Rust codec writes YAML with serde-saphyr and reads it through saphyr-parser, so it stores every string of the common value model (`0o17`, control and C1 characters, U+FEFF, U+FFFE, U+FFFF) as the other clients do; yaml-rust2 is removed.
