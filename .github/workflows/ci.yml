@@ -113,10 +113,8 @@ jobs:
       - name: Rust toolchain of rust-toolchain.toml
         id: rust
         if: ${{ !cancelled() && steps.group-needs.outputs.rust == 'true' }}
-        # rustup installs the channel and components of rust-toolchain.toml, and
-        # make check runs cargo offline on the crates of every Cargo.lock that
-        # make install-rust downloads.
-        run: make install-rust
+        # rustup installs the channel and components of rust-toolchain.toml.
+        run: make install-rust-toolchain
       - uses: Swatinem/rust-cache@v2
         id: rust-cache
         if: ${{ !cancelled() && steps.group-needs.outputs.rust == 'true' }}
@@ -125,6 +123,12 @@ jobs:
             packages/rust -> target
             bench/rust -> target
             tests/interfaces/rust -> target
+      # make check runs cargo offline on the crates of every Cargo.lock that make install-rust-crates downloads; it runs
+      # after the cache is restored, since the restored registry replaces crates downloaded before it.
+      - name: Rust crates
+        id: rust-crates
+        if: ${{ !cancelled() && steps.group-needs.outputs.rust == 'true' }}
+        run: make install-rust-crates
       # make install-python builds the venv from the Python of mise.toml (the interpreter of make python-venv), so CI and a
       # local check use the same interpreter; setup-python is not used.
       - name: Python client dependencies
