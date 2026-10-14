@@ -298,6 +298,7 @@ function decodeYaml(current: Uint8Array): CodecValue {
     const document = documents[0]!;
     if (document.errors.length > 0) throw document.errors[0];
     if (document.warnings.length > 0) throw document.warnings[0];
+    const schema = document.schema;
     visit(document, {
       // docs/codec.md (yaml): anchors and every explicit tag, the core tags included, are refused.
       // The parser sets a node's anchor and tag only when the text writes them.
@@ -307,8 +308,14 @@ function decodeYaml(current: Uint8Array): CodecValue {
       },
       Pair(_key, pair) {
         if (!isScalar(pair.key) || typeof pair.key.value !== 'string') throw new Error('map keys must be scalar strings');
-        if (pair.key.type === 'PLAIN' && /^(?:true|false|null|~|[-+]?(?:\d+\.\d*|\.\d+)(?:e[-+]?\d+)?|[-+]?\d+e[-+]?\d+|[-+]?\.(?:inf|nan))$/i.test(pair.key.source ?? '')) {
-          throw new Error('plain boolean, null, and floating-point map keys are not supported');
+        // stringKeys keeps a key's value a string, so a plain key's core type is the tag the core schema
+        // resolves its text to, found by the schema's own tests as the parser does for a value.
+        if (pair.key.type === 'PLAIN') {
+          const text = pair.key.source ?? pair.key.value;
+          const tag = schema.tags.find(candidate => candidate.default === true && candidate.test?.test(text))?.tag;
+          if (tag === 'tag:yaml.org,2002:bool' || tag === 'tag:yaml.org,2002:null' || tag === 'tag:yaml.org,2002:float') {
+            throw new Error('plain boolean, null, and floating-point map keys are not supported');
+          }
         }
       },
     });
