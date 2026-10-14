@@ -26,7 +26,8 @@ typescript_package() {
   cd "$ROOT/packages/ts"
   npm pack --dry-run --json > "$PACK_JSON"
 )
-node -e 'const p=JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))[0]; if (p.name !== "@polyspec/orm" || p.version !== process.argv[2] || !p.files.some(f => f.path === "dist/index.js")) process.exit(1); console.log(`typescript package: ${p.name}@${p.version}, ${p.files.length} files`)' "$PACK_JSON" "$VERSION"
+# npm 12 (packageManager) writes the result of `npm pack --json` as an object keyed by the package name.
+node -e 'const p=Object.values(JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")))[0]; if (p.name !== "@polyspec/orm" || p.version !== process.argv[2] || !p.files.some(f => f.path === "dist/index.js")) process.exit(1); console.log(`typescript package: ${p.name}@${p.version}, ${p.files.length} files`)' "$PACK_JSON" "$VERSION"
 }
 
 php_package() {

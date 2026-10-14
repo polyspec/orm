@@ -1542,20 +1542,17 @@ caseTest('every workflow that runs on push cancels the run of the push before it
   assert.deepEqual(concurrencyErrors(ownWorkflows(Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [name, readFileSync(join(directory, name), 'utf8')])), vendoredFiles)), []);
 });
 
-// The go line of go.mod is the one declaration of the Go release: kit's toolchain-check requires it to be the kit pin and
-// the running go to be that release, and every workflow sets up Go from go.mod.
-const goWorkflow = '    steps:\n      - uses: actions/setup-go@v6\n        with: { go-version-file: go.mod }\n      - run: make check\n';
-caseTest('every workflow runs the Go of the go line of go.mod', COMPUTE, () => {
+// mise.toml declares the one Go release (kit K127): kit's toolchain-check requires it to be the kit pin and the running go
+// to be that release, and every workflow that runs Go installs it with make install-tools, never with actions/setup-go.
+const goWorkflow = '    steps:\n      - run: make install-tools TOOLS=npm\n      - run: make install-tools\n      - run: make check\n';
+caseTest('every workflow runs the Go of mise.toml', COMPUTE, () => {
   assert.deepEqual(goVersionErrors({ 'ci.yml': goWorkflow }), []);
-  assert.deepEqual(goVersionErrors({ 'ci.yml': goWorkflow.replace('go-version-file: go.mod', 'go-version: "1.27"') }), [
-    'ci.yml declares go-version itself; read go-version-file: go.mod in actions/setup-go',
-    'ci.yml does not read go-version-file go.mod in actions/setup-go; add go-version-file: go.mod',
+  assert.deepEqual(goVersionErrors({ 'ci.yml': goWorkflow.replace('      - run: make install-tools\n', '      - uses: actions/setup-go@v6\n        with: { go-version-file: go.mod }\n') }), [
+    'ci.yml sets up Go with actions/setup-go; the Go of mise.toml is installed by make install-tools',
+    'ci.yml runs Go without the Go of mise.toml; add a step that runs make install-tools',
   ]);
-  assert.deepEqual(goVersionErrors({ 'ci.yml': goWorkflow.replace('go-version-file: go.mod', 'go-version-file: .go-version') }), [
-    'ci.yml does not read go-version-file go.mod in actions/setup-go; add go-version-file: go.mod',
-  ]);
-  assert.deepEqual(goVersionErrors({ 'ci.yml': '    steps:\n      - run: make check\n' }), [
-    'ci.yml runs Go without actions/setup-go; add a setup-go step with go-version-file: go.mod',
+  assert.deepEqual(goVersionErrors({ 'ci.yml': '    steps:\n      - run: make install-tools TOOLS=npm\n      - run: make check\n' }), [
+    'ci.yml runs Go without the Go of mise.toml; add a step that runs make install-tools',
   ]);
 });
 
