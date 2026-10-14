@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: db868fbddc9d0c953b4ab002ee1d23ea3239bb119d0bbe8b5ac2d745144a5731 -->
+<!-- source-sha256: 5a41f36fae868efd12d9c7f73f917ea170aec00e5c4ecec06cb29eba89bd8e3c -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1110,7 +1110,8 @@
     Evidence: -record가 정확히 두 symbol을 더하고, 계산한 hash로 검사가 통과한다.
 - [o] T175 PHP scan에서 invocable model을 해석한다 (T172에 이어). 원인: PHP orm-gen scan은 `$m = new C; $m->chain()`은 해석하지만, hyper module이 각각 약 130번 쓰는 invocable model 관용구 `(new C)($db)->chain()`은 해석하지 않는다. ScanVisitor에 `new C` 식이나 model을 돌려주는 `__invoke` 결과에 대한 호출 case가 없어, --scan이 member, page, board, canister, product, ordersheet에서 chain method를 하나도 선언하지 않았다(hyper가 0.0.16에서 보고). 완료 조건: `(new C)`, `(new C)(...)`와 그 chain에 대한 호출이 C로 해석되고, tests/generator/php-scan-vectors.json의 scan vector와 PHPStan fixture가 그 관용구를 쓰며, PHP scan과 node scan과의 parity가 통과한다.
   Evidence: 변경 전 orm-gen-scan이 3 case에서 실패했고(invoked vector 둘, PHPStan method.notFound) 변경 후 27건 통과한다. orm-gen-scan-parity 16건 통과, interface-check -language php는 symbol 변경이 없다.
-- [ ] T176 Python client에서 3.46보다 오래된 SQLite를 거부한다. 원인: Go(db.go), Rust(db.rs), PHP(Orm.php), TypeScript(driver.ts) client는 docs/dialects.md대로 연결할 때 3.46보다 오래된 SQLite를 CAPABILITY_UNSUPPORTED로 거부하지만, Python client에는 그 검사가 없고 Python은 system SQLite를 link한다. 완료 조건: RED case가 3.46보다 오래되었다고 보고하는 SQLite에 Python client가 연결하는 것을 보이고, 이후 client가 같은 message의 CAPABILITY_UNSUPPORTED로 거부하며, parity vector가 모든 client에서 그 거부를 확인한다.
+- [o] T176 Python client에서 3.46보다 오래된 SQLite를 거부한다. 원인: Go(db.go), Rust(db.rs), PHP(Orm.php), TypeScript(driver.ts) client는 docs/dialects.md대로 연결할 때 3.46보다 오래된 SQLite를 CAPABILITY_UNSUPPORTED로 거부하지만, Python client에는 그 검사가 없고 Python은 system SQLite를 link한다. 완료 조건: RED case가 3.46보다 오래되었다고 보고하는 SQLite에 Python client가 연결하는 것을 보이고, 이후 client가 다른 client와 같은 message의 CAPABILITY_UNSUPPORTED로 거부하고 3.46 이상은 받아들인다. 공유 vector는 만들지 않는다: 각 client는 자기가 link한 library의 version을 읽고, 어느 case도 다른 client의 그것을 바꿀 수 없으므로 각 검사는 자기 비교다.
+  Evidence: 변경 전 test_sqlite_version이 3.45.3에서 "OrmError not raised"로 실패했다. 변경 후 3.45.3, 3.9.0, 2.8.17을 거부하고 3.46.0, 3.50.4, 4.0.0을 받아들이며, python-unit-check가 통과한다.
 - [o] T156 모든 생성기가 모든 key의 모든 prefix마다 유형 있는 메서드를 선언한다. 원인: scan한 소스가 호출하는 메서드만 생성되어, 어떤 소스도 호출하지 않는 key prefix에는 메서드가 없었다(hyper U-97). 완료 조건: Go, Rust, TypeScript model이 primary key, unique key, index의 모든 prefix마다 메서드를 선언하고, Python은 같은 이름을 실행 시점에 해석하며, symbol 기록과 docs/usage.md를 갱신한다.
   - [o] T156-1 T156 이후 orm main CI를 다시 green으로 만든다 (T156에 이어). 원인: run 38502539388이 실패했다. Python key-prefix 테스트가 PYTHONPATH를 바꾸고 지워진 packages/orm-python/bin/orm-gen을 실행했고, Go와 Rust key-prefix 테스트가 testcase를 시작하지 않았으며, generator/gen_go_key_prefix_test.go가 어떤 feature에도 속하지 않았고, src/models/markdown_fixture에 key-prefix 메서드가 없었다. 완료 조건: 각각을 고치고 그 소유 검사가 통과한다.
   - [o] T156-2 Go markdown model을 다시 생성한다 (T156에 이어). 원인: run 38504701356이 go-markdown-model-generated에서 실패했다. packages/orm-go/markdownmodel에 key-prefix 메서드가 없었다. 완료 조건: go generate가 폴더를 바꾸지 않는다.
