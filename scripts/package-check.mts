@@ -2,7 +2,7 @@
 // of the PHP client, the Rust client as a path dependency of an external crate, and the Go module imported by an external
 // module. The four checks are independent: a failed check does not stop the rest, and the script lists every failed check
 // and ends with 1.
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
 import { keepAll, render, run, variable, type Command } from './check/commands.mts';
@@ -20,7 +20,9 @@ const go = join(work, 'go');
 const PACK: Command = { program: 'npm', args: ['pack', '--dry-run', '--json'], cwd: join(root, 'packages/ts') };
 const COMPOSER: Command = { program: 'composer', args: ['validate', `--working-dir=${join(root, 'packages/php')}`, '--no-check-publish', '--no-check-lock'], cwd: root };
 // The Rust client depends on git crates that are not on a registry, so it is checked as a path dependency of an external
-// crate instead of with cargo package; it builds into the shared Rust target directory and so under its lease.
+// crate instead of with cargo package; it builds into the shared Rust target directory and so under its lease. The crate
+// takes the lock of the client, as a consumer pins it: the checks run offline (CARGO_NET_OFFLINE), and without a lock cargo
+// resolves a git dependency by its tag, which the fetched git database need not hold.
 const CARGO: Command = { program: variable('LEASE'), args: ['run', variable('CARGO_LEASES'), 'exclusive', '--wait', '--', 'cargo', 'check', '--manifest-path', join(rust, 'Cargo.toml'), '--quiet'], cwd: root };
 const GO: Command[] = [
   { program: 'go', args: ['mod', 'init', 'example.com/orm-external-check'], cwd: go },
@@ -50,6 +52,7 @@ async function typescriptPackage(): Promise<string[]> {
 async function rustPackage(): Promise<string[]> {
   mkdirSync(join(rust, 'src'), { recursive: true });
   writeFileSync(join(rust, 'Cargo.toml'), `[package]\nname = "orm-external-check"\nversion = "0.0.0"\nedition = "2021"\npublish = false\n\n[dependencies]\npolyspec-orm = { path = "${root}/packages/rust/orm" }\n\n[workspace]\n`);
+  copyFileSync(join(root, 'packages/rust/Cargo.lock'), join(rust, 'Cargo.lock'));
   writeFileSync(join(rust, 'src/lib.rs'), 'pub fn config_code() -> &\'static str {\n    polyspec_orm::codes::CONFIG\n}\n');
   const failed = await keepAll([CARGO]);
   if (failed.length === 0) console.log('rust package: polyspec-orm builds as an external path dependency');
