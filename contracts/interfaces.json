@@ -40,7 +40,7 @@
   },
   "symbol_hashes": {
     "go": "sha256:071d0e226c97722ed12c6ba323c187203eaaeaaf8ef612bc5ad89be6ff231df0",
-    "php": "sha256:2b78ddbcc620118a4bcbf3430185b33898e059ac13aa95c0b741c82529c6626c",
+    "php": "sha256:ee68ba118cd43fa171debc3620555756596cd0bab2c6d506796f4aabc38bac5b",
     "rust": "sha256:706c9e2ff128b70adef26aff899873ca89a0c2e4a64628833bdfe26a634cbcf0",
     "typescript": "sha256:9f319acad965131917455d951e0d8ca349a2258e55d7c61f0ad8497f19c1d01e",
     "python": "sha256:068f3710db78336e6282b6dc52eaa9d31ba017820d8e41cd1c9c1df1c407fa9e"
@@ -53,7 +53,7 @@
         "packages/php-ext/stubs"
       ],
       "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:835c026968f6b45d8b65d7d47b75a28b8552efdbda54e272e3cf5522e6b09c6a",
+      "symbol_hash": "sha256:5a8aadc558835489b26260b3e522907f6b23572555c21075d394de7ab910aba0",
       "rules": [
         "Dbspec.readFile",
         "Dbspec.readBytes",

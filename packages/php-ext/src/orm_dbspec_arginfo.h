@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 4af4b9c1f6d7414e7d5667cd4521b98944f45755 */
+ * Stub hash: afea7272d446045292ecfd0662818f6d0e4a8e93 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
@@ -159,6 +159,14 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_SetResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\SetResult, 0)
 	ZEND_ARG_TYPE_INFO(0, errors, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_SetDocument___construct, 0, 0, 5)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, external, _IS_BOOL, 0)
+	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 1)
+	ZEND_ARG_TYPE_INFO(0, positions, IS_ARRAY, 1)
+	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ParseResult___construct, 0, 0, 3)
@@ -450,6 +458,11 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_
 	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_parseSet, 0, 2, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, owned, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, external, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_emit, 0, 1, IS_STRING, 0)
 	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 0)
 ZEND_END_ARG_INFO()
@@ -576,6 +589,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetError, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetResult, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetResult, valid);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetResult, invalid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetDocument, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ParseResult, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ParseResult, valid);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ParseResult, invalid);
@@ -633,6 +647,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, format);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, readFile);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, readBytes);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, readSet);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, parseSet);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, emit);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, render);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, introspect);
@@ -767,6 +782,11 @@ static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_SetResult_meth
 	ZEND_ME(Polyspec_Orm_Dbspec_Native_SetResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_SetResult___construct, ZEND_ACC_PRIVATE)
 	ZEND_ME(Polyspec_Orm_Dbspec_Native_SetResult, valid, arginfo_class_Polyspec_Orm_Dbspec_Native_SetResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Polyspec_Orm_Dbspec_Native_SetResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_Native_SetResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_SetDocument_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Native_SetDocument, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_SetDocument___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
@@ -944,6 +964,7 @@ static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Dbspec_methods
 	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, readFile, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_readFile, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, readBytes, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_readBytes, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, readSet, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_readSet, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, parseSet, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_parseSet, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, emit, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_emit, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, render, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_render, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, introspect, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_introspect, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
@@ -1641,6 +1662,45 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_SetResult(voi
 	zend_string *property_errors_name = zend_string_init("errors", sizeof("errors") - 1, 1);
 	zend_declare_typed_property(class_entry, property_errors_name, &property_errors_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
 	zend_string_release(property_errors_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_SetDocument(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "SetDocument", class_Polyspec_Orm_Dbspec_Native_SetDocument_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
+
+	zval property_name_default_value;
+	ZVAL_UNDEF(&property_name_default_value);
+	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_NAME), &property_name_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+
+	zval property_external_default_value;
+	ZVAL_UNDEF(&property_external_default_value);
+	zend_string *property_external_name = zend_string_init("external", sizeof("external") - 1, 1);
+	zend_declare_typed_property(class_entry, property_external_name, &property_external_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release(property_external_name);
+
+	zval property_document_default_value;
+	ZVAL_UNDEF(&property_document_default_value);
+	zend_string *property_document_name = zend_string_init("document", sizeof("document") - 1, 1);
+	zend_string *property_document_class_Polyspec_Orm_Dbspec_Native_Document = zend_string_init("Polyspec\\Orm\\Dbspec\\\116ative\\Document", sizeof("Polyspec\\Orm\\Dbspec\\\116ative\\Document")-1, 1);
+	zend_declare_typed_property(class_entry, property_document_name, &property_document_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_document_class_Polyspec_Orm_Dbspec_Native_Document, 0, MAY_BE_NULL));
+	zend_string_release(property_document_name);
+
+	zval property_positions_default_value;
+	ZVAL_UNDEF(&property_positions_default_value);
+	zend_string *property_positions_name = zend_string_init("positions", sizeof("positions") - 1, 1);
+	zend_declare_typed_property(class_entry, property_positions_name, &property_positions_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY|MAY_BE_NULL));
+	zend_string_release(property_positions_name);
+
+	zval property_diagnostics_default_value;
+	ZVAL_UNDEF(&property_diagnostics_default_value);
+	zend_string *property_diagnostics_name = zend_string_init("diagnostics", sizeof("diagnostics") - 1, 1);
+	zend_declare_typed_property(class_entry, property_diagnostics_name, &property_diagnostics_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_diagnostics_name);
 
 	return class_entry;
 }

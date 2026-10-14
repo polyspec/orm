@@ -64,26 +64,15 @@ final class RuntimeModel
      */
     public static function parseSet(array $owned, array $external): array
     {
-        $named = [];
-        foreach ([$external, $owned] as $texts) {
-            foreach ($texts as $text) {
-                if (preg_match('/\Adbspec 1 ([a-z][a-z0-9_]*)(?:\r?\n|\z)/', $text, $m) === 1) {
-                    $named[$m[1]] = $text;
-                }
-            }
-        }
+        $labels = [...array_keys($owned), ...array_keys($external)];
         $documents = [];
         $errors = [];
-        foreach ([[$external, true], [$owned, false]] as [$texts, $isExternal]) {
-            foreach ($texts as $label => $text) {
-                $result = Dbspec::parse($text, $named);
-                foreach ($result->diagnostics as $d) {
-                    $errors[] = "$label:{$d->line}:{$d->column}: {$d->rule}: {$d->message}";
-                }
-                if ($result->document !== null) {
-                    $result->document->external = $isExternal;
-                    $documents[] = $result->document;
-                }
+        foreach (Dbspec::parseSet(array_values($owned), array_values($external)) as $i => $result) {
+            foreach ($result->diagnostics as $d) {
+                $errors[] = "{$labels[$i]}:{$d->line}:{$d->column}: {$d->rule}: {$d->message}";
+            }
+            if ($result->document !== null) {
+                $documents[] = $result->document;
             }
         }
         if ($errors !== []) {

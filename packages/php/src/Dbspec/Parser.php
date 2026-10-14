@@ -195,6 +195,21 @@ final class Parser
     }
 
     /**
+     * The name that the header step reads from the source, or '' when the header fails (docs/dbspec.md "Parsing a
+     * set"): the read runs without used documents, as Go's parseStructure(text, nil), and its other diagnostics are
+     * dropped.
+     */
+    public static function headerName(string $source): string
+    {
+        $parser = new self([]);
+        try {
+            $parser->read($source);
+        } catch (ParseStop) {
+        }
+        return isset($parser->document) ? $parser->document->name : '';
+    }
+
+    /**
      * The tokens of every line of the source in source order, each with its class: the class a reader set, unless the
      * line is lexical, else the lexical class (docs/dbspec.md "Syntax analysis"). The lines are split and lexed as the
      * parser reads them, so a line the parser did not read gets the same tokens.

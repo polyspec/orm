@@ -3622,3 +3622,14 @@ document *dbs_analyze(str text, const smap *documents, diags *out, dposv *pos, d
     parser *p = parser_new(documents, NULL, used);
     return run(p, text, out, pos, tokens);
 }
+
+/* The name that the header step reads from the text, empty when the header fails (docs/dbspec.md "Parsing a set"):
+ * the read runs without used documents, as Go's parseStructure(text, nil), and its diagnostics are dropped. */
+str dbs_header_name(str text)
+{
+    smap none = {0};
+    smap *used = dbs_alloc(sizeof *used);
+    parser *p = parser_new(&none, NULL, used);
+    read_until_stop(p, text);
+    return p->doc != NULL ? p->doc->name : (str){0};
+}

@@ -1580,6 +1580,118 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, readSet)
     LEAVE();
 }
 
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetDocument, __construct)
+{
+    zend_string *name;
+    bool external;
+    zval *document, *positions, *diagnostics;
+    ZEND_PARSE_PARAMETERS_START(5, 5)
+        Z_PARAM_STR(name)
+        Z_PARAM_BOOL(external)
+        Z_PARAM_OBJECT_OF_CLASS_OR_NULL(document, dbs_ce_Document)
+        Z_PARAM_ARRAY_OR_NULL(positions)
+        Z_PARAM_ARRAY(diagnostics)
+    ZEND_PARSE_PARAMETERS_END();
+    init_str(ZEND_THIS, "name", name);
+    init_bool(ZEND_THIS, "external", external);
+    init_obj_or_null(ZEND_THIS, "document", document != NULL ? Z_OBJ_P(document) : NULL);
+    init_array_or_null(ZEND_THIS, "positions", positions);
+    init_array(ZEND_THIS, "diagnostics", diagnostics);
+}
+
+/* Dbspec::parseSet (docs/dbspec.md "Parsing a set"), the twin of the PHP client's: each text's name is the name the
+ * parser's header step reads; a text whose name an earlier text has is not parsed and carries `name.duplicate`;
+ * every other text is parsed with the texts of all other named documents, an external one marked external. */
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, parseSet)
+{
+    zval *owned, *external;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ARRAY(owned)
+        Z_PARAM_ARRAY(external)
+    ZEND_PARSE_PARAMETERS_END();
+    zval *lists[2] = {owned, external};
+    zval *source;
+    for (int l = 0; l < 2; l++) {
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(lists[l]), source) {
+            ZVAL_DEREF(source);
+            if (Z_TYPE_P(source) != IS_STRING) {
+                zend_throw_exception(spl_ce_InvalidArgumentException, "A document set holds texts", 0);
+                RETURN_THROWS();
+            }
+        } ZEND_HASH_FOREACH_END();
+    }
+    ENTER();
+    size_t count = zend_hash_num_elements(Z_ARRVAL_P(owned)) + zend_hash_num_elements(Z_ARRVAL_P(external));
+    str *texts = dbs_alloc(sizeof(str) * (count + 1));
+    str *names = dbs_alloc(sizeof(str) * (count + 1));
+    bool *externals = dbs_alloc(sizeof(bool) * (count + 1));
+    bool *parsed = dbs_alloc(sizeof(bool) * (count + 1));
+    size_t n = 0;
+    for (int l = 0; l < 2; l++) {
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(lists[l]), source) {
+            ZVAL_DEREF(source);
+            texts[n] = zs(Z_STR_P(source));
+            externals[n] = l == 1;
+            n++;
+        } ZEND_HASH_FOREACH_END();
+    }
+    smap named = {0};
+    for (size_t i = 0; i < n; i++) {
+        names[i] = dbs_header_name(texts[i]);
+        if (names[i].n > 0) {
+            if (smap_has(&named, names[i])) {
+                continue;
+            }
+            smap_set(&named, names[i], &texts[i]);
+        }
+        parsed[i] = true;
+    }
+    array_init_size(return_value, (uint32_t)n);
+    for (size_t i = 0; i < n; i++) {
+        zval o;
+        obj_new(&o, dbs_ce_SetDocument);
+        obj_put_str(&o, "name", names[i]);
+        obj_put_bool(&o, "external", externals[i]);
+        if (!parsed[i]) {
+            diags repeated = {0};
+            diag d = {SL("name.duplicate"), 1, 10, fmt("document %S appears twice in the document set", names[i])};
+            PUSH(repeated, d);
+            zval dl;
+            zv_diags(&dl, &repeated);
+            obj_put_null(&o, "document");
+            obj_put_null(&o, "positions");
+            obj_put(&o, "diagnostics", &dl);
+            add_next_index_zval(return_value, &o);
+            continue;
+        }
+        smap others = {0};
+        SMAP_EACH(&named, k) {
+            if (!str_eq(named.e[k].key, names[i])) {
+                smap_set(&others, named.e[k].key, named.e[k].val);
+            }
+        }
+        diags found = {0};
+        dposv decls = {0};
+        document *d = dbs_parse(texts[i], &others, &found, &decls);
+        zval dl;
+        zv_diags(&dl, &found);
+        if (d != NULL) {
+            d->external = externals[i];
+            zval dz, pz;
+            out_document(d, &dz);
+            zv_positions(&pz, &decls);
+            obj_put(&o, "document", &dz);
+            obj_put(&o, "positions", &pz);
+        } else {
+            obj_put_null(&o, "document");
+            obj_put_null(&o, "positions");
+        }
+        obj_put(&o, "diagnostics", &dl);
+        add_next_index_zval(return_value, &o);
+    }
+    LEAVE();
+}
+
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, readBytes)
 {
     zend_string *name, *bytes;
@@ -2191,6 +2303,7 @@ static PHP_MINIT_FUNCTION(orm_dbspec)
     dbs_ce_SetFile = register_class_Polyspec_Orm_Dbspec_Native_SetFile();
     dbs_ce_SetError = register_class_Polyspec_Orm_Dbspec_Native_SetError();
     dbs_ce_SetResult = register_class_Polyspec_Orm_Dbspec_Native_SetResult();
+    dbs_ce_SetDocument = register_class_Polyspec_Orm_Dbspec_Native_SetDocument();
 
     /* PHP의 readonly class는 동적 property를 받지 않는다. 내부 class는 그 flag를 따로 둔다. */
 #define DBS_NO_DYNAMIC(n) if (dbs_ce_##n->ce_flags & ZEND_ACC_READONLY_CLASS) dbs_ce_##n->ce_flags |= ZEND_ACC_NO_DYNAMIC_PROPERTIES;
