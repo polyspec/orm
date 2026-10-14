@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "note": "Each case calls methods on one model of schema/dbspec-set.json (calls: name and argument count). expected.declared lists the methods the generator declares beyond the schema; expected.rejected is a text of the CONFIG error. parity false excludes a case from the comparison with the node orm-gen, which does not check argument counts.",
+  "cases": [
+    { "id": "operator-chain", "operation": "scan", "model": "Author", "calls": [{ "name": "ltSeq", "args": 1 }, { "name": "geReadCount", "args": 1 }, { "name": "lkName", "args": 1 }, { "name": "neIsClose", "args": 1 }], "expected": { "declared": ["geReadCount", "lkName", "ltSeq", "neIsClose"] } },
+    { "id": "connector-chain", "operation": "scan", "model": "Author", "calls": [{ "name": "andLtSeq", "args": 1 }, { "name": "orIsClose", "args": 1 }, { "name": "andReadCount", "args": 1 }], "expected": { "declared": ["andLtSeq", "andReadCount", "orIsClose"] } },
+    { "id": "multi-column-chain", "operation": "scan", "model": "Author", "calls": [{ "name": "seqAndName", "args": 2 }, { "name": "isCloseOrReadCount", "args": 2 }], "expected": { "declared": ["isCloseOrReadCount", "seqAndName"] } },
+    { "id": "between-and-column-function", "operation": "scan", "model": "Author", "calls": [{ "name": "betweenReadCount", "args": 1 }, { "name": "gtStartDt", "args": 2 }, { "name": "startDtLtEndDt", "args": 1 }], "expected": { "declared": ["betweenReadCount", "gtStartDt", "startDtLtEndDt"] } },
+    { "id": "finders", "operation": "scan", "model": "Author", "calls": [{ "name": "getsBySeqAndIsClose", "args": 2 }, { "name": "getBySeq", "args": 1 }, { "name": "getCountByServiceSeq", "args": 1 }], "expected": { "declared": ["getBySeq", "getCountByServiceSeq", "getsBySeqAndIsClose"] } },
+    { "id": "order-join-match", "operation": "scan", "model": "Author", "calls": [{ "name": "orderBySeqDescAndNameAsc", "args": 0 }, { "name": "joinUserSeqWithSeq", "args": 1 }, { "name": "leftJoinServiceSeqWithSeq", "args": 1 }, { "name": "matchUserSeqWithSeq", "args": 0 }], "expected": { "declared": ["joinUserSeqWithSeq", "leftJoinServiceSeqWithSeq", "matchUserSeqWithSeq", "orderBySeqDescAndNameAsc"] } },
+    { "id": "added-names", "operation": "scan", "model": "Author", "calls": [{ "name": "aliasMine", "args": 0 }, { "name": "newExtra", "args": 1 }, { "name": "getExtra", "args": 0 }, { "name": "possibleSeq", "args": 1 }, { "name": "addColumnTotal", "args": 1 }], "expected": { "declared": ["addColumnTotal", "aliasMine", "getExtra", "newExtra", "possibleSeq"] } },
+    { "id": "tuple", "operation": "scan", "model": "Author", "calls": [{ "name": "tupleUserSeqWithServiceSeq", "args": 1 }], "expected": { "declared": ["tupleUserSeqWithServiceSeq"] } },
+    { "id": "schema-methods-are-not-redeclared", "operation": "scan", "model": "Author", "parity": false, "calls": [{ "name": "seq", "args": 1 }, { "name": "addColumnName", "args": 0 }, { "name": "orderBySeqAsc", "args": 0 }, { "name": "getSeq", "args": 0 }, { "name": "gets", "args": 0 }], "expected": { "declared": [] } },
+    { "id": "unknown-column", "operation": "scan", "model": "Author", "calls": [{ "name": "ltNoSuchColumn", "args": 1 }], "expected": { "rejected": "Author.ltNoSuchColumn" } },
+    { "id": "unknown-operator", "operation": "scan", "model": "Author", "calls": [{ "name": "xyzSeq", "args": 1 }], "expected": { "rejected": "Author.xyzSeq" } },
+    { "id": "operator-not-for-the-column", "operation": "scan", "model": "Author", "calls": [{ "name": "lkSeq", "args": 1 }], "expected": { "rejected": "Author.lkSeq" } },
+    { "id": "unknown-finder-column", "operation": "scan", "model": "Author", "calls": [{ "name": "getsByNoSuch", "args": 1 }], "expected": { "rejected": "Author.getsByNoSuch" } },
+    { "id": "order-without-direction", "operation": "scan", "model": "Author", "calls": [{ "name": "orderBySeqAndName", "args": 0 }], "expected": { "rejected": "Author.orderBySeqAndName" } },
+    { "id": "get-without-a-named-value", "operation": "scan", "model": "Author", "calls": [{ "name": "getNothing", "args": 0 }], "expected": { "rejected": "Author.getNothing" } },
+    { "id": "too-few-arguments", "operation": "scan", "model": "Author", "parity": false, "calls": [{ "name": "ltSeq", "args": 0 }], "expected": { "rejected": "Author.ltSeq takes 1 argument" } },
+    { "id": "too-many-arguments", "operation": "scan", "model": "Author", "parity": false, "calls": [{ "name": "seqAndName", "args": 3 }], "expected": { "rejected": "Author.seqAndName takes 2 arguments" } },
+    { "id": "join-needs-the-child", "operation": "scan", "model": "Author", "parity": false, "calls": [{ "name": "joinUserSeqWithSeq", "args": 0 }], "expected": { "rejected": "Author.joinUserSeqWithSeq takes 1 argument" } }
+  ]
+}
