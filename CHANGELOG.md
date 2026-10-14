@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Go, TypeScript, Python and Rust report each shared-vector case under its id: Go subtests, one TypeScript test per case, Python load_tests cases and Rust libtest-mimic trials; Rust validates through the public engine::validate. (#T148-2)
 - The PHP client's and the extension's tests run on PHPUnit: the shared vectors through data providers named by their case ids, and orm's own PHP test runner is removed. symfony/yaml is 8.1. (#T148-1)
 
 ## 0.0.15
