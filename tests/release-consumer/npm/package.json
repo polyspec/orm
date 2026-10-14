@@ -2,6 +2,9 @@
   "name": "orm-release-consumer",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=26.11.1"
+  },
   "dependencies": {
     "@polyspec/orm": "file:polyspec-orm-npm-0.0.14.tgz",
     "@polyspec/ordered-json": "https://github.com/polyspec/ordered-json/releases/download/v0.0.8/polyspec-ordered-json-npm-0.0.8.tgz"
