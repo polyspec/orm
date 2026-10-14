@@ -2547,10 +2547,10 @@
         },
         {
           "id": "generation-methods-php",
-          "command": "php packages/orm-php/tests/model_methods_test.php",
+          "command": "php packages/php/tests/model_methods_test.php",
           "shard": "other",
           "inputs": [
-            "packages/orm-php/tests/model_methods_test.php"
+            "packages/php/tests/model_methods_test.php"
           ]
         },
         {
