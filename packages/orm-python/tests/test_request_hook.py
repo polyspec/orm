@@ -30,7 +30,7 @@ def and_where(query: dict, pred: dict) -> None:
 
 def part_filter(value: str, kinds=READS):
     """kinds의 request에 part eq value를 더하는 hook이다."""
-    def hook(request, add_param):
+    def hook(request, add_param, params):
         if request['kind'] in kinds:
             and_where(request, {'column': 'part', 'op': 'eq', 'p': add_param(value)})
         return request
@@ -71,6 +71,18 @@ class RequestHookTest(unittest.TestCase):
         self.assertEqual(self.labels(self.db), ['a1', 'a2', 'b1'], 'the connection keeps no hook')
         self.assertEqual(self.item(self.db).get_count(), 3)
 
+    def test_reads_params(self):
+        seen = []
+
+        def hook(request, add_param, params):
+            if request['kind'] == 'all':
+                seen.append(params[request['where']['items'][0]['pred']['p']])
+                seen.append(isinstance(params, tuple))
+            return request
+
+        self.item(self.db.with_request_hook(hook)).label('a2').gets()
+        self.assertEqual(seen, ['a2', True], 'the hook reads the value bound to the predicate, read-only')
+
     def test_read_filter(self):
         hooked = self.db.with_request_hook(part_filter('a'))
         self.assertEqual(self.labels(hooked), ['a1', 'a2'])
@@ -81,7 +93,7 @@ class RequestHookTest(unittest.TestCase):
         self.assertEqual(self.labels(self.db.with_request_hook(part_filter('b'))), ['b1'])
 
     def test_insert_assign(self):
-        def hook(request, add_param):
+        def hook(request, add_param, params):
             if request['kind'] == 'insert':
                 request['set'].append({'column': 'part', 'p': add_param('h')})
                 for row in request.get('rows') or []:
@@ -99,7 +111,7 @@ class RequestHookTest(unittest.TestCase):
     def test_loaded_row_writes(self):
         seen = []
 
-        def hook(request, add_param):
+        def hook(request, add_param, params):
             seen.append(request['kind'])
             if request['kind'] in ('update', 'delete'):
                 and_where(request, {'column': 'part', 'op': 'eq', 'p': add_param('none')})
@@ -122,7 +134,7 @@ class RequestHookTest(unittest.TestCase):
         events = []
         self.db.subscribe(events.append)
 
-        def hook(request, add_param):
+        def hook(request, add_param, params):
             and_where(request, {'column': 'part', 'op': 'eq', 'p': request['n_params'] + 5})
             return request
         with self.assertRaises(OrmError) as raised:
@@ -179,12 +191,12 @@ class RequestHookTest(unittest.TestCase):
         # The hook scopes the restore to part a and gives the model's label its own value y.
         scope = part_scope('a')
 
-        def hook(request, add_param):
+        def hook(request, add_param, params):
             if request['kind'] == 'restore':
                 for a in request.get('set') or []:
                     if a['column'] == 'label':
                         a['p'] = add_param('y')
-            return scope(request, add_param)
+            return scope(request, add_param, params)
         row = self.entry(self.db.with_request_hook(hook)).set_label('x').set_note('n4').restore()
         self.assertEqual((row.get_id(), row.get_label(), row.get_note()), (ids['ay'], 'y', 'n4'))
         self.assertEqual(self.entry_rows(self.db), [(ids['ay'], 'n4')])
@@ -193,7 +205,7 @@ class RequestHookTest(unittest.TestCase):
         ids = self.seed_deleted_entries()
         # The hook puts part a first in the set; the model's label completes the unique key.
 
-        def hook(request, add_param):
+        def hook(request, add_param, params):
             if request['kind'] == 'restore':
                 request['set'] = [{'column': 'part', 'p': add_param('a')}] + (request.get('set') or [])
             return request
