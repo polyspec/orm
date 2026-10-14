@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T161: PHP generated models declare their query methods as real typed methods (column conditions, orders, aggregates, key-prefix tuples, index hints), so PHPStan sees them; docs/usage.md names what stays on `__call`.
 ## 0.0.12
 
 - T159: the request hook receives the request's bound parameters read-only in every client: Node and Python as the third argument, Go as a copied slice, Rust through `RequestParams::get`; PHP already had `$r->params`.

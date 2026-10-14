@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 500c8252df09c278e85ee8aa8b886541238c4f30f3029cf8379824efe657582a -->
+<!-- source-sha256: a7fe887ee2002f60676c9ea3de7e36f7211fa2a6c702ff5e20389ca1be6117f2 -->
 # 변경 이력
 
 ## Unreleased
 
+- T161: PHP 생성 model이 query 메서드(column 조건, order, 집계, key-prefix tuple, index hint)를 유형 있는 실제 메서드로 선언해 PHPStan이 그것을 본다. docs/usage.md가 `__call`에 남는 것을 적는다.
 ## 0.0.12
 
 - T159: request hook이 모든 client에서 요청의 묶인 parameter를 읽기 전용으로 받는다. Node와 Python은 세 번째 인자로, Go는 복사한 slice로, Rust는 `RequestParams::get`으로 받는다. PHP에는 이미 `$r->params`가 있었다.
