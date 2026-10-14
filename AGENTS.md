@@ -37,6 +37,12 @@ vendors; this file states only the rules of orm.
   `cmd/`, `internal/` and the Go files of `contracts/`, `tests/`, `examples/` and `bench/`) stays at
   the repository root, which S5 refuses: moving it under `packages/` gives it a new module path and
   needs a decision on where the engine, the generator and the Go programs of `tests/` live (T137-1).
+- The editor packages of dbspec are `packages/dbspec-language` (the language service and the `dbspec-fmt`
+  command), `packages/dbspec-lsp` (the language server), `packages/dbspec-codemirror` (the CodeMirror
+  extension) and `packages/dbspec-vscode` (the VS Code extension). The first three are released as the
+  npm archives `@polyspec/dbspec-language`, `@polyspec/dbspec-lsp` and `@polyspec/dbspec-codemirror`
+  with the clients; the VS Code extension keeps the release version and is built as a `.vsix`
+  (docs/editor.md).
 - Name branches `{type}/{shortname}-{checklist ID}` and worktrees
   `{project}-{shortname}-{checklist ID}`. After integrating a branch into `main`, verify its commits
   or equivalent changes are present and its worktree is clean. Before removal, preserve any files

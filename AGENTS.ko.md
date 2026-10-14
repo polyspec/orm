@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 9b8131997d82d79974eb4e2255795790b547c79d9244ea24bcf8eee5e062c85c -->
+<!-- source-sha256: 50d7881e34ed9679217b35fbcb859805d6997cd507a2824789aa24096389a0a9 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -30,6 +30,11 @@ orm 자신의 규칙만 적는다.
   `generator/`, `cmd/`, `internal/`, 그리고 `contracts/`, `tests/`, `examples/`, `bench/`의 Go file)은 저장소 root에
   남으며 S5는 이를 거부한다: 그것을 `packages/` 아래로 옮기면 module path가 새로 바뀌고, engine, generator와
   `tests/`의 Go program을 어디에 둘지 결정해야 한다(T137-1).
+- dbspec의 editor package는 `packages/dbspec-language`(language service와 `dbspec-fmt` 명령),
+  `packages/dbspec-lsp`(language server), `packages/dbspec-codemirror`(CodeMirror extension),
+  `packages/dbspec-vscode`(VS Code extension)다. 앞의 셋은 client와 함께 npm archive
+  `@polyspec/dbspec-language`, `@polyspec/dbspec-lsp`, `@polyspec/dbspec-codemirror`로 릴리스되고, VS Code
+  extension은 릴리스 버전을 유지하며 `.vsix`로 빌드된다(docs/editor.md).
 - 브랜치는 `{type}/{shortname}-{체크리스트 ID}`, 워크트리는 `{프로젝트}-{shortname}-{체크리스트 ID}`로
   이름 짓는다. 브랜치를 `main`에 통합한 뒤 커밋이나 동등한 변경이 반영됐고 워크트리가 깨끗한지 확인한다.
   삭제할 워크트리에만 있는 `.gitignore` 제외 파일 중 계속 필요한 파일은 먼저 다른 곳에 보존한다.
