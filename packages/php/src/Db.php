@@ -479,7 +479,10 @@ final class Db
      * key가 그 table의 column이 아니면 transaction을 시작하기 전에 CONFIG다.
      * 중첩 transaction은 바깥 transaction의 audit을 쓰며 $audit을 받지 않는다.
      *
+     * @template T
+     * @param \Closure(): T $fn
      * @param array<string, mixed>|null $audit
+     * @return T
      */
     public function transaction(\Closure $fn, string $isolation = '', bool $readOnly = false, int $timeoutMs = 0, int $retry = 3, ?array $audit = null): mixed
     {
