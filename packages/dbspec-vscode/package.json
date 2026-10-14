@@ -12,7 +12,8 @@
     "directory": "packages/dbspec-vscode"
   },
   "engines": {
-    "vscode": "^1.140.0"
+    "vscode": "^1.140.0",
+    "node": ">=26.11.1"
   },
   "categories": [
     "Programming Languages",
@@ -138,7 +139,7 @@
     "@vscode/test-electron": "3.1.0",
     "@vscode/vsce": "4.0.0",
     "esbuild": "0.28.2",
-    "typescript": "^7.0.2",
+    "typescript": "7.0.2",
     "vscode-jsonrpc": "9.0.3",
     "vscode-languageclient": "10.1.2",
     "vscode-languageserver": "10.1.2"
