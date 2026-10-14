@@ -18,7 +18,7 @@ function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }
 }
 
-/** Generates models.ts from one source file and returns the member lines of each model interface. */
+/** Generates models.ts from one source file and returns the declared chain methods of each model class. */
 async function generate(source) {
   const work = await mkdtemp(join(tmpdir(), 'orm-ts-scan-'));
   try {
@@ -29,8 +29,8 @@ async function generate(source) {
     if (result.status !== 0) throw new Error(`orm-gen exit ${result.status}: ${result.stderr}`);
     const text = await readFile(join(out, 'models.ts'), 'utf8');
     const members = new Map();
-    for (const match of text.matchAll(/export interface (\w+) \{\n([\s\S]*?)\n\}/g)) {
-      members.set(match[1], match[2].split('\n').map(line => line.trim()).filter(line => !line.startsWith('/**')).map(line => line.replace(/[<(].*$/, '')));
+    for (const match of text.matchAll(/export class (\w+) extends Model \{\n([\s\S]*?)\n\}\n/g)) {
+      members.set(match[1], [...match[2].matchAll(/^  declare (\w+):/gm)].map(declared => declared[1]));
     }
     return { text, members: name => members.get(name) ?? [] };
   } finally {
@@ -121,8 +121,9 @@ async function scanPathSpelling() {
       if (result.status !== 0) throw new Error(`orm-gen ${name} exit ${result.status}: ${result.stderr}`);
       texts[name] = await readFile(join(work, 'models/models.ts'), 'utf8');
     }
-    check(/export interface Author \{[^}]*\bgtReadCount\(/.test(texts.relative), 'Author lacks gtReadCount of src');
-    check(/export interface User \{[^}]*\bneName\(/.test(texts.relative), 'User lacks neName of tests');
+    const declares = (model, method) => new RegExp(`export class ${model} extends Model \\{\\n(?:(?!\\n\\}\\n)[\\s\\S])*\\n  declare ${method}:`).test(texts.relative);
+    check(declares('Author', 'gtReadCount'), 'Author lacks gtReadCount of src');
+    check(declares('User', 'neName'), 'User lacks neName of tests');
     for (const name of Object.keys(spellings)) check(texts[name] === texts.relative, `models.ts of the ${name} paths differs from the relative paths`);
   } finally {
     await rm(work, { recursive: true, force: true });

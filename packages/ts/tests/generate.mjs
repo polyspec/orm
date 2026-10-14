@@ -42,9 +42,9 @@ await suite.run('generate', PROCESS, async () => {
     check(result.status === 0, `orm-gen exit ${result.status}: ${result.stderr}`);
     const text = await readFile(join(out, 'models.ts'), 'utf8');
     for (const invalid of ['NotAColumn', 'gtIsClose', 'lkReadCount', 'notCalled']) check(!text.includes(invalid), `declared invalid name ${invalid}`);
-    check(text.includes('getsByServiceSeqAndLtStartDt(v0: number | readonly (number)[] | ValueFunction | Model, v1: string | Date | ValueFunction): Promise<Collection<this>>;'), 'chain declaration');
-    check(text.includes('andNeUuid(v0: string | readonly (string)[] | ValueFunction | Model | null): this;'), 'nullable condition declaration');
-    check(text.includes('joinServiceSeqWithSeq(child: '), 'join declaration');
+    check(text.includes('declare getsByServiceSeqAndLtStartDt: (v0: number | readonly (number)[] | ValueFunction | Model, v1: string | Date | ValueFunction) => Promise<Collection<this>>;'), 'chain declaration');
+    check(text.includes('declare andNeUuid: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;'), 'nullable condition declaration');
+    check(text.includes('declare joinServiceSeqWithSeq: (child: '), 'join declaration');
     check(text.includes("from '@polyspec/orm'"), 'generated output outside the repository imports the package');
     check(text.includes('export const MANIFEST_TEXT = `dbspec 1 bench\n') && /export const MANIFEST_HASH = 'sha256:[0-9a-f]{64}';/.test(text), 'the manifest text and hash are embedded');
     // The value type of each codec: a styled value for ordered_json and gz, a string for aes hex and ip.
@@ -152,7 +152,7 @@ await suite.run('generate', PROCESS, async () => {
     check(indexedRun.status === 0, `orm-gen of the indexed set without a call: ${indexedRun.status} ${indexedRun.stderr}`);
     if (indexedRun.status === 0) {
       const generated = await readFile(join(indexedOut, 'models.ts'), 'utf8');
-      const declares = (model, method) => new RegExp(`export interface ${model} \\{[^}]*\\b${method}\\(`).test(generated);
+      const declares = (model, method) => new RegExp(`export class ${model} extends Model \\{\\n(?:(?!\\n\\}\\n)[\\s\\S])*\\n  declare ${method}:`).test(generated);
       check(declares('Card', 'auditSeq'), 'Card declares auditSeq, the prefix of ix_card_audit, without a scanned call');
       check(declares('CardHistory', 'seq'), 'CardHistory declares seq, the prefix of ix_card_history_row, without a scanned call');
     }
