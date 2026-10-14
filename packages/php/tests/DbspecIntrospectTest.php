@@ -188,7 +188,7 @@ final class DbspecIntrospectTest extends TestCase
             $sets['ddl_' . str_replace('-', '_', $case['id'])] = array_map(lines_text(...), $case['documents']);
         }
         // tests/dialects 의 schemaDocumentPatterns 와 같은 목록.
-        foreach (["$root/schema/*.dbs", "$root/contracts/fixtures/*.dbs"] as $pattern) {
+        foreach (["$root/contracts/fixtures/bench/*.dbs", "$root/contracts/fixtures/*.dbs"] as $pattern) {
             foreach (glob($pattern) ?: throw new RuntimeException("no document matches $pattern") as $path) {
                 $sets['schema_' . basename($path, '.dbs')] = [basename($path, '.dbs') => $path];
             }

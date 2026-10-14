@@ -2,23 +2,21 @@
 // database without sqlite_sequence has no counters, a declared sequence is restored, and the row lock table of the SQLite
 // client is not state.
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { DATABASE, caseTest } from '../../testcase.mts';
+import { DATABASE, caseTest, withTemporaryDirectory } from '../../testcase.mts';
 import { readCounters, restoreCounters } from './counters.mts';
 import { sqliteDatabase } from './database.mts';
 import { snapshotDatabase } from './state.mts';
 
 // open is a SQLite database in a new temporary directory.
-const open = (name: string): { sqlite: DatabaseSync; db: ReturnType<typeof sqliteDatabase> } => {
-  const sqlite = new DatabaseSync(join(mkdtempSync(join(tmpdir(), 'orm-state-test-')), name));
+const open = (directory: string, name: string): { sqlite: DatabaseSync; db: ReturnType<typeof sqliteDatabase> } => {
+  const sqlite = new DatabaseSync(join(directory, name));
   return { sqlite, db: sqliteDatabase(sqlite) };
 };
 
-caseTest('TestSnapshotIncludesRowsAndSequenceState', DATABASE, async () => {
-  const { sqlite, db } = open('state.sqlite');
+caseTest('TestSnapshotIncludesRowsAndSequenceState', DATABASE, () => withTemporaryDirectory('orm-state-test-', async temp => {
+  const { sqlite, db } = open(temp, 'state.sqlite');
   try {
     sqlite.exec('CREATE TABLE items (id INTEGER PRIMARY KEY AUTOINCREMENT, value TEXT)');
     const before = await snapshotDatabase(db, 'sqlite');
@@ -29,10 +27,10 @@ caseTest('TestSnapshotIncludesRowsAndSequenceState', DATABASE, async () => {
   } finally {
     await db.close();
   }
-});
+}));
 
-caseTest('TestSQLiteStateWithoutAutoIncrement', DATABASE, async () => {
-  const { sqlite, db } = open('plain.sqlite');
+caseTest('TestSQLiteStateWithoutAutoIncrement', DATABASE, () => withTemporaryDirectory('orm-state-test-', async temp => {
+  const { sqlite, db } = open(temp, 'plain.sqlite');
   sqlite.exec('CREATE TABLE state (value INTEGER NOT NULL)');
   const tables = sqlite.prepare("SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'table' AND name = 'sqlite_sequence'").get();
   assert.equal(tables?.count, 0, 'fixture unexpectedly created sqlite_sequence');
@@ -42,10 +40,10 @@ caseTest('TestSQLiteStateWithoutAutoIncrement', DATABASE, async () => {
   assert.notEqual(await snapshotDatabase(db, 'sqlite'), before, 'row change disappeared when sqlite_sequence was absent');
   await db.close();
   await assert.rejects(readCounters(db, 'sqlite'), 'an unrelated counter query error was accepted as an absent sequence');
-});
+}));
 
-caseTest('TestRestoreDeclaredSequenceAfterWrite', DATABASE, async () => {
-  const { sqlite, db } = open('restore.sqlite');
+caseTest('TestRestoreDeclaredSequenceAfterWrite', DATABASE, () => withTemporaryDirectory('orm-state-test-', async temp => {
+  const { sqlite, db } = open(temp, 'restore.sqlite');
   try {
     sqlite.exec('CREATE TABLE author (seq INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)');
     const before = await snapshotDatabase(db, 'sqlite');
@@ -57,12 +55,12 @@ caseTest('TestRestoreDeclaredSequenceAfterWrite', DATABASE, async () => {
   } finally {
     await db.close();
   }
-});
+}));
 
 // TestSnapshotIgnoresTheRowLockTable는 SQLite client가 첫 transaction 전에 만드는 orm__row_lock과 그 행이 상태를
 // 바꾸지 않는지 확인한다. 그 table이 생겨도 test가 database에 남긴 것은 없다.
-caseTest('TestSnapshotIgnoresTheRowLockTable', DATABASE, async () => {
-  const { sqlite, db } = open('lock.sqlite');
+caseTest('TestSnapshotIgnoresTheRowLockTable', DATABASE, () => withTemporaryDirectory('orm-state-test-', async temp => {
+  const { sqlite, db } = open(temp, 'lock.sqlite');
   try {
     sqlite.exec('CREATE TABLE items (id INTEGER PRIMARY KEY, value TEXT)');
     const before = await snapshotDatabase(db, 'sqlite');
@@ -72,4 +70,4 @@ caseTest('TestSnapshotIgnoresTheRowLockTable', DATABASE, async () => {
   } finally {
     await db.close();
   }
-});
+}));

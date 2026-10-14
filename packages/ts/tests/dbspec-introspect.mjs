@@ -32,7 +32,7 @@ const CONNECTION_RULES = {
   sqlite: ['PRAGMA foreign_keys = ON'],
 };
 // tests/dialects schemaDocumentPatterns와 같은 디렉터리의 *.dbs다.
-const SCHEMA_DIRECTORIES = ['schema', 'contracts/fixtures'];
+const SCHEMA_DIRECTORIES = ['contracts/fixtures/bench', 'contracts/fixtures'];
 
 const mysqlDSN = process.env.ORM_TEST_MYSQL_DSN;
 const postgresDSN = process.env.ORM_TEST_POSTGRES_DSN;

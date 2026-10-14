@@ -28,7 +28,7 @@ struct RoundTripSet {
 }
 
 /// tests/dialects의 schemaDocumentPatterns와 같은 glob 목록.
-const SCHEMA_DOCUMENT_DIRECTORIES: [&str; 2] = ["schema", "contracts/fixtures"];
+const SCHEMA_DOCUMENT_DIRECTORIES: [&str; 2] = ["contracts/fixtures/bench", "contracts/fixtures"];
 
 fn schema_documents(directory: &Path) -> Vec<PathBuf> {
     let mut paths: Vec<PathBuf> = std::fs::read_dir(directory)
