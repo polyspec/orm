@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b0bdd953126330b6fd266681c0feb861217e306cf95f545eb884e5c24bd36fe3 -->
+<!-- source-sha256: 8e9936969d0e13af659e8c1a673bf0028f6bf253cbd295d810d30969ebddf370 -->
 # 변경 이력
 
 ## Unreleased
+
+- test server의 socket folder는 checkout 경로의 SHA-256으로 이름 짓고, AGENTS.md는 worktree를 지우기 전에 그 server를 멈춘다고 적는다. 실행 중인 server는 이 변경을 받기 전에 멈춘다: 그 socket은 이전 이름을 쓴다. (#T137-1-4-10)
 
 ## 0.0.17
 

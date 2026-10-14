@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 1c6fea9bb43734ca1116b0b4cc76038110c5eac4a6a81f9d3dfb30e95b45138a -->
+<!-- source-sha256: 06c7a77986ac25def47a3cd7934bd67ad0c3533ed636c11900d80f1ab78348ad -->
 # 개발 규칙
 
 [English](AGENTS.md)
