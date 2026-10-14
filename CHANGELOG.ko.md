@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0dfa32ab2ccbc668a599e35379a685f37eaeac22040ae73d7e3b44a0821f0c92 -->
+<!-- source-sha256: b724615eb60276a3cf5a485f60e49c253fee7213b56664d71f77115c1f980d51 -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript symbol 기록이 conformance runner가 부르는 chain method를 담는다. (#T174-1)
 - config/layout.yml이 PHP 생성기와 node 생성기의 scan vector를 담은 tests/generator를 선언한다. (#T172-3)
 - config/layout.yml이 S9 예외를 이유와 함께 선언한다: 한 언어의 runner와 symbol extractor, dialect 규칙의 Go test, Unicode 표와 codec vector 생성기, setsid나 process 종료 알림이 필요한 program이다. 아무것도 생성하지 않던 tests/codec/gen-aes.sh는 지웠다. (#T137-1-4-4)
 - 기반 스크립트와 test는 make scripts-typecheck가 검사하는 TypeScript이고, 모든 JSON file을 JSON Schema로 읽으며, 자기 구현 대신 node:util parseArgs, minimatch, path.posix, semver를 쓴다. (#T137-1-4-1)
