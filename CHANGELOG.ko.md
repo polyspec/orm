@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d9ddc6fb690ac8e5fbd9b813110dcdcf1874a120bcb8b3b4c43f4a5a6b266d18 -->
+<!-- source-sha256: 7dc15a5b9d406b27c5e21b5148d99b0b3a626351ff2fb3a7517d1d0bdf73f558 -->
 # 변경 이력
 
 ## Unreleased
+
+## 0.0.17
 
 - scripts/bench-db.mts가 TypeScript client로 bench database를 설치하고 seed한다. Go program bench/install과 bench/seedaes를 지웠다. (#T137-1-4-9)
 - Python client가 다른 client처럼 3.46보다 오래된 SQLite를 CAPABILITY_UNSUPPORTED로 거부한다. (#T176)

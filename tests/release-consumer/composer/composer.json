@@ -4,7 +4,7 @@
     "type": "project",
     "require": {
         "php": ">=8.5",
-        "polyspec/orm": "0.0.16",
+        "polyspec/orm": "0.0.17",
         "polyspec/ordered-json": "0.0.8"
     },
     "repositories": [
