@@ -173,6 +173,31 @@ PHP;
         self::assertStringContainsString('broken.php', $err);
     }
 
+    public function test_a_scanned_directory_skips_its_dependencies_and_refuses_a_symlink(): void
+    {
+        $dir = self::$work . '/links';
+        mkdir("$dir/src/vendor/pkg", 0o700, true);
+        file_put_contents("$dir/src/a.php", "<?php\n\$a = new " . self::NS . "\\Author();\n\$a->ltSeq(1);\n");
+        file_put_contents("$dir/src/vendor/pkg/b.php", "<?php\n\$a = new " . self::NS . "\\Author();\n\$a->gtSeq(1);\n");
+        $run = function (string $out) use ($dir): array {
+            $stderr = fopen('php://memory', 'w+');
+            ob_start();
+            $code = OrmGen::run(['gen', '--set', dirname(__DIR__, 3) . '/schema/dbspec-set.json', '--out', $out, '--namespace', self::NS, '--scan', "$dir/src"], $stderr);
+            ob_end_clean();
+            rewind($stderr);
+            return [$code, (string) stream_get_contents($stderr)];
+        };
+        [$code, $err] = $run("$dir/model");
+        self::assertSame(0, $code, $err);
+        self::assertSame(['ltSeq'], self::tags($dir, 'Author'));
+        mkdir("$dir/elsewhere", 0o700, true);
+        file_put_contents("$dir/elsewhere/c.php", "<?php\n\$a = new " . self::NS . "\\Author();\n\$a->geSeq(1);\n");
+        symlink("$dir/elsewhere", "$dir/src/linked");
+        [$code, $err] = $run("$dir/model2");
+        self::assertSame(1, $code);
+        self::assertStringContainsString("$dir/src/linked is a symlink", $err);
+    }
+
     public function test_check_compares_the_models_with_the_scan(): void
     {
         $source = "<?php\n\$a = new " . self::NS . "\\Author();\n\$a->ltSeq(1);\n";

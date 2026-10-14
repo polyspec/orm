@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 186fa05d61f016df5e141f5c85988b2cfbfdbf4c1dbd3eae7fdbf6a1e03bcc56 -->
+<!-- source-sha256: aa1bedd93bc90085623c26de9af87c0e693a27d9ba23dbed3124f81d66dc606f -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
@@ -83,7 +83,7 @@ table authors {
 
 ```sh
 go run github.com/polyspec/orm/cmd/orm-gen gen --set schema/dbspec-set.json --lang go --out model --scan ./...
-vendor/bin/orm-gen gen --set schema/dbspec-set.json --out src/Model --namespace 'Example\Model'
+vendor/bin/orm-gen gen --set schema/dbspec-set.json --out src/Model --namespace 'Example\Model' --scan src
 npx orm-gen gen --set schema/dbspec-set.json --out src/models --scan src
 orm-gen gen --set schema/dbspec-set.json --out model --scan src
 ```
