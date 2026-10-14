@@ -153,6 +153,7 @@ export class People extends Model {
   public forceIndexUqPeopleEmail(): this { this[CORE].index = 'uq_people_email'; return this; }
 }
 export interface People {
+  email(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
   id(v0: string | readonly (string)[] | ValueFunction | Model): this;
   matchOwnerWithId(): this;
 }
@@ -257,6 +258,8 @@ export class Logs extends Model {
   public forceIndexIxLogsTask(): this { this[CORE].index = 'ix_logs_task'; return this; }
 }
 export interface Logs {
+  id(v0: number | readonly (number)[] | ValueFunction | Model): this;
+  task(v0: string | readonly (string)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named Name. */
   getName<T = unknown>(): T;
 }
