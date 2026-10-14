@@ -1,10 +1,13 @@
 package orm_test
 
 import (
+	"cmp"
 	"errors"
+	"fmt"
 	"github.com/polyspec/orm/internal/testcase"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/polyspec/orm/engine/ir"
@@ -469,4 +472,105 @@ func TestRequestHook(t *testing.T) {
 			c.run(t, db, e, entry)
 		})
 	}
+}
+
+// TestCreatesParts는 docs/protocol.md의 여러 행 insert 규칙을 model 경로로 확인한다. creates는 행을
+// 2의 거듭제곱 부분으로 나눠 주어진 순서대로 한 transaction에서 실행한다: 부분 크기만큼만 INSERT 형태가
+// 생기고, 행과 key와 statement event는 주어진 순서를 지키며, 실패한 부분이 있으면 행이 남지 않는다.
+func TestCreatesParts(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	inserts := func(t *testing.T, db *orm.DB) *[]orm.StatementEvent {
+		t.Helper()
+		var seen []orm.StatementEvent
+		unsubscribe, err := db.Subscribe(func(e orm.StatementEvent) error {
+			if strings.HasPrefix(e.SQL, "INSERT") {
+				seen = append(seen, e)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(unsubscribe)
+		return &seen
+	}
+	batch := func(e *orm.Entity, labels []string) []*keywordRow {
+		rows := []*keywordRow{}
+		for _, label := range labels {
+			rows = append(rows, hookItem(e, nil, map[string]any{"part": "p", "label": label}).Self().(*keywordRow))
+		}
+		return rows
+	}
+	labels := func(n int) []string {
+		out := make([]string, n)
+		for i := range out {
+			out[i] = fmt.Sprintf("r%02d", i)
+		}
+		return out
+	}
+	t.Run("shapes", func(t *testing.T) {
+		db, e, _ := hookFixture(t, "sqlite://"+filepath.Join(t.TempDir(), "parts.sqlite"))
+		seen := inserts(t, db)
+		for n := 1; n <= 40; n++ {
+			if _, err := orm.Creates(hookItem(e, db, nil), batch(e, labels(n))); err != nil {
+				t.Fatal(err)
+			}
+		}
+		texts := map[string]bool{}
+		for _, ev := range *seen {
+			texts[ev.SQL] = true
+		}
+		t.Logf("creates of 1..40 rows: %d distinct INSERT statements", len(texts))
+		if len(texts) != 6 {
+			t.Errorf("creates of 1..40 rows ran %d distinct INSERT statements, want 6 (parts 1, 2, 4, 8, 16, 32)", len(texts))
+		}
+	})
+	t.Run("order", func(t *testing.T) {
+		db, e, _ := hookFixture(t, "sqlite://"+filepath.Join(t.TempDir(), "parts.sqlite"))
+		seen := inserts(t, db)
+		given := labels(13)
+		slices.Reverse(given)
+		if n, err := orm.Creates(hookItem(e, db, nil), batch(e, given)); err != nil || n != 13 {
+			t.Fatalf("creates = %d, %v; want 13 rows", n, err)
+		}
+		var sizes []int
+		var bound []any
+		for _, ev := range *seen {
+			sizes = append(sizes, len(ev.Binds)/2)
+			bound = append(bound, ev.Binds...)
+		}
+		if !slices.Equal(sizes, []int{8, 4, 1}) {
+			t.Errorf("INSERT parts %v, want [8 4 1]", sizes)
+		}
+		for i, label := range given {
+			if bound[2*i+1] != label {
+				t.Errorf("event bind %d = %v, want %s", 2*i+1, bound[2*i+1], label)
+			}
+		}
+		rows := hookRows(t, e, db)
+		slices.SortFunc(rows, func(a, b map[string]any) int { return cmpInt(a["id"], b["id"]) })
+		for i, row := range rows {
+			if row["label"] != given[i] {
+				t.Errorf("row %d (id %v) has label %v, want %s", i, row["id"], row["label"], given[i])
+			}
+		}
+	})
+	t.Run("rollback", func(t *testing.T) {
+		db, e, _ := hookFixture(t, "sqlite://"+filepath.Join(t.TempDir(), "parts.sqlite"))
+		rows := batch(e, labels(8))
+		last := hookItem(e, nil, map[string]any{"part": "p"})
+		last.SetNull("label")
+		rows = append(rows, last.Self().(*keywordRow))
+		if _, err := orm.Creates(hookItem(e, db, nil), rows); err == nil {
+			t.Fatal("creates with a null label in its second part succeeded")
+		}
+		if n := hookCount(t, e, db); n != 0 {
+			t.Errorf("a failed creates left %d rows, want 0", n)
+		}
+	})
+}
+
+// cmpInt orders two integer key values.
+func cmpInt(a, b any) int {
+	return cmp.Compare(a.(int64), b.(int64))
 }

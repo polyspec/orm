@@ -2,6 +2,7 @@
 # 실행한다. hook은 handle의 각 request를 plan 직전에 받아 predicate, assignment, parameter를 더할 수 있다.
 # case 이름은 다른 client와 같다: without_hook, read_filter, insert_assign, loaded_row_writes, invalid_param,
 # restore_key, restore_condition, restore_no_key, restore_rewritten_key, restore_hook_set_key.
+import json
 import os
 import sys
 import tempfile
@@ -212,6 +213,63 @@ class RequestHookTest(unittest.TestCase):
         row = self.entry(self.db.with_request_hook(hook)).set_label('x').set_note('n5').restore()
         self.assertEqual((row.get_id(), row.get_part(), row.get_note()), (ids['ax'], 'a', 'n5'))
         self.assertEqual(self.entry_rows(self.db), [(ids['ax'], 'n5')])
+
+
+class InsertPartsTest(unittest.TestCase):
+    """creates의 여러 행 insert는 2의 거듭제곱 부분으로 나뉜다(docs/protocol.md 2.1,
+    contracts/fixtures/insert_parts.json). 부분은 한 transaction에서 주어진 행 순서로 실행된다."""
+
+    @classmethod
+    def setUpClass(cls):
+        tmp = tempfile.TemporaryDirectory(prefix='orm-insert-parts-')
+        cls.addClassCleanup(tmp.cleanup)
+        cls.dir = tmp.name
+        cls.models = generate_document(os.path.join(tmp.name, 'models'), ROOT / 'contracts' / 'fixtures' / 'request_hook.dbs')
+
+    def setUp(self):
+        path = os.path.join(self.dir, f'{self._testMethodName}.sqlite3')
+        self.db = Db.connect_schema(f'sqlite://{path}', self.models.SCHEMA)
+        self.addCleanup(self.db.close)
+        self.db.utils().schema().install(self.models.SCHEMA)
+
+    def rows(self, labels):
+        return [self.models.HookItem().set_part('p').set_label(label) for label in labels]
+
+    def inserts(self, events):
+        return [e for e in events if e.sql.startswith('INSERT')]
+
+    def test_shapes(self):
+        events = []
+        self.db.subscribe(events.append)
+        for n in range(1, 41):
+            self.models.HookItem().connect(self.db).creates(self.rows([f'n{n}r{i}' for i in range(n)]))
+        statements = {e.sql for e in self.inserts(events)}
+        print(f'insert parts: {len(statements)} distinct INSERT statements for batches 1..40', file=sys.stderr)
+        self.assertEqual(len(statements), 6, 'one statement per size class 1, 2, 4, 8, 16, 32')
+
+    def test_order(self):
+        events = []
+        self.db.subscribe(events.append)
+        labels = [f'r{i:02d}' for i in reversed(range(13))]
+        self.assertEqual(self.models.HookItem().connect(self.db).creates(self.rows(labels)), 13)
+        rows = sorted(self.models.HookItem().connect(self.db).gets(), key=lambda row: row.get_id())
+        self.assertEqual([row.get_label() for row in rows], labels, 'rows keep the given order')
+        self.assertEqual([len(e.binds) // 2 for e in self.inserts(events)], [8, 4, 1], 'parts in row order')
+
+    def test_rollback(self):
+        rows = self.rows([f'r{i}' for i in range(8)]) + [self.models.HookItem().set_part('p').set_label(None)]
+        with self.assertRaises(OrmError):
+            self.models.HookItem().connect(self.db).creates(rows)
+        self.assertEqual(self.models.HookItem().connect(self.db).get_count(), 0, 'a failing part leaves no row')
+
+    def test_parity(self):
+        from polyspec.orm.model_exec import _insert_parts
+        cases = json.loads((ROOT / 'contracts' / 'fixtures' / 'insert_parts.json').read_text())['cases']
+        for case in cases:
+            self.assertEqual(case['operation'], 'insert_parts', case['id'])
+            given = case['input']
+            limit = 999 if given['driver'] == 'sqlite' else 65535
+            self.assertEqual(_insert_parts(given['rows'], max(1, limit // given['columns'])), case['expected'], case['id'])
 
 
 if __name__ == '__main__':

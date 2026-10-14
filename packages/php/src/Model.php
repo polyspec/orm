@@ -1754,11 +1754,15 @@ abstract class Model implements \JsonSerializable
             }
         }
         $meta = static::meta();
-        $per = intdiv(Db::bindLimit($db->driver()), count($columns));
+        // 행은 주어진 순서대로 2의 거듭제곱 부분으로 나뉘어 한 transaction에서 실행된다(docs/protocol.md).
+        $parts = Db::insertParts(count($rows), count($columns), $db->driver());
         $total = 0;
-        Db::inTransaction($this->conn, function () use ($rows, $columns, $meta, $per, &$total): void {
+        Db::inTransaction($this->conn, function () use ($rows, $columns, $meta, $parts, &$total): void {
             [$db, $frame] = Db::resolve($this->conn);
-            foreach (array_chunk($rows, $per) as $chunk) {
+            $offset = 0;
+            foreach ($parts as $size) {
+                $chunk = array_slice($rows, $offset, $size);
+                $offset += $size;
                 $r = $this->writeRequest('insert', $db);
                 foreach ($chunk as $i => $row) {
                     $params = [];

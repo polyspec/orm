@@ -522,6 +522,42 @@ $tests['bind limit splitting'] = function (Db $db, string $dsn): void {
     }
 };
 
+// Multi-row inserts run as power-of-two parts (docs/protocol.md "Relation steps"; shared cases
+// contracts/fixtures/insert_parts.json): the statements stay at the size classes, the rows keep
+// their order, and a failing part leaves no row of the call.
+$tests['insert parts'] = function (Db $db): void {
+    global $root;
+    $fixture = json_decode((string) file_get_contents("$root/contracts/fixtures/insert_parts.json"), true, 512, JSON_THROW_ON_ERROR);
+    foreach ($fixture['cases'] as $case) {
+        check($case['operation'] === 'insert_parts', "insert_parts {$case['id']}: operation {$case['operation']}");
+        $got = Db::insertParts($case['input']['rows'], $case['input']['columns'], $case['input']['driver']);
+        check($got === $case['expected'], "insert_parts {$case['id']}: " . json_encode($got));
+    }
+    $inserts = [];
+    $unsubscribe = $db->subscribe(static function (\Polyspec\Orm\StatementEvent $e) use (&$inserts): void {
+        if ($e->kind === \Polyspec\Orm\StatementEvent::INSERT) {
+            $inserts[] = $e;
+        }
+    });
+    for ($n = 1; $n <= 40; $n++) {
+        (new Service)($db)->creates(array_map(static fn(int $i): Service => (new Service)->setName("shape-$n-$i"), range(1, $n)));
+    }
+    $shapes = count(array_unique(array_map(static fn($e): string => $e->sql, $inserts)));
+    check($shapes === 6, "creates of 1..40 rows sends 6 insert statements, got $shapes");
+    $inserts = [];
+    $labels = array_map(static fn(int $i): string => sprintf('order-%02d', 12 - $i), range(0, 12));
+    check((new Service)($db)->creates(array_map(static fn(string $l): Service => (new Service)->setName($l), $labels)) === 13, 'creates 13 rows');
+    check(array_map(static fn($e): int => count($e->binds), $inserts) === [8, 4, 1], 'parts 8, 4, 1: ' . json_encode(array_map(static fn($e): int => count($e->binds), $inserts)));
+    $read = (new Service)($db)->name($labels)->orderBySeqAsc()->gets()->all();
+    check(array_map(static fn(Service $s): string => $s->getName(), $read) === $labels, 'rows keep the given order');
+    $unsubscribe();
+    $before = (new Service)($db)->getCount();
+    $rows = array_map(static fn(int $i): Service => (new Service)->setName("rollback-$i"), range(1, 8));
+    $rows[] = (fn(): Service => $this->writeColumn('name', null))->call(new Service);
+    check(code(fn() => (new Service)($db)->creates($rows)) !== 'no error', 'a failing part fails creates');
+    check((new Service)($db)->getCount() === $before, 'a failing part leaves no row');
+};
+
 /**
  * 다른 zone의 값을 UTC wall clock으로 쓰고 UTC로 읽으며, clock default와
  * text 같음 filter가 같은 UTC 규칙을 쓰는지 확인한다.

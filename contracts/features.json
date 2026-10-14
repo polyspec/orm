@@ -865,7 +865,7 @@
         },
         {
           "id": "queries-orm-go",
-          "command": "node tests/go-test.mjs -v -timeout 0 ./packages/go/orm -run '^(TestCollectionLookupRejectsUnsupportedKey|TestCompositeTypedKeyPreservesBoundaries|TestDecimalModelFixture|TestGroupColumnDeclarationRejectsMissingAndDuplicateCount|TestGroupColumnValueChecksDeclaredType|TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues|TestJoinedByteColumnsAndInvalidValues|TestJsonTextOrderPreservation|TestKeyValuesPreserveTheirTypes|TestModelCollectionKeyRejectsInvalidCallbackAndMissingColumn|TestRelatedAsReportsMismatch|TestRelationKeyCollectionPropagatesInvalidValue|TestRuntimeValueTypes|TestScalarComparisonPreservesTypesAndRejectsInvalidValues|TestSelectedByteKeyPreservesByteType|TestShapeCoversEveryField|TestShapeIgnoresParamValues|TestSplitQueryPropagatesInvalidKey|TestSplitQueryRetainsDistinctTypedValues|TestStyledColumnStateFixture|TestStyledFixturePhysicalCells|TestTypedKeyValuesCannotCollide|TestUnknownStyleRejectsSQLNull|TestUnsupportedKeyIsAnError)$' -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./packages/go/orm -run '^(TestCollectionLookupRejectsUnsupportedKey|TestCompositeTypedKeyPreservesBoundaries|TestDecimalModelFixture|TestGroupColumnDeclarationRejectsMissingAndDuplicateCount|TestGroupColumnValueChecksDeclaredType|TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues|TestInsertPartsFixture|TestJoinedByteColumnsAndInvalidValues|TestJsonTextOrderPreservation|TestKeyValuesPreserveTheirTypes|TestModelCollectionKeyRejectsInvalidCallbackAndMissingColumn|TestRelatedAsReportsMismatch|TestRelationKeyCollectionPropagatesInvalidValue|TestRuntimeValueTypes|TestScalarComparisonPreservesTypesAndRejectsInvalidValues|TestSelectedByteKeyPreservesByteType|TestShapeCoversEveryField|TestShapeIgnoresParamValues|TestSplitQueryPropagatesInvalidKey|TestSplitQueryRetainsDistinctTypedValues|TestStyledColumnStateFixture|TestStyledFixturePhysicalCells|TestTypedKeyValuesCannotCollide|TestUnknownStyleRejectsSQLNull|TestUnsupportedKeyIsAnError)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/collection_key_test.go",
@@ -1167,6 +1167,7 @@
         "contracts/fixtures/clock_mark.dbs",
         "contracts/fixtures/identity_load.dbs",
         "contracts/fixtures/identity_load.json",
+        "contracts/fixtures/insert_parts.json",
         "contracts/fixtures/time_precision.dbs",
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
@@ -6919,7 +6920,7 @@
       "verification": [
         {
           "id": "request-hook-go",
-          "command": "node tests/go-test.mjs -v -timeout 0 ./packages/go/orm -run '^TestRequestHook$' -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./packages/go/orm -run '^(TestCreatesParts|TestRequestHook)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/request_hook_test.go",

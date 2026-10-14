@@ -259,6 +259,21 @@ fn bind_limit(driver: &str) -> usize {
     }
 }
 
+/// The row counts of the parts of a multi-row insert of `rows` rows with `columns` columns, in row order
+/// (docs/protocol.md §2.1): each part is the largest power of two at most the rows left and at most the
+/// bind-limit chunk, so the statements stay in the size classes of an IN list.
+fn insert_parts(driver: &str, columns: usize, rows: usize) -> Vec<usize> {
+    let chunk = (bind_limit(driver) / columns).max(1);
+    let mut parts = Vec::new();
+    let mut left = rows;
+    while left > 0 {
+        let part = 1 << left.min(chunk).ilog2();
+        parts.push(part);
+        left -= part;
+    }
+    parts
+}
+
 /// Splits a root IN list that exceeds the bind limit into requests whose
 /// results together equal the original result.
 fn root_in_parts(req: &Req, binds: usize, driver: &str) -> Result<Vec<Req>> {
@@ -1043,10 +1058,13 @@ pub async fn creates<M: Model>(m: &M, rows: Vec<M>) -> Result<u64> {
         return Err(config("creates requires models with set_<col> values"));
     }
     let columns: Vec<String> = first.sets.iter().map(|s| s.column.clone()).collect();
-    let per = (bind_limit(ex.db().driver()) / columns.len()).max(1);
+    let parts = insert_parts(ex.db().driver(), columns.len(), rows.len());
     in_transaction(&c.conn, async || {
         let mut total = 0;
-        for chunk in rows.chunks(per) {
+        let mut start = 0;
+        for part in &parts {
+            let chunk = &rows[start..start + part];
+            start += part;
             let mut req = write_req(c, "insert");
             for (i, row) in chunk.iter().enumerate() {
                 let rc = row.core();
@@ -1498,6 +1516,27 @@ fn missing_output_column(c: &Core, name: &str) -> Error {
         Error::Engine { code: codes::COLUMN_UNSELECTED.into(), msg: format!("{}.{} has no decoded value", c.ent.name, name) }
     } else {
         Error::internal(format!("model output column {name} is missing"))
+    }
+}
+
+#[cfg(test)]
+mod insert_parts_tests {
+    use super::insert_parts;
+
+    // contracts/fixtures/insert_parts.json의 공유 case: 모든 client가 같은 행 수를 같은 부분으로 나눈다.
+    #[test]
+    fn insert_parts_cases() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let doc: serde_json::Value = serde_json::from_str(include_str!("../../../../contracts/fixtures/insert_parts.json")).expect("insert_parts.json");
+        let cases = doc["cases"].as_array().expect("cases");
+        assert!(!cases.is_empty());
+        for case in cases {
+            assert_eq!(case["operation"], "insert_parts", "{}", case["id"]);
+            let input = &case["input"];
+            let number = |key: &str| input[key].as_u64().unwrap_or_else(|| panic!("{key}")) as usize;
+            let want: Vec<usize> = case["expected"].as_array().expect("expected").iter().map(|p| p.as_u64().expect("part") as usize).collect();
+            assert_eq!(insert_parts(input["driver"].as_str().expect("driver"), number("columns"), number("rows")), want, "{}", case["id"]);
+        }
     }
 }
 

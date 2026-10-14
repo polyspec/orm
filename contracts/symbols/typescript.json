@@ -2178,6 +2178,7 @@
   "packages/ts/src/model.ts::groupValue": "function groupValue(db: Db, column: Assemble['columns'][number], raw: unknown, schema: Entity): unknown",
   "packages/ts/src/model.ts::grouped": "async function grouped(c: Core): Promise\u003cGroupRows\u003e",
   "packages/ts/src/model.ts::inTransaction": "export async function inTransaction(conn: Db | undefined, fn: () =\u003e Promise\u003cvoid\u003e): Promise\u003cvoid\u003e",
+  "packages/ts/src/model.ts::insertParts": "export function insertParts(rows: number, columns: number, driver: string): number[]",
   "packages/ts/src/model.ts::joinChild": "function joinChild(c: Core, name: string): Core",
   "packages/ts/src/model.ts::jsonText": "function jsonText(value: unknown): string",
   "packages/ts/src/model.ts::jsonValue": "function jsonValue(value: unknown): unknown",
