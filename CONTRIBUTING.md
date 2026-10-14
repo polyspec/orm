@@ -3,8 +3,10 @@
 
 ## Required workflow
 
-1. Read `AGENTS.md` when it is present and read the relevant files in `contracts/features.json`. Run
-   `make install` once: it downloads what the checks read (npm, Composer and Go dependencies, the Rust
+1. Read `AGENTS.md` when it is present and read the relevant files in `contracts/features.json`. A
+   fresh checkout installs kit first: `make install-tools TOOLS=npm` (the npm of `packageManager`), then
+   `make install-packages` (`package-lock.json`, `@polyspec/kit` included), whose Makefile targets the
+   rest needs. Then run `make install` once: it downloads what the checks read (npm, Composer and Go dependencies, the Rust
    toolchain and crates, the lowest Node), and the checks run offline, so a missing download fails
    with `run make install`.
 2. Add a reproducing test for a predicted or observed defect.
