@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: ff64bc8d738fe2b05cea3cebe2dd7766aecf3a538b30f869ac7c3ec42b3b820a -->
+<!-- source-sha256: 3ea06aac9d079e1b0ef8bfd8376fd896ca2612bdfb1fa32e2df58600deec4379 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1031,7 +1031,8 @@
   - [o] T147-5 Rust AesKeyring에 `versions`를 주고 그 rule을 선언한다(T147에 이어). 원인: component 검사가 rule 없는 `AESKeyring.versions`를 찾는다; Go(`AESVersions`), PHP, TypeScript, Python에는 있고 Rust `AesKeyring`에는 `new`, `current`, `key`만 있다. 인수 조건: Rust가 다른 client처럼 이를 구현하고(red 먼저), rule이 모든 언어에서 이를 선언한다. 증거: 변경 전 keyring_tests cargo test가 `no method named versions`로 실패했다; 576087a9가 오름차순 AesKeyring::versions를 더하고 모든 언어에서 rule을 선언한다; test와 `make rust-check/clippy`가 통과한다.
 - [!] T148 parity binding 실행 규칙(R3)이 dbspec unit에서 성립하게 한다. 원인: T128-3과 T128-2a-7이 dbspec unit의 binding이 다른 case 이름을 보고하거나(TypeScript, Python), case를 보고하지 않거나(Rust), 실행되지 않음(PHP는 없는 phpunit이 필요하고, extension은 어느 target도 build하지 않는 library가 필요)을 찾았다. 인수 조건: 모든 dbspec unit의 binding 실행이 모든 runtime에서 case id를 보고하거나, kit의 규칙을 근거와 함께 바로잡는다(kit K42가 Go `/` 규칙을 바꾼다); red를 먼저 본다.
   우회. Cause: R3는 각 case가 그 생태계의 표준 runner에서 case id로 실행되기를 요구한다. orm은 PHP test를 자체 script runner(packages/php/tests/*.php)로 실행하는데, 이것은 다시 만든 test runner다. 또 Go, TypeScript, Python, Rust의 공유 vector test는 test 하나 안에서 vector를 순회해 어떤 case id도 runner에 닿지 않는다. Retry: kit 0.0.43(K136, K137)이 나오고 T148-1부터 T148-3까지 끝났을 때.
-  - [ ] T148-1 PHP client와 extension의 test를 PHPUnit으로 실행한다 (T148에 이어). 원인: packages/php/tests와 packages/php-ext/tests가 PHP 생태계의 표준 runner인 PHPUnit이 아니라 orm 자체 script runner로 실행된다. 완료 조건: test가 PHPUnit test case이고, 공유 vector는 data set 이름이 case id인 data provider로 실행되며, make target이 PHPUnit을 실행하고, 손으로 쓴 runner를 없앤다.
+  - [o] T148-1 PHP client와 extension의 test를 PHPUnit으로 실행한다 (T148에 이어). 원인: packages/php/tests와 packages/php-ext/tests가 PHP 생태계의 표준 runner인 PHPUnit이 아니라 orm 자체 script runner로 실행된다. 완료 조건: test가 PHPUnit test case이고, 공유 vector는 data set 이름이 case id인 data provider로 실행되며, make target이 PHPUnit을 실행하고, 손으로 쓴 runner를 없앤다.
+    Evidence: client-unit-check, codec-check, dbspec-php-check, dbspec-php-extension-check, php-min-check, interface-check, dependency-policy-check가 통과한다. PHPUnit이 각 공유 vector case를 그 id로 이름 붙인다.
   - [~] T148-2 Go, TypeScript, Python, Rust에서 모든 공유 vector case를 그 id로 보고한다 (T148에 이어). 원인: 각각 vector 파일을 test 하나 안에서 순회한다. 완료 조건: Go `t.Run(<id>)`, TypeScript는 id마다 top-level test, Python은 unittest load_tests로 case마다 id가 case id인 TestCase, Rust는 id로 이름 지은 libtest-mimic trial이다. method 이름을 생성하지 않는다.
     - [ ] T148-2-1 Rust show-create case를 그 id로 보고한다 (T148-2에 이어). 원인: Rust는 tests/dbspec/show-create.json을 crate 밖에서 보이지 않는 shown_checks로 읽고 lib unit test 하나로 확인한다. libtest는 unit test 이름에 하이픈 id를 쓸 수 없고, 공개 경로 read_catalog는 읽은 본문을 dbspec 문서로 바꾸므로 vector를 표현하지 못한다(kit 판정: spec 단위가 공개 경로보다 넓으며 orm의 설계 문제다). 완료 조건: orm이 SHOW CREATE reader가 API의 어디에 속하는지 정하고, Rust binding이 각 case를 그 id로 보고한다.
   - [ ] T148-3 모든 parity unit을 bind하고 parity R2와 R3를 통과한다 (T148-1, T148-2에 이어). 원인: parity 검사가 모든 unit에서 R2 binding 누락 15줄과 R3 196줄을 보고한다. 완료 조건: make parity-check가 통과하며, 끝에 한 번 실행한다.
