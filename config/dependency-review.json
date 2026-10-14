@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mts) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-14T15:30:32.664Z",
+  "reviewed": "2026-10-14T18:06:24.422Z",
   "locks": [
     {
       "lock": "package-lock.json",
@@ -24,12 +24,12 @@
     },
     {
       "lock": "composer.lock",
-      "sha256": "0c925d9848e1b94cd5f4a777b230245f419d446e88fad8560e4377b30600cc20",
+      "sha256": "3dbfa5add7956be36eb813fe720a73f5c841afb2b07139b663755d7197044720",
       "advisories": []
     },
     {
       "lock": "packages/php/composer.lock",
-      "sha256": "39cb48953ff2dc78fb51505fc770932be867b4a90a92f6d4c30b6b2e5b23d81c",
+      "sha256": "f1140f02eb1778727663e1b0d57444663a4be1e18faef98d00d0d3afcf387caa",
       "advisories": []
     },
     {
@@ -289,6 +289,13 @@
       "package": "polyspec/ordered-json",
       "version": "0.0.8",
       "latest": "0.0.8"
+    },
+    {
+      "ecosystem": "composer",
+      "manifest": "packages/php/composer.json",
+      "package": "nikic/php-parser",
+      "version": "v5.9.0",
+      "latest": "v5.9.0"
     },
     {
       "ecosystem": "composer",
