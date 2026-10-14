@@ -55,8 +55,11 @@ file_put_contents("$work/autoload.php", "<?php\nrequire " . var_export("$root/pa
 $failures = 0;
 
 $passed = testcase_run('model_methods/phpstan finds every query method of a generated model', TESTCASE_COMPUTE, static function () use ($root, $work): void {
+    // PHPStan keeps its cache in the system temporary directory unless a configuration names one; the
+    // cache stays in the case's own folder, which the shutdown function removes.
+    file_put_contents("$work/phpstan.neon", "parameters:\n    tmpDir: $work/phpstan-cache\n");
     $command = [PHP_BINARY, "$root/vendor-php/bin/phpstan", 'analyse', '--no-progress', '--no-ansi', '--error-format=raw',
-        '--level=9', '--memory-limit=512M', '--autoload-file', "$work/autoload.php", "$work/calls.php"];
+        '--configuration', "$work/phpstan.neon", '--level=9', '--memory-limit=512M', '--autoload-file', "$work/autoload.php", "$work/calls.php"];
     $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $root);
     $out = (string) stream_get_contents($pipes[1]);
     $err = (string) stream_get_contents($pipes[2]);
