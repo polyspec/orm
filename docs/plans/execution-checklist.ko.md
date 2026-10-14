@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: aa88599dac84486e043cf5226db117ee40cf321ce95be83d40f9462243f6382b -->
+<!-- source-sha256: 569cd67404df763affe159f19496f8c5b0a91d43775c317d8fa1a90cf00c5bd7 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1106,6 +1106,7 @@
   Evidence: generate-scan model_calls가 수정 전에 "Author lacks gtServiceSeq, lbName, neIsDisplay"로 실패했고 지금 통과한다. npm run models가 Author에 ltReadCount와 orGtReadCount를 더하고 make ts-model-check가 통과한다.
   - [o] T174-1 scan한 chain method의 TypeScript symbol을 기록한다 (T174에 이어). 원인: T174가 Author.ltReadCount와 Author.orGtReadCount로 packages/ts/src/models/models.ts를 다시 생성했지만 TypeScript symbol을 기록하지 않아, 297b6afd에서 interface-check(feature_verify_rust, interface_contract/interface-self-test)가 그것을 예상하지 못한 symbol로 보고했다. 완료 조건: contracts/symbols/typescript.json이 두 symbol을, contracts/interfaces.json이 새 hash를 가지고 go run ./tests/interfaces/check -language typescript가 통과한다.
     Evidence: -record가 정확히 두 symbol을 더하고, 계산한 hash로 검사가 통과한다.
+- [ ] T175 PHP scan에서 invocable model을 해석한다 (T172에 이어). 원인: PHP orm-gen scan은 `$m = new C; $m->chain()`은 해석하지만, hyper module이 각각 약 130번 쓰는 invocable model 관용구 `(new C)($db)->chain()`은 해석하지 않는다. ScanVisitor에 `new C` 식이나 model을 돌려주는 `__invoke` 결과에 대한 호출 case가 없어, --scan이 member, page, board, canister, product, ordersheet에서 chain method를 하나도 선언하지 않았다(hyper가 0.0.16에서 보고). 완료 조건: `(new C)`, `(new C)(...)`와 그 chain에 대한 호출이 C로 해석되고, tests/generator/php-scan-vectors.json의 scan vector와 PHPStan fixture가 그 관용구를 쓰며, PHP scan과 node scan과의 parity가 통과한다.
 - [o] T156 모든 생성기가 모든 key의 모든 prefix마다 유형 있는 메서드를 선언한다. 원인: scan한 소스가 호출하는 메서드만 생성되어, 어떤 소스도 호출하지 않는 key prefix에는 메서드가 없었다(hyper U-97). 완료 조건: Go, Rust, TypeScript model이 primary key, unique key, index의 모든 prefix마다 메서드를 선언하고, Python은 같은 이름을 실행 시점에 해석하며, symbol 기록과 docs/usage.md를 갱신한다.
   - [o] T156-1 T156 이후 orm main CI를 다시 green으로 만든다 (T156에 이어). 원인: run 38502539388이 실패했다. Python key-prefix 테스트가 PYTHONPATH를 바꾸고 지워진 packages/orm-python/bin/orm-gen을 실행했고, Go와 Rust key-prefix 테스트가 testcase를 시작하지 않았으며, generator/gen_go_key_prefix_test.go가 어떤 feature에도 속하지 않았고, src/models/markdown_fixture에 key-prefix 메서드가 없었다. 완료 조건: 각각을 고치고 그 소유 검사가 통과한다.
   - [o] T156-2 Go markdown model을 다시 생성한다 (T156에 이어). 원인: run 38504701356이 go-markdown-model-generated에서 실패했다. packages/orm-go/markdownmodel에 key-prefix 메서드가 없었다. 완료 조건: go generate가 폴더를 바꾸지 않는다.
