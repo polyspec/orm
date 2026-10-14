@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mts) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-14T06:15:50.815Z",
+  "reviewed": "2026-10-14T06:57:38.452Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "348fde0d6f930fbde8f7e4aec9ee28546cf34bd1a306d1f4072da5d1120649b4",
+      "sha256": "e22618fae7552d125a92adb096852d5d5fd792f5d03116b67ea7f377e1633a4b",
       "advisories": [
         {
           "package": "sprintf-js",
