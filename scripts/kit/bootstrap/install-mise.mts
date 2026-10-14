@@ -6,6 +6,7 @@
 // wrapper keeps every directory that mise reads or writes under var/tools, trusts the config of the checkout and installs only
 // what mise.lock pins (MISE_LOCKED), so nothing of the machine changes and no config of the home is read.
 import { rmSync } from 'node:fs';
+import { writeAtomic } from './files.mts';
 import path from 'node:path';
 import { fileDigest } from './digest.mts';
 import { installOnce } from './install-tool.mts';
@@ -80,7 +81,17 @@ function miseWrapper(root: string, binary: string, version: string) {
   return wrapperText(`mise ${version} of this checkout`, lines.join('\n'));
 }
 
-/** Installs the declared mise `{ version, sha256 }` (sha256 by platform key) into var/tools/mise-release of `root` and writes the wrapper. */
+/**
+ * The go.mod of var/tools: mise installs Go there with the test sources of its distribution, and a repository whose root is a Go
+ * module walks its whole tree with ./...; a go.mod makes var/tools a module of its own, which the pattern of an enclosing module
+ * does not enter (K135). It names no package and requires nothing.
+ */
+export const TOOLS_GO_MOD = '// The tools of this checkout, a module of its own so that ./... of the repository does not walk them (kit K135).\nmodule var-tools\n';
+
+/**
+ * Installs the declared mise `{ version, sha256 }` (sha256 by platform key) into var/tools/mise-release of `root`, writes the
+ * wrapper, and writes the go.mod of var/tools.
+ */
 export function installMise({ root, declared, platform = `${process.platform}-${process.arch}`, print = () => {} }: { root: string; declared: { version: string; sha256: Readonly<Record<string, unknown>> }; platform?: string; print?: (text: string) => void }) {
   const asset = MISE_ASSETS[platform];
   if (!asset) throw new Error(`no mise archive is verified for ${platform}; the verified platforms are ${Object.keys(MISE_ASSETS).join(', ')}`);
@@ -105,5 +116,6 @@ export function installMise({ root, declared, platform = `${process.platform}-${
     },
   });
   writeWrapper(root, 'mise', miseWrapper(root, binary(prefix), declared.version), print);
+  writeAtomic(toolsPath(root, 'go.mod'), TOOLS_GO_MOD);
   return result;
 }
