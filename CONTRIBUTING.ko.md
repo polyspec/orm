@@ -1,10 +1,13 @@
 <!-- doc-id: contributing -->
-<!-- source-sha256: 75272dfc0c407b9fbc09074c925c873f7edfc18e8df0720891fd4c51cb9f7bf4 -->
+<!-- source-sha256: d48f96e5f8b5bb4c346e304313f7cd61d3eb75f1e719bcca617ef1ef9b99436f -->
 # 기여 안내
 
 ## 필수 작업 순서
 
-1. `AGENTS.md`가 있으면 읽고 `contracts/features.json`에서 관련 경로를 읽는다. `make install`을 한 번
+1. `AGENTS.md`가 있으면 읽고 `contracts/features.json`에서 관련 경로를 읽는다. 새 checkout은 kit을
+   먼저 설치한다: `make install-tools TOOLS=npm`(`packageManager`의 npm), 그다음 `make install-packages`
+   (`@polyspec/kit`을 포함한 `package-lock.json`)이며, 나머지가 필요로 하는 Makefile target은 여기서 온다.
+   그다음 `make install`을 한 번
    실행한다. 그것은 검사가 읽는 것(npm, Composer, Go 의존성, Rust toolchain과 crate, 가장 낮은 Node)을
    download하고, 검사는 offline으로 실행되므로 빠진 download는 `run make install`과 함께 실패한다.
 2. 예상하거나 확인한 결함을 재현하는 test를 추가한다.
