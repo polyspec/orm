@@ -132,8 +132,7 @@ func unpackIP(b []byte) (string, error) {
 	return "", codecErr(CodeCodecDecode, "ip: %d packed bytes", len(b))
 }
 
-// HostEncode applies the executor-side stages of a bound value in write order
-// (also used by bench/seedaes to fill AES columns in database fixtures).
+// HostEncode applies the executor-side stages of a bound value in write order.
 func HostEncode(v any, styles []string, aesKey string) (any, error) {
 	if len(styles) == 0 {
 		return nil, codecErr(CodeCodecEncode, "host style list is empty")

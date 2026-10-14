@@ -7523,8 +7523,6 @@
       "id": "bench-database",
       "paths": [
         "scripts/bench-db.mts",
-        "bench/install/main.go",
-        "bench/seedaes/main.go",
         "bench/sql/seed.mysql.sql",
         "bench/sql/seed.pg.sql",
         "bench/sql/seed.sqlite.sql",
