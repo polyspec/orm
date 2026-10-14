@@ -539,6 +539,7 @@
   "packages/orm-python/src/polyspec/orm/engine/model.py::RuntimeModel#field.external_text": "str",
   "packages/orm-python/src/polyspec/orm/engine/model.py::RuntimeModel#field.manifest_hash": "str",
   "packages/orm-python/src/polyspec/orm/engine/model.py::RuntimeModel#field.manifest_text": "str",
+  "packages/orm-python/src/polyspec/orm/engine/model.py::RuntimeModel.load_set": "@staticmethod def load_set(manifest_text: str, external_text: str) -\u003e list",
   "packages/orm-python/src/polyspec/orm/engine/model.py::entity_of": "def entity_of(m: RuntimeModel, name: str) -\u003e Entity | None",
   "packages/orm-python/src/polyspec/orm/engine/model.py::field_of": "def field_of(e: Entity, name: str) -\u003e Field | None",
   "packages/orm-python/src/polyspec/orm/engine/model.py::model_of_documents": "def model_of_documents(documents) -\u003e RuntimeModel",

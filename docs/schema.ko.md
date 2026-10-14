@@ -1,5 +1,5 @@
 <!-- doc-id: schema -->
-<!-- source-sha256: 63561d88b32cc8273c4dd8ceea730cefaddd5f05a3a509279a2c7184c7d1591a -->
+<!-- source-sha256: de1614f7f57e25588ad9fb9453aa6499ed2ca20c2f76ae53e59c5b9b7a440f81 -->
 # 스키마
 
 스키마 source는 dbspec document(`.dbs`)의 집합이다. [dbspec.md](dbspec.md)가 언어, 검증 규칙, manifest text와 두 hash를 정의한다. `schema/bench.dbs`는 테스트와 벤치마크의 스키마다. 다른 스키마 파일은 없으며 모든 generator, runtime, 스키마 작업이 document set을 읽는다.
@@ -77,6 +77,8 @@ SQLite 카탈로그 연결은 기존 일반 DB 파일을 요구하고 파일 자
 ## 6. 스키마 등록 {#_6-schema-registration}
 
 `connection.utils().schema().register(schema)`는 generated schema 값의 set을 연결에 등록해 연결이 그 요청을 계획하게 한다([protocol](protocol.md)). 외부 문서를 쓰는 set도 데이터베이스를 읽거나 쓰지 않는다: manifest text가 선언한 `manifestHash`로 hash되는지 확인하고, 아니면 `CONFIG`로 실패하며, set을 등록한다. 등록한 set을 다시 등록하면 아무것도 바꾸지 않는다. generated code의 connect helper가 부르는 `connectSchema`는 연결을 열고 같은 방법으로 set을 등록한다.
+
+generated schema 값의 parse된 문서는 연결 없이 그 manifest text와 external text에서 얻는다. `RuntimeModel::loadSet`(PHP), `runtimemodel.LoadSet`(Go), `Manifest::load_set`(Rust), `loadSet`(TypeScript), `RuntimeModel.load_set`(Python)은 manifest text의 문서들, 그다음 external로 표시한 external text의 문서들을 돌려주며, dbspec header가 없는 text나 diagnostic이 있는 문서에는 `SCHEMA_INVALID`로 실패한다. module의 table, column, key를 읽는 도구는 text를 직접 나누지 않고 여기서 읽는다.
 
 데이터베이스는 연결마다가 아니라 set을 설치하거나 올릴 때 확인한다. 배포는 새 데이터베이스에 `install`을, 더하기만 하는 새 version에 `addTablesAndColumns`를 부른다. 둘 다 데이터베이스를 set과 비교하고 다르면 실패한다. `register`와 connect helper는 요청마다 연 연결에도 statement 없이 연결마다 set을 등록한다. 배포 뒤 ORM 밖에서 데이터베이스를 바꾸면 다음 `install`이나 `addTablesAndColumns`가 찾는다.
 

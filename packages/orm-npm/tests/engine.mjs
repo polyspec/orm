@@ -1,7 +1,7 @@
 // Engine test: the runtime model of the embedded manifest, request validation and plans.
 // Usage: node packages/orm-npm/tests/engine.mjs (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
-import { Db, Engine, MANIFEST_HASH, MANIFEST_TEXT, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { Db, Engine, MANIFEST_HASH, MANIFEST_TEXT, dbspecManifest, loadSet, parseDbspec, registerModel } from '../dist/index.js';
 import { validate } from '../dist/engine/validate.js';
 import { cases, COMPUTE } from '../../../tests/testcase.mjs';
 
@@ -260,4 +260,14 @@ await run.run('ir-validate', COMPUTE, async () => {
   }
   if (wrong.length > 0) throw new Error(`TypeScript validate vectors:\n${wrong.join('\n')}`);
 });
+// loadSet returns the parsed documents of a generated schema value, as PHP's RuntimeModel::loadSet does (T163).
+await run.run('load-set', COMPUTE, async () => {
+  const owned = 'dbspec 1 shop\n\nuse core { account }\n\ntable item {\n  seq i64\n  account_seq i64\n  primary key (seq)\n  index ix_item_account (account_seq)\n  foreign key fk_item_account (account_seq) references account (seq) on delete restrict on update restrict\n}\n';
+  const external = 'dbspec 1 core\n\ntable account {\n  seq i64\n  primary key (seq)\n}\n';
+  const documents = loadSet(owned, external);
+  if (documents.map(d => `${d.name}:${d.external === true}`).join(',') !== 'shop:false,core:true') throw new Error(`documents ${documents.map(d => d.name).join(',')}`);
+  if (loadSet(external, '').map(d => d.name).join(',') !== 'core') throw new Error('an empty external text adds a document');
+  if (code(() => loadSet('table item {}\n', '')) !== 'SCHEMA_INVALID') throw new Error('a text without a header is not SCHEMA_INVALID');
+});
+
 run.finish();

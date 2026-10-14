@@ -225,6 +225,15 @@ export function parseDocumentSet(texts: readonly string[], externalTexts: readon
 }
 
 /**
+ * The parsed documents of a generated schema value: the documents of the manifest text, then those of the external
+ * text marked external, as PHP's RuntimeModel::loadSet returns them. A text that does not start with a dbspec header,
+ * or a document with a diagnostic, is SCHEMA_INVALID.
+ */
+export function loadSet(manifestText: string, externalText: string): DbspecDocument[] {
+  return parseDocumentSet(splitDocuments(manifestText), externalText === '' ? [] : splitDocuments(externalText));
+}
+
+/**
  * Builds the runtime model of a manifest text and the external text of the
  * tables it uses from external documents, and checks that the texts are the
  * manifest text and the external text of their documents (SCHEMA_INVALID
