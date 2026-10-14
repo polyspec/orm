@@ -21,7 +21,7 @@ final class CoveragePerformanceGateTest extends TestCase
         }
         $package = dirname(__DIR__);
         [$status, $stdout, $stderr] = coverageProcess(
-            [PHP_BINARY, "$package/vendor/bin/phpunit", '--configuration', "$package/phpunit.xml.dist", __DIR__ . '/PerfGateTest.php'],
+            [PHP_BINARY, dirname(__DIR__, 3) . '/vendor-php/bin/phpunit', '--configuration', "$package/phpunit.xml.dist", __DIR__ . '/PerfGateTest.php'],
             dirname(__DIR__, 3),
         );
         $this->assertSame(0, $status, str_replace($dsn, '[dsn]', "PerfGateTest.php exited $status: $stdout$stderr"));

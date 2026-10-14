@@ -1,11 +1,13 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: dcb48634b6340386f085b5186b3ce1bc33ebc3d671f401cc236bba742ce8ca9e -->
+<!-- source-sha256: 0f25c997232626167ec7ba33672c219a2e0109864681753eda0255b262d2fcc7 -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.16
 
+- PHP scan의 PHPStan case는 PHPStan의 JSON report를 읽고 각 오류의 identifier로 맞춘다. CI runner의 raw format은 identifier를 빠뜨린다. (#T172-2)
+- PHP 성능 gate case는 개발 root의 PHPUnit을 실행하고, docs/features.md가 PHP scan을 적는다. (#T173-1)
 - PHP test는 개발 root(vendor-php)의 PHPUnit으로 실행하고, 릴리스되는 polyspec/orm과 polyspec/orm-dbspec의 composer.json은 다시 repositories, 개발 의존성, platform 설정을 선언하지 않는다. (#T148-1-1)
 - review 기록이 PHP orm-gen scan이 요구하는 nikic/php-parser를 적는다. (#T172-1)
 - PHP orm-gen이 `--scan`을 받는다: source를 nikic/php-parser로 읽고, model에 부르는 chain method마다 타입이 있는 `@method` 태그를 선언해 PHPStan이 찾게 하며, 모르는 column, operator, 인자 수는 생성 중에 거부한다. scan한 디렉터리의 symlink는 오류다. (#T172)
