@@ -40,7 +40,7 @@
   },
   "symbol_hashes": {
     "go": "sha256:1351cc5a385d2c28dc396839a9ed84ef796f601f8fd192c897c72e930cccd688",
-    "php": "sha256:342b8ff543b4a0ada39503512e75d80fc5289edaef5846107d2df663c5ddbb8f",
+    "php": "sha256:2b78ddbcc620118a4bcbf3430185b33898e059ac13aa95c0b741c82529c6626c",
     "rust": "sha256:706c9e2ff128b70adef26aff899873ca89a0c2e4a64628833bdfe26a634cbcf0",
     "typescript": "sha256:9f319acad965131917455d951e0d8ca349a2258e55d7c61f0ad8497f19c1d01e",
     "python": "sha256:cc29db0661c20297729864d75e1595364eab085c2bfbc11abfc613c547e22ad8"
@@ -1866,7 +1866,7 @@
           "signature": "receiver=*SchemaUtils func(schema *Schema) error"
         },
         "php": {
-          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::register",
+          "symbol": "packages/php/src/SchemaUtils.php::Polyspec\\Orm\\SchemaUtils::register",
           "signature": "public function register(Polyspec\\Orm\\Schema $schema): void"
         },
         "rust": {
@@ -1902,7 +1902,7 @@
           "signature": "receiver=*SchemaUtils func(schema *Schema) error"
         },
         "php": {
-          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::install",
+          "symbol": "packages/php/src/SchemaUtils.php::Polyspec\\Orm\\SchemaUtils::install",
           "signature": "public function install(Polyspec\\Orm\\Schema $schema): void"
         },
         "rust": {
@@ -1939,7 +1939,7 @@
           "signature": "receiver=*SchemaUtils func(schema *Schema) ([]string, error)"
         },
         "php": {
-          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::addTablesAndColumns",
+          "symbol": "packages/php/src/SchemaUtils.php::Polyspec\\Orm\\SchemaUtils::addTablesAndColumns",
           "signature": "public function addTablesAndColumns(Polyspec\\Orm\\Schema $schema): array"
         },
         "rust": {
@@ -1975,7 +1975,7 @@
           "signature": "receiver=*SchemaUtils func(name string) (bool, error)"
         },
         "php": {
-          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::exists",
+          "symbol": "packages/php/src/SchemaUtils.php::Polyspec\\Orm\\SchemaUtils::exists",
           "signature": "public function exists(string $schema): bool"
         },
         "rust": {
@@ -2011,7 +2011,7 @@
           "signature": "receiver=*SchemaUtils func(name, table string) (bool, error)"
         },
         "php": {
-          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::installed",
+          "symbol": "packages/php/src/SchemaUtils.php::Polyspec\\Orm\\SchemaUtils::installed",
           "signature": "public function installed(string $schema, string $table): bool"
         },
         "rust": {
@@ -2044,7 +2044,7 @@
           "signature": "receiver=*SchemaUtils func() (bool, error)"
         },
         "php": {
-          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::empty",
+          "symbol": "packages/php/src/SchemaUtils.php::Polyspec\\Orm\\SchemaUtils::empty",
           "signature": "public function empty(): bool"
         },
         "rust": {
@@ -2169,7 +2169,7 @@
           "signature": "receiver=*AESUtils func(m Model, keyring AESKeyring) (AESRotationStatus, error)"
         },
         "php": {
-          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\AesUtils::status",
+          "symbol": "packages/php/src/AesUtils.php::Polyspec\\Orm\\AesUtils::status",
           "signature": "public function status(Polyspec\\Orm\\Model $model, Polyspec\\Orm\\AesKeyring $keyring): Polyspec\\Orm\\AesRotationStatus"
         },
         "rust": {
@@ -2204,7 +2204,7 @@
           "signature": "receiver=*AESUtils func(m Model, keyring AESKeyring) (int, error)"
         },
         "php": {
-          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\AesUtils::rotate",
+          "symbol": "packages/php/src/AesUtils.php::Polyspec\\Orm\\AesUtils::rotate",
           "signature": "public function rotate(Polyspec\\Orm\\Model $model, Polyspec\\Orm\\AesKeyring $keyring): int"
         },
         "rust": {
@@ -3915,7 +3915,7 @@
           ]
         },
         "php": {
-          "symbol": "packages/php/src/Collection.php::Polyspec\\Orm\\Page",
+          "symbol": "packages/php/src/Page.php::Polyspec\\Orm\\Page",
           "fields": [
             "items",
             "totalCount",
@@ -3970,7 +3970,7 @@
           ]
         },
         "php": {
-          "symbol": "packages/php/src/AesKeyring.php::Polyspec\\Orm\\AesRotationStatus",
+          "symbol": "packages/php/src/AesRotationStatus.php::Polyspec\\Orm\\AesRotationStatus",
           "fields": [
             "current",
             "total",

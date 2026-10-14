@@ -7,6 +7,15 @@
         "php": ">=8.5",
         "polyspec/orm": "0.0.14"
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Polyspec\\Orm\\Tests\\Model\\": "packages/php/gen/",
+            "Polyspec\\Orm\\Tests\\MarkdownModel\\": "packages/php/markdownmodel/"
+        },
+        "files": [
+            "packages/php/gen/bootstrap.php"
+        ]
+    },
     "repositories": [
         {
             "type": "path",
