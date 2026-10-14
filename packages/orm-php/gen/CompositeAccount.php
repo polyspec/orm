@@ -61,4 +61,188 @@ final class CompositeAccount extends Model
     {
         return $this->writeColumn('name', $v);
     }
+
+    /** The condition of account_id: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function accountId(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('accountId', func_get_args());
+        return $this;
+    }
+
+    public function addColumnAccountId(): static
+    {
+        $this->__call('addColumnAccountId', func_get_args());
+        return $this;
+    }
+
+    public function addColumnName(): static
+    {
+        $this->__call('addColumnName', func_get_args());
+        return $this;
+    }
+
+    public function addColumnTenantId(): static
+    {
+        $this->__call('addColumnTenantId', func_get_args());
+        return $this;
+    }
+
+    public function avgAccountId(): static
+    {
+        $this->__call('avgAccountId', func_get_args());
+        return $this;
+    }
+
+    public function avgTenantId(): static
+    {
+        $this->__call('avgTenantId', func_get_args());
+        return $this;
+    }
+
+    public function groupByAccountId(): static
+    {
+        $this->__call('groupByAccountId', func_get_args());
+        return $this;
+    }
+
+    public function groupByName(): static
+    {
+        $this->__call('groupByName', func_get_args());
+        return $this;
+    }
+
+    public function groupByTenantId(): static
+    {
+        $this->__call('groupByTenantId', func_get_args());
+        return $this;
+    }
+
+    public function keyNameAccountId(): static
+    {
+        $this->__call('keyNameAccountId', func_get_args());
+        return $this;
+    }
+
+    public function keyNameName(): static
+    {
+        $this->__call('keyNameName', func_get_args());
+        return $this;
+    }
+
+    public function keyNameTenantId(): static
+    {
+        $this->__call('keyNameTenantId', func_get_args());
+        return $this;
+    }
+
+    public function minusAccountId(int|float $n): static
+    {
+        $this->__call('minusAccountId', func_get_args());
+        return $this;
+    }
+
+    public function minusTenantId(int|float $n): static
+    {
+        $this->__call('minusTenantId', func_get_args());
+        return $this;
+    }
+
+    /** The condition of name: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function name(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('name', func_get_args());
+        return $this;
+    }
+
+    public function orderByAccountIdAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByAccountIdAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByAccountIdDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByAccountIdDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByNameAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByNameAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByNameDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByNameDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByTenantIdAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByTenantIdAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByTenantIdDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByTenantIdDesc', func_get_args());
+        return $this;
+    }
+
+    public function plusAccountId(int|float $n): static
+    {
+        $this->__call('plusAccountId', func_get_args());
+        return $this;
+    }
+
+    public function plusTenantId(int|float $n): static
+    {
+        $this->__call('plusTenantId', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnAccountId(): static
+    {
+        $this->__call('removeColumnAccountId', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnName(): static
+    {
+        $this->__call('removeColumnName', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnTenantId(): static
+    {
+        $this->__call('removeColumnTenantId', func_get_args());
+        return $this;
+    }
+
+    public function sumAccountId(): static
+    {
+        $this->__call('sumAccountId', func_get_args());
+        return $this;
+    }
+
+    public function sumTenantId(): static
+    {
+        $this->__call('sumTenantId', func_get_args());
+        return $this;
+    }
+
+    /** The condition of tenant_id: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function tenantId(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('tenantId', func_get_args());
+        return $this;
+    }
+
+    /** @param list<list<mixed>> $values */
+    public function tupleTenantIdWithAccountId(array $values): static
+    {
+        $this->__call('tupleTenantIdWithAccountId', func_get_args());
+        return $this;
+    }
 }

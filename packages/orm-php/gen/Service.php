@@ -50,4 +50,114 @@ final class Service extends Model
     {
         return $this->writeColumn('name', $v);
     }
+
+    public function addColumnName(): static
+    {
+        $this->__call('addColumnName', func_get_args());
+        return $this;
+    }
+
+    public function addColumnSeq(): static
+    {
+        $this->__call('addColumnSeq', func_get_args());
+        return $this;
+    }
+
+    public function avgSeq(): static
+    {
+        $this->__call('avgSeq', func_get_args());
+        return $this;
+    }
+
+    public function groupByName(): static
+    {
+        $this->__call('groupByName', func_get_args());
+        return $this;
+    }
+
+    public function groupBySeq(): static
+    {
+        $this->__call('groupBySeq', func_get_args());
+        return $this;
+    }
+
+    public function keyNameName(): static
+    {
+        $this->__call('keyNameName', func_get_args());
+        return $this;
+    }
+
+    public function keyNameSeq(): static
+    {
+        $this->__call('keyNameSeq', func_get_args());
+        return $this;
+    }
+
+    public function minusSeq(int|float $n): static
+    {
+        $this->__call('minusSeq', func_get_args());
+        return $this;
+    }
+
+    /** The condition of name: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function name(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('name', func_get_args());
+        return $this;
+    }
+
+    public function orderByNameAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByNameAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByNameDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByNameDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderBySeqAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderBySeqAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderBySeqDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderBySeqDesc', func_get_args());
+        return $this;
+    }
+
+    public function plusSeq(int|float $n): static
+    {
+        $this->__call('plusSeq', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnName(): static
+    {
+        $this->__call('removeColumnName', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnSeq(): static
+    {
+        $this->__call('removeColumnSeq', func_get_args());
+        return $this;
+    }
+
+    /** The condition of seq: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function seq(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('seq', func_get_args());
+        return $this;
+    }
+
+    public function sumSeq(): static
+    {
+        $this->__call('sumSeq', func_get_args());
+        return $this;
+    }
 }

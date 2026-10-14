@@ -61,4 +61,157 @@ final class Task extends Model
     {
         return $this->writeColumn('state', $v);
     }
+
+    public function addColumnSeq(): static
+    {
+        $this->__call('addColumnSeq', func_get_args());
+        return $this;
+    }
+
+    public function addColumnState(): static
+    {
+        $this->__call('addColumnState', func_get_args());
+        return $this;
+    }
+
+    public function addColumnTitle(): static
+    {
+        $this->__call('addColumnTitle', func_get_args());
+        return $this;
+    }
+
+    public function avgSeq(): static
+    {
+        $this->__call('avgSeq', func_get_args());
+        return $this;
+    }
+
+    public function groupBySeq(): static
+    {
+        $this->__call('groupBySeq', func_get_args());
+        return $this;
+    }
+
+    public function groupByState(): static
+    {
+        $this->__call('groupByState', func_get_args());
+        return $this;
+    }
+
+    public function groupByTitle(): static
+    {
+        $this->__call('groupByTitle', func_get_args());
+        return $this;
+    }
+
+    public function keyNameSeq(): static
+    {
+        $this->__call('keyNameSeq', func_get_args());
+        return $this;
+    }
+
+    public function keyNameState(): static
+    {
+        $this->__call('keyNameState', func_get_args());
+        return $this;
+    }
+
+    public function keyNameTitle(): static
+    {
+        $this->__call('keyNameTitle', func_get_args());
+        return $this;
+    }
+
+    public function minusSeq(int|float $n): static
+    {
+        $this->__call('minusSeq', func_get_args());
+        return $this;
+    }
+
+    public function orderBySeqAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderBySeqAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderBySeqDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderBySeqDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByStateAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByStateAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByStateDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByStateDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByTitleAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByTitleAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByTitleDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByTitleDesc', func_get_args());
+        return $this;
+    }
+
+    public function plusSeq(int|float $n): static
+    {
+        $this->__call('plusSeq', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnSeq(): static
+    {
+        $this->__call('removeColumnSeq', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnState(): static
+    {
+        $this->__call('removeColumnState', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnTitle(): static
+    {
+        $this->__call('removeColumnTitle', func_get_args());
+        return $this;
+    }
+
+    /** The condition of seq: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function seq(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('seq', func_get_args());
+        return $this;
+    }
+
+    /** The condition of state: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function state(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('state', func_get_args());
+        return $this;
+    }
+
+    public function sumSeq(): static
+    {
+        $this->__call('sumSeq', func_get_args());
+        return $this;
+    }
+
+    /** The condition of title: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function title(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('title', func_get_args());
+        return $this;
+    }
 }

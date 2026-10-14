@@ -2489,6 +2489,7 @@
         "packages/orm-npm/tests/generate.mjs",
         "packages/orm-rust/orm-build/tests/generate.rs",
         "packages/orm-php/tests/orm_gen_test.php",
+        "packages/orm-php/tests/model_methods_test.php",
         "packages/orm-npm/tests/generate-scan.mjs",
         "packages/orm-npm/tests/models-scan.mjs",
         "packages/orm-go/model/coverage_model_generation_test.go",
@@ -2542,6 +2543,14 @@
             "packages/orm-php/tests/orm_gen_test.php",
             "tests/dbspec/files/dbschema.dbs",
             "tests/dbspec/files/empty.dbs"
+          ]
+        },
+        {
+          "id": "generation-methods-php",
+          "command": "php packages/orm-php/tests/model_methods_test.php",
+          "shard": "other",
+          "inputs": [
+            "packages/orm-php/tests/model_methods_test.php"
           ]
         },
         {

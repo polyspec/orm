@@ -127,4 +127,439 @@ final class People extends Model
     {
         return $this->writeColumn('updated_at', $v === null ? null : \DateTimeImmutable::createFromInterface($v));
     }
+
+    /** The condition of active: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function active(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('active', func_get_args());
+        return $this;
+    }
+
+    public function addColumnActive(): static
+    {
+        $this->__call('addColumnActive', func_get_args());
+        return $this;
+    }
+
+    public function addColumnAge(): static
+    {
+        $this->__call('addColumnAge', func_get_args());
+        return $this;
+    }
+
+    public function addColumnDeletedAt(): static
+    {
+        $this->__call('addColumnDeletedAt', func_get_args());
+        return $this;
+    }
+
+    public function addColumnEmail(): static
+    {
+        $this->__call('addColumnEmail', func_get_args());
+        return $this;
+    }
+
+    public function addColumnId(): static
+    {
+        $this->__call('addColumnId', func_get_args());
+        return $this;
+    }
+
+    public function addColumnJoined(): static
+    {
+        $this->__call('addColumnJoined', func_get_args());
+        return $this;
+    }
+
+    public function addColumnName(): static
+    {
+        $this->__call('addColumnName', func_get_args());
+        return $this;
+    }
+
+    public function addColumnScore(): static
+    {
+        $this->__call('addColumnScore', func_get_args());
+        return $this;
+    }
+
+    public function addColumnUpdatedAt(): static
+    {
+        $this->__call('addColumnUpdatedAt', func_get_args());
+        return $this;
+    }
+
+    /** The condition of age: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function age(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('age', func_get_args());
+        return $this;
+    }
+
+    public function avgAge(): static
+    {
+        $this->__call('avgAge', func_get_args());
+        return $this;
+    }
+
+    public function avgScore(): static
+    {
+        $this->__call('avgScore', func_get_args());
+        return $this;
+    }
+
+    /** The condition of deleted_at: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function deletedAt(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('deletedAt', func_get_args());
+        return $this;
+    }
+
+    /** The condition of email: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function email(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('email', func_get_args());
+        return $this;
+    }
+
+    public function groupByActive(): static
+    {
+        $this->__call('groupByActive', func_get_args());
+        return $this;
+    }
+
+    public function groupByAge(): static
+    {
+        $this->__call('groupByAge', func_get_args());
+        return $this;
+    }
+
+    public function groupByDeletedAt(): static
+    {
+        $this->__call('groupByDeletedAt', func_get_args());
+        return $this;
+    }
+
+    public function groupByEmail(): static
+    {
+        $this->__call('groupByEmail', func_get_args());
+        return $this;
+    }
+
+    public function groupById(): static
+    {
+        $this->__call('groupById', func_get_args());
+        return $this;
+    }
+
+    public function groupByJoined(): static
+    {
+        $this->__call('groupByJoined', func_get_args());
+        return $this;
+    }
+
+    public function groupByName(): static
+    {
+        $this->__call('groupByName', func_get_args());
+        return $this;
+    }
+
+    public function groupByScore(): static
+    {
+        $this->__call('groupByScore', func_get_args());
+        return $this;
+    }
+
+    public function groupByUpdatedAt(): static
+    {
+        $this->__call('groupByUpdatedAt', func_get_args());
+        return $this;
+    }
+
+    /** The condition of id: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function id(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('id', func_get_args());
+        return $this;
+    }
+
+    /** The condition of joined: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function joined(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('joined', func_get_args());
+        return $this;
+    }
+
+    public function keyNameActive(): static
+    {
+        $this->__call('keyNameActive', func_get_args());
+        return $this;
+    }
+
+    public function keyNameAge(): static
+    {
+        $this->__call('keyNameAge', func_get_args());
+        return $this;
+    }
+
+    public function keyNameDeletedAt(): static
+    {
+        $this->__call('keyNameDeletedAt', func_get_args());
+        return $this;
+    }
+
+    public function keyNameEmail(): static
+    {
+        $this->__call('keyNameEmail', func_get_args());
+        return $this;
+    }
+
+    public function keyNameId(): static
+    {
+        $this->__call('keyNameId', func_get_args());
+        return $this;
+    }
+
+    public function keyNameJoined(): static
+    {
+        $this->__call('keyNameJoined', func_get_args());
+        return $this;
+    }
+
+    public function keyNameName(): static
+    {
+        $this->__call('keyNameName', func_get_args());
+        return $this;
+    }
+
+    public function keyNameScore(): static
+    {
+        $this->__call('keyNameScore', func_get_args());
+        return $this;
+    }
+
+    public function keyNameUpdatedAt(): static
+    {
+        $this->__call('keyNameUpdatedAt', func_get_args());
+        return $this;
+    }
+
+    public function minusAge(int|float $n): static
+    {
+        $this->__call('minusAge', func_get_args());
+        return $this;
+    }
+
+    public function minusScore(string $n): static
+    {
+        $this->__call('minusScore', func_get_args());
+        return $this;
+    }
+
+    /** The condition of name: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function name(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('name', func_get_args());
+        return $this;
+    }
+
+    public function orderByActiveAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByActiveAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByActiveDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByActiveDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByAgeAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByAgeAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByAgeDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByAgeDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByDeletedAtAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByDeletedAtAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByDeletedAtDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByDeletedAtDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByEmailAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByEmailAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByEmailDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByEmailDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByIdAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByIdAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByIdDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByIdDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByJoinedAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByJoinedAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByJoinedDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByJoinedDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByNameAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByNameAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByNameDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByNameDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByScoreAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByScoreAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByScoreDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByScoreDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByUpdatedAtAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByUpdatedAtAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByUpdatedAtDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByUpdatedAtDesc', func_get_args());
+        return $this;
+    }
+
+    public function plusAge(int|float $n): static
+    {
+        $this->__call('plusAge', func_get_args());
+        return $this;
+    }
+
+    public function plusScore(string $n): static
+    {
+        $this->__call('plusScore', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnActive(): static
+    {
+        $this->__call('removeColumnActive', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnAge(): static
+    {
+        $this->__call('removeColumnAge', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnDeletedAt(): static
+    {
+        $this->__call('removeColumnDeletedAt', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnEmail(): static
+    {
+        $this->__call('removeColumnEmail', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnId(): static
+    {
+        $this->__call('removeColumnId', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnJoined(): static
+    {
+        $this->__call('removeColumnJoined', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnName(): static
+    {
+        $this->__call('removeColumnName', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnScore(): static
+    {
+        $this->__call('removeColumnScore', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnUpdatedAt(): static
+    {
+        $this->__call('removeColumnUpdatedAt', func_get_args());
+        return $this;
+    }
+
+    /** The condition of score: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function score(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('score', func_get_args());
+        return $this;
+    }
+
+    public function sumAge(): static
+    {
+        $this->__call('sumAge', func_get_args());
+        return $this;
+    }
+
+    public function sumScore(): static
+    {
+        $this->__call('sumScore', func_get_args());
+        return $this;
+    }
+
+    /** The condition of updated_at: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function updatedAt(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('updatedAt', func_get_args());
+        return $this;
+    }
 }
