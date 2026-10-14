@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2e674401c2d785455e28af04a1d8bd4a198e9aca04d1bfae23297dbaefb77b43 -->
+<!-- source-sha256: ab73a8d8894d65ccd116acffbe9ca5fb1737b92594c638b70fe204fda26e7610 -->
 # 변경 이력
 
 ## Unreleased
 
+- T165-4: kit-check가 mise.toml과 mise.lock을 입력으로 받는다.
 - T167: PHP client가 Db::transaction의 결과와 model row(Collection, Page, gets, getsPage)에 @template generic을 선언해 PHPStan level 9가 그 type을 안다.
 - T168: python-venv-check가 파일을 sed로 읽지 않고 mise.toml의 Python을 mise에게 묻는다.
 - T165-3: orm이 kit 0.0.42를 받아, go vet과 go test가 mise가 var/tools 아래 설치한 Go를 더는 지나지 않는다.
