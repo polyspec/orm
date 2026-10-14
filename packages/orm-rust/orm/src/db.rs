@@ -40,12 +40,18 @@ pub type AuditSource = Arc<dyn Fn() -> Result<Vec<(String, Param)>> + Send + Syn
 /// operation unchanged, before any statement.
 pub type RequestHook = Arc<dyn Fn(&mut crate::ir::Request, &mut RequestParams) -> Result<()> + Send + Sync>;
 
-/// The parameters of the request a [`RequestHook`] receives.
+/// The parameters of the request a [`RequestHook`] receives: it reads the values that the request binds and adds
+/// parameters.
 pub struct RequestParams {
     params: Vec<Param>,
 }
 
 impl RequestParams {
+    /// Returns the value of the parameter at `index`, or `None` past the parameters.
+    pub fn get(&self, index: usize) -> Option<&Param> {
+        self.params.get(index)
+    }
+
     /// Appends `value` to the request parameters and returns its index.
     pub fn add(&mut self, value: impl Into<Param>) -> usize {
         self.params.push(value.into());
