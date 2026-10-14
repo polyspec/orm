@@ -1,4 +1,5 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { isDeepStrictEqual } from 'node:util';
 import { CodecError, StyledValue, blindIndex, decodeCodec, encodeCodec, hostDecode, hostEncode } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { cases, COMPUTE } from '../../../tests/testcase.mjs';
@@ -89,6 +90,20 @@ await suite.run('codec-vector', COMPUTE, async () => {
         failures++;
       }
     }
+  }
+
+  // docs/codec.md (yaml): only plain keys that the core schema resolves to bool, null or float are
+  // refused; a key the core schema reads as a string or an integer decodes.
+  for (const [stored, want] of [
+    ['1: 1\n', { 1: 1 }],
+    ['"true": 1\n', { true: 1 }],
+    ['tRUE: 1\n', { tRUE: 1 }],
+    ['nULL: 1\n', { nULL: 1 }],
+    ['.InF: 1\n', { '.InF': 1 }],
+  ]) {
+    let got;
+    try { got = decodeCodec(['yaml'], stored).payload(); } catch (error) { got = String(error); }
+    if (!isDeepStrictEqual(got, want)) { console.error(`YAML key ${JSON.stringify(stored)}: got ${JSON.stringify(got)} want ${JSON.stringify(want)}`); failures++; }
   }
 
   for (const vector of aesVectors) {

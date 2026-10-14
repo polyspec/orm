@@ -51,6 +51,10 @@
     {"name": "yaml-core-tag-str", "styles": ["yaml"], "stored": "!!str a\n", "error": "CODEC_DECODE"},
     {"name": "yaml-core-tag-int", "styles": ["yaml"], "stored": "!!int 1\n", "error": "CODEC_DECODE"},
     {"name": "yaml-empty-stream", "styles": ["yaml"], "stored": "", "error": "CODEC_DECODE"},
-    {"name": "yaml-comments-only-stream", "styles": ["yaml"], "stored": "# only a comment\n", "error": "CODEC_DECODE"}
+    {"name": "yaml-comments-only-stream", "styles": ["yaml"], "stored": "# only a comment\n", "error": "CODEC_DECODE"},
+    {"name": "yaml-key-plain-true", "styles": ["yaml"], "stored": "true: 1\n", "error": "CODEC_DECODE"},
+    {"name": "yaml-key-plain-tilde", "styles": ["yaml"], "stored": "~: 1\n", "error": "CODEC_DECODE"},
+    {"name": "yaml-key-plain-float", "styles": ["yaml"], "stored": "1.5: 1\n", "error": "CODEC_DECODE"},
+    {"name": "yaml-key-plain-exponent", "styles": ["yaml"], "stored": "1e3: 1\n", "error": "CODEC_DECODE"}
   ]
 }
