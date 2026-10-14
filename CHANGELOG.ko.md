@@ -1,13 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 284eee27e46c3ddcd817e89def3487030a57e1609eaad34d25cf3514e9bf2318 -->
+<!-- source-sha256: c20bfc08d195bf718b60332ac058dbbd3ef37cff3d540b032e292e48e52c79a1 -->
 # 변경 이력
 
 ## Unreleased
 
-- 모든 client가 ordered-json 0.0.9를 요구한다. Go client는 module 경로 github.com/polyspec/ordered-json/packages/go에서 import한다. (#T178)
-
 ## 0.0.17
 
+- 모든 client가 ordered-json 0.0.9를 요구한다. Go client는 module 경로 github.com/polyspec/ordered-json/packages/go에서 import한다. (#T178)
 - package check가 Rust client의 외부 crate에 그 lock을 주어, fetch한 git revision으로 offline build한다. (#T177-1)
 - scripts/bench-db.mts가 TypeScript client로 bench database를 설치하고 seed한다. Go program bench/install과 bench/seedaes를 지웠다. (#T137-1-4-9)
 - Python client가 다른 client처럼 3.46보다 오래된 SQLite를 CAPABILITY_UNSUPPORTED로 거부한다. (#T176)
