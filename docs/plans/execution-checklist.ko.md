@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 5b2f75b86718efc909246221d86e6006a39908c5a90152cb6a1528e9c0a757b6 -->
+<!-- source-sha256: 1c21d3264ad1f0557d041249211839926c25e38ca19c1b0a12d35e37fe92d3db -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1009,7 +1009,9 @@
   Evidence: codec-check, python-unit-check, interface-check, dependency-policy-check가 통과하고 Go codec test가 통과한다.
   - [o] T142-9 docs/codec.md의 YAML 거부 규칙이 모든 client에서 성립하게 한다 (T142-2에 이어). 원인: docs/codec.md는 anchor와 explicit tag를 거부하지만, Go와 Python은 alias 없는 anchor와 core tag(!!str, !!int)를 받고 PHP는 거부한다. 빈 stream은 Go에서 오류, Python과 PHP에서 null이다. 완료 조건: docs/codec.md에 형태마다 규칙 하나, 그 각각의 공유 vector, 모든 client의 통과.
   Evidence: tests/codec/decode-vectors.json의 공유 거부 vector 여섯 개가 수정 전 실패하고 다섯 client 모두에서 통과한다. codec-check, python-unit-check, interface-check가 통과한다.
-  - [ ] T142-10 TypeScript에서 문자열이 아닌 YAML map key를 parse된 node로 거부한다 (T142-9에 이어). 원인: packages/ts/src/codec.ts decodeYaml이 plain boolean, null, float key를 key의 source text에 regex를 적용해 거부하는데, 이는 yaml library 옆에서 core schema를 다시 읽는 것이다. 완료 조건: key의 type을 library가 해석한 scalar에서 얻고, regex를 없애며, key 거부 vector가 통과한다.
+  - [o] T142-10 TypeScript에서 문자열이 아닌 YAML map key를 parse된 node로 거부한다 (T142-9에 이어). 원인: packages/ts/src/codec.ts decodeYaml이 plain boolean, null, float key를 key의 source text에 regex를 적용해 거부하는데, 이는 yaml library 옆에서 core schema를 다시 읽는 것이다. 완료 조건: key의 type을 library가 해석한 scalar에서 얻고, regex를 없애며, key 거부 vector가 통과한다.
+  Evidence: TS case tRUE, nULL, .InF가 수정 전 실패한다. 공유 key 거부 vector 네 개가 다섯 client 모두에서 통과한다. codec-check가 통과한다.
+  - [ ] T142-11 공유 decode vector에서 문자열이 아닌 값을 비교하고, 받아들이는 YAML key를 공유한다 (T142-10에 이어). 원인: decode-vector runner가 value를 문자열로 비교해, 받아들이는 key tRUE, nULL, .InF, 1, "true"가 TS 전용 case다. Go, Python, Rust, PHP가 이를 core schema대로 읽는지 확인되지 않는다. 완료 조건: 모든 runner가 JSON 값을 비교하고, 받아들이는 key vector를 공유하며, 다섯 client가 모두 통과한다.
   - [o] T142-3 codec-check가 Python codec vector를 실행한다 (T142에 이어). 원인: packages/orm-python/tests/codec_vector.py를 실행하는 make target이 없어(python-unit-check는 `test_*.py`만 맞춘다) Python의 YAML 결함이 드러나지 않았다. 완료 조건: codec-check가 이를 실행하고, 깨진 vector로 먼저 red를 확인한다.
   - [o] T142-4 codec-check가 lease tool을 준비한다 (T142에 이어). 원인: 새 checkout에서 `make lease-tool` 전에는 `make codec-check`가 `.runtime/bin/lease ENOENT`로 실패한다. codec-check/rust에 선행 조건이 없다. 완료 조건: codec-check가 lease-tool에 의존하고, 새 worktree에서 먼저 red를 확인한다.
   - [o] T142-5 codec-check가 실행하는 PHP 의존성을 설치한다 (T142-4에 이어). 원인: 새 checkout에서 `make install-php` 전에는 `codec-check/compare`가 packages/orm-php/tests/autoload.php의 PHP fatal error로 멈춘다. 완료 조건: target에 선행 조건이 있고, 새 worktree에서 먼저 red를 확인한다.
