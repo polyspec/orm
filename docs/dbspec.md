@@ -100,6 +100,16 @@ On success the reader returns `documents` and `external`, each a list in written
 
 A generator that gets a set file with an error, or a listed file with a diagnostic, exits with its error status, prints every error and diagnostic, and writes nothing. The shared vectors `tests/dbspec/set-files.json` hold each rule with accepting and rejecting cases as file trees (regular files, directories, symbolic links and hard links), which every client's set reader runs; TypeScript's `parseSet` also runs the cases that need no file tree. The file-tree cases need a file system with symbolic and hard links: on Windows, NTFS and the privilege to create symbolic links.
 
+### Parsing a set {#parsing-a-set}
+
+A tool parses the texts of a set with the set parse, never by keying the texts itself: Go `dbspec.ParseSet`, PHP `Dbspec::parseSet`, TypeScript `parseDbspecSet`, Python `parse_dbspec_set` and Rust `dbspec::parse_set`. It takes the owned texts and the external texts, each in set order, and returns one result per text in that order, owned first, then a list of set diagnostics.
+
+- The name of a document is the name that the parser reads from its header line; no tool reads it otherwise. A text whose header fails has no name, and its result carries the `header` diagnostic.
+- A name that a later text repeats is the set diagnostic `name.duplicate` at line 1, column 10 of the later text, `document <name> appears twice in the document set`; the later text is not parsed.
+- Every other text is parsed with the texts of all other named documents of the set as the documents its `use` lines name, and its result carries its document, its [declaration positions](#declaration-positions) and its diagnostics, as one parse of that text returns them. An external text's document is marked external.
+
+The shared vectors `tests/dbspec/set-parse.json` hold sets with their names, the duplicate and a failed header, and every client runs them.
+
 ## Names
 
 Every name of a document, table, column, index, key, foreign key, check, setting target and diagram matches `[a-z][a-z0-9_]*` and has at most 63 bytes. A longer name is an error; it is never shortened. Upper case is an error, so every database's case folding gives the same name.

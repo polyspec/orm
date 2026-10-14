@@ -2821,6 +2821,7 @@
         "packages/rust/schema/tests/dbspec_analyze.rs",
         "packages/ts/tests/dbspec-analyze.mjs",
         "engine/dbspec/set_test.go",
+        "engine/dbspec/parseset_test.go",
         "packages/rust/schema/tests/dbspec_set.rs",
         "packages/ts/tests/dbspec-set.mjs",
         "packages/ts/tests/browser-entry.mjs",
@@ -2878,7 +2879,9 @@
             "packages/php/src/Dbspec/UnicodeWord.php",
             "packages/ts/src/dbspec/unicode_word.ts",
             "engine/dbspec/set_test.go",
-            "tests/dbspec/set-files.json"
+            "tests/dbspec/set-files.json",
+            "engine/dbspec/parseset_test.go",
+            "tests/dbspec/set-parse.json"
           ]
         },
         {

@@ -1,0 +1,103 @@
+{
+  "schema": 1,
+  "cases": [
+    {
+      "name": "an owned document uses an external one",
+      "owned": [
+        "dbspec 1 shop\n\nuse core { account }\n\ntable item {\n  seq i64\n  account_seq i64\n  primary key (seq)\n  index ix_item_account (account_seq)\n  foreign key fk_item_account (account_seq) references account (seq) on delete restrict on update restrict\n}\n"
+      ],
+      "external": [
+        "dbspec 1 core\n\ntable account {\n  seq i64\n  primary key (seq)\n}\n"
+      ],
+      "documents": [
+        {
+          "name": "shop",
+          "external": false,
+          "parsed": true,
+          "diagnostics": []
+        },
+        {
+          "name": "core",
+          "external": true,
+          "parsed": true,
+          "diagnostics": []
+        }
+      ],
+      "diagnostics": []
+    },
+    {
+      "name": "a repeated name is a set diagnostic and the later text is not parsed",
+      "owned": [
+        "dbspec 1 core\n\ntable account {\n  seq i64\n  primary key (seq)\n}\n",
+        "dbspec 1 core\n\ntable account {\n  seq i64\n  primary key (seq)\n}\n"
+      ],
+      "external": [],
+      "documents": [
+        {
+          "name": "core",
+          "external": false,
+          "parsed": true,
+          "diagnostics": []
+        },
+        {
+          "name": "core",
+          "external": false,
+          "parsed": false,
+          "diagnostics": []
+        }
+      ],
+      "diagnostics": [
+        {
+          "rule": "name.duplicate",
+          "line": 1,
+          "column": 10,
+          "message": "document core appears twice in the document set"
+        }
+      ]
+    },
+    {
+      "name": "a failed header has no name and carries the header diagnostic",
+      "owned": [
+        "table x {}\n"
+      ],
+      "external": [],
+      "documents": [
+        {
+          "name": "",
+          "external": false,
+          "parsed": false,
+          "diagnostics": [
+            {
+              "rule": "header",
+              "line": 1,
+              "column": 1
+            }
+          ]
+        }
+      ],
+      "diagnostics": []
+    },
+    {
+      "name": "a use of a document outside the set is the document's diagnostic",
+      "owned": [
+        "dbspec 1 lone\n\nuse missing { thing }\n\ntable t {\n  id i64\n  primary key (id)\n}\n"
+      ],
+      "external": [],
+      "documents": [
+        {
+          "name": "lone",
+          "external": false,
+          "parsed": false,
+          "diagnostics": [
+            {
+              "rule": "use",
+              "line": 3,
+              "column": 5
+            }
+          ]
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}
