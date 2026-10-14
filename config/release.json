@@ -51,6 +51,7 @@
     "packages/rust/tests/Cargo.toml": "the integration tests of the Rust client (publish = false)",
     "bench/rust/Cargo.toml": "the benchmark crate of the Rust client",
     "tests/interfaces/rust/Cargo.toml": "the interface check crate of the Rust client",
+    "tests/interfaces/typescript/package.json": "the TypeScript compiler of the interface check of the TypeScript client",
     "tests/release-consumer/npm/package.json": "the npm consumer project of the release archives",
     "tests/release-consumer/composer/composer.json": "the Composer consumer project of the release archives",
     "packages/dbspec-language/package.json": "the dbspec language service, private until the editor stack is released (T128-R), whose wiring item T128-9 moves it to the released packages with its archive manifest and consumer smoke",

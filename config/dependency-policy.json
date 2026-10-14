@@ -10,7 +10,8 @@
     "packages/python/pyproject.toml"
   ],
   "npmLocks": [
-    "package-lock.json"
+    "package-lock.json",
+    "tests/interfaces/typescript/package-lock.json"
   ],
   "exceptions": [],
   "pythonLocks": []

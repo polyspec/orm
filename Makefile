@@ -1242,8 +1242,12 @@ rust-check/clippy-test-faults: lease-tool
 # and the parts are independent (make -k).
 
 .PHONY: docs-ci
-.PHONY: install install-php install-rust install-go install-node-min install-server-programs install-php-extension-tools ci-php-min-version ci-php-sqlite downloads-check
-install: install-php install-rust install-go install-node-min install-php-extension-tools install-python install-flowmark
+.PHONY: install install-interfaces-typescript install-php install-rust install-go install-node-min install-server-programs install-php-extension-tools ci-php-min-version ci-php-sqlite downloads-check
+install: install-php install-rust install-go install-node-min install-php-extension-tools install-python install-flowmark install-interfaces-typescript
+# install-interfaces-typescript installs the TypeScript 6.0.3 that tests/interfaces/typescript.mjs reads declarations with
+# (config/toolchain.json exceptions): TypeScript 7.0 ships no JavaScript API of its compiler.
+install-interfaces-typescript:
+	$(ONLINE) npm ci --prefix tests/interfaces/typescript --no-audit --no-fund
 install-php:
 	$(ONLINE) composer install --no-interaction --no-progress --prefer-dist
 install-rust:

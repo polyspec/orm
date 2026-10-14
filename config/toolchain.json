@@ -37,5 +37,14 @@
       "linux-arm64": "133ae54580b1c84d6aa1641d72448267241064ee9c5be119bb649f6acad9e005",
       "linux-x64": "ce1f182bf3205aceab62fad40dbdd7502de638ed89cbb4fef10320803384ff9b"
     }
-  }
+  },
+  "exceptions": [
+    {
+      "tool": "typescript",
+      "channel": "6.0.3",
+      "scope": "tests/interfaces/typescript",
+      "reason": "tests/interfaces/typescript.mjs reads the declarations of the TypeScript client with the JavaScript API of the compiler (createSourceFile, the printer and the node factory), which TypeScript 7.0 does not ship",
+      "retry": "TypeScript ships its stable JavaScript API (announced for 7.1)"
+    }
+  ]
 }
