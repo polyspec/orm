@@ -22,6 +22,11 @@ dependencies = [
     "ruamel.yaml==0.19.1",
 ]
 
+[project.optional-dependencies]
+# test is what the tests of this repository need beside the client: jsonschema-rs reads the shared dbspec vectors against
+# their JSON Schemas (tests/dbspec/schema). make install-python installs it into the venv; the client never imports it.
+test = ["jsonschema-rs==0.58.6"]
+
 [project.scripts]
 orm-gen = "polyspec.orm.bin_orm_gen:main"
 

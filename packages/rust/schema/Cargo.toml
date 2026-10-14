@@ -25,6 +25,9 @@ serde_json = { version = "1", features = ["raw_value"] }
 # test case가 시작, 결과, 경과 시간과 자기 기한을 보고한다.
 polyspec-orm-testcase = { path = "../testcase" }
 polyspec-orm-case-clock = { path = "../case-clock" }
+# The shared dbspec vectors are read against their JSON Schemas (tests/dbspec/schema); the schemas name no remote or file
+# reference, so the resolvers and TLS of the default features are left out.
+jsonschema = { version = "=0.58.6", default-features = false }
 
 # These test targets run a shared vector file with one libtest-mimic trial per case id
 # (polyspec_orm_testcase::trial), so their harness is libtest-mimic.

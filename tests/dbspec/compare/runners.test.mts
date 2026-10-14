@@ -91,6 +91,18 @@ const mutations: Mutation[] = [
   { file: 'syntax', location: 'cases[0]', problem: 'is not an object', edit: ['set', '/cases/0', 'canonical/x'] },
   { file: 'syntax', location: 'cases[0].id', problem: 'is not a string', edit: ['set', '/cases/0/id', 1] },
   { file: 'syntax', location: 'cases[1].id', problem: 'names no input of the shared cases', edit: ['set', '/cases/1/id', 'canonical/no-such-case'] },
+  // Every runner reads every vector file through its schema (tests/dbspec/schema), so a rule of the schema that no
+  // runner needs for its own output is refused in the same form as the others.
+  { file: 'cases', location: 'invalid', problem: 'is empty', edit: ['set', '/invalid', []] },
+  { file: 'cases', location: 'version', problem: 'is not 1', edit: ['set', '/version', 2] },
+  { file: 'ddl', location: 'cases[0].statements', problem: 'is missing', edit: ['delete', '/cases/0/statements'] },
+  { file: 'ddl', location: 'extra', problem: 'is not a known field', edit: ['set', '/extra', true] },
+  { file: 'plans', location: 'cases[0].steps', problem: 'is missing', edit: ['delete', '/cases/0/steps'] },
+  { file: 'plans', location: 'version', problem: 'is not 1', edit: ['set', '/version', 2] },
+  { file: 'mermaid', location: 'export[0].dropped', problem: 'is not an array', edit: ['set', '/export/0/dropped', {}] },
+  { file: 'mermaid', location: 'invalid[0].extra', problem: 'is not a known field', edit: ['set', '/invalid/0/extra', 1] },
+  { file: 'syntax', location: 'cases[0].tokens', problem: 'is missing', edit: ['delete', '/cases/0/tokens'] },
+  { file: 'syntax', location: 'cases[0].tokens[0][0]', problem: 'is not an integer', edit: ['set', '/cases/0/tokens/0/0', 'one'] },
 ];
 
 // edit applies an edit to a parsed vector file: it walks the JSON Pointer to the container of the last segment, which must
