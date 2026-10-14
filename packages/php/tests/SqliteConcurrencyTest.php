@@ -23,7 +23,7 @@ final class SqliteConcurrencyTest extends TestCase
     /** The fixture of the file: what the script did before its cases, once per class. */
     private static function fixture(): void
     {
-        self::$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/schema/bench.dbs')];
+        self::$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/bench/bench.dbs')];
 
         self::$work = sys_get_temp_dir() . '/orm-php-sqlite-lock-' . getmypid();
         @mkdir(self::$work, 0o700, true);

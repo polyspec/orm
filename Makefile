@@ -29,7 +29,7 @@ export DECIMAL_ENV
 # 모든 cargo 명령(cargo +$(PHYSICAL_RUST_TOOLCHAIN), PATH의 cargo, feature coverage와 conformance
 # check가 실행하는 cargo)은 한 toolchain과 한 target directory를 쓴다. toolchain이나 target이
 # 둘이면 같은 crate를 다시 compile하고 target이 커진다(T27 측정: check 한 번에 packages/rust/target
-# 10.4 GiB와 bench/rust/target 1.4 GiB).
+# 10.4 GiB와 benchmarks/rust/target 1.4 GiB).
 # check는 한 번 build한 artifact를 실행하므로 incremental compile의 중간 결과(T27 측정: debug
 # target 7.9 GiB 가운데 1.6 GiB)를 남기지 않고, debug build의 debug 정보는 panic과 backtrace의
 # 줄 번호만 둔다.
@@ -967,20 +967,20 @@ case-database-check: php-vendor-check lease-tool
 # 실행이 남긴 output을 읽지 않는다. interfaces checker는 Rust 추출기를 target lease 아래에서 build한다.
 # conformance-check의 부분은 서로 독립이다: counter, result, physical result 검사가 실패해도 conformance 실행(run)은
 # 실행된다(make -k).
-# PYTHON_MODELS_DIR는 schema/bench.dbs에서 orm-gen이 쓰고 커밋하는 Python model directory다.
+# PYTHON_MODELS_DIR는 contracts/fixtures/bench/bench.dbs에서 orm-gen이 쓰고 커밋하는 Python model directory다.
 # python-model-check는 orm-gen gen --check로 그 directory가 생성 결과와 같은지 확인한다(network 없음).
 PYTHON_MODELS_DIR = packages/python/src/polyspec/orm/models
 .PHONY: python-model-check
 python-model-check: python-venv-check
-	$(PYTHON_VENV)/bin/orm-gen gen --check --set schema/dbspec-set.json --out $(PYTHON_MODELS_DIR)
+	$(PYTHON_VENV)/bin/orm-gen gen --check --set contracts/fixtures/bench/dbspec-set.json --out $(PYTHON_MODELS_DIR)
 
 # CONFORMANCE_PY_MODELS is the model directory that the Python conformance runner imports. The venv orm-gen writes it from
-# schema/bench.dbs into a temporary directory and renames it into place (an atomic publish of build output).
+# contracts/fixtures/bench/bench.dbs into a temporary directory and renames it into place (an atomic publish of build output).
 CONFORMANCE_PY_MODELS = $(abspath .runtime/run)/conformance-python-models
 .PHONY: conformance-python-models
 conformance-python-models: python-venv-check
 	rm -rf $(CONFORMANCE_PY_MODELS).tmp
-	$(PYTHON_VENV)/bin/orm-gen gen --set schema/dbspec-set.json --out $(CONFORMANCE_PY_MODELS).tmp
+	$(PYTHON_VENV)/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out $(CONFORMANCE_PY_MODELS).tmp
 	rm -rf $(CONFORMANCE_PY_MODELS) && mv $(CONFORMANCE_PY_MODELS).tmp $(CONFORMANCE_PY_MODELS)
 
 conformance-check/%: RUN_DIR = $(abspath .runtime/run)/conformance-check-$$PPID
@@ -1275,13 +1275,13 @@ codec-check/compare: php-vendor-check codec-check/go codec-check/rust codec-chec
 
 # rust-fmt-check fails when cargo fmt would change a source of the Rust
 # workspace (packages/rust/rustfmt.toml).
-# rust-fmt-check는 저장소의 모든 Rust workspace(packages/rust, bench/rust, tests/interfaces/rust)가 cargo fmt로
+# rust-fmt-check는 저장소의 모든 Rust workspace(packages/rust, benchmarks/rust, tests/interfaces/rust)가 cargo fmt로
 # 정리되어 있는지 확인한다.
 rust-fmt-check: rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces
 rust-fmt-check/clients:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt --cwd packages/rust -- cargo fmt --all --check
 rust-fmt-check/bench:
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/bench --cwd bench/rust -- cargo fmt --all --check
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/bench --cwd benchmarks/rust -- cargo fmt --all --check
 rust-fmt-check/interfaces:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/interfaces --cwd tests/interfaces/rust -- cargo fmt --all --check
 
@@ -1325,7 +1325,7 @@ install-rust-toolchain:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" rustc --version
 install-rust-crates:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path packages/rust/Cargo.toml
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path bench/rust/Cargo.toml
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path benchmarks/rust/Cargo.toml
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path tests/interfaces/rust/Cargo.toml
 install-go:
 	$(ONLINE) go mod download
@@ -1357,10 +1357,10 @@ ci-php-min-version:
 downloads-check:
 	node scripts/check/downloads.mts
 
-# rust-driver-check는 bench/rust의 native와 driver_compare를 DSN 없이 실행해 거부를 확인하고,
+# rust-driver-check는 benchmarks/rust의 native와 driver_compare를 DSN 없이 실행해 거부를 확인하고,
 # 시드된 bench database에서 한 번에 하나씩 실행해 모든 workload가 끝나는지 확인한다.
 rust-driver-check: cargo-downloads-check
-	$(WITH_TEST_ENV) cd bench/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) rust-driver-check -- cargo test --locked --offline -- --test-threads=1
+	$(WITH_TEST_ENV) cd benchmarks/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) rust-driver-check -- cargo test --locked --offline -- --test-threads=1
 
 # example-check는 examples/complex와 examples/thin-slice의 Go, PHP, Rust 프로그램을 시드된
 # bench database에서 실행하고 README의 diff처럼 stdout이 byte 단위로 같은지 비교한다.

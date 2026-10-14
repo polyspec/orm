@@ -114,7 +114,7 @@ class SqliteEndToEndTest(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory(prefix='orm-sqlite-')
         cls.addClassCleanup(tmp.cleanup)
         cls.out = tmp.name
-        cls.models = generate(cls.out, ROOT / 'schema' / 'dbspec-set.json')
+        cls.models = generate(cls.out, ROOT / 'contracts' / 'fixtures' / 'bench' / 'dbspec-set.json')
         cls.db = cls.models.connect(f'sqlite://{cls.out}/bench.sqlite3')
         run_script(cls.db, DDL)
         cls.db._connection.execute('INSERT INTO "user" ("name") VALUES (?)', ['u1'])

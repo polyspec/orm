@@ -121,7 +121,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -193,7 +193,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -218,7 +218,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -290,7 +290,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -315,7 +315,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -401,7 +401,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -494,7 +494,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -840,7 +840,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -1086,7 +1086,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -1286,7 +1286,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -1529,7 +1529,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -1639,7 +1639,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -1764,7 +1764,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -1790,7 +1790,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -1816,7 +1816,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -1842,7 +1842,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -1940,7 +1940,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -1983,7 +1983,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2026,7 +2026,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2069,7 +2069,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2125,7 +2125,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2171,7 +2171,7 @@
         "n_params": 0
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2223,7 +2223,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2277,7 +2277,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2328,7 +2328,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2345,7 +2345,7 @@
         "n_params": 0
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2363,7 +2363,7 @@
         "n_params": 0
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2394,7 +2394,7 @@
         "n_params": 0
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2428,7 +2428,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2450,7 +2450,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2480,7 +2480,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2566,7 +2566,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2590,7 +2590,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2614,7 +2614,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2670,7 +2670,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2697,7 +2697,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2724,7 +2724,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2751,7 +2751,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2807,7 +2807,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2834,7 +2834,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2864,7 +2864,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2889,7 +2889,7 @@
         "n_params": 0
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -2918,7 +2918,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -3167,7 +3167,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -3225,7 +3225,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -3275,7 +3275,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -3305,7 +3305,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -3363,7 +3363,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -3421,7 +3421,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -3478,7 +3478,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -3530,7 +3530,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -3639,7 +3639,7 @@
         ]
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -3721,7 +3721,7 @@
         "n_params": 1
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -3764,7 +3764,7 @@
         "n_params": 1
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -3811,7 +3811,7 @@
         "n_params": 1
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     },
     {
       "expected": {
@@ -3850,7 +3850,7 @@
         }
       },
       "operation": "compile",
-      "schema": "schema/bench.dbs"
+      "schema": "contracts/fixtures/bench/bench.dbs"
     }
   ],
   "feature": "planner"

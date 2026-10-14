@@ -27,11 +27,11 @@ polyspec-orm-build = { path = "…/packages/rust/build" }
 ```rust
 // build.rs
 fn main() {
-    polyspec_orm_build::Builder::set("schema/dbspec-set.json").scan("src").generate();
+    polyspec_orm_build::Builder::set("contracts/fixtures/bench/dbspec-set.json").scan("src").generate();
 }
 ```
 
-The set file `schema/dbspec-set.json` lists the documents of the set (`{"schema": 1, "documents": ["example.dbs"]}`, [Document sets](../../docs/dbspec.md#document-sets)); cargo reruns the build script when it or a listed document changes.
+The set file `contracts/fixtures/bench/dbspec-set.json` lists the documents of the set (`{"schema": 1, "documents": ["example.dbs"]}`, [Document sets](../../docs/dbspec.md#document-sets)); cargo reruns the build script when it or a listed document changes.
 
 ```rust
 // src/main.rs
@@ -168,8 +168,8 @@ cd packages/rust
 cargo clippy --workspace --all-targets -- -D warnings
 ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ORM_TEST_MYSQL_SERVER_DSN=… ORM_TEST_POSTGRES_SERVER_DSN=… cargo test --workspace
 cargo build -p polyspec-orm-tests
-ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ./target/debug/integration ../../schema/bench.dbs
-./target/debug/conformance --dsn "mysql://…" ../../schema/bench.dbs
+ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ./target/debug/integration ../../contracts/fixtures/bench/bench.dbs
+./target/debug/conformance --dsn "mysql://…" ../../contracts/fixtures/bench/bench.dbs
 ```
 
 `integration` and the `zone` test run on SQLite, MySQL and PostgreSQL; `ORM_TEST_MYSQL_DSN` and `ORM_TEST_POSTGRES_DSN` must name test databases, and a test fails when either is unset. A case that installs a schema or checks an empty database creates a database of its own through them and drops it when it ends. The rollback tests end the server session of a transaction through `ORM_TEST_MYSQL_SERVER_DSN` and `ORM_TEST_POSTGRES_SERVER_DSN`, which name the servers without a pooler, and the dbspec tests (`dbspec_*`) create and change their databases through them; `dbspec_apply` also requires `ORM_TEST_PGBOUNCER_DSN` for its transaction pooler case; the make targets set both from `.runtime/servers/env`. `conformance`, `complex`, and `demo` read the seeded bench database.

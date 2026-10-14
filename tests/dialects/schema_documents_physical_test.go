@@ -19,7 +19,7 @@ import (
 // schemaDocumentPatterns finds the dbspec documents that the clients and
 // tests use as schemas; each document is one set.
 var schemaDocumentPatterns = []string{
-	filepath.Join("..", "..", "schema", "*.dbs"),
+	filepath.Join("..", "..", "contracts", "fixtures", "bench", "*.dbs"),
 	filepath.Join("..", "..", "contracts", "fixtures", "*.dbs"),
 }
 

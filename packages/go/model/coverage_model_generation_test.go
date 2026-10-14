@@ -60,10 +60,10 @@ func runCheck(t *testing.T, dir string, command []string) (string, string, int) 
 // copyModule는 생성 명령이 읽는 module 부분의 Go source를 dst에 복사한다:
 // go.work와 그 세 module의 go.mod, go.sum, packages/go module(orm-gen, generator, engine,
 // Go client), 그리고 scan이 읽는 examples와 Go conformance runner, 그리고 set file
-// schema/dbspec-set.json과 그것이 적은 document schema/bench.dbs다.
+// contracts/fixtures/bench/dbspec-set.json과 그것이 적은 document contracts/fixtures/bench/bench.dbs다.
 func copyModule(t *testing.T, root, dst string) {
 	t.Helper()
-	files := []string{"go.work", filepath.Join("schema", "dbspec-set.json"), filepath.Join("schema", "bench.dbs")}
+	files := []string{"go.work", filepath.Join("contracts", "fixtures", "bench", "dbspec-set.json"), filepath.Join("contracts", "fixtures", "bench", "bench.dbs")}
 	for _, module := range []string{filepath.Join("packages", "go"), "tests", "examples"} {
 		files = append(files, filepath.Join(module, "go.mod"), filepath.Join(module, "go.sum"))
 	}

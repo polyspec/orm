@@ -1,5 +1,5 @@
 // Recreates the bench databases named by BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN and BENCH_SQLITE_DSN: installs
-// schema/bench.dbs through the generated TypeScript model (make databases-create builds it), runs the seed of each dialect
+// contracts/fixtures/bench/bench.dbs through the generated TypeScript model (make databases-create builds it), runs the seed of each dialect
 // and fills the AES and blind-index columns of the 100000 authors with the host codecs of the TypeScript client, in one
 // transaction through the command-line client of the dialect.
 //
@@ -44,7 +44,7 @@ const client = join(root, 'packages/ts/dist');
 const { connect, SCHEMA } = await import(join(client, 'models/models.js'));
 const { blindIndex, hostEncode } = await import(join(client, 'index.js'));
 
-// install installs the manifest of schema/bench.dbs on the database of a DSN.
+// install installs the manifest of contracts/fixtures/bench/bench.dbs on the database of a DSN.
 async function install(source: string): Promise<void> {
   const db = await connect(source);
   try { await db.utils().schema().install(SCHEMA); } finally { await db.close(); }
@@ -79,9 +79,9 @@ async function seedMysql(): Promise<void> {
   const cli = ['--no-defaults', '--protocol=TCP', '-h', url.hostname, '-P', url.port, '-u', user];
   run('mysql', [...cli, '-e', `DROP DATABASE IF EXISTS \`${database}\`; CREATE DATABASE \`${database}\``]);
   await install(url.href);
-  run('mysql', [...cli, "--init-command=SET time_zone='+00:00'", database], { input: 'bench/sql/seed.mysql.sql' });
+  run('mysql', [...cli, "--init-command=SET time_zone='+00:00'", database], { input: 'benchmarks/sql/seed.mysql.sql' });
   run('mysql', [...cli, database], { text: aesUpdates(backquote, 'START TRANSACTION;') });
-  console.log(`bench-db: ${database} installed from schema/bench.dbs and seeded`);
+  console.log(`bench-db: ${database} installed from contracts/fixtures/bench/bench.dbs and seeded`);
 }
 
 // seedPostgres recreates and seeds the database of BENCH_POSTGRES_DSN (postgres://user@host:port/db?query).
@@ -95,9 +95,9 @@ async function seedPostgres(): Promise<void> {
   await install(url.href);
   const psql = ['-X', '-q', '-o', '/dev/null', '-v', 'ON_ERROR_STOP=1', `${server}/${database}?sslmode=disable`];
   const env = { PGTZ: 'UTC', PGOPTIONS: '-c client_min_messages=warning' };
-  run('psql', [...psql, '-f', 'bench/sql/seed.pg.sql'], { env });
+  run('psql', [...psql, '-f', 'benchmarks/sql/seed.pg.sql'], { env });
   run('psql', psql, { env, text: aesUpdates(doubleQuote, 'BEGIN;') });
-  console.log(`bench-db: ${database} installed from schema/bench.dbs and seeded`);
+  console.log(`bench-db: ${database} installed from contracts/fixtures/bench/bench.dbs and seeded`);
 }
 
 // seedSqlite recreates and seeds the file of BENCH_SQLITE_DSN; it uses no MySQL or PostgreSQL server.
@@ -106,9 +106,9 @@ async function seedSqlite(): Promise<void> {
   const path = source.replace(/^sqlite:\/\//, '').replace(/\?.*$/, '');
   for (const file of [path, `${path}-wal`, `${path}-shm`]) rmSync(file, { force: true });
   await install(source);
-  run('sqlite3', [path], { input: 'bench/sql/seed.sqlite.sql' });
+  run('sqlite3', [path], { input: 'benchmarks/sql/seed.sqlite.sql' });
   run('sqlite3', ['-bail', path], { text: aesUpdates(doubleQuote, 'BEGIN;') });
-  console.log(`bench-db: ${path} installed from schema/bench.dbs and seeded`);
+  console.log(`bench-db: ${path} installed from contracts/fixtures/bench/bench.dbs and seeded`);
 }
 
 const seeds: Record<Dialect, () => Promise<void>> = { mysql: seedMysql, postgres: seedPostgres, sqlite: seedSqlite };

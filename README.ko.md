@@ -1,5 +1,5 @@
 <!-- doc-id: readme -->
-<!-- source-sha256: f4d9993b8bf21788353a6333f27c1093da26b4e12308be9af607872a732d55bb -->
+<!-- source-sha256: 576c779a553cd41a914d66716b0d90a9abef379af39817101c6067335f6c70c2 -->
 # orm
 
 **Go, PHP, Python, Rust, TypeScript**를 위한 스키마 기반 모델 query grammar다. 목표 문법은 [docs/dsl.ko.md](docs/dsl.ko.md), 작업 순서는 [docs/plan.ko.md](docs/plan.ko.md)에 명시되어 있다.
@@ -63,7 +63,7 @@ authors = Author().connect(slave1).gets_by_service_seq_and_is_close(7, False)
 make test-servers                                                   # servers, databases, bench schema + 100k rows
 . .runtime/servers/env                                              # the DSN variables of the tests
 (cd packages/go/model && go generate)                                # Go models
-vendor-php/bin/orm-gen gen --set schema/dbspec-set.json --out packages/php/gen --namespace 'Polyspec\Orm\Tests\Model'
+vendor-php/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out packages/php/gen --namespace 'Polyspec\Orm\Tests\Model'
 (cd packages/ts && npm run build)                            # TypeScript models and library
 (cd packages/rust && cargo build --release)                          # build.rs generates the Rust models
 make python-check                                                     # Python client: unit, interfaces, models

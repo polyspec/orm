@@ -7,7 +7,7 @@
 //
 // Usage: node runner_typescript.mts --dsn URI [--vector NAME]...
 // Each --vector selects one vector by name; without one every vector runs.
-// The models embed the manifest of schema/bench.dbs.
+// The models embed the manifest of contracts/fixtures/bench/bench.dbs.
 import {
   AesKeyring, Author, type Collection, type Model, CompositeAccount, HexCell, Service, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, User, connect, orm,
 } from '../../packages/ts/dist/index.js';
@@ -452,7 +452,7 @@ async function main() {
     const versions = [...status.versions].map(([v, n]) => `${v}:${n}`).sort();
     return { current: status.current, pending: status.pending, versions: versions.join(',') };
   });
-  // the seed stores raw hex cells that no encoder writes (bench/sql/seed.*.sql)
+  // the seed stores raw hex cells that no encoder writes (benchmarks/sql/seed.*.sql)
   await run('hex_malformed', async () => ({
     white_space: await caught(new HexCell().connect(db).getBySeq(1)),
     odd_length: await caught(new HexCell().connect(db).getBySeq(2)),

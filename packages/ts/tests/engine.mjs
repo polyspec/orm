@@ -5,7 +5,7 @@ import { Db, Engine, MANIFEST_HASH, MANIFEST_TEXT, dbspecManifest, loadSet, pars
 import { validate } from '../dist/engine/validate.js';
 import { caseTest, cases, COMPUTE } from '../../../tests/testcase.mts';
 
-const text = await readFile(new URL('../../../schema/bench.dbs', import.meta.url), 'utf8');
+const text = await readFile(new URL('../../../contracts/fixtures/bench/bench.dbs', import.meta.url), 'utf8');
 let failures = 0;
 function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL: ${message}`); }
@@ -20,7 +20,7 @@ async function codeOf(promise) {
 // engine check는 memory 안의 model 등록, request 검증, plan을 한 case로 실행한다.
 const run = cases();
 await run.run('engine', COMPUTE, async () => {
-  // The generated models embed the manifest of schema/bench.dbs.
+  // The generated models embed the manifest of contracts/fixtures/bench/bench.dbs.
   const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
   check(MANIFEST_TEXT === manifest.manifestText && MANIFEST_HASH === manifest.manifestHash, 'the generated models embed the manifest of bench.dbs');
   const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH);
@@ -41,7 +41,7 @@ await run.run('engine', COMPUTE, async () => {
   check(author.updated === 'updated_ts' && author.aesVersion === 'aes_key_version' && author.identity === 'seq' && model.entities.get('soft_record').softDelete === 'deleted_at', 'settings of the runtime model');
 
   // A request names a manifest that no imported model registered.
-  check(await codeOf(Db.connect('sqlite:///tmp/orm-engine-unused.sqlite', 'schema/bench.dbs')) === 'CONFIG', 'connect rejects a string in place of the options object');
+  check(await codeOf(Db.connect('sqlite:///tmp/orm-engine-unused.sqlite', 'contracts/fixtures/bench/bench.dbs')) === 'CONFIG', 'connect rejects a string in place of the options object');
 
   const engine = new Engine(model, 'postgres');
   const base = { ir_version: 1, manifest_hash: MANIFEST_HASH, entity: 'author' };
@@ -249,7 +249,7 @@ table plain {
 // 공유 검증 case(tests/ir/validate.json): 각 request에 schema의 manifest_hash를 더해 검증기에만 주고,
 // 받아들이는지나 기대한 오류 code로 실패하는지 본다.
 const file = JSON.parse(await readFile(new URL('../../../tests/ir/validate.json', import.meta.url), 'utf8'));
-if (file.schema !== 'schema/bench.dbs' || file.cases.length === 0) throw new Error('validate.json names schema/bench.dbs and has cases');
+if (file.schema !== 'contracts/fixtures/bench/bench.dbs' || file.cases.length === 0) throw new Error('validate.json names contracts/fixtures/bench/bench.dbs and has cases');
 const validated = dbspecManifest([parseDbspec(await readFile(new URL(`../../../${file.schema}`, import.meta.url), 'utf8'), {}).document]).manifest;
 const validateModel = registerModel(validated.manifestText, validated.manifestHash);
 for (const c of file.cases) caseTest(c.name, COMPUTE, () => {

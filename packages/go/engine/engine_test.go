@@ -12,10 +12,10 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// benchModel은 schema/bench.dbs의 runtime model이다.
+// benchModel은 contracts/fixtures/bench/bench.dbs의 runtime model이다.
 func benchModel(t *testing.T) *runtimemodel.Model {
 	t.Helper()
-	m, err := runtimemodel.LoadFiles("../../../schema/bench.dbs")
+	m, err := runtimemodel.LoadFiles("../../../contracts/fixtures/bench/bench.dbs")
 	if err != nil {
 		t.Fatal(err)
 	}

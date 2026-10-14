@@ -1,11 +1,11 @@
-//! model_generation: orm-build가 schema/bench.dbs과 build.rs가 scan하는 source로 만든
+//! model_generation: orm-build가 contracts/fixtures/bench/bench.dbs과 build.rs가 scan하는 source로 만든
 //! model과 manifest는 두 번 생성해도 같고, 이 crate가 build한 OUT_DIR의 것과 같다.
 use std::path::Path;
 
 /// build.rs와 같은 document와 scan 경로로 `out`에 생성하고 model과 manifest text를 읽는다.
 fn generate(out: &Path) -> (String, String) {
     let root = polyspec_orm_testcase::manifest_dir();
-    let model = polyspec_orm_build::Builder::set(root.join("../../../schema/dbspec-set.json"))
+    let model = polyspec_orm_build::Builder::set(root.join("../../../contracts/fixtures/bench/dbspec-set.json"))
         .scan(root.join("src"))
         .scan(root.join("../../../examples/complex/rust"))
         .scan(root.join("../../../examples/thin-slice/rust"))

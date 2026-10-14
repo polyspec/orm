@@ -37,7 +37,7 @@ await suite.run('generate', PROCESS, async () => {
     const calls = ['getsByNotAColumn(1)', 'orderByNotAColumnAsc()', 'gtIsClose(1)', 'lkReadCount(1)', 'getsByServiceSeqAndLtStartDt(1, 2)', 'andNeUuid(null)', 'joinServiceSeqWithSeq(s)'];
     await writeFile(usage, `import { Author } from './models/models.js';\ndeclare const x: Author;\n${calls.map(c => `x.${c};`).join('\n')}\n// comment.${'notCalled'}(1)\n`);
     const out = join(work, 'models');
-    const bench = join(root, 'schema/dbspec-set.json');
+    const bench = join(root, 'contracts/fixtures/bench/dbspec-set.json');
     const result = run('gen', '--set', bench, '--out', out, '--scan', usage);
     check(result.status === 0, `orm-gen exit ${result.status}: ${result.stderr}`);
     const text = await readFile(join(out, 'models.ts'), 'utf8');
@@ -81,8 +81,8 @@ await suite.run('generate', PROCESS, async () => {
     check(run('gen', '--out', out).status === 2, 'missing --set is a usage error');
     check(run('--set', bench, '--out', out).status === 2, 'a missing command is a usage error');
     // The removed forms are usage errors.
-    check(run('gen', '--schema', join(root, 'schema/bench.dbs'), '--out', out).status === 2, '--schema is a usage error');
-    check(run('gen', '--set', bench, '--use', join(root, 'schema/bench.dbs'), '--out', out).status === 2, '--use is a usage error');
+    check(run('gen', '--schema', join(root, 'contracts/fixtures/bench/bench.dbs'), '--out', out).status === 2, '--schema is a usage error');
+    check(run('gen', '--set', bench, '--use', join(root, 'contracts/fixtures/bench/bench.dbs'), '--out', out).status === 2, '--use is a usage error');
     const missing = join(work, 'missing', 'dbspec-set.json');
     const missingRun = run('gen', '--set', missing, '--out', join(work, 'missing-out'));
     check(missingRun.status === 1 && missingRun.stderr.startsWith(`orm-gen: set.file: ${missing}`), `a missing set file fails: ${missingRun.stderr}`);

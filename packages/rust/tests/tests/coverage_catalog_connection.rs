@@ -53,7 +53,7 @@ async fn coverage_catalog_read() {
         let namespace = catalog.current_namespace().await.expect("current namespace");
         let author = TableRef { namespace, name: "author".into() };
         let metadata = catalog.describe_table(&author).await.expect("author metadata");
-        let text = std::fs::read_to_string(polyspec_orm_testcase::manifest_dir().join("../../../schema/bench.dbs")).expect("bench schema");
+        let text = std::fs::read_to_string(polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/bench/bench.dbs")).expect("bench schema");
         let document =
             polyspec_orm::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("bench schema: {errors:?}"));
         let model = polyspec_orm::dbspec::runtime_model(&[&document]).unwrap_or_else(|errors| panic!("bench model: {errors:?}"));

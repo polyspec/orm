@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 function generationCheck(string $root, string $out): array
 {
     [$status, $stdout, $stderr] = coverageProcess(
-        [PHP_BINARY, 'vendor-php/bin/orm-gen', 'gen', '--set', 'schema/dbspec-set.json', '--out', $out, '--namespace', 'Polyspec\\Orm\\Tests\\Model', '--check'],
+        [PHP_BINARY, 'vendor-php/bin/orm-gen', 'gen', '--set', 'contracts/fixtures/bench/dbspec-set.json', '--out', $out, '--namespace', 'Polyspec\\Orm\\Tests\\Model', '--check'],
         $root,
     );
     return [$status, $stdout . $stderr];

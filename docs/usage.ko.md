@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 5de02c90cb24d3c3d5ff07dc494ac385c881f15768e3ad1966bcb9637b7dc50b -->
+<!-- source-sha256: 025ec75a733c952935960fdc28208f4b9b0b7a1fcba8c0d710c08563e8911dc6 -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
@@ -31,7 +31,7 @@ go build ./packages/go/... ./tests/... ./examples/...
 
 ## 2. 스키마
 
-사람이 쓰는 정의는 dbspec document의 집합이다([dbspec.md](dbspec.md)). `schema/bench.dbs`가 예제다.
+사람이 쓰는 정의는 dbspec document의 집합이다([dbspec.md](dbspec.md)). `contracts/fixtures/bench/bench.dbs`가 예제다.
 
 ```text
 dbspec 1 example
@@ -75,23 +75,23 @@ table authors {
 
 각 언어는 자기 빌드 도구로 모델을 생성한다. 생성기는 dbspec document set을 읽어 manifest text와 `manifestHash`를 담고, 엔티티마다 타입이 있는 컬럼 getter와 setter를 가진 모델 하나를 만든다.
 
-모든 생성기는 document set을 [set 파일](dbspec.ko.md#document-sets)로만 받는다. 여기서는 나열하는 문서 옆의 `schema/dbspec-set.json`이다:
+모든 생성기는 document set을 [set 파일](dbspec.ko.md#document-sets)로만 받는다. 여기서는 나열하는 문서 옆의 `contracts/fixtures/bench/dbspec-set.json`이다:
 
 ```json
 {"schema": 1, "documents": ["example.dbs"]}
 ```
 
 ```sh
-go run github.com/polyspec/orm/packages/go/cmd/orm-gen gen --set schema/dbspec-set.json --lang go --out model --scan ./...
-vendor/bin/orm-gen gen --set schema/dbspec-set.json --out src/Model --namespace 'Example\Model' --scan src
-npx orm-gen gen --set schema/dbspec-set.json --out src/models --scan src
-orm-gen gen --set schema/dbspec-set.json --out model --scan src
+go run github.com/polyspec/orm/packages/go/cmd/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --lang go --out model --scan ./...
+vendor/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out src/Model --namespace 'Example\Model' --scan src
+npx orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out src/models --scan src
+orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out model --scan src
 ```
 
 ```rust
 // build.rs
 fn main() {
-    polyspec_orm_build::Builder::set("schema/dbspec-set.json").scan("src").generate();
+    polyspec_orm_build::Builder::set("contracts/fixtures/bench/dbspec-set.json").scan("src").generate();
 }
 ```
 
@@ -110,7 +110,7 @@ fn main() {
 - `--check`는 출력을 쓰지 않고 기존 파일과 비교한다. 대상은 Go·PHP·TypeScript·Python `orm-gen`의 `gen`이다. 명령은 내용이 다른 파일에 `differs: <path>`, 없는 파일에 `missing: <path>`, 출력 디렉터리에서 생성 코드 주석을 가지고 있지만 생성이 더 이상 쓰지 않는 파일에 `extra: <path>`를 경로 순서로 출력하고, 한 줄이라도 출력하면 상태 1로 종료한다. 파일이 최신이면 아무것도 출력하지 않고 상태 0으로 종료한다. Python은 파일 하나 `models.py`를 쓰므로 그 검사는 그 파일에 `missing`이나 `differs`를 출력하며 `extra` 줄은 없다. Go `gen --check`는 `gen`과 같은 scan을 시스템 임시 디렉터리 아래의 디렉터리에서 실행하므로 모델 패키지는 `--out`의 이름과 import 경로를 유지한다. 생성 실패와 상태 3은 `gen`과 같다. Rust는 `build.rs`에서 모델을 생성하며 `gen` 명령이 없다.
 
 ```sh
-go run github.com/polyspec/orm/packages/go/cmd/orm-gen gen --set schema/dbspec-set.json --lang go --out model --scan ./... --check
+go run github.com/polyspec/orm/packages/go/cmd/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --lang go --out model --scan ./... --check
 ```
 - 호출 인자의 타입이 확정되지 않아도 scan은 호출한 메서드를 생성한다. 예를 들어 다른 모델 패키지에 아직 없는 메서드로 계산한 값이 이런 인자다. join과 relation 인자는 생성하는 패키지의 모델로 확정되어야 한다. 따라서 여러 모델 패키지에 대한 `go generate` 한 번으로 각 패키지의 최종 모델을 쓴다. 다른 패키지의 메서드가 생기기 전에 실행한 생성은 그 패키지 호출 때문에 여전히 상태 3으로 종료한다.
 - 스키마를 바꾸거나 새 체인 호출을 추가한 뒤에는 **모델을 다시 생성하고 스키마와 함께 배포**한다. 요청의 `manifest_hash`가 클라이언트가 읽은 모델과 다르면 `SCHEMA_HASH_MISMATCH`로 실패한다.

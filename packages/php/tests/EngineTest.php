@@ -1,6 +1,6 @@
 <?php
 // Engine test: manifest hash check, request validation, and statement forms of
-// each dialect for the runtime model of schema/bench.dbs.
+// each dialect for the runtime model of contracts/fixtures/bench/bench.dbs.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php
 declare(strict_types=1);
 
@@ -30,7 +30,7 @@ final class EngineTest extends TestCase
     public function test_engine(): void
     {
         $root = dirname(__DIR__, 3);
-        $model = RuntimeModel::build(RuntimeModel::files(["$root/schema/bench.dbs"]));
+        $model = RuntimeModel::build(RuntimeModel::files(["$root/contracts/fixtures/bench/bench.dbs"]));
         $engines = [];
         foreach (['mysql', 'postgres', 'sqlite'] as $d) {
             $engines[$d] = new Engine($model, $d, 8);
@@ -263,8 +263,8 @@ final class EngineTest extends TestCase
     public static function validateCases(): iterable
     {
         $file = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/tests/ir/validate.json'), true, 512, JSON_THROW_ON_ERROR);
-        if ($file['schema'] !== 'schema/bench.dbs' || $file['cases'] === []) {
-            throw new RuntimeException('validate.json names schema/bench.dbs and has cases');
+        if ($file['schema'] !== 'contracts/fixtures/bench/bench.dbs' || $file['cases'] === []) {
+            throw new RuntimeException('validate.json names contracts/fixtures/bench/bench.dbs and has cases');
         }
         foreach ($file['cases'] as $case) {
             yield $case['name'] => [$case];
@@ -277,7 +277,7 @@ final class EngineTest extends TestCase
     #[DataProvider('validateCases')]
     public function test_validate(array $case): void
     {
-        $model = RuntimeModel::build(RuntimeModel::files([dirname(__DIR__, 3) . '/schema/bench.dbs']));
+        $model = RuntimeModel::build(RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/bench/bench.dbs']));
         $validator = new Validator($model);
         $got = self::code(fn() => $validator->validate($case['request'] + ['manifest_hash' => $model->manifestHash]));
         self::assertSame(!empty($case['valid']) ? 'no error' : $case['error'], $got);

@@ -1,4 +1,4 @@
-# orm-gen 생성기 검사: schema/dbspec-set.json 문서 집합에서 models.py를 만들고,
+# orm-gen 생성기 검사: contracts/fixtures/bench/dbspec-set.json 문서 집합에서 models.py를 만들고,
 # 생성 module이 chain 문법을 해석하는지 확인한다 (unittest).
 import importlib.util
 import os
@@ -21,7 +21,7 @@ class OrmGenTest(unittest.TestCase):
         cls.addClassCleanup(tmp.cleanup)
         cls.out = tmp.name
         result = subprocess.run(args=ORM_GEN + ['gen', '--set',
-                                           str(ROOT / 'schema' / 'dbspec-set.json'),
+                                           str(ROOT / 'contracts' / 'fixtures' / 'bench' / 'dbspec-set.json'),
                                            '--out', cls.out],
                                 capture_output=True, text=True, check=True)
         # The generated module is loaded from its file and registered as models, without a sys.path change.
@@ -92,7 +92,7 @@ class OrmGenTest(unittest.TestCase):
                           'author = Author()\n'
                           'author.not_a_model_method()\n', encoding='utf-8')
         result = subprocess.run(args=ORM_GEN + ['gen', '--set',
-                                           str(ROOT / 'schema' / 'dbspec-set.json'),
+                                           str(ROOT / 'contracts' / 'fixtures' / 'bench' / 'dbspec-set.json'),
                                            '--out', self.out, '--scan', str(source)],
                                 capture_output=True, text=True)
         source.unlink()
@@ -102,13 +102,13 @@ class OrmGenTest(unittest.TestCase):
     def test_check_reports_a_missing_or_differing_file(self):
         with tempfile.TemporaryDirectory(prefix='orm-gen-missing-') as missing:
             result = subprocess.run(args=ORM_GEN + ['gen', '--set',
-                                               str(ROOT / 'schema' / 'dbspec-set.json'),
+                                               str(ROOT / 'contracts' / 'fixtures' / 'bench' / 'dbspec-set.json'),
                                                '--out', missing, '--check'],
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 1)
             self.assertIn('missing:', result.stdout)
         result = subprocess.run(args=ORM_GEN + ['gen', '--set',
-                                           str(ROOT / 'schema' / 'dbspec-set.json'),
+                                           str(ROOT / 'contracts' / 'fixtures' / 'bench' / 'dbspec-set.json'),
                                            '--out', self.out, '--check'],
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -116,8 +116,8 @@ class OrmGenTest(unittest.TestCase):
     def test_the_removed_document_flags_are_usage_errors(self):
         for flag in ('--schema', '--use'):
             result = subprocess.run(args=ORM_GEN + [
-                'gen', '--set', str(ROOT / 'schema' / 'dbspec-set.json'),
-                flag, str(ROOT / 'schema' / 'bench.dbs'), '--out', self.out],
+                'gen', '--set', str(ROOT / 'contracts' / 'fixtures' / 'bench' / 'dbspec-set.json'),
+                flag, str(ROOT / 'contracts' / 'fixtures' / 'bench' / 'bench.dbs'), '--out', self.out],
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 2, result.stderr)
             self.assertIn(flag, result.stderr)

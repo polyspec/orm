@@ -41,7 +41,7 @@ const commands: [string, string, string[]][] = [
   ['go/model', 'go', ['test', '-v', '-timeout', '0', '-count=1', './packages/go/model']],
   ['php/model', 'php', ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', 'packages/php/tests/ModelTest.php']],
   ['typescript/model', 'node', ['packages/ts/tests/model.mjs']],
-  ['rust/integration', join(cargoTarget(), 'debug/integration'), [resolve(root, 'schema/bench.dbs')]],
+  ['rust/integration', join(cargoTarget(), 'debug/integration'), [resolve(root, 'contracts/fixtures/bench/bench.dbs')]],
 ];
 
 function mysqlConnection(dsn: string = mysqlDsn) {

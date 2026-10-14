@@ -23,7 +23,7 @@ fn document(path: &str) -> Document {
 fn manifest_text_reads_back_as_the_same_document_set() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
-    let bench = document("schema/bench.dbs");
+    let bench = document("contracts/fixtures/bench/bench.dbs");
     let audit = document("contracts/fixtures/audit.dbs");
     let manifest = dbspec::manifest(&[&bench, &audit]).unwrap();
     let documents = dbspec::parse_manifest(&manifest.manifest_text).unwrap_or_else(|errors| panic!("{errors:?}"));
@@ -59,7 +59,7 @@ fn manifest_text_without_header_is_rejected() {
 fn runtime_model_of_bench() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
-    let bench = document("schema/bench.dbs");
+    let bench = document("contracts/fixtures/bench/bench.dbs");
     let model = dbspec::runtime_model(&[&bench]).unwrap();
     let names: Vec<&str> = model.entities.iter().map(|e| e.name.as_str()).collect();
     assert_eq!(

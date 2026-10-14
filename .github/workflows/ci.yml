@@ -121,7 +121,7 @@ jobs:
         with:
           workspaces: |
             packages/rust -> target
-            bench/rust -> target
+            benchmarks/rust -> target
             tests/interfaces/rust -> target
       # make check runs cargo offline on the crates of every Cargo.lock that make install-rust-crates downloads; it runs
       # after the cache is restored, since the restored registry replaces crates downloaded before it.
@@ -148,7 +148,7 @@ jobs:
         with:
           php-version: ${{ steps.php-min.outputs.version }}
           extensions: pdo_sqlite, openssl
-          # .composer-version declares the one Composer release of the checks.
+          # mise.toml declares the one Composer release of the checks (http:composer).
           tools: composer:2.10.3
           coverage: none
       # .php-version declares the PHP release of the checks, locally and here.

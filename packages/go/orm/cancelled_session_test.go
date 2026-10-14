@@ -20,7 +20,7 @@ import (
 // 같은 session을 다시 쓰면 그 상태를 읽는다.
 func TestCancelledTransactionClearsSessionState(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "schema", "bench.dbs"))
+	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "contracts", "fixtures", "bench", "bench.dbs"))
 	if err != nil {
 		t.Fatal(err)
 	}

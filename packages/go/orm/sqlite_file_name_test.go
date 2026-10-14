@@ -20,7 +20,7 @@ func TestSQLiteFileNameIsThePath(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	dir := t.TempDir()
 	path := filepath.Join(dir, "named.sqlite")
-	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "schema", "bench.dbs"))
+	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "contracts", "fixtures", "bench", "bench.dbs"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -30,7 +30,7 @@ go build ./packages/go/... ./tests/... ./examples/...
 
 ## 2. Schema
 
-The human-maintained definition is a set of dbspec documents ([dbspec.md](dbspec.md)); `schema/bench.dbs` is an example.
+The human-maintained definition is a set of dbspec documents ([dbspec.md](dbspec.md)); `contracts/fixtures/bench/bench.dbs` is an example.
 
 ```text
 dbspec 1 example
@@ -74,23 +74,23 @@ Each client renders the `CREATE` statements of a document set for one dialect, i
 
 Each language generates its models with its own build tool. The generator reads the dbspec document set, embeds its manifest text and `manifestHash`, and writes one model per entity with typed column getters and setters.
 
-Every generator takes the document set as its [set file](dbspec.md#document-sets), here `schema/dbspec-set.json` beside the documents it lists, and no other form:
+Every generator takes the document set as its [set file](dbspec.md#document-sets), here `contracts/fixtures/bench/dbspec-set.json` beside the documents it lists, and no other form:
 
 ```json
 {"schema": 1, "documents": ["example.dbs"]}
 ```
 
 ```sh
-go run github.com/polyspec/orm/packages/go/cmd/orm-gen gen --set schema/dbspec-set.json --lang go --out model --scan ./...
-vendor/bin/orm-gen gen --set schema/dbspec-set.json --out src/Model --namespace 'Example\Model' --scan src
-npx orm-gen gen --set schema/dbspec-set.json --out src/models --scan src
-orm-gen gen --set schema/dbspec-set.json --out model --scan src
+go run github.com/polyspec/orm/packages/go/cmd/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --lang go --out model --scan ./...
+vendor/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out src/Model --namespace 'Example\Model' --scan src
+npx orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out src/models --scan src
+orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out model --scan src
 ```
 
 ```rust
 // build.rs
 fn main() {
-    polyspec_orm_build::Builder::set("schema/dbspec-set.json").scan("src").generate();
+    polyspec_orm_build::Builder::set("contracts/fixtures/bench/dbspec-set.json").scan("src").generate();
 }
 ```
 
@@ -109,7 +109,7 @@ fn main() {
 - `--check` compares the output with the existing files without writing: `gen` of the Go, PHP, TypeScript and Python `orm-gen`. The command prints `differs: <path>` for a file whose content differs, `missing: <path>` for a file that does not exist, and `extra: <path>` for a file of the output directory that holds the generated-code comment and that the generation no longer writes, ordered by path, and exits with status 1 when it prints a line. Current files print nothing and exit with status 0. Python writes one file, `models.py`, so its check prints `missing` or `differs` for it and has no `extra` line. Go `gen --check` runs the same scan as `gen` in a directory under the system temporary directory, so the model package keeps the name and import path of `--out`; its generation failures and status 3 are the same as those of `gen`. Rust generates its models in `build.rs` and has no `gen` command.
 
 ```sh
-go run github.com/polyspec/orm/packages/go/cmd/orm-gen gen --set schema/dbspec-set.json --lang go --out model --scan ./... --check
+go run github.com/polyspec/orm/packages/go/cmd/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --lang go --out model --scan ./... --check
 ```
 - The scan generates a called method when an argument of the call has an unresolved type, such as a value computed with a method that another model package does not have yet; a join or relation argument must resolve to a model of the generated package. One `go generate` run over several model packages therefore writes the final models of each package. A generation that runs before another package's methods exist still exits with status 3 for the calls of that package.
 - After changing the schema or adding a chain call, **regenerate and deploy the models with the schema**. A request whose `manifest_hash` differs from the model the client loaded fails with `SCHEMA_HASH_MISMATCH`.

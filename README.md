@@ -62,7 +62,7 @@ authors = Author().connect(slave1).gets_by_service_seq_and_is_close(7, False)
 make test-servers                                                   # servers, databases, bench schema + 100k rows
 . .runtime/servers/env                                              # the DSN variables of the tests
 (cd packages/go/model && go generate)                                # Go models
-vendor-php/bin/orm-gen gen --set schema/dbspec-set.json --out packages/php/gen --namespace 'Polyspec\Orm\Tests\Model'
+vendor-php/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out packages/php/gen --namespace 'Polyspec\Orm\Tests\Model'
 (cd packages/ts && npm run build)                            # TypeScript models and library
 (cd packages/rust && cargo build --release)                          # build.rs generates the Rust models
 make python-check                                                     # Python client: unit, interfaces, models

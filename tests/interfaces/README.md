@@ -40,7 +40,7 @@ Regenerate the contract outputs after an interface change:
 
 ```sh
 (cd packages/go/model && go generate ./)
-vendor-php/bin/orm-gen gen --set schema/dbspec-set.json --out packages/php/gen --namespace 'Polyspec\Orm\Tests\Model'
+vendor-php/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out packages/php/gen --namespace 'Polyspec\Orm\Tests\Model'
 npm run typescript:build
 node tests/interfaces/check/main.mts --generate --record --self-test
 ```

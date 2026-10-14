@@ -24,7 +24,7 @@ func TestCoverageDSNConnection(t *testing.T) {
 	if _, err := DriverFromDSN("invalid://database"); err == nil {
 		t.Fatal("unsupported DSN scheme was accepted")
 	}
-	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "schema", "bench.dbs"))
+	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "contracts", "fixtures", "bench", "bench.dbs"))
 	if err != nil {
 		t.Fatal(err)
 	}
