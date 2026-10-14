@@ -8,11 +8,8 @@ use std::sync::LazyLock;
 use base64::Engine as _;
 use ordered_json as strict_json;
 use regex::Regex;
+use saphyr_parser::{Event as YamlEvent, Marker as YamlMarker, Parser as YamlParser, ScalarStyle, Span as YamlSpan, SpannedEventReceiver};
 use serde_json::{Map, Value};
-use yaml_rust2::parser::{Event as YamlEvent, MarkedEventReceiver, Parser as YamlParser};
-use yaml_rust2::scanner::{Marker as YamlMarker, TScalarStyle};
-use yaml_rust2::yaml::{Hash as YamlHash, Yaml};
-use yaml_rust2::YamlEmitter;
 
 use crate::codes::{CODEC_DECODE, CODEC_ENCODE, CODEC_UNSUPPORTED};
 use crate::value::{Param, StyledValue, Val};
@@ -148,7 +145,7 @@ pub fn encode(styles: &[&str], v: StyledValue<&Value>) -> Result<Param> {
     Ok(Param::Str(String::from_utf8(cur).map_err(|e| err(CODEC_ENCODE, e.to_string()))?))
 }
 
-// ---- yaml: YAML 1.2 with the core schema, through yaml-rust2 ----
+// ---- yaml: YAML 1.2 with the core schema: read through saphyr-parser, written by serde-saphyr ----
 
 /// A collection the reader is building: a sequence, or a mapping with the key of the
 /// value that comes next.
@@ -215,13 +212,14 @@ impl YamlReader {
     }
 }
 
-impl MarkedEventReceiver for YamlReader {
-    fn on_event(&mut self, event: YamlEvent, mark: YamlMarker) {
+impl<'input> SpannedEventReceiver<'input> for YamlReader {
+    fn on_event(&mut self, event: YamlEvent<'input>, span: YamlSpan) {
+        let mark = span.start;
         if self.error.is_some() {
             return;
         }
         match event {
-            YamlEvent::DocumentStart => {
+            YamlEvent::DocumentStart(_) => {
                 self.documents += 1;
                 if self.documents > 1 {
                     self.fail(mark, "multiple documents are not supported");
@@ -233,10 +231,10 @@ impl MarkedEventReceiver for YamlReader {
                     self.fail(mark, "anchors are not supported");
                 } else if tag.is_some() {
                     self.fail(mark, "explicit tags are not supported");
-                } else if style != TScalarStyle::Plain {
-                    self.place(Value::String(text), mark);
+                } else if style != ScalarStyle::Plain {
+                    self.place(Value::String(text.into_owned()), mark);
                 } else {
-                    match yaml_core_scalar(text) {
+                    match yaml_core_scalar(text.into_owned()) {
                         Ok(value) => self.place(value, mark),
                         Err(message) => self.fail(mark, message),
                     }
@@ -259,9 +257,8 @@ static YAML_CORE_FLOAT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\A(?:[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))\z").unwrap());
 
 /// Resolves a plain scalar by the tags of the YAML 1.2 core schema (YAML 1.2.2, 10.3.2):
-/// null, bool, int and float by their regular expressions, and str otherwise. yaml-rust2
-/// reports a plain scalar as its text; its `Yaml::from_str` is not the core schema (it reads
-/// `Null` as a string, `0x-1` as an integer, and an integer beyond i64 as a float). An integer
+/// null, bool, int and float by their regular expressions, and str otherwise. saphyr-parser
+/// reports a plain scalar as its text and resolves no tag, so the core schema is applied here. An integer
 /// outside i64 and a float that is not finite are outside the common value model.
 fn yaml_core_scalar(text: String) -> std::result::Result<Value, String> {
     Ok(match text.as_str() {
@@ -290,9 +287,9 @@ fn yaml_printable(c: char) -> bool {
     matches!(c, '\t' | '\n' | '\r' | ' '..='~' | '\u{85}' | '\u{a0}'..='\u{d7ff}' | '\u{e000}'..='\u{fffd}' | '\u{10000}'..) && c != '\u{feff}'
 }
 
-/// Reads one YAML document into the common value model in one pass of the yaml-rust2 parser.
-/// A stream without a document, or an empty document, is null. yaml-rust2 neither refuses a
-/// character outside c-printable nor removes the byte order mark, so the reader does both.
+/// Reads one YAML document into the common value model in one pass of the saphyr-parser events.
+/// A stream without a document, or an empty document, is null. Before parsing, the reader
+/// removes a leading byte order mark and refuses a character outside c-printable.
 fn yaml_decode(bytes: &[u8]) -> Result<Value> {
     let source = std::str::from_utf8(bytes).map_err(|e| err(CODEC_DECODE, format!("yaml: invalid UTF-8: {e}")))?;
     let source = source.strip_prefix('\u{feff}').unwrap_or(source);
@@ -307,43 +304,29 @@ fn yaml_decode(bytes: &[u8]) -> Result<Value> {
     }
 }
 
-/// The yaml-rust2 node of a common value. A float is written in the shortest form that reads
-/// back as the same f64 and always holds a `.` or an exponent, so it reads back as a float.
-fn yaml_node(value: &Value) -> Result<Yaml> {
-    Ok(match value {
-        Value::Null => Yaml::Null,
-        Value::Bool(boolean) => Yaml::Boolean(*boolean),
-        Value::Number(number) => match (number.as_i64(), number.as_f64()) {
-            (Some(integer), _) => Yaml::Integer(integer),
-            (None, _) if number.is_u64() => return Err(err(CODEC_ENCODE, format!("yaml: integer {number} is outside the i64 range"))),
-            (None, Some(float)) if float.is_finite() => Yaml::Real(format!("{float:?}")),
-            _ => return Err(err(CODEC_ENCODE, format!("yaml: number {number} is outside the common value model"))),
-        },
-        Value::String(text) => Yaml::String(text.clone()),
-        Value::Array(items) => Yaml::Array(items.iter().map(yaml_node).collect::<Result<_>>()?),
-        Value::Object(map) => {
-            let mut hash = YamlHash::new();
-            for (key, item) in map {
-                hash.insert(Yaml::String(key.clone()), yaml_node(item)?);
-            }
-            Yaml::Hash(hash)
-        }
-    })
-}
-
-/// Writes a common value as one YAML document with the yaml-rust2 emitter. The written text
-/// is read back, and a text that does not read back as the value (the emitter leaves some
-/// strings plain that the core schema reads as another value, such as `0o17`) returns
-/// CODEC_ENCODE instead of storing a different value.
+/// Writes a common value as one YAML document with serde-saphyr, which quotes every string the
+/// core schema would read as another value and escapes every character outside c-printable. A
+/// number outside the common value model returns CODEC_ENCODE. The written text is read back, and
+/// a text that does not read back as the value returns CODEC_ENCODE instead of storing it.
 fn yaml_encode(value: &Value) -> Result<Vec<u8>> {
-    let node = yaml_node(value)?;
-    let mut text = String::new();
-    YamlEmitter::new(&mut text).dump(&node).map_err(|e| err(CODEC_ENCODE, format!("yaml: {e}")))?;
-    text.push('\n');
+    yaml_number_check(value)?;
+    let text = serde_saphyr::to_string(value).map_err(|e| err(CODEC_ENCODE, format!("yaml: {e}")))?;
     match yaml_decode(text.as_bytes()) {
         Ok(read) if read == *value => Ok(text.into_bytes()),
         Ok(read) => Err(err(CODEC_ENCODE, format!("yaml: the written text {text:?} reads back as {read}, not {value}"))),
         Err(e) => Err(err(CODEC_ENCODE, format!("yaml: the written text {text:?} does not read back: {e}"))),
+    }
+}
+
+/// Refuses a number the common value model does not hold: an integer beyond i64.
+fn yaml_number_check(value: &Value) -> Result<()> {
+    match value {
+        Value::Number(number) if number.is_u64() && number.as_i64().is_none() => {
+            Err(err(CODEC_ENCODE, format!("yaml: integer {number} is outside the i64 range")))
+        }
+        Value::Array(items) => items.iter().try_for_each(yaml_number_check),
+        Value::Object(map) => map.values().try_for_each(yaml_number_check),
+        _ => Ok(()),
     }
 }
 
@@ -1048,7 +1031,34 @@ mod tests {
             serde_json::json!(1e-7),
             serde_json::json!(i64::MIN),
             serde_json::json!(i64::MAX),
-            serde_json::json!(["", " a", "a ", "07", "1e3", "Null", "yes", "~", "-", "0x1F", "a\nb", "a: b", "#", "\u{85}", "한글"]),
+            serde_json::json!([
+                "",
+                " a",
+                "a ",
+                "07",
+                "1e3",
+                "Null",
+                "yes",
+                "~",
+                "-",
+                "0x1F",
+                "a\nb",
+                "a: b",
+                "#",
+                "\u{85}",
+                "한글",
+                "0o17",
+                "\u{7}",
+                "a\u{1b}",
+                "a\u{7f}",
+                "\u{9f}",
+                "\u{feff}a",
+                "\u{fffe}",
+                "\u{ffff}",
+                "0x1F",
+                "1_000",
+                "2014-12-31"
+            ]),
             serde_json::json!({"1": [], "07": {}, "true": [[1, 2], {"a": [null]}], "": "x"}),
         ] {
             let text = match encode(&["yaml"], StyledValue::Value(&value)) {
@@ -1065,11 +1075,6 @@ mod tests {
         }
         assert!(wrong.is_empty(), "Rust yaml encode:\n{}", wrong.join("\n"));
         assert_eq!(encode(&["yaml"], StyledValue::Value(&serde_json::json!(u64::MAX))).unwrap_err().code(), CODEC_ENCODE);
-        // The yaml-rust2 emitter writes these strings plain or unescaped: `0o17` reads back as 15,
-        // and the control characters, C1 characters and the byte order mark are not printable.
-        for text in ["0o17", "\u{7}", "a\u{1b}", "a\u{7f}", "\u{9f}", "\u{feff}a"] {
-            assert_eq!(encode(&["yaml"], StyledValue::Value(&serde_json::json!(text))).unwrap_err().code(), CODEC_ENCODE, "{text:?}");
-        }
     }
 
     /// The json stage returns the ordered-json value with its member order,
