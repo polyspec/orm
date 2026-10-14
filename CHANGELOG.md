@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+## 0.0.17
+
 - scripts/bench-db.mts installs and seeds the bench database through the TypeScript client; the Go programs bench/install and bench/seedaes are removed. (#T137-1-4-9)
 - The Python client refuses a SQLite older than 3.46 with CAPABILITY_UNSUPPORTED, as the other clients do. (#T176)
 - The infrastructure scripts under scripts/ are TypeScript: the run databases (scripts/check/databases.mts, make databases-create), the test servers (scripts/test-servers.mts) and every command script. The decimal database is installed by the TypeScript decimal model, so the database setup needs neither PHP nor Composer; tests/new-session and the CI SQLite check of PHP are removed. (#T137-1-4-5)

@@ -6,10 +6,10 @@
     "node": ">=26.11.1"
   },
   "dependencies": {
-    "@polyspec/orm": "file:polyspec-orm-npm-0.0.16.tgz",
+    "@polyspec/orm": "file:polyspec-orm-npm-0.0.17.tgz",
     "@polyspec/ordered-json": "https://github.com/polyspec/ordered-json/releases/download/v0.0.8/polyspec-ordered-json-npm-0.0.8.tgz",
-    "@polyspec/dbspec-language": "file:polyspec-dbspec-language-npm-0.0.16.tgz",
-    "@polyspec/dbspec-lsp": "file:polyspec-dbspec-lsp-npm-0.0.16.tgz",
-    "@polyspec/dbspec-codemirror": "file:polyspec-dbspec-codemirror-npm-0.0.16.tgz"
+    "@polyspec/dbspec-language": "file:polyspec-dbspec-language-npm-0.0.17.tgz",
+    "@polyspec/dbspec-lsp": "file:polyspec-dbspec-lsp-npm-0.0.17.tgz",
+    "@polyspec/dbspec-codemirror": "file:polyspec-dbspec-codemirror-npm-0.0.17.tgz"
   }
 }
