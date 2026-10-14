@@ -246,7 +246,7 @@ PHP;
         // A call that the sources of the scan do not make is not declared: the control that makes the zero meaningful.
         file_put_contents("$dir/control.php", "<?php\ndeclare(strict_types=1);\n\nfunction control(\\$ns\\Author \$a): void\n{\n    \$a->ltReadCount(1);\n}\n");
         $analyse = function (string $file) use ($root, $dir): array {
-            $command = [PHP_BINARY, "$root/vendor-php/bin/phpstan", 'analyse', '--no-progress', '--no-ansi', '--error-format=raw',
+            $command = [PHP_BINARY, "$root/vendor-php/bin/phpstan", 'analyse', '--no-progress', '--no-ansi', '--error-format=json',
                 '--configuration', "$dir/phpstan.neon", '--level=9', '--memory-limit=512M', '--autoload-file', "$dir/autoload.php", $file];
             $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $root);
             $out = (string) stream_get_contents($pipes[1]);
@@ -256,13 +256,24 @@ PHP;
             $status = proc_close($process);
             // PHPStan exits 0 without errors and 1 with errors; any other status is a run that did not analyse.
             self::assertContains($status, [0, 1], "phpstan analyse $file exited with $status:\n$out$err");
-            return [array_values(array_filter(explode("\n", $out), static fn(string $line): bool => str_contains($line, '[identifier='))), $out . $err, $status];
+            // The JSON report names the identifier of each error (files.<path>.messages[].identifier), so a finding is matched by
+            // its identifier, not by the text of a format.
+            $report = json_decode($out, true, flags: JSON_THROW_ON_ERROR);
+            self::assertIsArray($report, "phpstan analyse $file wrote no JSON report:\n$out$err");
+            $findings = [];
+            foreach ((array) ($report['files'] ?? []) as $path => $entry) {
+                foreach ((array) (is_array($entry) ? ($entry['messages'] ?? []) : []) as $message) {
+                    self::assertIsArray($message, "phpstan analyse $file reported a message that is not an object:\n$out");
+                    $findings[] = sprintf('%s:%s: %s [%s]', $path, $message['line'] ?? '?', $message['message'] ?? '', $message['identifier'] ?? 'no identifier');
+                }
+            }
+            return [$findings, $out . $err, $status];
         };
         [$findings, $raw] = $analyse("$dir/src/usage.php");
-        $notFound = array_values(array_filter($findings, static fn(string $line): bool => str_contains($line, 'method.notFound')));
+        $notFound = array_values(array_filter($findings, static fn(string $line): bool => str_ends_with($line, '[method.notFound]')));
         self::assertSame([], $notFound, "method.notFound:\n" . implode("\n", $notFound) . "\n$raw");
         [$control, $controlRaw, $controlStatus] = $analyse("$dir/control.php");
         self::assertSame(1, $controlStatus, "the control call is declared:\n$controlRaw");
-        self::assertNotSame([], array_filter($control, static fn(string $line): bool => str_contains($line, 'method.notFound')), "the control call is declared:\n$controlRaw");
+        self::assertNotSame([], array_filter($control, static fn(string $line): bool => str_ends_with($line, '[method.notFound]')), "the control call is declared:\n$controlRaw");
     }
 }

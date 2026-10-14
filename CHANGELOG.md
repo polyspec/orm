@@ -5,6 +5,8 @@
 
 ## 0.0.16
 
+- The PHPStan case of the PHP scan reads PHPStan's JSON report and matches the identifier of each error, which the raw format of the CI runner leaves out. (#T172-2)
+- The PHP performance gate case runs the PHPUnit of the development root, and docs/features.md states the PHP scan. (#T173-1)
 - The PHP tests run on the PHPUnit of the development root (vendor-php), and the released composer.json of polyspec/orm and polyspec/orm-dbspec declare no repositories, development requirements or platform settings again. (#T148-1-1)
 - The review record lists nikic/php-parser, which the PHP orm-gen scan requires. (#T172-1)
 - The PHP orm-gen takes `--scan`: it reads the sources with nikic/php-parser, declares each chain method they call on a model as a typed `@method` tag, so PHPStan finds it, and rejects an unknown column, operator or argument count during generation; a symlink in a scanned directory is an error. (#T172)
