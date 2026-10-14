@@ -15,3 +15,6 @@ polyspec-orm-testcase = { path = "../testcase" }
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres"] }
 tokio = { version = "1", features = ["rt"] }
 url = "2"
+
+[lints]
+workspace = true

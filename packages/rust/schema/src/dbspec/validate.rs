@@ -1016,7 +1016,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
     /// audit setting, audit 기록 table과 그 foreign key, history table의 모양을 검사한다(docs/dbspec.md
     /// "Audit"). history table은 i64 identity primary key, action과 previous column, 기록하는 column과
     /// 같은 이름과 type의 column만 가지며, 어긋난 곳마다 하나씩 보고한다.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments, reason = "each argument is one field of the audit setting, as docs/dbspec.md \"Audit\" names them")]
     fn audit(&mut self, setting: &Setting, into: &Name, column: &Name, references: &Name, action: &Name, previous: &Name, lists: &[AuditList]) {
         let table = self.own.table;
         let audit_column = self.setting_column(column);

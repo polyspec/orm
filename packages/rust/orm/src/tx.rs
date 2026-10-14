@@ -1121,7 +1121,7 @@ mod tests {
         assert!(!path.exists(), "{} is left after the panic", path.display());
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "a compile-time check: its body proves the future of transaction_send is Send, and nothing calls it")]
     fn assert_transaction_send_future<'a, F, Fut, T>(db: &'a Db, f: F)
     where
         F: Fn() -> Fut + Send + Sync + 'a,
@@ -1530,6 +1530,7 @@ mod tests {
     const DENY_SAVEPOINT_RELEASE: u8 = 5;
     const DENY_SAVEPOINT_END: u8 = 6;
 
+    #[allow(unsafe_code, reason = "SQLite calls the authorizer through its C ABI with raw C strings, and sqlx exposes no safe authorizer")]
     unsafe extern "C" fn sqlite_authorizer(
         _: *mut std::ffi::c_void,
         action: std::ffi::c_int,
@@ -1557,6 +1558,7 @@ mod tests {
     }
 
     /// pool의 하나뿐인 connection에 authorizer를 두고 denied를 거부하게 한다.
+    #[allow(unsafe_code, reason = "sqlx exposes no safe authorizer, so the test sets it through the C function sqlite3_set_authorizer on the raw handle")]
     async fn deny_on_sqlite(db: &Db, denied: u8) {
         let Pool::Sqlite(pool) = db.pool() else { panic!("SQLite pool") };
         let mut conn = pool.acquire().await.expect("SQLite connection");

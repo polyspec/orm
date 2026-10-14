@@ -107,3 +107,6 @@ required-features = ["live-db"]
 [[test]]
 name = "row_insert_identity"
 required-features = ["live-db"]
+
+[lints]
+workspace = true

@@ -111,14 +111,14 @@ pub struct Session {
 impl Session {
     /// probe의 database, schema 또는 file 이름. 이 module은 test crate마다 따로
     /// compile되며 dbspec_apply만 이 method와 `second`를 쓴다.
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
     pub fn name(&self) -> &str {
         &self.name
     }
 
     /// 두 번째 database, schema 또는 file `<name>_b`에 connection을 여는 값. probe가
     /// 그것을 만들고, 정리는 첫 것과 함께 지운다.
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
     pub fn second(&self) -> Session {
         Session { name: format!("{}_b", self.name), ..self.clone() }
     }

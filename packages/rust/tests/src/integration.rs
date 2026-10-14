@@ -29,7 +29,12 @@ mod coverage_schema_install;
 mod coverage_transactions;
 
 #[cfg(test)]
-#[allow(dead_code, unused_imports, clippy::all)]
+#[allow(
+    dead_code,
+    unused_imports,
+    clippy::all,
+    reason = "the generated models are included whole, a crate uses only some of them, and lints of hand-written code do not apply to generated code"
+)]
 mod nonnull_model {
     include!(concat!(env!("OUT_DIR"), "/nonnull/orm_model.rs"));
 }

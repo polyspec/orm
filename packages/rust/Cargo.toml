@@ -1,3 +1,9 @@
 [workspace]
 resolver = "2"
 members = ["case-clock", "case-database", "orm", "build", "schema", "testcase", "tests"]
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+allow_attributes_without_reason = "deny"
