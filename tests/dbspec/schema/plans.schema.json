@@ -1,0 +1,453 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "tests/dbspec/plans.json",
+  "description": "The plan vectors: plans with their changes, the steps of each dialect and the behavior before and after them; invalid plans, plan chains, parsed plans and schema comparisons with their errors. An error is [rule, line, column, message]; a null message is not compared.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "note",
+    "cases",
+    "invalid",
+    "chains",
+    "parse",
+    "comparisons"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "note": {
+      "type": "string"
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "source",
+          "plan",
+          "changes",
+          "steps",
+          "before",
+          "after"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/lines"
+              }
+            ]
+          },
+          "plan": {
+            "$ref": "#/$defs/lines"
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/lines"
+            }
+          },
+          "steps": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mysql",
+              "postgres",
+              "sqlite"
+            ],
+            "properties": {
+              "mysql": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/step"
+                }
+              },
+              "postgres": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/step"
+                }
+              },
+              "sqlite": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/step"
+                }
+              }
+            }
+          },
+          "before": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/behavior"
+            }
+          },
+          "after": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/behavior"
+            }
+          }
+        }
+      }
+    },
+    "invalid": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "source",
+          "plan",
+          "errors"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/$defs/lines"
+          },
+          "plan": {
+            "$ref": "#/$defs/lines"
+          },
+          "errors": {
+            "$ref": "#/$defs/lines"
+          }
+        }
+      }
+    },
+    "chains": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "plans"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "plans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/lines"
+            }
+          },
+          "order": {
+            "$ref": "#/$defs/lines"
+          },
+          "errors": {
+            "$ref": "#/$defs/lines"
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "order"
+            ],
+            "properties": {
+              "order": {
+                "$ref": "#/$defs/lines"
+              }
+            }
+          },
+          {
+            "required": [
+              "errors"
+            ],
+            "properties": {
+              "errors": {
+                "$ref": "#/$defs/lines"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "parse": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "plan",
+          "errors"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "plan": {
+            "$ref": "#/$defs/lines"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              ],
+              "minItems": 4,
+              "maxItems": 4,
+              "items": false
+            }
+          }
+        }
+      }
+    },
+    "comparisons": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "source",
+          "target",
+          "differences",
+          "errors"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/$defs/lines"
+          },
+          "target": {
+            "$ref": "#/$defs/lines"
+          },
+          "differences": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "minItems": 3,
+              "maxItems": 3,
+              "items": false
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              ],
+              "minItems": 4,
+              "maxItems": 4,
+              "items": false
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "lines": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "statement",
+        "effect"
+      ],
+      "properties": {
+        "statement": {
+          "type": "string"
+        },
+        "effect": {
+          "type": "string"
+        },
+        "rollback": {
+          "type": "string"
+        },
+        "restore": {
+          "type": "string"
+        },
+        "restore_if": {
+          "type": "string"
+        },
+        "rollback_restore": {
+          "type": "string"
+        },
+        "irreversible": {
+          "type": "string"
+        },
+        "finalize": {
+          "const": true
+        },
+        "null_checks": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            ],
+            "minItems": 3,
+            "maxItems": 3,
+            "items": false
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "rollback"
+          ],
+          "properties": {
+            "rollback": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "required": [
+            "irreversible"
+          ],
+          "properties": {
+            "irreversible": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "required": [
+            "finalize"
+          ],
+          "properties": {
+            "finalize": {
+              "const": true
+            }
+          }
+        }
+      ]
+    },
+    "behavior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "sql": {
+          "type": "string"
+        },
+        "query": {
+          "type": "string"
+        },
+        "want": {
+          "type": "string"
+        },
+        "fails": {
+          "const": true
+        },
+        "dialects": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "mysql",
+              "postgres",
+              "sqlite"
+            ]
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "sql"
+          ],
+          "properties": {
+            "sql": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "required": [
+            "query"
+          ],
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

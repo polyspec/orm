@@ -1,5 +1,5 @@
-.PHONY: check check-run ci-group-needs feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check runner-check version-check repo-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-verify-idempotent docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check install-cli-check feature-unit-check feature-check feature-coverage feature-verify-rust feature-verify-other feature-docs package-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
-# 실패에서 멈추지 않는 target의 독립된 부분이다(scripts/check/run.mjs가 make -k로 실행한다).
+.PHONY: check check-run ci-group-needs feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check runner-check version-check repo-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check scripts-typecheck typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-verify-idempotent docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check install-cli-check feature-unit-check feature-check feature-coverage feature-verify-rust feature-verify-other feature-docs package-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
+# 실패에서 멈추지 않는 target의 독립된 부분이다(scripts/check/run.mts가 make -k로 실행한다).
 .PHONY: version-check/unit version-check/run repo-check/unit repo-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select testcase-check/go testcase-check/node testcase-check/runners testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/model-methods client-unit-check/orm-gen-scan client-unit-check/orm-gen-scan-parity client-unit-check/client-generics client-unit-check/perf-extensions
 .NOTPARALLEL: check check-run docs-check docs-verify-idempotent
 
@@ -17,7 +17,7 @@ TEST_ENV = .runtime/servers/env
 # ORM_TEST_ENV는 이 make가 읽는 TEST_ENV의 절대 경로이며, DECIMAL_ENV처럼 recipe가 시작하는 process에
 # 넘긴다. make 변수는 command line으로만 Makefile의 값을 바꾸므로, 하위 make를 시작하는 명령(contracts/
 # features.json의 helper check)은 이것을 TEST_ENV="$$ORM_TEST_ENV"로 준다. make owner-check
-# (scripts/features/owners.mjs)는 자기 실행의 환경 file로 이것을 바꾼다.
+# (scripts/features/owners.mts)는 자기 실행의 환경 file로 이것을 바꾼다.
 export ORM_TEST_ENV = $(abspath $(TEST_ENV))
 # DECIMAL_ENV는 decimal database의 DSN을 담은 file이다. decimal 검사와 feature-check의 decimal 명령이
 # 그것을 읽는다. 함께 쓰는 decimal database는 없다: make check, make owner-check, make run-databases가
@@ -55,7 +55,7 @@ export CARGO_PROFILE_DEV_DEBUG := line-tables-only
 export ORM_RUST_TEST_FEATURES := polyspec-orm/test-faults,polyspec-orm-build/live-db
 # check는 network를 읽지 않는다: make install이 check가 읽는 것을 download하고, 모든 recipe와 그것이 시작하는
 # script는 cargo, go, npm, Composer를 offline으로 실행한다. 그래서 빠진 download는 registry에 닿는 실행과 닿지 않는
-# 실행으로 결과가 갈리지 않고 곧바로 실패하며, scripts/check/downloads.mjs가 그것을 `run make install`과 함께 적는다.
+# 실행으로 결과가 갈리지 않고 곧바로 실패하며, scripts/check/downloads.mts가 그것을 `run make install`과 함께 적는다.
 # download하는 target(install과 그 부분)만 $(ONLINE)으로 명령을 실행한다.
 export CARGO_NET_OFFLINE := true
 export GOPROXY := off
@@ -90,17 +90,17 @@ WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV))
 # 시간대(+00:00)로 읽고 쓰므로 결과는 이 값과 무관해야 한다(docs/dialects.md).
 TEST_TZ = Asia/Seoul
 
-# GO_TEST는 Go test를 case마다 보고하게 실행한다. tests/go-test.mjs는 먼저 같은 package와 build
+# GO_TEST는 Go test를 case마다 보고하게 실행한다. tests/go-test.mts는 먼저 같은 package와 build
 # tag의 build를 기한 없는 장기 작업 `go-build/<packages>`로 실행하고 그 뒤 go test를 실행한다. -v는 각
 # case가 internal/testcase로 내는 RUN, STEP, PASS, FAIL 줄을 실행 중에 보이고, 각 case가 자기 기한을
 # 가지므로 -timeout 0이 test binary 전체의 기한(기본 10분)을 끈다.
-GO_TEST = node tests/go-test.mjs -v -timeout 0
+GO_TEST = node tests/go-test.mts -v -timeout 0
 
 # RUN_LONG은 자기 case를 보고하지 않는 장기 작업(build, 설치, format, lint, package 검사 같은 도구 실행)
-# 하나를 기한 없이 실행한다(tests/run-long.mjs): `RUN <name> no-deadline`, 명령의 출력 줄을 STEP으로,
+# 하나를 기한 없이 실행한다(tests/run-long.mts): `RUN <name> no-deadline`, 명령의 출력 줄을 STEP으로,
 # 종료 코드와 PASS나 FAIL을 출력한다. 성공과 실패는 시계가 아니라 명령의 종료 코드와 오류로 정한다.
 # 기한은 test case 안에만 있다.
-RUN_LONG = node tests/run-long.mjs
+RUN_LONG = node tests/run-long.mts
 # PUBLISH는 다른 실행이나 뒤의 단계가 읽는 build 출력 file을 같은 directory의 임시 file에 쓰고 rename으로
 # 바꾼다(scripts/publish-output.sh): `$(PUBLISH) <output> <command>`에서 명령의 인자 @OUT@이 임시 file이고,
 # @OUT@이 없으면 명령의 표준 출력이 임시 file이다. 읽는 쪽은 끝난 build의 file만 본다.
@@ -117,8 +117,8 @@ CARGO_LEASED = $(LEASE) run $(CARGO_LEASES) exclusive --wait --
 # script와 기능 검증 명령도 같은 lease program과 lease directory를 쓴다.
 export LEASE CARGO_LEASES
 # CARGO_TEST는 cargo test를 공유 target directory의 test binary가 아니라 lease 아래에서 복사한 실행 하나의
-# binary로 실행한다(tests/cargo-test.mjs: build와 복사, 그 다음 실행).
-CARGO_TEST = node $(abspath tests/cargo-test.mjs)
+# binary로 실행한다(tests/cargo-test.mts: build와 복사, 그 다음 실행).
+CARGO_TEST = node $(abspath tests/cargo-test.mts)
 # RUN_DIR은 target 실행 하나의 directory다($@와 make process id). 그 실행이 쓰는 stress 문서와 build한
 # program의 복사본(RUN_TARGET, CARGO_TARGET_DIR과 같은 배치)을 둔다. 실행은 공유 target directory의
 # program이 아니라 이 복사본을 실행한다. CARGO_COPY는 build와 복사를 한 lease 아래에서 한다
@@ -144,16 +144,16 @@ SEND_SQLITE_DSN = sqlite://$(RUN_DIR)/send-savepoint.sqlite
 .PHONY: lease-tool
 lease-tool:
 	$(BUILD_LEASE)
-TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mjs
+TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mts
 
-# check는 CHECK_TARGETS를 scripts/check/run.mjs로 하나씩 실행한다. runner는 실행마다 자기 bench
+# check는 CHECK_TARGETS를 scripts/check/run.mts로 하나씩 실행한다. runner는 실행마다 자기 bench
 # database와 decimal database를 만들어 TEST_ENV와 DECIMAL_ENV로 넘기고 끝에 지우며, target마다
 # RUN, 출력 줄(STEP), PASS나 FAIL과 경과 시간을 보고한다. 검증 명령이 실행하는
 # target(interface-check, php-without-mysql-check, perf-check, dbspec-go-check, dbspec-php-check,
 # dbspec-rust-check, dbspec-ts-check, dbspec-compare-check)은 feature-verify-rust나 feature-verify-other 안에서 한 번
 # 실행되므로 목록에 다시 넣지 않는다. contracts/check-inputs.json은 target마다 scope를 선언한다: owner target은
 # make owner-check도 고르고, suite target은 이 전체 suite에서만 실행한다.
-CHECK_TARGETS = runner-check documents-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check testcase-check repo-check test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check install-cli-check markdown-table-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check markdown-conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-language-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-coverage feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check python-check
+CHECK_TARGETS = runner-check scripts-typecheck documents-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check testcase-check repo-check test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check install-cli-check markdown-table-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check markdown-conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-language-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-coverage feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check python-check
 # CI는 make check를 CI group마다 job 하나로 나눠 동시에 실행한다(.github/workflows/ci.yml의 job test, matrix group).
 # job마다 `make check GROUP=<group>`이 CI_TARGETS_<group>을 실행하고, group은 함께 CHECK_TARGETS의 모든 target을 한
 # 번씩 실행한다(make repo-check가 확인한다). group은 CI 실행에서 잰 target의 시간으로 job마다 setup과 함께 10분 안에
@@ -174,7 +174,7 @@ CI_GROUPS = static clients_db clients_pooler conformance dbspec dbspec_apply fea
 CI_TARGETS_static = runner-check documents-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check testcase-check repo-check test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check install-cli-check markdown-table-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check codec-check fuzz-check package-check ts-model-check dbspec-language-check feature-unit-check
 CI_TARGETS_clients_db = rust-driver-check example-check client-db-check dialect-facts-check go-test-check
 CI_TARGETS_clients_pooler = client-pooler-check
-CI_TARGETS_conformance = ts-check ts-min-check conformance-check markdown-conformance-check
+CI_TARGETS_conformance = ts-check scripts-typecheck ts-min-check conformance-check markdown-conformance-check
 CI_TARGETS_feature_helpers = feature-helper-check
 CI_TARGETS_python = python-check
 CI_TARGETS_dbspec = case-database-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-plan-ts-check dbspec-plan-rust-check dbspec-plan-php-check
@@ -185,18 +185,18 @@ CI_TARGETS_feature_verify_other = feature-verify-other
 CI_TARGETS_stress_mysql = feature-stress-mysql-check
 CI_TARGETS_stress_pg_sqlite = feature-stress-pg-sqlite-check
 # run-databases는 TARGETS의 make target을 실행 하나의 자기 bench database와 decimal database로 실행한다
-# (scripts/check/run.mjs, make check-run과 같은 runner). bench나 decimal database를 쓰는 target을 직접 실행할 때
+# (scripts/check/run.mts, make check-run과 같은 runner). bench나 decimal database를 쓰는 target을 직접 실행할 때
 # 쓴다: TEST_ENV의 server 환경에는 그 database가 없다. runner는 MAKEFLAGS를 넘기지 않으므로 conformance-check의
 # VECTOR와 RECORD는 환경으로 넘긴다.
 run-databases:
-	$(BUILD_LEASE) && VECTOR='$(VECTOR)' RECORD='$(RECORD)' node scripts/check/run.mjs --job-summary $(abspath $(TEST_ENV)) $(TARGETS)
+	$(BUILD_LEASE) && VECTOR='$(VECTOR)' RECORD='$(RECORD)' node scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(TARGETS)
 
 # check is the guard of the full suite, the full-run tool of @polyspec/kit: it prints the reason and refuses while a checklist
 # item is [~], while tracked files have uncommitted changes, or when var/full-run.json records a full run of the same tree;
 # otherwise it runs the target check-run with `make -k` and records the result. make rerun-failed (the kit.mk of
 # @polyspec/kit) reruns on the same tree the targets that did not pass. The full suite runs on GitHub CI after a push
 # (.github/workflows/ci.yml), and a local check is no step required before a push. check-run runs the runner
-# (scripts/check/run.mjs): each run creates its own bench and decimal databases, runs the targets one by one and writes the
+# (scripts/check/run.mts): each run creates its own bench and decimal databases, runs the targets one by one and writes the
 # record of the run to .runtime/check/<id>/record.json. The runner reads TEST_ENV as the setup step servers and holds the
 # shared lease of those servers: when the file is missing (make test-servers failed), it records only the targets that need
 # a database as not-run and runs the rest.
@@ -208,14 +208,14 @@ check:
 check-run:
 	$(if $(GROUP),$(if $(filter $(GROUP),$(CI_GROUPS)),,$(error GROUP $(GROUP) names no CI group; give one of CI_GROUPS: $(CI_GROUPS))))
 	$(if $(GROUP),$(if $(filter true,$(GITHUB_ACTIONS)),,$(error GROUP runs one CI group of make check-run on GitHub Actions only; run make check without GROUP, which runs every target of CHECK_TARGETS)))
-	$(BUILD_LEASE) && node scripts/check/run.mjs $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)
+	$(BUILD_LEASE) && node scripts/check/run.mts $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)
 
 # ci-group-needs는 CI group GROUP의 job이 실행할 setup step을 step output 줄(`<output>=true|false`)로 쓴다: group의
-# target이 contracts/check-inputs.json에 선언한 need에서 정한다(scripts/check/ci-setup.mjs). workflow는 그 줄을
+# target이 contracts/check-inputs.json에 선언한 need에서 정한다(scripts/check/ci-setup.mts). workflow는 그 줄을
 # $GITHUB_OUTPUT에 더하고, setup step은 자기 output이 true일 때만 실행한다.
 ci-group-needs:
 	$(if $(filter $(GROUP),$(CI_GROUPS)),,$(error GROUP $(GROUP) names no CI group; give one of CI_GROUPS: $(CI_GROUPS)))
-	@node scripts/check/ci-setup.mjs outputs $(CI_TARGETS_$(GROUP))
+	@node scripts/check/ci-setup.mts outputs $(CI_TARGETS_$(GROUP))
 
 # bench는 성능 측정(2000 table stress 문서의 parse, 적용, introspection과 비교, CPU 시간)을 check와 같은
 # runner로 target마다 실행한다. 측정은 출력하고 기준값을 넘으면 경고할 뿐 실패시키지 않는다(AGENTS.md).
@@ -223,7 +223,7 @@ BENCH_TARGETS = dbspec-stress-bench dbspec-apply-stress-bench dbspec-introspect-
 .PHONY: bench
 bench:
 	test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }
-	node scripts/check/run.mjs --job-summary $(abspath $(TEST_ENV)) $(BENCH_TARGETS)
+	node scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(BENCH_TARGETS)
 
 # go-test-check는 다른 target이 실행하지 않는 Go package의 test를 실행한다. packages/go의
 # package는 client-db-check(scripts/client-db-test.sh), engine과 generator는 feature-check의
@@ -242,9 +242,9 @@ testcase-check: testcase-check/go testcase-check/node testcase-check/runners tes
 testcase-check/go:
 	$(GO_TEST) ./internal/testcase -count=1
 testcase-check/node:
-	node --test tests/testcase.test.mjs
+	node --test tests/testcase.test.mts
 testcase-check/runners:
-	node --test tests/go-test.test.mjs tests/cargo-test.test.mjs
+	node --test tests/go-test.test.mts tests/cargo-test.test.mts
 testcase-check/rust: cargo-downloads-check
 	cd packages/rust && $(CARGO_TEST) testcase-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-testcase
 
@@ -254,15 +254,15 @@ client-pooler-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(WITH_TEST_ENV) ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" ./scripts/client-db-test.sh
 
-# runner-check는 check runner(scripts/check/run.mjs)와 그 실행 기록(scripts/check/record.mjs)을 임시 git checkout과 stub 단계로
+# runner-check는 check runner(scripts/check/run.mts)와 그 실행 기록(scripts/check/record.mts)을 임시 git checkout과 stub 단계로
 # 검사한다. 실제 target과 database는 실행하지 않는다.
 runner-check:
-	node --test scripts/check/run.test.mjs scripts/check/continue.test.mjs scripts/check/step.test.mjs scripts/check/downloads.test.mjs
+	node --test scripts/check/run.test.mts scripts/check/continue.test.mts scripts/check/step.test.mts scripts/check/downloads.test.mts scripts/json/schema.test.mts
 
 # dbspec-rust-check는 공유 dbspec vector, Rust rule case, plan과 Mermaid case, 감싼 SQLite
 # connection으로 주입한 apply 정리 error를 두 번 실행한다.
 #
-# DBSPEC_STRESS_DOCUMENT는 tests/dbspec/stress.mjs의 2000 table 문서다. 그 문서의 parse 시간,
+# DBSPEC_STRESS_DOCUMENT는 tests/dbspec/stress.mts의 2000 table 문서다. 그 문서의 parse 시간,
 # 적용, introspection과 비교는 성능 측정이므로 make bench가 실행한다. make check의
 # dbspec-compare-check와 dbspec-introspect-compare-check는 같은 모양의 작은 문서
 # (DBSPEC_COMPARE_TABLES, DBSPEC_INTROSPECT_TABLES개 table)로 같은 code path를 실행하고, make
@@ -425,7 +425,7 @@ dbspec-apply-php-extension-check: php-vendor-check
 dbspec-introspect-compare-check: cargo-downloads-check lease-tool python-venv-check
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_INTROSPECT_DOCUMENT))
-	$(PUBLISH) $(DBSPEC_INTROSPECT_DOCUMENT) node tests/dbspec/stress.mjs $(DBSPEC_INTROSPECT_TABLES)
+	$(PUBLISH) $(DBSPEC_INTROSPECT_DOCUMENT) node tests/dbspec/stress.mts $(DBSPEC_INTROSPECT_TABLES)
 	$(TSC_BUILD)
 	$(RUN_LONG) rust-build/dbspec_introspect --cwd packages/rust -- $(CARGO_COPY) $(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --profile $(DBSPEC_INTROSPECT_PROFILE) --locked --offline -p polyspec-orm --example dbspec_introspect
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
@@ -456,7 +456,7 @@ dbspec-compare-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-compare-check-$
 dbspec-compare-check: dbspec-compare-check/unit dbspec-compare-check/runners dbspec-compare-check/inputs dbspec-compare-check/compare
 	rm -rf $(RUN_DIR)
 dbspec-compare-check/unit:
-	node --test tests/dbspec/compare/check.test.mjs
+	node --test tests/dbspec/compare/check.test.mts
 # PYTHON_VENV is the virtual environment that install-python makes. It holds the Python client installed in editable mode,
 # with the pinned dependencies of its pyproject.toml (ordered-json, cryptography, PyMySQL, psycopg, rapidyaml, ruamel.yaml); the checks
 # take this interpreter as ORM_PYTHON and import the installed package, never a source path.
@@ -512,17 +512,17 @@ dbspec-python-check: python-venv-check
 dbspec-compare-check/prepare: cargo-downloads-check lease-tool python-venv-check
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_COMPARE_DOCUMENT))
-	$(PUBLISH) $(DBSPEC_COMPARE_DOCUMENT) node tests/dbspec/stress.mjs $(DBSPEC_COMPARE_TABLES)
+	$(PUBLISH) $(DBSPEC_COMPARE_DOCUMENT) node tests/dbspec/stress.mts $(DBSPEC_COMPARE_TABLES)
 	$(TSC_BUILD)
 	$(RUN_LONG) rust-build/dbspec_compare --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_compare debug/examples/dbspec_stress -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm-schema --example dbspec_compare --example dbspec_stress
 	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 dbspec-compare-check/runners: dbspec-compare-check/prepare
-	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/compare/runners.test.mjs
+	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/compare/runners.test.mts
 dbspec-compare-check/inputs: dbspec-compare-check/prepare
-	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/inputs.test.mjs
+	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/inputs.test.mts
 dbspec-compare-check/compare: dbspec-compare-check/prepare
-	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python node tests/dbspec/compare/check.mjs tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json tests/dbspec/syntax.json
+	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python node tests/dbspec/compare/check.mts tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json tests/dbspec/syntax.json
 
 dbspec-compare-bench:
 	$(MAKE) --no-print-directory dbspec-compare-check DBSPEC_COMPARE_TABLES=2000
@@ -538,7 +538,7 @@ dbspec-stress-bench: dbspec-stress-bench/go dbspec-stress-bench/php dbspec-stres
 	rm -rf $(RUN_DIR)
 dbspec-stress-bench/prepare:
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))
-	$(PUBLISH) $(DBSPEC_STRESS_DOCUMENT) node tests/dbspec/stress.mjs
+	$(PUBLISH) $(DBSPEC_STRESS_DOCUMENT) node tests/dbspec/stress.mts
 dbspec-stress-bench/go: dbspec-stress-bench/prepare
 	$(GO_TEST) -tags bench ./engine/dbspec -run '^TestStressDocument$$' -count=1
 	$(GO_TEST) -tags bench ./engine/dbspec -run '^TestStressDocument$$' -count=1
@@ -699,23 +699,23 @@ php-extension-arginfo:
 
 # repo-check는 root npm script가 쓰는 path가 tracked file이나
 # directory인지, CI workflow가 make test-servers로 서버를 시작하고 그 환경 파일의 모든 변수를
-# 검사 단계에 주는지(scripts/repo/ci.mjs) 확인한다.
+# 검사 단계에 주는지(scripts/repo/ci.mts) 확인한다.
 # version-check는 VERSION 파일과 orm의 모든 version 선언(Rust manifest와 lockfile, PHP composer,
 # TypeScript package와 lockfile, feature contract, 문서)이 같은지 확인한다.
 version-check: version-check/unit version-check/run
 version-check/unit:
-	node --test scripts/version/check.test.mjs
+	node --test scripts/version/check.test.mts
 version-check/run:
-	node scripts/version/check.mjs
+	node scripts/version/check.mts
 
 repo-check: repo-check/unit repo-check/run
 repo-check/unit:
 	$(BUILD_NEW_SESSION)
-	NEW_SESSION=$(NEW_SESSION) node --test scripts/repo/check.test.mjs scripts/repo/python-venv.test.mjs
+	NEW_SESSION=$(NEW_SESSION) node --test scripts/repo/check.test.mts scripts/repo/python-venv.test.mts
 repo-check/run:
-	node scripts/repo/check.mjs
+	node scripts/repo/check.mts
 
-# test-servers-check는 test-servers.sh의 MySQL 설정 migration(scripts/test-servers-mysql.mjs)을 임시
+# test-servers-check는 test-servers.sh의 MySQL 설정 migration(scripts/test-servers-mysql.mts)을 임시
 # root의 서버로 검사한다: 다른 설정은 같은 수로 옮기고, 같은 설정은 아무것도 하지 않으며, 겹칠 이름은
 # 바꾸기 전에 거부한다.
 .PHONY: test-servers-check
@@ -731,7 +731,7 @@ BUILD_NEW_SESSION = $(RUN_LONG) go-build/new-session -- $(PUBLISH) $(NEW_SESSION
 test-servers-check:
 	$(BUILD_STOP_PROCESS)
 	$(BUILD_LEASE)
-	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) node --test scripts/test-servers.test.mjs scripts/test-servers-mysql.test.mjs
+	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) node --test scripts/test-servers.test.mts scripts/test-servers-mysql.test.mts
 
 test-servers:
 	$(BUILD_STOP_PROCESS)
@@ -766,7 +766,7 @@ test-servers-leases-clear:
 # 기능의 coverage(native test binary를 한 번 build해 모든 실행이 쓴다)와 검증 명령을 실행한다. 검증 명령은 build된 client를
 # 쓴다. helper check는
 # feature-helper-check와 stress target(feature-stress-mysql-check, feature-stress-pg-sqlite-check)이 실행한다. 기능 하나는
-# `node scripts/features/coverage.mjs --feature <id>`와 `node scripts/features/check.mjs --run --feature <id>`로
+# `node scripts/features/coverage.mts --feature <id>`와 `node scripts/features/check.mts --run --feature <id>`로
 # 실행한다(test 환경 아래에서, owner-check가 하듯이).
 # feature-owner-check는 바뀐 file(PATHS, 없으면 HEAD에서 바뀐 file과 추적하지 않는 file)을 입력으로 선언한
 # 기능의 검증 명령과 coverage만, 그리고 contracts/check-inputs.json이 scope owner로 선언한 target만
@@ -775,33 +775,33 @@ test-servers-leases-clear:
 # config/owner-checks.json; hooks-check first checks that the pre-push hook is installed.
 .PHONY: feature-owner-check
 feature-owner-check: hooks-check
-	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python node scripts/features/owners.mjs $(PATHS)
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python node scripts/features/owners.mts $(PATHS)
 
 feature-unit-check: feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select
 feature-unit-check/docs:
-	node scripts/features/build.mjs --check
+	node scripts/features/build.mts --check
 feature-unit-check/coverage:
-	node --test scripts/features/coverage.test.mjs
+	node --test scripts/features/coverage.test.mts
 feature-unit-check/owners:
-	node --test scripts/features/owners.test.mjs
+	node --test scripts/features/owners.test.mts scripts/features/manifest.test.mts
 feature-unit-check/select:
-	node --test scripts/features/select.test.mjs
+	node --test scripts/features/select.test.mts
 
 # feature-check는 기능의 coverage와 모든 검증 명령이고, make check는 그것을 세 target으로 실행한다: feature-coverage는
 # coverage, feature-verify-rust는 shard rust(cargo로 Rust를 build하고 실행하는 명령)의 검증 명령, feature-verify-other는
 # shard other의 검증 명령이다(contracts/features.json의 `shard`). CI는 셋을 서로 다른 group에서 동시에 실행한다. 같은
-# 명령을 선언한 기능들은 같은 shard에 있고 그 명령은 한 번 실행된다(scripts/features/check.mjs).
+# 명령을 선언한 기능들은 같은 shard에 있고 그 명령은 한 번 실행된다(scripts/features/check.mts).
 feature-check: feature-coverage feature-verify-rust feature-verify-other
 feature-check/build: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
-# The Python owners of the coverage run on the client's venv (ORM_PYTHON), which imports the installed client (scripts/features/coverage.mjs).
+# The Python owners of the coverage run on the client's venv (ORM_PYTHON), which imports the installed client (scripts/features/coverage.mts).
 feature-coverage: feature-check/build python-venv-check
-	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python node scripts/features/coverage.mjs
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python node scripts/features/coverage.mts
 feature-verify-rust: feature-check/build
-	$(WITH_TEST_ENV) node scripts/features/check.mjs --run --features --shard rust
+	$(WITH_TEST_ENV) node scripts/features/check.mts --run --features --shard rust
 feature-verify-other: feature-check/build
-	$(WITH_TEST_ENV) node scripts/features/check.mjs --run --features --shard other
+	$(WITH_TEST_ENV) node scripts/features/check.mts --run --features --shard other
 # feature-helper-check, feature-stress-mysql-check와 feature-stress-pg-sqlite-check는 contracts/features.json의 helper check를
 # 실행한다. FEATURE_STRESS_HELPERS는 시간이 가장 긴 stress bench의 helper다: 2000 table plan의 MySQL 적용
 # (FEATURE_STRESS_MYSQL_HELPERS)은 feature-stress-mysql-check가, stress 문서의 bench와 PostgreSQL, SQLite 적용
@@ -817,14 +817,14 @@ FEATURE_STRESS_PG_SQLITE_HELPERS = dbspec-stress dbspec-apply-stress-pg-sqlite
 FEATURE_STRESS_HELPERS = $(FEATURE_STRESS_MYSQL_HELPERS) $(FEATURE_STRESS_PG_SQLITE_HELPERS)
 FEATURE_SUITE_HELPERS = bench-database case-database conformance-result conformance-runners
 feature-helper-check: feature-check/build
-	$(WITH_TEST_ENV) node scripts/features/check.mjs --run --helpers $(addprefix --without-helper ,$(FEATURE_STRESS_HELPERS) $(FEATURE_SUITE_HELPERS))
+	$(WITH_TEST_ENV) node scripts/features/check.mts --run --helpers $(addprefix --without-helper ,$(FEATURE_STRESS_HELPERS) $(FEATURE_SUITE_HELPERS))
 feature-stress-mysql-check:
-	$(WITH_TEST_ENV) node scripts/features/check.mjs --run $(addprefix --helper ,$(FEATURE_STRESS_MYSQL_HELPERS))
+	$(WITH_TEST_ENV) node scripts/features/check.mts --run $(addprefix --helper ,$(FEATURE_STRESS_MYSQL_HELPERS))
 feature-stress-pg-sqlite-check: feature-check/build
-	$(WITH_TEST_ENV) node scripts/features/check.mjs --run $(addprefix --helper ,$(FEATURE_STRESS_PG_SQLITE_HELPERS))
+	$(WITH_TEST_ENV) node scripts/features/check.mts --run $(addprefix --helper ,$(FEATURE_STRESS_PG_SQLITE_HELPERS))
 
 feature-docs:
-	node scripts/features/build.mjs
+	node scripts/features/build.mts
 
 package-check: lease-tool
 	$(RUN_LONG) package -- ./scripts/package-check.sh
@@ -927,7 +927,7 @@ conformance-result-check/php: php-vendor-check
 conformance-result-check/typescript: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
-	node --test tests/conformance/result_typescript.test.mjs
+	node --test tests/conformance/result_typescript.test.mts
 conformance-result-check/go:
 	$(GO_TEST) ./tests/conformance/runner_go -count=1
 conformance-result-check/python: python-venv-check
@@ -946,11 +946,11 @@ conformance-rust-group-check: lease-tool
 BUILD_CONFORMANCE_STATE = $(RUN_LONG) go-build/conformance-state -- $(PUBLISH) $(abspath .runtime/bin/conformance-state) go build -o @OUT@ ./tests/conformance/check
 group-rows-physical-check: php-vendor-check
 	$(BUILD_CONFORMANCE_STATE)
-	$(WITH_TEST_ENV) node scripts/group-rows-physical-check.mjs
+	$(WITH_TEST_ENV) node scripts/group-rows-physical-check.mts
 
 unselected-column-physical-check: php-vendor-check
 	$(BUILD_CONFORMANCE_STATE)
-	$(WITH_TEST_ENV) node scripts/unselected-column-physical-check.mjs
+	$(WITH_TEST_ENV) node scripts/unselected-column-physical-check.mts
 
 # case-database-check는 공유 test database 두 곳에 table 하나를 남겨 둔 채 네 client의 model
 # case를 실행하고, case가 통과하며 공유 database와 PostgreSQL schema를 바꾸지 않고 자기
@@ -959,7 +959,7 @@ case-database-check: php-vendor-check lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/integration --cwd packages/rust -- $(CARGO_COPY) debug/integration -- cargo build --locked -p polyspec-orm-tests --bin integration
-	$(WITH_TEST_ENV) CARGO_TARGET_DIR=$(RUN_TARGET) node scripts/case-database-check.mjs
+	$(WITH_TEST_ENV) CARGO_TARGET_DIR=$(RUN_TARGET) node scripts/case-database-check.mts
 	rm -rf $(RUN_DIR)
 
 # conformance-check는 네 client의 conformance runner를 MySQL, PostgreSQL, SQLite의 bench database에서 실행해
@@ -992,7 +992,7 @@ conformance-check/%: RUN_DIR = $(abspath .runtime/run)/conformance-check-$$PPID
 # 기록한 뒤에는 같은 vector를 다시 실행해 새 기대값과 비교한다. contracts/interfaces.json의 state contract는
 # 모든 vector의 output을 읽으므로 VECTOR가 있으면 검사하지 않고 그렇다고 출력한다.
 CONFORMANCE_VECTORS = $(foreach name,$(VECTOR),-vector $(name))
-CONFORMANCE_RUN = node tests/go-run.mjs conformance-check ./tests/conformance/check run -out $(RUN_DIR)/out $(CONFORMANCE_VECTORS) -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
+CONFORMANCE_RUN = node tests/go-run.mts conformance-check ./tests/conformance/check run -out $(RUN_DIR)/out $(CONFORMANCE_VECTORS) -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
 .PHONY: conformance-check/run
 conformance-check: conformance-counter-check conformance-result-check conformance-result-physical-check conformance-check/run
 conformance-check/run: lease-tool conformance-python-models
@@ -1006,14 +1006,14 @@ conformance-check/run: lease-tool conformance-python-models
 	    dir=$(RUN_DIR)/out; [ $$db = mysql ] || dir=$$dir/$$db; \
 	    for pending in $$dir/.run-*; do \
 	      [ -d "$$pending" ] || continue; \
-	      node tests/go-run.mjs conformance-record ./tests/conformance/check record -driver $$db $(CONFORMANCE_VECTORS) $$pending/go.json $$pending/php.json $$pending/rust.json $$pending/typescript.json $$pending/python.json || exit 1; \
+	      node tests/go-run.mts conformance-record ./tests/conformance/check record -driver $$db $(CONFORMANCE_VECTORS) $$pending/go.json $$pending/php.json $$pending/rust.json $$pending/typescript.json $$pending/python.json || exit 1; \
 	      recorded=1; \
 	    done; \
 	  done; \
 	  [ $$recorded = 1 ] || { echo "conformance-check: the run failed before any comparison, so RECORD=1 has nothing to record" >&2; exit 1; }; \
 	  rm -rf $(RUN_DIR)/out && $(CONFORMANCE_RUN); \
 	else exit 1; fi
-	$(if $(VECTOR),@echo "conformance-check: the state contracts of contracts/interfaces.json are not checked because VECTOR selects only some of their vectors",PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results $(RUN_DIR)/out --results $(RUN_DIR)/out/postgres --results $(RUN_DIR)/out/sqlite)
+	$(if $(VECTOR),@echo "conformance-check: the state contracts of contracts/interfaces.json are not checked because VECTOR selects only some of their vectors",PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mts interfaces-check ./tests/interfaces/check --results $(RUN_DIR)/out --results $(RUN_DIR)/out/postgres --results $(RUN_DIR)/out/sqlite)
 	rm -rf $(RUN_DIR)
 
 # markdown-conformance-check는 tests/markdown/cases.json의 case를 client마다 FLOWMARK의 flowmark server에서
@@ -1040,7 +1040,7 @@ markdown-conformance-check/typescript: lease-tool
 decimal-bench-sqlite: lease-tool
 	./scripts/decimal-bench-sqlite.sh
 
-# decimal-physical-check의 case는 owner process마다 기한(scripts/decimal-physical-check.mjs의 timeoutMs)을 가진다. 그 process가
+# decimal-physical-check의 case는 owner process마다 기한(scripts/physical.mts의 TIMEOUT_MS)을 가진다. 그 process가
 # 쓰는 build(Rust test binary decimal_physical, Go decimalmodel test, Go state reader BUILD_CONFORMANCE_STATE)는 장기
 # 작업이므로 case 앞에서 기한 없이 RUN_LONG으로 먼저 하고(Go build는 .runtime/bin에 publish하며 build cache를 채운다), case는
 # build된 것을 실행한다.
@@ -1050,10 +1050,10 @@ decimal-physical-check: php-vendor-check cargo-downloads-check lease-tool
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/decimal-physical -- $(CARGO_LEASED) cargo test --no-run --offline --locked --manifest-path packages/rust/Cargo.toml -p polyspec-orm-tests --bin decimal_physical
 	$(RUN_LONG) go-build/decimal-physical -- $(PUBLISH) $(abspath .runtime/bin/decimalmodel.test) go test -c -o @OUT@ -tags decimalphysical ./packages/go/decimalmodel
 	$(BUILD_CONFORMANCE_STATE)
-	. $(DECIMAL_ENV) && node scripts/decimal-physical-check.mjs
+	. $(DECIMAL_ENV) && node scripts/decimal-physical-check.mts
 
 interface-check: php-vendor-check lease-tool
-	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --self-test
+	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mts interfaces-check ./tests/interfaces/check --self-test
 
 go-model-check:
 	$(RUN_LONG) go-model -- sh -c 'cd packages/go/model && go generate ./ && git diff --exit-code -- .'
@@ -1068,6 +1068,13 @@ ts-model-check: lease-tool
 
 perf-check:
 	$(WITH_TEST_ENV) ./scripts/perf-test.sh
+
+# scripts-typecheck는 저장소의 TypeScript 기반 스크립트(scripts/와 tests/의 .mts, tsconfig.json)를 tsc로 검사한다.
+# 스크립트 일부는 packages/ts의 build 출력을 import하므로 그 build 뒤에 검사한다.
+scripts-typecheck: lease-tool
+	$(HOLD_TYPESCRIPT)
+	$(TSC_BUILD)
+	$(RUN_LONG) scripts-typecheck -- node_modules/.bin/tsc -p tsconfig.json
 
 ts-check: ts-check/hold ts-check/types ts-check/test
 ts-check/hold: lease-tool
@@ -1152,25 +1159,25 @@ dbspec-language-check: lease-tool
 CLI_PREFIX ?= $(HOME)/.local
 
 # install-cli builds the TypeScript client and @polyspec/dbspec-language and installs the command dbspec-fmt under
-# CLI_PREFIX without a symbolic link (scripts/install-cli.mjs): a copy of both packages and a script that runs node
+# CLI_PREFIX without a symbolic link (scripts/install-cli.mts): a copy of both packages and a script that runs node
 # with the copied entry. Put $(CLI_PREFIX)/bin on PATH; uninstall-cli removes the copy and the script.
 .PHONY: install-cli uninstall-cli
 install-cli: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	npm run --workspace @polyspec/dbspec-language build
-	$(ONLINE) node scripts/install-cli.mjs install --prefix $(CLI_PREFIX)
+	$(ONLINE) node scripts/install-cli.mts install --prefix $(CLI_PREFIX)
 
 uninstall-cli:
-	node scripts/install-cli.mjs uninstall --prefix $(CLI_PREFIX)
+	node scripts/install-cli.mts uninstall --prefix $(CLI_PREFIX)
 
-# install-cli-check installs dbspec-fmt into a temporary prefix with scripts/install-cli.mjs, runs it and uninstalls it
-# (tests/cli/install-cli.test.mjs); the install reads the registry.
+# install-cli-check installs dbspec-fmt into a temporary prefix with scripts/install-cli.mts, runs it and uninstalls it
+# (tests/cli/install-cli.test.mts); the install reads the registry.
 install-cli-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	npm run --workspace @polyspec/dbspec-language build
-	$(ONLINE) node --test tests/cli/install-cli.test.mjs
+	$(ONLINE) node --test tests/cli/install-cli.test.mts
 
 # dbspec-go-check는 Go dbspec engine package(engine/dbspec)의 test를 모두 실행한다: tests/dbspec/cases.json의
 # 공유 vector, 자기 rule case, manifest, statement, plan, comparison, Mermaid vector, apply 정리 error,
@@ -1192,10 +1199,10 @@ docs-build:
 	npm run docs:build
 
 # docs-ci는 CI(ci.yml)의 job docs가 실행하는 문서 검사(docs-verify-idempotent, docs-check)를 make check의 runner로
-# test server 없이 실행한다(scripts/check/run.mjs `-`). 실패해도 다음 target을 실행하고, target마다의 log와 summary를
+# test server 없이 실행한다(scripts/check/run.mts `-`). 실패해도 다음 target을 실행하고, target마다의 log와 summary를
 # .runtime/check/<실행 id>/report에 남기며, workflow는 그것을 job summary와 artifact로 올린다.
 docs-ci:
-	node scripts/check/run.mjs --job-summary - docs-verify-idempotent docs-check
+	node scripts/check/run.mts --job-summary - docs-verify-idempotent docs-check
 
 docs-check:
 	npm run docs:check
@@ -1211,13 +1218,13 @@ docs-dbs-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	npm run --workspace @polyspec/dbspec-language build
-	node --test tests/docs/dbs-fence.test.mjs
+	node --test tests/docs/dbs-fence.test.mts
 
 # markdown-table-check compares the table "Markdown IR executor" of docs/dialects.md and docs/dialects.ko.md with the
 # capability table of flowmark's docs/spec/60-dialect.md at the version of tests/markdown/flowmark.version, which it
 # downloads as install-flowmark does.
 markdown-table-check:
-	node scripts/docs/markdown-table.mjs
+	node scripts/docs/markdown-table.mts
 
 # go-fmt-check fails when gofmt would change a tracked Go source and lists
 # the files it would change.
@@ -1292,7 +1299,7 @@ rust-check/clippy-test-faults: lease-tool
 .PHONY: docs-ci
 .PHONY: install install-interfaces-typescript install-php install-rust install-rust-toolchain install-rust-crates install-go install-node-min install-server-programs install-php-extension-tools ci-php-min-version ci-php-sqlite downloads-check
 install: install-php install-rust install-go install-node-min install-php-extension-tools install-python install-flowmark install-interfaces-typescript
-# install-interfaces-typescript installs the TypeScript 6.0.3 that tests/interfaces/typescript.mjs reads declarations with
+# install-interfaces-typescript installs the TypeScript 6.0.3 that tests/interfaces/typescript.mts reads declarations with
 # (config/toolchain.json exceptions): TypeScript 7.0 ships no JavaScript API of its compiler.
 install-interfaces-typescript:
 	$(ONLINE) npm ci --prefix tests/interfaces/typescript --no-audit --no-fund
@@ -1340,11 +1347,11 @@ ci-php-sqlite:
 	php scripts/ci/php-sqlite.php
 
 # downloads-check는 check가 읽는 download가 모두 있는지 network 없이 확인하고, 빠진 것을 `run make install`과
-# 함께 적는다(scripts/check/downloads.mjs). runner(scripts/check/run.mjs)는 같은 확인을 setup 단계 downloads로 실행한다.
+# 함께 적는다(scripts/check/downloads.mts). runner(scripts/check/run.mts)는 같은 확인을 setup 단계 downloads로 실행한다.
 # The crates are checked by cargo-downloads-check of the kit.mk of @polyspec/kit, which every target that runs cargo
 # --offline runs first, so a missing crate fails with its fix instead of cargo's "retry without --offline".
 downloads-check:
-	node scripts/check/downloads.mjs
+	node scripts/check/downloads.mts
 
 # rust-driver-check는 bench/rust의 native와 driver_compare를 DSN 없이 실행해 거부를 확인하고,
 # 시드된 bench database에서 한 번에 하나씩 실행해 모든 workload가 끝나는지 확인한다.
@@ -1365,12 +1372,12 @@ TIMING_GO_DBSPEC_TEST = $(RUN_DIR)/dbspec.test
 timing-check: cargo-downloads-check lease-tool
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT)) $(dir $(TIMING_GO_DBSPEC_TEST))
-	$(PUBLISH) $(DBSPEC_STRESS_DOCUMENT) node tests/dbspec/stress.mjs
+	$(PUBLISH) $(DBSPEC_STRESS_DOCUMENT) node tests/dbspec/stress.mts
 	$(RUN_LONG) go-build/dbspec-test -- $(PUBLISH) $(TIMING_GO_DBSPEC_TEST) go test -c -tags bench -o @OUT@ ./engine/dbspec
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/dbspec_stress --cwd packages/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- cargo build --release --locked --offline -p polyspec-orm-schema --example dbspec_stress
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/orm-schema-tests --cwd packages/rust -- $(CARGO_LEASED) cargo test --locked --offline -p polyspec-orm-schema --no-run
 	$(RUN_LONG) typescript-build -- npm run typescript:build
-	PATH="$(HOME)/.cargo/bin:$(PATH)" DBSPEC_STRESS_DOCUMENT=$(abspath $(DBSPEC_STRESS_DOCUMENT)) TIMING_GO_DBSPEC_TEST=$(abspath $(TIMING_GO_DBSPEC_TEST)) TIMING_RUST_STRESS=$(RUN_TARGET)/release/examples/dbspec_stress node --test --test-concurrency=1 tests/timing/preempted.test.mjs
+	PATH="$(HOME)/.cargo/bin:$(PATH)" DBSPEC_STRESS_DOCUMENT=$(abspath $(DBSPEC_STRESS_DOCUMENT)) TIMING_GO_DBSPEC_TEST=$(abspath $(TIMING_GO_DBSPEC_TEST)) TIMING_RUST_STRESS=$(RUN_TARGET)/release/examples/dbspec_stress node --test --test-concurrency=1 tests/timing/preempted.test.mts
 	rm -rf $(RUN_DIR)
 
 typescript-build: lease-tool

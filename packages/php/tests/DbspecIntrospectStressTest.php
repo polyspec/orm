@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// The shared 2000-table document from tests/dbspec/stress.mjs rendered for
+// The shared 2000-table document from tests/dbspec/stress.mts rendered for
 // SQLite, applied to a new file and introspected under the configured
 // memory_limit: the document keeps its schema text and no object is
 // unsupported.
@@ -21,14 +21,14 @@ final class DbspecIntrospectStressTest extends TestCase
         // case는 2000 table 문서를 만들어(node process 하나) SQLite file에 적용하고 introspect한다.
         fwrite(STDERR, 'memoryLimit=' . ini_get('memory_limit') . "\n");
         $root = dirname(__DIR__, 3);
-        $process = proc_open(['node', "$root/tests/dbspec/stress.mjs"], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
-        Assert::assertTrue(is_resource($process), 'node tests/dbspec/stress.mjs did not start');
+        $process = proc_open(['node', "$root/tests/dbspec/stress.mts"], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        Assert::assertTrue(is_resource($process), 'node tests/dbspec/stress.mts did not start');
         $text = stream_get_contents($pipes[1]);
         $errors = stream_get_contents($pipes[2]);
         fclose($pipes[1]);
         fclose($pipes[2]);
         $status = proc_close($process);
-        Assert::assertFalse($status !== 0 || $text === false || $text === '', "node tests/dbspec/stress.mjs failed with status $status: $errors");
+        Assert::assertFalse($status !== 0 || $text === false || $text === '', "node tests/dbspec/stress.mts failed with status $status: $errors");
         $parsed = Dbspec::parse($text, []);
         Assert::assertNotNull($parsed->document, 'the stress document does not parse');
         $rendered = Dbspec::render([$parsed->document], 'sqlite');

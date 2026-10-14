@@ -3,7 +3,7 @@
 // to exactly the listed statements.
 //
 // Usage: node --test packages/ts/tests/dbspec-render.mjs (after the build)
-import { caseTest } from '../../../tests/testcase.mjs';
+import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parseDbspec, renderDbspec } from '../dist/dbspec/index.js';

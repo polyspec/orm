@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 // dbspec compare runner(php.php, php-extension.php)가 함께 쓰는 vector 읽기와 출력이다. 출력 함수는 Dbspec class
-// 하나(Polyspec\Orm\Dbspec\Dbspec 또는 확장의 Polyspec\Orm\Dbspec\Native\Dbspec)를 받아 tests/dbspec/compare/check.mjs의 줄 형식으로
+// 하나(Polyspec\Orm\Dbspec\Dbspec 또는 확장의 Polyspec\Orm\Dbspec\Native\Dbspec)를 받아 tests/dbspec/compare/check.mts의 줄 형식으로
 // 출력한다: dbspec_write_interface는 공유 case, stress 문서, 파일 읽기, manifest와 statement vector를,
 // dbspec_write_plans는 plan vector를, dbspec_write_mermaid는 Mermaid vector를 쓴다. 두 class는 같은 메서드와 결과
 // 모양을 가진다.
@@ -431,7 +431,7 @@ function dbspec_write_positions(string $dbspec, array $cases): void
 }
 
 /**
- * The input of every analysis that syntax.json names, by its id, as scripts/dbspec/syntax-vectors.mjs derives it from
+ * The input of every analysis that syntax.json names, by its id, as scripts/dbspec/syntax-vectors.mts derives it from
  * cases.json: the main document of each canonical, normalize and invalid case ("<section>/<id>"), each document of a
  * sets case with the parsing documents and the other documents of the case by header name ("sets/<id>/<place>",
  * 1-based), and each document of a hashes case with the others ("hashes/<id>/<name>").
@@ -522,7 +522,7 @@ function dbspec_write_syntax(string $dbspec, array $cases, string $syntaxPath): 
     }
 }
 
-/** step 하나를 statement 줄과 그 속성 줄로 쓴다(tests/dbspec/compare/check.mjs). */
+/** step 하나를 statement 줄과 그 속성 줄로 쓴다(tests/dbspec/compare/check.mts). */
 function dbspec_step(object $s): void
 {
     echo "| {$s->statement}\n";

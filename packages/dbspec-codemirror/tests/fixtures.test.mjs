@@ -8,7 +8,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { EditorState } from '@codemirror/state';
 import { foldService } from '@codemirror/language';
 import { EditorView } from '@codemirror/view';
-import { caseTest } from '../../../tests/testcase.mjs';
+import { caseTest } from '../../../tests/testcase.mts';
 import { dbspec, dbspecDiagnostics, formatDbspec } from '../dist/index.js';
 
 const TIMEOUT = 15000;

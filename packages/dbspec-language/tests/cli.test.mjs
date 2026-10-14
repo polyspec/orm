@@ -10,7 +10,7 @@ import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { caseTest, PROCESS } from '../../../tests/testcase.mjs';
+import { caseTest, PROCESS } from '../../../tests/testcase.mts';
 import { codePointIndex, parserLines, repo } from './helpers.mjs';
 
 // Each case runs node as a child process (PROCESS).

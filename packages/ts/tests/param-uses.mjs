@@ -4,7 +4,7 @@
 //
 // 사용: node packages/ts/tests/param-uses.mjs (npm run typescript:build 뒤)
 import { isDeepStrictEqual } from 'node:util';
-import { COMPUTE, cases } from '../../../tests/testcase.mjs';
+import { COMPUTE, cases } from '../../../tests/testcase.mts';
 import { dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { paramUses } from '../dist/engine/params.js';
 import { validate } from '../dist/engine/validate.js';

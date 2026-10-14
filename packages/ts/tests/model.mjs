@@ -17,7 +17,7 @@ import {
   registerModel,
 } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { DATABASE, sections } from '../../../tests/testcase.mjs';
+import { DATABASE, sections } from '../../../tests/testcase.mts';
 import * as modelModule from '../dist/model.js';
 import { caseName, mysqlConnection, postgresClient, relatedDsn, withCaseDatabase } from './case-database.mjs';
 

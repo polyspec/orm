@@ -78,7 +78,7 @@ vendors; this file states only the rules of orm.
   (installs, toolchains, servers) are setup steps too: each runs after a failed earlier one, and a
   target that needs what a failed step installs is recorded as `not-run` with that step, so a
   failed install never stops the suite. What a target needs includes what the setup steps of its
-  needs need (`SETUP_NEEDS` of scripts/check/ci-setup.mjs: `databases/create` installs the decimal
+  needs need (`SETUP_NEEDS` of scripts/check/ci-setup.mts: `databases/create` installs the decimal
   database with PHP and the Composer autoload), and `make repo-check` requires that every CI group
   runs the setup steps of all of it. Each failure records its
   inputs, the exact command, its output, the expected against the actual value and the environment
@@ -97,7 +97,7 @@ vendors; this file states only the rules of orm.
   so only the setup steps start servers that outlive a step.
 - A test's result does not depend on the environment of whoever runs it. A JavaScript test starts a
   child process (make, a check script, a fake tool) with `isolatedEnvironment` of
-  tests/environment.mjs: `PATH`, `HOME` and `TMPDIR`, and the variables the case gives, so the
+  tests/environment.mts: `PATH`, `HOME` and `TMPDIR`, and the variables the case gives, so the
   `GROUP`, `GITHUB_ACTIONS` and `ORM_CHECK_RUN_ID` of a CI job, the `MAKEFLAGS` of a calling make
   and the variables the Makefile exports do not reach it (`make repo-check`).
 - Performance is measured and reported; it never fails a test. A test prints its measurements (CPU and wall-clock
@@ -129,7 +129,7 @@ vendors; this file states only the rules of orm.
   changing its declaration with the CI evidence of that release.
 - A build output that another run or a later step reads is published atomically: it is built into a
   temporary file or directory beside it and renamed into place (`$(PUBLISH)`,
-  scripts/typescript/build.mjs), so a stopped build never leaves half an output.
+  scripts/typescript/build.mts), so a stopped build never leaves half an output.
 - A failure message names the cause and the fix: a missing variable, argument, file or tool says what
   is missing and then how to provide it (`; run make <target>, which ...`). `make repo-check`
   refuses a missing-condition message without a fix.
@@ -173,7 +173,7 @@ vendors; this file states only the rules of orm.
   and the limits are the data of `config/commits.json`. No tracked file records a commit id.
 - Owner checks: `make owner-check` (or `make owner-check PATHS="<paths>"`) is a tool that runs the
   checks owning the changed files (`config/owner-checks.json` hands the paths to
-  `make feature-owner-check`, which selects them with `scripts/features/owners.mjs`); no rule requires it before a commit or a push, because CI runs
+  `make feature-owner-check`, which selects them with `scripts/features/owners.mts`); no rule requires it before a commit or a push, because CI runs
   the full suite after the push.
   Every verification command of `contracts/features.json` declares `inputs`, and every coverage
   part (an owner client or a dependent part) declares its `tests` and optional `inputs`. The command runs

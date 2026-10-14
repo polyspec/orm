@@ -11,7 +11,7 @@
 //
 // Usage: node packages/ts/tests/add-tables-and-columns.mjs [case ...] (after npm run typescript:build)
 import { Db, OrmError, dbspecManifest, parseDbspec, readDbspecFile } from '../dist/index.js';
-import { runCase } from '../../../tests/testcase.mjs';
+import { runCase } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 import { nativeQuery } from './coverage_case.mjs';
 

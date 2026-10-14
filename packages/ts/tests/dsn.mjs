@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Db } from '../dist/index.js';
 import { openDriver, parseDsn } from '../dist/driver.js';
-import { caseTest, cases, COMPUTE } from '../../../tests/testcase.mjs';
+import { caseTest, cases, COMPUTE } from '../../../tests/testcase.mts';
 
 const run = cases();
 await run.run('dsn/invalid', COMPUTE, async () => {

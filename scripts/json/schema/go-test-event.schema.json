@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "One event of go test -json (cmd/test2json)",
+  "description": "The fields of a test2json event that orm's scripts read. Go documents the event in cmd/test2json and may add fields, which this schema leaves open.",
+  "type": "object",
+  "required": ["Action"],
+  "properties": {
+    "Time": { "type": "string" },
+    "Action": { "enum": ["start", "run", "pause", "cont", "pass", "bench", "fail", "output", "skip", "build-output", "build-fail"] },
+    "Package": { "type": "string" },
+    "ImportPath": { "type": "string" },
+    "Test": { "type": "string" },
+    "Elapsed": { "type": "number" },
+    "Output": { "type": "string" },
+    "FailedBuild": { "type": "string" }
+  }
+}

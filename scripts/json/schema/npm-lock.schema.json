@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "package-lock.json and node_modules/.package-lock.json (lockfileVersion 3)",
+  "description": "The fields of an npm lock that orm's scripts read: each package path with its version and whether it is optional or a link. npm writes the other fields, which this schema leaves open.",
+  "type": "object",
+  "required": ["packages"],
+  "properties": {
+    "lockfileVersion": { "const": 3 },
+    "packages": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "version": { "type": "string" },
+          "optional": { "type": "boolean" },
+          "link": { "type": "boolean" },
+          "resolved": { "type": "string" }
+        }
+      }
+    }
+  }
+}

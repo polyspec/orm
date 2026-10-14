@@ -482,7 +482,7 @@ func runOne(c *testcase.Case, root, output, language string) error {
 		}
 		return runCommand(c, root, output, runnerDeadline, "php", append(args, flags...)...)
 	case "typescript":
-		return runCommand(c, root, output, runnerDeadline, "node", append([]string{"tests/conformance/runner_typescript.mjs"}, flags...)...)
+		return runCommand(c, root, output, runnerDeadline, "node", append([]string{"tests/conformance/runner_typescript.mts"}, flags...)...)
 	case "rust":
 		if rustRunner == "" {
 			return fmt.Errorf("rust runner is not built")

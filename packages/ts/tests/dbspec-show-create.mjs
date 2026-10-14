@@ -3,7 +3,7 @@
 // to no body for a name the statement does not have.
 //
 // Usage: node --test packages/ts/tests/dbspec-show-create.mjs (after the build)
-import { caseTest } from '../../../tests/testcase.mjs';
+import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createChecks } from '../dist/dbspec/introspect_mysql.js';

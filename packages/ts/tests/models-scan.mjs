@@ -1,7 +1,7 @@
 // models script 검사: scan 대상이 model을 호출하는 source와 정확히 같고,
 // commit된 src/models/models.ts가 그 scan의 generator 출력과 같은지 확인한다.
 // Usage: node --test packages/ts/tests/models-scan.mjs (after tsc -p packages/ts/tsconfig.build.json)
-import { caseTest } from '../../../tests/testcase.mjs';
+import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';

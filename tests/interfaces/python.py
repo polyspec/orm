@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Python symbol extractor of tests/interfaces/check: prints the public declarations of the Python
-# client as JSON in the form of tests/interfaces/typescript.mjs. A key names a top-level
+# client as JSON in the form of tests/interfaces/typescript.mts. A key names a top-level
 # declaration as "<path>::<name>", a member as "<class key>.<name>" and a field as
 # "<class key>#field.<name>"; a value is the class header, the signature or the annotation.
 #

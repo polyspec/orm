@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "tests/dbspec/syntax.json",
+  "description": "The syntax analysis vectors that scripts/dbspec/syntax-vectors.mts generates: each analysis input with its tokens as [line, start, end, class].",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "note",
+    "cases"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "note": {
+      "type": "string"
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "tokens"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tokens": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "enum": [
+                    "keyword",
+                    "type",
+                    "name",
+                    "setting",
+                    "number",
+                    "string",
+                    "operator",
+                    "punctuation",
+                    "comment",
+                    "word"
+                  ]
+                }
+              ],
+              "minItems": 4,
+              "maxItems": 4,
+              "items": false
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "lines": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

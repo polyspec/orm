@@ -1,5 +1,5 @@
 import { GroupRow, GroupRows, OrmError } from '../dist/index.js';
-import { cases, COMPUTE } from '../../../tests/testcase.mjs';
+import { cases, COMPUTE } from '../../../tests/testcase.mts';
 
 const run = cases();
 await run.run('group_rows/owner', COMPUTE, () => {

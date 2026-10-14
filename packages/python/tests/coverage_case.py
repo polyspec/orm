@@ -1,4 +1,4 @@
-# The shared runner of the Python feature coverage tests (scripts/features/coverage.mjs). The checker runs
+# The shared runner of the Python feature coverage tests (scripts/features/coverage.mts). The checker runs
 # `<python> <file> <case id>...`, and the whole output must be `CASE <id> PASS` lines, so the runner runs
 # exactly the requested cases in their order and writes that one line for each case that passed. A failure
 # raises, so the process ends with a nonzero code and the error.

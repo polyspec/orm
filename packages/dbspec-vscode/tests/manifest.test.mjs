@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TOKEN_CLASSES } from '@polyspec/dbspec-language';
 import { createMessageConnection, StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node';
-import { caseTest, COMPUTE, PROCESS } from '../../../tests/testcase.mjs';
+import { caseTest, COMPUTE, PROCESS } from '../../../tests/testcase.mts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));

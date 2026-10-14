@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 // The shared syntax vectors (tests/dbspec/syntax.json, docs/dbspec.md "Syntax analysis"): a strict reader, and the
-// analyses the vectors need, built as scripts/dbspec/syntax-vectors.mjs builds them (vectorInputs). Shared by the PHP
+// analyses the vectors need, built as scripts/dbspec/syntax-vectors.mts builds them (vectorInputs). Shared by the PHP
 // client test and the extension test; every runtime matches the same tokens exactly.
 
 const DBSPEC_SYNTAX_CLASSES = [
@@ -78,7 +78,7 @@ function dbspec_syntax_load(string $root): array
     return $out;
 }
 
-/** join as scripts/dbspec/syntax-vectors.mjs writes a document: LF, CRLF, or alternating CRLF and LF with no final end. */
+/** join as scripts/dbspec/syntax-vectors.mts writes a document: LF, CRLF, or alternating CRLF and LF with no final end. */
 function dbspec_syntax_join(array $lines, bool $crlf, bool $mixed = false): string
 {
     if ($mixed) {

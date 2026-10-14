@@ -5,7 +5,7 @@
 //
 // Usage: node --test packages/dbspec-language/tests/editor.test.mjs (after the build)
 import assert from 'node:assert/strict';
-import { caseTest } from '../../../tests/testcase.mjs';
+import { caseTest } from '../../../tests/testcase.mts';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import * as language from '../dist/index.js';

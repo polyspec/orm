@@ -11,18 +11,24 @@
   ],
   "scripts": {
     "docs:dev": "vitepress dev docs",
-    "docs:build": "node scripts/docs/build.mjs",
+    "docs:build": "node scripts/docs/build.mts",
     "docs:preview": "vitepress preview docs",
-    "docs:check": "npm run docs:build && node scripts/docs/check.mjs",
-    "docs:verify-idempotent": "node scripts/docs/idempotent.mjs",
-    "docs:rules-check": "node scripts/docs/rules.mjs",
+    "docs:check": "npm run docs:build && node scripts/docs/check.mts",
+    "docs:verify-idempotent": "node scripts/docs/idempotent.mts",
+    "docs:rules-check": "node scripts/docs/rules.mts",
     "typescript:check": "npm exec --workspace packages/ts -- tsc -p tsconfig.json --noEmit",
     "typescript:build": "npm --prefix packages/ts run build",
-    "typescript:test": "node tests/run-long.mjs typescript-build -- npm run typescript:build && node packages/ts/tests/dsn.mjs && node packages/ts/tests/idle-connection-end.mjs && node packages/ts/tests/engine.mjs && node packages/ts/tests/generate.mjs && node packages/ts/tests/generate-scan.mjs && node packages/ts/tests/codec-vector.mjs && node packages/ts/tests/styled-value.mjs && node packages/ts/tests/dbspec.mjs && node packages/ts/tests/dbspec-rules.mjs && node packages/ts/tests/package-declarations.mjs && node packages/ts/tests/request_hook.mjs && ./scripts/typescript/sqlite-test.sh"
+    "typescript:test": "node tests/run-long.mts typescript-build -- npm run typescript:build && node packages/ts/tests/dsn.mjs && node packages/ts/tests/idle-connection-end.mjs && node packages/ts/tests/engine.mjs && node packages/ts/tests/generate.mjs && node packages/ts/tests/generate-scan.mjs && node packages/ts/tests/codec-vector.mjs && node packages/ts/tests/styled-value.mjs && node packages/ts/tests/dbspec.mjs && node packages/ts/tests/dbspec-rules.mjs && node packages/ts/tests/package-declarations.mjs && node packages/ts/tests/request_hook.mjs && ./scripts/typescript/sqlite-test.sh"
   },
   "devDependencies": {
     "@polyspec/kit": "https://github.com/polyspec/kit/releases/download/v0.0.42/polyspec-kit-npm-0.0.42.tgz",
+    "@types/node": "26.6.5",
+    "@types/semver": "7.8.0",
+    "ajv": "8.20.0",
     "mermaid": "12.2.0",
+    "minimatch": "10.2.6",
+    "semver": "7.8.5",
+    "typescript": "7.0.2",
     "vitepress": "1.6.4"
   },
   "overrides": {

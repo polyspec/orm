@@ -11,7 +11,7 @@
 // Usage: node packages/ts/tests/driver-error.mjs [case ...] (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
-import { runCase } from '../../../tests/testcase.mjs';
+import { runCase } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 
 const refusalText = await readFile(new URL('../../../contracts/fixtures/refusal.dbs', import.meta.url), 'utf8');

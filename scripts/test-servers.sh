@@ -10,7 +10,7 @@
 #   test-servers.sh tls
 #   test-servers.sh stop
 #
-# start chooses six free ports on 127.0.0.1 (scripts/free-ports.mjs) for the
+# start chooses six free ports on 127.0.0.1 (scripts/free-ports.mts) for the
 # servers of this checkout, so two checkouts never contend for one fixed port;
 # a server owns its port from the moment it listens. The environment file
 # records them, and a later start or tls of running servers reads them from it.
@@ -112,8 +112,8 @@ socket_dir() {
 # choose_ports gives the servers of a new start six free ports on 127.0.0.1.
 choose_ports() {
   # shellcheck disable=SC2046
-  set -- $(node "$ROOT/scripts/free-ports.mjs" 6)
-  [ $# -eq 6 ] || { echo "test-servers: scripts/free-ports.mjs chose $# ports, not 6; run node scripts/free-ports.mjs 6 to see why" >&2; exit 1; }
+  set -- $(node "$ROOT/scripts/free-ports.mts" 6)
+  [ $# -eq 6 ] || { echo "test-servers: scripts/free-ports.mts chose $# ports, not 6; run node scripts/free-ports.mts 6 to see why" >&2; exit 1; }
   for p in "$@"; do
     port "$p"
   done
@@ -218,7 +218,7 @@ psql_cli() {
 MYSQLD_FILES=--secure-file-priv=NULL
 # MYSQL_LOWER_CASE is lower_case_table_names of the MySQL data directory. 1 is the one value both platforms accept
 # (0 needs a case-sensitive file system, 2 is not available on Linux). It is fixed when the data directory is
-# initialized, so start moves the data when the directory holds another value (scripts/test-servers-mysql.mjs).
+# initialized, so start moves the data when the directory holds another value (scripts/test-servers-mysql.mts).
 MYSQL_LOWER_CASE=1
 MYSQLD_NAMES=--lower-case-table-names=$MYSQL_LOWER_CASE
 # MYSQLD_BINLOG is the binary log retention of both mysqld. The server removes expired logs only at start and when it
@@ -500,7 +500,7 @@ start() {
     fi
     # The running servers keep their data; a MySQL setting that differs from
     # the declared one moves the data into newly initialized directories.
-    LEASES=$LEASES node "$ROOT/scripts/test-servers-mysql.mjs" "$0" "$DIR" "$MYSQL_PORT" "$MYSQL_REPLICA_PORT" "$MYSQL_LOWER_CASE"
+    LEASES=$LEASES node "$ROOT/scripts/test-servers-mysql.mts" "$0" "$DIR" "$MYSQL_PORT" "$MYSQL_REPLICA_PORT" "$MYSQL_LOWER_CASE"
     write_env
     echo "test-servers: running; environment $ENV_FILE"
     cat "$ENV_FILE"
@@ -551,7 +551,7 @@ case "$1" in
     ;;
   mysql-stop)
     # mysql-stop and mysql-start <mysql-port> <mysql-replica-port> are the steps
-    # of the MySQL migration (scripts/test-servers-mysql.mjs): they stop the
+    # of the MySQL migration (scripts/test-servers-mysql.mts): they stop the
     # MySQL servers, and initialize and start them with the declared settings.
     [ $# -eq 1 ] || usage
     for server in "$MYSQL_REPLICA_PID:$MYSQL_REPLICA_SOCKET:the MySQL replica" "$MYSQL_PID:$MYSQL_SOCKET:MySQL"; do

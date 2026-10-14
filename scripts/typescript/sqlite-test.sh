@@ -8,9 +8,9 @@ set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 cd "$ROOT"
-# build는 자기 case를 보고하지 않는 장기 작업이므로 tests/run-long.mjs로 기한 없이 실행하고,
+# build는 자기 case를 보고하지 않는 장기 작업이므로 tests/run-long.mts로 기한 없이 실행하고,
 # build 출력과 종료 코드는 STEP 줄로 보인다.
-node tests/run-long.mjs typescript-build -- npm run typescript:build
+node tests/run-long.mts typescript-build -- npm run typescript:build
 # test는 서로의 결과를 읽지 않으므로 실패한 test 뒤에도 다음 test를 실행하고, 끝에 실패한 test를 모두 적는다.
 FAILED=
 keep() {

@@ -9,13 +9,13 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join as joinPath } from 'node:path';
-import { caseTest } from '../../../tests/testcase.mjs';
+import { caseTest } from '../../../tests/testcase.mts';
 import * as language from '../dist/index.js';
 import { nodeSetHost } from '../dist/cli/host.js';
 import { parseDbspec } from '@polyspec/orm/dbspec';
 import { dbspecManifest } from '@polyspec/orm';
 import { codePointIndex, join, parserLines, utf16Index, vectorsFile } from './helpers.mjs';
-import { readCases } from '../../../tests/dbspec/cases.mjs';
+import { readCases } from '../../../tests/dbspec/cases.mts';
 
 // The deadline of one case; each case runs through caseTest so it reports its RUN, PASS or FAIL line.
 const TIMEOUT = 15000;

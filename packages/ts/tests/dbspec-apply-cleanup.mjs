@@ -6,7 +6,7 @@
 // whose errors are the first failure and then the cleanup errors in order.
 //
 // Usage: node --test packages/ts/tests/dbspec-apply-cleanup.mjs (after the build)
-import { caseTest } from '../../../tests/testcase.mjs';
+import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';

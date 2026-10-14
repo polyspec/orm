@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "composer.json",
+  "description": "The fields of a Composer manifest that orm's scripts read. The other fields are Composer's, which this schema leaves open.",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string" },
+    "version": { "type": "string" },
+    "require": { "$ref": "#/$defs/requirements" },
+    "require-dev": { "$ref": "#/$defs/requirements" },
+    "config": {
+      "type": "object",
+      "properties": { "vendor-dir": { "type": "string", "minLength": 1 } }
+    }
+  },
+  "$defs": {
+    "requirements": { "type": "object", "additionalProperties": { "type": "string" } }
+  }
+}

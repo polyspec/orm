@@ -6,7 +6,7 @@
 // Usage: node packages/ts/tests/mysql_tls.mjs
 import { Db } from '../dist/index.js';
 import { parseDsn } from '../dist/driver.js';
-import { cases, COMPUTE, DATABASE } from '../../../tests/testcase.mjs';
+import { cases, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
 
 // 각 case는 실패를 모아 그 case의 끝에 한 error로 보고한다.
 function check(failures) {

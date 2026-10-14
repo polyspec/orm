@@ -13,7 +13,7 @@
 // Usage: node packages/ts/tests/idle-connection-end.mjs [child <dialect> <dsn>]
 import { spawnSync } from 'node:child_process';
 import { connect } from '../dist/index.js';
-import { DATABASE, sections } from '../../../tests/testcase.mjs';
+import { DATABASE, sections } from '../../../tests/testcase.mts';
 import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
 
 /**

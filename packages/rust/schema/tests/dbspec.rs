@@ -185,7 +185,7 @@ fn shared_dbspec_vectors(file: &Value, seen: &mut std::collections::BTreeSet<Str
     trials
 }
 
-/// The analyses of tests/dbspec/syntax.json, built as scripts/dbspec/syntax-vectors.mjs builds them (`vectorInputs`):
+/// The analyses of tests/dbspec/syntax.json, built as scripts/dbspec/syntax-vectors.mts builds them (`vectorInputs`):
 /// the main document of each canonical, normalize and invalid case; each document of a sets case with its 1-based
 /// place as the id suffix, with the parsing documents and the other documents of the case; each document of a hashes
 /// case by its name.

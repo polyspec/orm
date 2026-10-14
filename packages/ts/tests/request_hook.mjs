@@ -6,7 +6,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runCase, DATABASE } from '../../../tests/testcase.mjs';
+import { runCase, DATABASE } from '../../../tests/testcase.mts';
 import { cases, runOn } from './request_hook_run.mjs';
 
 let failures = 0;

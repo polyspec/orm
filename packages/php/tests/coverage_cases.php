@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// packages/php/tests/Coverage*Test.php가 함께 쓰는 feature coverage helper다(scripts/features/coverage.mjs가
+// packages/php/tests/Coverage*Test.php가 함께 쓰는 feature coverage helper다(scripts/features/coverage.mts가
 // 그 test method를 PHPUnit으로 실행한다).
 
 use Polyspec\Orm\Config;

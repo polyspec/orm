@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 766aca10f5d5bbf8648d64d1677c89c12963e3e5a901dfc2f2260042dfe3fc7c -->
+<!-- source-sha256: 9a2c9071f463c575d112c33195e1acb2ac146573c2932653f81be3b2938e0e5b -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -63,7 +63,7 @@ orm 자신의 규칙만 적는다.
   실행하며, target의 독립된 부분은 실패한 부분 뒤에도 실행하고, 실행은 묶음 전체를 끝까지 마친다. CI의 setup
   step(설치, toolchain, server)도 setup 단계다: 각 step은 앞의 step이 실패해도 실행되고, 실패한 step이 설치하는
   것이 필요한 target은 그 step과 함께 `not-run`으로 기록하므로 설치 하나가 실패해도 묶음은 멈추지 않는다. target이
-  필요로 하는 것에는 그 need의 setup 단계가 필요로 하는 것이 들어간다(scripts/check/ci-setup.mjs의 `SETUP_NEEDS`:
+  필요로 하는 것에는 그 need의 setup 단계가 필요로 하는 것이 들어간다(scripts/check/ci-setup.mts의 `SETUP_NEEDS`:
   `databases/create`는 decimal database를 PHP와 Composer autoload로 설치한다). `make repo-check`는 모든 CI group이 그
   모두의 setup step을 실행하기를 요구한다. 실패마다
   입력, 정확한 명령, 출력, 기대값과 실제값, 그것과 관련된 환경 사실을 기록해 로컬에서 다시 실행하지 않고 진단할
@@ -78,7 +78,7 @@ orm 자신의 규칙만 적는다.
   임시 directory를 drop할 때 지우는 값으로 가진다. 자기 session을 새로 여는 process는 group을 떠나 보이지 않으므로,
   단계보다 오래 사는 server는 setup 단계만 시작한다.
 - test의 결과는 그것을 실행한 쪽의 환경에 달리지 않는다. JavaScript test는 하위 process(make, check script, 가짜
-  도구)를 tests/environment.mjs의 `isolatedEnvironment`로 시작한다: `PATH`, `HOME`, `TMPDIR`과 case가 주는 변수뿐이므로
+  도구)를 tests/environment.mts의 `isolatedEnvironment`로 시작한다: `PATH`, `HOME`, `TMPDIR`과 case가 주는 변수뿐이므로
   CI job의 `GROUP`, `GITHUB_ACTIONS`, `ORM_CHECK_RUN_ID`, 상위 make의 `MAKEFLAGS`와 Makefile이 export하는 변수는 그
   process에 닿지 않는다(`make repo-check`).
 - 성능은 측정하고 보고할 뿐 test를 실패시키지 않는다. test는 측정(CPU 시간과 wall-clock 시간, 기준, 비율, 기계)을
@@ -103,7 +103,7 @@ orm 자신의 규칙만 적는다.
   설치 도구가 허용하는 만큼 정확한 release를 적고, CI는 선언한 것을 설치하며, 실행 중인 도구가 다르면
   `make toolchain-check`와 `make repo-check`가 실패한다. 새 release는 그 release의 CI 증거와 함께 선언을 바꾸어 들인다.
 - 다른 실행이나 뒤의 단계가 읽는 build 출력은 원자적으로 publish한다: 옆의 임시 file이나 directory에
-  build하고 rename으로 최종 경로에 놓으므로(`$(PUBLISH)`, scripts/typescript/build.mjs) 멈춘 build가 반쪽
+  build하고 rename으로 최종 경로에 놓으므로(`$(PUBLISH)`, scripts/typescript/build.mts) 멈춘 build가 반쪽
   출력을 남기지 않는다.
 - 실패 message는 원인과 고치는 방법을 적는다: 빠진 변수, 인자, file, 도구는 무엇이 빠졌는지와 그것을 주는
   방법(`; run make <target>, which ...`)을 적는다. `make repo-check`는 고치는 방법이 없는 빠진 조건의
@@ -140,7 +140,7 @@ orm 자신의 규칙만 적는다.
   추적하는 file은 commit id를 기록하지 않는다.
 - 소유 검사: `make owner-check`(또는 `make owner-check PATHS="<paths>"`)는 바뀐 file을 소유한 검사를 실행하는
   도구다(`config/owner-checks.json`이 path를 `make feature-owner-check`에 넘기고, 그것이
-  `scripts/features/owners.mjs`로 검사를 고른다). CI가 push 뒤에 전체 묶음을 실행하므로, commit이나 push 전에 그것을 요구하는 규칙은 없다.
+  `scripts/features/owners.mts`로 검사를 고른다). CI가 push 뒤에 전체 묶음을 실행하므로, commit이나 push 전에 그것을 요구하는 규칙은 없다.
   `contracts/features.json`의 모든 검증 명령은 `inputs`를, coverage 단위(owner client와 사용 부분)는
   `tests`와 선택적 `inputs`를 선언한다. 이 명령은 바뀐 file이 그 입력이거나 선언한 fixture data가 그 file을
   적는 명령과 단위, 그리고 `contracts/features.json`의 자기 항목이 바뀐 기능의 명령과 단위만 실행한다.

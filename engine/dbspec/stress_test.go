@@ -17,7 +17,7 @@ import (
 )
 
 // TestStressDocument parses and emits the shared 2000-table, 60000-column,
-// 10000-foreign-key document that node tests/dbspec/stress.mjs writes, and
+// 10000-foreign-key document that node tests/dbspec/stress.mts writes, and
 // parses it five times. It prints the median CPU time of the parsing thread,
 // the median CPU time of the reference work and their ratio, and a warning when
 // the ratio exceeds referenceRatio (docs/dbspec.md, "Verification"); a
@@ -32,12 +32,12 @@ func TestStressDocument(t *testing.T) {
 	root := repositoryRoot(t)
 	runTimed(t, "stress", 120*time.Second, func() error {
 		generated := time.Now()
-		command := exec.Command("node", filepath.Join(root, "tests", "dbspec", "stress.mjs"))
+		command := exec.Command("node", filepath.Join(root, "tests", "dbspec", "stress.mts"))
 		var stdout, stderr bytes.Buffer
 		command.Stdout = &stdout
 		command.Stderr = &stderr
 		if err := command.Run(); err != nil {
-			return fmt.Errorf("node tests/dbspec/stress.mjs: %w: %s", err, stderr.String())
+			return fmt.Errorf("node tests/dbspec/stress.mts: %w: %s", err, stderr.String())
 		}
 		text := stdout.String()
 		t.Logf("stress generate bytes=%d lines=%d elapsed=%s", len(text), strings.Count(text, "\n"), time.Since(generated))

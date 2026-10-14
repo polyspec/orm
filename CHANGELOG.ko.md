@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d5dd2f11afc6fc309fc404be56db6aeeb7aec2940a63b37f0f7543d04e46457a -->
+<!-- source-sha256: 648c9b41d98b20587638a560ae3173673c78f201dfc2bbb323261198aaa4c556 -->
 # 변경 이력
 
 ## Unreleased
 
+- 기반 스크립트와 test는 make scripts-typecheck가 검사하는 TypeScript이고, 모든 JSON file을 JSON Schema로 읽으며, 자기 구현 대신 node:util parseArgs, minimatch, path.posix, semver를 쓴다. (#T137-1-4-1)
 - TypeScript orm-gen scan은 and, or처럼 not, andNot, orNot callback 안에서 부르는 chain method를 선언한다. (#T174)
 
 ## 0.0.16

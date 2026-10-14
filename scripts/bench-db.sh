@@ -37,9 +37,9 @@ seed_mysql() {
   }
 
   mysql_cli -e "DROP DATABASE IF EXISTS \`$mysql_db\`; CREATE DATABASE \`$mysql_db\`"
-  node "$ROOT/tests/go-run.mjs" bench-install ./bench/install -dsn "$BENCH_MYSQL_DSN"
+  node "$ROOT/tests/go-run.mts" bench-install ./bench/install -dsn "$BENCH_MYSQL_DSN"
   mysql_cli --init-command="SET time_zone='+00:00'" "$mysql_db" < bench/sql/seed.mysql.sql
-  node "$ROOT/tests/go-run.mjs" bench-seedaes ./bench/seedaes -driver mysql -dsn "$mysql_user@tcp($mysql_host:$mysql_port)/$mysql_db?parseTime=true"
+  node "$ROOT/tests/go-run.mts" bench-seedaes ./bench/seedaes -driver mysql -dsn "$mysql_user@tcp($mysql_host:$mysql_port)/$mysql_db?parseTime=true"
   echo "bench-db: $mysql_db installed from schema/bench.dbs and seeded"
 }
 
@@ -53,10 +53,10 @@ seed_postgres() {
 
   PGTZ=UTC psql -X -q -v ON_ERROR_STOP=1 "postgres://$pg_server/postgres?sslmode=disable" \
     -c "DROP DATABASE IF EXISTS \"$pg_db\"" -c "CREATE DATABASE \"$pg_db\""
-  node "$ROOT/tests/go-run.mjs" bench-install ./bench/install -dsn "$BENCH_POSTGRES_DSN"
+  node "$ROOT/tests/go-run.mts" bench-install ./bench/install -dsn "$BENCH_POSTGRES_DSN"
   PGTZ=UTC PGOPTIONS='-c client_min_messages=warning' psql -X -q -o /dev/null -v ON_ERROR_STOP=1 \
     "postgres://$pg_server/$pg_db?sslmode=disable" -f bench/sql/seed.pg.sql
-  node "$ROOT/tests/go-run.mjs" bench-seedaes ./bench/seedaes -driver postgres -dsn "postgres://$pg_server/$pg_db?sslmode=disable"
+  node "$ROOT/tests/go-run.mts" bench-seedaes ./bench/seedaes -driver postgres -dsn "postgres://$pg_server/$pg_db?sslmode=disable"
   echo "bench-db: $pg_db installed from schema/bench.dbs and seeded"
 }
 
@@ -66,9 +66,9 @@ seed_sqlite() {
   sqlite_path=${BENCH_SQLITE_DSN#sqlite://}; sqlite_path=${sqlite_path%%\?*}
 
   rm -f "$sqlite_path" "$sqlite_path-wal" "$sqlite_path-shm"
-  node "$ROOT/tests/go-run.mjs" bench-install ./bench/install -dsn "$BENCH_SQLITE_DSN"
+  node "$ROOT/tests/go-run.mts" bench-install ./bench/install -dsn "$BENCH_SQLITE_DSN"
   sqlite3 "$sqlite_path" < bench/sql/seed.sqlite.sql
-  node "$ROOT/tests/go-run.mjs" bench-seedaes ./bench/seedaes -driver sqlite -dsn "file:$sqlite_path"
+  node "$ROOT/tests/go-run.mts" bench-seedaes ./bench/seedaes -driver sqlite -dsn "file:$sqlite_path"
   echo "bench-db: $sqlite_path installed from schema/bench.dbs and seeded"
 }
 
