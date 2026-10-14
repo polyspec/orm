@@ -5,6 +5,7 @@
 
 ## 0.0.15
 
+- CI downloads the Rust crates after it restores the crate cache: make install-rust is install-rust-toolchain and install-rust-crates. (#T171-1)
 - make release-consumer-lock runs with npm's allow-remote=root, as the consumer install does, since the consumer lock resolves the URL of @polyspec/ordered-json. (#T171)
 - rustls is 0.23.46 in the Rust locks, for the advisories RUSTSEC-2026-0346 to RUSTSEC-2026-0349 of 0.23.45. (#T171)
 - Generated TypeScript models import only the runtime names they use and declare the chain methods as class fields instead of a merged interface. (#T170)

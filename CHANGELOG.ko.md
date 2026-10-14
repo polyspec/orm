@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 68ce117fcfd4bd0839b9bdda9067e19c5df61434b3cd6bcb494b3dabca185720 -->
+<!-- source-sha256: 9e57b6fdd979457ff4d1edc5577975f902d8c1207c1a1837437d62653a4458ab -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.15
 
+- CI가 crate cache를 복원한 뒤에 Rust crate를 받는다: make install-rust가 install-rust-toolchain과 install-rust-crates로 나뉜다. (#T171-1)
 - make release-consumer-lock이 consumer install처럼 npm allow-remote=root로 실행된다: consumer lock이 @polyspec/ordered-json의 URL을 해석하기 때문이다. (#T171)
 - Rust lock의 rustls를 0.23.45의 advisory RUSTSEC-2026-0346부터 RUSTSEC-2026-0349까지 때문에 0.23.46으로 올렸다. (#T171)
 - 생성된 TypeScript model이 쓰는 runtime 이름만 import하고, chain method를 합쳐진 interface 대신 class field로 선언한다. (#T170)
