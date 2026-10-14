@@ -8,7 +8,7 @@ fn schema() -> PathBuf {
 }
 
 fn bench() -> PathBuf {
-    polyspec_orm_testcase::manifest_dir().join("../../../schema/bench.dbs")
+    polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/bench/bench.dbs")
 }
 
 static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);

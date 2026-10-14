@@ -6,6 +6,7 @@
 //   - Rust: rust-toolchain.toml의 channel x.y.z. Makefile은 그 channel을 읽고, workflow는
 //     인자 없는 `rustup toolchain install`로 그 file의 toolchain을 설치한다.
 
+import { parse as parseToml } from 'smol-toml';
 import semver from 'semver';
 import { actionSteps, workflowSteps } from './ci.mts';
 
@@ -131,23 +132,24 @@ export function goVersionErrors(workflows: Record<string, string>) {
 }
 
 // composerVersionErrors는 Composer 선언이 하나가 아니거나 실행 중인 composer와 다른 곳마다 오류 하나를 돌려준다.
-// declared는 `.composer-version`의 내용, workflows는 {path: text}, running은 `composer --version`의 version이다.
+// miseToml은 `mise.toml`의 내용(tool http:composer의 version), workflows는 {path: text}, running은 `composer --version`의 version이다.
 //   - declared는 정확한 x.y.z 하나다.
 //   - 모든 shivammathur/setup-php step은 `tools: composer:<declared>`로 그 release를 설치한다.
 //   - running은 declared와 major.minor가 같다. patch는 상관없다.
-export function composerVersionErrors(declared: string, workflows: Record<string, string>, running: string): string[] {
+export function composerVersionErrors(miseToml: string, workflows: Record<string, string>, running: string): string[] {
   const errors: string[] = [];
-  const version = declared.trim();
-  const exact = /^\d+\.\d+\.\d+$/.test(version) && declared === `${version}\n`;
-  if (!exact) errors.push(`.composer-version must hold one exact Composer release x.y.z and a newline, found ${JSON.stringify(declared)}; write the release that CI and the local checks run`);
+  const declared: unknown = (parseToml(miseToml)['tools'] as Record<string, unknown> | undefined)?.['http:composer'];
+  const version = typeof declared === 'object' && declared !== null && 'version' in declared && typeof declared.version === 'string' ? declared.version : '';
+  const exact = /^\d+\.\d+\.\d+$/.test(version);
+  if (!exact) return [`mise.toml must declare the tool http:composer with one exact Composer release x.y.z as its version, found ${JSON.stringify(version)}; write the release that CI and the local checks run`];
   for (const [path, workflow] of Object.entries(workflows)) {
     for (const step of actionSteps(workflow, 'shivammathur/setup-php')) {
-      if (exact && !new RegExp(`^\\s*tools:\\s*["']?composer:${version.replaceAll('.', '\\.')}["']?\\s*$`, 'm').test(step))
+      if (!new RegExp(`^\\s*tools:\\s*["']?composer:${version.replaceAll('.', '\\.')}["']?\\s*$`, 'm').test(step))
         errors.push(`${path} sets up PHP without tools: composer:${version}; setup-php installs the newest Composer otherwise, so add tools: composer:${version}`);
     }
   }
-  if (exact && !sameMajorMinor(running, version))
-    errors.push(`Composer ${running} runs the checks; .composer-version declares ${version}, so its major and minor must be ${version.split('.').slice(0, 2).join('.')}; install Composer ${version} (composer self-update ${version}) or change .composer-version together with the CI evidence of the new release`);
+  if (!sameMajorMinor(running, version))
+    errors.push(`Composer ${running} runs the checks; mise.toml declares ${version}, so its major and minor must be ${version.split('.').slice(0, 2).join('.')}; run make install-tools, which installs the Composer of mise.toml, or change mise.toml together with the CI evidence of the new release`);
   return errors;
 }
 

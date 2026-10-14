@@ -15,7 +15,7 @@ class SchemaAccessorTest(unittest.TestCase):
     def setUpClass(cls):
         tmp = tempfile.TemporaryDirectory(prefix='orm-schema-utils-')
         cls.addClassCleanup(tmp.cleanup)
-        cls.models = generate(tmp.name, ROOT / 'schema' / 'dbspec-set.json')
+        cls.models = generate(tmp.name, ROOT / 'contracts' / 'fixtures' / 'bench' / 'dbspec-set.json')
         cls.db = cls.models.connect(f'sqlite://{tmp.name}/schema.sqlite3',
                                     aesKey='bench-salt', blindIndexKey='bench-blind-index')
 
@@ -39,7 +39,7 @@ class SchemaRegisterTest(unittest.TestCase):
     def setUpClass(cls):
         tmp = tempfile.TemporaryDirectory(prefix='orm-schema-register-')
         cls.addClassCleanup(tmp.cleanup)
-        cls.models = generate(tmp.name, ROOT / 'schema' / 'dbspec-set.json')
+        cls.models = generate(tmp.name, ROOT / 'contracts' / 'fixtures' / 'bench' / 'dbspec-set.json')
         cls.schema = cls.models.SCHEMA
         cls.db = cls.models.connect(f'sqlite://{tmp.name}/register.sqlite3',
                                     aesKey='bench-salt', blindIndexKey='bench-blind-index')

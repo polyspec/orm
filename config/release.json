@@ -68,7 +68,7 @@
     "packages/rust/case-database/Cargo.toml": "a test support crate of the Rust client (publish = false)",
     "packages/rust/testcase/Cargo.toml": "a test support crate of the Rust client (publish = false)",
     "packages/rust/tests/Cargo.toml": "the integration tests of the Rust client (publish = false)",
-    "bench/rust/Cargo.toml": "the benchmark crate of the Rust client",
+    "benchmarks/rust/Cargo.toml": "the benchmark crate of the Rust client",
     "tests/interfaces/rust/Cargo.toml": "the interface check crate of the Rust client",
     "tests/interfaces/typescript/package.json": "the TypeScript compiler of the interface check of the TypeScript client",
     "tests/go.mod": "the Go module of the runners, physical tests and tool programs under tests/, which go.work joins to packages/go",

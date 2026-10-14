@@ -7,7 +7,7 @@
 # vector name, as the Go encoder writes them.
 #
 # Usage: python3 tests/conformance/runner_python.py --models DIR --dsn URI [--vector NAME]...
-# DIR holds the models.py that orm-gen writes from schema/bench.dbs (conformance-python-models).
+# DIR holds the models.py that orm-gen writes from contracts/fixtures/bench/bench.dbs (conformance-python-models).
 # Each --vector selects one vector by name; without one every vector runs.
 import datetime
 import json
@@ -246,7 +246,7 @@ def go_escape(text):
 def load_models():
     global bench, Author, CompositeAccount, Service, ServiceMember, ServiceRegion, User, SoftRecord, Task, HexCell
     sys.path.insert(0, MODELS_DIR)
-    import models as generated  # noqa: E402  (generated from schema/bench.dbs)
+    import models as generated  # noqa: E402  (generated from contracts/fixtures/bench/bench.dbs)
     bench = generated
     Author, CompositeAccount, Service, ServiceMember, ServiceRegion = (
         bench.Author, bench.CompositeAccount, bench.Service, bench.ServiceMember, bench.ServiceRegion)
@@ -604,7 +604,7 @@ def main():
     run('aes_status', aes_status)
 
     def hex_malformed():
-        # the seed stores raw hex cells that no encoder writes (bench/sql/seed.*.sql)
+        # the seed stores raw hex cells that no encoder writes (benchmarks/sql/seed.*.sql)
         return {'white_space': caught(lambda: HexCell().connect(db).get_by_seq(1)),
                 'odd_length': caught(lambda: HexCell().connect(db).get_by_seq(2))}
     run('hex_malformed', hex_malformed)

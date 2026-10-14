@@ -15,10 +15,10 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// connectBench는 schema/bench.dbs의 manifest로 dsn에 연결한다.
+// connectBench는 contracts/fixtures/bench/bench.dbs의 manifest로 dsn에 연결한다.
 func connectBench(t *testing.T, dsn string) *DB {
 	t.Helper()
-	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "schema", "bench.dbs"))
+	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "contracts", "fixtures", "bench", "bench.dbs"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func TestFailedTransactionEndDiscardsConnection(t *testing.T) {
 		t.Fatal("ORM_TEST_MYSQL_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers")
 	}
 	useFailingDriver(t, "mysql")
-	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "schema", "bench.dbs"))
+	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "contracts", "fixtures", "bench", "bench.dbs"))
 	if err != nil {
 		t.Fatal(err)
 	}

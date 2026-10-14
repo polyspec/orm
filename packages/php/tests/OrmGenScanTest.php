@@ -39,7 +39,7 @@ final class OrmGenScanTest extends TestCase
         return $out;
     }
 
-    /** Generates the models of schema/dbspec-set.json with --scan of $sources in a new folder; returns the code, stderr and the folder. */
+    /** Generates the models of contracts/fixtures/bench/dbspec-set.json with --scan of $sources in a new folder; returns the code, stderr and the folder. */
     private static function generate(string $name, array $sources, array $extra = []): array
     {
         $dir = self::$work . '/' . $name;
@@ -52,7 +52,7 @@ final class OrmGenScanTest extends TestCase
         }
         $stderr = fopen('php://memory', 'w+');
         ob_start();
-        $code = OrmGen::run(['gen', '--set', dirname(__DIR__, 3) . '/schema/dbspec-set.json', '--out', "$dir/model", '--namespace', self::NS, ...$scan, ...$extra], $stderr);
+        $code = OrmGen::run(['gen', '--set', dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json', '--out', "$dir/model", '--namespace', self::NS, ...$scan, ...$extra], $stderr);
         ob_end_clean();
         rewind($stderr);
         return [$code, (string) stream_get_contents($stderr), $dir];
@@ -159,7 +159,7 @@ PHP;
         $run = function (string $out) use ($dir): array {
             $stderr = fopen('php://memory', 'w+');
             ob_start();
-            $code = OrmGen::run(['gen', '--set', dirname(__DIR__, 3) . '/schema/dbspec-set.json', '--out', $out, '--namespace', self::NS, '--scan', "$dir/src"], $stderr);
+            $code = OrmGen::run(['gen', '--set', dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json', '--out', $out, '--namespace', self::NS, '--scan', "$dir/src"], $stderr);
             ob_end_clean();
             rewind($stderr);
             return [$code, (string) stream_get_contents($stderr)];
@@ -182,7 +182,7 @@ PHP;
         $run = function (string $out) use ($dir): array {
             $stderr = fopen('php://memory', 'w+');
             ob_start();
-            $code = OrmGen::run(['gen', '--set', dirname(__DIR__, 3) . '/schema/dbspec-set.json', '--out', $out, '--namespace', self::NS, '--scan', "$dir/src"], $stderr);
+            $code = OrmGen::run(['gen', '--set', dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json', '--out', $out, '--namespace', self::NS, '--scan', "$dir/src"], $stderr);
             ob_end_clean();
             rewind($stderr);
             return [$code, (string) stream_get_contents($stderr)];
@@ -205,7 +205,7 @@ PHP;
         self::assertSame(0, $code, $err);
         $stderr = fopen('php://memory', 'w+');
         ob_start();
-        $args = ['gen', '--set', dirname(__DIR__, 3) . '/schema/dbspec-set.json', '--out', "$dir/model", '--namespace', self::NS, '--scan', "$dir/src/usage.php", '--check'];
+        $args = ['gen', '--set', dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json', '--out', "$dir/model", '--namespace', self::NS, '--scan', "$dir/src/usage.php", '--check'];
         self::assertSame(0, OrmGen::run($args, $stderr), 'current');
         self::assertSame('', (string) ob_get_clean());
         file_put_contents("$dir/src/usage.php", $source . "\$a->gtSeq(1);\n");

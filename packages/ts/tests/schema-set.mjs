@@ -1,5 +1,5 @@
 // Several dbspec document sets in one process, on SQLite, MySQL and
-// PostgreSQL. The bench set (schema/bench.dbs) and the decimal set
+// PostgreSQL. The bench set (contracts/fixtures/bench/bench.dbs) and the decimal set
 // (contracts/fixtures/decimal_schema.dbs) declare their models as generated
 // code does, each with the manifest hash of its own set. A connection plans
 // only the sets registered on it: the connect helper of generated code
@@ -19,7 +19,7 @@ import { caseTest, runCase } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 import { nativeQuery } from './coverage_case.mjs';
 
-const benchText = await readFile(new URL('../../../schema/bench.dbs', import.meta.url), 'utf8');
+const benchText = await readFile(new URL('../../../contracts/fixtures/bench/bench.dbs', import.meta.url), 'utf8');
 const decimalText = await readFile(new URL('../../../contracts/fixtures/decimal_schema.dbs', import.meta.url), 'utf8');
 // CASE_DEADLINE_MS는 case 하나의 기한이다. case 하나는 database를 만들고 schema set 몇 개를 설치하고 읽은 뒤 지운다.
 const CASE_DEADLINE_MS = 60_000;

@@ -938,7 +938,7 @@ caseTest('a run command names the Rust target directory through CARGO_TARGET_DIR
 caseTest('Rust source reads the package directory when the program runs', COMPUTE, () => {
   assert.deepEqual(manifestDirErrors({
     'packages/rust/orm/tests/a.rs': 'let dir = polyspec_orm_testcase::manifest_dir();\n// env!("CARGO_MANIFEST_DIR") was the old form\n',
-    'bench/rust/tests/b.rs': 'let program = env!("CARGO_BIN_EXE_native");\ninclude!(concat!(env!("OUT_DIR"), "/m.rs"));\n',
+    'benchmarks/rust/tests/b.rs': 'let program = env!("CARGO_BIN_EXE_native");\ninclude!(concat!(env!("OUT_DIR"), "/m.rs"));\n',
   }), []);
   assert.deepEqual(manifestDirErrors({
     'packages/rust/orm/tests/a.rs': 'use std::path::PathBuf;\nlet root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");\n',
@@ -973,10 +973,10 @@ caseTest('a client connects without a probe statement', COMPUTE, () => {
 // program 경로 case는 Rust test가 package program의 경로를 compile 시점의 env!로 읽으면 거부한다.
 caseTest('Rust tests read the paths of package programs when they run', COMPUTE, () => {
   assert.deepEqual(binExeErrors({
-    'bench/rust/tests/a.rs': 'let program = &polyspec_orm_testcase::program("native");\n// env!("CARGO_BIN_EXE_native") was the old form\n',
+    'benchmarks/rust/tests/a.rs': 'let program = &polyspec_orm_testcase::program("native");\n// env!("CARGO_BIN_EXE_native") was the old form\n',
   }), []);
-  assert.deepEqual(binExeErrors({ 'bench/rust/tests/b.rs': 'let program = env!("CARGO_BIN_EXE_native");\n' }), [
-    'bench/rust/tests/b.rs:1 reads the program path at compile time with CARGO_BIN_EXE; read it when the test runs with polyspec_orm_testcase::program',
+  assert.deepEqual(binExeErrors({ 'benchmarks/rust/tests/b.rs': 'let program = env!("CARGO_BIN_EXE_native");\n' }), [
+    'benchmarks/rust/tests/b.rs:1 reads the program path at compile time with CARGO_BIN_EXE; read it when the test runs with polyspec_orm_testcase::program',
   ]);
 });
 
@@ -1555,12 +1555,16 @@ caseTest('every go.mod declares the module path of its directory', COMPUTE, () =
   ]);
 });
 
-caseTest('every setup-php step installs the Composer of .composer-version', COMPUTE, () => {
+const MISE = '[tools]\n"http:composer" = { version = "2.10.3", url = "https://getcomposer.org/download/{{ version }}/composer.phar", bin = "composer" }\n';
+caseTest('every setup-php step installs the Composer of mise.toml', COMPUTE, () => {
   const php = '    steps:\n      - uses: shivammathur/setup-php@v2\n        with:\n          php-version-file: .php-version\n          tools: composer:2.10.3\n';
-  assert.deepEqual(composerVersionErrors('2.10.3\n', { 'ci.yml': php }, '2.10.3'), []);
-  assert.deepEqual(composerVersionErrors('2.10.3\n', { 'ci.yml': php.replace('          tools: composer:2.10.3\n', '') }, '2.11.0'), [
+  assert.deepEqual(composerVersionErrors(MISE, { 'ci.yml': php }, '2.10.3'), []);
+  assert.deepEqual(composerVersionErrors(MISE, { 'ci.yml': php.replace('          tools: composer:2.10.3\n', '') }, '2.11.0'), [
     'ci.yml sets up PHP without tools: composer:2.10.3; setup-php installs the newest Composer otherwise, so add tools: composer:2.10.3',
-    'Composer 2.11.0 runs the checks; .composer-version declares 2.10.3, so its major and minor must be 2.10; install Composer 2.10.3 (composer self-update 2.10.3) or change .composer-version together with the CI evidence of the new release',
+    'Composer 2.11.0 runs the checks; mise.toml declares 2.10.3, so its major and minor must be 2.10; run make install-tools, which installs the Composer of mise.toml, or change mise.toml together with the CI evidence of the new release',
+  ]);
+  assert.deepEqual(composerVersionErrors('[tools]\n', { 'ci.yml': php }, '2.10.3'), [
+    'mise.toml must declare the tool http:composer with one exact Composer release x.y.z as its version, found ""; write the release that CI and the local checks run',
   ]);
 });
 
@@ -1568,10 +1572,10 @@ caseTest('every setup-php step installs the Composer of .composer-version', COMP
 caseTest('a running Composer with the declared major and minor passes whatever its patch', COMPUTE, () => {
   const php = '    steps:\n      - uses: shivammathur/setup-php@v2\n        with:\n          php-version-file: .php-version\n          tools: composer:2.10.3\n';
   for (const running of ['2.10.3', '2.10.0', '2.10.9'])
-    assert.deepEqual(composerVersionErrors('2.10.3\n', { 'ci.yml': php }, running), [], running);
+    assert.deepEqual(composerVersionErrors(MISE, { 'ci.yml': php }, running), [], running);
   for (const running of ['2.9.9', '2.11.0'])
-    assert.deepEqual(composerVersionErrors('2.10.3\n', { 'ci.yml': php }, running), [
-      `Composer ${running} runs the checks; .composer-version declares 2.10.3, so its major and minor must be 2.10; install Composer 2.10.3 (composer self-update 2.10.3) or change .composer-version together with the CI evidence of the new release`,
+    assert.deepEqual(composerVersionErrors(MISE, { 'ci.yml': php }, running), [
+      `Composer ${running} runs the checks; mise.toml declares 2.10.3, so its major and minor must be 2.10; run make install-tools, which installs the Composer of mise.toml, or change mise.toml together with the CI evidence of the new release`,
     ], running);
 });
 

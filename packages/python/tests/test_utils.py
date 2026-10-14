@@ -19,7 +19,7 @@ class UtilsTest(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory(prefix='orm-utils-')
         cls.addClassCleanup(tmp.cleanup)
         cls.out = tmp.name
-        cls.models = generate(cls.out, ROOT / 'schema' / 'dbspec-set.json')
+        cls.models = generate(cls.out, ROOT / 'contracts' / 'fixtures' / 'bench' / 'dbspec-set.json')
         cls.db = cls.models.connect(f'sqlite://{cls.out}/utils.sqlite3',
                                     aesKey='bench-salt', blindIndexKey='bench-blind-index')
         run_script(cls.db, DDL)

@@ -1,6 +1,6 @@
 {
   "comment": "Request validation cases (docs/protocol.md). Each case is a request against the manifest of schema, without manifest_hash, which every consumer adds; ir_version and n_params are part of the request. A case expects either valid (the validator accepts the request) or the error code it fails with. The cases check the validator alone, not the planner: a consumer passes the request only to the validator of its implementation. Go (packages/go/engine/ir), TypeScript, PHP, Rust and Python each read this file from their own package; add a case here and every one of them runs it.",
-  "schema": "schema/bench.dbs",
+  "schema": "contracts/fixtures/bench/bench.dbs",
   "cases": [
     {"name": "ref-path-absent", "request": {"ir_version": 1, "n_params": 8, "kind": "all", "entity": "author", "where": {"items": [{"pred": {"column": "service_seq", "op": "eq_col", "ref": {"column": "user_seq"}}}]}}, "valid": true},
     {"name": "ref-path-null", "request": {"ir_version": 1, "n_params": 8, "kind": "all", "entity": "author", "where": {"items": [{"pred": {"column": "service_seq", "op": "eq_col", "ref": {"path": null, "column": "user_seq"}}}]}}, "valid": true},

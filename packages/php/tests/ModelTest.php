@@ -80,7 +80,7 @@ final class ModelTest extends TestCase
     private static function fixture(): void
     {
         self::$root = dirname(__DIR__, 3);
-        self::$documents = [(string) file_get_contents(self::$root . "/schema/bench.dbs")];
+        self::$documents = [(string) file_get_contents(self::$root . "/contracts/fixtures/bench/bench.dbs")];
         self::$work = sys_get_temp_dir() . '/orm-php-model-' . getmypid();
         @mkdir(self::$work, 0o700, true);
 

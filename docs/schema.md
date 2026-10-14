@@ -1,7 +1,7 @@
 <!-- doc-id: schema -->
 # Schema
 
-The schema source is a set of dbspec documents (`.dbs`). [dbspec.md](dbspec.md) defines the language, its validation rules, the manifest text and the two hashes; `schema/bench.dbs` is the schema of the tests and benchmarks. No other schema file exists: every generator, runtime and schema operation reads the document set.
+The schema source is a set of dbspec documents (`.dbs`). [dbspec.md](dbspec.md) defines the language, its validation rules, the manifest text and the two hashes; `contracts/fixtures/bench/bench.dbs` is the schema of the tests and benchmarks. No other schema file exists: every generator, runtime and schema operation reads the document set.
 
 ## 1. Model generation
 

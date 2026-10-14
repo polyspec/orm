@@ -476,7 +476,7 @@ vector('aes_status', function () use ($db): array {
     return ['current' => $status->current, 'pending' => $status->pending, 'versions' => implode(',', $versions)];
 });
 
-// the seed stores raw hex cells that no encoder writes (bench/sql/seed.*.sql)
+// the seed stores raw hex cells that no encoder writes (benchmarks/sql/seed.*.sql)
 vector('hex_malformed', fn(): array => [
     'white_space' => caught(fn() => (new HexCell)($db)->getBySeq(1)),
     'odd_length' => caught(fn() => (new HexCell)($db)->getBySeq(2)),

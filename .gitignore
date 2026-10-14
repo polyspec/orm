@@ -7,7 +7,7 @@
 /packages/dbspec-vscode/dist/
 *.vsix
 /target/
-/bench/rust/target/
+/benchmarks/rust/target/
 /packages/rust/target/
 *.test
 /docs/perf-raw/

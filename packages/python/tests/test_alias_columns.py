@@ -17,7 +17,7 @@ class AliasColumnsTest(unittest.TestCase):
     def setUpClass(cls):
         tmp = tempfile.TemporaryDirectory(prefix='orm-alias-')
         cls.addClassCleanup(tmp.cleanup)
-        cls.models = generate(tmp.name, ROOT / 'schema' / 'dbspec-set.json')
+        cls.models = generate(tmp.name, ROOT / 'contracts' / 'fixtures' / 'bench' / 'dbspec-set.json')
         cls.db = cls.models.connect(f'sqlite://{tmp.name}/alias.sqlite3',
                                     aesKey='bench-salt', blindIndexKey='bench-blind-index')
         run_script(cls.db, DDL)

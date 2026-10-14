@@ -7,7 +7,7 @@
       "id": "dbspec_emit_round_trip",
       "input": {
         "documents": [
-          "schema/bench.dbs",
+          "contracts/fixtures/bench/bench.dbs",
           "contracts/fixtures/audit.dbs"
         ]
       },
@@ -20,7 +20,7 @@
       "id": "dbspec_manifest_hash",
       "input": {
         "documents": [
-          "schema/bench.dbs"
+          "contracts/fixtures/bench/bench.dbs"
         ]
       },
       "operation": "manifest"

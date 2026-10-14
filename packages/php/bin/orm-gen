@@ -2,7 +2,7 @@
 <?php
 // dbspec document set에서 model을 만든다:
 //
-//   vendor/bin/orm-gen gen --set schema/dbspec-set.json --out src/Model --namespace Example\\Model
+//   vendor/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out src/Model --namespace Example\\Model
 //
 // Composer's vendor/bin proxy names the autoloader in $_composer_autoload_path (composer-runtime-api ^2.2);
 // run without the proxy, the bin takes vendor/autoload.php of this package as the root, as Composer documents.

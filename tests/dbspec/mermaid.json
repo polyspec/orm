@@ -879,7 +879,7 @@
           "ix_service_region_service_seq"
         ]
       ],
-      "path": "schema/bench.dbs"
+      "path": "contracts/fixtures/bench/bench.dbs"
     }
   ]
 }

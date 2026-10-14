@@ -34,8 +34,8 @@ class Case(VectorCase):
 def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
     """One test for each validation case, named by the case."""
     global MODEL
-    if FILE['schema'] != 'schema/bench.dbs' or not FILE['cases']:
-        raise AssertionError('validate.json names schema/bench.dbs and has cases')
+    if FILE['schema'] != 'contracts/fixtures/bench/bench.dbs' or not FILE['cases']:
+        raise AssertionError('validate.json names contracts/fixtures/bench/bench.dbs and has cases')
     MODEL = model_of_documents(parse_document_set([(ROOT / FILE['schema']).read_text()]))
     tests.addTests(vector_tests(Case, FILE['cases'], check_case, lambda case: case['name']))
     return tests

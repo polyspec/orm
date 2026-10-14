@@ -18,7 +18,7 @@ class AesRotateTest(unittest.TestCase):
     def setUpClass(cls):
         tmp = tempfile.TemporaryDirectory(prefix='orm-aes-rotate-')
         cls.addClassCleanup(tmp.cleanup)
-        cls.models = generate(tmp.name, ROOT / 'schema' / 'dbspec-set.json')
+        cls.models = generate(tmp.name, ROOT / 'contracts' / 'fixtures' / 'bench' / 'dbspec-set.json')
         cls.db = cls.models.connect(f'sqlite://{tmp.name}/rotate.sqlite3',
                                     aesKey='bench-salt', blindIndexKey='bench-blind-index')
         from .test_sqlite import DDL, run_script

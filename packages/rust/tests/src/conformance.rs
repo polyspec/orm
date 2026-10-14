@@ -703,7 +703,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         versions.sort();
         Ok::<Value, polyspec_orm::Error>(json!({"current": status.current, "pending": status.pending, "versions": versions.join(",")}))
     });
-    // the seed stores raw hex cells that no encoder writes (bench/sql/seed.*.sql)
+    // the seed stores raw hex cells that no encoder writes (benchmarks/sql/seed.*.sql)
     run!("hex_malformed", async {
         let white_space = code_of(HexCell::new().connect(db).get_by_seq(1).await);
         let odd_length = code_of(HexCell::new().connect(db).get_by_seq(2).await);

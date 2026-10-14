@@ -2576,7 +2576,7 @@
           "inputs": [
             "packages/php/tests/OrmGenScanTest.php",
             "tests/generator/php-scan-vectors.json",
-            "schema/dbspec-set.json"
+            "contracts/fixtures/bench/dbspec-set.json"
           ]
         },
         {
@@ -2750,7 +2750,7 @@
         "python": "pass"
       },
       "fixtures": [
-        "schema/bench.dbs",
+        "contracts/fixtures/bench/bench.dbs",
         "tests/dbspec/cases.json",
         "tests/dbspec/ddl.json",
         "tests/dbspec/plans.json",
@@ -2967,7 +2967,7 @@
             "packages/rust/schema/tests/dbspec_analyze.rs",
             "tests/dbspec/syntax.json",
             "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
-            "schema/bench.dbs",
+            "contracts/fixtures/bench/bench.dbs",
             "tests/dbspec/cases.json",
             "packages/rust/schema/tests/common/dbspec_cases.rs",
             "tests/dbspec/ddl.json",
@@ -3029,7 +3029,7 @@
             "packages/python/tests/test_dbspec_set_parse.py",
             "packages/python/tests/test_dbspec_show_create.py",
             "packages/python/tests/test_dbspec_syntax_vectors.py",
-            "schema/bench.dbs",
+            "contracts/fixtures/bench/bench.dbs",
             "tests/dbspec/cases.json",
             "tests/dbspec/ddl.json",
             "tests/dbspec/plans.json",
@@ -5063,11 +5063,11 @@
         },
         {
           "id": "chunking-rust",
-          "command": "sh -c 'run=\"$PWD/.runtime/run/chunking-rust-$$\"; trap \"rm -rf \\\"$run\\\"\" EXIT; PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mts rust-build/integration -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- node scripts/cargo-build-copy.mts \"$run\" debug/integration -- cargo build --manifest-path packages/rust/Cargo.toml --locked -p polyspec-orm-tests --bin integration && \"$run/debug/integration\" \"$PWD/schema/bench.dbs\"'",
+          "command": "sh -c 'run=\"$PWD/.runtime/run/chunking-rust-$$\"; trap \"rm -rf \\\"$run\\\"\" EXIT; PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mts rust-build/integration -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- node scripts/cargo-build-copy.mts \"$run\" debug/integration -- cargo build --manifest-path packages/rust/Cargo.toml --locked -p polyspec-orm-tests --bin integration && \"$run/debug/integration\" \"$PWD/contracts/fixtures/bench/bench.dbs\"'",
           "shard": "rust",
           "inputs": [
             "packages/rust/tests/src/integration.rs",
-            "schema/bench.dbs",
+            "contracts/fixtures/bench/bench.dbs",
             "packages/rust/tests/src/result_chains.rs",
             "packages/rust/tests/build.rs",
             "packages/rust/tests/nonnull.dbs"
@@ -5331,7 +5331,7 @@
         "python": "planned"
       },
       "fixtures": [
-        "schema/bench.dbs",
+        "contracts/fixtures/bench/bench.dbs",
         "contracts/fixtures/refusal.dbs",
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
@@ -7535,9 +7535,9 @@
       "id": "bench-database",
       "paths": [
         "scripts/bench-db.mts",
-        "bench/sql/seed.mysql.sql",
-        "bench/sql/seed.pg.sql",
-        "bench/sql/seed.sqlite.sql",
+        "benchmarks/sql/seed.mysql.sql",
+        "benchmarks/sql/seed.pg.sql",
+        "benchmarks/sql/seed.sqlite.sql",
         "tests/go-run.mts"
       ],
       "tests": [],

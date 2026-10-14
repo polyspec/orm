@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// The runtime model of schema/bench.dbs (docs/dbspec.md "Runtime model"):
+// The runtime model of contracts/fixtures/bench/bench.dbs (docs/dbspec.md "Runtime model"):
 // entities, the default select set, codec value types, the generated models
 // and their manifest hash, i16 fields, and a connection configuration without
 // a schema path. Database behavior is in RuntimeDbTest.php.
@@ -23,7 +23,7 @@ final class RuntimeModelTest extends TestCase
 {
     private static function bench(): RuntimeModel
     {
-        return RuntimeModel::build(RuntimeModel::files([dirname(__DIR__, 3) . '/schema/bench.dbs']));
+        return RuntimeModel::build(RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/bench/bench.dbs']));
     }
 
     private static function errorCode(Closure $fn): string
@@ -67,7 +67,7 @@ final class RuntimeModelTest extends TestCase
     {
         $root = dirname(__DIR__, 3);
         $bench = self::bench();
-        $manifest = Dbspec::manifest(RuntimeModel::files(["$root/schema/bench.dbs"]))->manifest;
+        $manifest = Dbspec::manifest(RuntimeModel::files(["$root/contracts/fixtures/bench/bench.dbs"]))->manifest;
         $hash = Author::meta()['manifest_hash'];
         self::assertTrue($hash === $manifest->manifestHash, "manifest hash $hash");
         self::assertTrue(str_starts_with($hash, 'sha256:'), 'manifest hash form');

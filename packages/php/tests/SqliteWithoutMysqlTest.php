@@ -1,7 +1,7 @@
 <?php
 // pdo_mysql이 없는 PHP에서 PHP client가 load되고 SQLite에서 실행된다(N17). DSN의
 // scheme이 PDO driver를 고르므로 composer.json은 driver 확장을 요구하지 않고
-// pdo_mysql, pdo_pgsql, pdo_sqlite를 제안한다. schema/bench.dbs를 dbspec file reader로
+// pdo_mysql, pdo_pgsql, pdo_sqlite를 제안한다. contracts/fixtures/bench/bench.dbs를 dbspec file reader로
 // 읽어 설치하고, generated model로 row 하나를 만들고 읽는다.
 // Usage: scripts/php-without-mysql.sh, which runs PHPUnit on this file with php -n and only the
 // extensions the client and PHPUnit need; a PHP that loads mysqlnd, pdo_mysql or mysqli fails the case.
@@ -29,8 +29,8 @@ final class SqliteWithoutMysqlTest extends TestCase
         $required = array_values(array_intersect($drivers, array_keys($manifest['require'] ?? [])));
         $suggested = array_values(array_intersect($drivers, array_keys($manifest['suggest'] ?? [])));
         self::assertTrue($required === [] && $suggested === $drivers, 'composer.json requires ' . json_encode($required) . ' and suggests ' . json_encode($suggested) . ' of the PDO drivers; it must require none and suggest all three');
-        $document = Dbspec::readFile("$root/schema/bench.dbs");
-        self::assertNotNull($document->text, 'schema/bench.dbs: ' . ($document->diagnostics[0]->message ?? ''));
+        $document = Dbspec::readFile("$root/contracts/fixtures/bench/bench.dbs");
+        self::assertNotNull($document->text, 'contracts/fixtures/bench/bench.dbs: ' . ($document->diagnostics[0]->message ?? ''));
         $work = sys_get_temp_dir() . '/orm-php-without-mysql-' . getmypid();
         if (!mkdir($work, 0o700, true)) {
             throw new RuntimeException("cannot create $work");

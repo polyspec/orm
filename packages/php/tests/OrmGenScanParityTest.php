@@ -51,7 +51,7 @@ final class OrmGenScanParityTest extends TestCase
         $calls = ($case['chain'] ?? false) ? "$receiver." . implode('.', $steps) . ";\n"
             : implode('', array_map(static fn(string $step): string => "$receiver.$step;\n", $steps));
         file_put_contents("$dir/usage.ts", "import { {$case['model']} } from './models/models.js';\nconst m = new {$case['model']}();\n$calls");
-        $process = proc_open(['node', $bin, 'gen', '--set', "$root/schema/dbspec-set.json", '--out', "$dir/models", '--scan', "$dir/usage.ts"],
+        $process = proc_open(['node', $bin, 'gen', '--set', "$root/contracts/fixtures/bench/dbspec-set.json", '--out', "$dir/models", '--scan', "$dir/usage.ts"],
             [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $root);
         stream_get_contents($pipes[1]);
         stream_get_contents($pipes[2]);
@@ -79,7 +79,7 @@ final class OrmGenScanParityTest extends TestCase
         file_put_contents("$dir/src/usage.php", "<?php\n\$db = null;\n\$m = new Polyspec\\Orm\\Tests\\Parity\\{$case['model']}();\n$calls");
         $stderr = fopen('php://memory', 'w+');
         ob_start();
-        $code = OrmGen::run(['gen', '--set', dirname(__DIR__, 3) . '/schema/dbspec-set.json', '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Parity', '--scan', "$dir/src/usage.php"], $stderr);
+        $code = OrmGen::run(['gen', '--set', dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json', '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Parity', '--scan', "$dir/src/usage.php"], $stderr);
         ob_end_clean();
         if (isset($case['expected']['rejected'])) {
             self::assertSame(1, $code, 'php status');

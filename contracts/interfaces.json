@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "schema": "schema/bench.dbs",
+  "schema": "contracts/fixtures/bench/bench.dbs",
   "languages": {
     "go": {
       "roots": [

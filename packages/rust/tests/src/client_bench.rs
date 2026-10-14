@@ -1,4 +1,4 @@
-//! Rust hot-path gate: generated client vs the sqlx baseline (bench/rust/src/native.rs).
+//! Rust hot-path gate: generated client vs the sqlx baseline (benchmarks/rust/src/native.rs).
 //! Usage: ORM_BENCH_MYSQL_DSN=<seeded bench DSN> client_bench <iterations>
 use std::time::Instant;
 

@@ -1,5 +1,5 @@
 fn main() {
-    polyspec_orm_build::Builder::set("../../../schema/dbspec-set.json")
+    polyspec_orm_build::Builder::set("../../../contracts/fixtures/bench/dbspec-set.json")
         .scan("src")
         .scan("../../../examples/complex/rust")
         .scan("../../../examples/thin-slice/rust")

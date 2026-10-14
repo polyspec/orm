@@ -9,7 +9,7 @@
 //! ```text
 //! // build.rs
 //! fn main() {
-//!     polyspec_orm_build::Builder::set("schema/dbspec-set.json").scan("src").generate();
+//!     polyspec_orm_build::Builder::set("contracts/fixtures/bench/dbspec-set.json").scan("src").generate();
 //! }
 //! ```
 //!

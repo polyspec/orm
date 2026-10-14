@@ -27,9 +27,9 @@ import { readJsonFile } from '../scripts/json/schema.mts';
 /** binaries.json of a --copy run: the copied test binaries and the copied package programs by name. */
 export type Binaries = { tests: { executable: string; manifestDir: string; target: string; copy: string }[]; programs: Record<string, string> };
 
-/** readBinaries reads binaries.json of a --copy run directory against its schema (schema/binaries.schema.json). */
+/** readBinaries reads binaries.json of a --copy run directory against its schema (scripts/schema/binaries.schema.json). */
 export function readBinaries(runDir: string): Binaries {
-  return readJsonFile<Binaries>(join(runDir, 'binaries.json'), new URL('./schema/binaries.schema.json', import.meta.url).pathname);
+  return readJsonFile<Binaries>(join(runDir, 'binaries.json'), new URL('../scripts/schema/binaries.schema.json', import.meta.url).pathname);
 }
 
 /** A compiler artifact that cargo reports in its JSON messages. */

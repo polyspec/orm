@@ -1,5 +1,5 @@
 <!-- doc-id: packages-orm-rust-readme -->
-<!-- source-sha256: d9ada471b058ecbe27d2189c1d16bbc530020fb5d5f778b011c60a02a0c5c7e8 -->
+<!-- source-sha256: 42b1ec3698b786ae8381c3c95b8f6e53c8a444ee58b1c6ad195de56dffdbb878 -->
 [English](README.md)
 
 # orm — Rust 클라이언트
@@ -28,11 +28,11 @@ polyspec-orm-build = { path = "…/packages/rust/build" }
 ```rust
 // build.rs
 fn main() {
-    polyspec_orm_build::Builder::set("schema/dbspec-set.json").scan("src").generate();
+    polyspec_orm_build::Builder::set("contracts/fixtures/bench/dbspec-set.json").scan("src").generate();
 }
 ```
 
-set 파일 `schema/dbspec-set.json`이 set의 문서를 나열한다(`{"schema": 1, "documents": ["example.dbs"]}`, [문서 집합](../../docs/dbspec.ko.md#document-sets)). 그 파일이나 나열된 문서가 바뀌면 cargo가 build script를 다시 실행한다.
+set 파일 `contracts/fixtures/bench/dbspec-set.json`이 set의 문서를 나열한다(`{"schema": 1, "documents": ["example.dbs"]}`, [문서 집합](../../docs/dbspec.ko.md#document-sets)). 그 파일이나 나열된 문서가 바뀌면 cargo가 build script를 다시 실행한다.
 
 ```rust
 // src/main.rs
@@ -130,8 +130,8 @@ cd packages/rust
 cargo clippy --workspace --all-targets -- -D warnings
 ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ORM_TEST_MYSQL_SERVER_DSN=… ORM_TEST_POSTGRES_SERVER_DSN=… cargo test --workspace
 cargo build -p polyspec-orm-tests
-ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ./target/debug/integration ../../schema/bench.dbs
-./target/debug/conformance --dsn "mysql://…" ../../schema/bench.dbs
+ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ./target/debug/integration ../../contracts/fixtures/bench/bench.dbs
+./target/debug/conformance --dsn "mysql://…" ../../contracts/fixtures/bench/bench.dbs
 ```
 
 `integration`과 `zone` 테스트는 SQLite·MySQL·PostgreSQL에서 실행된다. `ORM_TEST_MYSQL_DSN`과 `ORM_TEST_POSTGRES_DSN`은 시험 DB를 가리켜야 하고 하나라도 없으면 테스트가 실패한다. schema를 설치하거나 빈 DB를 확인하는 case는 그 DSN으로 자기 DB를 만들고 끝날 때 지운다. rollback 테스트는 pooler 없는 서버를 가리키는 `ORM_TEST_MYSQL_SERVER_DSN`과 `ORM_TEST_POSTGRES_SERVER_DSN`으로 transaction의 서버 session을 종료하고, dbspec 테스트(`dbspec_*`)는 그 DSN으로 자기 DB를 만들고 바꾼다. `dbspec_apply`는 transaction pooler case를 위해 `ORM_TEST_PGBOUNCER_DSN`도 요구한다. make target은 둘을 `.runtime/servers/env`에서 정한다. `conformance`, `complex`, `demo`는 데이터가 준비된 bench DB를 읽는다.

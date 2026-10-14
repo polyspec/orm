@@ -40,7 +40,7 @@ const RUST_BUILD: Command = {
   program: 'node', args: ['tests/run-long.mts', 'rust-build/integration', '--cwd', 'packages/rust', '--', variable('LEASE'), 'run', variable('CARGO_LEASES'), 'exclusive', '--wait', '--',
     'node', join(root, 'scripts/cargo-build-copy.mts'), RUN, 'debug/integration', '--', 'cargo', 'build', '--locked', '-p', 'polyspec-orm-tests', '--bin', 'integration'], cwd: root,
 };
-const RUST_INTEGRATION: Command = { program: join(RUN, 'debug/integration'), args: [join(root, 'schema/bench.dbs')], cwd: root };
+const RUST_INTEGRATION: Command = { program: join(RUN, 'debug/integration'), args: [join(root, 'contracts/fixtures/bench/bench.dbs')], cwd: root };
 /** The commands this script runs, for make repo-check. */
 export const COMMANDS = [...[...GO, ...PHP, RUST_TESTS, RUST_BUILD, RUST_INTEGRATION].map(step => render(step, root)), ...TYPESCRIPT_COMMANDS];
 
