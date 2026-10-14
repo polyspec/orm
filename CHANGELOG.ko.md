@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 14a8b3648812ed4234f5600b6aff5e5de01911421cb8bda0452a40476f2bbb63 -->
+<!-- source-sha256: b0bdd953126330b6fd266681c0feb861217e306cf95f545eb884e5c24bd36fe3 -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.17
 
+- server test가 끝난 process를 상태로 판정해, 입양한 process가 아직 거두지 않은 zombie도 끝난 것으로 본다. (#T177-3)
 - startLogged가 spawn 전의 크기부터 server log를 읽어, Linux에서 ready 줄을 바로 쓰는 server도 본다. (#T177-2)
 - 모든 client가 ordered-json 0.0.9를 요구한다. Go client는 module 경로 github.com/polyspec/ordered-json/packages/go에서 import한다. (#T178)
 - package check가 Rust client의 외부 crate에 그 lock을 주어, fetch한 git revision으로 offline build한다. (#T177-1)
