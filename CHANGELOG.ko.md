@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: fe01d6ccb5c25ade6ed74fd5286be6f5159f5dc5018f687ac0afa61324580dcf -->
+<!-- source-sha256: bc5e1ea25202b3a82f9466ba737e36a5ad460b33c45430142a134df3fc63f0a7 -->
 # 변경 이력
 
 ## Unreleased
 
+- 공유 decode vector가 모든 client에서 JSON 값을 비교하고, 받아들이는 YAML key 1, "true", tRUE, nULL, .InF가 공유 vector가 되었다. PHP는 T142-1-1의 purrphp 결함 때문에 대소문자가 섞인 key 세 개를 건너뛴다. (#T142-11)
 - conformance vector creates_and_save가 T169의 insert part를 기록한다. (#T169-1)
 - 여러 행 insert가 bind 한도(SQLite 999, MySQL과 PostgreSQL 65535)로 제한된 2의 거듭제곱 크기 part로 transaction 안에서 실행되어, 모든 client에서 PHP plan cache가 유한한 수의 insert 모양만 가진다. (#T169)
 - TypeScript가 plain YAML map key의 type을 대소문자를 무시하던 regex 대신 yaml library 자신의 core schema tag로 정해, tRUE, nULL, .InF가 문자열 key로 남는다. (#T142-10)
