@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: de4c19bb2016544fadcd41b3927ebc031fe9fcdd552b7c1b0011796711d429bb -->
+<!-- source-sha256: 1b953cc20d937d779a44f50e56f3af4a82904678e59793af30ee1b3f013228c7 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1066,7 +1066,8 @@
 - [o] T169 PHP plan cache가 IN-list와 insert 길이마다 커지지 않게 한다. 원인: hyper product import에서 Engine::$plans(manifest마다 256개)가 8.6-35 MiB를 잡는 것을 측정했다. IN-list 길이와 여러 행 insert 길이마다 plan 모양이 따로 있기 때문이다. 완료 조건: 그 길이에 기대지 않는 plan이나, 근거를 적은 cache memory 한도를 두고, 먼저 측정으로 red를 확인하며, 모든 client의 plan cache에 같은 판정을 한다.
   Evidence: contracts/fixtures/insert_parts.json가 다섯 client 모두에서 통과한다. conformance vector creates_and_save가 part를 기록한다(T169-1).
   - [o] T169-1 conformance vector에 insert part를 기록한다 (T169에 이어). 원인: T169가 creates를 2 + 1 part로 바꿨지만 tests/conformance는 3행 INSERT 하나를 유지해, main CI가 다섯 client 모두에서 같이 실패했다. Evidence: check compare -vector creates_and_save가 mysql, postgres, sqlite에서 vector 1개 × 5개 언어 동일을 보고한다.
-  - [ ] T169-2 선택한 conformance vector를 make로 실행하고 다섯 client를 기술한다 (T169-1에 이어). 원인: tests/conformance/README.md가 아직 client 네 개와 출력 파일 네 개를 말하고, -vector를 check run에 넘기는 make target이 없어 vector 하나에도 손으로 만든 database와 make 환경이 필요하다. 완료 조건: make target이 test server로 지정한 vector를 실행, 비교, 기록하고, README가 그것과 다섯 client를 기술한다.
+  - [o] T169-2 선택한 conformance vector를 make로 실행하고 다섯 client를 기술한다 (T169-1에 이어). 원인: tests/conformance/README.md가 아직 client 네 개와 출력 파일 네 개를 말하고, -vector를 check run에 넘기는 make target이 없어 vector 하나에도 손으로 만든 database와 make 환경이 필요하다. 완료 조건: make target이 test server로 지정한 vector를 실행, 비교, 기록하고, README가 그것과 다섯 client를 기술한다.
+  Evidence: VECTOR=creates_and_save가 세 database에서 vector 1개 × 5개 언어 동일을 보고한다. VECTOR와 RECORD=1은 이유를 출력하고 2로 끝난다.
 - [o] T156 모든 생성기가 모든 key의 모든 prefix마다 유형 있는 메서드를 선언한다. 원인: scan한 소스가 호출하는 메서드만 생성되어, 어떤 소스도 호출하지 않는 key prefix에는 메서드가 없었다(hyper U-97). 완료 조건: Go, Rust, TypeScript model이 primary key, unique key, index의 모든 prefix마다 메서드를 선언하고, Python은 같은 이름을 실행 시점에 해석하며, symbol 기록과 docs/usage.md를 갱신한다.
   - [o] T156-1 T156 이후 orm main CI를 다시 green으로 만든다 (T156에 이어). 원인: run 38502539388이 실패했다. Python key-prefix 테스트가 PYTHONPATH를 바꾸고 지워진 packages/orm-python/bin/orm-gen을 실행했고, Go와 Rust key-prefix 테스트가 testcase를 시작하지 않았으며, generator/gen_go_key_prefix_test.go가 어떤 feature에도 속하지 않았고, src/models/markdown_fixture에 key-prefix 메서드가 없었다. 완료 조건: 각각을 고치고 그 소유 검사가 통과한다.
   - [o] T156-2 Go markdown model을 다시 생성한다 (T156에 이어). 원인: run 38504701356이 go-markdown-model-generated에서 실패했다. packages/orm-go/markdownmodel에 key-prefix 메서드가 없었다. 완료 조건: go generate가 폴더를 바꾸지 않는다.
