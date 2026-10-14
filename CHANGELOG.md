@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- config/layout.yml declares tests/generator, the scan vectors of the PHP and the node generator. (#T172-3)
 - config/layout.yml declares the S9 exceptions with their reasons: the runners and symbol extractors of one language, the Go tests of the dialect rules, the Unicode table and codec vector generators, and the programs that need setsid or process exit notifications; tests/codec/gen-aes.sh, which generated nothing, is removed. (#T137-1-4-4)
 - The scripts and tests of the infrastructure are TypeScript that make scripts-typecheck checks; they read every JSON file through a JSON Schema and use node:util parseArgs, minimatch, path.posix and semver instead of their own versions. (#T137-1-4-1)
 - The TypeScript orm-gen scan declares the chain methods called in not, andNot and orNot callbacks, as it does for and and or. (#T174)
