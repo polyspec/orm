@@ -139,9 +139,9 @@ export function registerModel(manifestText: string, manifestHash: string, extern
 /**
  * The hook of a connection handle (Db.withRequestHook): it receives a request of the handle right
  * before planning and returns the request to plan. addParam appends a value to the parameters of
- * the request and returns its index.
+ * the request and returns its index; params holds the parameters that the request binds, read-only.
  */
-export type RequestHook = (request: Request, addParam: (value: unknown) => number) => Request;
+export type RequestHook = (request: Request, addParam: (value: unknown) => number, params: readonly unknown[]) => Request;
 
 /** The options of an outermost transaction. */
 interface BeginOptions { isolation?: Isolation; readOnly?: boolean; timeoutMs: number; }
@@ -1170,7 +1170,7 @@ function hooked(ex: Executor, request: Request, params: readonly unknown[]): Hoo
   const hook = ex.db.requestHook;
   if (hook === undefined) return { request, params };
   const values = [...params];
-  const out = hook(request, (value: unknown) => values.push(value) - 1);
+  const out = hook(request, (value: unknown) => values.push(value) - 1, Object.freeze([...params]));
   if (out === null || typeof out !== 'object' || Array.isArray(out)) throw new OrmError('CONFIG', 'the request hook returns the request to plan');
   out.n_params = values.length;
   return { request: out, params: values };

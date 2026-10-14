@@ -226,4 +226,20 @@ export const cases = {
     assert.deepEqual([values.id, values.part, values.note], [ids.ax, 'a', 'n5'], 'the restore returns (a, x) with note n5');
     assert.deepEqual(await entryRows(db), [[ids.ax, 'n5']], 'the connection reads only (a, x) with note n5');
   },
+
+  /** The hook reads the bound values of the request, read-only: the value of a predicate that the model bound. */
+  async reads_params(db) {
+    let seen;
+    let frozen;
+    const hooked = db.withRequestHook((request, addParam, params) => {
+      if (request.kind === 'all') {
+        seen = params[request.where.items[0].pred.p];
+        frozen = Object.isFrozen(params);
+      }
+      return request;
+    });
+    await new Item().connect(hooked).label('a2').gets();
+    assert.equal(seen, 'a2', 'the hook reads the value bound to the predicate');
+    assert.equal(frozen, true, 'the parameters the hook reads are read-only');
+  },
 };
