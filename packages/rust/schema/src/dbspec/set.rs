@@ -10,7 +10,7 @@ use serde::de::{self, MapAccess, SeqAccess, Visitor};
 use serde::Deserializer as _;
 use serde_json::value::RawValue;
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::fs::File;
@@ -589,4 +589,62 @@ mod tests {
             assert!(!schema_is_one(raw), "{raw}");
         }
     }
+}
+
+/// The result of one text of a set (docs/dbspec.md "Parsing a set"): the name that the parser reads
+/// from its header, `None` when the header fails; whether the text is external; and what one parse
+/// of the text returns, its document and positions or its diagnostics.
+#[derive(Clone, Debug)]
+pub struct SetDocument {
+    pub name: Option<String>,
+    pub external: bool,
+    pub document: Option<super::Document>,
+    pub positions: Vec<super::Position>,
+    pub diagnostics: Vec<super::Diagnostic>,
+}
+
+/// Parses the texts of one document set (docs/dbspec.md "Parsing a set"). Each text's name is the
+/// name the parser reads from its header; a text whose name an earlier text has is not parsed, and
+/// its own result carries the `name.duplicate` diagnostic. The results are owned first, each in set
+/// order. Every other text is parsed with the texts of all other named documents
+/// as the documents its `use` lines name.
+pub fn parse_set(owned: &[&str], external: &[&str]) -> Vec<SetDocument> {
+    let mut out: Vec<SetDocument> = Vec::new();
+    let mut named: BTreeMap<String, String> = BTreeMap::new();
+    // The texts to parse: the text and the index of its result.
+    let mut parse: Vec<(&str, usize)> = Vec::new();
+    let texts = owned.iter().map(|t| (*t, false)).chain(external.iter().map(|t| (*t, true)));
+    for (text, is_external) in texts {
+        let name = super::parser::header_name(text);
+        out.push(SetDocument { name: name.clone(), external: is_external, document: None, positions: Vec::new(), diagnostics: Vec::new() });
+        let index = out.len() - 1;
+        if let Some(name) = name {
+            if named.contains_key(&name) {
+                out[index].diagnostics.push(super::Diagnostic {
+                    rule: "name.duplicate".to_owned(),
+                    line: 1,
+                    column: 10,
+                    message: format!("document {name} appears twice in the document set"),
+                });
+                continue;
+            }
+            named.insert(name, text.to_owned());
+        }
+        parse.push((text, index));
+    }
+    for (text, index) in parse {
+        let result = &mut out[index];
+        let others: BTreeMap<String, String> =
+            named.iter().filter(|(name, _)| Some(*name) != result.name.as_ref()).map(|(k, v)| (k.clone(), v.clone())).collect();
+        match super::parse(text, &others) {
+            Ok(parsed) => {
+                let mut document = parsed.document;
+                document.external = result.external;
+                result.document = Some(document);
+                result.positions = parsed.positions;
+            }
+            Err(diagnostics) => result.diagnostics = diagnostics,
+        }
+    }
+    out
 }

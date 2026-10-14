@@ -4,7 +4,7 @@
 //!
 //! Usage: `cargo run --release -p polyspec-orm-schema --example dbspec_compare -- <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>`
 
-use polyspec_orm_schema::dbspec::{Change, Diagnostic, Dialect, Document, Plan, PlanStep, ReadError, Unsupported};
+use polyspec_orm_schema::dbspec::{self, Change, Diagnostic, Dialect, Document, Plan, PlanStep, ReadError, Unsupported};
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 use std::io::{BufWriter, Write};
@@ -215,16 +215,12 @@ impl<'p> Reader<'p> {
         for (i, item) in items.iter().enumerate() {
             let place = format!("{}[{i}]", at(location, key));
             let lines = self.lines(item, &place)?;
-            let name = header_name(&lines).ok_or_else(|| self.fail(&format!("{place}[0]"), "has no document name"))?;
+            let text = lines.join("\n");
+            let name = dbspec::parse_set(&[&text], &[]).remove(0).name.ok_or_else(|| self.fail(&format!("{place}[0]"), "has no document name"))?;
             documents.push(NamedDocument { name, lines });
         }
         Ok(documents)
     }
-}
-
-/// The third word of the first line, the document name of a dbspec header split at single spaces.
-fn header_name(lines: &[String]) -> Option<String> {
-    lines.first()?.split(' ').nth(2).map(str::to_string)
 }
 
 /// tests/dbspec/cases.json을 읽는다. It is checked strictly first (tests/common/dbspec_cases.rs): a missing section or

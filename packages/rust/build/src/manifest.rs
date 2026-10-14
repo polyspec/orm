@@ -2,7 +2,6 @@
 //! (docs/dbspec.md, "Manifest and hashes", "Runtime model").
 
 use polyspec_orm_schema::dbspec::{self, Document, Field, RuntimeModel};
-use std::collections::BTreeMap;
 
 /// 한 document set의 manifest와 runtime model.
 pub struct DocumentSet {
@@ -22,33 +21,35 @@ fn diagnostics(path: &str, errors: Vec<dbspec::Diagnostic>) -> String {
 /// document as its declared document set; every diagnostic of every file is reported together.
 /// The external documents are marked `external`; their tables do not become models.
 pub fn load_set(files: &dbspec::Set) -> Result<DocumentSet, String> {
-    let mut texts = Vec::with_capacity(files.documents.len() + files.external.len());
+    let mut paths = (Vec::new(), Vec::new());
+    let mut texts = (Vec::new(), Vec::new());
     let mut failures = Vec::new();
     let owned = files.documents.len();
     for (i, file) in files.documents.iter().chain(&files.external).enumerate() {
         let path = file.path.display().to_string();
         // A file without the signature fails with the diagnostic of dbspec::read_bytes before parsing.
         match dbspec::read_bytes(&path, file.bytes.clone()) {
+            Ok(text) if i < owned => {
+                paths.0.push(path);
+                texts.0.push(text);
+            }
             Ok(text) => {
-                let name = text.lines().next().and_then(|header| header.split(' ').nth(2)).unwrap_or("").to_owned();
-                texts.push((path, name, text, i < owned));
+                paths.1.push(path);
+                texts.1.push(text);
             }
             Err(errors) => failures.push(diagnostics(&path, errors)),
         }
     }
-    // The documents whose bytes passed are parsed too, so that one generation reports the
+    // The documents whose bytes passed are parsed as one set, so that one generation reports the
     // diagnostics of every document.
-    let set: BTreeMap<String, String> = texts.iter().map(|(_, name, text, _)| (name.clone(), text.clone())).collect();
-    let mut documents: Vec<Document> = Vec::with_capacity(texts.len());
-    for (path, name, text, is_owned) in &texts {
-        let others: BTreeMap<String, String> = set.iter().filter(|(other, _)| *other != name).map(|(k, v)| (k.clone(), v.clone())).collect();
-        match dbspec::parse(text, &others) {
-            Ok(parsed) => {
-                let mut document = parsed.document;
-                document.external = !is_owned;
-                documents.push(document);
-            }
-            Err(errors) => failures.push(diagnostics(path, errors)),
+    let owned_texts: Vec<&str> = texts.0.iter().map(String::as_str).collect();
+    let external_texts: Vec<&str> = texts.1.iter().map(String::as_str).collect();
+    let set = dbspec::parse_set(&owned_texts, &external_texts);
+    let mut documents: Vec<Document> = Vec::with_capacity(set.len());
+    for (path, result) in paths.0.iter().chain(&paths.1).zip(set) {
+        match result.document {
+            Some(document) => documents.push(document),
+            None => failures.push(diagnostics(path, result.diagnostics)),
         }
     }
     if !failures.is_empty() {
