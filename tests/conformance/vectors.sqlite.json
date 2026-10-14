@@ -1522,16 +1522,6 @@
           {
             "binds": [],
             "error": null,
-            "kind": "utility",
-            "sql": "CREATE TABLE IF NOT EXISTS \"orm__row_lock\" (\"id\" INTEGER PRIMARY KEY CHECK (\"id\" = 1))",
-            "tables": [
-              "orm__row_lock"
-            ],
-            "transaction": null
-          },
-          {
-            "binds": [],
-            "error": null,
             "kind": "begin",
             "sql": "BEGIN IMMEDIATE",
             "tables": [],

@@ -877,7 +877,8 @@
             "packages/go/orm/styled_state_test.go",
             "packages/go/orm/styled_state_physical_test.go",
             "packages/go/orm/decimal_model_test.go",
-            "contracts/fixtures/styled_column_states.json"
+            "contracts/fixtures/styled_column_states.json",
+            "contracts/fixtures/insert_parts.json"
           ]
         },
         {
