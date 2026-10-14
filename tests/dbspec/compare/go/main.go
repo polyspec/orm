@@ -17,22 +17,22 @@ import (
 )
 
 type testCase struct {
-	ID        string
-	Main      string
-	Documents map[string][]string
-	CRLF      bool
-	Mixed     bool
+	ID        string              `json:"id"`
+	Main      string              `json:"main"`
+	Documents map[string][]string `json:"documents"`
+	CRLF      bool                `json:"crlf"`
+	Mixed     bool                `json:"mixed"`
 }
 
 type hashCase struct {
-	ID        string
-	Documents map[string][]string
+	ID        string              `json:"id"`
+	Documents map[string][]string `json:"documents"`
 }
 
 // fileCase는 cases.json 기준 상대 경로로 파일을 이름 짓는 files case다.
 type fileCase struct {
-	ID   string
-	Path string
+	ID   string `json:"id"`
+	Path string `json:"path"`
 }
 
 // sharedCases는 tests/dbspec/cases.json이다.
@@ -299,35 +299,35 @@ func writeDiagnostics(out *bufio.Writer, diagnostics []dbspec.Diagnostic) {
 
 // planVectors는 tests/dbspec/plans.json이다(docs/plans.md).
 type planVectors struct {
-	Cases   []planCase
-	Invalid []planCase
-	Chains  []chainCase
-	Parse   []parseCase
+	Cases   []planCase  `json:"cases"`
+	Invalid []planCase  `json:"invalid"`
+	Chains  []chainCase `json:"chains"`
+	Parse   []parseCase `json:"parse"`
 	// Comparisons는 plan 없이 비교하는 두 schema다.
-	Comparisons []comparisonCase
+	Comparisons []comparisonCase `json:"comparisons"`
 }
 
 type comparisonCase struct {
-	ID     string
-	Source []string
-	Target []string
+	ID     string   `json:"id"`
+	Source []string `json:"source"`
+	Target []string `json:"target"`
 }
 
 // planCase의 Source가 nil이면 빈 schema이다.
 type planCase struct {
-	ID     string
-	Source *[]string
-	Plan   []string
+	ID     string    `json:"id"`
+	Source *[]string `json:"source"`
+	Plan   []string  `json:"plan"`
 }
 
 type chainCase struct {
-	ID    string
-	Plans [][]string
+	ID    string     `json:"id"`
+	Plans [][]string `json:"plans"`
 }
 
 type parseCase struct {
-	ID   string
-	Plan []string
+	ID   string   `json:"id"`
+	Plan []string `json:"plan"`
 }
 
 // planSource는 plan case의 source schema를 읽고 빈 schema이면 nil을 돌려주며, diagnostic이
@@ -476,26 +476,26 @@ func writePlans(out *bufio.Writer, v planVectors) {
 
 // mermaidVectors는 tests/dbspec/mermaid.json이다(docs/mermaid.md).
 type mermaidVectors struct {
-	Export    []exportCase
-	Import    []importCase
-	Invalid   []importCase
-	RoundTrip []roundTripCase
+	Export    []exportCase    `json:"export"`
+	Import    []importCase    `json:"import"`
+	Invalid   []importCase    `json:"invalid"`
+	RoundTrip []roundTripCase `json:"round_trip"`
 }
 
 type exportCase struct {
-	ID        string
-	Document  []string
-	Documents map[string][]string
+	ID        string              `json:"id"`
+	Document  []string            `json:"document"`
+	Documents map[string][]string `json:"documents"`
 }
 
 type importCase struct {
-	ID      string
-	Mermaid []string
+	ID      string   `json:"id"`
+	Mermaid []string `json:"mermaid"`
 }
 
 type roundTripCase struct {
-	ID   string
-	Path string
+	ID   string `json:"id"`
+	Path string `json:"path"`
 }
 
 // writeDropped는 export나 import가 뺀 것을 "= kind<TAB>table<TAB>name"으로 출력한다.

@@ -139,6 +139,7 @@ rules:
       - "!tests/dbspec/introspect/php.php"
       - "!tests/dbspec/introspect/php-extension.php"
       - "!tests/dbspec/cases.php"
+      - "!tests/dbspec/vectors.php"
       - "!tests/dbspec/input.php"
       # The symbol extractors of one language read its declarations with its own parser (Go's go/parser, PHP's tokens,
       # Python's ast, Rust's syn), with the tests of the Python extractor.

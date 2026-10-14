@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mts) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-14T23:49:25.405Z",
+  "reviewed": "2026-10-14T23:57:35.707Z",
   "locks": [
     {
       "lock": "package-lock.json",
@@ -24,7 +24,7 @@
     },
     {
       "lock": "composer.lock",
-      "sha256": "cf7843d8196c2e28f5c819e07199f3647c52667e663b882e8a474bbd40860949",
+      "sha256": "1aebd827584ef218b2b32ab858b8f09dd4cc49e3ad18217422d42fb0575702c8",
       "advisories": []
     },
     {
@@ -39,7 +39,7 @@
     },
     {
       "lock": "tests/go.sum",
-      "sha256": "97caff8f7e3ba9dda6b7a4d1725af2b1d49bf4725991e729769c51a6137714da",
+      "sha256": "1d33e009a1b3ffc97c82b50d7a18d5546e410d29b57bd5ed92f834255b04bb66",
       "advisories": []
     },
     {
@@ -49,7 +49,7 @@
     },
     {
       "lock": "packages/rust/Cargo.lock",
-      "sha256": "0276266b2da37cda0b3fef417692eed8355f849b5e9933d668e5533214867611",
+      "sha256": "07bb64c63bbf5da249098aca41e779ce3f0d287e4c9840c27cf9a1f6aec49c0c",
       "advisories": []
     },
     {
@@ -354,11 +354,25 @@
       "latest": "13.4.2"
     },
     {
+      "ecosystem": "composer",
+      "manifest": "composer.json",
+      "package": "opis/json-schema",
+      "version": "2.6.0",
+      "latest": "2.6.0"
+    },
+    {
       "ecosystem": "pypi",
       "manifest": "packages/python/pyproject.toml",
       "package": "setuptools",
       "version": "84.0.0",
       "latest": "84.0.0"
+    },
+    {
+      "ecosystem": "pypi",
+      "manifest": "packages/python/pyproject.toml",
+      "package": "jsonschema-rs",
+      "version": "0.58.6",
+      "latest": "0.58.6"
     },
     {
       "ecosystem": "go",
@@ -436,6 +450,13 @@
       "package": "github.com/jackc/pgx/v5",
       "version": "v5.11.0",
       "latest": "v5.11.0"
+    },
+    {
+      "ecosystem": "go",
+      "manifest": "tests/go.mod",
+      "package": "github.com/santhosh-tekuri/jsonschema/v6",
+      "version": "v6.0.3",
+      "latest": "v6.0.3"
     },
     {
       "ecosystem": "go",

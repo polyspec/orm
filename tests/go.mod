@@ -5,6 +5,7 @@ go 1.27.2
 require (
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/jackc/pgx/v5 v5.11.0
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	golang.org/x/sys v0.49.0
 	golang.org/x/tools v0.52.0
 	modernc.org/sqlite v1.60.1

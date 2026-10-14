@@ -5,7 +5,7 @@
 //! Usage: `cargo run --release -p polyspec-orm-schema --example dbspec_compare -- <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>`
 
 use polyspec_orm_schema::dbspec::{self, Change, Diagnostic, Dialect, Document, Plan, PlanStep, ReadError, Unsupported};
-use serde_json::{Map, Value};
+use serde_json::Value;
 use std::collections::BTreeMap;
 use std::io::{BufWriter, Write};
 use std::path::Path;
@@ -121,152 +121,97 @@ struct MermaidVectors {
     round_trip: Vec<RoundTripCase>,
 }
 
-/// 한 vector file의 값을 위치를 밝히며 읽는다.
-struct Reader<'p> {
-    path: &'p str,
-}
+/// The schemas declare every field that these readers take, so a value of another shape is a defect of the schema.
+const DECLARED: &str = "the schema of the vector file declares this value";
 
-fn at(location: &str, key: &str) -> String {
-    if location.is_empty() {
-        key.to_string()
+/// Reads the vector file at `path` against the schema tests/dbspec/schema/`kind`.schema.json (tests/common/dbspec_cases.rs);
+/// a refusal is an error holding one "<file>: <location> <problem>" line per problem.
+fn open(path: &str, kind: &str) -> Result<Value, String> {
+    let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
+    let value: Value = serde_json::from_str(&text).map_err(|e| format!("{path}: {e}"))?;
+    if kind == "cases" {
+        dbspec_cases::check_cases(&value, path)?;
     } else {
-        format!("{location}.{key}")
+        dbspec_cases::check_vectors(&value, kind, path)?;
     }
+    Ok(value)
 }
 
-impl<'p> Reader<'p> {
-    /// vector file을 JSON object로 읽어 그 reader와 함께 돌려준다.
-    fn open(path: &'p str) -> Result<(Self, Map<String, Value>), String> {
-        let reader = Reader { path };
-        let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
-        match serde_json::from_str(&text).map_err(|e| format!("{path}: {e}"))? {
-            Value::Object(object) => Ok((reader, object)),
-            _ => Err(reader.fail("$", "is not an object")),
-        }
-    }
-
-    fn fail(&self, location: &str, problem: &str) -> String {
-        format!("{}: {location} {problem}", self.path)
-    }
-
-    /// `object`의 `key` 값을 돌려주고, 없으면 error를 돌려준다.
-    fn field<'v>(&self, object: &'v Map<String, Value>, location: &str, key: &str) -> Result<&'v Value, String> {
-        object.get(key).ok_or_else(|| self.fail(&at(location, key), "is missing"))
-    }
-
-    fn string(&self, object: &Map<String, Value>, location: &str, key: &str) -> Result<String, String> {
-        self.field(object, location, key)?.as_str().map(str::to_string).ok_or_else(|| self.fail(&at(location, key), "is not a string"))
-    }
-
-    /// `key`가 없으면 false를, 있으면 boolean인지 확인한 값을 돌려준다.
-    fn flag(&self, object: &Map<String, Value>, location: &str, key: &str) -> Result<bool, String> {
-        match object.get(key) {
-            None => Ok(false),
-            Some(value) => value.as_bool().ok_or_else(|| self.fail(&at(location, key), "is not a boolean")),
-        }
-    }
-
-    /// `value`가 string의 array인지 확인해 돌려준다.
-    fn lines(&self, value: &Value, location: &str) -> Result<Vec<String>, String> {
-        let items = value.as_array().ok_or_else(|| self.fail(location, "is not an array"))?;
-        items
-            .iter()
-            .enumerate()
-            .map(|(i, item)| item.as_str().map(str::to_string).ok_or_else(|| self.fail(&format!("{location}[{i}]"), "is not a string")))
-            .collect()
-    }
-
-    fn lines_field(&self, object: &Map<String, Value>, location: &str, key: &str) -> Result<Vec<String>, String> {
-        self.lines(self.field(object, location, key)?, &at(location, key))
-    }
-
-    /// 이름마다 line array를 가진 object를 돌려준다.
-    fn documents(&self, object: &Map<String, Value>, location: &str, key: &str) -> Result<Documents, String> {
-        let items = self.field(object, location, key)?.as_object().ok_or_else(|| self.fail(&at(location, key), "is not an object"))?;
-        items.iter().map(|(name, item)| Ok((name.clone(), self.lines(item, &at(&at(location, key), name))?))).collect()
-    }
-
-    /// section `key`의 각 case가 object인지와 그 id를 확인하고 `read`로 case를 읽는다.
-    fn cases<T>(
-        &self,
-        object: &Map<String, Value>,
-        key: &str,
-        read: impl Fn(&Map<String, Value>, &str, String) -> Result<T, String>,
-    ) -> Result<Vec<T>, String> {
-        let items = self.field(object, "", key)?.as_array().ok_or_else(|| self.fail(key, "is not an array"))?;
-        let mut cases = Vec::with_capacity(items.len());
-        for (i, item) in items.iter().enumerate() {
-            let location = format!("{key}[{i}]");
-            let case = item.as_object().ok_or_else(|| self.fail(&location, "is not an object"))?;
-            let id = self.string(case, &location, "id")?;
-            cases.push(read(case, &location, id)?);
-        }
-        Ok(cases)
-    }
-
-    fn hash_case(&self, case: &Map<String, Value>, location: &str, id: String) -> Result<HashCase, String> {
-        Ok(HashCase { id, documents: self.documents(case, location, "documents")? })
-    }
-
-    /// An array of documents, each a line array whose first line is a header that names it.
-    fn named_documents(&self, object: &Map<String, Value>, location: &str, key: &str) -> Result<Vec<NamedDocument>, String> {
-        let items = self.field(object, location, key)?.as_array().ok_or_else(|| self.fail(&at(location, key), "is not an array"))?;
-        let mut documents = Vec::with_capacity(items.len());
-        for (i, item) in items.iter().enumerate() {
-            let place = format!("{}[{i}]", at(location, key));
-            let lines = self.lines(item, &place)?;
-            let text = lines.join("\n");
-            let name = dbspec::parse_set(&[&text], &[]).remove(0).name.ok_or_else(|| self.fail(&format!("{place}[0]"), "has no document name"))?;
-            documents.push(NamedDocument { name, lines });
-        }
-        Ok(documents)
-    }
+fn fail(path: &str, location: &str, problem: &str) -> String {
+    format!("{path}: {location} {problem}")
 }
 
-/// tests/dbspec/cases.json을 읽는다. It is checked strictly first (tests/common/dbspec_cases.rs): a missing section or
-/// field, or one that the format does not name, is refused.
+fn string(value: &Value) -> String {
+    value.as_str().expect(DECLARED).to_string()
+}
+
+fn list(value: &Value) -> &Vec<Value> {
+    value.as_array().expect(DECLARED)
+}
+
+fn lines(value: &Value) -> Vec<String> {
+    list(value).iter().map(string).collect()
+}
+
+/// An object of line arrays by name.
+fn documents(value: &Value) -> Documents {
+    value.as_object().expect(DECLARED).iter().map(|(name, item)| (name.clone(), lines(item))).collect()
+}
+
+fn hash_case(case: &Value) -> HashCase {
+    HashCase { id: string(&case["id"]), documents: documents(&case["documents"]) }
+}
+
+/// Names each document of a sets case by its header; a header that names no document is refused.
+fn named_documents(path: &str, value: Option<&Value>, location: &str) -> Result<Vec<NamedDocument>, String> {
+    let mut named = Vec::new();
+    for (i, item) in value.map(list).into_iter().flatten().enumerate() {
+        let lines = lines(item);
+        let text = lines.join("\n");
+        let name = dbspec::parse_set(&[&text], &[]).remove(0).name.ok_or_else(|| fail(path, &format!("{location}[{i}][0]"), "has no document name"))?;
+        named.push(NamedDocument { name, lines });
+    }
+    Ok(named)
+}
+
+/// tests/dbspec/cases.json, read against its schema (tests/common/dbspec_cases.rs): a missing section or field, or one
+/// that the format does not name, is refused.
 fn read_cases(path: &str) -> Result<SharedCases, String> {
-    let (r, v) = Reader::open(path)?;
-    dbspec_cases::check_cases(&Value::Object(v.clone()), path)?;
-    let test_case = |case: &Map<String, Value>, location: &str, id: String| {
-        let main = r.string(case, location, "main")?;
-        let documents = r.documents(case, location, "documents")?;
-        if !documents.contains_key(&main) {
-            return Err(r.fail(&at(&at(location, "documents"), &main), "is missing"));
-        }
-        Ok(TestCase { id, main, documents, crlf: r.flag(case, location, "crlf")?, mixed: r.flag(case, location, "mixed")? })
+    let v = open(path, "cases")?;
+    let test_case = |case: &Value| TestCase {
+        id: string(&case["id"]),
+        main: string(&case["main"]),
+        documents: documents(&case["documents"]),
+        crlf: case.get("crlf").is_some_and(|flag| flag.as_bool().expect(DECLARED)),
+        mixed: case.get("mixed").is_some_and(|flag| flag.as_bool().expect(DECLARED)),
     };
+    let mut sets = Vec::new();
+    for (i, case) in list(&v["sets"]).iter().enumerate() {
+        sets.push(SetCase {
+            id: string(&case["id"]),
+            documents: named_documents(path, case.get("documents"), &format!("sets[{i}].documents"))?,
+            parsing: documents(&case["parsing"]),
+            external: named_documents(path, case.get("external"), &format!("sets[{i}].external"))?,
+        });
+    }
     Ok(SharedCases {
-        canonical: r.cases(&v, "canonical", test_case)?,
-        normalize: r.cases(&v, "normalize", test_case)?,
-        invalid: r.cases(&v, "invalid", test_case)?,
-        hashes: r.cases(&v, "hashes", |case, location, id| r.hash_case(case, location, id))?,
-        files: r.cases(&v, "files", |case, location, id| Ok(FileCase { id, path: r.string(case, location, "path")? }))?,
-        sets: r.cases(&v, "sets", |case, location, id| {
-            Ok(SetCase {
-                id,
-                documents: r.named_documents(case, location, "documents")?,
-                parsing: r.documents(case, location, "parsing")?,
-                external: if case.contains_key("external") { r.named_documents(case, location, "external")? } else { Vec::new() },
-            })
-        })?,
-        positions: r.cases(&v, "positions", |case, location, id| {
-            let main = r.string(case, location, "main")?;
-            let documents = r.documents(case, location, "documents")?;
-            if !documents.contains_key(&main) {
-                return Err(r.fail(&at(&at(location, "documents"), &main), "is missing"));
-            }
-            Ok(PositionCase { id, main, documents })
-        })?,
+        canonical: list(&v["canonical"]).iter().map(test_case).collect(),
+        normalize: list(&v["normalize"]).iter().map(test_case).collect(),
+        invalid: list(&v["invalid"]).iter().map(test_case).collect(),
+        hashes: list(&v["hashes"]).iter().map(hash_case).collect(),
+        files: list(&v["files"]).iter().map(|case| FileCase { id: string(&case["id"]), path: string(&case["path"]) }).collect(),
+        sets,
+        positions: list(&v["positions"])
+            .iter()
+            .map(|case| PositionCase { id: string(&case["id"]), main: string(&case["main"]), documents: documents(&case["documents"]) })
+            .collect(),
     })
 }
 
-/// The case ids of tests/dbspec/syntax.json in file order, with the reader that names their places. The expected
+/// The case ids of tests/dbspec/syntax.json in file order. The expected
 /// tokens are the runtime tests' to check; this runner compares what each client gives.
-fn read_syntax(path: &str) -> Result<(Reader<'_>, Vec<String>), String> {
-    let (r, v) = Reader::open(path)?;
-    let ids = r.cases(&v, "cases", |_, _, id| Ok(id))?;
-    Ok((r, ids))
+fn read_syntax(path: &str) -> Result<Vec<String>, String> {
+    Ok(list(&open(path, "syntax")?["cases"]).iter().map(|case| string(&case["id"])).collect())
 }
 
 /// The input of every analysis that syntax.json names, by its id, as scripts/dbspec/syntax-vectors.mts derives it
@@ -344,46 +289,41 @@ fn write_syntax(out: &mut impl Write, id: &str, text: &str, set: &BTreeMap<Strin
 
 /// tests/dbspec/ddl.json의 cases를 읽는다.
 fn read_ddl(path: &str) -> Result<Vec<HashCase>, String> {
-    let (r, v) = Reader::open(path)?;
-    r.cases(&v, "cases", |case, location, id| r.hash_case(case, location, id))
+    Ok(list(&open(path, "ddl")?["cases"]).iter().map(hash_case).collect())
 }
 
 /// tests/dbspec/plans.json을 읽는다. source는 빈 schema를 뜻하는 null이거나 line array이다.
 fn read_plans(path: &str) -> Result<PlanVectors, String> {
-    let (r, v) = Reader::open(path)?;
-    let plan_case = |case: &Map<String, Value>, location: &str, id: String| {
-        let source = match r.field(case, location, "source")? {
-            Value::Null => None,
-            lines => Some(r.lines(lines, &at(location, "source"))?),
-        };
-        Ok(PlanCase { id, source, plan: r.lines_field(case, location, "plan")? })
+    let v = open(path, "plans")?;
+    let plan_case = |case: &Value| PlanCase {
+        id: string(&case["id"]),
+        source: if case["source"].is_null() { None } else { Some(lines(&case["source"])) },
+        plan: lines(&case["plan"]),
     };
     Ok(PlanVectors {
-        cases: r.cases(&v, "cases", plan_case)?,
-        invalid: r.cases(&v, "invalid", plan_case)?,
-        chains: r.cases(&v, "chains", |case, location, id| {
-            let items = r.field(case, location, "plans")?.as_array().ok_or_else(|| r.fail(&at(location, "plans"), "is not an array"))?;
-            let plans = items.iter().enumerate().map(|(i, item)| r.lines(item, &format!("{}[{i}]", at(location, "plans")))).collect::<Result<_, _>>()?;
-            Ok(ChainCase { id, plans })
-        })?,
-        parse: r.cases(&v, "parse", |case, location, id| Ok(ParseCase { id, plan: r.lines_field(case, location, "plan")? }))?,
-        comparisons: r.cases(&v, "comparisons", |case, location, id| {
-            Ok(ComparisonCase { id, source: r.lines_field(case, location, "source")?, target: r.lines_field(case, location, "target")? })
-        })?,
+        cases: list(&v["cases"]).iter().map(plan_case).collect(),
+        invalid: list(&v["invalid"]).iter().map(plan_case).collect(),
+        chains: list(&v["chains"]).iter().map(|case| ChainCase { id: string(&case["id"]), plans: list(&case["plans"]).iter().map(lines).collect() }).collect(),
+        parse: list(&v["parse"]).iter().map(|case| ParseCase { id: string(&case["id"]), plan: lines(&case["plan"]) }).collect(),
+        comparisons: list(&v["comparisons"])
+            .iter()
+            .map(|case| ComparisonCase { id: string(&case["id"]), source: lines(&case["source"]), target: lines(&case["target"]) })
+            .collect(),
     })
 }
 
 /// tests/dbspec/mermaid.json을 읽는다.
 fn read_mermaid(path: &str) -> Result<MermaidVectors, String> {
-    let (r, v) = Reader::open(path)?;
-    let import_case = |case: &Map<String, Value>, location: &str, id: String| Ok(ImportCase { id, mermaid: r.lines_field(case, location, "mermaid")? });
+    let v = open(path, "mermaid")?;
+    let import_case = |case: &Value| ImportCase { id: string(&case["id"]), mermaid: lines(&case["mermaid"]) };
     Ok(MermaidVectors {
-        export: r.cases(&v, "export", |case, location, id| {
-            Ok(ExportCase { id, document: r.lines_field(case, location, "document")?, documents: r.documents(case, location, "documents")? })
-        })?,
-        import: r.cases(&v, "import", import_case)?,
-        invalid: r.cases(&v, "invalid", import_case)?,
-        round_trip: r.cases(&v, "round_trip", |case, location, id| Ok(RoundTripCase { id, path: r.string(case, location, "path")? }))?,
+        export: list(&v["export"])
+            .iter()
+            .map(|case| ExportCase { id: string(&case["id"]), document: lines(&case["document"]), documents: documents(&case["documents"]) })
+            .collect(),
+        import: list(&v["import"]).iter().map(import_case).collect(),
+        invalid: list(&v["invalid"]).iter().map(import_case).collect(),
+        round_trip: list(&v["round_trip"]).iter().map(|case| RoundTripCase { id: string(&case["id"]), path: string(&case["path"]) }).collect(),
     })
 }
 
@@ -795,10 +735,10 @@ fn run(cases_path: &str, stress_path: &str, ddl_path: &str, plans_path: &str, me
     write_plans(&mut out, &read_plans(plans_path)?).map_err(io)?;
     write_mermaid(&mut out, &read_mermaid(mermaid_path)?)?;
     write_positions(&mut out, &cases.positions).map_err(io)?;
-    let (r, ids) = read_syntax(syntax_path)?;
+    let ids = read_syntax(syntax_path)?;
     let inputs = syntax_inputs(&cases);
     for (i, id) in ids.iter().enumerate() {
-        let (text, set) = inputs.get(id).ok_or_else(|| r.fail(&format!("cases[{i}].id"), "names no input of the shared cases"))?;
+        let (text, set) = inputs.get(id).ok_or_else(|| fail(syntax_path, &format!("cases[{i}].id"), "names no input of the shared cases"))?;
         write_syntax(&mut out, id, text, set).map_err(io)?;
     }
     out.flush().map_err(io)

@@ -19,10 +19,12 @@ function dbspec_vector_fail(string $path, string $location, string $problem): ne
 }
 
 /**
- * vector file을 JSON object로 읽고 $read로 모양을 확인해 그 결과를 돌려준다.
- * 빈 object와 빈 array를 구별하도록 object는 stdClass로 읽는다.
+ * Reads the vector file at $path against the schema tests/dbspec/schema/$kind.schema.json (tests/dbspec/vectors.php) and
+ * returns it with objects as associative arrays; a refusal is written to stderr, one line per problem, and ends with 1.
+ *
+ * @return array<string, mixed>
  */
-function dbspec_read_vectors(string $path, callable $read): array
+function dbspec_read_vectors(string $path, string $kind): array
 {
     $text = dbspec_read_input($path);
     try {
@@ -31,98 +33,13 @@ function dbspec_read_vectors(string $path, callable $read): array
         fwrite(STDERR, "$path: {$e->getMessage()}\n");
         exit(1);
     }
-    if (!$value instanceof stdClass) {
-        dbspec_vector_fail($path, '$', 'is not an object');
+    try {
+        $kind === 'cases' ? dbspec_check_cases($value, $path) : dbspec_check_vectors($value, $kind, $path);
+    } catch (RuntimeException $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        exit(1);
     }
-    return $read($path, $value);
-}
-
-/** $object의 $key가 있는지 확인해 그 값을 돌려준다. */
-function dbspec_vector_field(string $path, stdClass $object, string $location, string $key): mixed
-{
-    $at = $location === '' ? $key : "$location.$key";
-    if (!property_exists($object, $key)) {
-        dbspec_vector_fail($path, $at, 'is missing');
-    }
-    return $object->$key;
-}
-
-function dbspec_vector_string(string $path, stdClass $object, string $location, string $key): string
-{
-    $value = dbspec_vector_field($path, $object, $location, $key);
-    if (!is_string($value)) {
-        dbspec_vector_fail($path, "$location.$key", 'is not a string');
-    }
-    return $value;
-}
-
-/** $key가 없으면 false를, 있으면 boolean인지 확인한 값을 돌려준다. */
-function dbspec_vector_flag(string $path, stdClass $object, string $location, string $key): bool
-{
-    if (!property_exists($object, $key)) {
-        return false;
-    }
-    $value = $object->$key;
-    if (!is_bool($value)) {
-        dbspec_vector_fail($path, "$location.$key", 'is not a boolean');
-    }
-    return $value;
-}
-
-/** @return list<string> */
-function dbspec_vector_check_lines(string $path, mixed $value, string $at): array
-{
-    if (!is_array($value)) {
-        dbspec_vector_fail($path, $at, 'is not an array');
-    }
-    foreach ($value as $i => $line) {
-        if (!is_string($line)) {
-            dbspec_vector_fail($path, "{$at}[$i]", 'is not a string');
-        }
-    }
-    return $value;
-}
-
-/** @return list<string> */
-function dbspec_vector_lines(string $path, stdClass $object, string $location, string $key): array
-{
-    return dbspec_vector_check_lines($path, dbspec_vector_field($path, $object, $location, $key), "$location.$key");
-}
-
-/** 이름마다 line array를 가진 object를 확인한다. @return array<string, list<string>> */
-function dbspec_vector_documents(string $path, stdClass $object, string $location, string $key): array
-{
-    $value = dbspec_vector_field($path, $object, $location, $key);
-    if (!$value instanceof stdClass) {
-        dbspec_vector_fail($path, "$location.$key", 'is not an object');
-    }
-    $documents = [];
-    foreach (get_object_vars($value) as $name => $lines) {
-        $documents[$name] = dbspec_vector_check_lines($path, $lines, "$location.$key.$name");
-    }
-    return $documents;
-}
-
-/**
- * section $key의 각 case가 object인지와 그 id를 확인하고, $read가 돌려준 field에 id를 더한 list를 돌려준다.
- *
- * @return list<array<string, mixed>>
- */
-function dbspec_vector_cases(string $path, stdClass $object, string $key, callable $read): array
-{
-    $section = dbspec_vector_field($path, $object, '', $key);
-    if (!is_array($section)) {
-        dbspec_vector_fail($path, $key, 'is not an array');
-    }
-    $cases = [];
-    foreach ($section as $i => $case) {
-        $at = "{$key}[$i]";
-        if (!$case instanceof stdClass) {
-            dbspec_vector_fail($path, $at, 'is not an object');
-        }
-        $cases[] = ['id' => dbspec_vector_string($path, $case, $at, 'id')] + $read($case, $at);
-    }
-    return $cases;
+    return json_decode($text, true, 512, JSON_THROW_ON_ERROR);
 }
 
 /**
@@ -266,27 +183,22 @@ function dbspec_header_name(array $lines): ?string
 }
 
 /**
- * An array of documents, each a line array whose first line is a header that names it.
+ * Names each document of a sets case by its header; a header that names no document is refused.
  *
+ * @param list<list<string>> $documents
  * @return list<array{name: string, lines: list<string>}>
  */
-function dbspec_vector_named_documents(string $path, stdClass $object, string $location, string $key): array
+function dbspec_vector_named_documents(string $path, array $documents, string $at): array
 {
-    $value = dbspec_vector_field($path, $object, $location, $key);
-    if (!is_array($value)) {
-        dbspec_vector_fail($path, "$location.$key", 'is not an array');
-    }
-    $documents = [];
-    foreach ($value as $i => $lines) {
-        $at = "$location.{$key}[$i]";
-        $lines = dbspec_vector_check_lines($path, $lines, $at);
+    $named = [];
+    foreach ($documents as $i => $lines) {
         $name = dbspec_header_name($lines);
         if ($name === null) {
-            dbspec_vector_fail($path, "{$at}[0]", 'has no document name');
+            dbspec_vector_fail($path, "{$at}[$i][0]", 'has no document name');
         }
-        $documents[] = ['name' => $name, 'lines' => $lines];
+        $named[] = ['name' => $name, 'lines' => $lines];
     }
-    return $documents;
+    return $named;
 }
 
 /**
@@ -299,51 +211,15 @@ function dbspec_vector_named_documents(string $path, stdClass $object, string $l
  */
 function dbspec_write_interface(string $dbspec, string $casesPath, string $stressPath, string $ddlPath): array
 {
-    $cases = dbspec_read_vectors($casesPath, static function (string $path, stdClass $v): array {
-        // cases.json is read strictly (tests/dbspec/cases.php): a missing or unknown section or field is refused.
-        try {
-            dbspec_check_cases($v, $path);
-        } catch (RuntimeException $e) {
-            fwrite(STDERR, $e->getMessage() . "\n");
-            exit(1);
-        }
-        $cases = [];
-        foreach (['canonical', 'normalize', 'invalid'] as $kind) {
-            $cases[$kind] = dbspec_vector_cases($path, $v, $kind, static function (stdClass $case, string $at) use ($path): array {
-                $main = dbspec_vector_string($path, $case, $at, 'main');
-                $documents = dbspec_vector_documents($path, $case, $at, 'documents');
-                if (!array_key_exists($main, $documents)) {
-                    dbspec_vector_fail($path, "$at.documents.$main", 'is missing');
-                }
-                return [
-                    'main' => $main,
-                    'documents' => $documents,
-                    'crlf' => dbspec_vector_flag($path, $case, $at, 'crlf'),
-                    'mixed' => dbspec_vector_flag($path, $case, $at, 'mixed'),
-                ];
-            });
-        }
-        $cases['hashes'] = dbspec_vector_cases($path, $v, 'hashes', static fn(stdClass $case, string $at): array => [
-            'documents' => dbspec_vector_documents($path, $case, $at, 'documents'),
-        ]);
-        $cases['files'] = dbspec_vector_cases($path, $v, 'files', static fn(stdClass $case, string $at): array => [
-            'path' => dbspec_vector_string($path, $case, $at, 'path'),
-        ]);
-        $cases['sets'] = dbspec_vector_cases($path, $v, 'sets', static fn(stdClass $case, string $at): array => [
-            'documents' => dbspec_vector_named_documents($path, $case, $at, 'documents'),
-            'parsing' => dbspec_vector_documents($path, $case, $at, 'parsing'),
-            'external' => property_exists($case, 'external') ? dbspec_vector_named_documents($path, $case, $at, 'external') : [],
-        ]);
-        $cases['positions'] = dbspec_vector_cases($path, $v, 'positions', static function (stdClass $case, string $at) use ($path): array {
-            $main = dbspec_vector_string($path, $case, $at, 'main');
-            $documents = dbspec_vector_documents($path, $case, $at, 'documents');
-            if (!array_key_exists($main, $documents)) {
-                dbspec_vector_fail($path, "$at.documents.$main", 'is missing');
-            }
-            return ['main' => $main, 'documents' => $documents];
-        });
-        return $cases;
-    });
+    // cases.json is read against its schema (tests/dbspec/cases.php): a missing or unknown section or field is refused.
+    $cases = dbspec_read_vectors($casesPath, 'cases');
+    foreach (['canonical', 'normalize', 'invalid'] as $kind) {
+        $cases[$kind] = array_map(static fn(array $case): array => $case + ['crlf' => false, 'mixed' => false], $cases[$kind]);
+    }
+    foreach ($cases['sets'] as $i => $case) {
+        $cases['sets'][$i]['documents'] = dbspec_vector_named_documents($casesPath, $case['documents'], "sets[$i].documents");
+        $cases['sets'][$i]['external'] = dbspec_vector_named_documents($casesPath, $case['external'] ?? [], "sets[$i].external");
+    }
 
     $stress = dbspec_read_document($dbspec, $stressPath);
     foreach (['canonical', 'normalize', 'invalid'] as $kind) {
@@ -394,12 +270,7 @@ function dbspec_write_interface(string $dbspec, string $casesPath, string $stres
         dbspec_write_manifest($dbspec, $case);
     }
 
-    $ddl = dbspec_read_vectors($ddlPath, static fn(string $path, stdClass $v): array => dbspec_vector_cases(
-        $path,
-        $v,
-        'cases',
-        static fn(stdClass $case, string $at): array => ['documents' => dbspec_vector_documents($path, $case, $at, 'documents')],
-    ));
+    $ddl = dbspec_read_vectors($ddlPath, 'ddl')['cases'];
     foreach ($ddl as $case) {
         dbspec_write_render($dbspec, $case);
     }
@@ -491,12 +362,7 @@ function dbspec_syntax_inputs(array $cases): array
  */
 function dbspec_write_syntax(string $dbspec, array $cases, string $syntaxPath): void
 {
-    $ids = dbspec_read_vectors($syntaxPath, static fn(string $path, stdClass $v): array => dbspec_vector_cases(
-        $path,
-        $v,
-        'cases',
-        static fn(stdClass $case, string $at): array => [],
-    ));
+    $ids = dbspec_read_vectors($syntaxPath, 'syntax')['cases'];
     $inputs = dbspec_syntax_inputs($cases);
     foreach ($ids as $i => ['id' => $id]) {
         if (!array_key_exists($id, $inputs)) {
@@ -601,37 +467,7 @@ function dbspec_emitted_plan(string $dbspec, object $plan): void
  */
 function dbspec_write_plans(string $dbspec, string $plansPath): void
 {
-    $plans = dbspec_read_vectors($plansPath, static function (string $path, stdClass $v): array {
-        $plans = [];
-        foreach (['cases', 'invalid'] as $kind) {
-            $plans[$kind] = dbspec_vector_cases($path, $v, $kind, static function (stdClass $case, string $at) use ($path): array {
-                $source = dbspec_vector_field($path, $case, $at, 'source');
-                return [
-                    'source' => $source === null ? null : dbspec_vector_check_lines($path, $source, "$at.source"),
-                    'plan' => dbspec_vector_lines($path, $case, $at, 'plan'),
-                ];
-            });
-        }
-        $plans['chains'] = dbspec_vector_cases($path, $v, 'chains', static function (stdClass $case, string $at) use ($path): array {
-            $list = dbspec_vector_field($path, $case, $at, 'plans');
-            if (!is_array($list)) {
-                dbspec_vector_fail($path, "$at.plans", 'is not an array');
-            }
-            $chain = [];
-            foreach ($list as $i => $lines) {
-                $chain[] = dbspec_vector_check_lines($path, $lines, "$at.plans[$i]");
-            }
-            return ['plans' => $chain];
-        });
-        $plans['parse'] = dbspec_vector_cases($path, $v, 'parse', static fn(stdClass $case, string $at): array => [
-            'plan' => dbspec_vector_lines($path, $case, $at, 'plan'),
-        ]);
-        $plans['comparisons'] = dbspec_vector_cases($path, $v, 'comparisons', static fn(stdClass $case, string $at): array => [
-            'source' => dbspec_vector_lines($path, $case, $at, 'source'),
-            'target' => dbspec_vector_lines($path, $case, $at, 'target'),
-        ]);
-        return $plans;
-    });
+    $plans = dbspec_read_vectors($plansPath, 'plans');
     foreach ($plans['cases'] as $case) {
         echo "plans/cases/{$case['id']}\n";
         $source = dbspec_plan_source($dbspec, $case['source']);
@@ -751,22 +587,7 @@ function dbspec_import(string $dbspec, string $text): void
 /** $dbspec으로 tests/dbspec/mermaid.json의 export, import, invalid, round trip case를 이 순서로 출력한다. */
 function dbspec_write_mermaid(string $dbspec, string $mermaidPath): void
 {
-    $mermaid = dbspec_read_vectors($mermaidPath, static function (string $path, stdClass $v): array {
-        $mermaid = [];
-        $mermaid['export'] = dbspec_vector_cases($path, $v, 'export', static fn(stdClass $case, string $at): array => [
-            'document' => dbspec_vector_lines($path, $case, $at, 'document'),
-            'documents' => dbspec_vector_documents($path, $case, $at, 'documents'),
-        ]);
-        foreach (['import', 'invalid'] as $kind) {
-            $mermaid[$kind] = dbspec_vector_cases($path, $v, $kind, static fn(stdClass $case, string $at): array => [
-                'mermaid' => dbspec_vector_lines($path, $case, $at, 'mermaid'),
-            ]);
-        }
-        $mermaid['round_trip'] = dbspec_vector_cases($path, $v, 'round_trip', static fn(stdClass $case, string $at): array => [
-            'path' => dbspec_vector_string($path, $case, $at, 'path'),
-        ]);
-        return $mermaid;
-    });
+    $mermaid = dbspec_read_vectors($mermaidPath, 'mermaid');
     foreach ($mermaid['export'] as $case) {
         echo "mermaid/export/{$case['id']}\n";
         $set = array_map(static fn(array $lines): string => dbspec_join($lines, false, false), $case['documents']);

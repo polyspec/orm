@@ -455,7 +455,8 @@ dbspec-introspect-compare-bench:
 # build한다(PHP_EXTENSION_LIBRARY). 그 전에 모든 runner가
 # section이나 field를 빼거나 type을 바꾼 vector를 위치를 밝힌 error로 거부해야 하고, compare,
 # apply, Rust stress runner가 없거나 directory인 input을 그 경로와 함께 거부해야 한다. A runner also refuses a section
-# or field of cases.json that the format does not name. runner는
+# or field of cases.json that the format does not name: every runner reads its vector files through the JSON Schemas of
+# tests/dbspec/schema with a validator of its ecosystem and reports a refusal in one form. runner는
 # test build와 의존성을 함께 쓰는 debug build다. dbspec-compare-bench는 같은 target을 2000 table
 # 문서로 실행한다.
 .PHONY: dbspec-compare-check dbspec-compare-bench
@@ -469,18 +470,19 @@ dbspec-compare-check: dbspec-compare-check/unit dbspec-compare-check/runners dbs
 dbspec-compare-check/unit:
 	node --test tests/dbspec/compare/check.test.mts
 # PYTHON_VENV is the virtual environment that install-python makes. It holds the Python client installed in editable mode,
-# with the pinned dependencies of its pyproject.toml (ordered-json, cryptography, PyMySQL, psycopg, rapidyaml, ruamel.yaml); the checks
+# with the pinned dependencies of its pyproject.toml (ordered-json, cryptography, PyMySQL, psycopg, rapidyaml, ruamel.yaml) and
+# of its extra test (jsonschema-rs); the checks
 # take this interpreter as ORM_PYTHON and import the installed package, never a source path.
 PYTHON_VENV = $(abspath packages/python/.venv)
 # install-python installs the tools of mise.toml (install-tools), among them the Python that mise.lock pins, and makes the
 # venv of that interpreter with kit's python-venv; no other python3 of PATH is used. The client is installed with that pip as
-# an editable package (pip install --editable), so the tests import the installed package and a source change needs no
-# reinstall.
+# an editable package (pip install --editable) with its extra test, so the tests import the installed package and a source
+# change needs no reinstall.
 .PHONY: install-python
 install-python:
 	$(MAKE) --no-print-directory install-tools
 	$(MAKE) --no-print-directory python-venv DIR=$(PYTHON_VENV)
-	$(ONLINE) python3 -m pip --python $(PYTHON_VENV)/bin/python install --quiet --editable packages/python
+	$(ONLINE) python3 -m pip --python $(PYTHON_VENV)/bin/python install --quiet --editable 'packages/python[test]'
 # python-venv-check checks that the venv of install-python exists and runs the Python release of mise.toml. A missing venv
 # or another release fails without a download or a repair, and names the fix: remove the venv and run make install.
 .PHONY: python-venv-check

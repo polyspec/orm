@@ -11,8 +11,9 @@ ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 sys.path.insert(0, os.path.join(ROOT, 'packages', 'python', 'src'))
 # ordered-json의 Python 배포를 sibling checkout에서 import한다(docs/plans/execution-checklist.md T43.5-1).
 sys.path.insert(0, os.path.join(ROOT, '..', 'ordered-json', 'python', 'src'))
-sys.path.insert(0, os.path.join(ROOT, 'packages', 'python', 'tests'))
-from dbspec_cases_reader import CasesError, check_cases as check_shared_cases  # noqa: E402
+sys.path.insert(0, ROOT)
+from packages.python.tests.dbspec_cases_reader import check_cases as check_shared_cases  # noqa: E402
+from packages.python.tests.dbspec_vectors_reader import VectorError, check_vectors  # noqa: E402
 
 try:
     from polyspec.orm.dbspec import (  # noqa: E402
@@ -52,89 +53,23 @@ def read_text(path):
         sys.exit(1)
 
 
-# readVectors는 vector file을 JSON으로 읽고 check로 모양을 확인한다.
-def read_vectors(path, check):
+# read_vectors reads the vector file at path against the schema tests/dbspec/schema/<kind>.schema.json
+# (packages/python/tests/dbspec_vectors_reader.py); a refusal is written to stderr, one line per problem, and ends with 1.
+def read_vectors(path, kind):
     try:
         value = json.loads(read_text(path))
     except json.JSONDecodeError as error:
         print(f'{path}: {error}', file=sys.stderr)
         sys.exit(1)
-    if not is_object(value):
-        fail(path, '$', 'is not an object')
-    check(path, value)
-    return value
-
-
-def is_object(value):
-    return isinstance(value, dict)
-
-
-KINDS = {
-    'string': lambda v: isinstance(v, str),
-    'boolean': lambda v: isinstance(v, bool),
-    'object': is_object,
-    'array': lambda v: isinstance(v, list),
-    'any': lambda v: True,
-}
-
-
-# field는 object의 key가 있고 kind에 맞는지 확인해 그 값을 돌려준다.
-def field(path, obj, location, key, kind):
-    at = key if location == '' else f'{location}.{key}'
-    if key not in obj:
-        fail(path, at, 'is missing')
-    value = obj[key]
-    if not KINDS[kind](value):
-        fail(path, at, {'string': 'is not a string', 'boolean': 'is not a boolean',
-                        'object': 'is not an object', 'array': 'is not an array'}[kind])
-    return value
-
-
-# checkLines는 value가 string의 array인지 확인한다.
-def check_lines(path, value, at):
-    if not isinstance(value, list):
-        fail(path, at, 'is not an array')
-    for i, line in enumerate(value):
-        if not isinstance(line, str):
-            fail(path, f'{at}[{i}]', 'is not a string')
-
-
-def lines(path, obj, location, key):
-    check_lines(path, field(path, obj, location, key, 'array'), f'{location}.{key}')
-
-
-# documents는 이름마다 line array를 가진 object인지 확인한다.
-def documents(path, obj, location, key):
-    value = field(path, obj, location, key, 'object')
-    for name, text in value.items():
-        check_lines(path, text, f'{location}.{key}.{name}')
-    return value
-
-
-# cases는 section의 각 case가 object인지 확인하고 check로 그 field를 확인한다.
-def cases(path, obj, key, check):
-    for i, c in enumerate(field(path, obj, '', key, 'array')):
-        at = f'{key}[{i}]'
-        if not is_object(c):
-            fail(path, at, 'is not an object')
-        field(path, c, at, 'id', 'string')
-        check(c, at)
-
-
-# check_cases reads cases.json strictly (packages/python/tests/dbspec_cases_reader.py) and checks that each
-# document of a sets case names itself in its header.
-def check_cases(path, v):
     try:
-        check_shared_cases(v, path)
-    except CasesError as error:
+        if kind == 'cases':
+            check_shared_cases(value, path)
+        else:
+            check_vectors(value, kind, path)
+    except VectorError as error:
         print(error, file=sys.stderr)
         sys.exit(1)
-
-    def check_set(c, at):
-        named_documents(path, c, at, 'documents')
-        if 'external' in c:
-            named_documents(path, c, at, 'external')
-    cases(path, v, 'sets', check_set)
+    return value
 
 
 # header_name is the third word of the first line, the document name of a dbspec header, split at single spaces.
@@ -143,50 +78,13 @@ def header_name(ls):
     return words[2] if len(words) >= 3 else None
 
 
-# named_documents checks an array of documents, each a line array whose first line is a header that names it.
-def named_documents(path, obj, location, key):
-    for i, ls in enumerate(field(path, obj, location, key, 'array')):
-        at = f'{location}.{key}[{i}]'
-        check_lines(path, ls, at)
-        if header_name(ls) is None:
-            fail(path, f'{at}[0]', 'has no document name')
-
-
-# check_syntax checks tests/dbspec/syntax.json: the id of each case. The expected tokens are the runtime tests' to
-# check; this runner compares what each client gives.
-def check_syntax(path, v):
-    cases(path, v, 'cases', lambda c, at: None)
-
-
-def check_ddl(path, v):
-    cases(path, v, 'cases', lambda c, at: documents(path, c, at, 'documents'))
-
-
-def check_plans(path, v):
-    for kind in ['cases', 'invalid']:
-        def check(c, at):
-            if field(path, c, at, 'source', 'any') is not None:
-                check_lines(path, c['source'], f'{at}.source')
-            lines(path, c, at, 'plan')
-        cases(path, v, kind, check)
-    cases(path, v, 'chains', lambda c, at: [check_lines(path, p, f'{at}.plans[{i}]')
-                                             for i, p in enumerate(field(path, c, at, 'plans', 'array'))])
-    cases(path, v, 'parse', lambda c, at: lines(path, c, at, 'plan'))
-
-    def comparison(c, at):
-        lines(path, c, at, 'source')
-        lines(path, c, at, 'target')
-    cases(path, v, 'comparisons', comparison)
-
-
-def check_mermaid(path, v):
-    def export(c, at):
-        lines(path, c, at, 'document')
-        documents(path, c, at, 'documents')
-    cases(path, v, 'export', export)
-    for kind in ['import', 'invalid']:
-        cases(path, v, kind, lambda c, at: lines(path, c, at, 'mermaid'))
-    cases(path, v, 'round_trip', lambda c, at: field(path, c, at, 'path', 'string'))
+# check_set_names refuses a document of a sets case whose header names no document, which the schema cannot state.
+def check_set_names(path, v):
+    for i, c in enumerate(v['sets']):
+        for key in ('documents', 'external'):
+            for j, ls in enumerate(c.get(key, [])):
+                if header_name(ls) is None:
+                    fail(path, f'sets[{i}].{key}[{j}][0]', 'has no document name')
 
 
 # join은 줄을 LF로, crlf이면 CRLF로, mixed이면 CRLF와 LF를 번갈아 마지막 줄 끝 없이 잇는다.
@@ -229,7 +127,8 @@ def read_document(path):
     return text
 
 
-shared = read_vectors(cases_path, check_cases)
+shared = read_vectors(cases_path, 'cases')
+check_set_names(cases_path, shared)
 for kind in ['canonical', 'normalize', 'invalid']:
     for c in shared[kind]:
         crlf = c.get('crlf') is True
@@ -313,7 +212,7 @@ def write_render(c):
         out.extend(f'| {s}' for s in result['statements'] or [])
 
 
-for c in read_vectors(ddl_path, check_ddl)['cases']:
+for c in read_vectors(ddl_path, 'ddl')['cases']:
     write_render(c)
 
 
@@ -372,7 +271,7 @@ def write_emitted_plan(plan):
     out.extend(f'| {line}' for line in emit_plan(plan).split('\n'))
 
 
-plans = read_vectors(plans_path, check_plans)
+plans = read_vectors(plans_path, 'plans')
 for c in plans['cases']:
     out.append(f'plans/cases/{c["id"]}')
     source = plan_source(c['source'])
@@ -465,7 +364,7 @@ def write_import(text):
     write_dropped(result['dropped'])
 
 
-mermaid = read_vectors(mermaid_path, check_mermaid)
+mermaid = read_vectors(mermaid_path, 'mermaid')
 for c in mermaid['export']:
     out.append(f'mermaid/export/{c["id"]}')
     docs = {name: join(ls, False, False) for name, ls in c['documents'].items()}
@@ -539,7 +438,7 @@ def syntax_inputs():
 # Each case of syntax.json prints its tokens ("| line start end class") and the diagnostics of its analysis, then
 # "syntax/<id>/format" and the formatted text or the diagnostics of the refusal.
 inputs = syntax_inputs()
-for i, c in enumerate(read_vectors(syntax_path, check_syntax)['cases']):
+for i, c in enumerate(read_vectors(syntax_path, 'syntax')['cases']):
     if c['id'] not in inputs:
         fail(syntax_path, f'cases[{i}].id', 'names no input of the shared cases')
     text, docs = inputs[c['id']]
