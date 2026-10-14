@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 8098b2af475ed34ade380f90af565983db929b4c043f8f8f046d34f4fa22be90 -->
+<!-- source-sha256: ec6f79cc56a0a91a1105b3cfe8b32f3fbad1daf45ce3e47958ad249c0f71d0be -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -996,7 +996,8 @@
       Evidence: tsc -p tsconfig.json이 오류를 보고하지 않는다. TypeScript compare runner는 바꾸기 전과 후에 같은 27524줄을 출력하고 변형한 vector 53개를 공유 형식으로 거부한다. interface reader는 같은 3507줄의 symbol을 쓴다. 저장소, 기능, version, 문서, 규칙 검사와 scripts/, tests/의 test가 바꾸기 전부터 알려진 로컬 실패를 빼고 통과한다.
     - [ ] T137-1-4-2 기반 스크립트의 손으로 쓴 해석기를 바꾼다 (T137-1-4-1에 이어). 원인: scripts/repo/ci.mts가 orm이 이미 의존하는 yaml package 대신 GitHub workflow를 줄 단위로 읽고, scripts/repo/testcases.mts가 셸 명령을 자기 segments로 나누며, scripts/repo/gosource.mts와 scripts/repo/check.mts의 Go 규칙은 Go source를 정규식으로 읽는다. S9은 언어별 검사를 그 생태계 분석기(go/analysis)의 plugin으로 둔다. 완료 조건: workflow를 YAML 문서로 읽고, 셸 명령을 관리되는 셸 파서로 나누되 모든 recipe와 스크립트에서 지금 결과와 같으며, Go 검사는 go vet이 실행하는 go/analysis analyzer다. 각각 red case를 둔다.
     - [ ] T137-1-4-3 모든 compare runner가 dbspec vector를 공유 JSON Schema로 읽는다 (T137-1-4-1에 이어). 원인: TypeScript runner는 tests/dbspec/*.json을 tests/dbspec/schema/로 읽지만 Go, PHP, PHP 확장, Python, Rust runner는 자기 field 검사를 두어 형식이 여섯 번 적힌다. 완료 조건: 각 runner가 자기 생태계의 JSON Schema validator로 같은 schema를 검증하고 거부를 tests/dbspec/compare/runners.test.mts의 공유 형식으로 보고하며, 자기 field 검사를 지운다.
-    - [ ] T137-1-4-4 S9 예외를 이유와 함께 선언한다 (T137-1-4-1에 이어). 원인: make layout-check가 언어별 harness(tests/conformance, tests/dbspec, tests/interfaces의 언어별 runner), engine dialect 규칙의 Go test(tests/dialects), Node에 없는 운영체제 호출이 필요한 Go program(tests/lease, tests/new-session, tests/stop-process), codec vector의 PHP 생성기를 보고하는데, S9에서 각각은 자기 생태계의 test나 도구다. 완료 조건: config/layout.yml이 각각을 그 위 주석의 이유와 함께 예외로 선언하고, layout-check는 T137-1-4-5와 T137-1-4-6이 옮길 스크립트만 보고한다.
+    - [o] T137-1-4-4 S9 예외를 이유와 함께 선언한다 (T137-1-4-1에 이어). 원인: make layout-check가 언어별 harness(tests/conformance, tests/dbspec, tests/interfaces의 언어별 runner), engine dialect 규칙의 Go test(tests/dialects), Node에 없는 운영체제 호출이 필요한 Go program(tests/lease, tests/new-session, tests/stop-process), codec vector의 PHP 생성기를 보고하는데, S9에서 각각은 자기 생태계의 test나 도구다. 완료 조건: config/layout.yml이 각각을 그 위 주석의 이유와 함께 예외로 선언하고, layout-check는 T137-1-4-5와 T137-1-4-6이 옮길 스크립트만 보고한다.
+      Evidence: make layout-check는 S9을 scripts/의 스크립트 19개와 두 orchestrator tests/conformance/check, tests/interfaces/check에만 보고한다. AES vector가 어디 있는지만 출력하고 아무도 실행하지 않던 tests/codec/gen-aes.sh는 예외로 선언하는 대신 지웠다.
     - [ ] T137-1-4-5 scripts/의 셸과 PHP 스크립트를 TypeScript로 옮긴다 (T137-1-4-1에 이어). 원인: scripts/의 셸 스크립트 18개와 PHP 스크립트 2개는 다른 interpreter의 기반 스크립트다(S9). 완료 조건: 각각이 같은 동작의 .mts 스크립트이고, 호출하는 곳이 그것을 실행하며, layout-check가 그 무엇도 보고하지 않는다.
     - [ ] T137-1-4-6 여러 언어를 다루는 Go orchestrator를 TypeScript로 옮긴다 (T137-1-4-1에 이어). 원인: tests/conformance/check와 tests/interfaces/check는 모든 언어를 실행하고 비교하므로 S9에서 TypeScript 기반 스크립트인데 Go program이다. 완료 조건: 각각이 같은 출력과 기록의 .mts program이고, layout-check가 둘 다 보고하지 않는다.
     - [ ] T137-1-4-7 기반 스크립트가 kit 0.0.46의 TypeScript lint 규칙을 통과한다 (T137-1-4-1에 이어). 원인: kit 0.0.46은 no-explicit-any, no-unsafe 규칙, no-non-null-assertion, type assertion 규칙을 오류로 만드는데, test는 아직 JSON.parse 값과 any 매개변수 두 개를 쓴다. 완료 조건: make kit-sync KIT_TAG=v0.0.46과 scripts/, tests/의 lint가 통과한다. Retry: kit 0.0.46이 release될 때.
