@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Generated TypeScript models import only the runtime names they use and declare the chain methods as class fields instead of a merged interface. (#T170)
 - Generated Rust models carry no allow attribute: mut v only where a conversion takes the value, and a Default impl beside the no-argument new. (#T137-1-3-1)
 - make run-databases TARGETS=conformance-check VECTOR="..." runs the named conformance vectors on the provisioned bench databases, and RECORD=1 records a full run; RECORD with VECTOR is refused. The conformance README describes five clients. (#T169-2)
 - The shared decode vectors compare JSON values in every client, and the accepted YAML keys 1, "true", tRUE, nULL and .InF are shared vectors. PHP skips the three mixed-case keys for the purrphp defect of T142-1-1. (#T142-11)
