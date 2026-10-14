@@ -1893,6 +1893,7 @@
   "packages/orm-rust/orm/src/db.rs::RequestParams#field.params": "Vec \u003c Param \u003e",
   "packages/orm-rust/orm/src/db.rs::RequestParams#wire": "{\"params\":\"list\u003cParam\u003e\"}",
   "packages/orm-rust/orm/src/db.rs::RequestParams::add": "pub fn add (\u0026 mut self , value : impl Into \u003c Param \u003e) -\u003e usize",
+  "packages/orm-rust/orm/src/db.rs::RequestParams::get": "pub fn get (\u0026 self , index : usize) -\u003e Option \u003c \u0026 Param \u003e",
   "packages/orm-rust/orm/src/db.rs::Statement": "pub struct Statement  { pub sql : String , pub binds : Vec \u003c Param \u003e , }",
   "packages/orm-rust/orm/src/db.rs::Statement#field.binds": "Vec \u003c Param \u003e",
   "packages/orm-rust/orm/src/db.rs::Statement#field.sql": "String",
