@@ -99,7 +99,7 @@
             "dist": {
                 "type": "path",
                 "url": "packages/php",
-                "reference": "81900316daa8115c282156031886dfd05d09fe9b"
+                "reference": "c729390a05deeb231fff9e24a047d18617c47673"
             },
             "require": {
                 "composer-runtime-api": "^2.2",
@@ -124,9 +124,15 @@
             "autoload": {
                 "psr-4": {
                     "Polyspec\\Orm\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Polyspec\\Orm\\Tests\\Model\\": "gen/",
+                    "Polyspec\\Orm\\Tests\\MarkdownModel\\": "markdownmodel/"
                 },
-                "classmap": [
-                    "src/"
+                "files": [
+                    "gen/bootstrap.php"
                 ]
             },
             "license": [

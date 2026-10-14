@@ -23,9 +23,15 @@
     "autoload": {
         "psr-4": {
             "Polyspec\\Orm\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Polyspec\\Orm\\Tests\\Model\\": "gen/",
+            "Polyspec\\Orm\\Tests\\MarkdownModel\\": "markdownmodel/"
         },
-        "classmap": [
-            "src/"
+        "files": [
+            "gen/bootstrap.php"
         ]
     },
     "bin": [

@@ -156,15 +156,3 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
         return $this->all();
     }
 }
-
-/** One page of rows. */
-final readonly class Page
-{
-    public function __construct(
-        public Collection $items,
-        public int $totalCount,
-        public int $totalPages,
-        public int $page,
-        public int $perPage,
-    ) {}
-}

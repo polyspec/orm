@@ -367,9 +367,3 @@ final class Codec
         return $v;
     }
 }
-
-/** A binary value to bind as a blob (bytea/BLOB): the raw AES output or a packed address a host stage produced. */
-final class Bytes
-{
-    public function __construct(public readonly string $bytes) {}
-}
