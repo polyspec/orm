@@ -1062,7 +1062,7 @@ ts-min-check: lease-tool
 dbspec-ts-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	node --test packages/ts/tests/browser-entry.mjs packages/ts/tests/dbspec.mjs packages/ts/tests/dbspec-set.mjs packages/ts/tests/dbspec-analyze.mjs packages/ts/tests/syntax-vectors.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec-render.mjs packages/ts/tests/dbspec-plan.mjs packages/ts/tests/dbspec-mermaid.mjs packages/ts/tests/dbspec-apply-cleanup.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs
+	node --test packages/ts/tests/browser-entry.mjs packages/ts/tests/dbspec.mjs packages/ts/tests/dbspec-set.mjs packages/ts/tests/dbspec-set-parse.mjs packages/ts/tests/dbspec-analyze.mjs packages/ts/tests/syntax-vectors.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec-render.mjs packages/ts/tests/dbspec-plan.mjs packages/ts/tests/dbspec-mermaid.mjs packages/ts/tests/dbspec-apply-cleanup.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs
 
 # dbspec-language-check는 TypeScript client와 @polyspec/dbspec-language를 build하고, 언어 서비스의 module graph가
 # node module, Node global과 driver에 닿지 않는지, 공유 vector의 format과 hash, 토큰과 UTF-16 범위, tests/editor의

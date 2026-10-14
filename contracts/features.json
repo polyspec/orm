@@ -2825,6 +2825,7 @@
         "packages/php/tests/dbspec_set_parse_cases.php",
         "packages/php/tests/dbspec_set_parse_test.php",
         "packages/php-ext/tests/dbspec_set_parse_test.php",
+        "packages/ts/tests/dbspec-set-parse.mjs",
         "packages/rust/schema/tests/dbspec_set.rs",
         "packages/ts/tests/dbspec-set.mjs",
         "packages/ts/tests/browser-entry.mjs",
@@ -2975,6 +2976,8 @@
             "tests/dbspec/mermaid.json",
             "packages/ts/tests/dbspec-set.mjs",
             "tests/dbspec/set-files.json",
+            "packages/ts/tests/dbspec-set-parse.mjs",
+            "tests/dbspec/set-parse.json",
             "packages/ts/tests/browser-entry.mjs",
             "packages/ts/tests/syntax-vectors.mjs",
             "scripts/dbspec/syntax-vectors.mjs"
