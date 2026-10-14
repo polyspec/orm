@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2d4dfaa38a425bae6aee8f3d988b8d224f3e169dd49c8bead70b51b62cd1db3b -->
+<!-- source-sha256: 675042801d51c0b869d231849bb99a01f3718dd6376f89e154660300e151e469 -->
 # 변경 이력
 
 ## Unreleased
 
+- T143: docs/dbspec.md가 각 set reader가 감지하는 Windows reparse tag를 적는다. Go, Rust, PHP extension은 모든 name surrogate, TypeScript와 PHP는 Node와 PHP `lstat`이 내주는 symbolic link와 junction이다.
 - T142-8: node script가 PHP를 실행하는 target이 vendor-php를 먼저 확인한다.
 - T142-7: PHP script가 vendor-php를 읽는 모든 make target이 이를 먼저 확인한다(31개 target).
 - T134-1: checkout wrapper packages/orm-python/bin/orm-gen을 없앴다. 문서는 설치된 `orm-gen`을 적는다.
