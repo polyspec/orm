@@ -152,17 +152,17 @@ func Load(text string) (*Model, []dbspec.Diagnostic) {
 // runtime model을 반환한다. 외부 문서는 자기들끼리, 소유한 문서는 모든 문서를
 // set으로 삼아 parse한다.
 func LoadSet(text, external string) (*Model, []dbspec.Diagnostic) {
-	texts, names, diagnostics := splitDocuments(text)
+	texts, diagnostics := splitDocuments(text)
 	if len(diagnostics) > 0 {
 		return nil, diagnostics
 	}
-	externalTexts, externalNames := map[string]string{}, []string(nil)
+	var externalTexts []string
 	if external != "" {
-		if externalTexts, externalNames, diagnostics = splitDocuments(external); len(diagnostics) > 0 {
+		if externalTexts, diagnostics = splitDocuments(external); len(diagnostics) > 0 {
 			return nil, diagnostics
 		}
 	}
-	return parseSet(texts, names, externalTexts, externalNames)
+	return LoadDocumentSet(texts, externalTexts)
 }
 
 // LoadDocuments는 document text 목록을 하나의 document set으로 parse해
@@ -174,118 +174,52 @@ func LoadDocuments(documents []string) (*Model, []dbspec.Diagnostic) {
 // LoadDocumentSet은 소유한 document text와 외부 document text로 document
 // set의 runtime model을 반환한다.
 func LoadDocumentSet(owned, external []string) (*Model, []dbspec.Diagnostic) {
-	collect := func(documents []string, texts map[string]string, names []string) ([]string, []dbspec.Diagnostic) {
-		for _, text := range documents {
-			header, _, _ := strings.Cut(text, "\n")
-			name := header[strings.LastIndexByte(header, ' ')+1:]
-			if _, duplicate := texts[name]; duplicate {
-				return nil, []dbspec.Diagnostic{{Rule: dbspec.RuleNameDuplicate, Line: 1, Column: 10, Message: "document " + name + " appears twice in the document set"}}
-			}
-			texts[name] = text
-			names = append(names, name)
-		}
-		return names, nil
+	set := dbspec.ParseSet(owned, external)
+	if len(set.Diagnostics) > 0 {
+		return nil, set.Diagnostics
 	}
-	all := map[string]string{}
-	names, diagnostics := collect(owned, all, nil)
+	documents := make([]*dbspec.Document, 0, len(set.Documents))
+	var diagnostics []dbspec.Diagnostic
+	for _, d := range set.Documents {
+		for _, x := range d.Diagnostics {
+			x.Message = "document " + d.Name + ": " + x.Message
+			diagnostics = append(diagnostics, x)
+		}
+		if d.Document != nil {
+			documents = append(documents, d.Document)
+		}
+	}
 	if len(diagnostics) > 0 {
 		return nil, diagnostics
-	}
-	externalNames, diagnostics := collect(external, all, nil)
-	if len(diagnostics) > 0 {
-		return nil, diagnostics
-	}
-	texts, externalTexts := map[string]string{}, map[string]string{}
-	for _, name := range names {
-		texts[name] = all[name]
-	}
-	for _, name := range externalNames {
-		externalTexts[name] = all[name]
-	}
-	return parseSet(texts, names, externalTexts, externalNames)
-}
-
-// parseSet은 각 document를 나머지 document를 set으로 삼아 parse한다. 외부
-// document는 External로 표시한다. diagnostic message는 document 이름으로
-// 시작한다.
-func parseSet(texts map[string]string, names []string, externalTexts map[string]string, externalNames []string) (*Model, []dbspec.Diagnostic) {
-	all := map[string]string{}
-	for name, text := range externalTexts {
-		all[name] = text
-	}
-	for name, text := range texts {
-		all[name] = text
-	}
-	documents := make([]*dbspec.Document, 0, len(names)+len(externalNames))
-	parse := func(name string, external bool) []dbspec.Diagnostic {
-		others := map[string]string{}
-		for other, otherText := range all {
-			if other != name {
-				others[other] = otherText
-			}
-		}
-		text := texts[name]
-		if external {
-			text = externalTexts[name]
-		}
-		document, _, diagnostics := dbspec.Parse(text, others)
-		if len(diagnostics) > 0 {
-			for i := range diagnostics {
-				diagnostics[i].Message = "document " + name + ": " + diagnostics[i].Message
-			}
-			return diagnostics
-		}
-		document.External = external
-		documents = append(documents, document)
-		return nil
-	}
-	for _, name := range externalNames {
-		if diagnostics := parse(name, true); len(diagnostics) > 0 {
-			return nil, diagnostics
-		}
-	}
-	for _, name := range names {
-		if diagnostics := parse(name, false); len(diagnostics) > 0 {
-			return nil, diagnostics
-		}
 	}
 	return Build(documents)
 }
 
-// splitDocuments는 manifest text를 header 줄에서 나누어 이름별 document
-// text와 text 순서의 이름 목록을 반환한다.
-func splitDocuments(text string) (map[string]string, []string, []dbspec.Diagnostic) {
+// splitDocuments splits a manifest text, the documents joined in name order, into its document texts: a document
+// begins at each line that begins with "dbspec ", the header line of the manifest form (docs/dbspec.md "Manifest and
+// hashes"). The names are the parser's, through dbspec.ParseSet.
+func splitDocuments(text string) ([]string, []dbspec.Diagnostic) {
 	if text == "" {
-		return nil, nil, []dbspec.Diagnostic{{Rule: dbspec.RuleHeader, Line: 1, Column: 1, Message: "manifest text is empty"}}
+		return nil, []dbspec.Diagnostic{{Rule: dbspec.RuleHeader, Line: 1, Column: 1, Message: "manifest text is empty"}}
 	}
 	if !strings.HasPrefix(text, "dbspec ") {
-		return nil, nil, []dbspec.Diagnostic{{Rule: dbspec.RuleHeader, Line: 1, Column: 1, Message: "manifest text does not start with a dbspec header"}}
+		return nil, []dbspec.Diagnostic{{Rule: dbspec.RuleHeader, Line: 1, Column: 1, Message: "manifest text does not start with a dbspec header"}}
 	}
-	texts := map[string]string{}
-	var names []string
 	starts := []int{0}
 	for i := 0; i < len(text)-1; i++ {
 		if text[i] == '\n' && strings.HasPrefix(text[i+1:], "dbspec ") {
 			starts = append(starts, i+1)
 		}
 	}
-	line := 1
+	texts := make([]string, len(starts))
 	for k, start := range starts {
 		end := len(text)
 		if k+1 < len(starts) {
 			end = starts[k+1]
 		}
-		document := text[start:end]
-		header, _, _ := strings.Cut(document, "\n")
-		name := header[strings.LastIndexByte(header, ' ')+1:]
-		if _, duplicate := texts[name]; duplicate {
-			return nil, nil, []dbspec.Diagnostic{{Rule: dbspec.RuleNameDuplicate, Line: line, Column: 10, Message: "document " + name + " appears twice in the manifest text"}}
-		}
-		texts[name] = document
-		names = append(names, name)
-		line += strings.Count(document, "\n")
+		texts[k] = text[start:end]
 	}
-	return texts, names, nil
+	return texts, nil
 }
 
 // entityOf는 table 하나의 entity를 만든다.

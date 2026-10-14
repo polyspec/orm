@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: fc1ef970fbdf29d5264775f3d526e79ad416bf15802b42bbb3d0f2910a988906 -->
+<!-- source-sha256: 2bda67a13877fce8cfe05a0a6d5ef4ff90154892324dfaadd43312789718de32 -->
 # dbspec
 
 [English](dbspec.md)
@@ -100,6 +100,17 @@ reader는 읽는 동안 바뀌지 않는 file tree를 읽는다. 각 component�
 | `set.duplicate` | 경로의 파일이 앞의 경로의 파일과 같다 |
 
 오류가 있는 set 파일이나 diagnostic이 있는 나열된 파일을 받은 generator는 오류 상태로 끝나며, 모든 오류와 diagnostic을 출력하고, 아무것도 쓰지 않는다. 공유 vector `tests/dbspec/set-files.json`은 각 rule을 받아들이는 case와 거부하는 case로 file tree(일반 파일, directory, symbolic link, hard link) 형태로 담으며, 모든 client의 set reader가 이를 실행한다; TypeScript의 `parseSet`은 file tree가 필요 없는 case도 실행한다. file tree case에는 symbolic link와 hard link를 가진 file system이 필요하다: Windows에서는 NTFS와 symbolic link를 만들 권한.
+
+
+### Set parse {#parsing-a-set}
+
+도구는 set의 text를 직접 key로 묶지 않고 set parse로 parse한다: Go `dbspec.ParseSet`, PHP `Dbspec::parseSet`, TypeScript `parseDbspecSet`, Python `parse_dbspec_set`, Rust `dbspec::parse_set`. 소유한 text와 external text를 각각 set 순서로 받아, 소유한 것 먼저 그 순서로 text마다 결과 하나를 돌려주고, set 진단 목록을 돌려준다.
+
+- 문서의 이름은 parser가 header 줄에서 읽은 이름이다. 어떤 도구도 다른 방법으로 읽지 않는다. header가 실패한 text는 이름이 없고, 그 결과가 `header` 진단을 갖는다.
+- 뒤의 text가 반복하는 이름은 그 뒤 text의 1행 10열에 위치한 set 진단 `name.duplicate` `document <name> appears twice in the document set`이며, 그 뒤 text는 parse하지 않는다.
+- 그 밖의 text는 set의 다른 모든 이름 있는 문서의 text를 그 `use` 줄이 가리키는 문서로 삼아 parse하고, 그 결과는 그 text의 한 번의 parse가 돌려주는 대로 document, [선언 위치](#declaration-positions), 진단을 갖는다. external text의 document는 external로 표시한다.
+
+공유 vector `tests/dbspec/set-parse.json`은 이름, 반복, 실패한 header를 가진 set을 담으며 모든 client가 그것을 실행한다.
 
 ## 이름
 
