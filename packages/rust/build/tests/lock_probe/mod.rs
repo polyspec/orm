@@ -5,7 +5,7 @@
 //! while the probe asks the server, whatever the scheduling: a test that only stops polling the mutation's future can
 //! see it run on to its end within one poll when the server answers fast enough, and then probe nothing.
 // Each test binary includes this module and uses one of the probes.
-#![allow(dead_code)]
+#![allow(dead_code, reason = "each test binary includes this module and uses only one of its probes")]
 
 use polyspec_orm_build::tool_db;
 

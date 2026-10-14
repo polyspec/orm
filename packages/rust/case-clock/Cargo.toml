@@ -8,8 +8,11 @@ description = "Thread CPU time for the time bounds that the Rust ORM tests set o
 license = "MIT"
 
 [dependencies]
-libc = "0.2"
+rustix = { version = "1.1.5", features = ["time"] }
 
 [dev-dependencies]
 # test case가 시작, 결과, 경과 시간과 자기 기한을 보고한다.
 polyspec-orm-testcase = { path = "../testcase" }
+
+[lints]
+workspace = true

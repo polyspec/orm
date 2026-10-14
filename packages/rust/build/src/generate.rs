@@ -909,7 +909,7 @@ fn model_source(gm: &Model<'_>) -> String {
     b.push_str("        }\n    }\n\n");
     b.push_str("    fn into_core(self) -> polyspec_orm::Core {\n        self.__orm\n    }\n\n");
     b.push_str(
-        "    #[allow(unused_mut)]\n    fn assign(&mut self, name: &str, mut v: polyspec_orm::Val) -> polyspec_orm::Result<bool> {\n        match name {\n",
+        "    #[allow(unused_mut, reason = \"an entity whose columns need no conversion leaves v unchanged\")]\n    fn assign(&mut self, name: &str, mut v: polyspec_orm::Val) -> polyspec_orm::Result<bool> {\n        match name {\n",
     );
     for c in &e.fields {
         let (bt, id) = (base(c), ident(&c.name));

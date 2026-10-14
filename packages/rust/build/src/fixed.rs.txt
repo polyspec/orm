@@ -1,6 +1,6 @@
 impl T {
     /// Creates a model.
-    #[allow(clippy::new_without_default)]
+    #[allow(clippy::new_without_default, reason = "new is the one constructor of a model, which binds it to its entity; the API offers no Default")]
     pub fn new() -> Self {
         <Self as polyspec_orm::Model>::from_core(polyspec_orm::Core::new(&ENTITY))
     }

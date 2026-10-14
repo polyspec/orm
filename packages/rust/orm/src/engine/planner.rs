@@ -995,9 +995,8 @@ impl<'m> Planner<'m> {
     fn sub_select(&self, b: &mut Builder, outer: &Scope<'_>, sub: &ir::Sub) -> Result<String> {
         b.subs += 1;
         let mut root = self.scopes(&sub.query, format!("s{}", b.subs), false)?;
-        // SAFETY of lifetimes: the subquery scope never outlives `outer`.
-        let outer: &Scope<'_> = outer;
-        root.outer = Some(unsafe { std::mem::transmute::<&Scope<'_>, &Scope<'_>>(outer) });
+        // Scope is covariant in its lifetime, so the subquery root and `outer` meet at the shorter of their lifetimes.
+        root.outer = Some(outer);
         let root = &root;
         let mut sb = String::from("SELECT ");
         match sub.agg.as_str() {

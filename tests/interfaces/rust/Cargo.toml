@@ -7,6 +7,15 @@ publish = false
 
 [workspace]
 
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+allow_attributes_without_reason = "deny"
+
+[lints]
+workspace = true
+
 [dependencies]
 syn = { version = "2", features = ["full"] }
 quote = "1"

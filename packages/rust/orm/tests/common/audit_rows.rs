@@ -57,7 +57,7 @@ row_model!(Item, ITEM, "item", ["seq", "title", "audit_seq", "deleted_at"]);
 row_model!(History, HISTORY, "item_history", ["history_id", "change", "previous_audit_seq", "seq", "title", "audit_seq", "deleted_at"]);
 
 /// audit 값이 없는 transaction의 `.audit(...)` 인자.
-#[allow(dead_code)]
+#[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub const NO_VALUES: [(&str, &str); 0] = [];
 
 pub fn model<M: Model>() -> M {
@@ -100,14 +100,14 @@ pub async fn try_exec(db: &Db, statement: &str) -> Result<(), sqlx::Error> {
 }
 
 // coverage_audit_triggers.rs만 쓴다. audit.rs는 자기 case database를 통째로 지운다.
-#[allow(dead_code)]
+#[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub async fn exec(db: &Db, statement: &str) {
     try_exec(db, statement).await.unwrap_or_else(|e| panic!("{statement}: {e}"));
 }
 
 /// fixture의 table과, PostgreSQL에서는 table과 함께 지워지지 않는 trigger function을 지운다.
 /// coverage_audit_triggers.rs만 쓴다.
-#[allow(dead_code)]
+#[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub async fn drop_tables(db: &Db, driver: &str) {
     let q = |name: &str| if driver == "mysql" { format!("`{name}`") } else { format!("\"{name}\"") };
     for table in ["item_history", "item", "audit"] {
@@ -141,7 +141,7 @@ pub async fn history(db: &Db) -> Vec<BTreeMap<String, Val>> {
 }
 
 /// item_history의 (change, previous, seq, title, audit, deleted)를 history_id 순서로 읽는다.
-#[allow(dead_code)]
+#[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub async fn history_summary(db: &Db) -> Vec<(String, Option<i64>, i64, String, i64, bool)> {
     history(db)
         .await
@@ -155,7 +155,7 @@ pub async fn history_summary(db: &Db) -> Vec<(String, Option<i64>, i64, String, 
 }
 
 /// audit 기록을 seq 순서의 (seq, actor) 문자열로 읽는다.
-#[allow(dead_code)]
+#[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub async fn audit_records(db: &Db) -> Vec<(String, String)> {
     let query = "SELECT seq, actor FROM audit ORDER BY seq";
     macro_rules! read {
@@ -192,7 +192,7 @@ pub fn code<T>(r: polyspec_orm::Result<T>) -> String {
 ///   - audit 없는 audit table write는 CONFIG다. 없는 audit 기록을 가리키는 raw write는 foreign key가
 ///     거부한다.
 ///   - callback이 실패하면 audit 기록도 rollback된다.
-#[allow(dead_code)]
+#[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub async fn audit_case(driver: &str, dsn: &str) {
     let adb = audit_db(dsn, audit_config("default")).await;
     let db = &adb;
@@ -266,7 +266,7 @@ pub async fn audit_case(driver: &str, dsn: &str) {
 /// 모든 transaction 진입점이 audit 값을 받는다: transaction, transaction_send, transaction_once가 연결의 audit
 /// source와 자기 값으로 기록한 audit의 key를 audit 대상 write가 쓰고, 중첩 transaction_once는 audit을 받지
 /// 않는다(CONFIG). db에는 audit.dbs가 설치되어 있고 table은 비어 있다.
-#[allow(dead_code)]
+#[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub async fn entry_points_case(driver: &str, dsn: &str) {
     let adb = audit_db(dsn, audit_config("default")).await;
     let db = &adb;

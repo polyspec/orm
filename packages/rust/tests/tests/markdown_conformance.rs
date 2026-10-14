@@ -3,7 +3,12 @@
 //! tests/markdown/flowmark.version이 고정한 build여야 하고, 없거나 다른 build이면 test는 실패한다(건너뛰지
 //! 않는다). model은 build.rs가 tests/markdown/corpus/dbspec/conformance.dbs에서 만든다.
 
-#[allow(dead_code, unused_imports, clippy::all)]
+#[allow(
+    dead_code,
+    unused_imports,
+    clippy::all,
+    reason = "the generated models are included whole, a crate uses only some of them, and lints of hand-written code do not apply to generated code"
+)]
 mod markdown_model {
     include!(concat!(env!("OUT_DIR"), "/markdown/orm_model.rs"));
 }

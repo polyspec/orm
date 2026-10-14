@@ -221,7 +221,11 @@ pub(crate) fn sqlite_busy(e: &sqlx::Error) -> bool {
 #[macro_export]
 macro_rules! models {
     () => {
-        #[allow(dead_code, clippy::all)]
+        #[allow(
+            dead_code,
+            clippy::all,
+            reason = "the generated models are included whole, a crate uses only some of them, and lints of hand-written code do not apply to generated code"
+        )]
         pub mod model {
             include!(concat!(env!("OUT_DIR"), "/orm_model.rs"));
         }

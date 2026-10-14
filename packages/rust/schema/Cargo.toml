@@ -25,3 +25,6 @@ serde_json = { version = "1", features = ["raw_value"] }
 # test case가 시작, 결과, 경과 시간과 자기 기한을 보고한다.
 polyspec-orm-testcase = { path = "../testcase" }
 polyspec-orm-case-clock = { path = "../case-clock" }
+
+[lints]
+workspace = true

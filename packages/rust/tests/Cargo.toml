@@ -55,3 +55,6 @@ polyspec-orm-build = { path = "../build", features = ["live-db"] }
 
 [build-dependencies]
 polyspec-orm-build = { path = "../build" }
+
+[lints]
+workspace = true

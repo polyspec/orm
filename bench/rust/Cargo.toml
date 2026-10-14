@@ -5,6 +5,17 @@ edition = "2021"
 rust-version = "1.99.0"
 publish = false
 
+[lints]
+workspace = true
+
+[workspace]
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+allow_attributes_without_reason = "deny"
+
 [[bin]]
 name = "native"
 path = "src/native.rs"

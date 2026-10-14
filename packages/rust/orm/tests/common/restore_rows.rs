@@ -12,7 +12,7 @@ pub static SCHEMA: Schema =
     Schema::new(include_str!("../../../../../contracts/fixtures/restore.dbs"), "sha256:a00c2b376b166195f8aabc29de2a2dee20313e5d9d253eeb4f601f55e9ba0aaf");
 
 /// restore fixture가 만드는 table.
-#[allow(dead_code)]
+#[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub const TABLES: [&str; 4] = ["audit", "label", "membership", "membership_history"];
 
 /// column 이름으로 값을 읽고 쓰는 model.

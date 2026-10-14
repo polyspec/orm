@@ -12,7 +12,10 @@ const COLS: &str = "`a`.`seq`, `a`.`name`, `a`.`created_ts`, `a`.`updated_ts`, `
 /// schema/bench.dbs의 `author` column 형을 그대로 decode한다: `i64` key, `i32` count,
 /// `bool`, `datetime(6)`, `varchar`. AES column은 hex text로 읽는다.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
+#[expect(
+    dead_code,
+    reason = "every column is decoded to measure the decode, and the benchmark reads none of the fields"
+)]
 struct Author {
     seq: i64,
     name: String,

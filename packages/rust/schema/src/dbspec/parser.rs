@@ -1267,7 +1267,7 @@ impl Parser {
 
     /// The rest of a foreign key line after its name; `None` when the line fails. The unknown actions are returned
     /// with their positions, for the foreign_key error of an accepted line.
-    #[allow(clippy::type_complexity)]
+    #[expect(clippy::type_complexity, reason = "the tuple is the parts of one foreign key line, which its single caller takes apart at once")]
     fn foreign_key_rest(&mut self, cursor: &mut Cursor) -> Option<(Vec<(Name, bool)>, Name, Vec<(Name, bool)>, Action, Action, Vec<(Pos, String)>)> {
         let columns = self.column_list(cursor, false)?;
         self.expect(cursor, "references")?;

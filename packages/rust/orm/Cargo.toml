@@ -57,3 +57,6 @@ polyspec-orm-case-clock = { path = "../case-clock" }
 polyspec-orm-case-database = { path = "../case-database" }
 # 등록 test가 sqlx의 statement log record를 세는 logger를 설치한다. sqlx가 쓰는 version이다.
 log = "0.4"
+
+[lints]
+workspace = true

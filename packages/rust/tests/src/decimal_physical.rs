@@ -4,7 +4,12 @@
 polyspec_orm::models!();
 
 #[cfg(test)]
-#[allow(dead_code, unused_imports, clippy::all)]
+#[allow(
+    dead_code,
+    unused_imports,
+    clippy::all,
+    reason = "the generated models are included whole, a crate uses only some of them, and lints of hand-written code do not apply to generated code"
+)]
 mod decimal_model {
     include!(concat!(env!("OUT_DIR"), "/decimal/orm_model.rs"));
 }

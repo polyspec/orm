@@ -27,10 +27,7 @@ impl CaseClock {
 
 /// 지금 thread가 지금까지 쓴 CPU 시간이다.
 pub fn thread_cpu() -> Duration {
-    let mut now = libc::timespec { tv_sec: 0, tv_nsec: 0 };
-    // SAFETY: now는 clock_gettime이 쓸 수 있는 timespec이다.
-    let rc = unsafe { libc::clock_gettime(libc::CLOCK_THREAD_CPUTIME_ID, &mut now) };
-    assert_eq!(rc, 0, "clock_gettime(CLOCK_THREAD_CPUTIME_ID): {}", std::io::Error::last_os_error());
+    let now = rustix::time::clock_gettime(rustix::time::ClockId::ThreadCPUTime);
     Duration::new(now.tv_sec as u64, now.tv_nsec as u32)
 }
 
