@@ -164,7 +164,7 @@ the cause and `$rollback` is the rollback error. A `ROLLBACK` error is not retri
     vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DsnTest.php
     vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php
     vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php
-    go run ./tests/conformance/check run -langs php -driver mysql|postgres|sqlite -dsn <bench DSN>
+    node tests/conformance/check/main.mts run --out <new dir> --driver mysql|postgres|sqlite --dsn <bench DSN>
 
 `ModelTest.php` runs on SQLite, MySQL and PostgreSQL and fails when a MySQL or PostgreSQL DSN is
 unset. Each case that installs a schema or checks `utils()->schema()->empty()` creates a database

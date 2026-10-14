@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "The output of one conformance runner",
+  "description": "<lang>.json that a conformance runner writes: each vector's name with the output the client gave for it; tests/conformance/check compares each with the vector's expectation.",
+  "type": ["object", "null"]
+}

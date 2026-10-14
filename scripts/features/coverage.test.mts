@@ -162,12 +162,12 @@ caseTest('missing owner, dependent, database, case, and repeat are RED', 1000, (
   assert.match(mutation((m) => { delete m.features[0].coverage.dependents; }), /missing dependents declaration/);
   assert.match(mutation((m) => { defined(m.features[0].coverage.dependents[0]).part = 'packages/go'; }), /invalid dependent part/);
   assert.match(mutation((m) => { defined(m.features[0].coverage.dependents[0]).cases = []; }), /invalid dependent part, tests, or cases/);
-  assert.match(mutation((m) => { defined(m.features[0].coverage.owners.rust).tests = ['tests/conformance/check/main_test.go']; }), /tests must reside in owning part/);
+  assert.match(mutation((m) => { defined(m.features[0].coverage.owners.rust).tests = ['tests/conformance/check/main.test.mts']; }), /tests must reside in owning part/);
   assert.match(mutation((m) => { defined(m.features[0].coverage.owners.typescript).tests = ['tests/typescript/aggregate_numeric.mjs']; }), /tests must reside in owning part/);
   assert.match(mutation((m) => { defined(m.features[0].coverage.owners.go).tests = [dependentTest]; }), /tests must reside in owning part/);
   assert.match(mutation((m) => { defined(m.features[0].coverage.dependents[0]).tests = [defined(ownerTests.go)]; }), /invalid dependent part, tests, or cases/);
-  assert.match(mutation((m) => { defined(m.features[0].coverage.dependents[0]).tests = ['tests/conformance/check/main_test.go']; }), /invalid dependent part, tests, or cases/);
-  assert.match(mutation((m) => { defined(m.features[0].coverage.dependents[0]).part = 'tests/conformance'; defined(m.features[0].coverage.dependents[0]).tests = ['tests/conformance/check/main_test.go']; }), /invalid dependent part, tests, or cases/);
+  assert.match(mutation((m) => { defined(m.features[0].coverage.dependents[0]).tests = ['tests/conformance/check/main.test.mts']; }), /invalid dependent part, tests, or cases/);
+  assert.match(mutation((m) => { defined(m.features[0].coverage.dependents[0]).part = 'tests/conformance'; defined(m.features[0].coverage.dependents[0]).tests = ['tests/conformance/check/main.test.mts']; }), /invalid dependent part, tests, or cases/);
   assert.match(mutation((m) => { m.features[0].coverage.owners.cobol = { part: 'packages/orm-cobol', tests: [], commands: {} }; }), /undeclared owning client/);
   assert.match(mutation((_, r) => { defined(defined(r['sample/dependent/service/go/sqlite'])[0]).cases = []; }), /executed case IDs differ/);
   assert.match(mutation((_, r) => { defined(r['sample/owner/typescript/postgres']).pop(); }), /exactly two executions required/);

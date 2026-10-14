@@ -1,5 +1,5 @@
 <!-- doc-id: readme -->
-<!-- source-sha256: 0149fb3144cd49dc78154f92dac924945ddf4c2b94c908b9ac1fb7064e21fbe5 -->
+<!-- source-sha256: 17732a1064064ef4ce6b095e40c57cb15081158f0005b94a97880022cfdd5e30 -->
 # orm
 
 **Go, PHP, Python, Rust, TypeScript**를 위한 스키마 기반 모델 query grammar다. 목표 문법은 [docs/dsl.ko.md](docs/dsl.ko.md), 작업 순서는 [docs/plan.ko.md](docs/plan.ko.md)에 명시되어 있다.
@@ -70,7 +70,7 @@ make python-check                                                     # Python c
 go test ./...
 npm run typescript:test
 (cd packages/rust && cargo test --workspace)
-go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # compares the five clients
+node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH_MYSQL_DSN"   # compares the five clients
 ```
 
 ## 문서
@@ -90,7 +90,7 @@ go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # compares t
 
 ## 도구
 `orm-gen gen --lang go | errors --lang`(Go), `vendor/bin/orm-gen gen`(PHP), `orm-gen gen`(TypeScript), Python package의 `orm-gen gen`(Python), `polyspec-orm-build`(Rust),
-`tests/conformance/check run|compare|record`.
+`tests/conformance/check/main.mts run|compare|record|state`.
 
 ## License
 MIT — [LICENSE](LICENSE)를 참조한다.

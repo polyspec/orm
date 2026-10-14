@@ -1,6 +1,7 @@
 // The shared steps of the physical checks (scripts/*-physical-check.mts): each runs owner tests against an isolated database
-// and compares the database state before and after with the state reader of tests/conformance/check.
+// and compares the database state before and after with the state reader of tests/conformance/check/main.mts.
 import { spawn } from 'node:child_process';
+import { join } from 'node:path';
 import { endGroup } from './check/step.mts';
 import { runCase, type CaseBody } from '../tests/testcase.mts';
 import { errorMessage } from '../tests/errors.mts';
@@ -47,7 +48,7 @@ export function run(program: string, args: string[], env: NodeJS.ProcessEnv = pr
 /** state is the hash of the database state that the state reader reports; the DSN never appears in an error. */
 export async function state(database: string, dsn: string): Promise<string> {
   let output: string;
-  try { output = await run('go', ['run', './tests/conformance/check', 'state', '-driver', database, '-dsn', dsn]); }
+  try { output = await run(process.execPath, [join(import.meta.dirname, '../tests/conformance/check/main.mts'), 'state', '--driver', database, '--dsn', dsn]); }
   catch (error) { throw new Error(errorMessage(error).replaceAll(dsn, '[redacted]')); }
   const match = new RegExp(`^${database} state ([a-f0-9]{64})\\n$`).exec(output);
   if (!match?.[1]) throw new Error(`${database}: invalid state reader output`);

@@ -1,6 +1,6 @@
 // case database 검사(T25): 공유 test database에 이 검사가 만든 table 하나를 남겨 둔 채로 빈
 // database를 확인하거나 schema를 설치하는 client case를 실행한다. 그 case들이 모두 통과하고, 공유
-// database의 table과 row(tests/conformance/check state의 digest), PostgreSQL schema 목록이
+// database의 table과 row(tests/conformance/check/main.mts state의 digest), PostgreSQL schema 목록이
 // 그대로이며, case가 만든 `orm_case_` database와 `orm-case-` SQLite file이 하나도 남지 않아야 한다.
 //
 // 남은 case database와 file은 실행 전에 없던 것 가운데 이름의 process가 끝난 것만 남은 것으로
@@ -97,10 +97,10 @@ function execute(program: string, args: string[], step: (text: string) => void):
   });
 }
 
-// 공유 database의 table과 row digest(tests/conformance/check state)다.
+// 공유 database의 table과 row digest(tests/conformance/check/main.mts state)다.
 async function digest(database: string, dsn: string): Promise<string> {
   let output = '';
-  await execute('go', ['run', './tests/conformance/check', 'state', '-driver', database, '-dsn', dsn], (text: string) => { output += `${text}\n`; });
+  await execute(process.execPath, [join(root, 'tests/conformance/check/main.mts'), 'state', '--driver', database, '--dsn', dsn], (text: string) => { output += `${text}\n`; });
   const match = new RegExp(`^${database} state ([a-f0-9]{64})$`, 'm').exec(output);
   if (!match?.[1]) throw new Error(`${database}: invalid state reader output: ${redact(output)}`);
   return match[1];

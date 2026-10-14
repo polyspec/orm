@@ -6442,11 +6442,11 @@
         "packages/python/tests/markdown_conformance.py",
         "packages/rust/tests/tests/markdown_conformance.rs",
         "packages/ts/tests/markdown_conformance.mjs",
-        "tests/conformance/check/main.go",
+        "tests/conformance/check/main.mts",
         "tests/conformance/runner_go/main.go",
         "tests/conformance/runner_go/main_test.go",
-        "tests/conformance/check/styled_expectations_test.go",
-        "tests/conformance/check/rust_group_physical_test.go",
+        "tests/conformance/check/styled-expectations.test.mts",
+        "tests/conformance/check/rust-group.physical.test.mts",
         "tests/conformance/runner.php",
         "tests/conformance/runner_typescript.mts",
         "packages/rust/tests/src/conformance.rs",
@@ -6463,19 +6463,23 @@
       "verification": [
         {
           "id": "conformance-build",
-          "command": "node tests/run-long.mts go-vet/conformance -- go vet ./tests/conformance/check ./tests/conformance/runner_go",
+          "command": "node tests/run-long.mts go-vet/conformance -- go vet ./tests/conformance/runner_go",
           "shard": "other",
           "inputs": [
-            "tests/conformance/check/*.go",
             "tests/conformance/runner_go/*.go"
           ]
         },
         {
           "id": "conformance-check-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./tests/conformance/check -count=1",
+          "command": "node --test tests/conformance/check/main.test.mts tests/conformance/check/lock.test.mts tests/conformance/check/state.test.mts tests/conformance/check/state-run.test.mts tests/conformance/check/styled-expectations.test.mts tests/conformance/check/stmtdiff.test.mts",
           "shard": "other",
           "inputs": [
-            "tests/conformance/check/*.go"
+            "tests/conformance/check/*.mts",
+            "tests/conformance/vectors*.json",
+            "tests/conformance/schema/vectors.schema.json",
+            "scripts/schema/conformance-*.schema.json",
+            "scripts/json/schema.mts",
+            "tests/testcase.mts"
           ]
         },
         {
