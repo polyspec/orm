@@ -214,6 +214,7 @@
   "packages/orm-rust/orm-build/src/generate.rs::ident": " fn ident (s : \u0026 str) -\u003e String",
   "packages/orm-rust/orm-build/src/generate.rs::index_method": " fn index_method (name : \u0026 str) -\u003e String",
   "packages/orm-rust/orm-build/src/generate.rs::index_names": " fn index_names (e : \u0026 Entity) -\u003e Vec \u003c \u0026 str \u003e",
+  "packages/orm-rust/orm-build/src/generate.rs::key_prefix_calls": " fn key_prefix_calls (g : \u0026 Gen \u003c '_ \u003e) -\u003e Vec \u003c Call \u003e",
   "packages/orm-rust/orm-build/src/generate.rs::keys_const": " fn keys_const (keys : \u0026 [ChainKey]) -\u003e String",
   "packages/orm-rust/orm-build/src/generate.rs::kind": " fn kind (c : \u0026 Field) -\u003e String",
   "packages/orm-rust/orm-build/src/generate.rs::model_source": " fn model_source (gm : \u0026 Model \u003c '_ \u003e) -\u003e String",
