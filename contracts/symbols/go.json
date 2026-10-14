@@ -3344,7 +3344,7 @@
   "packages/orm-go/orm/db.go::IsNoRows": "func(err error) bool",
   "packages/orm-go/orm/db.go::RegisterDriver": "func(name, sqlDriver string, mapErr func(error) error)",
   "packages/orm-go/orm/db.go::RegisterSQLiteVersion": "func(version string)",
-  "packages/orm-go/orm/db.go::RequestHook": "type RequestHook func(r *ir.Request, addParam func(value any) int) error",
+  "packages/orm-go/orm/db.go::RequestHook": "type RequestHook func(r *ir.Request, addParam func(value any) int, params []any) error",
   "packages/orm-go/orm/db.go::Schema": "type Schema struct { Hash string Text string External string once sync.Once model *runtimemodel.Model err error }",
   "packages/orm-go/orm/db.go::Schema#field.External": "string",
   "packages/orm-go/orm/db.go::Schema#field.Hash": "string",
