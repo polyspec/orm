@@ -2833,6 +2833,7 @@
         "packages/python/tests/dbspec_mermaid.py",
         "packages/python/tests/test_dbspec_analyze.py",
         "packages/python/tests/test_dbspec_set_files.py",
+        "packages/python/tests/test_dbspec_set_parse.py",
         "packages/python/tests/test_dbspec_show_create.py",
         "packages/python/tests/test_dbspec_syntax_vectors.py",
         "packages/python/tests/coverage_schema_definition.py"
@@ -2985,6 +2986,7 @@
             "packages/python/tests/dbspec_mermaid.py",
             "packages/python/tests/test_dbspec_analyze.py",
             "packages/python/tests/test_dbspec_set_files.py",
+            "packages/python/tests/test_dbspec_set_parse.py",
             "packages/python/tests/test_dbspec_show_create.py",
             "packages/python/tests/test_dbspec_syntax_vectors.py",
             "schema/bench.dbs",
@@ -2995,6 +2997,7 @@
             "tests/dbspec/syntax.json",
             "tests/dbspec/show-create.json",
             "tests/dbspec/set-files.json",
+            "tests/dbspec/set-parse.json",
             "tests/dbspec/files/invalid-utf8.dbs",
             "tests/dbspec/files/shop.dbs",
             "tests/dbspec/files/dbschema.dbs",
