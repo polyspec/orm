@@ -418,8 +418,12 @@ def _common_value(value, style: str):
 
 
 # --- yaml 단계: YAML 1.2 core schema 의미론으로 읽고 쓴다. ---
+# rapidyaml이 읽는다: YAML 1.2(5.4)대로 U+0085를 내용으로 읽고(PyYAML과 ruamel.yaml은 줄바꿈으로
+# 읽는다), tree가 scalar의 style과 tag를 지키므로 plain scalar를 core schema로 resolve한다.
+# ruamel.yaml이 쓴다.
 
-import yaml  # noqa: E402
+import ruamel.yaml  # noqa: E402
+import ryml  # noqa: E402
 
 _YAML_INT = re.compile(r'(?:[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+)\Z')
 _YAML_FLOAT = re.compile(
@@ -427,81 +431,86 @@ _YAML_FLOAT = re.compile(
     r'|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))\Z')
 
 
-def _yaml_scalar_int(loader, node):
-    text = loader.construct_scalar(node)
-    if _YAML_INT.fullmatch(text) is None:
-        raise yaml.YAMLError(f'not a core integer: {text}')
-    # core는 부호를 10진수에만 허용한다 (YAML 1.2.2, 10.3.2).
-    if text.startswith('0x'):
-        return int(text[2:], 16)
-    if text.startswith('0o'):
-        return int(text[2:], 8)
-    return int(text, 10)
-
-
-def _yaml_scalar_float(loader, node):
-    text = loader.construct_scalar(node)
-    if _YAML_FLOAT.fullmatch(text) is None:
-        raise yaml.YAMLError(f'not a core float: {text}')
-    # float()는 '.inf', '.NaN' 등 core의 무한·난 표기도 대소문자 무시로 읽는다;
-    # 값 검증이 유한하지 않은 수를 거절한다.
-    return float(text)
-
-
-class _CoreLoader(yaml.SafeLoader):
-    # YAML 1.1 의미론(yes/no bool, 60진수)을 걷어내고 1.2 core 규칙으로 읽는다.
-    # str key 아닌 map key와 alias는 거절한다.
-
-    def compose_node(self, parent, index):
-        if self.check_event(yaml.AliasEvent):
-            event = self.peek_event()
-            raise yaml.YAMLError(f'alias {event.anchor} is not allowed')
-        return super().compose_node(parent, index)
-
-    def construct_mapping(self, node, deep=False):
-        if not isinstance(node, yaml.MappingNode):
-            raise yaml.YAMLError('expected a mapping node')
-        mapping = {}
-        for key_node, value_node in node.value:
-            key = self.construct_object(key_node, deep=True)
-            if isinstance(key, bool) or not isinstance(key, str):
-                raise yaml.YAMLError('map keys must be scalar strings')
-            if key in mapping:
-                raise yaml.YAMLError(f'duplicate key {key}')
-            mapping[key] = self.construct_object(value_node, deep=True)
-        return mapping
-
-
-_resolvers = []
-for first, resolvers in yaml.SafeLoader.yaml_implicit_resolvers.items():
-    kept = [(tag, regexp) for tag, regexp in resolvers
-            if tag not in ('tag:yaml.org,2002:bool', 'tag:yaml.org,2002:int',
-                           'tag:yaml.org,2002:float', 'tag:yaml.org,2002:timestamp')]
-    _resolvers.append((first, kept))
-_CoreLoader.yaml_implicit_resolvers = dict(_resolvers)
-_CoreLoader.add_implicit_resolver('tag:yaml.org,2002:bool',
-                                  re.compile(r'(?:true|True|TRUE|false|False|FALSE)\Z'),
-                                  list('tTfF'))
-_CoreLoader.add_implicit_resolver('tag:yaml.org,2002:int', _YAML_INT,
-                                  list('-+0123456789'))
-_CoreLoader.add_implicit_resolver('tag:yaml.org,2002:float', _YAML_FLOAT,
-                                  list('-+0123456789.'))
-_CoreLoader.add_constructor('tag:yaml.org,2002:int', _yaml_scalar_int)
-_CoreLoader.add_constructor('tag:yaml.org,2002:float', _yaml_scalar_float)
-
-
-class _CoreDumper(yaml.SafeDumper):
-    # anchor와 alias를 만들지 않는다.
-
-    def ignore_aliases(self, data):
+def _yaml_core(text: str):
+    # plain scalar를 YAML 1.2.2 10.3.2의 core tag로 resolve한다; 부호는 10진수에만 허용한다.
+    if text in ('', '~', 'null', 'Null', 'NULL'):
+        return None
+    if text in ('true', 'True', 'TRUE'):
         return True
+    if text in ('false', 'False', 'FALSE'):
+        return False
+    if _YAML_INT.fullmatch(text) is not None:
+        if text.startswith('0x'):
+            return int(text[2:], 16)
+        if text.startswith('0o'):
+            return int(text[2:], 8)
+        return int(text, 10)
+    if _YAML_FLOAT.fullmatch(text) is not None:
+        # float()는 '.inf', '.NaN' 등 core 표기도 읽는다; 값 검증이 유한하지 않은 수를 거절한다.
+        return float(text)
+    return text
+
+
+def _yaml_text(memory) -> str:
+    return '' if memory is None else bytes(memory).decode('utf-8')
+
+
+def _yaml_scalar(text: str, plain: bool, tag):
+    if tag is None:
+        return _yaml_core(text) if plain else text
+    if tag == '!!str':
+        return text
+    if tag == '!!null':
+        return None
+    value = _yaml_core(text)
+    if tag == '!!bool' and isinstance(value, bool):
+        return value
+    if tag == '!!int' and type(value) is int:
+        return value
+    if tag == '!!float' and type(value) in (int, float):
+        return float(value)
+    raise CodecError('CODEC_DECODE', f'yaml: tag {tag} on {text!r}')
+
+
+def _yaml_node(tree, node):
+    tag = _yaml_text(tree.val_tag(node)) if tree.has_val_tag(node) else None
+    if tree.is_map(node):
+        if tag is not None:
+            raise CodecError('CODEC_DECODE', f'yaml: tag {tag} on a mapping')
+        mapping = {}
+        for child in ryml.children(tree, node):
+            if tree.is_key_ref(child):
+                raise CodecError('CODEC_DECODE', 'yaml: aliases are not allowed')
+            key_tag = _yaml_text(tree.key_tag(child)) if tree.has_key_tag(child) else None
+            key = _yaml_scalar(_yaml_text(tree.key(child)), not tree.is_key_quoted(child), key_tag)
+            if type(key) is int:
+                key = str(key)
+            if not isinstance(key, str):
+                raise CodecError('CODEC_DECODE', 'yaml: map keys must be strings or integers')
+            if key in mapping:
+                raise CodecError('CODEC_DECODE', f'yaml: duplicate key {key}')
+            mapping[key] = _yaml_node(tree, child)
+        return mapping
+    if tree.is_seq(node):
+        if tag is not None:
+            raise CodecError('CODEC_DECODE', f'yaml: tag {tag} on a sequence')
+        return [_yaml_node(tree, child) for child in ryml.children(tree, node)]
+    if tree.is_val_ref(node):
+        raise CodecError('CODEC_DECODE', 'yaml: aliases are not allowed')
+    return _yaml_scalar(_yaml_text(tree.val(node)), not tree.is_val_quoted(node), tag)
 
 
 def _decode_yaml(data: bytes):
     try:
-        text = _text(data, 'decode')
-        document = _CoreLoader(text).get_single_data()
-        return _validate_codec_value(document, 'yaml decode')
+        _text(data, 'decode')
+        tree = ryml.parse_in_arena(data)
+        root = tree.root_id()
+        if tree.is_stream(root):
+            documents = list(ryml.children(tree, root))
+            if len(documents) != 1:
+                raise CodecError('CODEC_DECODE', 'yaml: multiple documents are not supported')
+            root = documents[0]
+        return _validate_codec_value(_yaml_node(tree, root), 'yaml decode')
     except CodecError:
         raise
     except Exception as error:
@@ -510,11 +519,17 @@ def _decode_yaml(data: bytes):
 
 def _yaml_dump(value) -> str:
     import io
+    # ruamel.yaml의 safe emitter는 YAML 1.2를 쓴다: core schema로 resolve될 문자열은 quote하고,
+    # U+0085는 내용으로 쓴다(PyYAML의 emitter는 줄바꿈으로 접는다). anchor와 alias를 만들지 않는다.
+    dumper = ruamel.yaml.YAML(typ='safe', pure=True)
+    dumper.default_flow_style = False
+    dumper.allow_unicode = True
+    dumper.width = 4096
+    dumper.indent(mapping=2, sequence=2, offset=0)
+    dumper.representer.ignore_aliases = lambda data: True
     out = io.StringIO()
     try:
-        yaml.dump(_validate_codec_value(value, 'yaml encode'), out, Dumper=_CoreDumper,
-                  sort_keys=True, default_flow_style=False, allow_unicode=True,
-                  width=4096, indent=2)
+        dumper.dump(_validate_codec_value(value, 'yaml encode'), out)
     except CodecError:
         raise
     except Exception as error:

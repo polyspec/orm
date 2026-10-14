@@ -459,7 +459,7 @@ dbspec-compare-check: dbspec-compare-check/unit dbspec-compare-check/runners dbs
 dbspec-compare-check/unit:
 	node --test tests/dbspec/compare/check.test.mjs
 # PYTHON_VENV is the virtual environment that install-python makes. It holds the Python client installed in editable mode,
-# with the pinned dependencies of its pyproject.toml (ordered-json, cryptography, PyMySQL, psycopg, PyYAML); the checks
+# with the pinned dependencies of its pyproject.toml (ordered-json, cryptography, PyMySQL, psycopg, rapidyaml, ruamel.yaml); the checks
 # take this interpreter as ORM_PYTHON and import the installed package, never a source path.
 PYTHON_VENV = $(abspath packages/python/.venv)
 # install-python installs the tools of mise.toml (install-tools), among them the Python that mise.lock pins, and makes the

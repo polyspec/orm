@@ -10,7 +10,7 @@
 | distribution | Go: module path; PHP: composer package `polyspec/orm` with `bin/orm-gen`; TypeScript: npm package `@polyspec/orm` with the `orm-gen` bin; Rust: crates `polyspec-orm` and `polyspec-orm-build` | — | a registry publish is a separate decision |
 | configuration | DSN and secrets are arguments of the connect call; the schema path is a connection option (Go, PHP, TypeScript), the generated schema is an argument of `Db.connect_schema` (Python), or it is embedded by the build (Rust) | — | — |
 | drivers | Go `go-sql-driver/mysql`, `pgx`, `modernc.org/sqlite`; Rust `sqlx`; PHP `pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`; TypeScript `mysql2`, `pg`, `node:sqlite` | [perf.md](perf.md) §4 | a measured 2× win from another driver on the hot path |
-| YAML codec | Go `go.yaml.in/yaml/v3`, PHP `purrphp/yaml` (read) and `symfony/yaml` (write), Rust `saphyr-parser` (read) and `serde-saphyr` (write), TypeScript `yaml`; lock files are committed | the same 80 vectors and invalid-input cases run in all four clients | replace a library only when the shared vectors and error cases remain unchanged |
+| YAML codec | Go `github.com/goccy/go-yaml` (read, which keeps U+0085 as content) and `go.yaml.in/yaml/v3` (write), Python `rapidyaml` (read) and `ruamel.yaml` (write), PHP `purrphp/yaml` (read) and `symfony/yaml` (write), Rust `saphyr-parser` (read) and `serde-saphyr` (write), TypeScript `yaml`; lock files are committed | the same 80 vectors and invalid-input cases run in all four clients | replace a library only when the shared vectors and error cases remain unchanged |
 
 ## Installing from release assets
 
