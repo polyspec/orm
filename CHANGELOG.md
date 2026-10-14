@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The socket folder of the test servers is named by SHA-256 of the checkout path, and AGENTS.md states that a worktree's servers stop before the worktree is removed. Stop running servers before taking this change: their sockets keep the earlier name. (#T137-1-4-10)
+
 ## 0.0.17
 
 - The server tests judge an ended process by its state, so a zombie that its adopting process has not reaped yet counts as ended. (#T177-3)
