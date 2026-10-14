@@ -1522,6 +1522,16 @@
           {
             "binds": [],
             "error": null,
+            "kind": "utility",
+            "sql": "CREATE TABLE IF NOT EXISTS \"orm__row_lock\" (\"id\" INTEGER PRIMARY KEY CHECK (\"id\" = 1))",
+            "tables": [
+              "orm__row_lock"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [],
+            "error": null,
             "kind": "begin",
             "sql": "BEGIN IMMEDIATE",
             "tables": [],
@@ -1542,14 +1552,25 @@
               "a",
               900,
               2,
-              "b",
+              "b"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES (?, ?, ?), (?, ?, ?)",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
               901,
               1,
               "c"
             ],
             "error": null,
             "kind": "insert",
-            "sql": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?)",
+            "sql": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES (?, ?, ?)",
             "tables": [
               "composite_account"
             ],

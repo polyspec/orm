@@ -1523,14 +1523,25 @@
               "a",
               900,
               2,
-              "b",
+              "b"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `composite_account` (`tenant_id`, `account_id`, `name`) VALUES (?, ?, ?), (?, ?, ?)",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
               901,
               1,
               "c"
             ],
             "error": null,
             "kind": "insert",
-            "sql": "INSERT INTO `composite_account` (`tenant_id`, `account_id`, `name`) VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?)",
+            "sql": "INSERT INTO `composite_account` (`tenant_id`, `account_id`, `name`) VALUES (?, ?, ?)",
             "tables": [
               "composite_account"
             ],
