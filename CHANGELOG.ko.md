@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 07b8b8b12c164917ac0e5f0486750f53dba42020702019ac040d0acc38dd1962 -->
+<!-- source-sha256: 4f1a7924f17a983d1b52d1ca7f966c8a47421e42c39ec7059bd51be9a7c7472c -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.13
 
+- T161-2: model-methods 사례가 PHPStan cache를 자기 폴더에 두고, runner의 parts 표가 그것을 적는다.
 - T161: PHP 생성 model이 query 메서드(column 조건, order, 집계, key-prefix tuple, index hint)를 유형 있는 실제 메서드로 선언해 PHPStan이 그것을 본다. docs/usage.md가 `__call`에 남는 것을 적는다.
 ## 0.0.12
 
