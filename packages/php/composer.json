@@ -11,6 +11,7 @@
         "ext-pdo": "*",
         "ext-json": "*",
         "ext-zlib": "*",
+        "nikic/php-parser": "^5.9.0",
         "purrphp/yaml": "^1.0",
         "symfony/yaml": "^8.1"
     },
