@@ -33,6 +33,9 @@ final class Scan
         $out = [];
         $files = [];
         foreach ($paths as $path) {
+            if (is_link($path)) {
+                throw new \RuntimeException("--scan: $path is a symlink; the scan never follows one");
+            }
             if (is_dir($path)) {
                 self::collect($path, $files);
             } elseif (is_file($path)) {
@@ -64,22 +67,31 @@ final class Scan
         return $out;
     }
 
-    /** @param list<string> $files */
+    /**
+     * collect adds the files under $dir in path order. It skips the directories vendor and node_modules, which hold
+     * dependencies and not the caller's sources; a symlink is an error and is never followed, and a directory that
+     * cannot be read throws.
+     * @param list<string> $files
+     */
     private static function collect(string $dir, array &$files): void
     {
-        $entries = scandir($dir) ?: [];
-        sort($entries, SORT_STRING);
-        foreach ($entries as $entry) {
-            if ($entry === '.' || $entry === '..' || $entry === 'vendor' || $entry === 'node_modules') {
-                continue;
+        $directories = new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::CURRENT_AS_FILEINFO);
+        $skipped = new \RecursiveCallbackFilterIterator(
+            $directories,
+            static fn (\SplFileInfo $entry): bool => !($entry->isDir() && !$entry->isLink() && in_array($entry->getFilename(), ['vendor', 'node_modules'], true)),
+        );
+        $found = [];
+        foreach (new \RecursiveIteratorIterator($skipped) as $entry) {
+            if (!$entry instanceof \SplFileInfo) {
+                throw new \LogicException('RecursiveDirectoryIterator yields SplFileInfo entries');
             }
-            $path = rtrim($dir, '/') . '/' . $entry;
-            if (is_dir($path)) {
-                self::collect($path, $files);
-            } else {
-                $files[] = $path;
+            if ($entry->isLink()) {
+                throw new \RuntimeException('--scan: ' . $entry->getPathname() . ' is a symlink; the scan never follows one');
             }
+            $found[] = $entry->getPathname();
         }
+        sort($found, SORT_STRING);
+        array_push($files, ...$found);
     }
 
     public static function terminal(string $name): bool
