@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: bcbd690a21cd314ed6169c00abfc3b04e7a7306c1b7c66a034a08e0a55851072 -->
+<!-- source-sha256: 5e2f1afc3e2dd0f4a916bd88a861cd24223e94f836fb700d6ac0ad1bfceb6ac4 -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP orm-gen이 `--scan`을 받는다: source를 nikic/php-parser로 읽고, model에 부르는 chain method마다 타입이 있는 `@method` 태그를 선언해 PHPStan이 찾게 하며, 모르는 column, operator, 인자 수는 생성 중에 거부한다. scan한 디렉터리의 symlink는 오류다. (#T172)
 - Rust validate와 codec vector가 workspace의 test feature로 실행되고, plan vector는 기준을 넘은 측정 CPU 시간을 경고로 보고한다. (#T148-2-2)
 - Go, TypeScript, Python, Rust가 각 공유 vector case를 그 id로 보고한다: Go subtest, case마다 TypeScript test 하나, Python load_tests case, Rust libtest-mimic trial이며, Rust는 공개 engine::validate로 검증한다. (#T148-2)
 - PHP client와 extension의 test가 PHPUnit에서 실행된다: 공유 vector는 case id로 이름 붙인 data provider로 실행하고, orm 자체 PHP test runner를 없앴다. symfony/yaml은 8.1이다. (#T148-1)
