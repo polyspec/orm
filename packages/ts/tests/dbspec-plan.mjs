@@ -7,7 +7,7 @@
 // every comparison lists exactly its differences or compare diagnostics.
 //
 // Usage: node --test packages/ts/tests/dbspec-plan.mjs (after the build)
-import { caseTest } from '../../../tests/testcase.mjs';
+import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { chainPlans, compareSchemas, diffPlan, effectText, emitPlan, parseDbspec, parsePlan, planSteps } from '../dist/dbspec/index.js';

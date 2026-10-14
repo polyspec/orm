@@ -1,5 +1,5 @@
 //! 모든 공유 case, stress 문서, statement vector, plan vector, Mermaid vector의 Rust dbspec
-//! 결과를 tests/dbspec/compare/check.mjs의 줄 형식으로 출력한다. It then prints the positions cases of
+//! 결과를 tests/dbspec/compare/check.mts의 줄 형식으로 출력한다. It then prints the positions cases of
 //! cases.json and the analysis and format of each case of syntax.json.
 //!
 //! Usage: `cargo run --release -p polyspec-orm-schema --example dbspec_compare -- <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>`
@@ -269,7 +269,7 @@ fn read_syntax(path: &str) -> Result<(Reader<'_>, Vec<String>), String> {
     Ok((r, ids))
 }
 
-/// The input of every analysis that syntax.json names, by its id, as scripts/dbspec/syntax-vectors.mjs derives it
+/// The input of every analysis that syntax.json names, by its id, as scripts/dbspec/syntax-vectors.mts derives it
 /// from cases.json: the main document of each canonical, normalize and invalid case ("<section>/<id>"), each document
 /// of a sets case with the parsing documents and the other documents of the case by header name ("sets/<id>/<place>",
 /// 1-based), and each document of a hashes case with the others ("hashes/<id>/<name>").
@@ -535,7 +535,7 @@ fn plan_source(out: &mut impl Write, lines: &Option<Vec<String>>) -> std::io::Re
 /// plan case마다 emit한 plan, change, dialect별 statement를, invalid case마다 diagnostic을,
 /// chain case마다 chain 순서나 diagnostic을, parse case마다 diagnostic이나 emit한 plan을,
 /// comparison마다 차이나 diagnostic을 출력한다.
-/// step 하나를 statement 줄과 그 속성 줄로 쓴다(tests/dbspec/compare/check.mjs).
+/// step 하나를 statement 줄과 그 속성 줄로 쓴다(tests/dbspec/compare/check.mts).
 fn write_step(out: &mut impl Write, s: &PlanStep) -> std::io::Result<()> {
     writeln!(out, "| {}", s.statement)?;
     if s.finalize {

@@ -14,7 +14,7 @@ import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual, promisify } from 'node:util';
 import { after } from 'node:test';
-import { DATABASE, PROCESS, caseTest, cases } from '../../../tests/testcase.mjs';
+import { DATABASE, PROCESS, caseTest, cases } from '../../../tests/testcase.mts';
 import { OrmError, StyledValue } from '../dist/index.js';
 import { Logs, People, Tasks, connect } from '../dist/models/markdown_fixture/models.js';
 

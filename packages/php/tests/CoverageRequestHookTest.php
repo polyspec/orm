@@ -2,7 +2,7 @@
 // request_hook coverage: feature-check가 고른 database(ORM_FEATURE_DATABASE)에서 공유 case마다
 // 새 case database(case_database.php)를 만들어 request_hook_cases.php의 case를 실행하고 지운다.
 // ORM_FEATURE_DSN의 database는 읽거나 쓰지 않는다. test method는 REQUEST_HOOK_CASES의 case마다 하나다
-// (scripts/features/check.mjs가 features.json의 case 목록과 비교한다).
+// (scripts/features/check.mts가 features.json의 case 목록과 비교한다).
 declare(strict_types=1);
 
 require_once __DIR__ . '/request_hook_cases.php';

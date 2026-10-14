@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mts) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-14T18:28:40.723Z",
+  "reviewed": "2026-10-14T19:09:47.104Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "76f9175019e55bd5bd5b9a141c082ca992bb2fd79d26f4e577152b2ad08afb57",
+      "sha256": "3d04defaeabb1a908db3f7868f592c08bcff68df8efc7539e7d03b3f6d6d8cac",
       "advisories": [
         {
           "package": "sprintf-js",
@@ -52,9 +52,51 @@
     {
       "ecosystem": "npm",
       "manifest": "package.json",
+      "package": "@types/node",
+      "version": "26.6.5",
+      "latest": "26.6.5"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "package.json",
+      "package": "@types/semver",
+      "version": "7.8.0",
+      "latest": "7.8.0"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "package.json",
+      "package": "ajv",
+      "version": "8.20.0",
+      "latest": "8.20.0"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "package.json",
       "package": "mermaid",
       "version": "12.2.0",
       "latest": "12.2.0"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "package.json",
+      "package": "minimatch",
+      "version": "10.2.6",
+      "latest": "10.2.6"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "package.json",
+      "package": "semver",
+      "version": "7.8.5",
+      "latest": "7.8.5"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "package.json",
+      "package": "typescript",
+      "version": "7.0.2",
+      "latest": "7.0.2"
     },
     {
       "ecosystem": "npm",

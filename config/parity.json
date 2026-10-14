@@ -529,10 +529,10 @@
   },
   "languageLists": [
     { "file": "contracts/validate.go", "pattern": "^var languages = \\[\\]string\\{(.*)\\}$", "profile": "client" },
-    { "file": "scripts/features/build.mjs", "pattern": "^const clients = \\[(.*)\\];$", "profile": "client" },
-    { "file": "scripts/features/check.mjs", "pattern": "^const clients = \\[(.*)\\];$", "profile": "client" },
-    { "file": "scripts/features/coverage.mjs", "pattern": "^export const languages = \\[(.*)\\];$", "profile": "client" },
-    { "file": "scripts/decimal-physical-check.mjs", "pattern": "^const languages = \\[(.*)\\];$", "profile": "client" },
+    { "file": "scripts/features/build.mts", "pattern": "^const clients = \\[(.*)\\];$", "profile": "client" },
+    { "file": "scripts/features/check.mts", "pattern": "^const clients = \\[(.*)\\];$", "profile": "client" },
+    { "file": "scripts/features/coverage.mts", "pattern": "^export const languages = \\[(.*)\\];$", "profile": "client" },
+    { "file": "scripts/decimal-physical-check.mts", "pattern": "^const languages = \\[(.*)\\];$", "profile": "client" },
     { "file": "tests/conformance/check/main.go", "pattern": "^var requiredLanguages = \\[\\]string\\{(.*)\\}$", "profile": "client" },
     { "file": "tests/conformance/check/result_physical_test.go", "pattern": "^var resultRunnerLanguages = \\[\\]string\\{(.*)\\}$", "profile": "client" },
     { "file": "tests/dialects/apply_clients_physical_test.go", "pattern": "^var applyClients = \\[\\]string\\{(.*)\\}$", "profile": "dbspec" }

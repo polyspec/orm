@@ -3,13 +3,13 @@
 // their canonical text, refuses the invalid cases with their diagnostics, and is idempotent.
 //
 // Usage: node --test packages/ts/tests/dbspec-analyze.mjs (after the build)
-import { caseTest } from '../../../tests/testcase.mjs';
+import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { analyzeDbspec, formatDbspec, parseDbspec } from '../dist/dbspec/index.js';
-import { generate, join, render, vectorInputs } from '../../../scripts/dbspec/syntax-vectors.mjs';
-import { readCases } from '../../../tests/dbspec/cases.mjs';
+import { generate, join, render, vectorInputs } from '../../../scripts/dbspec/syntax-vectors.mts';
+import { readCases } from '../../../tests/dbspec/cases.mts';
 
 const root = new URL('../../../', import.meta.url);
 const cases = readCases();

@@ -42,8 +42,8 @@ finish() {
 }
 
 go_lane() {
-  keep node tests/go-test.mjs -v -timeout 0 -count=1 ./packages/go/...
-  keep node tests/go-test.mjs -v -timeout 0 -count=1 -tags ormtest -run '^Test(RollbackFault|StatementFault)' ./packages/go/orm
+  keep node tests/go-test.mts -v -timeout 0 -count=1 ./packages/go/...
+  keep node tests/go-test.mts -v -timeout 0 -count=1 -tags ormtest -run '^Test(RollbackFault|StatementFault)' ./packages/go/orm
   finish go
 }
 php_lane() {
@@ -67,15 +67,15 @@ typescript_lane() {
   finish typescript
 }
 rust_lane() {
-  # tests/cargo-test.mjs는 test binary를 공유 target directory의 lease 아래에서 기한 없는 장기 작업으로 build해
+  # tests/cargo-test.mts는 test binary를 공유 target directory의 lease 아래에서 기한 없는 장기 작업으로 build해
   # 실행 하나의 directory로 복사하고, 그 복사본을 실행한다.
-  keep sh -c 'cd packages/rust && node "$0/tests/cargo-test.mjs" workspace-tests -- cargo test --locked --workspace --features "$ORM_RUST_TEST_FEATURES"' "$ROOT"
-  # build는 자기 case를 보고하지 않는 장기 작업이므로 tests/run-long.mjs로 기한 없이 실행한다. 공유 Rust target
+  keep sh -c 'cd packages/rust && node "$0/tests/cargo-test.mts" workspace-tests -- cargo test --locked --workspace --features "$ORM_RUST_TEST_FEATURES"' "$ROOT"
+  # build는 자기 case를 보고하지 않는 장기 작업이므로 tests/run-long.mts로 기한 없이 실행한다. 공유 Rust target
   # directory의 lease 아래에서 build하고 program을 이 실행의 directory로 복사해(scripts/cargo-build-copy.sh) 그
   # 복사본을 실행한다.
   run="$ROOT/.runtime/run/client-db-rust-$$"
   # integration program은 그 build가 통과할 때만 실행한다. build가 실패하면 그 사실을 FAILED에 쌓는다.
-  if node tests/run-long.mjs rust-build/integration --cwd packages/rust -- "${LEASE:?LEASE is unset; run this through make}" run "${CARGO_LEASES:?CARGO_LEASES is unset; run this through make}" exclusive --wait -- sh "$ROOT/scripts/cargo-build-copy.sh" "$run" debug/integration -- cargo build --locked -p polyspec-orm-tests --bin integration; then
+  if node tests/run-long.mts rust-build/integration --cwd packages/rust -- "${LEASE:?LEASE is unset; run this through make}" run "${CARGO_LEASES:?CARGO_LEASES is unset; run this through make}" exclusive --wait -- sh "$ROOT/scripts/cargo-build-copy.sh" "$run" debug/integration -- cargo build --locked -p polyspec-orm-tests --bin integration; then
     keep "$run/debug/integration" "$ROOT/schema/bench.dbs"
   else
     FAILED="$FAILED

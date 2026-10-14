@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "record.json of a run of make check (scripts/check/record.mts)",
+  "description": "The record that the runner writes for one run: its identity, its result, its setup steps and its targets, each step with its status and what it reported.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "tree", "commit", "started", "ended", "result", "failed", "incomplete", "setup", "targets"],
+  "properties": {
+    "id": { "type": "string" },
+    "tree": { "type": "string" },
+    "commit": { "type": "string" },
+    "started": { "type": "string" },
+    "ended": { "type": ["string", "null"] },
+    "result": { "enum": ["incomplete", "passed", "failed", "crashed"] },
+    "reason": { "type": "string" },
+    "failed": { "$ref": "#/$defs/names" },
+    "incomplete": { "$ref": "#/$defs/names" },
+    "setup": { "type": "array", "items": { "$ref": "#/$defs/step" } },
+    "targets": { "type": "array", "items": { "$ref": "#/$defs/step" } },
+    "reportErrors": { "$ref": "#/$defs/names" },
+    "report": { "type": "string" },
+    "disk": { "$ref": "#/$defs/disk" }
+  },
+  "if": { "properties": { "result": { "const": "crashed" } } },
+  "then": { "required": ["reason"], "properties": { "reason": { "type": "string" } } },
+  "$defs": {
+    "names": { "type": "array", "items": { "type": "string" } },
+    "disk": { "type": "object", "additionalProperties": { "type": "number" } },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "status"],
+      "properties": {
+        "name": { "type": "string" },
+        "status": { "enum": ["pending", "running", "passed", "failed", "not-run"] },
+        "elapsed": { "type": "number" },
+        "started": { "type": ["string", "null"] },
+        "ended": { "type": ["string", "null"] },
+        "failures": { "$ref": "#/$defs/names" },
+        "reportErrors": { "$ref": "#/$defs/names" },
+        "warnings": { "$ref": "#/$defs/names" },
+        "reason": { "type": "string" },
+        "log": { "type": "string" },
+        "disk": { "$ref": "#/$defs/disk" },
+        "truncated": { "type": ["number", "null"] }
+      }
+    }
+  }
+}

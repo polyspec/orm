@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ORM_CI_SETUP: the steps context of a CI job (toJSON(steps) of GitHub Actions)",
+  "description": "Each step id of the job with its outcome and conclusion, as the steps context of GitHub Actions gives them; GitHub documents the context in Contexts reference (steps context) and may add fields, which this schema leaves open.",
+  "type": "object",
+  "additionalProperties": {
+    "type": "object",
+    "required": ["outcome"],
+    "properties": {
+      "outcome": { "enum": ["success", "failure", "cancelled", "skipped"] },
+      "conclusion": { "enum": ["success", "failure", "cancelled", "skipped"] },
+      "outputs": { "type": "object", "additionalProperties": { "type": "string" } }
+    }
+  }
+}

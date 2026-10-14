@@ -1,6 +1,6 @@
 <?php
 // Grouped counts on the seeded bench database of ORM_GROUP_DATABASE and ORM_GROUP_DSN, which the test requires
-// (scripts/group-rows-physical-check.mjs sets them): getsCount returns group rows whose grouped values keep their types
+// (scripts/group-rows-physical-check.mts sets them): getsCount returns group rows whose grouped values keep their types
 // (boolean, integer, SQL NULL), that hold only the grouped columns and the count, and whose counts sum to the row count.
 // The test only reads.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsDbTest.php

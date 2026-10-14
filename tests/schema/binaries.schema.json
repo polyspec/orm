@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "binaries.json of tests/cargo-test.mts --copy",
+  "description": "The test binaries and the package programs that one cargo build copied into its run directory: each test binary with its copy, its manifest directory and its target, and each program by name with its copy.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tests", "programs"],
+  "properties": {
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["executable", "manifestDir", "target", "copy"],
+        "properties": {
+          "executable": { "type": "string", "minLength": 1 },
+          "manifestDir": { "type": "string", "minLength": 1 },
+          "target": { "type": "string", "minLength": 1 },
+          "copy": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "programs": { "type": "object", "additionalProperties": { "type": "string", "minLength": 1 } }
+  }
+}

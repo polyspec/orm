@@ -3,7 +3,7 @@
 // checked against Go by that generator's test.
 //
 // Usage: node --test packages/ts/tests/dbspec-unicode.mjs (after the build)
-import { caseTest } from '../../../tests/testcase.mjs';
+import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
 import { containsWordRune, WORD_RANGES } from '../dist/dbspec/unicode_word.js';
 

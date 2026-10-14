@@ -1,5 +1,5 @@
 <!-- doc-id: contributing -->
-<!-- source-sha256: d48f96e5f8b5bb4c346e304313f7cd61d3eb75f1e719bcca617ef1ef9b99436f -->
+<!-- source-sha256: 38899596ffb024e30345b6c47a7869e695aa9f613280dd2340762566df257848 -->
 # 기여 안내
 
 ## 필수 작업 순서
@@ -35,7 +35,7 @@
 | MySQL primary 앞의 ProxySQL |
 | PostgreSQL primary 앞의 transaction 모드 PgBouncer |
 
-각 서버는 `make test-servers`가 이 checkout의 서버를 시작할 때 127.0.0.1에서 고른 빈 port에서 listen한다(`scripts/free-ports.mjs`). 그래서 두 checkout의 서버가 한 port를 두고 다투지 않는다. 환경 파일 `.runtime/servers/env`가 DSN에 그 port를 기록하고, `make test-servers-tls`와 이후의 `make test-servers`는 그것을 거기서 읽는다.
+각 서버는 `make test-servers`가 이 checkout의 서버를 시작할 때 127.0.0.1에서 고른 빈 port에서 listen한다(`scripts/free-ports.mts`). 그래서 두 checkout의 서버가 한 port를 두고 다투지 않는다. 환경 파일 `.runtime/servers/env`가 DSN에 그 port를 기록하고, `make test-servers-tls`와 이후의 `make test-servers`는 그것을 거기서 읽는다.
 
 테스트는 127.0.0.1의 TCP로 연결한다. Unix 소켓은 서버 중지와 ProxySQL 관리 인터페이스에만 쓴다. 소켓은 `/tmp/orm-servers-<n>`에 있고 `<n>`은 checkout 경로의 POSIX `cksum`이다. 그래서 깊은 checkout에서도 Unix socket 경로 한도(macOS 103 byte, Linux 107 byte)를 지킨다. 그 folder의 file `checkout`이 소유 checkout을 적고, `make test-servers`는 다른 checkout이나 사용자의 folder를 거부하며 한도를 넘는 socket 경로를 말하며 실패하고, `make test-servers-stop`은 그 folder를 삭제한다. ProxySQL은 Linux용 패키지를 배포하며, macOS에서는 소스 릴리스에서 빌드한다. 이 target은 다음을 수행한다.
 

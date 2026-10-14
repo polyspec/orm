@@ -4,7 +4,7 @@
 //
 // Usage: node packages/ts/tests/statement-events.mjs [--dialect mysql|postgres|sqlite]... [case ...]
 // (after npm run typescript:build)
-import { DATABASE, runCase } from '../../../tests/testcase.mjs';
+import { DATABASE, runCase } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 import { runEventCase, runServerTransactions, vectors } from './statement-events-run.mjs';
 

@@ -1,6 +1,6 @@
 <?php
 // Unselected columns on the seeded bench database of ORM_UNSELECTED_DATABASE and ORM_UNSELECTED_DSN, which the test
-// requires (scripts/unselected-column-physical-check.mjs sets them): a getter of a column the read did not select fails
+// requires (scripts/unselected-column-physical-check.mts sets them): a getter of a column the read did not select fails
 // with COLUMN_UNSELECTED for every column type, and a selected SQL NULL stays null. The test only reads.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/UnselectedColumnDbTest.php
 declare(strict_types=1);

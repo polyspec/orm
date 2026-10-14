@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { normalizeDecimal, decimalScaled, decimalFromScaled } from '../dist/decimal.js';
 import { parseDbspec, renderDbspec } from '../dist/dbspec/index.js';
-import { caseTest, cases, COMPUTE } from '../../../tests/testcase.mjs';
+import { caseTest, cases, COMPUTE } from '../../../tests/testcase.mts';
 
 const fixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/decimal_model.json', import.meta.url), 'utf8'));
 const columns = new Map(fixture.columns.map(column => [column.id, column]));

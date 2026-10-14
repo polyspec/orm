@@ -1,5 +1,5 @@
 # The Python symbol extractor (tests/interfaces/python.py) reports the public declarations of a
-# package in the form of tests/interfaces/typescript.mjs: a class, a function, a method, a field.
+# package in the form of tests/interfaces/typescript.mts: a class, a function, a method, a field.
 import json
 import os
 import subprocess

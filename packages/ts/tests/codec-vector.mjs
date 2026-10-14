@@ -2,7 +2,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { isDeepStrictEqual } from 'node:util';
 import { CodecError, StyledValue, blindIndex, decodeCodec, encodeCodec, hostDecode, hostEncode } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { caseTest, COMPUTE } from '../../../tests/testcase.mjs';
+import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 
 const vectors = JSON.parse(await readFile('tests/codec/vectors.json', 'utf8')).vectors;
 const aesVectors = JSON.parse(await readFile('tests/codec/aes-vectors.json', 'utf8')).vectors;

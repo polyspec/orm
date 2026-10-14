@@ -12,7 +12,7 @@ import { builtinModules, createRequire } from 'node:module';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseSync, visitorKeys } from 'oxc-parser';
-import { caseTest } from '../../../tests/testcase.mjs';
+import { caseTest } from '../../../tests/testcase.mts';
 
 // The deadline of one case; each case runs through caseTest so it reports its RUN, PASS or FAIL line.
 const TIMEOUT = 15000;

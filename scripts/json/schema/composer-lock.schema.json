@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "composer.lock and vendor/composer/installed.json",
+  "description": "The fields of a Composer lock or installed list that orm's scripts read: the name and version of each package. Composer writes the other fields, which this schema leaves open.",
+  "type": "object",
+  "required": ["packages"],
+  "properties": {
+    "packages": { "$ref": "#/$defs/packages" },
+    "packages-dev": { "$ref": "#/$defs/packages" }
+  },
+  "$defs": {
+    "packages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "version"],
+        "properties": { "name": { "type": "string" }, "version": { "type": "string" } }
+      }
+    }
+  }
+}

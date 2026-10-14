@@ -11,7 +11,7 @@
 import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { Db, Engine, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
-import { COMPUTE, DATABASE, caseTest } from '../../../tests/testcase.mjs';
+import { COMPUTE, DATABASE, caseTest } from '../../../tests/testcase.mts';
 import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
 
 const DIALECTS = ['mysql', 'postgres', 'sqlite'];

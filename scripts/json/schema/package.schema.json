@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "package.json",
+  "description": "The fields of an npm package manifest that orm's scripts read. The other fields are npm's, which this schema leaves open.",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string" },
+    "version": { "type": "string" },
+    "bin": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "object", "additionalProperties": { "type": "string" } }
+      ]
+    },
+    "scripts": { "type": "object", "additionalProperties": { "type": "string" } },
+    "engines": { "type": "object", "additionalProperties": { "type": "string" } },
+    "dependencies": { "$ref": "#/$defs/specs" },
+    "devDependencies": { "$ref": "#/$defs/specs" },
+    "optionalDependencies": { "$ref": "#/$defs/specs" },
+    "peerDependencies": { "$ref": "#/$defs/specs" },
+    "overrides": { "type": "object" },
+    "kit": {
+      "type": "object",
+      "properties": { "copies": { "type": "object", "additionalProperties": { "type": "string" } } }
+    }
+  },
+  "$defs": {
+    "specs": { "type": "object", "additionalProperties": { "type": "string" } }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "contracts/check-inputs.json",
+  "description": "The scope, the setup needs and the owner inputs of each make target of CHECK_TARGETS, and the paths that no behaviour test selects. scripts/features/owners.mts checks what this schema cannot: the targets of CHECK_TARGETS, the needs that a setup step provides, and the tracked files.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["comment", "targets", "paths"],
+  "properties": {
+    "comment": { "type": "string" },
+    "targets": { "type": "object", "additionalProperties": { "$ref": "#/$defs/target" } },
+    "paths": {
+      "type": "object",
+      "propertyNames": { "not": { "pattern": "[*?[]" } },
+      "additionalProperties": { "$ref": "#/$defs/path" }
+    }
+  },
+  "$defs": {
+    "globs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "target": {
+      "oneOf": [
+        {
+          "description": "An owner target: owner-check selects it by its inputs or its lints, so it declares one of them.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["scope", "needs"],
+          "properties": {
+            "scope": { "const": "owner" },
+            "needs": { "type": "array", "items": { "type": "string" } },
+            "inputs": { "$ref": "#/$defs/globs" },
+            "lints": { "$ref": "#/$defs/globs" }
+          },
+          "anyOf": [
+            { "required": ["inputs"], "properties": { "inputs": { "type": "array", "minItems": 1 } } },
+            { "required": ["lints"], "properties": { "lints": { "type": "array", "minItems": 1 } } }
+          ]
+        },
+        {
+          "description": "A suite target: make check runs it whole, so it declares no inputs and no lints.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["scope", "needs"],
+          "properties": {
+            "scope": { "const": "suite" },
+            "needs": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      ]
+    },
+    "path": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "reason"],
+      "properties": {
+        "scope": { "enum": ["lint", "suite"] },
+        "reason": { "type": "string", "pattern": "\\S" }
+      }
+    }
+  }
+}

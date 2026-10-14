@@ -23,7 +23,7 @@ import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import * as packageEntry from '../dist/index.js';
-import { runCase } from '../../../tests/testcase.mjs';
+import { runCase } from '../../../tests/testcase.mts';
 import { mysqlConnection, postgresClient, relatedDsn, withCaseDatabase } from './case-database.mjs';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { failNextRollback } from '@polyspec/orm/testing';

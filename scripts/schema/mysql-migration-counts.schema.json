@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "counts.json of the MySQL migration (scripts/test-servers-mysql.mts)",
+  "description": "The counts that the dump step recorded: tables, views, routines, triggers and events of each database, rows of each table, and the users.",
+  "type": "object",
+  "additionalProperties": { "type": "integer", "minimum": 0 }
+}

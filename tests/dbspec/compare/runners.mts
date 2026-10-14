@@ -1,0 +1,77 @@
+// 여섯 dbspec compare runner. Go, PHP, TypeScript, Python, Rust, PHP 확장 runner는 모두 <cases.json> <stress document>
+// <ddl.json> <plans.json> <mermaid.json> <syntax.json>을 받는다(reads). 각 runner는 tests/dbspec/compare/check.mts의
+// line format을 출력하고, input을 읽을 수 없거나 vector가 없거나 type이 다르면 stderr에 위치를 밝힌
+// error를 쓰고 nonzero로 끝난다. TypeScript runner는 TypeScript build를, Rust runner는 dbspec_compare
+// example의 debug build를, PHP 확장 runner는 make가 build한 확장 orm_dbspec(ORM_DBSPEC_EXTENSION)을 요구한다.
+import { spawn } from 'node:child_process';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { cargoTarget } from '../../cargo-target.mts';
+
+export const root = fileURLToPath(new URL('../../../', import.meta.url));
+
+// INPUTS는 runRunner가 받는 input의 이름과 순서다.
+export const INPUTS = ['cases', 'stress', 'ddl', 'plans', 'mermaid', 'syntax'];
+
+// phpExtension은 make dbspec-compare-check가 그 실행의 directory에 build한 확장 orm_dbspec의 경로다.
+function phpExtension() {
+  const path = process.env.ORM_DBSPEC_EXTENSION;
+  if (!path) throw new Error('ORM_DBSPEC_EXTENSION names no build of the PHP extension orm_dbspec; run make dbspec-compare-check, which builds it and sets it');
+  return path;
+}
+
+// pythonCommand는 Python client의 의존성(cryptography, PyYAML)이 설치된 interpreter다. make dbspec-compare-check가
+// make install-python이 만든 packages/python/.venv의 interpreter를 ORM_PYTHON으로 준다.
+function pythonCommand() {
+  const path = process.env.ORM_PYTHON;
+  if (!path) throw new Error('ORM_PYTHON names no Python interpreter with the client dependencies; run make install-python, which creates packages/python/.venv, and run make dbspec-compare-check, which sets ORM_PYTHON');
+  return path;
+}
+
+export const runners: (Runner & { reads: string[] })[] = [
+  { name: 'go', command: 'go', args: ['run', './tests/dbspec/compare/go'], reads: INPUTS },
+  { name: 'php', command: 'php', args: ['tests/dbspec/compare/php.php'], reads: INPUTS },
+  { name: 'typescript', command: process.execPath, args: ['tests/dbspec/compare/typescript.mts'], reads: INPUTS },
+  {
+    name: 'python',
+    get command() {
+      return pythonCommand();
+    },
+    args: ['tests/dbspec/compare/python.py'],
+    reads: INPUTS,
+  },
+  { name: 'rust', command: join(cargoTarget(), 'debug/examples/dbspec_compare'), args: [], reads: INPUTS },
+  {
+    name: 'php-extension',
+    command: 'php',
+    get args() {
+      return ['-d', `extension=${phpExtension()}`, 'tests/dbspec/compare/php-extension.php'];
+    },
+    reads: INPUTS,
+  },
+];
+
+// runRunner는 runner를 실행해 exit code 또는 signal, stdout, stderr를 돌려주고, process를 시작할 수 없을 때만
+// reject한다. reads를 선언한 compare runner에는 inputs(INPUTS 순서의 경로) 가운데 그것이 읽는 것을 주고, reads가 없는
+// runner(tests/dbspec/inputs.test.mts의 apply runner와 stress harness)에는 inputs를 그대로 준다.
+/** A runner: its program and arguments, and for a compare runner the inputs it reads, by name. */
+export type Runner = { name: string; readonly command: string; readonly args: string[]; reads?: string[] };
+/** The end of a runner: its exit code or signal and its output. */
+export type RunnerResult = { code: number | null; signal: NodeJS.Signals | null; stdout: string; stderr: string };
+
+export function runRunner(runner: Runner, inputs: string[], timeout: number): Promise<RunnerResult> {
+  const reads = runner.reads;
+  if (reads && inputs.length !== INPUTS.length) throw new Error(`runRunner gives a compare runner the ${INPUTS.length} inputs ${INPUTS.join(', ')}; given ${inputs.length}; pass all six, and the runner takes those its reads names`);
+  const args = reads ? reads.map(name => inputs[INPUTS.indexOf(name)] ?? '') : inputs;
+  return new Promise<RunnerResult>((resolve, reject) => {
+    const child = spawn(runner.command, [...runner.args, ...args], { cwd: root, timeout });
+    const out: Buffer[] = [];
+    const err: Buffer[] = [];
+    child.stdout.on('data', (chunk: Buffer) => out.push(chunk));
+    child.stderr.on('data', (chunk: Buffer) => err.push(chunk));
+    child.on('error', reject);
+    child.on('close', (code, signal) => {
+      resolve({ code, signal, stdout: Buffer.concat(out).toString('utf8'), stderr: Buffer.concat(err).toString('utf8') });
+    });
+  });
+}

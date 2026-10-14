@@ -94,7 +94,7 @@ func loadSyntaxVectors(t *testing.T) map[string][]Token {
 }
 
 // syntaxInputs lists the analyses of tests/dbspec/syntax.json as its generator
-// builds them (scripts/dbspec/syntax-vectors.mjs, vectorInputs).
+// builds them (scripts/dbspec/syntax-vectors.mts, vectorInputs).
 func syntaxInputs(t *testing.T) []syntaxInput {
 	t.Helper()
 	vectors := loadVectors(t)

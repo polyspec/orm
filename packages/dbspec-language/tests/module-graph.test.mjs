@@ -8,7 +8,7 @@
 // Usage: node --test packages/dbspec-language/tests/module-graph.test.mjs (after the build of this package and of
 // packages/ts)
 import assert from 'node:assert/strict';
-import { caseTest } from '../../../tests/testcase.mjs';
+import { caseTest } from '../../../tests/testcase.mts';
 import { readFileSync } from 'node:fs';
 import { builtinModules } from 'node:module';
 import { dirname, relative, resolve } from 'node:path';

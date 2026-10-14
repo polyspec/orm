@@ -23,7 +23,7 @@ import (
 // 동작하는 database에서는 한 step이 몇 분 걸리지 않는다.
 const stressStallLimit = 2 * time.Minute
 
-// TestApplyStressPlan은 tests/dbspec/stress.mjs의 2000 table 문서를 첫 plan으로 세
+// TestApplyStressPlan은 tests/dbspec/stress.mts의 2000 table 문서를 첫 plan으로 세
 // database에 적용한다(docs/plans.md "Verification"). PostgreSQL은 기본 lock 설정
 // (max_locks_per_transaction 64)이어야 한다. statement마다 따로 commit하므로 lock
 // table은 plan 크기와 상관없다.
@@ -35,10 +35,10 @@ func TestApplyStressPlan(t *testing.T) {
 	}
 	// stress 문서 생성은 node process 하나이므로 testcase.Process 기한을 가진다.
 	generating, cancelGenerate := context.WithTimeout(context.Background(), testcase.Process)
-	out, err := exec.CommandContext(generating, "node", filepath.Join("..", "dbspec", "stress.mjs")).Output()
+	out, err := exec.CommandContext(generating, "node", filepath.Join("..", "dbspec", "stress.mts")).Output()
 	cancelGenerate()
 	if err != nil {
-		t.Fatalf("node tests/dbspec/stress.mjs: %v", err)
+		t.Fatalf("node tests/dbspec/stress.mts: %v", err)
 	}
 	text := strings.Replace(string(out), "dbspec 1 stress\n", "dbspec 1 schema\n", 1)
 	plan := parsePlan(t, "dbplan 1 stress\nfrom empty\n\n"+text)

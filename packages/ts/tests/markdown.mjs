@@ -6,7 +6,7 @@
 import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
-import { COMPUTE, cases } from '../../../tests/testcase.mjs';
+import { COMPUTE, cases } from '../../../tests/testcase.mts';
 import { Db, OrmError } from '../dist/index.js';
 import { parseDsn } from '../dist/driver.js';
 

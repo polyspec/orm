@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OrmError, SCHEMA, Service, connect } from '../dist/index.js';
-import { PROCESS, runCase } from '../../../tests/testcase.mjs';
+import { PROCESS, runCase } from '../../../tests/testcase.mts';
 
 const benchPath = fileURLToPath(new URL('../../../schema/bench.dbs', import.meta.url));
 

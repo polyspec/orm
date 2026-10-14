@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "tests/dbspec/ddl.json",
+  "description": "The DDL vectors: each case's documents, the statements each dialect creates them with, and the behavior those statements give (a statement that runs or fails, a query and its value), optionally limited to some dialects.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "note",
+    "cases"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "note": {
+      "type": "string"
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "documents",
+          "statements",
+          "behavior"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "documents": {
+            "$ref": "#/$defs/documents"
+          },
+          "statements": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mysql",
+              "postgres",
+              "sqlite"
+            ],
+            "properties": {
+              "mysql": {
+                "$ref": "#/$defs/lines"
+              },
+              "postgres": {
+                "$ref": "#/$defs/lines"
+              },
+              "sqlite": {
+                "$ref": "#/$defs/lines"
+              }
+            }
+          },
+          "behavior": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/behavior"
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "lines": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "documents": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/lines"
+      }
+    },
+    "behavior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "sql": {
+          "type": "string"
+        },
+        "query": {
+          "type": "string"
+        },
+        "want": {
+          "type": "string"
+        },
+        "fails": {
+          "const": true
+        },
+        "dialects": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "mysql",
+              "postgres",
+              "sqlite"
+            ]
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "sql"
+          ],
+          "properties": {
+            "sql": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "required": [
+            "query"
+          ],
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

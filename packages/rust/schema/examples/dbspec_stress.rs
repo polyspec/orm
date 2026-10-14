@@ -1,5 +1,5 @@
 //! Measures dbspec parse and emit of the shared stress document
-//! (`node tests/dbspec/stress.mjs`, 2000 tables, 60000 columns, 10000 foreign
+//! (`node tests/dbspec/stress.mts`, 2000 tables, 60000 columns, 10000 foreign
 //! keys). Run in release mode: the document is parsed five times, and the
 //! median parse CPU time of the main thread and its ratio to the reference
 //! work are printed, with a warning above the reference ratio (docs/dbspec.md,

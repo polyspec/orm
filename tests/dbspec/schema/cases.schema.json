@@ -1,0 +1,312 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "tests/dbspec/cases.json",
+  "description": "The shared dbspec cases that every implementation runs: canonical and normalized documents, invalid documents with their errors, hashes, document sets, files and declaration positions. Every section has at least one case, and a section or field the format does not name is refused. tests/dbspec/cases.mts checks what this schema cannot: the main document of a case is one of its documents.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "note",
+    "canonical",
+    "normalize",
+    "invalid",
+    "hashes",
+    "sets",
+    "files",
+    "positions"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "note": {
+      "type": "string"
+    },
+    "canonical": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "$ref": "#/$defs/document",
+        "unevaluatedProperties": false
+      }
+    },
+    "normalize": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "$ref": "#/$defs/document",
+        "required": [
+          "canonical"
+        ],
+        "properties": {
+          "canonical": {
+            "$ref": "#/$defs/lines"
+          }
+        },
+        "unevaluatedProperties": false
+      }
+    },
+    "invalid": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "$ref": "#/$defs/document",
+        "required": [
+          "errors"
+        ],
+        "properties": {
+          "errors": {
+            "$ref": "#/$defs/errors"
+          }
+        },
+        "unevaluatedProperties": false
+      }
+    },
+    "hashes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "documents",
+          "manifestText",
+          "schemaText",
+          "manifestHash",
+          "schemaHash"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "documents": {
+            "$ref": "#/$defs/linesMap"
+          },
+          "manifestText": {
+            "$ref": "#/$defs/lines"
+          },
+          "schemaText": {
+            "$ref": "#/$defs/lines"
+          },
+          "manifestHash": {
+            "type": "string"
+          },
+          "schemaHash": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "sets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "documents",
+          "parsing",
+          "errors"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/lines"
+            }
+          },
+          "parsing": {
+            "$ref": "#/$defs/linesMap"
+          },
+          "errors": {
+            "$ref": "#/$defs/errors"
+          },
+          "external": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/lines"
+            }
+          },
+          "manifest": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "manifestText",
+              "externalText",
+              "schemaText",
+              "created",
+              "manifestHash",
+              "schemaHash"
+            ],
+            "properties": {
+              "manifestText": {
+                "$ref": "#/$defs/lines"
+              },
+              "externalText": {
+                "$ref": "#/$defs/lines"
+              },
+              "schemaText": {
+                "$ref": "#/$defs/lines"
+              },
+              "created": {
+                "$ref": "#/$defs/lines"
+              },
+              "manifestHash": {
+                "type": "string"
+              },
+              "schemaHash": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "path",
+          "errors"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "errors": {
+            "$ref": "#/$defs/errors"
+          }
+        }
+      }
+    },
+    "positions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "documents",
+          "main",
+          "positions"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "documents": {
+            "$ref": "#/$defs/linesMap"
+          },
+          "main": {
+            "type": "string"
+          },
+          "positions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "path",
+                "line",
+                "column"
+              ],
+              "properties": {
+                "kind": {
+                  "type": "string"
+                },
+                "path": {
+                  "$ref": "#/$defs/lines"
+                },
+                "line": {
+                  "type": "integer"
+                },
+                "column": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "lines": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "linesMap": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/lines"
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "line",
+          "column",
+          "rule"
+        ],
+        "properties": {
+          "line": {
+            "type": "integer"
+          },
+          "column": {
+            "type": "integer"
+          },
+          "rule": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "document": {
+      "type": "object",
+      "required": [
+        "id",
+        "documents",
+        "main"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "documents": {
+          "$ref": "#/$defs/linesMap"
+        },
+        "main": {
+          "type": "string"
+        },
+        "crlf": {
+          "type": "boolean"
+        },
+        "mixed": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

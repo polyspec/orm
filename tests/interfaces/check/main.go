@@ -692,7 +692,7 @@ func extract(ctx context.Context, root, lang string, roots []string, rust, toolR
 	if lang == "php" {
 		cmd = exec.CommandContext(ctx, "php", append([]string{filepath.Join(toolRoot, "tests/interfaces/php.php"), root}, roots...)...)
 	} else if lang == "typescript" {
-		cmd = exec.CommandContext(ctx, "node", append([]string{filepath.Join(toolRoot, "tests/interfaces/typescript.mjs"), root}, roots...)...)
+		cmd = exec.CommandContext(ctx, "node", append([]string{filepath.Join(toolRoot, "tests/interfaces/typescript.mts"), root}, roots...)...)
 	} else if lang == "python" {
 		cmd = exec.CommandContext(ctx, "python3", append([]string{filepath.Join(toolRoot, "tests/interfaces/python.py"), root}, roots...)...)
 	} else {

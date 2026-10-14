@@ -3,7 +3,7 @@
 import { readFile } from 'node:fs/promises';
 import { Db, Engine, MANIFEST_HASH, MANIFEST_TEXT, dbspecManifest, loadSet, parseDbspec, registerModel } from '../dist/index.js';
 import { validate } from '../dist/engine/validate.js';
-import { caseTest, cases, COMPUTE } from '../../../tests/testcase.mjs';
+import { caseTest, cases, COMPUTE } from '../../../tests/testcase.mts';
 
 const text = await readFile(new URL('../../../schema/bench.dbs', import.meta.url), 'utf8');
 let failures = 0;

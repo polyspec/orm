@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { aggregateNumber } from '../dist/model.js';
 import { OrmError } from '../dist/index.js';
-import { caseTest, COMPUTE } from '../../../tests/testcase.mjs';
+import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 
 const fixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/aggregate_numeric.json', import.meta.url), 'utf8'));
 

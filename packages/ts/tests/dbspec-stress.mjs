@@ -1,5 +1,5 @@
 // dbspec stress: the 2000-table, 60000-column, 10000-foreign-key canonical
-// document that node tests/dbspec/stress.mjs writes is parsed and emitted;
+// document that node tests/dbspec/stress.mts writes is parsed and emitted;
 // the emission equals the document and a second emission equals the first.
 // The document is parsed five times; the shortest, median and longest main
 // thread CPU time of a parse are printed with the ratio of the median to the
@@ -12,7 +12,7 @@
 // 출력만 한다.
 //
 // Usage: node --test packages/ts/tests/dbspec-stress.mjs (after the build)
-import { caseTest, warning } from '../../../tests/testcase.mjs';
+import { caseTest, warning } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -20,7 +20,7 @@ import { performance } from 'node:perf_hooks';
 import { emitDbspec, parseDbspec } from '../dist/dbspec/index.js';
 
 const root = new URL('../../../', import.meta.url);
-const generator = fileURLToPath(new URL('tests/dbspec/stress.mjs', root));
+const generator = fileURLToPath(new URL('tests/dbspec/stress.mts', root));
 const TIMEOUT = 60000;
 // REFERENCE_RATIO is the documented reference value of the ratio of the median parse CPU time to the median CPU time of
 // the reference work (docs/dbspec.md, "Verification"). A ratio above it prints a warning; a measurement never fails the

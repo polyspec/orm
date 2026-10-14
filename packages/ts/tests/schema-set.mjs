@@ -15,7 +15,7 @@
 // Usage: node packages/ts/tests/schema-set.mjs [case ...] (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
-import { caseTest, runCase } from '../../../tests/testcase.mjs';
+import { caseTest, runCase } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 import { nativeQuery } from './coverage_case.mjs';
 

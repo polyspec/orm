@@ -1,5 +1,5 @@
 # 모든 공유 case, stress 문서, statement vector, plan vector, Mermaid vector의 Python
-# dbspec 결과를 tests/dbspec/compare/check.mjs의 줄 형식으로 출력한다. It then prints the positions cases of
+# dbspec 결과를 tests/dbspec/compare/check.mts의 줄 형식으로 출력한다. It then prints the positions cases of
 # cases.json and the analysis and format of each case of syntax.json.
 #
 # Usage: python3 tests/dbspec/compare/python.py <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
@@ -317,7 +317,7 @@ for c in read_vectors(ddl_path, check_ddl)['cases']:
     write_render(c)
 
 
-# write_step은 step 하나를 statement 줄과 그 속성 줄로 쓴다(tests/dbspec/compare/check.mjs).
+# write_step은 step 하나를 statement 줄과 그 속성 줄로 쓴다(tests/dbspec/compare/check.mts).
 def write_step(s):
     out.append(f'| {s["statement"]}')
     if s['finalize']:
@@ -509,7 +509,7 @@ for c in shared['positions']:
 
 
 # syntax_inputs gives the input of every analysis that syntax.json names, by its id, as
-# scripts/dbspec/syntax-vectors.mjs derives it from cases.json: the main document of each canonical, normalize and
+# scripts/dbspec/syntax-vectors.mts derives it from cases.json: the main document of each canonical, normalize and
 # invalid case ("<section>/<id>"), each document of a sets case with the parsing documents and the other documents of
 # the case by header name ("sets/<id>/<place>", 1-based), and each document of a hashes case with the others
 # ("hashes/<id>/<name>").

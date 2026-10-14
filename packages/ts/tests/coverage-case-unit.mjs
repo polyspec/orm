@@ -4,7 +4,7 @@
 // Usage: node packages/ts/tests/coverage-case-unit.mjs
 import assert from 'node:assert/strict';
 import { errorCode, featureDatabase, runCases, withCleanup } from './coverage_case.mjs';
-import { cases, COMPUTE } from '../../../tests/testcase.mjs';
+import { cases, COMPUTE } from '../../../tests/testcase.mts';
 
 // runCases는 명령 줄의 case ID를 읽으므로 각 호출 동안 process.argv를 바꾸고 출력을 모은다.
 async function withArguments(ids, body) {

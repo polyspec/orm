@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runCase } from '../../../tests/testcase.mjs';
+import { runCase } from '../../../tests/testcase.mts';
 
 const root = new URL('../../..', import.meta.url).pathname;
 const bin = join(root, 'packages/ts/dist/bin/orm-gen.js');

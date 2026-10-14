@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The scripts and tests of the infrastructure are TypeScript that make scripts-typecheck checks; they read every JSON file through a JSON Schema and use node:util parseArgs, minimatch, path.posix and semver instead of their own versions. (#T137-1-4-1)
 - The TypeScript orm-gen scan declares the chain methods called in not, andNot and orNot callbacks, as it does for and and or. (#T174)
 
 ## 0.0.16

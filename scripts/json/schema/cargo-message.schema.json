@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "One JSON message of cargo --message-format=json",
+  "description": "The fields of a cargo message that orm's scripts read: the reason, and for a compiler artifact its executable, profile, manifest and target. Cargo documents the messages in The Cargo Book (External tools, JSON messages) and may add fields, which this schema leaves open.",
+  "type": "object",
+  "required": ["reason"],
+  "properties": {
+    "reason": { "type": "string" },
+    "executable": { "type": ["string", "null"] },
+    "manifest_path": { "type": "string" },
+    "profile": { "type": "object", "properties": { "test": { "type": "boolean" } } },
+    "target": {
+      "type": "object",
+      "properties": { "name": { "type": "string" }, "kind": { "type": "array", "items": { "type": "string" } } }
+    }
+  }
+}

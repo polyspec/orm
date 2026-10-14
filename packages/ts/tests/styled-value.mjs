@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { decode, encode } from '../dist/codec.js';
 import * as orm from '../dist/index.js';
-import { caseTest, cases as caseRunner, COMPUTE } from '../../../tests/testcase.mjs';
+import { caseTest, cases as caseRunner, COMPUTE } from '../../../tests/testcase.mts';
 
 const fixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/styled_column_states.json', import.meta.url), 'utf8'));
 if (typeof orm.StyledValue !== 'function') throw new Error('the TypeScript client exports no StyledValue class');

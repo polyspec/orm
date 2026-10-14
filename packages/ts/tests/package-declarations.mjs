@@ -14,7 +14,7 @@ import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writ
 import { tmpdir } from 'node:os';
 import { createRequire, findPackageJSON } from 'node:module';
 import { dirname, join } from 'node:path';
-import { COMPUTE, runCase, runLong, stepLines } from '../../../tests/testcase.mjs';
+import { COMPUTE, runCase, runLong, stepLines } from '../../../tests/testcase.mts';
 
 const client = new URL('..', import.meta.url).pathname;
 // client의 dependency는 Node가 client의 package.json에서 package 이름으로 찾는다.

@@ -14,7 +14,7 @@ await runCases('coverage_conformance_verification.mjs', {
   async conformance_vector() {
     const { driver, dsn } = featureDatabase();
     const recorded = JSON.parse(await readFile(join(repositoryRoot, 'tests/conformance', vectorFiles[driver]), 'utf8'));
-    const runner = join(repositoryRoot, 'tests/conformance/runner_typescript.mjs');
+    const runner = join(repositoryRoot, 'tests/conformance/runner_typescript.mts');
     const args = [runner, '--dsn', dsn, ...selected.flatMap(name => ['--vector', name])];
     let stdout;
     try {

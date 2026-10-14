@@ -9,7 +9,7 @@ import { linkSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symli
 import { tmpdir } from 'node:os';
 import { dirname, join, posix } from 'node:path';
 import { parseSet } from '@polyspec/orm/dbspec';
-import { caseTest } from '../../../tests/testcase.mjs';
+import { caseTest } from '../../../tests/testcase.mts';
 import { resolveSet } from '../dist/index.js';
 import { nodeSetHost } from '../dist/cli/host.js';
 import { repo } from './helpers.mjs';

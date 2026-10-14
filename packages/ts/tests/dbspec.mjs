@@ -3,15 +3,15 @@
 // documents report exactly the listed diagnostics in source order.
 //
 // Usage: node --test packages/ts/tests/dbspec.mjs (after the build)
-import { caseTest } from '../../../tests/testcase.mjs';
+import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dbspecManifest, emitDbspec, parseDbspec, readDbspecBytes, readDbspecFile, renderDbspec } from '../dist/dbspec/index.js';
-import { checkCases, readCases } from '../../../tests/dbspec/cases.mjs';
+import { checkCases, readCases } from '../../../tests/dbspec/cases.mts';
 
 const root = new URL('../../../', import.meta.url);
-// readCases refuses a missing or unknown section or field of every section.
+// readCases refuses, through the schema of cases.json, a missing or unknown section or field of every section.
 const cases = readCases();
 // TIMEOUT은 case 하나의 기한(ms)이다. vector 하나는 memory 안에서 문서 하나를 parse하고 emit한다.
 const TIMEOUT = 15000;
@@ -213,22 +213,24 @@ for (const c of cases.sets) {
 vector('cases.json reader refuses missing and unknown fields', () => {
   const text = readFileSync(new URL('tests/dbspec/cases.json', root), 'utf8');
   const manifest = cases.sets.findIndex(c => Object.hasOwn(c, 'manifest'));
+  // Each mutation is refused by the schema of cases.json with the JSON Pointer of the value and the keyword of ajv.
   const mutations = [
-    ['note', 'is missing', v => delete v.note],
-    ['extra', 'is not a known field', v => (v.extra = [])],
-    ['canonical[0].extra', 'is not a known field', v => (v.canonical[0].extra = true)],
-    ['normalize[0].canonical', 'is missing', v => delete v.normalize[0].canonical],
-    ['invalid[0].errors[0].extra', 'is not a known field', v => (v.invalid[0].errors[0].extra = 1)],
-    ['hashes[0].extra', 'is not a known field', v => (v.hashes[0].extra = true)],
-    ['sets[0].extra', 'is not a known field', v => (v.sets[0].extra = true)],
-    [`sets[${manifest}].manifest.extra`, 'is not a known field', v => (v.sets[manifest].manifest.extra = [])],
-    ['files[0].errors', 'is missing', v => delete v.files[0].errors],
-    ['positions[0].positions[0].extra', 'is not a known field', v => (v.positions[0].positions[0].extra = 1)],
-    ['positions[0].positions[0].line', 'is not an integer', v => (v.positions[0].positions[0].line = true)],
+    ['/ ', 'missingProperty":"note', v => delete v.note],
+    ['/ ', 'additionalProperty":"extra', v => (v.extra = [])],
+    ['/canonical/0 ', 'unevaluatedProperty":"extra', v => (v.canonical[0].extra = true)],
+    ['/normalize/0 ', 'missingProperty":"canonical', v => delete v.normalize[0].canonical],
+    ['/invalid/0/errors/0 ', 'additionalProperty":"extra', v => (v.invalid[0].errors[0].extra = 1)],
+    ['/hashes/0 ', 'additionalProperty":"extra', v => (v.hashes[0].extra = true)],
+    ['/sets/0 ', 'additionalProperty":"extra', v => (v.sets[0].extra = true)],
+    [`/sets/${manifest}/manifest `, 'additionalProperty":"extra', v => (v.sets[manifest].manifest.extra = [])],
+    ['/files/0 ', 'missingProperty":"errors', v => delete v.files[0].errors],
+    ['/positions/0/positions/0 ', 'additionalProperty":"extra', v => (v.positions[0].positions[0].extra = 1)],
+    ['/positions/0/positions/0/line ', 'must be integer', v => (v.positions[0].positions[0].line = true)],
+    ['/canonical/0/main ', 'is not one of its documents', v => (v.canonical[0].main = 'absent')],
   ];
-  for (const [location, problem, change] of mutations) {
+  for (const [pointer, problem, change] of mutations) {
     const value = JSON.parse(text);
     change(value);
-    assert.throws(() => checkCases(value), { message: `tests/dbspec/cases.json: ${location} ${problem}` }, location);
+    assert.throws(() => checkCases(value), error => error.message.split('\n').some(line => line.startsWith(`tests/dbspec/cases.json: ${pointer}`) && line.includes(problem)), pointer);
   }
 });

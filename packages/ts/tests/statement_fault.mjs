@@ -12,7 +12,7 @@
 // Usage: node --conditions=orm-test packages/ts/tests/statement_fault.mjs (after npm run typescript:build)
 import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
-import { caseTest, runCase } from '../../../tests/testcase.mjs';
+import { caseTest, runCase } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 import { Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel, CORE } from '../dist/index.js';
 import * as packageEntry from '../dist/index.js';

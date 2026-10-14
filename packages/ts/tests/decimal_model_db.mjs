@@ -1,4 +1,4 @@
-import { cases, COMPUTE, DATABASE } from '../../../tests/testcase.mjs';
+import { cases, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
 
 const args = process.argv.slice(2);
 if (args.length !== 2 || args[0] !== '--dialect' || !['mysql', 'postgres', 'sqlite'].includes(args[1])) {

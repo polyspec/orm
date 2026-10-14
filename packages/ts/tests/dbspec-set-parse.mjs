@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { COMPUTE, caseTest } from '../../../tests/testcase.mjs';
+import { COMPUTE, caseTest } from '../../../tests/testcase.mts';
 import { parseDbspecSet } from '../dist/index.js';
 import { parseDbspecSet as browserParseDbspecSet } from '../dist/dbspec/entry.js';
 

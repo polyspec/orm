@@ -7,7 +7,7 @@
 // foreign keys.
 //
 // Usage: node --test packages/ts/tests/dbspec-mermaid.mjs (after the build)
-import { caseTest } from '../../../tests/testcase.mjs';
+import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
