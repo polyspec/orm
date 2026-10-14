@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The infrastructure scripts under scripts/ are TypeScript: the run databases (scripts/check/databases.mts, make databases-create), the test servers (scripts/test-servers.mts) and every command script. The decimal database is installed by the TypeScript decimal model, so the database setup needs neither PHP nor Composer; tests/new-session and the CI SQLite check of PHP are removed. (#T137-1-4-5)
 - The PHP orm-gen scan resolves calls on `(new C)`, on the invoked model `(new C)($db)` and on chains of either. (#T175)
 - make scripts-typecheck builds the dbspec language service it type-checks against, and the MySQL migration case runs the migration script of the checkout. (#T137-1-4-8)
 - The TypeScript symbol record holds the chain methods that the conformance runner calls. (#T174-1)
