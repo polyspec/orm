@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f03894a7b66ecc229824a250a3bd22da421388701bda4e24c21facccfdacca2e -->
+<!-- source-sha256: e6e93a9e8aa3b8757af4b5a4e644b7d51e87ab320e2fe99f6513318b8601db05 -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP client가 YAML을 purrphp/yaml과 그 core schema로 읽어, 1_000, 날짜, timestamp가 다른 client처럼 문자열로 남는다. orm은 node model에서 여러 document, alias, anchor, tag, merge key, 중복 key를 거부한다. purrphp 결함 때문에 vector 두 개를 제외하며 T142-1-1이 추적한다. (#T142-1)
 - Rust workspace가 unsafe code와 이유 없는 allow attribute를 거부한다. planner의 lifetime transmute를 없앴고, thread CPU clock은 rustix로 읽으며, SQLite authorizer callback만 이유를 적고 unsafe code를 유지한다. (#T137-1-3)
 - T166: 모든 client가 하나의 set parse(Go dbspec.ParseSet, TypeScript parseDbspecSet, Python parse_dbspec_set, PHP와 extension Dbspec::parseSet, Rust dbspec::parse_set)로 문서 집합을 parse한다. 각 text는 parser의 header로 이름이 정해지고, 반복된 이름은 뒤 text의 진단이며, 공유 vector tests/dbspec/set-parse.json이 규칙을 담는다. 문자열 비교로 header를 읽던 곳은 모두 없앴다.
 - T165-4: kit-check가 mise.toml과 mise.lock을 입력으로 받는다.
