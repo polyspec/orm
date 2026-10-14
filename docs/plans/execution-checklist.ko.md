@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: ec6f79cc56a0a91a1105b3cfe8b32f3fbad1daf45ce3e47958ad249c0f71d0be -->
+<!-- source-sha256: 65f36eb361cf657bb993ede617c60fb0db5c663ff3fe938cc7e2162cac6da8de -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1096,6 +1096,8 @@
     Evidence: 2026-10-14T18:06:24Z에 기록한 review로 dependency-policy-check가 통과한다.
   - [o] T172-2 PHP scan의 PHPStan case가 CI에서 통과하게 한다 (T172에 이어). 원인: 65c758b5에서 CI group feature_verify_other가 OrmGenScanTest::test_phpstan_finds_every_scanned_chain_method를 "the control call is declared"에서 실패시켰고, 로컬에서는 통과한다. 이 case는 PHPStan의 종료 상태를 읽지 않아 분석하지 않은 실행이 finding 없이 첫 assertion을 통과했다. 완료 조건: case는 0이나 1이 아닌 상태에서 PHPStan의 출력과 함께 실패하고 control에는 상태 1을 요구한다. CI의 원인을 그 출력에서 찾아 고치고 feature_verify_other가 통과한다.
     Evidence: 종료 상태를 읽자 CI run 38615714975가 원인을 보였다: runner에서 PHPStan의 raw format은 `control.php:6:Call to an undefined method ...::ltReadCount().`를 case가 맞추던 `[identifier=...]` 꼬리 없이 써서 control이 method.notFound를 찾지 못했다. case는 `--error-format=json`을 읽고 messages[].identifier로 맞춘다. 로컬에서 통과하고, 이 항목을 닫는 commit의 CI가 static과 feature_verify_other에서 실행한다.
+  - [o] T172-3 root tests layout에 tests/generator를 선언한다 (T172에 이어). 원인: T172가 PHP 생성기와 node 생성기를 비교하는 vector tests/generator/php-scan-vectors.json을 layout-root-tests(S7)가 선언하지 않은 폴더에 더해 make layout-check가 그것을 보고한다. 완료 조건: config/layout.yml이 tests/generator를 공유 vector로 이유와 함께 선언하고, layout-check가 더는 보고하지 않는다.
+    Evidence: make layout-check가 tests/generator에 S7 finding을 보고하지 않는다.
 - [o] T173 0.0.16을 릴리스한다. 원인: hyper가 dynamic chain method의 PHPStan finding을 없애려고 기다리는 PHP orm-gen scan(T172, T172-1), 개발 도구를 root에 둔 PHP client의 PHPUnit runner(T148-1, T148-1-1), 공유 vector의 case id(T148-2, T148-2-2)가 main에 있다. 완료 조건: version-bump commit이 모든 manifest를 0.0.16으로 바꾸고 Unreleased를 0.0.16으로 옮기며, 바뀐 lock의 dependency review와 v0.0.16의 consumer lock을 기록한다. 그 CI가 성공하고 annotated tag v0.0.16을 push하며 release workflow가 게시한다. Evidence: 그 commit에서 `make version-check`와 `make dependency-policy-check`가 통과한다.
   - [o] T173-1 0.0.16의 릴리스 commit이 CI를 통과하게 한다 (T173에 이어). 원인: ae23528a의 CI run 38615714975가 실패했다: T172가 model_generation의 설명을 바꾼 뒤 docs/features.md를 다시 생성하지 않았고, CoveragePerformanceGateTest는 package directory로 경로를 만들어 T148-1-1이 지운 packages/php/vendor/bin/phpunit을 계속 실행했으며, T172-2의 PHPStan case가 실패했다. 완료 조건: 생성 문서가 최신이고, case가 vendor-php/bin/phpunit을 실행하며, static, feature_coverage, feature_verify_other가 통과한다.
 - [o] T174 TypeScript scan에서 not, andNot, orNot callback 안에서 부르는 chain method를 선언한다. 원인: TypeScript scan은 and, or, on, fetchKey, fetchValue에 준 callback의 첫 매개변수를 receiver class의 model로 읽었지만, PHP scan(T172)과 chain 문법(docs/dsl.md)이 같게 다루는 not, andNot, orNot은 읽지 않았다. 그래서 tests/conformance/runner_typescript가 부르는 orGtReadCount와 ltReadCount를 생성된 model이 선언하지 않아 tsc가 거부한다. 완료 조건: scan이 not, andNot, orNot의 callback을 and, or처럼 다루고, 수정 전에 실패하는 generator scan case가 있으며, commit된 model이 runner가 부르는 method를 선언한다.
