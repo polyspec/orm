@@ -1056,7 +1056,7 @@
   "packages/rust/orm/src/engine/dialect.rs::value_function_unit": "pub fn value_function_unit (name : \u0026 str) -\u003e Option \u003c \u0026 'static str \u003e",
   "packages/rust/orm/src/engine/mod.rs::compile": "pub fn compile (m : \u0026 Manifest , d : Dialect , r : \u0026 ir :: Request) -\u003e Result \u003c Plan \u003e",
   "packages/rust/orm/src/engine/mod.rs::err": "pub (crate) fn err (code : \u0026 str , msg : impl Into \u003c String \u003e) -\u003e Error",
-  "packages/rust/orm/src/engine/mod.rs::validate": "pub (crate) fn validate (m : \u0026 Manifest , r : \u0026 ir :: Request) -\u003e Result \u003c () \u003e",
+  "packages/rust/orm/src/engine/mod.rs::validate": "pub fn validate (m : \u0026 Manifest , r : \u0026 ir :: Request) -\u003e Result \u003c () \u003e",
   "packages/rust/orm/src/engine/params.rs::ParamUse": "pub (crate) struct ParamUse \u003c 'm \u003e { pub (crate) ty : String , pub (crate) column : Option \u003c \u0026 'm Field \u003e , }",
   "packages/rust/orm/src/engine/params.rs::ParamUse#field.column": "Option \u003c \u0026 'm Field \u003e",
   "packages/rust/orm/src/engine/params.rs::ParamUse#field.ty": "String",

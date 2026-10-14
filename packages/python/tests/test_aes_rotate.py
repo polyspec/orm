@@ -21,7 +21,7 @@ class AesRotateTest(unittest.TestCase):
         cls.models = generate(tmp.name, ROOT / 'schema' / 'dbspec-set.json')
         cls.db = cls.models.connect(f'sqlite://{tmp.name}/rotate.sqlite3',
                                     aesKey='bench-salt', blindIndexKey='bench-blind-index')
-        from test_sqlite import DDL, run_script
+        from .test_sqlite import DDL, run_script
         run_script(cls.db, DDL)
         import datetime
         start = datetime.datetime(2026, 6, 1, tzinfo=datetime.timezone.utc)
