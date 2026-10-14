@@ -13,7 +13,7 @@ from pathlib import Path
 
 
 from polyspec.orm.dbspec import read_dbspec_set
-from vector_case import VectorCase, vector_tests
+from .vector_case import VectorCase, vector_tests
 
 ROOT = Path(__file__).resolve().parents[3]
 VECTORS = ROOT / 'tests' / 'dbspec' / 'set-files.json'

@@ -9,8 +9,8 @@ from pathlib import Path
 
 from polyspec.orm.dbspec import (DbspecPosition, check_set, dbspec_manifest, emit_dbspec,
                                  format_dbspec, parse_dbspec, read_dbspec_file)
-from dbspec_cases_reader import read_cases  # noqa: E402
-from vector_case import VectorCase, vector_tests  # noqa: E402
+from .dbspec_cases_reader import read_cases  # noqa: E402
+from .vector_case import VectorCase, vector_tests  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[3]
 

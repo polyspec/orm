@@ -42,7 +42,9 @@ fn sqlite_path_cases() -> Vec<Trial> {
         .map(|(index, case)| {
             let id = case["id"].as_str().expect("id").to_owned();
             let case = case.clone();
-            polyspec_orm_testcase::async_trial(format!("sqlite_path_cases::{id}"), std::time::Duration::from_secs(10), move || async move { sqlite_path_case(index, &case).await })
+            polyspec_orm_testcase::async_trial(format!("sqlite_path_cases::{id}"), std::time::Duration::from_secs(10), move || async move {
+                sqlite_path_case(index, &case).await
+            })
         })
         .collect()
 }

@@ -14,7 +14,7 @@ from pathlib import Path
 import psycopg
 import pymysql
 
-from test_sqlite import generate_document
+from .test_sqlite import generate_document
 
 
 from polyspec.orm.database import Db, _MysqlConnection, _PostgresConnection  # noqa: E402

@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from test_sqlite import DDL, generate, run_script
+from .test_sqlite import DDL, generate, run_script
 
 ROOT = Path(__file__).resolve().parents[3]
 

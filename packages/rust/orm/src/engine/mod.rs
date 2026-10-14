@@ -26,9 +26,13 @@ pub fn compile(m: &Manifest, d: Dialect, r: &ir::Request) -> Result<Plan> {
 }
 
 /// request를 검증한다. IR executor 연결은 plan하지 않고 검증한 request를 보낸다(docs/protocol.md §5).
-pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
+pub fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
     validate::validate(m, r)
 }
+
+#[cfg(test)]
+#[path = "../../tests/unit/ir_request.rs"]
+mod ir_request;
 
 #[cfg(test)]
 #[path = "../../tests/unit/coverage_planner.rs"]

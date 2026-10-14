@@ -298,7 +298,11 @@ async fn empty_argument_refused_postgres() {
 
 fn main() {
     #[cfg_attr(not(feature = "test-faults"), expect(unused_mut, reason = "the fault cases exist only with the feature test-faults"))]
-    let mut trials = vec![polyspec_orm_testcase::trial("every_fixture_case_has_a_test_per_driver", polyspec_orm_testcase::DATABASE, every_fixture_case_has_a_test_per_driver)];
+    let mut trials = vec![polyspec_orm_testcase::trial(
+        "every_fixture_case_has_a_test_per_driver",
+        polyspec_orm_testcase::DATABASE,
+        every_fixture_case_has_a_test_per_driver,
+    )];
     #[cfg(feature = "test-faults")]
     {
         trials.extend(statement_fault_cases());
@@ -307,7 +311,11 @@ fn main() {
         trials.push(polyspec_orm_testcase::async_trial("refused_insert_postgres", polyspec_orm_testcase::DATABASE, refused_insert_postgres));
         trials.push(polyspec_orm_testcase::async_trial("consumed_by_one_statement_sqlite", polyspec_orm_testcase::DATABASE, consumed_by_one_statement_sqlite));
         trials.push(polyspec_orm_testcase::async_trial("consumed_by_one_statement_mysql", polyspec_orm_testcase::DATABASE, consumed_by_one_statement_mysql));
-        trials.push(polyspec_orm_testcase::async_trial("consumed_by_one_statement_postgres", polyspec_orm_testcase::DATABASE, consumed_by_one_statement_postgres));
+        trials.push(polyspec_orm_testcase::async_trial(
+            "consumed_by_one_statement_postgres",
+            polyspec_orm_testcase::DATABASE,
+            consumed_by_one_statement_postgres,
+        ));
         trials.push(polyspec_orm_testcase::async_trial("refused_in_transaction_sqlite", polyspec_orm_testcase::DATABASE, refused_in_transaction_sqlite));
         trials.push(polyspec_orm_testcase::async_trial("refused_in_transaction_mysql", polyspec_orm_testcase::DATABASE, refused_in_transaction_mysql));
         trials.push(polyspec_orm_testcase::async_trial("refused_in_transaction_postgres", polyspec_orm_testcase::DATABASE, refused_in_transaction_postgres));

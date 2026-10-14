@@ -82,7 +82,7 @@
         { "implementation": "go", "test": "packages/go/orm/conversion_error_test.go", "symbol": "TestAggregateNumericFixture" },
         { "implementation": "php", "test": "packages/php/tests/aggregate_numeric.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/aggregate_numeric.mjs" },
-        { "implementation": "rust", "test": "packages/rust/orm/src/value.rs", "symbol": "value::checked_value_tests::aggregate_numbers_follow_shared_binary64_cases_without_changing_checked_values" }
+        { "implementation": "rust", "test": "packages/rust/orm/src/value.rs", "symbol": "value::aggregate_numeric" }
       ]
     },
     {
@@ -194,7 +194,7 @@
         { "implementation": "php", "test": "packages/php/tests/engine_test.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/engine.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_ir_validate.py" },
-        { "implementation": "rust", "test": "packages/rust/orm/src/engine/validate.rs", "symbol": "engine::validate::tests::validate_vectors" }
+        { "implementation": "rust", "test": "packages/rust/orm/tests/ir_validate.rs", "symbol": "validate_vectors" }
       ]
     },
     {

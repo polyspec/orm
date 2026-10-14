@@ -3,7 +3,7 @@ import { endGroup } from '../check/step.mjs';
 import { packageDirectory } from './packages.mjs';
 import { mkdir, mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, extname, join, relative, resolve } from 'node:path';
+import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { DATABASE, runCase, runLong, stepLines } from '../../tests/testcase.mjs';
@@ -253,7 +253,10 @@ async function nativeTest(item, command, root) {
   // (Makefile PYTHON_VENV); a python of PATH is not that interpreter.
   if (command.runner === 'python') {
     if (!process.env.ORM_PYTHON) throw new Error('ORM_PYTHON is unset; run this through make, which exports it');
-    return { format: 'case', program: process.env.ORM_PYTHON, args: [testPath, ...command.cases] };
+    // The test runs as its module of the package packages/python/tests (`-m packages.python.tests.<name>`) from the
+    // checkout root, so it imports its sibling helpers relatively.
+    const module = relative(root, testPath).replace(/\.py$/, '').split(sep).join('.');
+    return { format: 'case', program: process.env.ORM_PYTHON, args: ['-m', module, ...command.cases], cwd: root };
   }
   const source = await readFile(testPath, 'utf8');
   const nativeSymbols = command.cases.map(id => symbols[id]);

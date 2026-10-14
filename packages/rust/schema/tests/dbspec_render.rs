@@ -1,8 +1,8 @@
 //! The vectors of tests/dbspec/ddl.json through `dbspec::render`: every case
 //! renders the statements listed for MySQL, PostgreSQL and SQLite.
 
-use polyspec_orm_testcase::Trial;
 use polyspec_orm_schema::dbspec::{self, Dialect, Document};
+use polyspec_orm_testcase::Trial;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::time::Duration;
@@ -30,7 +30,9 @@ fn render_vectors() -> Vec<Trial> {
     for case in cases {
         let id = case["id"].as_str().unwrap().to_owned();
         let case = case.clone();
-        trials.push(polyspec_orm_testcase::trial(format!("render_vectors::{id}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || render_vectors_case(&case)));
+        trials.push(polyspec_orm_testcase::trial(format!("render_vectors::{id}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || {
+            render_vectors_case(&case)
+        }));
     }
     trials
 }
@@ -41,8 +43,7 @@ fn render_vectors_case(case: &Value) {
     let documents: Vec<Document> = documents_value
         .iter()
         .map(|(name, lines)| {
-            let set: BTreeMap<String, String> =
-                documents_value.iter().filter(|(other, _)| *other != name).map(|(other, l)| (other.clone(), text(l))).collect();
+            let set: BTreeMap<String, String> = documents_value.iter().filter(|(other, _)| *other != name).map(|(other, l)| (other.clone(), text(l))).collect();
             dbspec::parse(&text(lines), &set).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("{id}: {errors:?}"))
         })
         .collect();

@@ -14,8 +14,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 
-from test_sqlite import generate  # noqa: E402
-from vector_case import VectorCase, vector_tests  # noqa: E402
+from .test_sqlite import generate  # noqa: E402
+from .vector_case import VectorCase, vector_tests  # noqa: E402
 
 from polyspec.orm import Collection, Model, OrmError  # noqa: E402
 

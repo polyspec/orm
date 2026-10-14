@@ -3,8 +3,8 @@
 //! `dbspec::manifest` and `dbspec::render`.
 
 use polyspec_orm_case_clock::CaseClock;
-use polyspec_orm_testcase::Trial;
 use polyspec_orm_schema::dbspec::{self, Diagnostic, Dialect, Document};
+use polyspec_orm_testcase::Trial;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::time::Duration;
@@ -69,7 +69,9 @@ fn manifest_vectors() -> Vec<Trial> {
     for case in hashes {
         let id = case["id"].as_str().unwrap().to_owned();
         let case = case.clone();
-        trials.push(polyspec_orm_testcase::trial(format!("manifest_vectors::{id}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || manifest_vectors_case(&case)));
+        trials.push(polyspec_orm_testcase::trial(format!("manifest_vectors::{id}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || {
+            manifest_vectors_case(&case)
+        }));
     }
     trials
 }
@@ -188,7 +190,11 @@ fn set_vectors_case(case: &Value) {
 
 fn main() {
     let mut trials = manifest_vectors();
-    trials.push(polyspec_orm_testcase::trial("manifest_rejects_repeated_document_name", polyspec_orm_testcase::wall_for_cpu(DEADLINE), manifest_rejects_repeated_document_name));
+    trials.push(polyspec_orm_testcase::trial(
+        "manifest_rejects_repeated_document_name",
+        polyspec_orm_testcase::wall_for_cpu(DEADLINE),
+        manifest_rejects_repeated_document_name,
+    ));
     trials.extend(set_vectors());
     polyspec_orm_testcase::run(trials);
 }

@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[3]
 from polyspec.orm.engine import model_of_documents, parse_document_set  # noqa: E402
 from polyspec.orm.engine.validate import validate  # noqa: E402
 from polyspec.orm.errors import OrmError  # noqa: E402
-from vector_case import VectorCase, vector_tests  # noqa: E402
+from .vector_case import VectorCase, vector_tests  # noqa: E402
 
 
 FILE = json.loads((ROOT / 'tests' / 'ir' / 'validate.json').read_text())

@@ -27,7 +27,7 @@ from polyspec.orm.database import Db  # noqa: E402
 from polyspec.orm.engine import Engine, model_of_documents, parse_document_set  # noqa: E402
 from polyspec.orm.errors import OrmError  # noqa: E402
 from polyspec.orm.schema import Schema  # noqa: E402
-from vector_case import VectorCase, vector_tests  # noqa: E402
+from .vector_case import VectorCase, vector_tests  # noqa: E402
 
 CASES = json.loads((ROOT / 'contracts' / 'fixtures' / 'identity_load.json').read_text())
 MODEL = model_of_documents(parse_document_set([(ROOT / CASES['fixture']).read_text()]))

@@ -6,8 +6,8 @@
 //! runs.
 
 use polyspec_orm_case_clock::CaseClock;
-use polyspec_orm_testcase::Trial;
 use polyspec_orm_schema::dbspec;
+use polyspec_orm_testcase::Trial;
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};

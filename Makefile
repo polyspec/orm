@@ -326,7 +326,7 @@ dbspec-introspect-rust-check: cargo-downloads-check
 # 같은 case를 SQLite file에서도 실행한다. It imports the client installed into the venv, as python-unit-check does.
 .PHONY: dbspec-introspect-python-check
 dbspec-introspect-python-check: python-venv-check
-	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python packages/python/tests/dbspec_introspect.py
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_introspect
 
 # dbspec-plan-check는 tests/dbspec/plans.json의 모든 case의 step을 MySQL, PostgreSQL, SQLite에
 # 적용해 plan의 target을, rollback statement로 source를, 다시 적용해 target을, finalize 뒤 target과
@@ -493,24 +493,24 @@ php-vendor-check:
 .PHONY: python-check python-unit-check python-interface-unit-check
 python-check: python-unit-check python-interface-unit-check python-model-check conformance-result-check/python
 python-unit-check: python-venv-check
-	$(PYTHON_VENV)/bin/python -m unittest discover -s packages/python/tests -p 'test_*.py'
+	$(PYTHON_VENV)/bin/python -m unittest discover -s packages/python/tests -t . -p 'test_*.py'
 python-interface-unit-check: python-venv-check
 	cd tests/interfaces && $(PYTHON_VENV)/bin/python -m unittest discover -p 'test_*.py'
 # python-coverage-case-check is the check of the helper coverage-runner-python (contracts/features.json): the unit test of
 # the case runner that the Python coverage tests share.
 .PHONY: python-coverage-case-check
 python-coverage-case-check: python-venv-check
-	$(PYTHON_VENV)/bin/python packages/python/tests/coverage_case_test.py
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.coverage_case_test
 # dbspec-python-check is the Python verification of schema_definition (contracts/features.json schema-python): the shared
 # vectors of tests/dbspec (cases.json and its files, ddl.json, plans.json, mermaid.json, syntax.json, show-create.json and
 # set-files.json) and the unit tests of syntax analysis, formatting and the set reader.
 .PHONY: dbspec-python-check
 dbspec-python-check: python-venv-check
-	$(PYTHON_VENV)/bin/python packages/python/tests/dbspec_cases.py
-	$(PYTHON_VENV)/bin/python packages/python/tests/dbspec_ddl.py
-	$(PYTHON_VENV)/bin/python packages/python/tests/dbspec_plans.py
-	$(PYTHON_VENV)/bin/python packages/python/tests/dbspec_mermaid.py
-	$(PYTHON_VENV)/bin/python -m unittest discover -s packages/python/tests -p 'test_dbspec_*.py'
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_cases
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_ddl
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_plans
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_mermaid
+	$(PYTHON_VENV)/bin/python -m unittest discover -s packages/python/tests -t . -p 'test_dbspec_*.py'
 dbspec-compare-check/prepare: cargo-downloads-check lease-tool python-venv-check
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_COMPARE_DOCUMENT))
@@ -885,21 +885,21 @@ client-db-check: lease-tool python-statement-fault-check python-identity-load-ch
 # needs the database variables of make test-servers (WITH_TEST_ENV).
 .PHONY: python-statement-fault-check
 python-statement-fault-check: python-venv-check
-	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python packages/python/tests/statement_fault.py
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.statement_fault
 
 # python-identity-load-check runs the shared identity load cases (contracts/fixtures/identity_load.json)
 # with the Python client on SQLite, MySQL and PostgreSQL; it needs the database variables of make
 # test-servers (WITH_TEST_ENV).
 .PHONY: python-identity-load-check
 python-identity-load-check: python-venv-check
-	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python packages/python/tests/identity_load.py
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.identity_load
 
 # python-schema-inspection-check runs schema().empty(), exists and installed, the table privileges and stats
 # of the Python client on SQLite, MySQL and PostgreSQL case databases; it needs the database variables of make
 # test-servers (WITH_TEST_ENV).
 .PHONY: python-schema-inspection-check
 python-schema-inspection-check: python-venv-check
-	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python packages/python/tests/schema_inspection.py
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.schema_inspection
 
 # dialect-facts-check runs the schema dialect probes of tests/dialects against
 # the MySQL and PostgreSQL servers of TEST_ENV and a SQLite file per probe,
@@ -1024,7 +1024,7 @@ markdown-conformance-check/php: php-vendor-check
 	FLOWMARK=$(FLOWMARK) $(PHP) packages/php/tests/markdown_conformance.php
 # Python runner는 build 정보를 go version -m으로 읽는다.
 markdown-conformance-check/python: python-venv-check
-	FLOWMARK=$(FLOWMARK) $(PYTHON_VENV)/bin/python packages/python/tests/markdown_conformance.py
+	FLOWMARK=$(FLOWMARK) $(PYTHON_VENV)/bin/python -m packages.python.tests.markdown_conformance
 markdown-conformance-check/rust: lease-tool cargo-downloads-check
 	cd packages/rust && FLOWMARK=$(FLOWMARK) PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) markdown-conformance-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test markdown_conformance -- --nocapture
 markdown-conformance-check/typescript: lease-tool
@@ -1237,13 +1237,13 @@ codec-check: codec-check/compare codec-check/python
 # codec-check/python runs the shared vectors through the Python codec; it prints each vector of its
 # PYTHON_EXCLUSIONS as skipped.
 codec-check/python: python-venv-check
-	$(PYTHON_VENV)/bin/python packages/python/tests/codec_vector.py
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.codec_vector
 codec-check/go:
 	mkdir -p $(CODEC_OUT)
 	ORM_CODEC_OUT=$(CODEC_OUT) $(GO_TEST) ./packages/go/orm -run '^TestCodecVectors$$' -count=1
 codec-check/rust: cargo-downloads-check lease-tool
 	mkdir -p $(CODEC_OUT)
-	cd packages/rust && ORM_CODEC_OUT=$(CODEC_OUT) $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --lib codec::tests::vectors -- --exact
+	cd packages/rust && ORM_CODEC_OUT=$(CODEC_OUT) $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test codec_vectors
 codec-check/typescript: lease-tool
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(CODEC_OUT)
