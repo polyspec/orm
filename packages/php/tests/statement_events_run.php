@@ -10,13 +10,13 @@
 // transaction) and error (the code of the statement's error, or null).
 // elapsed must not be negative. The test fails when ORM_TEST_MYSQL_DSN or
 // ORM_TEST_POSTGRES_DSN is unset.
-// statement_events_test.php와 coverage_statement_events.php가 이 실행부를 쓴다.
+// StatementEventsTest.php와 statement_events coverage가 이 실행부를 쓴다: statementEventsModels로 model을 만든
+// 뒤 runCase와 runServerTransactions를 PHPUnit test 안에서 부른다. 각 확인은 PHPUnit assertion이다.
 declare(strict_types=1);
 
-require dirname(__DIR__, 3) . '/vendor-php/autoload.php';
-require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 require_once __DIR__ . '/case_database.php';
 
+use PHPUnit\Framework\Assert;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
@@ -27,37 +27,37 @@ use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\StatementEvent;
 use Polyspec\Orm\Tests\StatementEventsCase\EventProbe;
 
-// CASE_DEADLINE_SECONDS는 case 하나의 기한이다. case 하나는 자기 case database를 만들고
-// fixture를 설치한 뒤 statement 열 개 안팎을 실행하고 database를 지운다.
-const CASE_DEADLINE_SECONDS = TESTCASE_DATABASE;
-
-$root = dirname(__DIR__, 3);
-$work = sys_get_temp_dir() . '/orm-php-statement-events-' . getmypid();
-@mkdir($work, 0o700, true);
-register_shutdown_function(static function () use ($work): void {
-    exec('rm -rf ' . escapeshellarg($work));
-});
-
-$fixture = (string) file_get_contents("$root/contracts/fixtures/statement_events.dbs");
-Generator::generate(RuntimeModel::build(RuntimeModel::parse(['statement_events.dbs' => $fixture])), "$work/models", 'Polyspec\\Orm\\Tests\\StatementEventsCase');
-spl_autoload_register(static function (string $class) use ($work): void {
-    if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\StatementEventsCase\\')) {
-        require "$work/models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\StatementEventsCase\\')) . '.php';
-    }
-});
-require "$work/models/bootstrap.php";
-
-$vector = json_decode((string) file_get_contents("$root/tests/events/vectors.json"), true, 512, JSON_THROW_ON_ERROR);
-
-$failures = 0;
-$current = '';
-function check(bool $ok, string $message): void
+/**
+ * contracts/fixtures/statement_events.dbs의 model을 이 process의 임시 directory에 한 번 만들고 autoload한다.
+ * directory는 process가 끝날 때 지운다.
+ */
+function statementEventsModels(): void
 {
-    global $failures, $current;
-    if (!$ok) {
-        $failures++;
-        fwrite(STDERR, "FAIL $current: $message\n");
+    static $done = false;
+    if ($done) {
+        return;
     }
+    $done = true;
+    $root = dirname(__DIR__, 3);
+    $work = sys_get_temp_dir() . '/orm-php-statement-events-' . getmypid();
+    @mkdir($work, 0o700, true);
+    register_shutdown_function(static function () use ($work): void {
+        exec('rm -rf ' . escapeshellarg($work));
+    });
+    $fixture = (string) file_get_contents("$root/contracts/fixtures/statement_events.dbs");
+    Generator::generate(RuntimeModel::build(RuntimeModel::parse(['statement_events.dbs' => $fixture])), "$work/models", 'Polyspec\\Orm\\Tests\\StatementEventsCase');
+    spl_autoload_register(static function (string $class) use ($work): void {
+        if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\StatementEventsCase\\')) {
+            require "$work/models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\StatementEventsCase\\')) . '.php';
+        }
+    });
+    require "$work/models/bootstrap.php";
+}
+
+/** @return array<string, mixed> tests/events/vectors.json */
+function statementEventsVector(): array
+{
+    return json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/tests/events/vectors.json'), true, 512, JSON_THROW_ON_ERROR);
 }
 
 /** 실패하는 transaction callback의 오류다. step의 error "callback"이 이 오류를 기대한다. */
@@ -76,6 +76,13 @@ final class EventRun
     public ?Closure $stopFailing = null;
     /** fail_subscriber가 던진 오류다. SUBSCRIBER 오류의 previous가 이 오류다. */
     public ?Throwable $refused = null;
+    /** @var list<string> the events whose elapsed time is negative */
+    public array $negative = [];
+
+    public function assertElapsed(): void
+    {
+        Assert::assertSame([], $this->negative, 'elapsed must not be negative');
+    }
 
     public function __construct(public readonly Db $db)
     {
@@ -83,7 +90,11 @@ final class EventRun
 
     public function record(StatementEvent $e): void
     {
-        check($e->elapsed >= 0, "event {$e->sql} has a negative elapsed time {$e->elapsed}");
+        // The recorder is a subscriber: an assertion thrown here would become the statement's SUBSCRIBER error, so the
+        // case asserts the recorded times after its steps (assertElapsed).
+        if ($e->elapsed < 0) {
+            $this->negative[] = "event {$e->sql} has a negative elapsed time {$e->elapsed}";
+        }
         $transaction = null;
         if ($e->transaction !== null) {
             $this->numbers[$e->transaction] ??= count($this->numbers) + 1;
@@ -117,7 +128,7 @@ final class EventRun
             case 'count':
                 $n = (new EventProbe)($this->db)->getCount();
                 if (isset($s['result'])) {
-                    check($n === $s['result'], "count = $n, want {$s['result']}");
+                    Assert::assertTrue($n === $s['result'], "count = $n, want {$s['result']}");
                 }
                 return;
             case 'update':
@@ -166,22 +177,25 @@ final class EventRun
         $want = $s['error'] ?? '';
         try {
             $this->step($s);
+        } catch (\PHPUnit\Framework\AssertionFailedError $e) {
+            // A failed assertion of a step is the case's failure, not the step's error.
+            throw $e;
         } catch (Throwable $e) {
             if ($want === '') {
                 throw $e;
             }
             if ($want === 'callback') {
-                check($e instanceof CallbackFailed, "step {$s['op']} = " . $e::class . ": {$e->getMessage()}, want the callback error");
+                Assert::assertTrue($e instanceof CallbackFailed, "step {$s['op']} = " . $e::class . ": {$e->getMessage()}, want the callback error");
                 return;
             }
             $code = $e instanceof OrmException ? $e->code_ : $e::class;
-            check($code === $want, "step {$s['op']} = $code: {$e->getMessage()}, want $want");
+            Assert::assertTrue($code === $want, "step {$s['op']} = $code: {$e->getMessage()}, want $want");
             if ($want === Code::SUBSCRIBER) {
-                check($e->getPrevious() !== null && $e->getPrevious() === $this->refused, 'the SUBSCRIBER error keeps the subscriber error as its previous exception');
+                Assert::assertTrue($e->getPrevious() !== null && $e->getPrevious() === $this->refused, 'the SUBSCRIBER error keeps the subscriber error as its previous exception');
             }
             return;
         }
-        check($want === '', "step {$s['op']} succeeded, want $want");
+        Assert::assertTrue($want === '', "step {$s['op']} succeeded, want $want");
     }
 }
 
@@ -211,6 +225,7 @@ function runCase(array $case, string $driver, string $dsn): void
         foreach ($case['steps'] as $step) {
             $run->checked($step);
         }
+        $run->assertElapsed();
         $got = $run->records;
         if (($case['compare'] ?? '') === 'tables') {
             $got = array_values(array_filter($got, static fn(array $r): bool => $r['tables'] !== []));
@@ -219,7 +234,7 @@ function runCase(array $case, string $driver, string $dsn): void
         $want = normalized(ordered($case['events'][$driver]));
         if ($got !== $want) {
             $flags = JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
-            check(false, "$driver events\n got " . json_encode($got, $flags) . "\nwant " . json_encode($want, $flags));
+            Assert::fail("$driver events\n got " . json_encode($got, $flags) . "\nwant " . json_encode($want, $flags));
         }
     } finally {
         $db->close();
@@ -250,7 +265,7 @@ function runServerTransactions(array $spec, array $cases, string $dsn): void
         // pooler를 거치면 pooler가 startup parameter를 server connection에 SET으로 적용하므로
         // source는 client를 말하지 않는다. source는 server에 바로 닿을 때만 비교한다.
         $pooled = getenv('ORM_TEST_POSTGRES_DSN') !== getenv('ORM_TEST_POSTGRES_SERVER_DSN');
-        check(count($zone) === 1 && $zone[0][0] === $spec['time_zone']['setting'] && ($pooled || $zone[0][1] === $spec['time_zone']['source']),
+        Assert::assertTrue(count($zone) === 1 && $zone[0][0] === $spec['time_zone']['setting'] && ($pooled || $zone[0][1] === $spec['time_zone']['source']),
             'TimeZone setting and source = ' . json_encode($zone) . ', want ' . json_encode($spec['time_zone']) . ($pooled ? ' (pooled)' : ''));
         $probe = static fn(): int => (int) $u->read('utility', [], $spec['probe'], []);
         $first = $probe();
@@ -268,9 +283,10 @@ function runServerTransactions(array $spec, array $cases, string $dsn): void
             $after = $probe();
             $transactions = $after - $before - $cost;
             $before = $after;
-            fwrite(STDOUT, "server_transactions $page run: $events events, $transactions transactions\n");
+            fwrite(STDERR, "server_transactions $page run: $events events, $transactions transactions\n");
+            $run->assertElapsed();
             if ($page === 'second' || $compareFirst) {
-                check($transactions === $events, "$page run spent $transactions server transactions for $events statement events, want one per event");
+                Assert::assertTrue($transactions === $events, "$page run spent $transactions server transactions for $events statement events, want one per event");
             }
         }
     } finally {

@@ -42,14 +42,14 @@ function declared(script, program, from) {
 }
 
 caseTest('the PHP lane of client-db-test runs every test after a failed one and names the failures', PROCESS, () => {
-  const f = fake(['php'], 'model_test');
+  const f = fake(['php'], 'ModelTest');
   try {
     const result = f.run(['scripts/client-db-test.sh', '--lane', 'php'], { ORM_RUST_TEST_FEATURES: 'none' });
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
     const expected = declared('scripts/client-db-test.sh', 'php', 'php_lane() {');
-    assert.equal(expected[0], 'php packages/php/tests/model_test.php');
+    assert.equal(expected[0], 'php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTest.php');
     assert.deepEqual(f.ran(), expected);
-    assert.match(result.stderr, /client-db-test: the php lane failed:\n {2}php packages\/php\/tests\/model_test\.php \(exit 3\)/);
+    assert.match(result.stderr, /client-db-test: the php lane failed:\n {2}php packages\/php\/vendor\/bin\/phpunit --configuration packages\/php\/phpunit\.xml\.dist packages\/php\/tests\/ModelTest\.php \(exit 3\)/);
   } finally {
     rmSync(f.base, { recursive: true, force: true });
   }
@@ -73,7 +73,7 @@ caseTest('the TypeScript SQLite tests run every test after a failed one and name
 // 차례 lane case(G5.53)는 lane을 병렬이 아니라 차례로 실행할 때 실패한 lane 뒤의 lane도 실행되는지 본다. 각 lane은 자기
 // subshell에서 실행되므로 앞 lane의 finish가 실행 전체를 끝내지 않는다.
 caseTest('client-db-test runs the next lane after a failed lane in sequence and names the failed lanes', PROCESS, () => {
-  const f = fake(['php', 'node'], 'model_test');
+  const f = fake(['php', 'node'], 'ModelTest');
   try {
     const result = f.run(['scripts/client-db-test.sh'], { ORM_RUST_TEST_FEATURES: 'none', ORM_CLIENT_DB_LANGS: 'php,typescript', ORM_CLIENT_DB_LANES: '' });
     assert.notEqual(result.status, 0, result.stdout + result.stderr);

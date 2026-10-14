@@ -247,8 +247,18 @@ async function nativeTest(item, command, root) {
       (command.runner === 'go' && extension !== '.go') ||
       (command.runner === 'cargo' && extension !== '.rs'))
     throw new Error('invalid native test file extension');
-  if (command.runner === 'node' || command.runner === 'php')
+  if (command.runner === 'node')
     return { format: 'case', program: command.runner, args: [testPath, ...command.cases] };
+  // PHP runs on PHPUnit (packages/php/phpunit.xml.dist): a case <id> is the test method test_<id> of the test file's class,
+  // selected with an anchored filter and read from the TeamCity events that PHPUnit writes to stdout.
+  if (command.runner === 'php') {
+    const phpPackage = resolve(root, packageDirectory.php);
+    if (!testPath.startsWith(`${phpPackage}/`)) throw new Error(`PHP test ${command.test} is outside ${packageDirectory.php}`);
+    return { format: 'phpunit', program: 'php', cwd: root,
+      args: [resolve(phpPackage, 'vendor/bin/phpunit'), '--teamcity', '--configuration', resolve(phpPackage, 'phpunit.xml.dist'),
+        '--filter', `/::(${command.cases.map(id => `test_${id}`).join('|')})$/`, testPath],
+      symbols: command.cases.map(id => `test_${id}`) };
+  }
   // Python runs on the interpreter of the client's venv, which make names in ORM_PYTHON and where the client is installed
   // (Makefile PYTHON_VENV); a python of PATH is not that interpreter.
   if (command.runner === 'python') {
@@ -291,6 +301,24 @@ function observedCases(format, output, requested, nativeSymbols = requested) {
       const match = /^CASE ([A-Za-z0-9_.-]+) PASS$/.exec(line);
       if (!match) throw new Error(`unexpected test output: ${line}`);
       add(match[1]);
+    }
+  } else if (format === 'phpunit') {
+    // Each case is testStarted, then testFailed or testIgnored when it did not pass, then testFinished. A case that did not
+    // pass, or a finished case that never started, refuses the run.
+    const started = new Set();
+    for (const line of output.split(/\r?\n/)) {
+      const match = /^##teamcity\[(testStarted|testFailed|testIgnored|testFinished) name='([^']*)'/.exec(line);
+      if (!match) continue;
+      const [, event, name] = match;
+      if (event === 'testStarted') {
+        if (started.has(name)) throw new Error(`duplicate observed case ${name}`);
+        started.add(name);
+      } else if (event === 'testFinished') {
+        if (!started.has(name)) throw new Error(`case ${name} finished without starting`);
+        add(name);
+      } else {
+        throw new Error(`case ${name} did not pass: ${line}`);
+      }
     }
   } else if (format === 'go') {
     for (const line of output.split(/\r?\n/)) {
@@ -427,7 +455,7 @@ async function buildCargo(plans, directory, builds, build) {
 // Rust test binary에는 cargo test처럼 그 crate의 package directory를 CARGO_MANIFEST_DIR로 준다:
 // test는 fixture 경로를 실행 시점의 값(polyspec_orm_testcase::manifest_dir)에서 얻는다.
 function prepared(spec, builds) {
-  if (spec.format === 'case') return [{ program: spec.program, args: spec.args, cwd: spec.cwd }];
+  if (spec.format === 'case' || spec.format === 'phpunit') return [{ program: spec.program, args: spec.args, cwd: spec.cwd }];
   if (spec.format === 'go') {
     const binary = builds.go.get(spec.cwd);
     if (builds.test2json.error) throw new Error(`go test2json build failed: ${builds.test2json.error}`);
@@ -562,12 +590,12 @@ export async function executeCoverage(manifest, root, timeoutMs = DATABASE) {
                 const entry = command[index];
                 let output = '';
                 for (const child of processes[index]) {
-                  step(child.label ?? `${spec.format === 'case' ? spec.program : child.program} ${entry.test}${spec.symbols ? ` ${spec.symbols.join(' ')}` : ''}`);
+                  step(child.label ?? `${spec.format === 'case' || spec.format === 'phpunit' ? spec.program : child.program} ${entry.test}${spec.symbols ? ` ${spec.symbols.join(' ')}` : ''}`);
                   const result = await run(child.program, child.args, child.cwd, timeoutMs, { ...testEnv, ...child.env }, dsn ? text => step(text.replaceAll(dsn, '[redacted]')) : step);
                   if (result.error) throw new Error(result.error);
-                  // libtest는 `test <symbol> ... ok` 결과 줄을 stdout에 쓴다. test가 stderr에 쓰는
-                  // case 보고 줄이 그 줄 사이에 끼지 않도록 Rust는 stdout만 읽는다.
-                  output += (spec.format === 'cargo' ? result.stdout : result.value) + '\n';
+                  // libtest는 `test <symbol> ... ok` 결과 줄을, PHPUnit은 TeamCity event를 stdout에 쓴다. test가
+                  // stderr에 쓰는 줄이 그 사이에 끼지 않도록 Rust와 PHP는 stdout만 읽는다.
+                  output += (spec.format === 'cargo' || spec.format === 'phpunit' ? result.stdout : result.value) + '\n';
                 }
                 results.push(...observedCases(spec.format, output, entry.cases, spec.symbols));
               }

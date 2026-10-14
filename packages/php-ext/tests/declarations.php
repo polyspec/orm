@@ -8,7 +8,7 @@ declare(strict_types=1);
 //        php declarations.php stub
 //        php declarations.php client
 // extension은 load한 확장 orm_dbspec이 등록한 class를, stub은 stubs/orm_dbspec.stub.php가 선언한
-// class를 읽는다. 두 출력이 같아야 한다(declarations_test.php). client는 PHP client의 Polyspec\Orm\Dbspec에서 @internal이
+// class를 읽는다. 두 출력이 같아야 한다(DeclarationsTest.php). client는 PHP client의 Polyspec\Orm\Dbspec에서 @internal이
 // 아닌 class를 Polyspec\Orm\Dbspec\Native의 이름으로 읽는다: 확장은 그 class의 public 선언을 같게 가져야 한다.
 
 const NATIVE_NAMESPACE = 'Polyspec\\Orm\\Dbspec\\Native\\';

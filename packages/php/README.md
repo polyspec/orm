@@ -30,12 +30,12 @@ the client on SQLite with `php -n` and only the extensions it needs, so that `my
   A process may load the generated models of several document sets; each model class carries the
   `manifestHash` of its own set, and a bootstrap whose manifest text does not hash to its declared
   `manifestHash` fails with `SCHEMA_HASH_MISMATCH` before any statement.
-- `tests/` — `model_test.php` (the model integration test), `runtime_model_test.php` and
-  `runtime_db_test.php` (the runtime model, installation and audit), `schema_set_test.php` (several
-  document sets in one process), `add_tables_and_columns_test.php` (tables and columns added to an installed set),
-  `mysql_tls.php` (the DSN parameters and MySQL TLS), `clock_test.php`, `driver_error_test.php`, `rollback_test.php`,
-  `engine_test.php`, `hostcodec.php`, `dsn.php`,
-  `relation_keys.php`, `perf_gate.php`, `orm_gen_test.php` (the command line), and the `dbspec_*`
+- `tests/` — `ModelTest.php` (the model integration test), `RuntimeModelTest.php` and
+  `RuntimeDbTest.php` (the runtime model, installation and audit), `SchemaSetTest.php` (several
+  document sets in one process), `AddTablesAndColumnsTest.php` (tables and columns added to an installed set),
+  `MysqlTlsTest.php` (the DSN parameters and MySQL TLS), `ClockTest.php`, `DriverErrorTest.php`, `RollbackTest.php`,
+  `EngineTest.php`, `HostcodecTest.php`, `DsnTest.php`,
+  `RelationKeysTest.php`, `PerfGateTest.php`, `OrmGenTest.php` (the command line), and the `dbspec_*`
   tests of `Dbspec/`. The conformance runner is
   `tests/conformance/runner.php`.
 
@@ -157,18 +157,18 @@ the cause and `$rollback` is the rollback error. A `ROLLBACK` error is not retri
 
     ORM_TEST_MYSQL_DSN='mysql://root@localhost/orm_php_test?socket=/tmp/mysql.sock' \
       ORM_TEST_POSTGRES_DSN='postgres:///orm_php_test?host=/tmp' \
-      php packages/php/tests/model_test.php
-    php packages/php/tests/runtime_model_test.php
-    php packages/php/tests/engine_test.php
-    php packages/php/tests/hostcodec.php
-    php packages/php/tests/dsn.php
-    php packages/php/tests/relation_keys.php
-    php packages/php/tests/orm_gen_test.php
+      packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTest.php
+    packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeModelTest.php
+    packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php
+    packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/HostcodecTest.php
+    packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DsnTest.php
+    packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php
+    packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php
     go run ./tests/conformance/check run -langs php -driver mysql|postgres|sqlite -dsn <bench DSN>
 
-`model_test.php` runs on SQLite, MySQL and PostgreSQL and fails when a MySQL or PostgreSQL DSN is
+`ModelTest.php` runs on SQLite, MySQL and PostgreSQL and fails when a MySQL or PostgreSQL DSN is
 unset. Each case that installs a schema or checks `utils()->schema()->empty()` creates a database
 of its own on the server of the DSN (or a new SQLite file) and drops it when it ends, also after a
 failure (tests/case_database.php), so the database a DSN names need not be empty and keeps no
-table of the test. `runtime_db_test.php` takes the same DSNs. `perf_gate.php` compares the client with PDO on the
+table of the test. `RuntimeDbTest.php` takes the same DSNs. `PerfGateTest.php` compares the client with PDO on the
 seeded bench database.

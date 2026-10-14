@@ -1,7 +1,7 @@
 # The rollback of a transaction fails deterministically through the test entry point
 # polyspec.orm.testing.fail_next_rollback, and a failed rollback reports both the callback error and
 # the rollback error (docs/protocol.md "Errors" and "Test faults", packages/ts/tests/rollback.mjs,
-# packages/php/tests/rollback_test.php).
+# packages/php/tests/RollbackTest.php).
 import importlib
 import os
 import sqlite3

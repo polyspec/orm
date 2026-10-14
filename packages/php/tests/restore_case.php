@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 // contracts/fixtures/restore.dbs의 restore scenario(packages/go/orm/restore_test.go의 restoreCase와
-// 같다). runtime_db_test.php의 owner case와 coverage_audit_triggers.php의 soft_delete_restore case가
+// 같다). RuntimeDbTest.php의 owner case와 CoverageAuditTriggersTest.php의 soft_delete_restore case가
 // 함께 쓴다. 호출자는 fixture의 model을 $namespace에 생성하고 연결에 설치한다.
 
 use Polyspec\Orm\Code;
@@ -21,9 +21,7 @@ function restoreErrorCode(Closure $fn): string
 
 function restoreWant(bool $ok, string $message): void
 {
-    if (!$ok) {
-        throw new RuntimeException($message);
-    }
+    \PHPUnit\Framework\Assert::assertTrue($ok, $message);
 }
 
 /**

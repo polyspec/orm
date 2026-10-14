@@ -61,11 +61,13 @@ for (const database of ['mysql', 'postgres', 'sqlite']) {
     await step(`unselected-column/${database}/php/${attempt}`, 2 * timeoutMs, async ({ step: progress }) => {
       let output;
       try {
-        output = await run('php', ['packages/php/tests/unselected_column_db.php'], {
+        output = await run('php', ['packages/php/vendor/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--teamcity', 'packages/php/tests/UnselectedColumnDbTest.php'], {
           ...process.env, ORM_UNSELECTED_DATABASE: database, ORM_UNSELECTED_DSN: dsn,
         });
       } catch (error) { throw new Error(String(error.message).replaceAll(dsn, '[redacted]')); }
-      if (output.trim() !== `CASE unselected_column_${database} PASS`) {
+      // PHPUnit의 TeamCity 출력에서 test 하나가 끝나고 실패하거나 건너뛴 test가 없어야 한다.
+      const finished = [...output.matchAll(/^##teamcity\[testFinished name='([^']*)'/gm)].map(match => match[1]);
+      if (JSON.stringify(finished) !== JSON.stringify(['test_unselected_column']) || /^##teamcity\[test(?:Failed|Ignored) /m.test(output)) {
         throw new Error(`${database}/${attempt}: missing exact pass event`);
       }
       const after = await state(database, dsn);

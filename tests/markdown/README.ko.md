@@ -12,7 +12,7 @@ corpus 하나에서 `cases.json`의 case를 실행하고, case마다 결과를 �
 | `corpus/dbspec/conformance.dbs` | corpus의 catalog: `people`(`key_prefix`, soft delete column, 수정 시각 column, unique key를 가진 `document` table), `tasks`(`people`로 가는 foreign key), `logs`(`identity` key) |
 | `flowmark.version` | case를 실행하는 `flowmark`의 `github.com/polyspec/flowmark` Go module 판 |
 | `packages/go/markdownmodel` | catalog에서 생성한 Go model과 Go 실행기 `TestMarkdownConformance` |
-| `packages/php/markdownmodel` | catalog에서 생성한 PHP model. PHP 실행기는 `packages/php/tests/markdown_conformance.php`이며 case마다 `markdown-conformance/<id>`로 보고한다 |
+| `packages/php/markdownmodel` | catalog에서 생성한 PHP model. PHP 실행기는 PHPUnit test `packages/php/tests/MarkdownConformanceTest.php`이며 case마다 그 id로 이름 붙은 data set으로 실행한다 |
 | `packages/python/tests/markdown_conformance.py` | Python 실행기. catalog에서 Python model을 자기 임시 directory에 생성한다 |
 | `packages/rust/tests/tests/markdown_conformance.rs` | Rust 실행기 `markdown_conformance`. model은 그 crate의 `build.rs`가 catalog에서 생성한다 |
 | `packages/ts/src/models/markdown_fixture` | catalog에서 생성한 TypeScript model. TypeScript 실행기 `packages/ts/tests/markdown_conformance.mjs`가 case보다 먼저 generator 출력과 비교하며, 실행기는 각 case를 `markdown-conformance/<id>`로 보고한다 |

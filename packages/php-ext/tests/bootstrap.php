@@ -1,0 +1,9 @@
+<?php
+declare(strict_types=1);
+// The PHPUnit bootstrap of packages/php-ext (phpunit.xml.dist): the Composer autoloader of the package, which loads PHPUnit
+// and the PHP client polyspec/orm (packages/php), the specification that the extension's results are compared with. The
+// extension orm_dbspec is loaded by the php that runs PHPUnit (php -d extension=<library>); without it no test can run.
+require_once dirname(__DIR__) . '/vendor/autoload.php';
+if (!extension_loaded('orm_dbspec')) {
+    throw new RuntimeException('the extension orm_dbspec is not loaded; run make dbspec-php-extension-check, which builds and loads it');
+}

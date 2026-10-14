@@ -47,7 +47,10 @@ function command(language, database) {
     const suffix = database === 'postgres' ? 'Postgres' : database === 'mysql' ? 'MySQL' : 'SQLite';
     return ['go', ['test', '-json', '-tags', 'decimalphysical', './packages/go/decimalmodel', '-run', `^TestDecimalPhysical${suffix}$`, '-count=1', '-timeout', '0']];
   }
-  if (language === 'php') return ['php', ['packages/php/tests/decimal_model_db.php', '--dialect', database]];
+  if (language === 'php') {
+    return ['php', ['packages/php/vendor/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--teamcity',
+      '--filter', `with data set "${database}"$`, 'packages/php/tests/DecimalModelDbTest.php']];
+  }
   if (language === 'rust') {
     return ['cargo', ['test', '--offline', '--locked', '--manifest-path', 'packages/rust/Cargo.toml', '-p', 'polyspec-orm-tests', '--bin', 'decimal_physical', id, '--', '--exact', '--include-ignored']];
   }
@@ -63,9 +66,15 @@ function observed(language, database, output) {
       events.some(event => event.Action === 'pass' && !event.Test);
   }
   if (language === 'rust') return output.includes(`test ${id} ... ok`) && output.includes('1 passed; 0 failed');
-  // PHP와 TypeScript test는 case마다 RUN과 PASS 줄을 쓴다. 정해진 case가 모두 통과하고 다른 결과
-  // 줄이 없어야 한다.
-  const cases = (language === 'php' ? ['generate', 'setters', 'round_trip'] : ['setters', 'round_trip']).map(name => `decimal_db/${database}/${name}`);
+  // PHPUnit은 test마다 TeamCity 줄(testStarted, testFailed, testIgnored, testFinished)을 쓴다. 정해진 test가 모두
+  // 끝나고 실패하거나 건너뛴 test가 없어야 한다.
+  if (language === 'php') {
+    const finished = [...output.matchAll(/^##teamcity\[testFinished name='([^']*)'/gm)].map(match => match[1]);
+    const wanted = ['generate', 'setters', 'round_trip'].map(name => `test_${name} with data set "${database}"`);
+    return JSON.stringify(finished) === JSON.stringify(wanted) && !/^##teamcity\[test(?:Failed|Ignored) /m.test(output);
+  }
+  // TypeScript test는 case마다 RUN과 PASS 줄을 쓴다. 정해진 case가 모두 통과하고 다른 결과 줄이 없어야 한다.
+  const cases = ['setters', 'round_trip'].map(name => `decimal_db/${database}/${name}`);
   const results = output.split('\n').filter(line => /^(?:PASS|FAIL) /.test(line)).map(line => line.split(' ').slice(0, 2).join(' '));
   return JSON.stringify(results) === JSON.stringify(cases.map(name => `PASS ${name}`));
 }

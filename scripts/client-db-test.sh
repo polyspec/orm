@@ -47,19 +47,19 @@ go_lane() {
   finish go
 }
 php_lane() {
-  keep php packages/php/tests/model_test.php
-  keep php packages/php/tests/aes_json_test.php
-  keep php packages/php/tests/runtime_db_test.php
-  keep php packages/php/tests/audit_external_sets_test.php
-  keep php packages/php/tests/sqlite_concurrency_test.php
-  keep php packages/php/tests/schema_set_test.php
-  keep php packages/php/tests/add_tables_and_columns_test.php
-  keep php packages/php/tests/clock_test.php
-  keep php packages/php/tests/driver_error_test.php
-  keep php packages/php/tests/rollback_test.php
-  keep php packages/php/tests/statement_fault_test.php
-  keep php packages/php/tests/request_hook_test.php
-  keep php packages/php/tests/mysql_tls.php
+  keep php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTest.php
+  keep php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AesJsonTest.php
+  keep php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeDbTest.php
+  keep php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AuditExternalSetsTest.php
+  keep php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/SqliteConcurrencyTest.php
+  keep php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/SchemaSetTest.php
+  keep php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AddTablesAndColumnsTest.php
+  keep php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ClockTest.php
+  keep php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DriverErrorTest.php
+  keep php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RollbackTest.php
+  keep php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/StatementFaultTest.php
+  keep php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookTest.php
+  keep php packages/php/vendor/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/MysqlTlsTest.php
   finish php
 }
 typescript_lane() {

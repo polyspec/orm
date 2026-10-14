@@ -13,7 +13,7 @@ import { checkCoverage, databases, executeCoverage, languages, selectFeatures } 
 delete process.env.ORM_RUST_TEST_FEATURES;
 
 const ownerTests = {
-  go: 'packages/go/orm/dsn_test.go', php: 'packages/php/tests/dsn.php', python: 'packages/python/tests/test_utils.py',
+  go: 'packages/go/orm/dsn_test.go', php: 'packages/php/tests/DsnTest.php', python: 'packages/python/tests/test_utils.py',
   rust: 'packages/rust/orm/tests/zone.rs', typescript: 'packages/ts/tests/typecheck.ts',
 };
 const dependentTest = 'packages/go/model/model_test.go';
@@ -273,6 +273,21 @@ caseTest('a slow but healthy coverage build runs to its end without a deadline',
   }
 });
 
+// phpunitStub writes, under root, a packages/php/vendor/bin/phpunit that stands for PHPUnit: it requires the arguments with
+// which coverage.mjs runs the test file of a PHP case `first` (the TeamCity output, the package configuration, the anchored
+// filter of test_first and the file), runs the PHP code `before`, and writes the TeamCity events `events` to stdout.
+async function phpunitStub(root, file, events, before = '') {
+  const want = ['--teamcity', '--configuration', join(root, 'packages/php/phpunit.xml.dist'), '--filter', '/::(test_first)$/', join(root, file)];
+  await mkdir(join(root, 'packages/php/vendor/bin'), { recursive: true });
+  await writeFile(join(root, 'packages/php/vendor/bin/phpunit'), `<?php\nif (array_slice($argv, 1) !== ${phpArray(want)}) exit(2);\n${before}echo ${JSON.stringify(events.map(e => `##teamcity[${e} flowId='1']`).join('\n') + '\n')};\n`);
+}
+
+function phpArray(list) {
+  return `[${list.map(item => JSON.stringify(item)).join(', ')}]`;
+}
+
+const PASSED = ["testStarted name='test_first'", "testFinished name='test_first' duration='0'"];
+
 // Rust build 겹침 case(G5.123)는 cargo test binary를 쓰지 않는 실행이 Rust build를 기다리지 않는지 본다. PATH 앞의 cargo는
 // `cargo test --no-run`에서 FIFO를 읽을 때까지, 곧 PHP case가 그 FIFO에 쓸 때까지 기다린 뒤 실제 cargo를 실행한다. manifest에서
 // Rust 소유자가 PHP 소유자보다 앞에 있으므로, build가 끝난 뒤에야 실행을 시작하거나 줄의 순서대로만 실행하면 build와 PHP
@@ -280,7 +295,7 @@ caseTest('a slow but healthy coverage build runs to its end without a deadline',
 caseTest('coverage runs without cargo proceed while the Rust test build runs', 120000, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-overlap-')));
   const rustFile = 'packages/rust/orm/src/lib.rs';
-  const phpFile = 'packages/php/tests/owner.php';
+  const phpFile = 'packages/php/tests/OwnerTest.php';
   const fifo = join(root, 'build-gate');
   const written = join(root, 'written');
   const manifest = { features: [{ id: 'sample', status: 'partial', clients: { rust: 'partial', php: 'partial' },
@@ -299,7 +314,8 @@ caseTest('coverage runs without cargo proceed while the Rust test build runs', 1
     await writeFile(join(root, 'packages/rust/orm/Cargo.toml'), '[package]\nname = "coverage_overlap"\nversion = "0.0.1"\nedition = "2021"\n');
     await writeFile(join(root, rustFile), '#[cfg(test)] mod tests { #[test] fn first() {} }\n');
     // 첫 실행만 FIFO에 쓴다. 쓰기는 cargo가 FIFO를 읽으려고 열 때까지 기다린다.
-    await writeFile(join(root, phpFile), `<?php\nif ($argv !== [$argv[0], "first"]) exit(2);\nif (!file_exists(${JSON.stringify(written)})) { file_put_contents(${JSON.stringify(fifo)}, "go\\n"); touch(${JSON.stringify(written)}); }\necho "CASE first PASS\\n";\n`);
+    await writeFile(join(root, phpFile), '<?php\n');
+    await phpunitStub(root, phpFile, PASSED, `if (!file_exists(${JSON.stringify(written)})) { file_put_contents(${JSON.stringify(fifo)}, "go\\n"); touch(${JSON.stringify(written)}); }\n`);
     process.env.PATH = `${join(root, 'bin')}:${path}`;
     assert.deepEqual(await executeCoverage(manifest, root, 30000), []);
   } finally {
@@ -387,14 +403,15 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', 12
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-native-')));
   const cases = [
     { language: 'go', part: 'packages/go/orm', file: 'packages/go/orm/owner_test.go', runner: 'go', symbol: 'TestFirst' },
-    { language: 'php', part: 'packages/php/tests', file: 'packages/php/tests/owner.php', runner: 'php', id: 'first' },
+    { language: 'php', part: 'packages/php/tests', file: 'packages/php/tests/OwnerTest.php', runner: 'php', id: 'first' },
     { language: 'rust', part: 'packages/rust/orm', file: 'packages/rust/orm/src/lib.rs', runner: 'cargo', symbol: 'tests::first' },
   ];
   try {
     for (const item of cases) await mkdir(join(root, item.file, '..'), { recursive: true });
     await writeFile(join(root, 'packages/go/orm/go.mod'), 'module example.com/coverage\n\ngo 1.22\n');
     await writeFile(join(root, cases[0].file), 'package orm\nimport "testing"\nfunc TestFirst(t *testing.T) {}\n');
-    await writeFile(join(root, cases[1].file), '<?php\nif ($argv !== [$argv[0], "first"]) exit(2);\necho "CASE first PASS\\n";\n');
+    await writeFile(join(root, cases[1].file), '<?php\n');
+    await phpunitStub(root, cases[1].file, PASSED);
     await writeFile(join(root, 'packages/rust/orm/Cargo.toml'), '[package]\nname = "coverage_probe"\nversion = "0.0.1"\nedition = "2021"\n');
     // cargo test처럼 실행 시점의 CARGO_MANIFEST_DIR가 test file을 소유하는 package directory다.
     await writeFile(join(root, cases[2].file), '#[cfg(test)] mod tests { #[test] fn first() { ' +
@@ -432,6 +449,22 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', 12
           cases: ['first'], symbols: { first: 'tests::first' } }] } },
       } } }] };
     assert.match((await executeCoverage(uncompiled, root, 30000)).join('\n'), /no test binary compiles .*unused\.rs/);
+    // A PHP case is observed only from its clean TeamCity events: a failed or a missing case refuses the run.
+    const php = cases[1];
+    const phpManifest = { features: [{ id: 'sample', status: 'partial', clients: { php: 'partial' },
+      coverage: { kind: 'independent', cases: ['first'], dependents: [], owners: {
+        php: { part: php.part, tests: [php.file], commands: { none: [{ runner: 'php', test: php.file, cases: ['first'] }] } },
+      } } }] };
+    for (const [events, error] of [
+      [["testStarted name='test_first'", "testFailed name='test_first' message='no'", "testFinished name='test_first' duration='0'"], /case test_first did not pass/],
+      [["testStarted name='test_first'", "testIgnored name='test_first' message='skipped'", "testFinished name='test_first' duration='0'"], /case test_first did not pass/],
+      [[], /observed no cases differ from test_first/],
+      [["testFinished name='test_first' duration='0'"], /case test_first finished without starting/],
+      [[...PASSED, ...PASSED], /duplicate observed case test_first/],
+    ]) {
+      await phpunitStub(root, php.file, events);
+      assert.match((await executeCoverage(phpManifest, root, 30000)).join('\n'), error);
+    }
     const go = cases[0];
     await writeFile(join(root, go.file), 'package orm\nimport "testing"\nfunc TestFirst(t *testing.T) { t.Skip("no executed pass") }\n');
     const skipped = { features: [{ id: 'sample', status: 'partial', clients: { go: 'partial' },

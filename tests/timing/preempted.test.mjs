@@ -104,9 +104,9 @@ caseTest('rust: the polyspec-orm-schema vector tests pass while preempted', TIME
   await passesPreempted(step, 'cargo', ['test', '--locked', '--offline', '-p', 'polyspec-orm-schema', ...tests.flatMap((name) => ['--test', name])], `${root}packages/rust`);
 });
 
-for (const script of ['dbspec_test', 'dbspec_rules_test', 'dbspec_manifest_test', 'dbspec_render_test', 'dbspec_mermaid_test', 'dbspec_plan_test', 'dbspec_stress_test']) {
-  caseTest(`php: ${script} passes while preempted`, TIMEOUT, async ({ step }) => {
-    await passesPreempted(step, 'php', [`packages/php/tests/${script}.php`]);
+for (const test of ['DbspecTest', 'DbspecRulesTest', 'DbspecManifestTest', 'DbspecRenderTest', 'DbspecMermaidTest', 'DbspecPlanTest', 'DbspecStressTest']) {
+  caseTest(`php: ${test} passes while preempted`, TIMEOUT, async ({ step }) => {
+    await passesPreempted(step, 'php', ['packages/php/vendor/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', `packages/php/tests/${test}.php`]);
   });
 }
 

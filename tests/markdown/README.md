@@ -11,7 +11,7 @@ a database, so its conformance has no SQL text and no bind list to compare. Each
 | `corpus/dbspec/conformance.dbs` | the catalog of the corpus: `people` (a `document` table with `key_prefix`, a soft delete column, an update time column and a unique key), `tasks` (with a foreign key to `people`) and `logs` (with an `identity` key) |
 | `flowmark.version` | the Go module version of `github.com/polyspec/flowmark` whose `flowmark` the cases run on |
 | `packages/go/markdownmodel` | the Go models generated from the catalog and the Go runner, `TestMarkdownConformance` |
-| `packages/php/markdownmodel` | the PHP models generated from the catalog; the PHP runner is `packages/php/tests/markdown_conformance.php`, which reports each case as `markdown-conformance/<id>` |
+| `packages/php/markdownmodel` | the PHP models generated from the catalog; the PHP runner is the PHPUnit test `packages/php/tests/MarkdownConformanceTest.php`, which runs each case as a data set named by its id |
 | `packages/python/tests/markdown_conformance.py` | the Python runner, which generates the Python models from the catalog into its temporary directory |
 | `packages/rust/tests/tests/markdown_conformance.rs` | the Rust runner, `markdown_conformance`; the `build.rs` of its crate generates the models from the catalog |
 | `packages/ts/src/models/markdown_fixture` | the TypeScript models generated from the catalog, which the TypeScript runner `packages/ts/tests/markdown_conformance.mjs` checks against the generator before its cases and reports each case as `markdown-conformance/<id>` |

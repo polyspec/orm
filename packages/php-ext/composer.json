@@ -10,5 +10,49 @@
   "php-ext": {
     "extension-name": "orm_dbspec",
     "build-path": "src"
+  },
+  "require-dev": {
+    "polyspec/orm": "0.0.14",
+    "phpunit/phpunit": "13.4.2"
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../php",
+      "options": {
+        "symlink": true
+      }
+    },
+    {
+      "type": "package",
+      "package": {
+        "name": "polyspec/ordered-json",
+        "version": "0.0.8",
+        "type": "library",
+        "require": {
+          "php": ">=8.2",
+          "ext-json": "*",
+          "ext-pcre": "*"
+        },
+        "suggest": {
+          "ext-ordered_json": "Native backend from the polyspec/ordered-json-extension PIE package"
+        },
+        "autoload": {
+          "files": [
+            "src/OrderedJson.php"
+          ]
+        },
+        "dist": {
+          "type": "zip",
+          "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.8/polyspec-ordered-json-php-0.0.8.zip",
+          "shasum": "6fa67fff99b422f42ed7ab51ac470cadf8ade699"
+        }
+      }
+    }
+  ],
+  "config": {
+    "platform": {
+      "php": "8.5.0"
+    }
   }
 }

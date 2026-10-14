@@ -30,11 +30,11 @@ const redact = text => secrets.reduce((out, dsn) => out.replaceAll(dsn, '[redact
 const leftover = `orm_leftover_${process.pid}`;
 
 // 공유 database를 읽는 case를 고친 뒤에도 그 database를 빈 것으로 여기는 case가 있으면 이 명령들이
-// 실패한다. 각 명령은 자기 case를 RUN/STEP/PASS/FAIL로 보고하므로 묶음(group)으로 실행한다.
+// 실패한다. 각 명령은 자기 case를 보고하므로(Go와 TypeScript는 RUN/STEP/PASS/FAIL, PHP는 PHPUnit) 묶음(group)으로 실행한다.
 const commands = [
   ['go/schema-empty', 'go', ['test', '-v', '-timeout', '0', '-count=1', './packages/go/orm', '-run', '^TestSchemaEmpty$']],
   ['go/model', 'go', ['test', '-v', '-timeout', '0', '-count=1', './packages/go/model']],
-  ['php/model', 'php', ['packages/php/tests/model_test.php']],
+  ['php/model', 'php', ['packages/php/vendor/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', 'packages/php/tests/ModelTest.php']],
   ['typescript/model', 'node', ['packages/ts/tests/model.mjs']],
   ['rust/integration', join(cargoTarget(), 'debug/integration'), [resolve(root, 'schema/bench.dbs')]],
 ];

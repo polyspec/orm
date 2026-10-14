@@ -783,7 +783,7 @@ final class PlanApply
     }
 
     /**
-     * 효과 하나를 읽는 test 용 입구다(dbspec_apply_cleanup_test.php).
+     * 효과 하나를 읽는 test 용 입구다(DbspecApplyCleanupTest.php).
      *
      * @internal
      */

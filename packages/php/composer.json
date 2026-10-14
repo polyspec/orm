@@ -14,6 +14,9 @@
         "purrphp/yaml": "1.0.0",
         "symfony/yaml": "^7.4"
     },
+    "require-dev": {
+        "phpunit/phpunit": "13.4.2"
+    },
     "suggest": {
         "ext-pdo_mysql": "mysql:// DSNs",
         "ext-pdo_pgsql": "postgres:// DSNs",
@@ -39,6 +42,37 @@
         "bin/orm-gen"
     ],
     "config": {
-        "optimize-autoloader": true
-    }
+        "optimize-autoloader": true,
+        "platform": {
+            "php": "8.5.0"
+        }
+    },
+    "repositories": [
+        {
+            "type": "package",
+            "package": {
+                "name": "polyspec/ordered-json",
+                "version": "0.0.8",
+                "type": "library",
+                "require": {
+                    "php": ">=8.2",
+                    "ext-json": "*",
+                    "ext-pcre": "*"
+                },
+                "suggest": {
+                    "ext-ordered_json": "Native backend from the polyspec/ordered-json-extension PIE package"
+                },
+                "autoload": {
+                    "files": [
+                        "src/OrderedJson.php"
+                    ]
+                },
+                "dist": {
+                    "type": "zip",
+                    "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.8/polyspec-ordered-json-php-0.0.8.zip",
+                    "shasum": "6fa67fff99b422f42ed7ab51ac470cadf8ade699"
+                }
+            }
+        }
+    ]
 }

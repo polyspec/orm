@@ -1,8 +1,8 @@
 #!/bin/sh
 # MySQL driver(mysqlnd, pdo_mysql, mysqli)를 load하지 않은 PHP로
-# packages/php/tests/sqlite_without_mysql.php를 실행한다(N17). `php -n`은 ini가 load하는 shared
-# module을 모두 빼고, 이 script는 client가 SQLite에서 쓰는 확장(EXTENSIONS) 가운데 compile되어
-# 있지 않은 것만 `-d extension=`으로 명시해 load한다. MySQL driver가 PHP에 compile되어 있으면
+# packages/php/tests/SqliteWithoutMysqlTest.php를 PHPUnit으로 실행한다(N17). `php -n`은 ini가 load하는 shared
+# module을 모두 빼고, 이 script는 client가 SQLite에서 쓰는 확장과 PHPUnit이 요구하는 확장(dom, libxml, xml,
+# xmlwriter, tokenizer; EXTENSIONS) 가운데 compile되어 있지 않은 것만 `-d extension=`으로 명시해 load한다. MySQL driver가 PHP에 compile되어 있으면
 # `-n`으로 뺄 수 없으므로 이유를 출력하고 실패한다: 이 검사는 driver가 shared module인 선언된
 # Linux runner(.github/runner)에서 CI가
 # 실행한다. make php-without-mysql-check가 이 script를 장기 작업으로 tests/run-long.mjs에서 기한 없이
@@ -10,7 +10,7 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
-EXTENSIONS="pdo pdo_sqlite openssl zlib ctype mbstring"
+EXTENSIONS="pdo pdo_sqlite openssl zlib ctype mbstring libxml dom xml xmlwriter tokenizer"
 DRIVERS="mysqlnd pdo_mysql mysqli"
 
 COMPILED=$(php -n -m | tr 'A-Z' 'a-z')
@@ -28,4 +28,4 @@ for extension in $EXTENSIONS; do
   compiled "$extension" || set -- "$@" -d "extension=$extension"
 done
 echo "php $(php -n -r 'echo PHP_VERSION;') -n $*"
-exec php -n "$@" "$ROOT/packages/php/tests/sqlite_without_mysql.php"
+exec php -n "$@" "$ROOT/packages/php/vendor/bin/phpunit" --configuration "$ROOT/packages/php/phpunit.xml.dist" "$ROOT/packages/php/tests/SqliteWithoutMysqlTest.php"
