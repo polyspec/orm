@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7dc15a5b9d406b27c5e21b5148d99b0b3a626351ff2fb3a7517d1d0bdf73f558 -->
+<!-- source-sha256: f66bfc52fc67f4408639d8f79f6c5407b65c536189200f2cf02f0ca97679fa24 -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.17
 
+- package check가 Rust client의 외부 crate에 그 lock을 주어, fetch한 git revision으로 offline build한다. (#T177-1)
 - scripts/bench-db.mts가 TypeScript client로 bench database를 설치하고 seed한다. Go program bench/install과 bench/seedaes를 지웠다. (#T137-1-4-9)
 - Python client가 다른 client처럼 3.46보다 오래된 SQLite를 CAPABILITY_UNSUPPORTED로 거부한다. (#T176)
 - scripts/ 아래 infrastructure script는 TypeScript다: 실행의 database(scripts/check/databases.mts, make databases-create), test server(scripts/test-servers.mts)와 모든 명령 script. decimal database는 TypeScript decimal model이 설치하므로 database 준비에 PHP와 Composer가 필요 없다. tests/new-session과 PHP의 CI SQLite 검사를 지웠다. (#T137-1-4-5)
