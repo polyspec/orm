@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9e57b6fdd979457ff4d1edc5577975f902d8c1207c1a1837437d62653a4458ab -->
+<!-- source-sha256: ff5baf9daa9893f4b09e65ee912ba5c51b22532e84d6b6161564a26288b3a94d -->
 # 변경 이력
 
 ## Unreleased
+
+- PHP client와 extension의 test가 PHPUnit에서 실행된다: 공유 vector는 case id로 이름 붙인 data provider로 실행하고, orm 자체 PHP test runner를 없앴다. symfony/yaml은 8.1이다. (#T148-1)
 
 ## 0.0.15
 

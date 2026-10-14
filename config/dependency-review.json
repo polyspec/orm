@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mts) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-14T14:22:03.291Z",
+  "reviewed": "2026-10-14T15:30:32.664Z",
   "locks": [
     {
       "lock": "package-lock.json",
@@ -24,7 +24,17 @@
     },
     {
       "lock": "composer.lock",
-      "sha256": "7f234c6c827bb4c25bd88836033fc8635c1ac5cfa93b5670960314ad679b70ae",
+      "sha256": "0c925d9848e1b94cd5f4a777b230245f419d446e88fad8560e4377b30600cc20",
+      "advisories": []
+    },
+    {
+      "lock": "packages/php/composer.lock",
+      "sha256": "39cb48953ff2dc78fb51505fc770932be867b4a90a92f6d4c30b6b2e5b23d81c",
+      "advisories": []
+    },
+    {
+      "lock": "packages/php-ext/composer.lock",
+      "sha256": "183916f7daa0e4aafb935cafae5560677c7db8c7fda845a2dc134f5c12606223",
       "advisories": []
     },
     {
@@ -272,6 +282,41 @@
       "package": "phpstan/phpstan",
       "version": "2.3.1",
       "latest": "2.3.1"
+    },
+    {
+      "ecosystem": "composer",
+      "manifest": "packages/php/composer.json",
+      "package": "polyspec/ordered-json",
+      "version": "0.0.8",
+      "latest": "0.0.8"
+    },
+    {
+      "ecosystem": "composer",
+      "manifest": "packages/php/composer.json",
+      "package": "purrphp/yaml",
+      "version": "1.0.0",
+      "latest": "1.0.0"
+    },
+    {
+      "ecosystem": "composer",
+      "manifest": "packages/php/composer.json",
+      "package": "symfony/yaml",
+      "version": "v8.1.9",
+      "latest": "v8.1.9"
+    },
+    {
+      "ecosystem": "composer",
+      "manifest": "packages/php/composer.json",
+      "package": "phpunit/phpunit",
+      "version": "13.4.2",
+      "latest": "13.4.2"
+    },
+    {
+      "ecosystem": "composer",
+      "manifest": "packages/php-ext/composer.json",
+      "package": "phpunit/phpunit",
+      "version": "13.4.2",
+      "latest": "13.4.2"
     },
     {
       "ecosystem": "pypi",

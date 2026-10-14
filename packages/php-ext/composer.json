@@ -12,7 +12,7 @@
     "build-path": "src"
   },
   "require-dev": {
-    "polyspec/orm": "0.0.14",
+    "polyspec/orm": "0.0.15",
     "phpunit/phpunit": "13.4.2"
   },
   "repositories": [

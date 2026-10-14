@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The PHP client's and the extension's tests run on PHPUnit: the shared vectors through data providers named by their case ids, and orm's own PHP test runner is removed. symfony/yaml is 8.1. (#T148-1)
+
 ## 0.0.15
 
 - CI downloads the Rust crates after it restores the crate cache: make install-rust is install-rust-toolchain and install-rust-crates. (#T171-1)

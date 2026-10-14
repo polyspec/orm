@@ -1,5 +1,5 @@
 <!-- doc-id: tests-codec-readme -->
-<!-- source-sha256: 00dee6ca8bcec4f0359f5bfa23ad687602c1cbfdc5b0e3e22d91356f33ccd480 -->
+<!-- source-sha256: 08917068af4abb8d9746cbc66bd1117e651a20e26d90305fd0b776adbb07093d -->
 # 코덱 vector
 
 `vectors.json`은 PHP가 생성한다(`php tests/codec/gen.php > tests/codec/vectors.json`). 각 style stack과 값의
