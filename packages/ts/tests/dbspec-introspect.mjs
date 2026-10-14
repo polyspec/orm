@@ -237,7 +237,7 @@ vector('introspection query count per dialect', () => {
 const cases = JSON.parse(readFileSync(new URL('tests/dbspec/introspect.json', root), 'utf8')).cases;
 assert(cases.length > 0, 'introspect cases');
 for (const c of cases) {
-  vector(`${c.dialect}.introspect.${c.id}`, async () => {
+  vector(c.id, async () => {
     const sources = {};
     for (const [name, lines] of Object.entries(c.documents)) sources[name] = text(lines);
     const rendered = renderDbspec(parseSet(c.id, sources), c.dialect);

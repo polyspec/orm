@@ -8,6 +8,7 @@ from pathlib import Path
 
 from polyspec.orm.dbspec import analyze_dbspec
 from dbspec_cases_reader import read_cases  # noqa: E402
+from vector_case import vector_tests  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[3]
 SECTIONS = ('canonical', 'normalize', 'invalid')
@@ -53,10 +54,14 @@ def vector_inputs(cases):
     return inputs
 
 
-class SyntaxVectorTest(unittest.TestCase):
-    def test_tokens_match_the_shared_vectors(self):
-        with open(ROOT / 'tests' / 'dbspec' / 'syntax.json', encoding='utf-8') as handle:
-            vectors = json.load(handle)
+def read_vectors():
+    with open(ROOT / 'tests' / 'dbspec' / 'syntax.json', encoding='utf-8') as handle:
+        return json.load(handle)
+
+
+class SyntaxVectorFileTest(unittest.TestCase):
+    def test_the_file_holds_a_case_for_every_input(self):
+        vectors = read_vectors()
         self.assertEqual(sorted(vectors), ['cases', 'note', 'version'])
         self.assertEqual(vectors['version'], 1)
         expected = {}
@@ -64,18 +69,22 @@ class SyntaxVectorTest(unittest.TestCase):
             self.assertEqual(sorted(case), ['id', 'tokens'])
             self.assertNotIn(case['id'], expected, f"{case['id']} is listed twice")
             expected[case['id']] = case['tokens']
-        inputs = vector_inputs(read_cases())
-        self.assertEqual(sorted(i for i, _, _ in inputs), sorted(expected),
+        self.assertEqual(sorted(i for i, _, _ in vector_inputs(read_cases())), sorted(expected),
                          'the vector ids and the cases of cases.json differ')
-        failures = []
-        for case_id, text, documents in inputs:
-            found = [[t.line, t.start, t.end, t.token_class]
-                     for t in analyze_dbspec(text, documents).tokens]
-            if found != expected[case_id]:
-                failures.append(f"{case_id}: want {expected[case_id]} got {found}")
-        if failures:
-            self.fail(f'{len(failures)} of {len(inputs)} differ:\n' + '\n'.join(failures))
 
+
+def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
+    """The tokens of each case match the shared vectors: one test for each case, named by the case id."""
+    inputs = {case_id: (text, documents) for case_id, text, documents in vector_inputs(read_cases())}
+
+    def check_case(test: unittest.TestCase, case: dict) -> None:
+        test.assertIn(case['id'], inputs, 'the case has no input in cases.json')
+        text, documents = inputs[case['id']]
+        found = [[t.line, t.start, t.end, t.token_class] for t in analyze_dbspec(text, documents).tokens]
+        test.assertEqual(found, case['tokens'])
+
+    tests.addTests(vector_tests(read_vectors()['cases'], check_case))
+    return tests
 
 if __name__ == '__main__':
     unittest.main()

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Db } from '../dist/index.js';
 import { openDriver, parseDsn } from '../dist/driver.js';
-import { cases, COMPUTE } from '../../../tests/testcase.mjs';
+import { caseTest, cases, COMPUTE } from '../../../tests/testcase.mjs';
 
 const run = cases();
 await run.run('dsn/invalid', COMPUTE, async () => {
@@ -61,7 +61,7 @@ await run.run('dsn/sqlite-file-name', COMPUTE, async () => {
 // CONFIG다(docs/config.md "Runtime connection").
 const pathVectors = JSON.parse(readFileSync(new URL('../../../tests/dsn/sqlite-paths.json', import.meta.url), 'utf8'));
 if (pathVectors.version !== 1 || pathVectors.cases.length === 0) throw new Error('tests/dsn/sqlite-paths.json has no cases');
-for (const c of pathVectors.cases) await run.run(`dsn/sqlite-path/${c.id}`, COMPUTE, async () => {
+for (const c of pathVectors.cases) caseTest(c.id, COMPUTE, async () => {
   const caseDirectory = mkdtempSync(join(tmpdir(), 'orm-ts-sqlite-path-'));
   let code = null;
   let names;

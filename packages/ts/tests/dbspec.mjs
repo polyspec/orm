@@ -48,7 +48,7 @@ const ids = [...cases.canonical, ...cases.normalize, ...cases.invalid, ...cases.
 assert.equal(new Set(ids).size, ids.length, 'unique case ids');
 
 for (const c of cases.canonical) {
-  vector(`canonical ${c.id}`, () => {
+  vector(c.id, () => {
     const text = join(c.documents[c.main], c.crlf === true, c.mixed === true);
     const set = documentSet(c);
     const emitted = emitDbspec(parsed(text, set));
@@ -58,7 +58,7 @@ for (const c of cases.canonical) {
 }
 
 for (const c of cases.normalize) {
-  vector(`normalize ${c.id}`, () => {
+  vector(c.id, () => {
     const text = join(c.documents[c.main], c.crlf === true, c.mixed === true);
     const set = documentSet(c);
     const canonical = join(c.canonical, false);
@@ -69,7 +69,7 @@ for (const c of cases.normalize) {
 }
 
 for (const c of cases.positions) {
-  vector(`positions ${c.id}`, () => {
+  vector(c.id, () => {
     const text = join(c.documents[c.main], false);
     const result = parseDbspec(text, documentSet(c));
     assert.deepEqual(result.diagnostics, [], 'diagnostics of a valid document');
@@ -78,7 +78,7 @@ for (const c of cases.positions) {
 }
 
 for (const c of cases.invalid) {
-  vector(`invalid ${c.id}`, () => {
+  vector(c.id, () => {
     const text = join(c.documents[c.main], c.crlf === true, c.mixed === true);
     const result = parseDbspec(text, documentSet(c));
     assert.equal(result.document, null);
@@ -101,20 +101,20 @@ assert(cases.files.length > 0, 'files cases');
 for (const c of cases.files) {
   const path = fileURLToPath(new URL(`tests/dbspec/${c.path}`, root));
   const readers = { file: [path, () => readDbspecFile(path)], bytes: [c.path, () => readDbspecBytes(c.path, readFileSync(path))] };
-  for (const [kind, [name, read]] of Object.entries(readers)) {
-    vector(`files ${c.id} ${kind}`, () => {
+  vector(c.id, () => {
+    for (const [kind, [name, read]] of Object.entries(readers)) {
       const result = read();
       if (c.errors.length > 0) {
-        assert.equal(result.text, null);
-        assert.deepEqual(result.diagnostics.map(d => ({ line: d.line, column: d.column, rule: d.rule })), c.errors);
-        for (const d of result.diagnostics) assert.equal(d.message, name + fileMessages[d.rule]);
-        return;
+        assert.equal(result.text, null, kind);
+        assert.deepEqual(result.diagnostics.map(d => ({ line: d.line, column: d.column, rule: d.rule })), c.errors, kind);
+        for (const d of result.diagnostics) assert.equal(d.message, name + fileMessages[d.rule], kind);
+        continue;
       }
-      assert.deepEqual(result.diagnostics, []);
-      assert.equal(result.text, readFileSync(path, 'utf8'));
-      assert.equal(emitDbspec(parsed(result.text, {})), result.text);
-    });
-  }
+      assert.deepEqual(result.diagnostics, [], kind);
+      assert.equal(result.text, readFileSync(path, 'utf8'), kind);
+      assert.equal(emitDbspec(parsed(result.text, {})), result.text, kind);
+    }
+  });
 }
 
 // parseSet parses every document of a hashes case against the others, in document name order.
@@ -137,7 +137,7 @@ function expectManifest(c, documents) {
 
 assert(cases.hashes.length > 0, 'hashes cases');
 for (const c of cases.hashes) {
-  vector(`hashes ${c.id}`, () => {
+  vector(c.id, () => {
     const documents = parseSet(c);
     expectManifest(c, documents);
     // The set is ordered by document name, not by the order given.
@@ -172,7 +172,7 @@ const createdTables = statements => statements
   .filter(s => s.startsWith('CREATE TABLE '))
   .map(s => s.slice('CREATE TABLE '.length).split(' ')[0].replace(/^[`"]|[`"]$/g, ''));
 for (const c of cases.sets) {
-  vector(`sets ${c.id}`, () => {
+  vector(c.id, () => {
     // 각 문서는 다른 소유 문서, 외부 문서, parsing 문서를 집합으로 파싱한다. 외부 문서는 external로 표시한다.
     const owned = c.documents.length;
     const all = [...c.documents, ...(c.external ?? [])];

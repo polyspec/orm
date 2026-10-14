@@ -27,6 +27,7 @@ from polyspec.orm.database import Db  # noqa: E402
 from polyspec.orm.engine import Engine, model_of_documents, parse_document_set  # noqa: E402
 from polyspec.orm.errors import OrmError  # noqa: E402
 from polyspec.orm.schema import Schema  # noqa: E402
+from vector_case import vector_tests  # noqa: E402
 
 CASES = json.loads((ROOT / 'contracts' / 'fixtures' / 'identity_load.json').read_text())
 MODEL = model_of_documents(parse_document_set([(ROOT / CASES['fixture']).read_text()]))
@@ -242,25 +243,27 @@ def execute_case(case: dict) -> list:
     return reasons
 
 
-class IdentityLoadTest(unittest.TestCase):
-    def test_cases(self):
-        """파일의 case마다 harness 줄 `PASS|FAIL identity-load/<case id> elapsed=...` 하나를 출력한다."""
-        for case in CASES['cases']:
-            with self.subTest(case=case['id']):
-                name = f'identity-load/{case["id"]}'
-                started = time.monotonic()
-                if case['operation'] == 'compile':
-                    reasons = compile_case(case)
-                elif case['operation'] == 'execute':
-                    reasons = execute_case(case)
-                else:
-                    reasons = [f'unknown operation {case["operation"]!r}']
-                elapsed = time.monotonic() - started
-                if reasons:
-                    print(f'FAIL {name} elapsed={elapsed:.3f}s: ' + '; '.join(reasons), flush=True)
-                    self.fail(f'{name}: ' + '; '.join(reasons))
-                print(f'PASS {name} elapsed={elapsed:.3f}s', flush=True)
+def check_case(test: unittest.TestCase, case: dict) -> None:
+    """Runs one case of the file and prints its harness line `PASS|FAIL <case id> elapsed=...`."""
+    name = case['id']
+    started = time.monotonic()
+    if case['operation'] == 'compile':
+        reasons = compile_case(case)
+    elif case['operation'] == 'execute':
+        reasons = execute_case(case)
+    else:
+        reasons = [f'unknown operation {case["operation"]!r}']
+    elapsed = time.monotonic() - started
+    if reasons:
+        print(f'FAIL {name} elapsed={elapsed:.3f}s: ' + '; '.join(reasons), flush=True)
+        test.fail(f'{name}: ' + '; '.join(reasons))
+    print(f'PASS {name} elapsed={elapsed:.3f}s', flush=True)
 
+
+def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
+    """One test for each case of the file, named by the case id."""
+    tests.addTests(vector_tests(CASES['cases'], check_case))
+    return tests
 
 if __name__ == '__main__':
     # verbosity 0은 진행 문자를 쓰지 않아 harness 줄이 줄 머리에서 시작한다.

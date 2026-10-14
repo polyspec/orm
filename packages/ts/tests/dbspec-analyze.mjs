@@ -48,16 +48,12 @@ vector('syntax.json is the generator output', () => {
   assert.equal(syntaxText, render(expected));
 });
 
+// Each case's tokens are its recorded tokens. The analysis carries the parse result unchanged, and its tokens are in
+// source order and do not overlap.
 for (const [index, input] of inputs.entries()) {
-  vector(`syntax ${input.id}`, () => {
+  vector(input.id, () => {
     const result = analyzeDbspec(input.text, input.documents);
     assert.deepEqual(result.tokens.map(t => [t.line, t.start, t.end, t.class]), syntax.cases[index].tokens);
-  });
-}
-
-// The analysis carries the parse result unchanged, and its tokens are in source order and do not overlap.
-for (const input of inputs) {
-  vector(`analyze keeps the parse result ${input.id}`, () => {
     const analysis = analyzeDbspec(input.text, input.documents);
     const parsed = parseDbspec(input.text, input.documents);
     assert.deepEqual({ document: analysis.document, positions: analysis.positions, diagnostics: analysis.diagnostics }, parsed);

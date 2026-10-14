@@ -10,6 +10,7 @@ import os
 import sqlite3
 import sys
 import tempfile
+import unittest
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
@@ -21,6 +22,7 @@ import pymysql  # noqa: E402
 from polyspec.orm.dbspec import emit_dbspec, parse_dbspec  # noqa: E402
 from polyspec.orm.dbspec.introspect import introspect_dbspec  # noqa: E402
 from polyspec.orm.dbspec.render import render_dbspec  # noqa: E402
+from vector_case import vector_tests  # noqa: E402
 
 # tests/dbspec/introspect의 연결 규칙과 같다(packages/ts/tests/dbspec-introspect.mjs).
 CONNECTION_RULES = {
@@ -131,28 +133,30 @@ def check_case(case, index, dsns, sqlite_dir):
                 f'{case_id}: reason of {w[:3]} differs: want rule {w[3]!r}, got {u["reason"]!r}'
 
 
-def main() -> None:
+TEMP = {}
+
+
+def setUpModule():
+    TEMP['dir'] = tempfile.TemporaryDirectory()
+
+
+def tearDownModule():
+    TEMP['dir'].cleanup()
+
+
+def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
+    """One test for each introspect case, named by the case id. A failed case does not stop the others."""
     data = json.loads((ROOT / 'tests' / 'dbspec' / 'introspect.json').read_text())
     dsns = {'mysql': os.environ.get('ORM_TEST_MYSQL_DSN'),
             'postgres': os.environ.get('ORM_TEST_POSTGRES_DSN')}
     for dialect, dsn in dsns.items():
         if not dsn:
             raise SystemExit(f'ORM_TEST_{dialect.upper()}_DSN is required; run make dbspec-introspect-python-check, which passes TEST_ENV')
-    counts = {}
-    failures = []
-    with tempfile.TemporaryDirectory() as sqlite_dir:
-        for index, case in enumerate(data['cases']):
-            # 한 case의 실패가 다른 case를 막지 않도록 모두 실행하고 마지막에 보고한다.
-            try:
-                check_case(case, index, dsns, sqlite_dir)
-            except AssertionError as error:
-                failures.append(str(error))
-            counts[case['dialect']] = counts.get(case['dialect'], 0) + 1
-    if failures:
-        raise SystemExit(f'{len(failures)} of {len(data["cases"])} cases differ:\n' + '\n'.join(failures))
-    summary = ', '.join(f'{counts[d]} {d}' for d in sorted(counts))
-    print(f'introspect: {len(data["cases"])} cases agree ({summary})')
+    cases = list(enumerate(data['cases']))
+    tests.addTests(vector_tests(cases, lambda _test, item: check_case(item[1], item[0], dsns, TEMP['dir'].name),
+                                lambda item: item[1]['id']))
+    return tests
 
 
 if __name__ == '__main__':
-    main()
+    unittest.main()

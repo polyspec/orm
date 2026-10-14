@@ -207,38 +207,40 @@ func TestInstallVerifiesTheDatabase(t *testing.T) {
 			t.Fatalf("case %s has the operation %s, want install", c.ID, c.Operation)
 		}
 		s := fixtureSchema(t, strings.TrimSuffix(c.Document, ".dbs"))
-		for _, driver := range []string{"sqlite", "mysql", "postgres"} {
-			t.Run(c.ID+"/"+driver, func(t *testing.T) {
-				dsn := newDatabase(t, driver)
-				db, err := orm.Connect(dsn, orm.Config{})
-				if err != nil {
-					t.Fatal(err)
-				}
-				defer db.Close()
-				if err := db.Utils().Schema().Install(s); err != nil {
-					t.Fatalf("install: %v", err)
-				}
-				var raw *sql.DB
-				if driver == "sqlite" {
-					if raw, err = sql.Open("sqlite", strings.TrimPrefix(dsn, "sqlite://")); err != nil {
+		t.Run(c.ID, func(t *testing.T) {
+			for _, driver := range []string{"sqlite", "mysql", "postgres"} {
+				t.Run(driver, func(t *testing.T) {
+					dsn := newDatabase(t, driver)
+					db, err := orm.Connect(dsn, orm.Config{})
+					if err != nil {
 						t.Fatal(err)
 					}
-				} else {
-					raw = openNative(t, driver, dsn)
-				}
-				defer raw.Close()
-				if _, err := raw.Exec(c.Statement); err != nil {
-					t.Fatal(err)
-				}
-				want := c.Expected.Code + ": " + c.Expected.Message[driver]
-				err = db.Utils().Schema().Install(s)
-				if orm.ErrorCode(err) != c.Expected.Code || err.Error() != want {
-					t.Fatalf("install over the changed database = %v, want %s", err, want)
-				}
-				if _, err := raw.Exec(c.Remaining); err != nil {
-					t.Fatalf("the rejected install changed the database: %v", err)
-				}
-			})
-		}
+					defer db.Close()
+					if err := db.Utils().Schema().Install(s); err != nil {
+						t.Fatalf("install: %v", err)
+					}
+					var raw *sql.DB
+					if driver == "sqlite" {
+						if raw, err = sql.Open("sqlite", strings.TrimPrefix(dsn, "sqlite://")); err != nil {
+							t.Fatal(err)
+						}
+					} else {
+						raw = openNative(t, driver, dsn)
+					}
+					defer raw.Close()
+					if _, err := raw.Exec(c.Statement); err != nil {
+						t.Fatal(err)
+					}
+					want := c.Expected.Code + ": " + c.Expected.Message[driver]
+					err = db.Utils().Schema().Install(s)
+					if orm.ErrorCode(err) != c.Expected.Code || err.Error() != want {
+						t.Fatalf("install over the changed database = %v, want %s", err, want)
+					}
+					if _, err := raw.Exec(c.Remaining); err != nil {
+						t.Fatalf("the rejected install changed the database: %v", err)
+					}
+				})
+			}
+		})
 	}
 }

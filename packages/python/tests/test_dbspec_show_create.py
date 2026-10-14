@@ -9,20 +9,27 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 
 from polyspec.orm.dbspec.introspect_mysql import _create_checks  # noqa: E402
+from vector_case import vector_tests  # noqa: E402
 
 
-class ShowCreateVectors(unittest.TestCase):
-    def test_every_case_reads_to_its_expected_body(self):
-        data = json.loads((ROOT / 'tests' / 'dbspec' / 'show-create.json').read_text(encoding='utf-8'))
-        self.assertTrue(data['cases'], 'tests/dbspec/show-create.json has no cases')
-        for case in data['cases']:
-            with self.subTest(case=case['id']):
-                checks = _create_checks('\n'.join(case['create']) + '\n')
-                got = checks.get(case['name'])
-                if case['expected'] == 'not found':
-                    self.assertIsNone(got, f"{case['name']} read as {got!r}, want not found")
-                else:
-                    self.assertEqual(got, case['expected'])
+DATA = json.loads((ROOT / 'tests' / 'dbspec' / 'show-create.json').read_text(encoding='utf-8'))
+
+
+def check_case(test: unittest.TestCase, case: dict) -> None:
+    checks = _create_checks('\n'.join(case['create']) + '\n')
+    got = checks.get(case['name'])
+    if case['expected'] == 'not found':
+        test.assertIsNone(got, f"{case['name']} read as {got!r}, want not found")
+    else:
+        test.assertEqual(got, case['expected'])
+
+
+def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
+    """Every case reads to its expected body: one test for each case, named by the case."""
+    if not DATA['cases']:
+        raise AssertionError('tests/dbspec/show-create.json has no cases')
+    tests.addTests(vector_tests(DATA['cases'], check_case))
+    return tests
 
 
 if __name__ == '__main__':

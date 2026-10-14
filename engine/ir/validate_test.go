@@ -41,23 +41,25 @@ func TestValidateVectors(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, c := range file.Cases {
-		if c.Valid == (c.Error != "") {
-			t.Fatalf("%s: a case expects either valid or an error", c.Name)
-		}
-		if _, ok := c.Request["manifest_hash"]; ok {
-			t.Fatalf("%s: request already holds manifest_hash", c.Name)
-		}
-		c.Request["manifest_hash"] = m.ManifestHash
-		body, err := json.Marshal(c.Request)
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, err = Decode(m, body)
-		switch {
-		case c.Valid && err != nil:
-			t.Errorf("%s: %v", c.Name, err)
-		case c.Error != "" && (err == nil || !strings.HasPrefix(err.Error(), c.Error+":")):
-			t.Errorf("%s: got %v, want %s", c.Name, err, c.Error)
-		}
+		t.Run(c.Name, func(t *testing.T) {
+			if c.Valid == (c.Error != "") {
+				t.Fatal("a case expects either valid or an error")
+			}
+			if _, ok := c.Request["manifest_hash"]; ok {
+				t.Fatal("request already holds manifest_hash")
+			}
+			c.Request["manifest_hash"] = m.ManifestHash
+			body, err := json.Marshal(c.Request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = Decode(m, body)
+			switch {
+			case c.Valid && err != nil:
+				t.Error(err)
+			case c.Error != "" && (err == nil || !strings.HasPrefix(err.Error(), c.Error+":")):
+				t.Errorf("got %v, want %s", err, c.Error)
+			}
+		})
 	}
 }

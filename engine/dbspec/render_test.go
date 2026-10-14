@@ -78,33 +78,35 @@ func parseDDLSet(c ddlCase) ([]*Document, error) {
 func TestRenderVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, c := range loadDDL(t).Cases {
-		for _, dialect := range []Dialect{DialectMySQL, DialectPostgres, DialectSQLite} {
-			t.Run(c.ID+"/"+string(dialect), func(t *testing.T) {
-				runTimed(t, "render/"+c.ID+"/"+string(dialect), 5*time.Second, func() error {
-					documents, err := parseDDLSet(c)
-					if err != nil {
-						return err
-					}
-					got, diagnostics := Render(documents, dialect)
-					if len(diagnostics) > 0 {
-						return fmt.Errorf("diagnostics %v", diagnostics)
-					}
-					want := c.Statements[string(dialect)]
-					for i := 0; i < max(len(got), len(want)); i++ {
-						var g, w string
-						if i < len(got) {
-							g = got[i]
+		t.Run(c.ID, func(t *testing.T) {
+			for _, dialect := range []Dialect{DialectMySQL, DialectPostgres, DialectSQLite} {
+				t.Run(string(dialect), func(t *testing.T) {
+					runTimed(t, "render/"+c.ID+"/"+string(dialect), 5*time.Second, func() error {
+						documents, err := parseDDLSet(c)
+						if err != nil {
+							return err
 						}
-						if i < len(want) {
-							w = want[i]
+						got, diagnostics := Render(documents, dialect)
+						if len(diagnostics) > 0 {
+							return fmt.Errorf("diagnostics %v", diagnostics)
 						}
-						if g != w {
-							return fmt.Errorf("statement %d\n got: %s\nwant: %s", i+1, g, w)
+						want := c.Statements[string(dialect)]
+						for i := 0; i < max(len(got), len(want)); i++ {
+							var g, w string
+							if i < len(got) {
+								g = got[i]
+							}
+							if i < len(want) {
+								w = want[i]
+							}
+							if g != w {
+								return fmt.Errorf("statement %d\n got: %s\nwant: %s", i+1, g, w)
+							}
 						}
-					}
-					return nil
+						return nil
+					})
 				})
-			})
-		}
+			}
+		})
 	}
 }

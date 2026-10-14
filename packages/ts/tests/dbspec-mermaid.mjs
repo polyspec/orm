@@ -35,7 +35,7 @@ assert(
 let runs = 0;
 
 for (const c of vectors.export) {
-  vector(`mermaid export ${c.id}`, () => {
+  vector(c.id, () => {
     const documents = Object.fromEntries(Object.entries(c.documents).map(([name, lines]) => [name, text(lines)]));
     const parsed = parseDbspec(text(c.document), documents);
     assert.deepEqual(parsed.diagnostics, [], 'document diagnostics');
@@ -47,7 +47,7 @@ for (const c of vectors.export) {
 }
 
 for (const c of vectors.import) {
-  vector(`mermaid import ${c.id}`, () => {
+  vector(c.id, () => {
     const result = importMermaid(text(c.mermaid), 'imported');
     assert.deepEqual(result.diagnostics, [], 'diagnostics');
     assert.equal(emitDbspec(result.document), text(c.document), 'document');
@@ -57,7 +57,7 @@ for (const c of vectors.import) {
 }
 
 for (const c of vectors.invalid) {
-  vector(`mermaid invalid ${c.id}`, () => {
+  vector(c.id, () => {
     const result = importMermaid(text(c.mermaid), 'imported');
     assert.equal(result.document, null, 'document of an invalid diagram');
     assert.deepEqual(result.diagnostics.map(d => [d.rule, d.line, d.column]), c.errors, 'diagnostics');
@@ -85,7 +85,7 @@ function skeleton(document) {
 }
 
 for (const c of vectors.round_trip) {
-  vector(`mermaid round_trip ${c.id}`, () => {
+  vector(c.id, () => {
     const read = readDbspecFile(fileURLToPath(new URL(c.path, root)));
     assert.deepEqual(read.diagnostics, [], 'file diagnostics');
     const parsed = parseDbspec(read.text, {});

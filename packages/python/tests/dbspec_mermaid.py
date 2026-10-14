@@ -8,6 +8,7 @@
 #
 # A failed check raises CheckFailed. The checks do not use assert, which python -O removes.
 import json
+import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -15,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[3]
 
 from polyspec.orm.dbspec import emit_dbspec, parse_dbspec, read_dbspec_file  # noqa: E402
 from polyspec.orm.dbspec.mermaid import export_mermaid, import_mermaid  # noqa: E402
+from vector_case import vector_tests  # noqa: E402
 
 
 class CheckFailed(Exception):
@@ -100,29 +102,17 @@ def run_round_trip(c) -> None:
           f'imported={len(imported["dropped"])}')
 
 
-def main() -> None:
+def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
+    """One test for each case of every kind, named by the case id."""
     vectors = json.loads((ROOT / 'tests' / 'dbspec' / 'mermaid.json').read_text(encoding='utf-8'))
     equal(vectors['version'], 1, 'mermaid vectors version')
     check(all(vectors[kind] for kind in ('export', 'import', 'invalid', 'round_trip')),
           'mermaid vectors have export, import, invalid and round trip cases')
-    runs = 0
-    for c in vectors['export']:
-        run_export(c)
-        runs += 1
-    for c in vectors['import']:
-        run_import(c)
-        runs += 1
-    for c in vectors['invalid']:
-        run_invalid(c)
-        runs += 1
-    for c in vectors['round_trip']:
-        run_round_trip(c)
-        runs += 1
-    cases = sum(len(vectors[kind]) for kind in ('export', 'import', 'invalid', 'round_trip'))
-    equal(runs, cases, 'every mermaid case runs')
-    print(f'mermaid cases: {runs} ({len(vectors["export"])} export, {len(vectors["import"])} import, '
-          f'{len(vectors["invalid"])} invalid, {len(vectors["round_trip"])} round trip)')
+    for kind, run in (('export', run_export), ('import', run_import), ('invalid', run_invalid),
+                      ('round_trip', run_round_trip)):
+        tests.addTests(vector_tests(vectors[kind], lambda _test, c, run=run: run(c)))
+    return tests
 
 
 if __name__ == '__main__':
-    main()
+    unittest.main()
