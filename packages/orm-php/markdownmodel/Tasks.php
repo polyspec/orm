@@ -94,4 +94,292 @@ final class Tasks extends Model
     {
         return $this->writeColumn('done', $v);
     }
+
+    public function addColumnDone(): static
+    {
+        $this->__call('addColumnDone', func_get_args());
+        return $this;
+    }
+
+    public function addColumnDue(): static
+    {
+        $this->__call('addColumnDue', func_get_args());
+        return $this;
+    }
+
+    public function addColumnId(): static
+    {
+        $this->__call('addColumnId', func_get_args());
+        return $this;
+    }
+
+    public function addColumnOwner(): static
+    {
+        $this->__call('addColumnOwner', func_get_args());
+        return $this;
+    }
+
+    public function addColumnPoints(): static
+    {
+        $this->__call('addColumnPoints', func_get_args());
+        return $this;
+    }
+
+    public function addColumnTitle(): static
+    {
+        $this->__call('addColumnTitle', func_get_args());
+        return $this;
+    }
+
+    public function avgPoints(): static
+    {
+        $this->__call('avgPoints', func_get_args());
+        return $this;
+    }
+
+    /** The condition of done: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function done(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('done', func_get_args());
+        return $this;
+    }
+
+    /** The condition of due: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function due(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('due', func_get_args());
+        return $this;
+    }
+
+    public function forceIndexIxTasksOwner(): static
+    {
+        $this->__call('forceIndexIxTasksOwner', func_get_args());
+        return $this;
+    }
+
+    public function groupByDone(): static
+    {
+        $this->__call('groupByDone', func_get_args());
+        return $this;
+    }
+
+    public function groupByDue(): static
+    {
+        $this->__call('groupByDue', func_get_args());
+        return $this;
+    }
+
+    public function groupById(): static
+    {
+        $this->__call('groupById', func_get_args());
+        return $this;
+    }
+
+    public function groupByOwner(): static
+    {
+        $this->__call('groupByOwner', func_get_args());
+        return $this;
+    }
+
+    public function groupByPoints(): static
+    {
+        $this->__call('groupByPoints', func_get_args());
+        return $this;
+    }
+
+    public function groupByTitle(): static
+    {
+        $this->__call('groupByTitle', func_get_args());
+        return $this;
+    }
+
+    /** The condition of id: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function id(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('id', func_get_args());
+        return $this;
+    }
+
+    public function keyNameDone(): static
+    {
+        $this->__call('keyNameDone', func_get_args());
+        return $this;
+    }
+
+    public function keyNameDue(): static
+    {
+        $this->__call('keyNameDue', func_get_args());
+        return $this;
+    }
+
+    public function keyNameId(): static
+    {
+        $this->__call('keyNameId', func_get_args());
+        return $this;
+    }
+
+    public function keyNameOwner(): static
+    {
+        $this->__call('keyNameOwner', func_get_args());
+        return $this;
+    }
+
+    public function keyNamePoints(): static
+    {
+        $this->__call('keyNamePoints', func_get_args());
+        return $this;
+    }
+
+    public function keyNameTitle(): static
+    {
+        $this->__call('keyNameTitle', func_get_args());
+        return $this;
+    }
+
+    public function minusPoints(int|float $n): static
+    {
+        $this->__call('minusPoints', func_get_args());
+        return $this;
+    }
+
+    public function orderByDoneAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByDoneAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByDoneDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByDoneDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByDueAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByDueAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByDueDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByDueDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByIdAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByIdAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByIdDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByIdDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByOwnerAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByOwnerAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByOwnerDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByOwnerDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByPointsAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByPointsAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByPointsDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByPointsDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByTitleAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByTitleAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByTitleDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByTitleDesc', func_get_args());
+        return $this;
+    }
+
+    /** The condition of owner: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function owner(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('owner', func_get_args());
+        return $this;
+    }
+
+    public function plusPoints(int|float $n): static
+    {
+        $this->__call('plusPoints', func_get_args());
+        return $this;
+    }
+
+    /** The condition of points: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function points(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('points', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnDone(): static
+    {
+        $this->__call('removeColumnDone', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnDue(): static
+    {
+        $this->__call('removeColumnDue', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnId(): static
+    {
+        $this->__call('removeColumnId', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnOwner(): static
+    {
+        $this->__call('removeColumnOwner', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnPoints(): static
+    {
+        $this->__call('removeColumnPoints', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnTitle(): static
+    {
+        $this->__call('removeColumnTitle', func_get_args());
+        return $this;
+    }
+
+    public function sumPoints(): static
+    {
+        $this->__call('sumPoints', func_get_args());
+        return $this;
+    }
+
+    /** The condition of title: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function title(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('title', func_get_args());
+        return $this;
+    }
 }

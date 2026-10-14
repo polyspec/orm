@@ -50,4 +50,151 @@ final class AccountProject extends Model
     {
         return $this->writeColumn('project_seq', $v);
     }
+
+    /** The condition of account_seq: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function accountSeq(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('accountSeq', func_get_args());
+        return $this;
+    }
+
+    public function addColumnAccountSeq(): static
+    {
+        $this->__call('addColumnAccountSeq', func_get_args());
+        return $this;
+    }
+
+    public function addColumnProjectSeq(): static
+    {
+        $this->__call('addColumnProjectSeq', func_get_args());
+        return $this;
+    }
+
+    public function avgAccountSeq(): static
+    {
+        $this->__call('avgAccountSeq', func_get_args());
+        return $this;
+    }
+
+    public function avgProjectSeq(): static
+    {
+        $this->__call('avgProjectSeq', func_get_args());
+        return $this;
+    }
+
+    public function forceIndexIxAccountProjectProject(): static
+    {
+        $this->__call('forceIndexIxAccountProjectProject', func_get_args());
+        return $this;
+    }
+
+    public function groupByAccountSeq(): static
+    {
+        $this->__call('groupByAccountSeq', func_get_args());
+        return $this;
+    }
+
+    public function groupByProjectSeq(): static
+    {
+        $this->__call('groupByProjectSeq', func_get_args());
+        return $this;
+    }
+
+    public function keyNameAccountSeq(): static
+    {
+        $this->__call('keyNameAccountSeq', func_get_args());
+        return $this;
+    }
+
+    public function keyNameProjectSeq(): static
+    {
+        $this->__call('keyNameProjectSeq', func_get_args());
+        return $this;
+    }
+
+    public function minusAccountSeq(int|float $n): static
+    {
+        $this->__call('minusAccountSeq', func_get_args());
+        return $this;
+    }
+
+    public function minusProjectSeq(int|float $n): static
+    {
+        $this->__call('minusProjectSeq', func_get_args());
+        return $this;
+    }
+
+    public function orderByAccountSeqAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByAccountSeqAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByAccountSeqDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByAccountSeqDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByProjectSeqAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByProjectSeqAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByProjectSeqDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByProjectSeqDesc', func_get_args());
+        return $this;
+    }
+
+    public function plusAccountSeq(int|float $n): static
+    {
+        $this->__call('plusAccountSeq', func_get_args());
+        return $this;
+    }
+
+    public function plusProjectSeq(int|float $n): static
+    {
+        $this->__call('plusProjectSeq', func_get_args());
+        return $this;
+    }
+
+    /** The condition of project_seq: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function projectSeq(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('projectSeq', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnAccountSeq(): static
+    {
+        $this->__call('removeColumnAccountSeq', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnProjectSeq(): static
+    {
+        $this->__call('removeColumnProjectSeq', func_get_args());
+        return $this;
+    }
+
+    public function sumAccountSeq(): static
+    {
+        $this->__call('sumAccountSeq', func_get_args());
+        return $this;
+    }
+
+    public function sumProjectSeq(): static
+    {
+        $this->__call('sumProjectSeq', func_get_args());
+        return $this;
+    }
+
+    /** @param list<list<mixed>> $values */
+    public function tupleAccountSeqWithProjectSeq(array $values): static
+    {
+        $this->__call('tupleAccountSeqWithProjectSeq', func_get_args());
+        return $this;
+    }
 }

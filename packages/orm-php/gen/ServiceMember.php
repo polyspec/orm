@@ -61,4 +61,217 @@ final class ServiceMember extends Model
     {
         return $this->writeColumn('user_seq', $v);
     }
+
+    public function addColumnSeq(): static
+    {
+        $this->__call('addColumnSeq', func_get_args());
+        return $this;
+    }
+
+    public function addColumnServiceSeq(): static
+    {
+        $this->__call('addColumnServiceSeq', func_get_args());
+        return $this;
+    }
+
+    public function addColumnUserSeq(): static
+    {
+        $this->__call('addColumnUserSeq', func_get_args());
+        return $this;
+    }
+
+    public function avgSeq(): static
+    {
+        $this->__call('avgSeq', func_get_args());
+        return $this;
+    }
+
+    public function avgServiceSeq(): static
+    {
+        $this->__call('avgServiceSeq', func_get_args());
+        return $this;
+    }
+
+    public function avgUserSeq(): static
+    {
+        $this->__call('avgUserSeq', func_get_args());
+        return $this;
+    }
+
+    public function forceIndexIxServiceMemberService(): static
+    {
+        $this->__call('forceIndexIxServiceMemberService', func_get_args());
+        return $this;
+    }
+
+    public function forceIndexIxServiceMemberUser(): static
+    {
+        $this->__call('forceIndexIxServiceMemberUser', func_get_args());
+        return $this;
+    }
+
+    public function groupBySeq(): static
+    {
+        $this->__call('groupBySeq', func_get_args());
+        return $this;
+    }
+
+    public function groupByServiceSeq(): static
+    {
+        $this->__call('groupByServiceSeq', func_get_args());
+        return $this;
+    }
+
+    public function groupByUserSeq(): static
+    {
+        $this->__call('groupByUserSeq', func_get_args());
+        return $this;
+    }
+
+    public function keyNameSeq(): static
+    {
+        $this->__call('keyNameSeq', func_get_args());
+        return $this;
+    }
+
+    public function keyNameServiceSeq(): static
+    {
+        $this->__call('keyNameServiceSeq', func_get_args());
+        return $this;
+    }
+
+    public function keyNameUserSeq(): static
+    {
+        $this->__call('keyNameUserSeq', func_get_args());
+        return $this;
+    }
+
+    public function minusSeq(int|float $n): static
+    {
+        $this->__call('minusSeq', func_get_args());
+        return $this;
+    }
+
+    public function minusServiceSeq(int|float $n): static
+    {
+        $this->__call('minusServiceSeq', func_get_args());
+        return $this;
+    }
+
+    public function minusUserSeq(int|float $n): static
+    {
+        $this->__call('minusUserSeq', func_get_args());
+        return $this;
+    }
+
+    public function orderBySeqAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderBySeqAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderBySeqDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderBySeqDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByServiceSeqAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByServiceSeqAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByServiceSeqDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByServiceSeqDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByUserSeqAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByUserSeqAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByUserSeqDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByUserSeqDesc', func_get_args());
+        return $this;
+    }
+
+    public function plusSeq(int|float $n): static
+    {
+        $this->__call('plusSeq', func_get_args());
+        return $this;
+    }
+
+    public function plusServiceSeq(int|float $n): static
+    {
+        $this->__call('plusServiceSeq', func_get_args());
+        return $this;
+    }
+
+    public function plusUserSeq(int|float $n): static
+    {
+        $this->__call('plusUserSeq', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnSeq(): static
+    {
+        $this->__call('removeColumnSeq', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnServiceSeq(): static
+    {
+        $this->__call('removeColumnServiceSeq', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnUserSeq(): static
+    {
+        $this->__call('removeColumnUserSeq', func_get_args());
+        return $this;
+    }
+
+    /** The condition of seq: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function seq(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('seq', func_get_args());
+        return $this;
+    }
+
+    /** The condition of service_seq: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function serviceSeq(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('serviceSeq', func_get_args());
+        return $this;
+    }
+
+    public function sumSeq(): static
+    {
+        $this->__call('sumSeq', func_get_args());
+        return $this;
+    }
+
+    public function sumServiceSeq(): static
+    {
+        $this->__call('sumServiceSeq', func_get_args());
+        return $this;
+    }
+
+    public function sumUserSeq(): static
+    {
+        $this->__call('sumUserSeq', func_get_args());
+        return $this;
+    }
+
+    /** The condition of user_seq: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function userSeq(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('userSeq', func_get_args());
+        return $this;
+    }
 }

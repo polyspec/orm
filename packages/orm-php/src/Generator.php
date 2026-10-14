@@ -4,9 +4,15 @@ declare(strict_types=1);
 namespace Polyspec\Orm;
 
 /**
- * Writes one model class per entity with typed column accessors and the model
- * metadata, plus bootstrap.php, which registers the classes. Every other
- * method name is resolved at call time by Model with the grammar of the DSL.
+ * Writes one model class per entity with typed column accessors, the model
+ * metadata and the query methods that the schema enumerates, plus bootstrap.php,
+ * which registers the classes. The query methods are the condition method of
+ * every column and the tuple method of every key prefix of two or more columns,
+ * the column methods addColumn, removeColumn, groupBy, keyName, orderBy…Asc and
+ * orderBy…Desc, and of a numeric column plus, minus, sum and avg, and forceIndex
+ * of every index. Each runs the chain of its name through Model::__call. Every
+ * other method name, such as an operator chain, a finder or a join, is resolved
+ * at call time by Model with the grammar of the DSL.
  */
 final class Generator
 {
@@ -137,7 +143,47 @@ final class Generator
             }
             $b .= "\n    public function set$p($param \$v): static\n    {\n        return \$this->writeColumn(" . self::str($c['name']) . ", $value);\n    }\n";
         }
-        return $b . "}\n";
+        return $b . self::queryMethods($e) . "}\n";
+    }
+
+    /**
+     * The query methods that the schema enumerates. Each is a typed method whose body runs the chain of its name
+     * through Model::__call, so that a static analyser sees the method and the model resolves it as before.
+     */
+    private static function queryMethods(array $e): string
+    {
+        $methods = [];
+        $chain = static fn(string $name, string $params, string $doc = ''): string => $doc
+            . "    public function $name($params): static\n    {\n        \$this->__call(" . self::str($name) . ", func_get_args());\n        return \$this;\n    }\n";
+        foreach ($e['columns'] as $c) {
+            $p = self::pascal($c['name']);
+            $methods[self::camel($c['name'])] = $chain(self::camel($c['name']), 'mixed $value, mixed ...$compared',
+                "    /** The condition of {$c['name']}: a value, a list, a value function, a model, or a column function and its compared value. */\n");
+            foreach (['addColumn', 'removeColumn', 'groupBy', 'keyName'] as $prefix) {
+                $methods[$prefix . $p] = $chain($prefix . $p, '');
+            }
+            $methods["orderBy{$p}Asc"] = $chain("orderBy{$p}Asc", '\\Polyspec\\Orm\\Func ...$fn');
+            $methods["orderBy{$p}Desc"] = $chain("orderBy{$p}Desc", '\\Polyspec\\Orm\\Func ...$fn');
+            if (RuntimeModel::numeric($c)) {
+                $n = self::type($c) === 'string' ? 'string' : 'int|float';
+                $methods["plus$p"] = $chain("plus$p", "$n \$n");
+                $methods["minus$p"] = $chain("minus$p", "$n \$n");
+                $methods["sum$p"] = $chain("sum$p", '');
+                $methods["avg$p"] = $chain("avg$p", '');
+            }
+        }
+        foreach ([$e['pk'], ...array_values($e['unique']), ...array_values($e['indexes'])] as $columns) {
+            for ($k = 2; $k <= count($columns); $k++) {
+                $name = 'tuple' . implode('With', array_map(self::pascal(...), array_slice($columns, 0, $k)));
+                $methods[$name] ??= $chain($name, 'array $values', '    /** @param list<list<mixed>> $values */' . "\n");
+            }
+        }
+        foreach (array_keys($e['indexes']) as $index) {
+            $name = 'forceIndex' . self::pascal((string) $index);
+            $methods[$name] = $chain($name, '');
+        }
+        ksort($methods, SORT_STRING);
+        return $methods === [] ? '' : "\n" . implode("\n", $methods);
     }
 
     /**

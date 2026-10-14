@@ -61,4 +61,163 @@ final class Logs extends Model
     {
         return $this->writeColumn('note', $v);
     }
+
+    public function addColumnId(): static
+    {
+        $this->__call('addColumnId', func_get_args());
+        return $this;
+    }
+
+    public function addColumnNote(): static
+    {
+        $this->__call('addColumnNote', func_get_args());
+        return $this;
+    }
+
+    public function addColumnTask(): static
+    {
+        $this->__call('addColumnTask', func_get_args());
+        return $this;
+    }
+
+    public function avgId(): static
+    {
+        $this->__call('avgId', func_get_args());
+        return $this;
+    }
+
+    public function forceIndexIxLogsTask(): static
+    {
+        $this->__call('forceIndexIxLogsTask', func_get_args());
+        return $this;
+    }
+
+    public function groupById(): static
+    {
+        $this->__call('groupById', func_get_args());
+        return $this;
+    }
+
+    public function groupByNote(): static
+    {
+        $this->__call('groupByNote', func_get_args());
+        return $this;
+    }
+
+    public function groupByTask(): static
+    {
+        $this->__call('groupByTask', func_get_args());
+        return $this;
+    }
+
+    /** The condition of id: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function id(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('id', func_get_args());
+        return $this;
+    }
+
+    public function keyNameId(): static
+    {
+        $this->__call('keyNameId', func_get_args());
+        return $this;
+    }
+
+    public function keyNameNote(): static
+    {
+        $this->__call('keyNameNote', func_get_args());
+        return $this;
+    }
+
+    public function keyNameTask(): static
+    {
+        $this->__call('keyNameTask', func_get_args());
+        return $this;
+    }
+
+    public function minusId(int|float $n): static
+    {
+        $this->__call('minusId', func_get_args());
+        return $this;
+    }
+
+    /** The condition of note: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function note(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('note', func_get_args());
+        return $this;
+    }
+
+    public function orderByIdAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByIdAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByIdDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByIdDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByNoteAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByNoteAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByNoteDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByNoteDesc', func_get_args());
+        return $this;
+    }
+
+    public function orderByTaskAsc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByTaskAsc', func_get_args());
+        return $this;
+    }
+
+    public function orderByTaskDesc(\Polyspec\Orm\Func ...$fn): static
+    {
+        $this->__call('orderByTaskDesc', func_get_args());
+        return $this;
+    }
+
+    public function plusId(int|float $n): static
+    {
+        $this->__call('plusId', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnId(): static
+    {
+        $this->__call('removeColumnId', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnNote(): static
+    {
+        $this->__call('removeColumnNote', func_get_args());
+        return $this;
+    }
+
+    public function removeColumnTask(): static
+    {
+        $this->__call('removeColumnTask', func_get_args());
+        return $this;
+    }
+
+    public function sumId(): static
+    {
+        $this->__call('sumId', func_get_args());
+        return $this;
+    }
+
+    /** The condition of task: a value, a list, a value function, a model, or a column function and its compared value. */
+    public function task(mixed $value, mixed ...$compared): static
+    {
+        $this->__call('task', func_get_args());
+        return $this;
+    }
 }
