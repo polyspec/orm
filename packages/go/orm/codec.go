@@ -16,6 +16,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/goccy/go-yaml/ast"
+	yamlparser "github.com/goccy/go-yaml/parser"
+	"github.com/goccy/go-yaml/token"
 	orderedjson "github.com/polyspec/ordered-json/packages/ordered-json-go"
 	"github.com/polyspec/orm/engine/ir"
 	"github.com/polyspec/orm/engine/plan"
@@ -222,32 +225,43 @@ func NormalizeStyled(styles []string, nullable bool, v StyledValue) (StyledValue
 	return Decode(styles, stored)
 }
 
+// yamlDecode reads one YAML 1.2 document. goccy/go-yaml reads U+0085 as content, as YAML 1.2
+// rules (5.4), where yaml.v3 reads it as a line break; its AST keeps each scalar's source text
+// and style, so the plain scalars resolve by the core schema below.
 func yamlDecode(b []byte) (any, error) {
-	dec := goyaml.NewDecoder(bytes.NewReader(b))
-	var doc goyaml.Node
-	if err := dec.Decode(&doc); err != nil {
+	file, err := yamlparser.ParseBytes(b, 0)
+	if err != nil {
 		return nil, codecErr(CodeCodecDecode, "yaml: %v", err)
 	}
-	var extra goyaml.Node
-	if err := dec.Decode(&extra); err != io.EOF {
-		if err == nil {
-			return nil, codecErr(CodeCodecDecode, "yaml: multiple documents are not supported")
+	switch len(file.Docs) {
+	case 0:
+		return nil, codecErr(CodeCodecDecode, "yaml: no document")
+	case 1:
+	default:
+		return nil, codecErr(CodeCodecDecode, "yaml: multiple documents are not supported")
+	}
+	if doc := file.Docs[0]; doc.Body == nil {
+		// A stream without content has no document; `---` alone is a null document.
+		if doc.Start == nil {
+			return nil, codecErr(CodeCodecDecode, "yaml: no document")
 		}
-		return nil, codecErr(CodeCodecDecode, "yaml: %v", err)
+		return nil, nil
 	}
-	return yamlNode(&doc)
+	return yamlNode(file.Docs[0].Body)
 }
 
-func yamlNode(node *goyaml.Node) (any, error) {
-	switch node.Kind {
-	case goyaml.DocumentNode:
-		if len(node.Content) != 1 {
-			return nil, codecErr(CodeCodecDecode, "yaml: document must contain one value")
-		}
-		return yamlNode(node.Content[0])
-	case goyaml.SequenceNode:
-		out := make([]any, len(node.Content))
-		for i, item := range node.Content {
+func yamlLine(node ast.Node) int {
+	if t := node.GetToken(); t != nil && t.Position != nil {
+		return t.Position.Line
+	}
+	return 0
+}
+
+func yamlNode(node ast.Node) (any, error) {
+	switch n := node.(type) {
+	case *ast.SequenceNode:
+		out := make([]any, len(n.Values))
+		for i, item := range n.Values {
 			var err error
 			out[i], err = yamlNode(item)
 			if err != nil {
@@ -255,53 +269,109 @@ func yamlNode(node *goyaml.Node) (any, error) {
 			}
 		}
 		return out, nil
-	case goyaml.MappingNode:
-		out := make(map[string]any, len(node.Content)/2)
-		for i := 0; i < len(node.Content); i += 2 {
-			key, err := yamlMapKey(node.Content[i])
-			if err != nil {
-				return nil, err
-			}
-			if _, exists := out[key]; exists {
-				return nil, codecErr(CodeCodecDecode, "yaml: duplicate map key %q at line %d", key, node.Content[i].Line)
-			}
-			value, err := yamlNode(node.Content[i+1])
-			if err != nil {
-				return nil, err
-			}
-			out[key] = value
+	case *ast.MappingNode:
+		return yamlMapping(n.Values)
+	case *ast.MappingValueNode:
+		return yamlMapping([]*ast.MappingValueNode{n})
+	case *ast.TagNode:
+		return yamlTagged(n)
+	case *ast.AliasNode:
+		return nil, codecErr(CodeCodecDecode, "yaml: aliases are not supported at line %d", yamlLine(n))
+	case *ast.AnchorNode:
+		return yamlNode(n.Value)
+	case *ast.LiteralNode:
+		return n.Value.Value, nil
+	}
+	if text, plain, ok := yamlScalar(node); ok {
+		if plain {
+			return yamlCoreScalar(text, yamlLine(node))
 		}
-		return out, nil
-	case goyaml.ScalarNode:
-		if yamlPlainUntagged(node) {
-			return yamlCoreScalar(node)
+		return text, nil
+	}
+	return nil, codecErr(CodeCodecDecode, "yaml: node %s at line %d is not supported", node.Type(), yamlLine(node))
+}
+
+func yamlMapping(values []*ast.MappingValueNode) (map[string]any, error) {
+	out := make(map[string]any, len(values))
+	for _, item := range values {
+		key, err := yamlMapKey(item.Key)
+		if err != nil {
+			return nil, err
 		}
-		switch node.Tag {
-		case "!!null":
-			return nil, nil
-		case "!!bool":
-			return strings.EqualFold(node.Value, "true"), nil
-		case "!!int":
-			var value int64
-			if err := node.Decode(&value); err != nil {
-				return nil, codecErr(CodeCodecDecode, "yaml: integer at line %d: %v", node.Line, err)
-			}
-			return value, nil
-		case "!!float":
-			var value float64
-			if err := node.Decode(&value); err != nil || math.IsNaN(value) || math.IsInf(value, 0) {
-				return nil, codecErr(CodeCodecDecode, "yaml: non-finite or invalid float at line %d", node.Line)
-			}
-			return value, nil
-		case "!!str":
-			return node.Value, nil
-		default:
-			return nil, codecErr(CodeCodecDecode, "yaml: tag %q at line %d", node.Tag, node.Line)
+		if _, exists := out[key]; exists {
+			return nil, codecErr(CodeCodecDecode, "yaml: duplicate map key %q at line %d", key, yamlLine(item.Key))
 		}
-	case goyaml.AliasNode:
-		return nil, codecErr(CodeCodecDecode, "yaml: aliases are not supported at line %d", node.Line)
+		value, err := yamlNode(item.Value)
+		if err != nil {
+			return nil, err
+		}
+		out[key] = value
+	}
+	return out, nil
+}
+
+// yamlScalar returns a scalar's text and whether it is plain, whose tag the reader resolves.
+// The AST types goccy/go-yaml gives plain scalars follow its own resolution, so only the
+// source text and the style are used.
+func yamlScalar(node ast.Node) (string, bool, bool) {
+	switch n := node.(type) {
+	case *ast.LiteralNode:
+		return n.Value.Value, false, true
+	case ast.ScalarNode:
+		t := n.GetToken()
+		if t == nil {
+			return "", false, false
+		}
+		switch t.Type {
+		case token.SingleQuoteType, token.DoubleQuoteType:
+			return t.Value, false, true
+		}
+		return t.Value, true, true
+	}
+	return "", false, false
+}
+
+// yamlTagged reads a scalar with an explicit tag of the core schema; every other tag is refused.
+func yamlTagged(n *ast.TagNode) (any, error) {
+	line := yamlLine(n)
+	text, _, ok := yamlScalar(n.Value)
+	if !ok {
+		return nil, codecErr(CodeCodecDecode, "yaml: tag %q at line %d", n.Start.Value, line)
+	}
+	switch n.Start.Value {
+	case "!!null":
+		return nil, nil
+	case "!!bool":
+		switch value, err := yamlCoreScalar(text, line); v := value.(type) {
+		case bool:
+			return v, err
+		}
+		return nil, codecErr(CodeCodecDecode, "yaml: boolean %q at line %d", text, line)
+	case "!!int":
+		value, err := yamlCoreScalar(text, line)
+		if err != nil {
+			return nil, err
+		}
+		if v, ok := value.(int64); ok {
+			return v, nil
+		}
+		return nil, codecErr(CodeCodecDecode, "yaml: integer %q at line %d", text, line)
+	case "!!float":
+		value, err := yamlCoreScalar(text, line)
+		if err != nil {
+			return nil, err
+		}
+		switch v := value.(type) {
+		case int64:
+			return float64(v), nil
+		case float64:
+			return v, nil
+		}
+		return nil, codecErr(CodeCodecDecode, "yaml: non-finite or invalid float at line %d", line)
+	case "!!str":
+		return text, nil
 	default:
-		return nil, codecErr(CodeCodecDecode, "yaml: node kind %d is not supported", node.Kind)
+		return nil, codecErr(CodeCodecDecode, "yaml: tag %q at line %d", n.Start.Value, line)
 	}
 }
 
@@ -310,18 +380,10 @@ var (
 	yamlCoreFloat = regexp.MustCompile(`^(?:[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))$`)
 )
 
-// yamlPlainUntagged reports a plain scalar without an explicit tag, whose tag the reader
-// resolves. yaml.v3 resolves such a scalar by its own YAML 1.1 rules (`0b101`, `+0x1`,
-// `1_000` and timestamps), so its Tag is not used.
-func yamlPlainUntagged(node *goyaml.Node) bool {
-	return node.Style&(goyaml.TaggedStyle|goyaml.DoubleQuotedStyle|goyaml.SingleQuotedStyle|goyaml.LiteralStyle|goyaml.FoldedStyle) == 0
-}
-
 // yamlCoreScalar resolves a plain scalar by the tags of the YAML 1.2 core schema (YAML 1.2.2,
 // 10.3.2): null, bool, int and float by their regular expressions, and str otherwise. An
 // integer outside int64 and a float that is not finite are outside the common value model.
-func yamlCoreScalar(node *goyaml.Node) (any, error) {
-	text := node.Value
+func yamlCoreScalar(text string, line int) (any, error) {
 	switch text {
 	case "", "~", "null", "Null", "NULL":
 		return nil, nil
@@ -343,48 +405,47 @@ func yamlCoreScalar(node *goyaml.Node) (any, error) {
 			value, err = strconv.ParseInt(text, 10, 64)
 		}
 		if err != nil {
-			return nil, codecErr(CodeCodecDecode, "yaml: integer %s at line %d is outside the int64 range", text, node.Line)
+			return nil, codecErr(CodeCodecDecode, "yaml: integer %s at line %d is outside the int64 range", text, line)
 		}
 		return value, nil
 	case yamlCoreFloat.MatchString(text):
 		value, err := strconv.ParseFloat(text, 64)
 		if err != nil || math.IsNaN(value) || math.IsInf(value, 0) {
-			return nil, codecErr(CodeCodecDecode, "yaml: non-finite or invalid float %s at line %d", text, node.Line)
+			return nil, codecErr(CodeCodecDecode, "yaml: non-finite or invalid float %s at line %d", text, line)
 		}
 		return value, nil
 	}
 	return text, nil
 }
 
-func yamlMapKey(node *goyaml.Node) (string, error) {
-	if node.Kind != goyaml.ScalarNode {
-		return "", codecErr(CodeCodecDecode, "yaml: map keys must be scalar strings at line %d", node.Line)
-	}
-	if yamlPlainUntagged(node) {
-		value, err := yamlCoreScalar(node)
-		if err != nil {
-			return "", err
-		}
-		switch v := value.(type) {
-		case string:
-			return v, nil
-		case int64:
-			return strconv.FormatInt(v, 10), nil
-		}
-		return "", codecErr(CodeCodecDecode, "yaml: map keys must be strings or integers at line %d", node.Line)
-	}
-	switch node.Tag {
-	case "!!str":
-		return node.Value, nil
-	case "!!int":
-		var value int64
-		if err := node.Decode(&value); err != nil {
-			return "", codecErr(CodeCodecDecode, "yaml: map key integer at line %d: %v", node.Line, err)
-		}
-		return strconv.FormatInt(value, 10), nil
+func yamlMapKey(node ast.Node) (string, error) {
+	line := yamlLine(node)
+	var value any
+	var err error
+	switch n := node.(type) {
+	case *ast.TagNode:
+		value, err = yamlTagged(n)
 	default:
-		return "", codecErr(CodeCodecDecode, "yaml: map keys must be strings or integers at line %d", node.Line)
+		text, plain, ok := yamlScalar(node)
+		switch {
+		case !ok:
+			return "", codecErr(CodeCodecDecode, "yaml: map keys must be scalar strings at line %d", line)
+		case plain:
+			value, err = yamlCoreScalar(text, line)
+		default:
+			value = text
+		}
 	}
+	if err != nil {
+		return "", err
+	}
+	switch v := value.(type) {
+	case string:
+		return v, nil
+	case int64:
+		return strconv.FormatInt(v, 10), nil
+	}
+	return "", codecErr(CodeCodecDecode, "yaml: map keys must be strings or integers at line %d", line)
 }
 
 // ---- PHP serialize format ----

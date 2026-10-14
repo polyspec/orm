@@ -48,8 +48,6 @@ $phpExclusions = [
     // below does not tell 777 from 777.0, so the vector is listed by name.
     'yaml_core/leading_zero_int' => 'purrphp/yaml 1.0.0 CoreSchema reads 0777 as the float 777.0, not the integer 777',
 ];
-// The vectors the Go runner skips (goCodecExclusions in packages/go/orm/codec_test.go), so go.json lacks them.
-$goExclusions = ['yaml_core/next_line' => 'T142-2: the yaml.v3 scanner reads U+0085 as a line break'];
 testcase_begin('codec/php-vectors', TESTCASE_COMPUTE);
 foreach ($vectors as $v) {
     if (isset($phpExclusions[$v['name']])) {
@@ -128,8 +126,8 @@ foreach (['go', 'rust', 'typescript'] as $lang) {
     $langs++;
     $outs = json_decode(file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
     foreach ($vectors as $v) {
-        // PHP cannot read these vectors yet, and Go skips its own exclusions (codec_test.go).
-        $skip = $phpExclusions[$v['name']] ?? ($lang === 'go' ? ($goExclusions[$v['name']] ?? null) : null);
+        // PHP cannot read these vectors yet.
+        $skip = $phpExclusions[$v['name']] ?? null;
         if ($skip !== null) {
             fwrite(STDERR, "skipped $lang → php {$v['name']}: $skip\n");
             continue;

@@ -3,7 +3,6 @@
 # 같은 검사). 실행: python packages/python/tests/codec_vector.py
 import base64
 import json
-import sys
 import unittest
 from pathlib import Path
 
@@ -42,12 +41,6 @@ def stages_of(styles):
     return ['ordered_json' if style in ('json', 'jsons') else style for style in styles]
 
 
-# The vectors Python does not yet read, each with its checklist item; each is printed when skipped.
-PYTHON_EXCLUSIONS = {
-    'yaml_core/next_line': 'T142-2: the PyYAML scanner reads U+0085 as a line break',
-}
-
-
 class CodecVectorTest(unittest.TestCase):
     def test_vectors(self):
         with open(ROOT / 'tests' / 'codec' / 'vectors.json', encoding='utf-8') as handle:
@@ -57,9 +50,6 @@ class CodecVectorTest(unittest.TestCase):
             raw = None if vector['encoded_b64'] is None else base64.b64decode(
                 vector['encoded_b64'])
             name = vector['name']
-            if name in PYTHON_EXCLUSIONS:
-                print(f'skipped {name}: {PYTHON_EXCLUSIONS[name]}', file=sys.stderr)
-                continue
             try:
                 decoded = decode(stages_of(vector['styles']), raw)
             except Exception as error:

@@ -18,7 +18,8 @@ dependencies = [
     # psycopg[binary]==3.3.6과 같은 설치: extra binary가 psycopg-binary==3.3.6을 요구한다.
     "psycopg==3.3.6",
     "psycopg-binary==3.3.6",
-    "PyYAML==6.0.3",
+    "rapidyaml==0.15.2",
+    "ruamel.yaml==0.19.1",
 ]
 
 [project.scripts]
