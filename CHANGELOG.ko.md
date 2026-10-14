@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ec1283c5742433a8eec69f430a2bbeac05eb4edb18d8b1a2474dd8333fbc3b8d -->
+<!-- source-sha256: dcb48634b6340386f085b5186b3ce1bc33ebc3d671f401cc236bba742ce8ca9e -->
 # 변경 이력
 
 ## Unreleased
+
+## 0.0.16
 
 - PHP test는 개발 root(vendor-php)의 PHPUnit으로 실행하고, 릴리스되는 polyspec/orm과 polyspec/orm-dbspec의 composer.json은 다시 repositories, 개발 의존성, platform 설정을 선언하지 않는다. (#T148-1-1)
 - review 기록이 PHP orm-gen scan이 요구하는 nikic/php-parser를 적는다. (#T172-1)
