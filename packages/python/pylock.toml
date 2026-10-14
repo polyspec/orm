@@ -133,8 +133,8 @@ wheels = [{ url = "https://files.pythonhosted.org/packages/63/34/ba1c580383c9ead
 
 [[packages]]
 name = "polyspec-ordered-json"
-version = "0.0.8"
-archive = { url = "https://github.com/polyspec/ordered-json/releases/download/v0.0.8/polyspec_ordered_json-0.0.8-py3-none-any.whl", hashes = { sha256 = "db981125f5ed860ebe242e6afd18015c7cc29719b0ab200ceed44aedefec645a" } }
+version = "0.0.9"
+archive = { url = "https://github.com/polyspec/ordered-json/releases/download/v0.0.9/polyspec_ordered_json-0.0.9-py3-none-any.whl", hashes = { sha256 = "bc4d26a9d5dcd42a72d7bb40f6b7c7dc749c710d3c60f2e9f4fe3e733102f01d" } }
 
 [[packages]]
 name = "psycopg"

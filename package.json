@@ -32,7 +32,7 @@
     "vitepress": "1.6.4"
   },
   "overrides": {
-    "@polyspec/ordered-json": "https://github.com/polyspec/ordered-json/releases/download/v0.0.8/polyspec-ordered-json-npm-0.0.8.tgz",
+    "@polyspec/ordered-json": "https://github.com/polyspec/ordered-json/releases/download/v0.0.9/polyspec-ordered-json-npm-0.0.9.tgz",
     "vite": "^7.0.0"
   }
 }

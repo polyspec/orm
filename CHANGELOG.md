@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Every client requires ordered-json 0.0.9; the Go client imports it from its module path github.com/polyspec/ordered-json/packages/go. (#T178)
+
 ## 0.0.17
 
 - The package check gives the external crate of the Rust client its lock, so it builds offline from the fetched git revisions. (#T177-1)
