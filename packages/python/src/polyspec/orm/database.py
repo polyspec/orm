@@ -469,6 +469,10 @@ class _SqliteConnection:
                                  and not match.group(2).isdigit()):
                 raise OrmError('CONFIG', f'sqlite DSN _pragma {value} is invalid')
             pragmas.append(f'PRAGMA {match.group(1)} = {match.group(2)}')
+        # sqlite3가 link한 SQLite library의 version이다. 연결은 그것을 묻는 statement를 보내지 않는다.
+        version = sqlite3.sqlite_version
+        if tuple(int(part) for part in version.split('.')[:2]) < (3, 46):
+            raise OrmError('CAPABILITY_UNSUPPORTED', f'SQLite {version} is older than 3.46')
         # 연결을 여는 driver 오류도 statement의 오류처럼 ORM 오류다.
         try:
             self.connection = sqlite3.connect(path, timeout=SQLITE_BUSY_TIMEOUT_MS / 1000,
