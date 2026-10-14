@@ -1167,7 +1167,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "aes-gcm",
  "base64",
@@ -1200,7 +1200,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-build"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "bigdecimal",
  "futures-util",
@@ -1222,7 +1222,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-case-clock"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "polyspec-orm-testcase",
  "rustix",
@@ -1230,7 +1230,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-case-database"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "polyspec-orm",
  "polyspec-orm-testcase",
@@ -1241,7 +1241,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-schema"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "polyspec-orm-case-clock",
  "polyspec-orm-testcase",
@@ -1254,14 +1254,14 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-testcase"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "tokio",
 ]
 
 [[package]]
 name = "polyspec-orm-tests"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "chrono",
  "polyspec-orm",
@@ -1533,9 +1533,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.45"
+version = "0.23.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d41d731c7d2f962d1ccc364cec258de3c0e93b38c2fb3ba97ac74513048d634"
+checksum = "48e13bd8c0e9365c43cfa5c9e8f9ad49d3c8444926c9aac819e0e4dc503c8fdf"
 dependencies = [
  "once_cell",
  "ring",

@@ -1,6 +1,6 @@
 {
   "name": "@polyspec/dbspec-lsp",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "description": "The dbspec language server: diagnostics, semantic tokens, folding and formatting from @polyspec/dbspec-language over the Language Server Protocol",
   "license": "MIT",
   "type": "module",
@@ -26,7 +26,7 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@polyspec/dbspec-language": "0.0.14",
+    "@polyspec/dbspec-language": "0.0.15",
     "vscode-languageserver": "10.1.2",
     "vscode-languageserver-textdocument": "1.0.15"
   },

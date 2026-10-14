@@ -3,6 +3,10 @@
 
 ## Unreleased
 
+## 0.0.15
+
+- make release-consumer-lock runs with npm's allow-remote=root, as the consumer install does, since the consumer lock resolves the URL of @polyspec/ordered-json. (#T171)
+- rustls is 0.23.46 in the Rust locks, for the advisories RUSTSEC-2026-0346 to RUSTSEC-2026-0349 of 0.23.45. (#T171)
 - Generated TypeScript models import only the runtime names they use and declare the chain methods as class fields instead of a merged interface. (#T170)
 - Generated Rust models carry no allow attribute: mut v only where a conversion takes the value, and a Default impl beside the no-argument new. (#T137-1-3-1)
 - make run-databases TARGETS=conformance-check VECTOR="..." runs the named conformance vectors on the provisioned bench databases, and RECORD=1 records a full run; RECORD with VECTOR is refused. The conformance README describes five clients. (#T169-2)
