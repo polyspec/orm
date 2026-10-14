@@ -1038,7 +1038,8 @@ markdown-conformance-check/typescript: lease-tool
 	$(TSC_BUILD)
 	FLOWMARK=$(FLOWMARK) node --conditions=orm-test packages/ts/tests/markdown_conformance.mjs
 
-decimal-bench-sqlite: lease-tool
+decimal-bench-sqlite: typescript-build
+	$(READ_TYPESCRIPT)
 	node scripts/decimal-bench-sqlite.mts
 
 # decimal-physical-check의 case는 owner process마다 기한(scripts/physical.mts의 TIMEOUT_MS)을 가진다. 그 process가

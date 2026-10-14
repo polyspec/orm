@@ -11,7 +11,7 @@ SELECT 'author-' || i, 'desc-' || i || ' ' || repeat('x', 200),
   i % 7 = 0, i % 3 <> 0, '2026-01-01', '2027-01-01', i % 2 = 1,
   2, i % 7, i % 11, i % 1000, 'https://cdn/' || i || '.jpg', i % 5000 + 1, i % 100 + 1,
   i % 10 + 1, i % 5000 + 1, '2026-06-01', '2026-12-31', gen_random_uuid()::text, i % 4 = 0, i % 97,
-  1, NULL, NULL, NULL, NULL   -- encrypted and blind-index values are filled by seedaes
+  1, NULL, NULL, NULL, NULL   -- scripts/bench-db.mts fills the encrypted and blind-index values
 FROM generate_series(1, 100000) AS s(i);
 SELECT setval(pg_get_serial_sequence('"user"', 'seq'), (SELECT MAX("seq") FROM "user"));
 SELECT setval(pg_get_serial_sequence('"service"', 'seq'), (SELECT MAX("seq") FROM "service"));

@@ -31,19 +31,16 @@ function sqlite(path: string, sql: { file: string } | { query: string }): string
     if (fd !== undefined) closeSync(fd);
   }
 }
-const goRun = (...args: string[]) => {
-  const result = spawnSync(process.execPath, [join(root, 'tests/go-run.mts'), ...args], { cwd: root, stdio: ['ignore', 'inherit', 'inherit'] });
-  if (result.status !== 0) fail(`decimal-bench-sqlite: tests/go-run.mts ${args.join(' ')} exited with ${result.status ?? result.signal ?? 'no status'}`);
-};
 if (!existsSync(database)) {
   // The database is built in a temporary file and linked into place only when complete; mv -n of the shell script is a
   // link that fails when the database already exists, and the temporary file is removed in every case.
   const directory = mkdtempSync(join(runtime, 'decimal-bench.'));
   const temporary = join(directory, 'bench.sqlite');
   try {
-    goRun('bench-install', './bench/install', '-dsn', `sqlite://${temporary}`);
-    sqlite(temporary, { file: join(root, 'bench/sql/seed.sqlite.sql') });
-    goRun('bench-seedaes', './bench/seedaes', '-driver', 'sqlite', '-dsn', `file:${temporary}`);
+    // scripts/bench-db.mts installs, seeds and fills the AES columns, as it does for the bench database of a run.
+    const seeded = spawnSync(process.execPath, [join(root, 'scripts/bench-db.mts'), 'sqlite'], { cwd: root, stdio: ['ignore', 'inherit', 'inherit'],
+      env: { ...process.env, BENCH_SQLITE_DSN: `sqlite://${temporary}` } });
+    if (seeded.status !== 0) fail(`decimal-bench-sqlite: scripts/bench-db.mts sqlite exited with ${seeded.status ?? seeded.signal ?? 'no status'}`);
     try { linkSync(temporary, database); } catch (error) { if (!existsSync(database)) throw error; }
     unlinkSync(temporary);
   } finally {

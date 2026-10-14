@@ -93,8 +93,9 @@ export const stepCondition = (id: string): string => STEP_OUTPUT[id]
 
 // SETUP_NEEDS는 runner의 setup 단계가 마련하는 need마다 그 단계 자신이 필요로 하는 need다. databases는 setup 단계
 // servers와 databases/create(scripts/check/databases.mts)가 마련한다: server는 make test-servers가 server-programs의
-// program으로 시작하고, databases.mts는 bench database를 Go program으로(scripts/bench-db.mts),
-// decimal database를 TypeScript client의 decimal model로 설치하며, make databases-create가 그 client를 build한다. 그래서 databases가 필요한 target은 이 need도 필요하다(expandNeeds).
+// program으로 시작하고 Go로 build한 lease와 stop-process 도구로 관리하며, databases.mts는 bench database(scripts/bench-db.mts)와
+// decimal database를 TypeScript client로 설치하고, make databases-create가 그 client를 build한다. 그래서 databases가
+// 필요한 target은 이 need도 필요하다(expandNeeds).
 // php-min은 그 release를 scripts/php/php-min.mts로 읽고, 그 script는 composer.json을 schema로 읽으므로 node_modules가 필요하다.
 export const SETUP_NEEDS: Record<string, string[]> = { databases: ['go', 'node-modules', 'server-programs'], 'php-min': ['node-modules'] };
 
