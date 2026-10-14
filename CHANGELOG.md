@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Every client refuses a YAML anchor with or without an alias, every explicit tag including the core tags, and a text with no document, as docs/codec.md now states. (#T142-9)
 - Go reads YAML with goccy/go-yaml and Python with rapidyaml, both keeping U+0085 as content; Python writes with ruamel.yaml, and PyYAML is removed. The next_line exclusions are gone. (#T142-2)
 - The PHP client reads YAML with purrphp/yaml and its core schema, so 1_000, dates and timestamps stay strings as in every other client. orm refuses documents, aliases, anchors, tags, merge keys and duplicate keys on its node model. Two vectors stay excluded for purrphp defects, tracked by T142-1-1. (#T142-1)
 - The Rust workspaces deny unsafe code and allow attributes without a reason. The planner's lifetime transmute is removed, the thread CPU clock reads through rustix, and only the SQLite authorizer callback keeps unsafe code, with its reason. (#T137-1-3)
