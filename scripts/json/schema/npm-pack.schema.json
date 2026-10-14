@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "The output of npm pack --json",
+  "description": "The packages that npm pack writes, as an array (npm 11) or as an object keyed by package name (npm 12): the name, version and files of each. npm writes the other fields, which this schema leaves open.",
+  "oneOf": [
+    { "type": "array", "items": { "$ref": "#/$defs/pack" } },
+    { "type": "object", "additionalProperties": { "$ref": "#/$defs/pack" } }
+  ],
+  "$defs": {
+    "pack": {
+      "type": "object",
+      "required": ["name", "version", "files"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "files": { "type": "array", "items": { "type": "object", "required": ["path"], "properties": { "path": { "type": "string" } } } }
+      }
+    }
+  }
+}

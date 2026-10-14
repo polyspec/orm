@@ -22,7 +22,7 @@ caseTest('countDifferences compares counts by lower case name', COMPUTE, () => {
   ]);
 });
 
-// The real server case copies test-servers.sh of this checkout to a short temporary root (the script finds its servers from
+// The real server case copies test-servers.mts of this checkout to a short temporary root (the script finds its servers from
 // its own folder), initializes the MySQL primary and
 // replica with the platform's default lower_case_table_names (2 on macOS, 0 on Linux), then migrates them to the declared
 // 1. The root lives under /tmp so the socket paths fit the platform limit.
@@ -31,26 +31,26 @@ const platformDefault = process.platform === 'darwin' ? 2 : 0;
 
 function fixture(mysqlPort: number, replicaPort: number) {
   const root = mkdtempSync('/tmp/orm-mig-');
-  for (const file of ['scripts/test-servers.sh']) {
+  for (const file of ['scripts/test-servers.mts']) {
     mkdirSync(join(root, file, '..'), { recursive: true });
     copyFileSync(join(repository, file), join(root, file));
   }
-  const declared = readFileSync(join(root, 'scripts/test-servers.sh'), 'utf8');
-  assert.match(declared, /^MYSQL_LOWER_CASE=1$/m);
-  writeFileSync(join(root, 'scripts/earlier-servers.sh'), declared.replace(/^MYSQL_LOWER_CASE=1$/m, `MYSQL_LOWER_CASE=${platformDefault}`));
+  const declared = readFileSync(join(root, 'scripts/test-servers.mts'), 'utf8');
+  assert.match(declared, /^export const MYSQL_LOWER_CASE = 1;$/m);
+  writeFileSync(join(root, 'scripts/earlier-servers.mts'), declared.replace(/^export const MYSQL_LOWER_CASE = 1;$/m, `export const MYSQL_LOWER_CASE = ${platformDefault};`));
   mkdirSync(join(root, '.runtime/servers'), { recursive: true });
-  execFileSync('sh', [join(root, 'scripts/earlier-servers.sh'), 'mysql-start', String(mysqlPort), String(replicaPort)], { stdio: 'ignore' });
+  execFileSync(process.execPath, [join(root, 'scripts/earlier-servers.mts'), 'mysql-start', String(mysqlPort), String(replicaPort)], { stdio: 'ignore' });
   const sql = (port: number, statements: string) => execFileSync('mysql', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', String(port), '-u', 'root', '-N', '-B', '-e', statements], { encoding: 'utf8' });
   return {
     root,
     sql,
     leases: join(root, '.runtime/servers.leases'),
     // The migration takes every path as an argument, so the script of the checkout runs, with the modules it imports.
-    migrate: () => spawnSync('node', [join(repository, 'scripts/test-servers-mysql.mts'), join(root, 'scripts/test-servers.sh'), join(root, '.runtime/servers'), String(mysqlPort), String(replicaPort), '1'],
+    migrate: () => spawnSync('node', [join(repository, 'scripts/test-servers-mysql.mts'), join(root, 'scripts/test-servers.mts'), join(root, '.runtime/servers'), String(mysqlPort), String(replicaPort), '1'],
       { encoding: 'utf8', env: isolatedEnvironment({ LEASE: process.env.LEASE ?? '', LEASES: join(root, '.runtime/servers.leases') }) }),
     close: () => {
-      spawnSync('sh', [join(root, 'scripts/test-servers.sh'), 'mysql-stop'], { stdio: 'ignore' });
-      // Only stop removes the socket directory that mysql-start made (SOCKET_DIR of test-servers.sh), so it is removed here.
+      spawnSync(process.execPath, [join(root, 'scripts/test-servers.mts'), 'mysql-stop'], { stdio: 'ignore' });
+      // Only stop removes the socket directory that mysql-start made (the socket folder of test-servers.mts), so it is removed here.
       spawnSync('sh', ['-c', 'cd "$1" && rm -rf "/tmp/orm-servers-$(pwd | tr -d \'\\n\' | cksum | cut -d \' \' -f 1)"', 'sh', root], { stdio: 'ignore' });
       rmSync(root, { recursive: true, force: true });
     },

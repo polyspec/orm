@@ -26,6 +26,8 @@ import { makeRecipes } from '../repo/testcases.mts';
 import { NEEDS } from '../check/ci-setup.mts';
 import { runStep } from '../check/step.mts';
 import { missingDownloads } from '../check/downloads.mts';
+import { environmentFile } from '../check/databases.mts';
+export { environmentFile };
 import { minimatch } from 'minimatch';
 import { CHECK_INPUTS_SCHEMA, readCheckInputs, type PathDeclaration, type TargetDeclaration } from '../check/inputs.mts';
 import { parseFeatures, readFeatures, type FeatureManifest } from './manifest.mts';
@@ -310,22 +312,15 @@ export function usesTestEnv(makefile: string, target: string): boolean {
   return makeRecipes(makefile).some(unit => unit.name === `Makefile ${target}` && unit.commands.some((command: string) => command.includes('$(WITH_TEST_ENV)')));
 }
 
-// environmentFile은 scripts/check/databases.sh가 쓴 환경 file(`export NAME='value'` 줄)의 변수다. 다른 형식의
-// 줄은 오류다.
-export function environmentFile(text: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const line of text.split('\n').filter((line: string) => line.trim() !== '')) {
-    const match = /^export ([A-Z_][A-Z0-9_]*)='([^']*)'$/.exec(line);
-    if (!match) throw new Error(`unexpected environment line: ${line}`);
-    out[match[1] ?? ''] = match[2] ?? '';
-  }
-  return out;
+// script는 node로 TypeScript script를 실행하고 출력 줄을 step으로 내보낸다.
+function script(root: string, args: string[], context: { step: Step }): Promise<void> {
+  return child(root, process.execPath, args, context);
 }
 
-// shell은 sh로 script를 실행하고 출력 줄을 step으로 내보낸다.
-function shell(root: string, args: string[], { step }: { step: Step }): Promise<void> {
+// child는 program을 실행하고 출력 줄을 step으로 내보낸다.
+function child(root: string, program: string, args: string[], { step }: { step: Step }): Promise<void> {
   return new Promise<void>((resolveRun, rejectRun) => {
-    const child = spawn('sh', args, { cwd: root, env: process.env });
+    const child = spawn(program, args, { cwd: root, env: process.env });
     const lines = stepLines(step);
     child.stdout.on('data', (chunk: Buffer) => lines.write(String(chunk)));
     child.stderr.on('data', (chunk: Buffer) => lines.write(String(chunk)));
@@ -333,7 +328,7 @@ function shell(root: string, args: string[], { step }: { step: Step }): Promise<
     child.on('close', code => {
       lines.flush();
       if (code === 0) resolveRun();
-      else rejectRun(new Error(`sh ${args.join(' ')} exited with ${code}`));
+      else rejectRun(new Error(`${program} ${args.join(' ')} exited with ${code}`));
     });
   });
 }
@@ -389,7 +384,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     }
     let failed = 0;
     // 기능, helper, server 환경을 읽는 make target은 이 실행의 자기 bench database와 decimal database를
-    // 쓴다(scripts/check/databases.sh, make check와 같은 것). 함께 쓰는 bench나 decimal database는 없다.
+    // 쓴다(scripts/check/databases.mts, make check와 같은 것). 함께 쓰는 bench나 decimal database는 없다.
     // 만든 database는 끝에 지운다.
     const makefile = readFileSync(resolve(root, 'Makefile'), 'utf8');
     const needsDatabases = owners.length > 0 || helpers.length > 0 || targets.some(({ target }) => usesTestEnv(makefile, target));
@@ -401,10 +396,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
       const directory = resolve(root, '.runtime/check', name);
       databases = { servers, name, directory };
       const created = await runGroup('owners/databases/create', context =>
-        shell(root, ['scripts/check/databases.sh', 'create', servers, directory, name], context));
+        child(root, 'make', ['-s', 'databases-create', `SERVERS=${servers}`, `DIRECTORY=${directory}`, `NAME=${name}`], context));
       if (!created) {
         failed++;
-        await runGroup('owners/databases/drop', context => shell(root, ['scripts/check/databases.sh', 'drop', servers, directory, name], context));
+        await runGroup('owners/databases/drop', context => script(root, ['scripts/check/databases.mts', 'drop', servers, directory, name], context));
         console.log('owners: the databases of this run could not be created');
         process.exit(1);
       }
@@ -442,7 +437,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     }
     const made = databases;
     if (made && !(await runGroup('owners/databases/drop', context =>
-      shell(root, ['scripts/check/databases.sh', 'drop', made.servers, made.directory, made.name], context)))) failed++;
+      script(root, ['scripts/check/databases.mts', 'drop', made.servers, made.directory, made.name], context)))) failed++;
     if (failed) {
       console.log(`owners: ${failed} step(s) failed`);
       process.exitCode = 1;

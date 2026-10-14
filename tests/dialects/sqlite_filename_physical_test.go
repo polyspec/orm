@@ -15,7 +15,7 @@ import (
 	"github.com/polyspec/orm/internal/testcase"
 )
 
-// sqliteQuery is the query part of the BENCH_SQLITE_DSN that test-servers.sh
+// sqliteQuery is the query part of the BENCH_SQLITE_DSN that scripts/check/databases.mts
 // writes.
 const sqliteQuery = "?_pragma=busy_timeout(5000)&timezone=%2B00:00"
 

@@ -47,3 +47,11 @@ export type CargoMessage = {
 };
 /** parseCargoMessage reads one line of cargo --message-format=json; source names it in the errors. */
 export const parseCargoMessage = (line: string, source: string): CargoMessage => parseJson<CargoMessage>(line, schema('cargo-message'), source);
+
+/** One package of npm pack --json. */
+export type NpmPack = { name: string; version: string; files: { path: string }[] };
+/** parseNpmPack reads the output of npm pack --json, an array or an object by package name, as its packages. */
+export function parseNpmPack(text: string, source: string): NpmPack[] {
+  const packs = parseJson<NpmPack[] | Record<string, NpmPack>>(text, schema('npm-pack'), source);
+  return Array.isArray(packs) ? packs : Object.values(packs);
+}

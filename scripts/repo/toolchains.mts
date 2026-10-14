@@ -10,7 +10,7 @@ import semver from 'semver';
 import { actionSteps, workflowSteps } from './ci.mts';
 
 // MINIMUM_SCRIPT는 composer.json require.php의 최저 release를 출력하는 script다.
-const MINIMUM_SCRIPT = './scripts/php/php-min.sh';
+const MINIMUM_SCRIPT = 'node scripts/php/php-min.mts';
 // MINIMUM_STEP은 그 release를 setup-php의 입력으로 적는 CI step의 명령이다.
 const MINIMUM_STEP = 'make --no-print-directory ci-php-min-version >> "$GITHUB_OUTPUT"';
 const runs = (workflow: string, pattern: RegExp) => workflowSteps(workflow).some(step => pattern.test(step.run));
@@ -30,7 +30,7 @@ const below = (a: string, b: string): boolean => semver.lt(release(a), release(b
 //   - declared는 정확한 x.y 하나이고 minimum(">=x.y")보다 낮지 않다.
 //   - shivammathur/setup-php step은 `php-version-file: .php-version`으로 읽고 `php-version`을
 //     직접 적지 않는다. 예외 하나는 make php-min-check의 최저 release를 설치하는 step으로,
-//     scripts/php/php-min.sh --version을 쓰는 step `php-min`의 output만 읽는다. 마지막
+//     scripts/php/php-min.mts --version을 쓰는 step `php-min`의 output만 읽는다. 마지막
 //     setup-php step은 .php-version을 읽어 그 PHP가 PATH의 php가 된다. php나 composer를
 //     실행하는 workflow는 setup-php를 쓴다.
 //   - running은 declared와 같다.

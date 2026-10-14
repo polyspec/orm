@@ -1,5 +1,5 @@
 // make check-run, make bench와 make run-databases의 runner다. 실행마다 자기 bench
-// database와 decimal database를 만들어(scripts/check/databases.sh) 모든 target이 그것을 쓰게 하고,
+// database와 decimal database를 만들어(scripts/check/databases.mts) 모든 target이 그것을 쓰게 하고,
 // target을 하나씩 `make <target>`으로 실행한 뒤 database를 지운다. 공유 database에 다른 실행이나
 // session이 남긴 상태에 기대지 않기 위해서다.
 //
@@ -105,12 +105,12 @@ export type RunOptions = { root: string; jobSummary?: boolean; servers: string |
 export async function runChecks({ root, jobSummary = false, servers: given, targets: declared, run, needs = declaredNeeds(root), id = process.env.ORM_CHECK_RUN_ID, snapshot = diskSnapshot, ciSetup = process.env.ORM_CI_SETUP, downloads = missingDownloads }: RunOptions): Promise<number> {
   let servers = given;
   // 실행의 이름은 주어진 id이거나 process id와 임의의 값이다. 같은 이름의 database가 있으면 그것은 이 실행이 만든
-  // 것이 아니므로 bench-db.sh가 지우지 않도록 이름이 겹치지 않아야 한다.
+  // 것이 아니므로 bench-db.mts가 지우지 않도록 이름이 겹치지 않아야 한다.
   const runId = id ? runName(id) : `orm_check_${process.pid}_${randomBytes(4).toString('hex')}`;
   const name = runId;
   const targets = declared;
   const { recorder, record: current } = startRecord(root, runId, targets);
-  // directory는 이 실행의 database 파일(env, decimal-env, SQLite)이고 databases.sh drop이 통째로 지운다. 보고서는 그
+  // directory는 이 실행의 database 파일(env, decimal-env, SQLite)이고 databases.mts drop이 통째로 지운다. 보고서는 그
   // 옆의 report다: drop이 보고서를 지우지 않는다.
   const directory = resolve(root, '.runtime/check', runId, 'databases');
   const report = reportDirectory(root, runId);
@@ -283,7 +283,7 @@ export async function runChecks({ root, jobSummary = false, servers: given, targ
   let created = false;
   if (serversReady) {
     created = await record('databases/create', 'setup', ({ step, spawned }) =>
-      run('sh', ['scripts/check/databases.sh', 'create', serverFile, directory, name], step, spawned, { guard: false }));
+      run('make', ['-s', 'databases-create', `SERVERS=${serverFile}`, `DIRECTORY=${directory}`, `NAME=${name}`], step, spawned, { guard: false }));
     if (!created) failedSetup['databases'] = `the setup step databases/create failed: ${(results.at(-1)?.failures ?? []).join(' / ')}`;
   }
   for (const target of targets) {
@@ -301,7 +301,7 @@ export async function runChecks({ root, jobSummary = false, servers: given, targ
   // database는 만들기가 중간에 실패해도 만든 만큼 지운다.
   if (serversReady)
     await record('databases/drop', 'setup', ({ step, spawned }) =>
-      run('sh', ['scripts/check/databases.sh', 'drop', serverFile, directory, name], step, spawned, { guard: false }));
+      run('node', ['scripts/check/databases.mts', 'drop', serverFile, directory, name], step, spawned, { guard: false }));
 
   for (const { label, passed, notRun, elapsed } of results)
     console.log(`check: ${notRun ? 'NOT-RUN' : passed ? 'PASS' : 'FAIL'} ${label} elapsed=${duration(elapsed)}${notRun ? `: ${notRun}` : ''}`);

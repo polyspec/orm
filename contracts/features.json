@@ -185,7 +185,7 @@
           "command": "make php-without-mysql-check",
           "shard": "other",
           "inputs": [
-            "scripts/php-without-mysql.sh",
+            "scripts/php-without-mysql.mts",
             "packages/php/tests/SqliteWithoutMysqlTest.php"
           ],
           "environment": "linux-runner"
@@ -5063,7 +5063,7 @@
         },
         {
           "id": "chunking-rust",
-          "command": "sh -c 'run=\"$PWD/.runtime/run/chunking-rust-$$\"; trap \"rm -rf \\\"$run\\\"\" EXIT; PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mts rust-build/integration -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- sh scripts/cargo-build-copy.sh \"$run\" debug/integration -- cargo build --manifest-path packages/rust/Cargo.toml --locked -p polyspec-orm-tests --bin integration && \"$run/debug/integration\" \"$PWD/schema/bench.dbs\"'",
+          "command": "sh -c 'run=\"$PWD/.runtime/run/chunking-rust-$$\"; trap \"rm -rf \\\"$run\\\"\" EXIT; PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mts rust-build/integration -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- node scripts/cargo-build-copy.mts \"$run\" debug/integration -- cargo build --manifest-path packages/rust/Cargo.toml --locked -p polyspec-orm-tests --bin integration && \"$run/debug/integration\" \"$PWD/schema/bench.dbs\"'",
           "shard": "rust",
           "inputs": [
             "packages/rust/tests/src/integration.rs",
@@ -6276,10 +6276,10 @@
       "verification": [
         {
           "id": "perf-gates",
-          "command": "./scripts/perf-test.sh",
+          "command": "node scripts/perf-test.mts",
           "shard": "other",
           "inputs": [
-            "scripts/perf-test.sh",
+            "scripts/perf-test.mts",
             "packages/go/bench/statements_test.go",
             "packages/go/bench/gate_test.go",
             "packages/php/tests/PerfGateTest.php",
@@ -7522,17 +7522,16 @@
     {
       "id": "bench-database",
       "paths": [
-        "scripts/bench-db.sh",
+        "scripts/bench-db.mts",
         "bench/install/main.go",
         "bench/seedaes/main.go",
         "bench/sql/seed.mysql.sql",
         "bench/sql/seed.pg.sql",
         "bench/sql/seed.sqlite.sql",
-        "tests/go-run.mts",
-        "scripts/decimal-db-setup.php"
+        "tests/go-run.mts"
       ],
       "tests": [],
-      "command": "sh scripts/bench-db.sh"
+      "command": "node scripts/bench-db.mts"
     },
     {
       "id": "decimal-physical",
@@ -7545,7 +7544,7 @@
     {
       "id": "decimal-bench-sqlite",
       "paths": [
-        "scripts/decimal-bench-sqlite.sh"
+        "scripts/decimal-bench-sqlite.mts"
       ],
       "tests": [],
       "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" decimal-bench-sqlite"

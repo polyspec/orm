@@ -1,26 +1,20 @@
-// The stop tests of scripts/test-servers.sh. make test-servers-check builds tests/stop-process and tests/lease and passes
+// The stop tests of scripts/test-servers.mts. make test-servers-check builds tests/stop-process and tests/lease and passes
 // their paths as STOP_PROCESS and LEASE.
 import assert from 'node:assert/strict';
 import { execFileSync, spawn, spawnSync, type SpawnSyncReturns } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
 import { isolatedEnvironment } from '../tests/environment.mts';
 import { caseTest, COMPUTE, DATABASE } from '../tests/testcase.mts';
+import { environment, MYSQLD_BINLOG, mysqldArguments, paths, stopPid } from './test-servers.mts';
 
-// The stop_pid case takes stop_pid of test-servers.sh as it is and stops a fake server. Stopping a server is a long task,
-// so it has no deadline, and its end is learned from the operating system's exit event, not by polling. A slow but sound
-// server that ends 1.5 seconds after TERM is reported stopped after that, when its process is already gone.
-caseTest('stop_pid waits for the exit event of the server, with no polling', COMPUTE, () => {
-  const script = readFileSync(new URL('./test-servers.sh', import.meta.url), 'utf8');
-  const start = script.indexOf('stop_pid() {');
-  const body = script.slice(start, script.indexOf('\n}\n', start) + 3);
-  assert.ok(start >= 0 && body.endsWith('}\n'), 'stop_pid is absent from scripts/test-servers.sh');
-  assert.doesNotMatch(body, /\bsleep\b|\bwhile\b|\buntil\b|kill -0/, 'stop_pid polls for the exit');
-  assert.match(body, /"\$\{STOP_PROCESS:\?/, 'stop_pid does not run the Go program STOP_PROCESS of tests/stop-process');
-  const stopProcess = process.env.STOP_PROCESS;
-  assert.ok(stopProcess, 'STOP_PROCESS is unset; run make test-servers-check, which builds it');
+// The stopPid case stops a fake server. Stopping a server is a long task, so it has no deadline, and its end is learned
+// from the operating system's exit event (STOP_PROCESS), not by polling. A slow but sound server that ends 1.5 seconds
+// after TERM is reported stopped after that, when its process is already gone.
+caseTest('stopPid waits for the exit event of the server, with no polling', COMPUTE, () => {
+  assert.ok(process.env.STOP_PROCESS, 'STOP_PROCESS is unset; run make test-servers-check, which builds it');
   const dir = mkdtempSync(join(tmpdir(), 'orm-stop-'));
   try {
     for (const [name, delay] of [['quick', 0], ['slow', 1.5]] as const) {
@@ -33,11 +27,9 @@ read state < ${ready}`], { timeout: 10_000 });
       assert.equal(server.status, 0, String(server.stderr));
       const pid = Number(readFileSync(pidFile, 'utf8').trim());
       const started = Date.now();
-      const stopped: SpawnSyncReturns<string> = spawnSync('sh', ['-c', `set -eu\nSTOP_PROCESS=${stopProcess}\n${body}\nstop_pid ${pidFile}\necho stopped`], { encoding: 'utf8', timeout: 20_000 });
+      stopPid(pidFile);
       const elapsed = Date.now() - started;
-      assert.equal(stopped.status, 0, stopped.stderr);
-      assert.equal(stopped.stdout, 'stopped\n');
-      assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' }, `${name} server still runs after stop_pid`);
+      assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' }, `${name} server still runs after stopPid`);
       assert.ok(elapsed >= delay * 1000, `${name} server reported stopped after ${elapsed} ms, before its ${delay} s shutdown`);
     }
   } finally {
@@ -46,20 +38,21 @@ read state < ${ready}`], { timeout: 10_000 });
 });
 
 // The lease case copies the scripts of this checkout to a temporary root and checks that, while another run holds the
-// server's shared lease, `test-servers.sh stop` refuses naming that holder and keeps the server directory, and that the
+// server's shared lease, `test-servers.mts stop` refuses naming that holder and keeps the server directory, and that the
 // stop proceeds once the hold ends. The holder is a shell that waits reading a FIFO; ready and end go through FIFOs.
 caseTest('stopping the test servers is refused while another run holds a lease, naming the holder', COMPUTE, () => {
   const { LEASE: lease, STOP_PROCESS: stopProcess } = process.env;
   assert.ok(lease && stopProcess, 'LEASE or STOP_PROCESS is unset; run make test-servers-check, which builds them');
-  const root = mkdtempSync(join(tmpdir(), 'orm-lease-'));
+  // The script names its servers by its real path (Node resolves the module path), so the root is a real path too.
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'orm-lease-')));
   const release = join(root, 'release');
   const ready = join(root, 'ready');
   const leases = join(root, '.runtime/servers.leases');
   let holder;
-  const stop = () => spawnSync('sh', [join(root, 'scripts/test-servers.sh'), 'stop'], { encoding: 'utf8', env: isolatedEnvironment({ LEASE: lease, STOP_PROCESS: stopProcess }) });
+  const stop = () => spawnSync(process.execPath, [join(root, 'scripts/test-servers.mts'), 'stop'], { encoding: 'utf8', env: isolatedEnvironment({ LEASE: lease, STOP_PROCESS: stopProcess }) });
   try {
     mkdirSync(join(root, 'scripts'));
-    copyFileSync(new URL('./test-servers.sh', import.meta.url), join(root, 'scripts/test-servers.sh'));
+    copyFileSync(new URL('./test-servers.mts', import.meta.url), join(root, 'scripts/test-servers.mts'));
     mkdirSync(join(root, '.runtime/servers'), { recursive: true });
     execFileSync('mkfifo', [release, ready]);
     holder = spawn('sh', ['-c', `${lease} hold ${leases} shared --pid $$ && echo held > ${ready} && read line < ${release}`], { stdio: 'ignore' });
@@ -211,29 +204,23 @@ caseTest('hold records its releaser in the lease file before it returns', COMPUT
 });
 
 // The shared database case checks that the server environment file names no bench database and creates no decimal
-// database that the Makefile shares; scripts/check/databases.sh creates that database for each run.
+// database that the Makefile shares; scripts/check/databases.mts creates that database for each run.
 caseTest('the server environment names no bench or decimal database that runs share', COMPUTE, () => {
-  const script = readFileSync(new URL('./test-servers.sh', import.meta.url), 'utf8');
-  const start = script.indexOf('write_env() {');
-  const writeEnv = script.slice(start, script.indexOf('\n}\n', start));
-  assert.ok(start >= 0, 'write_env is absent from scripts/test-servers.sh');
-  assert.doesNotMatch(writeEnv, /export (?:ORM_)?BENCH_[A-Z_]*=/, 'the server environment names a shared bench database');
-  assert.match(writeEnv, /export ORM_RUN_MYSQL_DSN='\$mysql\/orm_run\?timezone=%2B00:00'/);
-  assert.doesNotMatch(script, /bench-db\.sh/, 'make test-servers seeds a shared bench database');
+  const variables = environment(paths('/checkout'), { mysql: 1, postgres: 2, mysqlReplica: 3, postgresReplica: 4, proxysql: 5, pgbouncer: 6 });
+  assert.deepEqual(Object.keys(variables).filter(name => /^(?:ORM_)?(?:BENCH|DECIMAL)_/.test(name)), [], 'the server environment names a shared bench or decimal database');
+  assert.equal(variables['ORM_RUN_MYSQL_DSN'], 'mysql://root@127.0.0.1:1/orm_run?timezone=%2B00:00');
   const makefile = readFileSync(new URL('../Makefile', import.meta.url), 'utf8');
   assert.match(makefile, /^DECIMAL_ENV =$/m, 'the Makefile names a shared decimal environment');
   assert.doesNotMatch(makefile, /^decimal-db-setup:/m, 'the Makefile sets up a shared decimal database');
 });
 
-// The binary log retention case gives the retention options of MYSQLD_BINLOG that test-servers.sh passes to mysqld, with
+// The binary log retention case gives the retention options of MYSQLD_BINLOG that test-servers.mts passes to mysqld, with
 // small values, to a fixture server on a temporary data directory and a free port, leaving the shared servers alone. The
 // server removes expired binary logs only at start and when it rotates a log, so retention needs both an expiry and a
 // rotation size. After one batch of writes and a wait longer than the expiry, another write must make the server remove
 // the first file; if it stays, the case fails naming the file and why it stayed.
 caseTest('the test MySQL server removes an expired binary log by itself', DATABASE, async () => {
-  const script = readFileSync(new URL('./test-servers.sh', import.meta.url), 'utf8');
-  const declared = /^MYSQLD_BINLOG="([^"]*)"$/m.exec(script)?.[1] ?? '';
-  const flags = declared.split(/\s+/).filter(Boolean);
+  const flags = MYSQLD_BINLOG;
   const expireFlag = flags.find(f => f.startsWith('--binlog-expire-logs-seconds='));
   const sizeFlag = flags.find(f => f.startsWith('--max-binlog-size='));
   // Fixture values: an expiry of 2 seconds and the smallest size mysqld accepts, 4096 bytes; no option outside the declaration.
@@ -270,12 +257,10 @@ caseTest('the test MySQL server removes an expired binary log by itself', DATABA
     assert.ok(!logs.includes(first[0]),
       `${first[0]} (${first[1]} bytes, last written more than ${EXPIRE_SECONDS + 1} s ago) is kept past binlog_expire_logs_seconds=${EXPIRE_SECONDS}: ` +
       `the server removes expired logs only when it rotates the log, and max_binlog_size=${size} was never reached` +
-      (expireFlag ? '' : '; scripts/test-servers.sh sets no --binlog-expire-logs-seconds') + (sizeFlag ? '' : '; scripts/test-servers.sh sets no --max-binlog-size'));
+      (expireFlag ? '' : '; scripts/test-servers.mts sets no --binlog-expire-logs-seconds') + (sizeFlag ? '' : '; scripts/test-servers.mts sets no --max-binlog-size'));
     // Both mysqld of the shared servers receive the same retention options.
-    for (const command of ['--server-id=1', '--server-id=2']) {
-      const line = script.split('\n').findIndex(l => l.includes(command));
-      assert.ok(line >= 0 && /\$MYSQLD_BINLOG\b/.test(script.split('\n').slice(line - 2, line + 1).join('\n')), `the mysqld with ${command} in scripts/test-servers.sh does not take $MYSQLD_BINLOG`);
-    }
+    for (const replica of [false, true])
+      assert.ok(MYSQLD_BINLOG.every(flag => mysqldArguments(paths('/checkout'), replica, 1).includes(flag)), `the mysqld ${replica ? 'replica' : 'primary'} does not take MYSQLD_BINLOG`);
   } finally {
     // mysqladmin shutdown over TCP returns before the server exits, and a server whose data directory is removed
     // while it shuts down never exits: InnoDB retries its redo log file in the missing directory and writes an
@@ -294,21 +279,16 @@ caseTest('the test MySQL server removes an expired binary log by itself', DATABA
   }
 });
 
-// The socket path case (T135) evaluates the path declarations of test-servers.sh with a long checkout path. A Unix socket
-// path must fit the sun_path limit (103 bytes on macOS, 107 on Linux, NUL excluded) and must not depend on the depth of the checkout.
+// The socket path case (T135) takes the paths of the servers of a long checkout. A Unix socket path must fit the sun_path
+// limit (103 bytes on macOS, 107 on Linux, NUL excluded) and must not depend on the depth of the checkout.
 caseTest('test server sockets stay within the Unix socket path limit for a long checkout', COMPUTE, () => {
-  const script = readFileSync(new URL('./test-servers.sh', import.meta.url), 'utf8');
-  const start = script.indexOf('\nDIR=');
-  const declarations = script.slice(start, script.indexOf('\nusage() {', start));
   const root = `/Users/someone/Projects/polyspec/${'a-very-long-worktree-name-'.repeat(4)}T135`;
-  const run = spawnSync('sh', ['-c', `set -eu\nROOT='${root}'\n${declarations}\nfor s in "$MYSQL_SOCKET" "$MYSQL_REPLICA_SOCKET" "$PROXYSQL_ADMIN_SOCKET" "$PROXYSQL_ADMIN_PGSQL_SOCKET" "$PROXYSQL_PGSQL_SOCKET"; do echo "$s"; done`], { encoding: 'utf8' });
-  assert.equal(run.status, 0, run.stderr);
-  const sockets = run.stdout.trim().split('\n');
+  const sockets = Object.values(paths(root).sockets);
   assert.equal(sockets.length, 5);
   for (const socket of sockets) assert.ok(Buffer.byteLength(socket) <= 103, `socket path ${socket} is ${Buffer.byteLength(socket)} bytes; macOS allows at most 103`);
-  // The same checkout gets the same directory, and another checkout another directory.
-  const again = spawnSync('sh', ['-c', `set -eu\nROOT='${root}'\n${declarations}\necho "$MYSQL_SOCKET"`], { encoding: 'utf8' });
-  assert.equal(again.stdout.trim(), sockets[0]);
-  const other = spawnSync('sh', ['-c', `set -eu\nROOT='${root}x'\n${declarations}\necho "$MYSQL_SOCKET"`], { encoding: 'utf8' });
-  assert.notEqual(other.stdout.trim(), sockets[0]);
+  // The same checkout gets the same directory, and another checkout another directory; the name is the POSIX cksum.
+  assert.equal(paths(root).sockets.mysql, sockets[0]);
+  assert.notEqual(paths(`${root}x`).sockets.mysql, sockets[0]);
+  const cksum = spawnSync('cksum', { input: root, encoding: 'utf8' }).stdout.split(' ')[0];
+  assert.equal(paths(root).socketDir, `/tmp/orm-servers-${cksum}`);
 });

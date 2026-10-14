@@ -60,7 +60,7 @@ caseTest('a crate or Go module that is not downloaded names make install, never 
 caseTest('the lowest Node is downloaded only by make install-node-min', PROCESS, () => {
   const cache = mkdtempSync(join(tmpdir(), 'orm-node-min-'));
   try {
-    const result = spawnSync('sh', [join(repo, 'scripts/typescript/node-min.sh')], { encoding: 'utf8', env: isolatedEnvironment({ ORM_NODE_CACHE: cache, ORM_NODE_MIN_INSTALL: '' }) });
+    const result = spawnSync(process.execPath, [join(repo, 'scripts/typescript/node-min.mts')], { encoding: 'utf8', env: isolatedEnvironment({ ORM_NODE_CACHE: cache, ORM_NODE_MIN_INSTALL: '' }) });
     assert.equal(result.status, 1, result.stdout + result.stderr);
     assert.match(result.stderr, new RegExp(`^node-min: Node [0-9.]+ is not in ${cache.replace(/[.]/g, '\\.')}; run make install, which downloads it\n$`));
   } finally {

@@ -20,6 +20,6 @@
 [rust] FAIL columns_and_subqueries/sqlite elapsed=5ms: sqlite: schema().install: DRIVER: disk I/O error
 [rust] client-db-test: the rust lane failed:
 [rust]   /home/runner/work/orm/orm/.runtime/run/client-db-rust-20422/debug/integration /home/runner/work/orm/orm/schema/bench.dbs (exit 101)
-./scripts/client-db-test.sh: 107: echo: echo: I/O error
+node scripts/client-db-test.mts: 107: echo: echo: I/O error
 client-db-test: failed lanes: rust
 make: *** [Makefile:549: client-db-check] Error 1

@@ -48,7 +48,7 @@ go run ./tests/interfaces/check --results "$RUN_DIR/out" --results "$RUN_DIR/out
 
 각 실행기는 반복할 수 있는 vector 선택(Go는 `-vector NAME`, PHP, Rust, TypeScript, Python은 `--vector NAME`)을 받아 이름이 지정된 vector만 선언 순서로 실행한다. 알 수 없거나 반복된 이름은 vector를 실행하기 전에 실패한다. `check run`, `check compare`, `check record`는 같은 반복 가능한 `-vector NAME`을 받는다: `run`은 그것을 다섯 실행기에 넘기고 `compare`와 `record`는 이름이 지정된 vector만 비교하고 기록하므로, 일부 vector를 바꾸면 그 vector만 실행하고 기록한다.
 
-그 선택의 make 형식은 이름을 공백으로 나눈 변수 `VECTOR`이며, `make test-servers`의 server 환경에는 bench database가 없으므로 `make run-databases`가 자기 실행에 만드는 bench database(scripts/check/databases.sh)에서 실행한다.
+그 선택의 make 형식은 이름을 공백으로 나눈 변수 `VECTOR`이며, `make test-servers`의 server 환경에는 bench database가 없으므로 `make run-databases`가 자기 실행에 만드는 bench database(scripts/check/databases.mts)에서 실행한다.
 
 ```sh
 make test-servers

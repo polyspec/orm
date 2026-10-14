@@ -4,7 +4,7 @@
 // 등록할 때 이미 없는 process는 그 사실을 출력하고 멈춘 것으로 본다. 감시는 internal/procevent의
 // WatchExit다(darwin은 kqueue의 EVFILT_PROC NOTE_EXIT, linux는 pidfd의 poll).
 //
-// scripts/test-servers.sh의 stop_pid가 Makefile이 build한 이 program(STOP_PROCESS)을 실행한다.
+// scripts/test-servers.mts의 stopPid가 Makefile이 build한 이 program(STOP_PROCESS)을 실행한다.
 package main
 
 import (

@@ -78,7 +78,7 @@ records only them.
 
 The make form of that selection is the variable `VECTOR`, a space-separated list
 of names, on the bench databases that `make run-databases` provisions for its
-run (scripts/check/databases.sh), since the server environment of
+run (scripts/check/databases.mts), since the server environment of
 `make test-servers` holds no bench database:
 
 ```sh

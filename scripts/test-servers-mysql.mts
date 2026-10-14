@@ -1,5 +1,5 @@
-// test-servers-mysql는 `test-servers.sh start`가 이미 실행 중인 서버에 대해 부르는 MySQL 설정 검사와
-// migration이다. scripts/test-servers.sh가 선언한 설정(lower_case_table_names)을 기존 data
+// test-servers-mysql는 `test-servers.mts start`가 이미 실행 중인 서버에 대해 부르는 MySQL 설정 검사와
+// migration이다. scripts/test-servers.mts가 선언한 설정(lower_case_table_names)을 기존 data
 // directory의 설정과 비교한다. 같으면 아무것도 하지 않는다. 다르면 data를 옮긴다:
 //
 //   preflight  새 설정에서 이름이 겹칠 schema와 table을 찾고, 있으면 그 목록과 함께 거부한다
@@ -18,7 +18,7 @@
 // .runtime/mysql-migration에 단계마다 기록되므로, 실패한 뒤 다시 실행하면 끝난 단계는 건너뛰고
 // 다음 단계부터 이어 간다. 새 data directory는 기존 것을 옮긴 뒤에만 지우고 다시 만든다.
 //
-// Usage: node scripts/test-servers-mysql.mts <test-servers.sh> <servers dir> <mysql-port> <mysql-replica-port> <lower_case_table_names>
+// Usage: node scripts/test-servers-mysql.mts <test-servers.mts> <servers dir> <mysql-port> <mysql-replica-port> <lower_case_table_names>
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -120,7 +120,7 @@ async function catalogCounts(port: string, schemas: string[], context: Context):
 
 // holdExclusive는 이 process가 끝날 때까지 서버의 exclusive lease(tests/lease)를 가진다. migration은
 // 서버를 멈추고 data를 옮기므로, 다른 실행이 서버의 lease를 가지고 있으면 아무것도 바꾸지 않고 그
-// 보유자를 적으며 실패한다. LEASE와 LEASES는 test-servers.sh가 준다.
+// 보유자를 적으며 실패한다. LEASE와 LEASES는 test-servers.mts가 준다.
 function holdExclusive() {
   const { LEASE: lease, LEASES: leases } = process.env;
   if (!lease || !leases) throw new Error('LEASE and LEASES are unset; run make test-servers');
@@ -134,7 +134,7 @@ function holdExclusive() {
 async function main() {
   const [script, dir, mysqlPort, replicaPort, declared] = process.argv.slice(2);
   if (!script || !dir || !mysqlPort || !replicaPort || !/^[0-2]$/.test(declared ?? '')) {
-    console.error('usage: test-servers-mysql.mts <test-servers.sh> <servers dir> <mysql-port> <mysql-replica-port> <lower_case_table_names>');
+    console.error('usage: test-servers-mysql.mts <test-servers.mts> <servers dir> <mysql-port> <mysql-replica-port> <lower_case_table_names>');
     process.exit(2);
   }
   const runtime = dirname(dir);
@@ -201,7 +201,7 @@ async function main() {
       writeFileSync(state('dump.sql'), Buffer.concat(dump));
       context.step(`${schemas.length} database(s) and ${users.length} user(s) dumped to ${state('dump.sql')}`);
     }],
-    ['stop', context => run('sh', [script, 'mysql-stop'], context)],
+    ['stop', context => run(process.execPath, [script, 'mysql-stop'], context)],
     ['keep', async context => {
       mkdirSync(kept, { recursive: true });
       for (const name of ['mysql', 'mysql-replica']) {
@@ -212,7 +212,7 @@ async function main() {
     ['start', async context => {
       // 기존 data는 keep 단계가 옮겼으므로, 앞선 시도가 남긴 새 data directory만 지운다.
       for (const name of ['mysql', 'mysql-replica']) rmSync(join(dir, name), { recursive: true, force: true });
-      await run('sh', [script, 'mysql-start', mysqlPort, replicaPort], context);
+      await run(process.execPath, [script, 'mysql-start', mysqlPort, replicaPort], context);
     }],
     ['restore', async context => {
       await run('mysql', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', mysqlPort, '-u', 'root'], { ...context, input: readFileSync(state('users.sql')) });

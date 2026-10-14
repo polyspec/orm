@@ -110,7 +110,6 @@ rules:
       - "!tests/cli"
       - "!tests/docs"
       - "!tests/lease"
-      - "!tests/new-session"
       - "!tests/stop-process"
 
   # S9 exceptions. Each test or tool below is of its own ecosystem, not cross-language infrastructure; the scripts that remain
@@ -155,10 +154,9 @@ rules:
       - "!tests/dbspec/unicode/**"
       # The codec vectors are the output of the PHP codecs, the ground truth of docs/codec.md.
       - "!tests/codec/gen.php"
-      # Programs that need operating-system calls Node does not offer: setsid for the lease releaser and new-session, and
+      # Programs that need operating-system calls Node does not offer: setsid for the lease releaser, and
       # the exit notification of another process (kqueue, pidfd) for stop-process.
       - "!tests/lease/**"
-      - "!tests/new-session/**"
       - "!tests/stop-process/**"
 
   # The Python symbol extractor runs as a program of its interpreter (its shebang), an exception of the rule above.
