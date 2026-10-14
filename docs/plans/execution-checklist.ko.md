@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 3431d7987095dcbfb4b66a958f2d96aa51cfbe4ee272446fc2a3bb95eec98dfc -->
+<!-- source-sha256: 9827b3e2b2f94f948d685f66f31ffe4271cd8686101aab154f519688ac26b6c0 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1046,7 +1046,7 @@
   - [o] T165-2 mise toolchain 뒤 orm main CI를 다시 green으로 만든다 (T165-1에 이어). 원인: run 38526082365가 실패했다. 이제 PATH 맨 앞의 npm 12가 `npm pack --json`을 객체로 쓰고(package-declarations와 package-check는 배열을 읽는다) install-cli의 URL 의존성을 거부한다(`EALLOWREMOTE`). scripts/repo/toolchains.mjs는 mise.toml의 Go가 대신하는 actions/setup-go를 요구했고, editor job은 make install-go를 실행하지 않았다. 완료 조건: 각각이 npm 12와 mise가 요구하는 대로 읽거나 설치하고 검사가 통과한다. mise가 module root 안에 설치하는 Go 배포본이 go vet과 go test를 깨는 문제는 kit에 보고했다.
   - [o] T165-3 Go module root를 위해 kit 0.0.42를 받는다 (T165-2에 이어). 원인: run 38526082365가 go-vet-check와 go-test-check에서 실패했다. mise가 module root 안의 var/tools/mise/installs/go에 Go를 설치해 `./...`가 그 test source를 지났다. 완료 조건: orm이 bootstrap이 var/tools/go.mod를 쓰는 kit 0.0.42를 pin하고 go vet이 통과한다.
   - [o] T165-4 mise 파일을 검사 입력으로 선언한다 (T165-3에 이어). 원인: run 38532926973가 feature-unit-check에서 실패했다. mise.lock이 어떤 검사 target의 입력도 아니었다. 완료 조건: kit-check가 mise.toml과 mise.lock을 입력으로 받고 선택 test가 통과한다.
-- [ ] T166 모든 runtime에서 문서 집합을 parse하고 문서마다 결과를 돌려준다. 원인: flowmark catalog(그 T12-3-1)와 orm 자신의 runtimemodel이 parse 전에 `dbspec 1 <document>` header를 문자열 비교로 다시 읽어 set의 문서를 key로 묶는다. 어떤 runtime도 문서마다 document, position, diagnostic을 돌려주는 set parse를 공개하지 않기 때문이다. 완료 조건: 모든 runtime에 표준 set parse가 있고 vector가 있으며 먼저 red를 확인하고, runtimemodel이 그것을 쓴다. flowmark T12-3-1은 그 릴리스 뒤 그것을 받는다.
+- [o] T166 모든 runtime에서 문서 집합을 parse하고 문서마다 결과를 돌려준다. 원인: flowmark catalog(그 T12-3-1)와 orm 자신의 runtimemodel이 parse 전에 `dbspec 1 <document>` header를 문자열 비교로 다시 읽어 set의 문서를 key로 묶는다. 어떤 runtime도 문서마다 document, position, diagnostic을 돌려주는 set parse를 공개하지 않기 때문이다. 완료 조건: 모든 runtime에 표준 set parse가 있고 vector가 있으며 먼저 red를 확인하고, runtimemodel이 그것을 쓴다. flowmark T12-3-1은 그 릴리스 뒤 그것을 받는다.
 - [o] T167 PHPStan을 위해 PHP client의 generic type을 선언한다. 원인: `Db::transaction`이 callback 결과의 type을 선언하지 않고 model row에 generic type이 없어, PHPStan level 9가 hyper module에서 `method.nonObject`와 `mixed`를 보고한다(hyper S-286-7-1, T161 뒤). 완료 조건: PHP client가 transaction 결과와 model row의 @template generic을 선언하고, PHPStan level 9 fixture가 그런 결과를 보고하지 않으며, 먼저 red를 확인하고 interface 기록을 갱신한다.
 - [o] T168 mise.toml의 Python을 mise에게 묻는다. 원인: python-venv-check가 mise.toml에서 release를 sed 식으로 읽었다. mise 옆의 두 번째 TOML reader다(다시 만든 바퀴 검토에서 찾았다). 완료 조건: 검사가 `mise current python`을 쓰고, python-venv test와 venv 검사가 통과한다.
 - [ ] T169 PHP plan cache가 IN-list와 insert 길이마다 커지지 않게 한다. 원인: hyper product import에서 Engine::$plans(manifest마다 256개)가 8.6-35 MiB를 잡는 것을 측정했다. IN-list 길이와 여러 행 insert 길이마다 plan 모양이 따로 있기 때문이다. 완료 조건: 그 길이에 기대지 않는 plan이나, 근거를 적은 cache memory 한도를 두고, 먼저 측정으로 red를 확인하며, 모든 client의 plan cache에 같은 판정을 한다.
