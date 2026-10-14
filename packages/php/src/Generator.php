@@ -34,9 +34,9 @@ final class Generator
     private const RESERVED_COLUMNS = ['and', 'or', 'not', 'get', 'gets', 'gets_page', 'get_query', 'limit', 'alias', 'connect', 'create', 'creates', 'update', 'delete', 'restore', 'save', 'on', 'random'];
 
     /** $m의 model을 $outDir에 생성하고 이전에 생성한 파일을 바꾼다. */
-    public static function generate(RuntimeModel $m, string $outDir, string $namespace): void
+    public static function generate(RuntimeModel $m, string $outDir, string $namespace, array $scan = []): void
     {
-        $files = self::files($m, $namespace);
+        $files = self::files($m, $namespace, $scan);
         if (!is_dir($outDir) && !mkdir($outDir, 0o755, true)) {
             throw new OrmException(Code::CONFIG, "cannot create $outDir");
         }
@@ -53,9 +53,9 @@ final class Generator
      * 없거나 남는 파일마다 한 줄을 경로 순서로 돌려준다.
      * @return list<string>
      */
-    public static function check(RuntimeModel $m, string $outDir, string $namespace): array
+    public static function check(RuntimeModel $m, string $outDir, string $namespace, array $scan = []): array
     {
-        $files = self::files($m, $namespace);
+        $files = self::files($m, $namespace, $scan);
         $lines = [];
         foreach ($files as $name => $body) {
             $path = "$outDir/$name";
@@ -84,7 +84,7 @@ final class Generator
     }
 
     /** @return array<string, string> the generated file bodies by file name */
-    private static function files(RuntimeModel $m, string $namespace): array
+    private static function files(RuntimeModel $m, string $namespace, array $scan = []): array
     {
         foreach ($m->entities as $e) {
             foreach ($e['columns'] as $c) {
@@ -94,6 +94,7 @@ final class Generator
         foreach ($m->entities as $e) {
             self::checkNames($e);
         }
+        $tags = $scan === [] ? [] : self::scanTags($m, $namespace, $scan);
         $files = [];
         $external = $m->externalText !== '';
         $boot = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\nuse Polyspec\\Orm\\Config;\nuse Polyspec\\Orm\\Db;\nuse Polyspec\\Orm\\Orm;\nuse Polyspec\\Orm\\Registry;\nuse Polyspec\\Orm\\Schema;\n\n"
@@ -109,7 +110,7 @@ final class Generator
             if (isset($files["$class.php"])) {
                 throw new OrmException(Code::SCHEMA_INVALID, "entities {$e['entity']} and another entity generate the class $class");
             }
-            $files["$class.php"] = self::model($e, $class, $namespace, $m->manifestHash);
+            $files["$class.php"] = self::model($e, $class, $namespace, $m->manifestHash, $tags[$class] ?? []);
             $boot .= "Registry::register($class::class);\n";
         }
         $files['bootstrap.php'] = $boot;
@@ -123,10 +124,11 @@ final class Generator
         }
     }
 
-    private static function model(array $e, string $class, string $namespace, string $hash): string
+    /** @param list<string> $tags the @method tags of the scanned chain methods */
+    private static function model(array $e, string $class, string $namespace, string $hash, array $tags = []): string
     {
         $name = $e['entity'];
-        $b = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\nuse Polyspec\\Orm\\Model;\n\n/** A $name model or row. */\nfinal class $class extends Model\n{\n";
+        $b = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\nuse Polyspec\\Orm\\Model;\n\n" . self::classComment($name, $tags) . "\nfinal class $class extends Model\n{\n";
         // meta()는 entity와 그 model을 만든 document set의 manifest_hash다.
         $b .= "    public static function meta(): array\n    {\n        return " . self::export($e + ['manifest_hash' => $hash], 2) . ";\n    }\n";
         foreach ($e['columns'] as $c) {
@@ -151,6 +153,13 @@ final class Generator
      * through Model::__call, so that a static analyser sees the method and the model resolves it as before.
      */
     private static function queryMethods(array $e): string
+    {
+        $methods = self::queryMethodMap($e);
+        return $methods === [] ? '' : "\n" . implode("\n", $methods);
+    }
+
+    /** @return array<string, string> the declaration of each query method by name, ordered by name */
+    private static function queryMethodMap(array $e): array
     {
         $methods = [];
         $chain = static fn(string $name, string $params, string $doc = ''): string => $doc
@@ -183,7 +192,111 @@ final class Generator
             $methods[$name] = $chain($name, '');
         }
         ksort($methods, SORT_STRING);
-        return $methods === [] ? '' : "\n" . implode("\n", $methods);
+        return $methods;
+    }
+
+    /** The comment of a model class; the @method tags follow the description. */
+    private static function classComment(string $name, array $tags): string
+    {
+        if ($tags === []) {
+            return "/** A $name model or row. */";
+        }
+        return "/**\n * A $name model or row.\n *\n" . implode('', array_map(static fn(string $t): string => " * $t\n", $tags)) . ' */';
+    }
+
+    /**
+     * The @method tags of the chain methods that the scanned sources call on each model, by class name. A name that
+     * no column, chain or operator accepts, and a call with an argument count the chain does not take, fail with CONFIG.
+     * @param list<string> $scan
+     * @return array<string, list<string>>
+     */
+    private static function scanTags(RuntimeModel $m, string $namespace, array $scan): array
+    {
+        $classes = [];
+        $metas = [];
+        foreach ($m->entities as $e) {
+            $class = self::pascal($e['entity']);
+            $classes[] = $class;
+            $metas[] = $e + ['manifest_hash' => $m->manifestHash, 'class' => ltrim($namespace, '\\') . '\\' . $class];
+        }
+        $calls = Scan::calls($scan, $namespace, $classes);
+        $used = [];
+        foreach ($calls as $names) {
+            foreach (array_keys($names) as $name) {
+                $used[$name] = true;
+            }
+        }
+        $declare = new ChainDeclare($metas);
+        $model = array_map('strtolower', array_map(static fn(\ReflectionMethod $r): string => $r->getName(), (new \ReflectionClass(Model::class))->getMethods(\ReflectionMethod::IS_PUBLIC)));
+        $problems = [];
+        $tags = [];
+        foreach ($metas as $meta) {
+            $class = self::pascal($meta['entity']);
+            $static = array_fill_keys([...$model, ...array_map('strtolower', self::FIXED_METHODS), ...array_map('strtolower', array_keys(self::queryMethodMap($meta)))], true);
+            foreach ($meta['columns'] as $c) {
+                $p = self::pascal($c['name']);
+                $static[strtolower("get$p")] = $static[strtolower("set$p")] = true;
+            }
+            $found = [];
+            foreach ($calls[$class] ?? [] as $name => $counts) {
+                if (isset($static[strtolower($name)])) {
+                    continue;
+                }
+                $declaration = $declare->declare($meta, $name);
+                if ($declaration === null) {
+                    $key = substr($name, 3);
+                    if (self::namedGetter($name, $key, $metas, $used)) {
+                        $found[$name] = ChainDeclare::getter($name);
+                        continue;
+                    }
+                    $problems[] = "$class.$name is not a model method: no column, chain or operator accepts it";
+                    continue;
+                }
+                foreach (array_unique(array_filter($counts, static fn(?int $n): bool => $n !== null)) as $n) {
+                    if ($n < $declaration['min'] || $n > $declaration['max']) {
+                        $takes = $declaration['min'] === $declaration['max'] ? (string) $declaration['min'] : "{$declaration['min']} to {$declaration['max']}";
+                        $problems[] = "$class.$name takes $takes argument" . ($declaration['max'] === 1 ? '' : 's') . ", called with $n";
+                        break;
+                    }
+                }
+                $found[$name] = ChainDeclare::tag($name, $declaration);
+            }
+            ksort($found, SORT_STRING);
+            $tags[$class] = array_values($found);
+        }
+        if ($problems !== []) {
+            sort($problems, SORT_STRING);
+            throw new OrmException(Code::CONFIG, implode('; ', $problems));
+        }
+        return $tags;
+    }
+
+    /**
+     * Whether `get<Key>` reads a value that the sources name: the relation result `<Entity>Model` or `<Entity>Models`,
+     * or a name that a scanned alias, new, or addColumn call adds.
+     * @param list<array> $metas
+     * @param array<string, true> $used
+     */
+    private static function namedGetter(string $name, string $key, array $metas, array $used): bool
+    {
+        if (!str_starts_with($name, 'get') || strlen($name) < 4 || !ctype_upper($name[3])) {
+            return false;
+        }
+        foreach ($metas as $meta) {
+            $pascal = self::pascal($meta['entity']);
+            if ($key === $pascal . 'Model' || $key === $pascal . 'Models') {
+                return true;
+            }
+        }
+        if (isset($used["alias$key"]) || isset($used["new$key"]) || isset($used["addColumn$key"])) {
+            return true;
+        }
+        foreach (array_keys($used) as $n) {
+            if (str_starts_with($n, 'addColumn') && str_ends_with($n, "Alias$key")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

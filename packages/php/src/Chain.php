@@ -48,7 +48,7 @@ final class Chain
         $key = $class . "\0c\0" . $name;
         if (!array_key_exists($key, self::$cache)) {
             try {
-                self::$cache[$key] = self::parseChain($class::meta(), $name);
+                self::$cache[$key] = self::parseChain($class::meta(), $name, null);
             } catch (OrmException $e) {
                 self::$cache[$key] = $e;
             }
@@ -58,6 +58,50 @@ final class Chain
             throw $v;
         }
         return $v;
+    }
+
+    /**
+     * Parses the chain of $name against the model $meta, for generation, when no model class exists yet; $schema
+     * lists the metas of every model of the document set, which a column-to-column comparison reads.
+     * @param list<array> $schema
+     * @return list<array{conn: string, op: string, column: string, columns: list<string>, compare: string}>
+     */
+    public static function parseMeta(array $meta, array $schema, string $name): array
+    {
+        return self::parseChain($meta, $name, $schema);
+    }
+
+    /**
+     * The order keys of $name against the model $meta.
+     * @return list<array{column: string, desc: bool}>
+     */
+    public static function orderMeta(array $meta, string $name): array
+    {
+        return self::orderKeys($meta, $name);
+    }
+
+    /**
+     * The column pair of <L>With<R> for generation: L is a column of $left and R of $right, and a null side
+     * accepts a column of any model of $schema.
+     * @param list<array> $schema
+     * @return array{0: string, 1: string}
+     */
+    public static function pairMeta(?array $left, ?array $right, array $schema, string $name): array
+    {
+        return self::pairOf($left, $right, $name, static fn(?array $side, ?array $other, string $pascal): string => $side !== null
+            ? self::columnName($side, $pascal) : self::listedColumn($schema, $pascal));
+    }
+
+    /** The column with the PascalCase name of any model of $schema. */
+    private static function listedColumn(array $schema, string $pascal): string
+    {
+        foreach ($schema as $meta) {
+            $column = self::index($meta)[$pascal] ?? '';
+            if ($column !== '') {
+                return $column;
+            }
+        }
+        return '';
     }
 
     private static function fail(string $message): never
@@ -105,7 +149,7 @@ final class Chain
         return self::schemaColumnName($other['manifest_hash'], $pascal);
     }
 
-    private static function parseChain(array $meta, string $name): array
+    private static function parseChain(array $meta, string $name, ?array $schema): array
     {
         $ws = self::words($name);
         if ($ws === []) {
@@ -119,7 +163,7 @@ final class Chain
             if ($i < $count && $ws[$i] !== 'And' && $ws[$i] !== 'Or') {
                 continue;
             }
-            $key = self::parseKey($meta, array_slice($ws, $start, $i - $start));
+            $key = self::parseKey($meta, array_slice($ws, $start, $i - $start), $schema);
             $key['conn'] = $conn;
             $keys[] = $key;
             if ($i < $count) {
@@ -130,7 +174,7 @@ final class Chain
         return $keys;
     }
 
-    private static function parseKey(array $meta, array $ws): array
+    private static function parseKey(array $meta, array $ws, ?array $schema): array
     {
         if ($ws === []) {
             self::fail('a condition key is empty');
@@ -173,7 +217,7 @@ final class Chain
                 continue;
             }
             $right = implode('', array_slice($ws, $i + 1));
-            $rightColumn = self::schemaColumnName($meta['manifest_hash'], $right);
+            $rightColumn = $schema === null ? self::schemaColumnName($meta['manifest_hash'], $right) : self::listedColumn($schema, $right);
             if ($rightColumn === '') {
                 $errors[] = "no model has the column $right";
                 continue;
@@ -250,10 +294,12 @@ final class Chain
     public static function order(string $class, string $name): array
     {
         $key = $class . "\0o\0" . $name;
-        if (isset(self::$cache[$key])) {
-            return self::$cache[$key];
-        }
-        $meta = $class::meta();
+        return self::$cache[$key] ??= self::orderKeys($class::meta(), $name);
+    }
+
+    /** @return list<array{column: string, desc: bool}> */
+    private static function orderKeys(array $meta, string $name): array
+    {
         $ix = self::index($meta);
         $ws = self::words($name);
         $out = [];
@@ -274,7 +320,7 @@ final class Chain
             }
             $out[] = ['column' => $ix[$column], 'desc' => $dir === 'Desc'];
         }
-        return self::$cache[$key] = $out;
+        return $out;
     }
 
     /**
@@ -284,14 +330,23 @@ final class Chain
      */
     public static function pair(?array $left, ?array $right, string $name): array
     {
+        return self::pairOf($left, $right, $name, fn(?array $side, ?array $other, string $pascal): string => self::sideColumn($side, $other, $pascal));
+    }
+
+    /**
+     * @param \Closure(?array, ?array, string): string $column the column of a side for a PascalCase name
+     * @return array{0: string, 1: string}
+     */
+    private static function pairOf(?array $left, ?array $right, string $name, \Closure $column): array
+    {
         $ws = self::words($name);
         $found = [];
         foreach ($ws as $i => $w) {
             if ($w !== 'With') {
                 continue;
             }
-            $l = self::sideColumn($left, $right, implode('', array_slice($ws, 0, $i)));
-            $r = self::sideColumn($right, $left, implode('', array_slice($ws, $i + 1)));
+            $l = $column($left, $right, implode('', array_slice($ws, 0, $i)));
+            $r = $column($right, $left, implode('', array_slice($ws, $i + 1)));
             if ($l !== '' && $r !== '') {
                 $found[] = [$l, $r];
             }

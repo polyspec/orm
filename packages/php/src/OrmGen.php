@@ -6,15 +6,16 @@ namespace Polyspec\Orm;
 /**
  * The orm-gen command line: model generation from a dbspec document set.
  *
- *   orm-gen gen --set <dbspec-set.json> --out <dir> --namespace <Php\Namespace> [--check]
+ *   orm-gen gen --set <dbspec-set.json> --out <dir> --namespace <Php\Namespace> [--scan <file or directory>]... [--check]
  *
- * `--set` names the set file (docs/dbspec.md "Document sets"): its `documents` get models, and its
+ * `--scan` names a PHP file or directory, and may repeat: the chain methods it calls on the models are declared as @method
+ * tags (docs/dsl.md). `--set` names the set file (docs/dbspec.md "Document sets"): its `documents` get models, and its
  * `external` documents are parsed with the set and get none.
  */
 final class OrmGen
 {
     private const USAGE = [
-        'gen' => 'orm-gen gen --set <dbspec-set.json> --out <dir> --namespace <Php\\Namespace> [--check]',
+        'gen' => 'orm-gen gen --set <dbspec-set.json> --out <dir> --namespace <Php\\Namespace> [--scan <file or directory>]... [--check]',
     ];
 
     /** @var resource */
@@ -66,8 +67,8 @@ final class OrmGen
     /**
      * Parses `-name value`, `--name value`, `--name=value`, and boolean
      * `--name` flags up to the first other argument, which starts the positional arguments.
-     * @param array<string, string|bool> $spec flag name → default (bool for switches)
-     * @return array{array<string, string|bool>, list<string>}
+     * @param array<string, string|bool|list<string>> $spec flag name → default (bool for switches, an array for a flag that repeats)
+     * @return array{array<string, string|bool|list<string>>, list<string>}
      */
     private static function flags(array $args, array $spec): array
     {
@@ -91,6 +92,16 @@ final class OrmGen
             if (!array_key_exists($name, $spec)) {
                 throw new UsageError("flag provided but not defined: -$name");
             }
+            if (is_array($spec[$name])) {
+                if ($value === null) {
+                    if ($i + 1 >= count($args)) {
+                        throw new UsageError("flag needs an argument: -$name");
+                    }
+                    $value = $args[++$i];
+                }
+                $values[$name][] = $value;
+                continue;
+            }
             if (is_bool($spec[$name])) {
                 $values[$name] = $value === null ? true : in_array(strtolower($value), ['1', 't', 'true'], true);
                 continue;
@@ -108,15 +119,15 @@ final class OrmGen
 
     private static function gen(array $args): int
     {
-        [$o, $rest] = self::flags($args, ['set' => '', 'out' => '', 'namespace' => '', 'check' => false]);
+        [$o, $rest] = self::flags($args, ['set' => '', 'out' => '', 'namespace' => '', 'scan' => [], 'check' => false]);
         if ($rest !== [] || $o['set'] === '' || $o['out'] === '' || preg_match('/^[A-Za-z_][A-Za-z0-9_]*(\\\\[A-Za-z_][A-Za-z0-9_]*)*$/', $o['namespace']) !== 1) {
             throw new UsageError($rest === [] ? '' : 'unexpected argument: ' . $rest[0]);
         }
         $model = RuntimeModel::build(RuntimeModel::set($o['set']));
         if ($o['check']) {
-            return self::report(Generator::check($model, $o['out'], $o['namespace']));
+            return self::report(Generator::check($model, $o['out'], $o['namespace'], $o['scan']));
         }
-        Generator::generate($model, $o['out'], $o['namespace']);
+        Generator::generate($model, $o['out'], $o['namespace'], $o['scan']);
         printf("orm-gen: %d entities → %s (%s)\n", count($model->entities), $o['out'], $model->manifestHash);
         return 0;
     }
