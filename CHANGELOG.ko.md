@@ -6,7 +6,7 @@
 
 ## 0.0.17
 
-- server test가 끝난 process를 상태로 판정해, 입양한 process가 아직 거두지 않은 zombie도 끝난 것으로 본다. (#T177-3)
+- server test가 끝난 process를 상태로 판정해, 새 parent process가 아직 reap하지 않은 zombie도 끝난 것으로 본다. (#T177-3)
 - startLogged가 spawn 전의 크기부터 server log를 읽어, Linux에서 ready 줄을 바로 쓰는 server도 본다. (#T177-2)
 - 모든 client가 ordered-json 0.0.9를 요구한다. Go client는 module 경로 github.com/polyspec/ordered-json/packages/go에서 import한다. (#T178)
 - package check가 Rust client의 외부 crate에 그 lock을 주어, fetch한 git revision으로 offline build한다. (#T177-1)
