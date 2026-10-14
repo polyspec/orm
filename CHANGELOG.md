@@ -4,6 +4,7 @@
 ## Unreleased
 
 - T156-1: the key-prefix tests follow the installed Python package and the testcase rule, and the markdown fixture models carry the key-prefix methods.
+- T139-1: the Rust codec writes YAML with serde-saphyr and reads it through saphyr-parser, so it stores every string of the common value model (`0o17`, control and C1 characters, U+FEFF, U+FFFE, U+FFFF) as the other clients do; yaml-rust2 is removed.
 - T156: every generator declares a typed method for every prefix of every key (primary key, unique keys, indexes), whether or not a scanned source calls it; Python resolves the same names at run time.
 - T143: docs/dbspec.md states which Windows reparse tags each set reader detects: Go, Rust and the PHP extension every name surrogate, TypeScript and PHP symbolic links and junctions, which Node and PHP `lstat` expose.
 - T142-8: the targets whose node scripts run PHP check vendor-php first.
