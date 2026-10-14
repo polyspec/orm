@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: cd74cc0f8d0726dfb476d9844f91ea4f385d49e7160bce855ff7a440ef2b322e -->
+<!-- source-sha256: b05250a03d5087a631ab0608254ccb4bc6c96346fdc711a29d32ccd2d2c8219a -->
 # dbspec
 
 [English](dbspec.md)
@@ -106,7 +106,7 @@ reader는 읽는 동안 바뀌지 않는 file tree를 읽는다. 각 component�
 
 도구는 set의 text를 직접 key로 묶지 않고 set parse로 parse한다: Go `dbspec.ParseSet`, PHP `Dbspec::parseSet`, TypeScript `parseDbspecSet`, Python `parse_dbspec_set`, Rust `dbspec::parse_set`. 소유한 text와 external text를 각각 set 순서로 받아, 소유한 것 먼저 그 순서로 text마다 결과 하나를 돌려준다.
 
-- 문서의 이름은 parser가 header 줄에서 읽은 이름이다. 어떤 도구도 다른 방법으로 읽지 않는다. header가 실패한 text는 이름이 없고, 그 결과가 `header` 진단을 갖는다.
+- 문서의 이름은 parser가 header 줄에서 읽은 이름이다. 어떤 도구도 다른 방법으로 읽지 않는다. header가 실패하거나(`header` 진단) header 줄을 읽기 전에 parse가 멈추면(32 MiB `limit`, byte order mark, header 줄의 `encoding` 오류) text는 이름이 없다. header 줄 뒤의 결함은 이름을 남긴다.
 - 앞의 text가 가진 이름을 가진 text는 parse하지 않고, 그 결과는 1행 10열에 위치한 진단 하나 `name.duplicate` `document <name> appears twice in the document set`를 갖는다.
 - 그 밖의 text는 set의 다른 모든 이름 있는 문서의 text를 그 `use` 줄이 가리키는 문서로 삼아 parse하고, 그 결과는 그 text의 한 번의 parse가 돌려주는 대로 document, [선언 위치](#declaration-positions), 진단을 갖는다. external text의 document는 external로 표시한다.
 
