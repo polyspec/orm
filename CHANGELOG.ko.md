@@ -1,10 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d2cdedac52d461374ff407e7668a8f4a9b361080b36e583809967aa2be1c0f72 -->
+<!-- source-sha256: 1a64300b70313ca3153d900748c6594f602911d01232eb04eb6e0ee3f8aa4e64 -->
 # 변경 이력
 
 ## Unreleased
 
 - T156-1: key-prefix 테스트가 설치된 Python package와 testcase 규칙을 따르고, markdown fixture model이 key-prefix 메서드를 갖는다.
+- T139-1: Rust codec이 YAML을 serde-saphyr로 쓰고 saphyr-parser로 읽어, 다른 client처럼 공통 값 모델의 모든 문자열(`0o17`, 제어 문자와 C1 문자, U+FEFF, U+FFFE, U+FFFF)을 저장한다. yaml-rust2를 뺐다.
 - T156: 모든 생성기가 모든 key(primary key, unique key, index)의 모든 prefix마다 유형 있는 메서드를 선언한다. scan한 소스가 호출하는지와 상관없다. Python은 같은 이름을 실행 시점에 해석한다.
 - T143: docs/dbspec.md가 각 set reader가 감지하는 Windows reparse tag를 적는다. Go, Rust, PHP extension은 모든 name surrogate, TypeScript와 PHP는 Node와 PHP `lstat`이 내주는 symbolic link와 junction이다.
 - T142-8: node script가 PHP를 실행하는 target이 vendor-php를 먼저 확인한다.
