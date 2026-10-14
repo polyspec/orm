@@ -226,7 +226,7 @@ vector('cases.json reader refuses missing and unknown fields', () => {
     ['/files/0 ', 'missingProperty":"errors', v => delete v.files[0].errors],
     ['/positions/0/positions/0 ', 'additionalProperty":"extra', v => (v.positions[0].positions[0].extra = 1)],
     ['/positions/0/positions/0/line ', 'must be integer', v => (v.positions[0].positions[0].line = true)],
-    ['/canonical/0/main ', 'is not one of its documents', v => (v.canonical[0].main = 'absent')],
+    ['/canonical/0/documents ', "required property 'absent', the main document of the case", v => (v.canonical[0].main = 'absent')],
   ];
   for (const [pointer, problem, change] of mutations) {
     const value = JSON.parse(text);

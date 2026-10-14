@@ -22,7 +22,8 @@ caseTest('countDifferences compares counts by lower case name', COMPUTE, () => {
   ]);
 });
 
-// The real server case copies the scripts of this checkout to a short temporary root, initializes the MySQL primary and
+// The real server case copies test-servers.sh of this checkout to a short temporary root (the script finds its servers from
+// its own folder), initializes the MySQL primary and
 // replica with the platform's default lower_case_table_names (2 on macOS, 0 on Linux), then migrates them to the declared
 // 1. The root lives under /tmp so the socket paths fit the platform limit.
 const repository = new URL('..', import.meta.url).pathname;
@@ -30,7 +31,7 @@ const platformDefault = process.platform === 'darwin' ? 2 : 0;
 
 function fixture(mysqlPort: number, replicaPort: number) {
   const root = mkdtempSync('/tmp/orm-mig-');
-  for (const file of ['scripts/test-servers.sh', 'scripts/test-servers-mysql.mts', 'tests/testcase.mts']) {
+  for (const file of ['scripts/test-servers.sh']) {
     mkdirSync(join(root, file, '..'), { recursive: true });
     copyFileSync(join(repository, file), join(root, file));
   }
@@ -44,7 +45,8 @@ function fixture(mysqlPort: number, replicaPort: number) {
     root,
     sql,
     leases: join(root, '.runtime/servers.leases'),
-    migrate: () => spawnSync('node', [join(root, 'scripts/test-servers-mysql.mts'), join(root, 'scripts/test-servers.sh'), join(root, '.runtime/servers'), String(mysqlPort), String(replicaPort), '1'],
+    // The migration takes every path as an argument, so the script of the checkout runs, with the modules it imports.
+    migrate: () => spawnSync('node', [join(repository, 'scripts/test-servers-mysql.mts'), join(root, 'scripts/test-servers.sh'), join(root, '.runtime/servers'), String(mysqlPort), String(replicaPort), '1'],
       { encoding: 'utf8', env: isolatedEnvironment({ LEASE: process.env.LEASE ?? '', LEASES: join(root, '.runtime/servers.leases') }) }),
     close: () => {
       spawnSync('sh', [join(root, 'scripts/test-servers.sh'), 'mysql-stop'], { stdio: 'ignore' });

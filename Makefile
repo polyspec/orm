@@ -1070,10 +1070,12 @@ perf-check:
 	$(WITH_TEST_ENV) ./scripts/perf-test.sh
 
 # scripts-typecheck는 저장소의 TypeScript 기반 스크립트(scripts/와 tests/의 .mts, tsconfig.json)를 tsc로 검사한다.
-# 스크립트 일부는 packages/ts의 build 출력을 import하므로 그 build 뒤에 검사한다.
+# 스크립트 일부는 packages/ts와 packages/dbspec-language(docs/.vitepress/dbs.ts를 거쳐)의 build 출력을 import하므로
+# 그 build 뒤에 검사한다.
 scripts-typecheck: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
+	npm run --workspace @polyspec/dbspec-language build
 	$(RUN_LONG) scripts-typecheck -- node_modules/.bin/tsc -p tsconfig.json
 
 ts-check: ts-check/hold ts-check/types ts-check/test
