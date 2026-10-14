@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The TypeScript orm-gen scan declares the chain methods called in not, andNot and orNot callbacks, as it does for and and or. (#T174)
+
 ## 0.0.16
 
 - The PHPStan case of the PHP scan reads PHPStan's JSON report and matches the identifier of each error, which the raw format of the CI runner leaves out. (#T172-2)

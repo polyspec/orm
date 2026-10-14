@@ -19,7 +19,7 @@ interface Value { readonly cls: string; readonly shape: Shape }
 /** Model methods that return something other than the model they are called on. */
 const terminals = new Set(['create', 'creates', 'update', 'save', 'delete', 'restore', 'toArray', 'toJSON', 'toJSONText']);
 /** Model methods whose callback receives a model of the receiver's class. */
-const modelCallbacks = new Set(['and', 'or', 'on', 'fetchKey', 'fetchValue']);
+const modelCallbacks = new Set(['and', 'or', 'not', 'andNot', 'orNot', 'on', 'fetchKey', 'fetchValue']);
 /** Collection and array methods whose callback receives one element. */
 const elementCallbacks = new Set(['map', 'forEach', 'filter', 'find', 'some', 'every']);
 

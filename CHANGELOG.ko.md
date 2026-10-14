@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0f25c997232626167ec7ba33672c219a2e0109864681753eda0255b262d2fcc7 -->
+<!-- source-sha256: d5dd2f11afc6fc309fc404be56db6aeeb7aec2940a63b37f0f7543d04e46457a -->
 # 변경 이력
 
 ## Unreleased
+
+- TypeScript orm-gen scan은 and, or처럼 not, andNot, orNot callback 안에서 부르는 chain method를 선언한다. (#T174)
 
 ## 0.0.16
 
