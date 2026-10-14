@@ -1,6 +1,5 @@
 # Conformance result check of the Python runner (tests/conformance/runner_python.py): the output
 # encoder writes the Go encoder's layout, and the runner rejects invalid arguments with exit 2.
-import os
 import subprocess
 import sys
 import unittest
@@ -33,8 +32,7 @@ class EncodeTest(unittest.TestCase):
 
 class ArgumentsTest(unittest.TestCase):
     def run_runner(self, *args):
-        return subprocess.run([sys.executable, str(RUNNER), *args], capture_output=True, text=True,
-                              env=dict(os.environ, PYTHONPATH=''))
+        return subprocess.run([sys.executable, str(RUNNER), *args], capture_output=True, text=True)
 
     def test_missing_dsn_exits_2(self):
         self.assertEqual(self.run_runner('--models', '/tmp/none').returncode, 2)

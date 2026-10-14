@@ -1204,7 +1204,7 @@ codec-check: codec-check/compare codec-check/python
 # codec-check/python runs the shared vectors through the Python codec; it prints each vector of its
 # PYTHON_EXCLUSIONS as skipped.
 codec-check/python: python-venv-check
-	PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/python/tests/codec_vector.py
+	$(PYTHON_VENV)/bin/python packages/python/tests/codec_vector.py
 codec-check/go:
 	mkdir -p $(CODEC_OUT)
 	ORM_CODEC_OUT=$(CODEC_OUT) $(GO_TEST) ./packages/go/orm -run '^TestCodecVectors$$' -count=1
