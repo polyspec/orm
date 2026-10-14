@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mjs) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-14T03:42:59.862Z",
+  "reviewed": "2026-10-14T04:01:52.413Z",
   "locks": [
     {
       "lock": "package-lock.json",
@@ -10,7 +10,7 @@
     },
     {
       "lock": "composer.lock",
-      "sha256": "9fabcdcd3a4a435d23c0bb08857b933d71222dde327b8ee004d1769595f49677",
+      "sha256": "64d160b4ec2d223807d8cd82959e9665390c7cd60f217bde7c31039f2c66172a",
       "advisories": []
     },
     {
@@ -230,6 +230,13 @@
       "package": "@types/pg",
       "version": "8.23.1",
       "latest": "8.23.1"
+    },
+    {
+      "ecosystem": "composer",
+      "manifest": "composer.json",
+      "package": "phpstan/phpstan",
+      "version": "2.3.1",
+      "latest": "2.3.1"
     },
     {
       "ecosystem": "pypi",
