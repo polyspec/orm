@@ -14,8 +14,9 @@ rules:
     id: layout-go-module-path
     vars: { repo: orm }
 
-  # packages/ holds the runtime ports of orm and the three components of the dbspec editor stack, each a TypeScript package
-  # with no ports in other runtimes (docs/editor.md): the language service, the language server and the CodeMirror extension.
+  # packages/ holds the runtime ports of orm and the four components of the dbspec editor stack, each a TypeScript package
+  # with no ports in other runtimes (docs/editor.md): the language service, the language server, the CodeMirror extension
+  # and the VS Code extension.
   - id: layout-packages
     paths:
       - "packages/*"
@@ -29,6 +30,7 @@ rules:
       - "!packages/dbspec-language"
       - "!packages/dbspec-lsp"
       - "!packages/dbspec-codemirror"
+      - "!packages/dbspec-vscode"
 
   - id: layout-root-files
     paths:
