@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 77115ba57d1e0c39b5feda8018e53d90dd53c65dadd65c1b16854aceda80c0d5 -->
+<!-- source-sha256: f756e9b7971a9bbabb9fc84b1cf47d5933ca092b9bb13400fe03c88df22d5a78 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1086,6 +1086,7 @@
   - [o] T172-1 nikic/php-parser의 review를 기록한다 (T172에 이어). 원인: T172가 nikic/php-parser를 dependency review 없이 packages/php/composer.json의 require로 옮겨, 65c758b5에서 CI group static의 dependency-policy-check가 실패했다(review 뒤에 lock이 바뀌었고 nikic/php-parser의 항목이 없다). 완료 조건: make dependency-review RECORD=1이 registry dependency 47개와 lock 9개를 기록하고 make dependency-policy-check가 통과한다.
     Evidence: 2026-10-14T18:06:24Z에 기록한 review로 dependency-policy-check가 통과한다.
   - [ ] T172-2 PHP scan의 PHPStan case가 CI에서 통과하게 한다 (T172에 이어). 원인: 65c758b5에서 CI group feature_verify_other가 OrmGenScanTest::test_phpstan_finds_every_scanned_chain_method를 "the control call is declared"에서 실패시켰고, 로컬에서는 통과한다. 이 case는 PHPStan의 종료 상태를 읽지 않아 분석하지 않은 실행이 finding 없이 첫 assertion을 통과했다. 완료 조건: case는 0이나 1이 아닌 상태에서 PHPStan의 출력과 함께 실패하고 control에는 상태 1을 요구한다. CI의 원인을 그 출력에서 찾아 고치고 feature_verify_other가 통과한다.
+- [o] T173 0.0.16을 릴리스한다. 원인: hyper가 dynamic chain method의 PHPStan finding을 없애려고 기다리는 PHP orm-gen scan(T172, T172-1), 개발 도구를 root에 둔 PHP client의 PHPUnit runner(T148-1, T148-1-1), 공유 vector의 case id(T148-2, T148-2-2)가 main에 있다. 완료 조건: version-bump commit이 모든 manifest를 0.0.16으로 바꾸고 Unreleased를 0.0.16으로 옮기며, 바뀐 lock의 dependency review와 v0.0.16의 consumer lock을 기록한다. 그 CI가 성공하고 annotated tag v0.0.16을 push하며 release workflow가 게시한다. Evidence: 그 commit에서 `make version-check`와 `make dependency-policy-check`가 통과한다.
 - [o] T156 모든 생성기가 모든 key의 모든 prefix마다 유형 있는 메서드를 선언한다. 원인: scan한 소스가 호출하는 메서드만 생성되어, 어떤 소스도 호출하지 않는 key prefix에는 메서드가 없었다(hyper U-97). 완료 조건: Go, Rust, TypeScript model이 primary key, unique key, index의 모든 prefix마다 메서드를 선언하고, Python은 같은 이름을 실행 시점에 해석하며, symbol 기록과 docs/usage.md를 갱신한다.
   - [o] T156-1 T156 이후 orm main CI를 다시 green으로 만든다 (T156에 이어). 원인: run 38502539388이 실패했다. Python key-prefix 테스트가 PYTHONPATH를 바꾸고 지워진 packages/orm-python/bin/orm-gen을 실행했고, Go와 Rust key-prefix 테스트가 testcase를 시작하지 않았으며, generator/gen_go_key_prefix_test.go가 어떤 feature에도 속하지 않았고, src/models/markdown_fixture에 key-prefix 메서드가 없었다. 완료 조건: 각각을 고치고 그 소유 검사가 통과한다.
   - [o] T156-2 Go markdown model을 다시 생성한다 (T156에 이어). 원인: run 38504701356이 go-markdown-model-generated에서 실패했다. packages/orm-go/markdownmodel에 key-prefix 메서드가 없었다. 완료 조건: go generate가 폴더를 바꾸지 않는다.

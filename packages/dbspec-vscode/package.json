@@ -2,7 +2,7 @@
   "name": "polyspec-dbspec",
   "displayName": "Polyspec dbspec",
   "description": "Semantic highlighting, diagnostics, folding and formatting of dbspec documents (.dbs) from the bundled dbspec language server",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "publisher": "polyspec",
   "license": "MIT",
   "private": true,
@@ -134,7 +134,7 @@
     }
   },
   "devDependencies": {
-    "@polyspec/dbspec-lsp": "0.0.15",
+    "@polyspec/dbspec-lsp": "0.0.16",
     "@types/vscode": "1.140.0",
     "@vscode/test-electron": "3.1.0",
     "@vscode/vsce": "4.0.0",
