@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 537c4e598693c625d60f0daa8b925d71dcaff31ce7aa036991696856fd678ee0 -->
+<!-- source-sha256: c4920d9e5d7f3197bf9b2b556eff91ddf3b47cad2176df82cbc8d898d0744321 -->
 # 변경 이력
 
 ## Unreleased
 
+- T165: orm이 kit 0.0.40을 받는다. mise.toml의 도구(Go, Python, uv, Composer, alint, govulncheck, cargo-audit)를 mise.lock에서 설치하고, `.python-version`을 지웠으며, install-python과 python-venv-check는 mise.toml의 Python을 읽고, CI는 make install-tools로 도구를 설치한다.
 - T137-4: CI Node step이 install-packages가 kit을 설치한 뒤 두 번째 make로 interface TypeScript를 설치한다.
 - T137-3: CI가 interface reader의 TypeScript를 설치하고, PHP extension의 arginfo header가 이름 변경 뒤의 stub과 맞는다.
 - T161-1: Python 생성 model이 모든 column의 조건 메서드와 모든 key prefix의 tuple 메서드를 선언하고, 모든 체인 메서드가 model을 반환하는 유형을 갖는다.
