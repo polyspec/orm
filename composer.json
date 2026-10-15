@@ -57,6 +57,11 @@
             "type": "vcs",
             "url": "https://github.com/min-0-max/yaml",
             "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/min-0-max/json-schema",
+            "no-api": true
         }
     ],
     "config": {
@@ -69,6 +74,6 @@
     "require-dev": {
         "phpstan/phpstan": "2.3.1",
         "phpunit/phpunit": "13.4.2",
-        "opis/json-schema": "2.6.0"
+        "opis/json-schema": "2.6.0-p1"
     }
 }

@@ -121,10 +121,16 @@ function edit(value: unknown, change: Edit): void {
   else assert.ok(Reflect.set(container, last, change[2]), `${pointer} cannot be set`);
 }
 
+// A file with several refusals is refused with one line for each, in every runner: a refused field does not hide the
+// fields beside it, and the valid fields beside it are not reported.
+const refusals: { file: string; problems: string[]; edits: Edit[] }[] = [
+  { file: 'cases', problems: ['version is not 1', 'extra is not a known field'], edits: [['set', '/version', 2], ['set', '/extra', true]] },
+];
+
 // inputsWith는 바뀐 vector file을 쓰고, 그 file과 나머지 원래 vector file의 경로를 runner 인자 순서로 돌려준다.
-function inputsWith(index: number, mutation: Mutation): { path: string; location: string; inputs: string[] } {
+function inputsWith(index: number | string, mutation: Mutation | { file: string; location: string; edits: Edit[] }): { path: string; location: string; inputs: string[] } {
   const value: unknown = JSON.parse(vectors[mutation.file] ?? '');
-  edit(value, mutation.edit);
+  for (const change of 'edits' in mutation ? mutation.edits : [mutation.edit]) edit(value, change);
   const path = join(directory, `${index}-${mutation.file}.json`);
   writeFileSync(path, JSON.stringify(value, null, 2));
   const paths = Object.fromEntries(files.map(name => [name, name === mutation.file ? path : join(root, `tests/dbspec/${name}.json`)]));
@@ -148,6 +154,19 @@ mutations.forEach((mutation, index) => {
       assert.notEqual(result.code, 0, `${runner.name} exited 0`);
       assert.equal(result.signal, null, `${runner.name} ended by ${result.signal}`);
       assert.ok(result.stderr.includes(`${path}: ${location} ${mutation.problem}`), `${runner.name} stderr: ${result.stderr}`);
+    });
+  }
+});
+
+refusals.forEach((refusal, index) => {
+  const { path, inputs } = inputsWith(`refusals-${index}`, { file: refusal.file, location: '', edits: refusal.edits });
+  for (const runner of runners.filter(runner => runner.reads.includes(refusal.file))) {
+    caseTest(`${runner.name} reports every refusal of ${refusal.file}: ${refusal.problems.join(', ')}`, TIMEOUT, async () => {
+      const result = await runRunner(runner, inputs, TIMEOUT);
+      assert.notEqual(result.code, 0, `${runner.name} exited 0`);
+      assert.equal(result.signal, null, `${runner.name} ended by ${result.signal}`);
+      const lines = result.stderr.split('\n').filter(line => line.startsWith(`${path}: `));
+      assert.deepEqual(lines.toSorted(), refusal.problems.map(problem => `${path}: ${problem}`).toSorted(), `${runner.name} stderr: ${result.stderr}`);
     });
   }
 });

@@ -6,7 +6,7 @@ declare(strict_types=1);
 // opis/json-schema, the schemas that the TypeScript runner reads them with (tests/dbspec/vectors.mts). A refused file is
 // reported in the form that every compare runner shares (tests/dbspec/compare/runners.test.mts): one
 // "<file>: <location> <problem>" line per refusal, where the location is the dotted path of the value
-// (`canonical[0].documents.shop`). opis/json-schema reports the first refusal of a file.
+// (`canonical[0].documents.shop`). Every refusal of a file is reported, as the other runners report them.
 
 require_once __DIR__ . '/../../vendor-php/autoload.php';
 
@@ -63,10 +63,8 @@ function dbspec_vector_leaves(ValidationError $error): array
 function dbspec_vector_refusals(mixed $value, string $kind, string $name): array
 {
     $schema = json_decode((string) file_get_contents(__DIR__ . "/schema/$kind.schema.json"), false, 512, JSON_THROW_ON_ERROR);
-    // The validator stops at the first refusal (its default). Collecting every error is not exact in opis/json-schema
-    // 2.6.0: a refused property ends the keyword properties before it records the properties it checked, so
-    // additionalProperties then reports every later property as unknown.
-    $validator = new Validator();
+    // The validator collects every refusal instead of stopping at the first (its default).
+    $validator = new Validator(max_errors: PHP_INT_MAX, stop_at_first_error: false);
     $error = $validator->validate($value, $schema)->error();
     if ($error === null) {
         return [];
