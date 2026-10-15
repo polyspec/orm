@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: cd8b4f7a1bbc0ac904447ac1fa9687d6abc8e8756a6c2775deb47f91826aef12 -->
+<!-- source-sha256: 6586821fa811d96452162b908b0f0eebdb83c3ef8fc38a359084146e164a6fb7 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1260,6 +1260,7 @@
 - [o] T186 개발 규칙에 0.0.x 개발의 local link 문서를 적는다. 원인: kit K198이 polyspec 버전이 0.0.x인 동안 개발 checkout이 설치한 polyspec package를 source에 link한다는 것을 kit docs/plans/local-links.md에 기록했고, AGENTS.md는 그 문서를 적지 않았다. 완료 조건: AGENTS.md와 AGENTS.ko.md가 shared tool 규칙에 그 문서를 한 문장으로 적고, make documents-check가 통과한다.
   Evidence: AGENTS.md와 AGENTS.ko.md가 0.0.x local link에 대해 kit docs/plans/local-links.md로 안내한다. lock으로 설치하고 link하지 않은 worktree에서 documents 검사, docs rule, repository와 features 검사, owners, layout, go-model, interface, go-vet, Go engine test가 통과한다.
 - [ ] T187 `make typescript-build`이 필요한 TypeScript workspace package를 모두 build해서, 새 checkout에서 `make lint-ts`가 통과한다. 원인: protocol 결함이 아니라 build 결함이다. `typescript:build`(package.json)가 packages/ts만 build하므로, @polyspec/dbspec-language를 import하는 packages/dbspec-lsp가 나중의 workspace build 전에는 그것을 해석하지 못하고, 새 설치에서 `make lint-ts`가 exit 2로 실패한다(T53 worktree에서 make install-packages와 make typescript-build 뒤에 재현). 완료 조건: install-packages와 typescript-build만 한 뒤 `make lint-ts`가 exit 0이고, typescript:build script가 dbspec-lsp보다 먼저 dbspec-language를 build하며, 빠진 의존 build를 먼저 잡는 검사가 있다(RED 먼저).
+- [ ] T188 `make check`과 CI가 PHP extension의 dbspec suite를 실행한다. 원인: 연결 결함이다. packages/php-ext의 sets와 schema-definition suite를 실행하는 엄브렐라 target `dbspec-php-extension-check`가 CHECK_TARGETS에도, 어느 CI check group에도 없어서 `make check`와 CI가 그 suite에 도달하지 않는다(T111에서 발견). RED: `make -n check`와 CI workflow의 check group에 그 target이 없다(또는 kit의 모든 bound suite가 check에 도달하는지 검사가 이를 보고한다면 그 검사). 완료 조건: target이 CHECK_TARGETS와 다른 dbspec suite가 도는 CI group에 있고, `make -n check`가 그것을 보여준다. 연결 전에 RED를 기록한다.
 - [o] T156 모든 생성기가 모든 key의 모든 prefix마다 유형 있는 메서드를 선언한다. 원인: scan한 소스가 호출하는 메서드만 생성되어, 어떤 소스도 호출하지 않는 key prefix에는 메서드가 없었다(hyper U-97). 완료 조건: Go, Rust, TypeScript model이 primary key, unique key, index의 모든 prefix마다 메서드를 선언하고, Python은 같은 이름을 실행 시점에 해석하며, symbol 기록과 docs/usage.md를 갱신한다.
   - [o] T156-1 T156 이후 orm main CI를 다시 green으로 만든다 (T156에 이어). 원인: run 38502539388이 실패했다. Python key-prefix 테스트가 PYTHONPATH를 바꾸고 지워진 packages/orm-python/bin/orm-gen을 실행했고, Go와 Rust key-prefix 테스트가 testcase를 시작하지 않았으며, generator/gen_go_key_prefix_test.go가 어떤 feature에도 속하지 않았고, src/models/markdown_fixture에 key-prefix 메서드가 없었다. 완료 조건: 각각을 고치고 그 소유 검사가 통과한다.
   - [o] T156-2 Go markdown model을 다시 생성한다 (T156에 이어). 원인: run 38504701356이 go-markdown-model-generated에서 실패했다. packages/orm-go/markdownmodel에 key-prefix 메서드가 없었다. 완료 조건: go generate가 폴더를 바꾸지 않는다.
