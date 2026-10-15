@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9abac9543ef7663c7754e1ca5459f1d0bfd90dd3f9512555036585a15f175cce -->
+<!-- source-sha256: 1895fc5cecb13a7bd8a2e7ecc51374471c1edc70d9c6b4b4fb76515dbdf7c483 -->
 # 변경 이력
 
 ## Unreleased
 
+- 문서 규칙 검사가 `make lint-ts`를 통과한다. 파일을 모양 검사 guard로 읽고, 줄 필터는 `startsWith`를 쓴다. (#T77-11-2)
 - 행의 identity 키를 가진 load와 모든 client의 공개 execute 호출이 main에서 이미 성립한다. (#T120)
 - 생성된 setter가 모든 client에서 date, time, datetime에 text를 받는다. (#T189)
 - 문서의 표와 집합 나열이 선언된 모든 client를 적으며, 문서 규칙이 이를 검사한다. (#T77-11-1)

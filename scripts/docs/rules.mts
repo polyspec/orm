@@ -134,8 +134,15 @@ for (const file of allDocs) {
 // implementations, runners, planners or outputs in English or Korean states the profile's number; history (CHANGELOG,
 // the checklist) is not checked.
 type Parity = { profiles: { name: string; implementations: string[] }[] };
-const parity = JSON.parse(await readFile(path.join(root, 'config/parity.json'), 'utf8')) as Parity;
-const clients = parity.profiles.find(profile => profile.name === 'client')?.implementations ?? [];
+const isStringArray = (value: unknown): value is string[] => Array.isArray(value) && value.every(item => typeof item === 'string');
+const isProfile = (value: unknown): value is Parity['profiles'][number] =>
+  typeof value === 'object' && value !== null && 'name' in value && typeof value.name === 'string' && 'implementations' in value && isStringArray(value.implementations);
+const isParity = (value: unknown): value is Parity =>
+  typeof value === 'object' && value !== null && 'profiles' in value && Array.isArray(value.profiles) && value.profiles.every(isProfile);
+const parityData: unknown = JSON.parse(await readFile(path.join(root, 'config/parity.json'), 'utf8'));
+if (!isParity(parityData)) fail('docs.implementation-count', 'config/parity.json does not match { profiles: [{ name, implementations: string[] }] }');
+const parityProfiles = isParity(parityData) ? parityData.profiles : [];
+const clients = parityProfiles.find(profile => profile.name === 'client')?.implementations ?? [];
 const runnerSource = await readFile(path.join(root, 'tests/conformance/check/main.mts'), 'utf8');
 const runners = [...(/export const requiredLanguages = \[([^\]]*)\]/.exec(runnerSource)?.[1] ?? '').matchAll(/'([^']+)'/g)].map(match => match[1] ?? '');
 if (clients.length === 0) fail('docs.implementation-count', 'config/parity.json has no client profile');
@@ -161,7 +168,7 @@ const clientNames: Record<string, string> = { go: 'Go', php: 'PHP', rust: 'Rust'
 for (const file of ['docs/protocol.md', 'docs/protocol.ko.md']) {
   const text = await readFile(path.join(root, file), 'utf8');
   const section = text.slice(text.search(/^## 4\./m), text.search(/^## 5\./m));
-  const rows = section.split('\n').filter(line => /^\|/.test(line)).map(line => (line.split('|')[1] ?? '').trim());
+  const rows = section.split('\n').filter(line => line.startsWith('|')).map(line => (line.split('|')[1] ?? '').trim());
   for (const client of clients) {
     const name = clientNames[client] ?? client;
     if (!rows.includes(name)) fail('docs.implementation-count', `${file} section 4 has no ${name} row; config/parity.json declares ${client}`);
