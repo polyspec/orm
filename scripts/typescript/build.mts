@@ -31,7 +31,12 @@ try {
   console.error(`typescript build: typescript does not resolve from ${client} (${errorCode(error) ?? errorMessage(error)}); run make install, which installs the TypeScript compiler`);
   process.exit(1);
 }
-const built = spawnSync(process.execPath, [tsc, '-p', join(client, 'tsconfig.build.json'), '--outDir', next], { stdio: 'inherit' });
+// tsconfig.build.json is composite (packages/ts/tsconfig.json references it, so knip maps dist to src), and a composite
+// build keeps an incremental record. Each build writes its record beside its own output and removes it: a record kept
+// between builds would let tsc skip the files it finds up to date and leave the new output without them.
+const record = `${next}.tsbuildinfo`;
+const built = spawnSync(process.execPath, [tsc, '-p', join(client, 'tsconfig.build.json'), '--outDir', next, '--tsBuildInfoFile', record], { stdio: 'inherit' });
+rmSync(record, { force: true });
 if (built.status !== 0) {
   rmSync(next, { recursive: true, force: true });
   console.error(`typescript build: tsc exited with ${built.status ?? built.signal}; dist keeps the previous build`);
