@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 4e37b66a32df9a4d9355c248dfd2f12cde7cec371e44241266f04ff88fed42ce -->
+<!-- source-sha256: 7c918bb1e9d1c88db32276eabe4646642599800a4f9b66e1ae0300f70cbd365d -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -9,7 +9,7 @@
 ```json
 {
   "ir_version": 1,
-  "manifest_hash": "sha256:06318b2325cc8123b21339f72401aadbe5966c261f476dbe758062574a595ae5",
+  "manifest_hash": "sha256:b621d52e823c050cb92b7cd5005919504611223f640c71430327a4e5e67019aa",
   "kind": "one | all | count | group_count | sum | avg | paginate | insert | update | delete | restore | restart_identity",
   "entity": "author",
   "columns": Columns,

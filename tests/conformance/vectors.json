@@ -2870,6 +2870,126 @@
       }
     },
     {
+      "name": "upsert_one_key",
+      "chain": "UpsertCell setCode('k1')-\u003esetLabel('first')-\u003eduplication(setLabel('second'))-\u003ecreate() inserts, the same with setLabel('other') updates on the one conflict key code, code('k1')-\u003egets() picking label after each; setLabel('none') without code is IR_INVALID before any statement; delete()",
+      "expect": {
+        "result": {
+          "inserted": [
+            {
+              "label": "first"
+            }
+          ],
+          "unassigned": {
+            "error": "IR_INVALID",
+            "message": "IR_INVALID: on_duplicate needs exactly one conflict key; unique (code) can meet the row but the insert does not assign code"
+          },
+          "updated": [
+            {
+              "label": "second"
+            }
+          ]
+        },
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "START TRANSACTION",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "k1",
+              "first",
+              "second"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `upsert_cell` (`code`, `label`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `label` = ?, `seq` = LAST_INSERT_ID(`seq`)",
+            "tables": [
+              "upsert_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "k1"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`code` AS `a__code`, `a`.`label` AS `a__label` FROM `upsert_cell` AS `a` WHERE `a`.`code` = ?",
+            "tables": [
+              "upsert_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "k1",
+              "other",
+              "second"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `upsert_cell` (`code`, `label`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `label` = ?, `seq` = LAST_INSERT_ID(`seq`)",
+            "tables": [
+              "upsert_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "k1"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`code` AS `a__code`, `a`.`label` AS `a__label` FROM `upsert_cell` AS `a` WHERE `a`.`code` = ?",
+            "tables": [
+              "upsert_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "savepoint",
+            "sql": "SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM `upsert_cell` WHERE `upsert_cell`.`seq` = ?",
+            "tables": [
+              "upsert_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "release",
+            "sql": "RELEASE SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          }
+        ]
+      }
+    },
+    {
       "name": "clock_truncate_write",
       "chain": "FixClock(db, '2026-06-01 12:34:56.999999'); ClockCell setLabel('write')-\u003ecreate() leaving at0, at3 and at6 to default now; getBySeq(seq): at0 and at3 equal at6 truncated to 0 and 3 digits; delete()",
       "expect": {

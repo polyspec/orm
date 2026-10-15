@@ -181,3 +181,11 @@ table clock_cell {
   at6 datetime(6) default now
   primary key (seq)
 }
+
+table upsert_cell {
+  seq i64 identity
+  code varchar(16)
+  label varchar(16)
+  primary key (seq)
+  unique uq_upsert_cell_code (code)
+}

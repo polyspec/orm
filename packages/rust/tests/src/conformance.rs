@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 
 polyspec_orm::models!();
 
-use model::{Author, ClockCell, CompositeAccount, HexCell, Service, ServiceMember, ServiceRegion, SoftRecord, Task, TimeCell, User};
+use model::{Author, ClockCell, CompositeAccount, HexCell, Service, ServiceMember, ServiceRegion, SoftRecord, Task, TimeCell, UpsertCell, User};
 use polyspec_orm::{AesKeyring, Collection, Db, Model, Null, Param};
 use serde_json::{json, Map, Value};
 
@@ -751,6 +751,25 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             let rows = TimeCell::new().connect(db).clock("10:11:12.345").gets().await?;
             created.delete(false).await?;
             Ok::<Value, polyspec_orm::Error>(picks(&rows, &["clock"]))
+        })
+        .retry(0)
+    );
+    // An upsert has exactly one conflict key (docs/protocol.md 1): upsert_cell leaves its identity primary key out, so
+    // the unique key on code is the one key that can meet the row; an insert that does not assign code is IR_INVALID
+    // before any statement.
+    run!(
+        "upsert_one_key",
+        db.transaction(async || {
+            let created = UpsertCell::new().connect(db).set_code("k1").set_label("first").duplication(UpsertCell::new().set_label("second")).create().await?;
+            mask(shared, &[created.get_seq().unwrap()], &[]);
+            let inserted = UpsertCell::new().connect(db).code("k1").gets().await?;
+            UpsertCell::new().connect(db).set_code("k1").set_label("other").duplication(UpsertCell::new().set_label("second")).create().await?;
+            let updated = UpsertCell::new().connect(db).code("k1").gets().await?;
+            let unassigned = failure(UpsertCell::new().connect(db).set_label("none").duplication(UpsertCell::new().set_label("second")).create().await);
+            updated.delete(false).await?;
+            Ok::<Value, polyspec_orm::Error>(
+                json!({"inserted": picks(&inserted, &["label"]), "updated": picks(&updated, &["label"]), "unassigned": unassigned}),
+            )
         })
         .retry(0)
     );

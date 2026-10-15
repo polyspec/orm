@@ -1,5 +1,5 @@
 <!-- doc-id: tests-conformance-readme -->
-<!-- source-sha256: c77700f3a7dd181cd9e3a968893fd37a2dde764933f61309e3934cbc28e891de -->
+<!-- source-sha256: 282e2aec87b38ad03277455d870c3be7b229cd7686ffc4146f34501a2a8ddb85 -->
 # 적합성 벡터
 
 한 문서와 다섯 실행기를 사용한다. 각 벡터는 Go, PHP, Rust, TypeScript, Python으로 같은 체인을 작성한다. 각 실행기는 데이터베이스에서 체인을 실행하고 다음 JSON을 출력한다.
@@ -43,7 +43,7 @@ node tests/interfaces/check/main.mts --results "$RUN_DIR/out" --results "$RUN_DI
 
 `$RUN_DIR`은 그 실행 하나의 directory(`.runtime/run/conformance-check-<make pid>`)이고 target이 끝에 지운다: 모든 실행은 새 directory에 출력을 쓰고(`check run --out`은 이미 있는 directory를 거부한다), `contracts/interfaces.json`의 공통 state contract는 같은 실행의 출력과 비교하므로, 결과는 tree에만 달렸고 이전 실행이 남긴 출력에 달리지 않는다.
 
-`check run`은 `--dsn`이 필요하며 다섯 실행기에 같은 DSN URI를 전달한다. 각 DSN은 시간대 `+00:00`을 선택한다. 각 실행기를 두 번 실행하며, 두 JSON 결과가 같고 선언된 sequence 정리 후 데이터베이스 상태가 같아야 한다. 검사는 모든 테이블 행과 MySQL auto-increment 값, PostgreSQL sequence 값, 존재할 때 SQLite `sqlite_sequence` 테이블을 읽는다. `AUTOINCREMENT` 테이블이 없는 SQLite 데이터베이스에는 sequence counter가 없으며 검사기는 모든 행을 계속 읽고 다른 질의 오류를 보고한다. 쓰기 벡터가 삽입하는 일곱 테이블의 counter만 복원할 수 있으며 각 복원을 보고한다. 테이블 누락, 읽을 수 없는 sequence, 선언되지 않은 counter 변경, 정리 실패, 남은 상태 변경은 실패다. 실행 중 bench 데이터베이스에 외부 쓰기가 없어야 한다.
+`check run`은 `--dsn`이 필요하며 다섯 실행기에 같은 DSN URI를 전달한다. 각 DSN은 시간대 `+00:00`을 선택한다. 각 실행기를 두 번 실행하며, 두 JSON 결과가 같고 선언된 sequence 정리 후 데이터베이스 상태가 같아야 한다. 검사는 모든 테이블 행과 MySQL auto-increment 값, PostgreSQL sequence 값, 존재할 때 SQLite `sqlite_sequence` 테이블을 읽는다. `AUTOINCREMENT` 테이블이 없는 SQLite 데이터베이스에는 sequence counter가 없으며 검사기는 모든 행을 계속 읽고 다른 질의 오류를 보고한다. 쓰기 벡터가 삽입하는 여덟 테이블의 counter만 복원할 수 있으며 각 복원을 보고한다. 테이블 누락, 읽을 수 없는 sequence, 선언되지 않은 counter 변경, 정리 실패, 남은 상태 변경은 실패다. 실행 중 bench 데이터베이스에 외부 쓰기가 없어야 한다.
 비어 있는 SQLite `AUTOINCREMENT` 테이블에는 아직 `sqlite_sequence` 항목이 없을 수 있다. counter 테스트는 테이블 정의를 확인하고 첫 삽입으로 생긴 counter를 관찰한 뒤 원래의 항목 부재 상태로 복원한다.
 
 

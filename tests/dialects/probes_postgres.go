@@ -130,6 +130,12 @@ func postgresProbes() []Probe {
 			e.Exec("CREATE TABLE t (v time)", "INSERT INTO t VALUES ('24:00:00')")
 			e.Fails("INSERT INTO t VALUES ('25:00:00')", "22008")
 		}),
+		p("upsert.other_key_conflicts", "ON CONFLICT names one target; a row that meets another unique key is a unique violation (23505)", func(e *Env) {
+			e.Exec("CREATE TABLE t (id int PRIMARY KEY, code varchar(8) NOT NULL UNIQUE, v varchar(8))", "INSERT INTO t VALUES (1, 'a', 'old')")
+			e.Fails("INSERT INTO t VALUES (2, 'a', 'new') ON CONFLICT (id) DO UPDATE SET v = 'hit'", "23505")
+			e.Exec("INSERT INTO t VALUES (2, 'a', 'new') ON CONFLICT (code) DO UPDATE SET v = 'hit'")
+			e.WantRows("SELECT id || ':' || v FROM t ORDER BY id", "1:hit")
+		}),
 		p("now.precision_rounds", "a clock written into timestamp(p < 6) rounds: .784706 becomes the next second, and a statement_timestamp() default rounds the same way", func(e *Env) {
 			e.Want("SELECT '2026-06-01 12:34:32.784706'::timestamp(6)::timestamp(0)::text", "2026-06-01 12:34:33")
 			e.Exec("CREATE TABLE t (z int, a timestamp(0) DEFAULT statement_timestamp(), b timestamp(6) DEFAULT statement_timestamp())", "INSERT INTO t (z) VALUES (1)")

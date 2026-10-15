@@ -9,7 +9,7 @@
 // Each --vector selects one vector by name; without one every vector runs.
 // The models embed the manifest of contracts/fixtures/bench/bench.dbs.
 import {
-  AesKeyring, Author, ClockCell, type Collection, type Model, CompositeAccount, HexCell, Service, TimeCell, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, User, connect, orm,
+  AesKeyring, Author, ClockCell, type Collection, type Model, CompositeAccount, HexCell, Service, TimeCell, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, UpsertCell, User, connect, orm,
 } from '../../packages/ts/dist/index.js';
 import { fixClock } from '../../packages/ts/dist/testing.js';
 import { parseArgs } from 'node:util';
@@ -133,7 +133,7 @@ async function main() {
     log.push({ sql: e.sql, binds: e.binds.map(norm), kind: e.kind, tables: [...e.tables], transaction, error: e.error === null ? null : code(e.error) });
   });
   const out: Record<string, { statements: Logged[]; result: unknown }> = {};
-  const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'clock_truncate_write', 'clock_compare_six_digits']);
+  const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'upsert_one_key', 'clock_truncate_write', 'clock_compare_six_digits']);
   const declared = new Set<string>();
   const run = async (name: string, fn: () => Promise<unknown>) => {
     declared.add(name);
@@ -486,6 +486,25 @@ async function main() {
     const rows = await new TimeCell().connect(db).clock('10:11:12.345').gets();
     await created.delete();
     return picks(rows, 'clock');
+  });
+  // An upsert has exactly one conflict key (docs/protocol.md 1): upsert_cell leaves its identity primary key out, so the
+  // unique key on code is the one key that can meet the row; an insert that does not assign code is IR_INVALID before
+  // any statement.
+  await run('upsert_one_key', async () => {
+    const created = await new UpsertCell().connect(db).setCode('k1').setLabel('first')
+      .duplication(new UpsertCell().setLabel('second')).create();
+    mask([created.getSeq()]);
+    const inserted = await new UpsertCell().connect(db).code('k1').gets();
+    await new UpsertCell().connect(db).setCode('k1').setLabel('other').duplication(new UpsertCell().setLabel('second')).create();
+    const updated = await new UpsertCell().connect(db).code('k1').gets();
+    let unassigned: { error: string | null; message: string } | null = null;
+    try {
+      await new UpsertCell().connect(db).setLabel('none').duplication(new UpsertCell().setLabel('second')).create();
+    } catch (e) {
+      unassigned = { error: code(e), message: errorMessage(e) };
+    }
+    await updated.delete();
+    return { inserted: picks(inserted, 'label'), updated: picks(updated, 'label'), unassigned };
   });
 
   // One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now` hold that

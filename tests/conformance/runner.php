@@ -18,6 +18,7 @@ use Polyspec\Orm\Tests\Model\ServiceMember;
 use Polyspec\Orm\Tests\Model\ServiceRegion;
 use Polyspec\Orm\Tests\Model\SoftRecord;
 use Polyspec\Orm\Tests\Model\Task;
+use Polyspec\Orm\Tests\Model\UpsertCell;
 use Polyspec\Orm\Tests\Model\User;
 use Polyspec\Orm\AesKeyring;
 use Polyspec\Orm\Db;
@@ -158,7 +159,7 @@ $db->subscribe(static function (StatementEvent $e): void {
 $out = [];
 /** @var array<string, callable> vector 이름별 chain, 선언 순서 */
 $vectors = [];
-$writeVectors = array_fill_keys(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'clock_truncate_write', 'clock_compare_six_digits'], true);
+$writeVectors = array_fill_keys(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'upsert_one_key', 'clock_truncate_write', 'clock_compare_six_digits'], true);
 
 /** vector를 선언한다. 선택된 vector는 모든 선언이 끝난 뒤 선언 순서대로 실행한다. */
 function vector(string $name, callable $fn): void
@@ -523,6 +524,26 @@ vector('time_p3_roundtrip', function () use ($db, $at): array {
     $rows = (new TimeCell)($db)->clock('10:11:12.345')->gets();
     $created->delete();
     return picks($rows, 'clock');
+});
+
+// An upsert has exactly one conflict key (docs/protocol.md 1): upsert_cell leaves its identity primary key out, so the
+// unique key on code is the one key that can meet the row; an insert that does not assign code is IR_INVALID before any
+// statement.
+vector('upsert_one_key', function () use ($db): array {
+    $created = (new UpsertCell)($db)->setCode('k1')->setLabel('first')
+        ->duplication((new UpsertCell)->setLabel('second'))->create();
+    mask([$created->getSeq()]);
+    $inserted = (new UpsertCell)($db)->code('k1')->gets();
+    (new UpsertCell)($db)->setCode('k1')->setLabel('other')->duplication((new UpsertCell)->setLabel('second'))->create();
+    $updated = (new UpsertCell)($db)->code('k1')->gets();
+    $unassigned = null;
+    try {
+        (new UpsertCell)($db)->setLabel('none')->duplication((new UpsertCell)->setLabel('second'))->create();
+    } catch (Throwable $e) {
+        $unassigned = ['error' => code($e), 'message' => $e->getMessage()];
+    }
+    $updated->delete();
+    return ['inserted' => picks($inserted, 'label'), 'updated' => picks($updated, 'label'), 'unassigned' => $unassigned];
 });
 
 // One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now` hold that
