@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 15e466cc73c1fbeafe0039a43793d3c5662adc5270e42f170612cbdd57b8536e -->
+<!-- source-sha256: d3828b28c16510333e6ece1970e204e92dc0388e9074672550cbbe34781f1f92 -->
 # 변경 이력
 
 ## Unreleased
 
+- Go bind vector test가 deadline이 있는 case로 보고한다. (#T91-1)
 - TypeScript symbol 기록이 CompositeAccount의 contains method를 담는다. (#T79-1-1)
 - push-gate가 다시 mise.toml의 Node.js release로 시작한다. (#T181-4)
 - statement가 모든 database에서 column 정밀도의 clock 값 하나를 읽는다. (#T93)
