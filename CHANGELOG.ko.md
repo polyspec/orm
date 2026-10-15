@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8fccde625a96c4c90486c0ff0f97218f1a62ad255cb2814063ec4a0ea8aa428a -->
+<!-- source-sha256: 03a4e78c2a41bdb8553750c10d52bfb9468510fffc6966829bb70d9afdc2015c -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript와 Python이 Go만큼 엄격하게 request shape를 decode한다. (#T110)
 - ip 인코더가 공백을 자르지 않고 거부한다. (#T109)
 - 한 단계짜리 text stage list를 모든 client가 같게 저장한다. (#T108)
 - 0001년부터 9999년 밖의 상대 시간이 모든 database에서 NULL이다. (#T98)

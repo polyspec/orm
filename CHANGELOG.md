@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- TypeScript and Python decode a request's shape as strictly as Go. (#T110)
 - The ip encoder refuses white space instead of trimming it. (#T109)
 - A single-stage text stage list stores the text alike in every client. (#T108)
 - A relative time outside 0001 to 9999 is NULL on every database. (#T98)
