@@ -300,7 +300,7 @@ func TestRawFormsRejected(t *testing.T) {
 func TestBinaryContains(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for driver, parts := range map[string][]string{
-		"mysql":    {"`a`.`name` LIKE BINARY ?"},
+		"mysql":    {"`a`.`name` LIKE ?"},
 		"postgres": {`"a"."name" LIKE $1`},
 		"sqlite":   {`instr("a"."name", ?) > 0`},
 	} {

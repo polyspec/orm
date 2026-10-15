@@ -132,7 +132,7 @@ async function main() {
     log.push({ sql: e.sql, binds: e.binds.map(norm), kind: e.kind, tables: [...e.tables], transaction, error: e.error === null ? null : code(e.error) });
   });
   const out: Record<string, { statements: Logged[]; result: unknown }> = {};
-  const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold']);
+  const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point']);
   const declared = new Set<string>();
   const run = async (name: string, fn: () => Promise<unknown>) => {
     declared.add(name);
@@ -381,10 +381,11 @@ async function main() {
     await new CompositeAccount().connect(db).creates(rows);
     const matches: unknown[] = [];
     for (const p of patterns) matches.push(picks(await cond(new CompositeAccount().connect(db).tenantId(902), p).orderByAccountIdAsc().gets(), 'account_id'));
-    await (await new CompositeAccount().connect(db).tenantId(902).gets()).delete();
+    await (await new CompositeAccount().connect(db).tenantId(902).orderByAccountIdAsc().gets()).delete();
     return matches;
   };
   await run('contains_ascii_fold', () => containsVector((q, p) => q.andLkName(p), 'PPL', 'ÉV', '_', ''));
+  await run('contains_binary_code_point', () => containsVector((q, p) => q.andLbName(p), 'pp', 'É', 'PPL', '_'));
   await run('delete_recursive', async () => {
     const service = await new Service().connect(db).setName('recursive').create();
     const seq = service.getSeq();

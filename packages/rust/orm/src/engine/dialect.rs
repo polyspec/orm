@@ -167,8 +167,8 @@ impl Dialect {
 
     pub fn contains_binary(self, col: &str, value: &mut dyn FnMut(&str) -> String) -> String {
         match self {
-            Dialect::MySql => format!("{col} LIKE BINARY {}", value("like_contains")),
-            Dialect::Postgres => format!("{col} LIKE {}", value("like_contains")),
+            // utf8mb4_0900_bin compares code points under LIKE; LIKE BINARY is deprecated since MySQL 8.0.27.
+            Dialect::MySql | Dialect::Postgres => format!("{col} LIKE {}", value("like_contains")),
             Dialect::Sqlite => format!("instr({col}, {}) > 0", value("")),
         }
     }

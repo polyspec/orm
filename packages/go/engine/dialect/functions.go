@@ -68,8 +68,10 @@ func (MySQL) Random() string { return "RAND()" }
 
 func (MySQL) NullsOrder(bool) string { return "" }
 
+// ContainsBinary renders plain LIKE: every orm character column is utf8mb4_0900_bin, under which LIKE compares
+// code points (probe mysql.like.binary_collation_code_point), and LIKE BINARY is deprecated since MySQL 8.0.27.
 func (MySQL) ContainsBinary(col string, value func(string) string) string {
-	return col + " LIKE BINARY " + value("like_contains")
+	return col + " LIKE " + value("like_contains")
 }
 
 func (Postgres) ColumnFunction(name, col string, arg func(int) string) (string, bool) {

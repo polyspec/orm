@@ -129,8 +129,8 @@ final class Dialect
     public function containsBinary(string $col, \Closure $value): string
     {
         return match ($this->name) {
-            'mysql' => "$col LIKE BINARY " . $value('like_contains'),
-            'postgres' => "$col LIKE " . $value('like_contains'),
+            // utf8mb4_0900_bin compares code points under LIKE; LIKE BINARY is deprecated since MySQL 8.0.27.
+            'mysql', 'postgres' => "$col LIKE " . $value('like_contains'),
             default => "instr($col, " . $value('') . ') > 0',
         };
     }

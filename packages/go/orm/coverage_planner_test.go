@@ -123,6 +123,12 @@ func TestCoveragePlannerCount(t *testing.T) {
 	compilePlannerCase(t, "planner_count")
 }
 
+// TestCoveragePlannerContainsBinaryCollation는 contains_binary가 MySQL에서 binary collation 아래의 LIKE로 compile되는지 확인한다.
+func TestCoveragePlannerContainsBinaryCollation(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_contains_binary_collation")
+}
+
 // TestCoveragePlannerContainsAsciiFold는 contains가 MySQL에서 ASCII 글자만 접는 26겹 REPLACE로 compile되는지 확인한다.
 func TestCoveragePlannerContainsAsciiFold(t *testing.T) {
 	testcase.Start(t, testcase.Compute)

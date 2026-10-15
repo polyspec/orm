@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 68e745f6db96615128776079e3e8f5235e25d724ea542f599692fac558a0af9d -->
+<!-- source-sha256: 4e291544f5fb7796619bf6dde76b4fe0cd60f5934cc3504a2a2656a56e8a4e22 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -10,7 +10,7 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
 | placeholders | `?` | `$n` (the executor renumbers when it expands a `parent` slot to N values) | `?` |
 | LIMIT | `LIMIT off, n` | `LIMIT n OFFSET off` | `LIMIT n OFFSET off` |
 | `Lk` | `F(col) LIKE F(?)`, F는 `A`–`Z` 각각을 소문자로 바꾸는 `REPLACE` 26겹: column의 `utf8mb4_0900_bin`은 code point로 비교하고, `LOWER`나 `_ci` collation은 ASCII 밖까지 접는다(probe `mysql.like.binary_collation_case_sensitive`, `mysql.like.ascii_fold_replace`) | `COLLATE "C"` 아래의 `ILIKE`(probe `postgres.ilike.c_collation_ascii_only`) | `LIKE … ESCAPE '\'` (ASCII 대소문자 구분 없음, probe `sqlite.like.ascii_only`) |
-| `Lb` | `LIKE BINARY` | `LIKE` | `instr(col, ?) > 0` |
+| `Lb` | `LIKE` (binary collation `utf8mb4_0900_bin`, code point로 비교한다. `LIKE BINARY`는 MySQL 8.0.27부터 deprecated다. probe `mysql.like.binary_collation_code_point`) | `LIKE` | `instr(col, ?) > 0` |
 | `Fulltext` / `FulltextBoolean` | `MATCH … AGAINST (… IN NATURAL LANGUAGE/BOOLEAN MODE)`, boolean value normalized (`+a +b*`) | `to_tsvector('simple', coalesce(a,'') || ' ' || …) @@ plainto_tsquery / websearch_to_tsquery('simple', ?)`, value trimmed only | **rejected** (FTS5 needs virtual tables) |
 | `forceIndex<Name>` | `FORCE INDEX (name)` | ignored (no hints) | `INDEXED BY "name"` |
 | insert id | `LAST_INSERT_ID()` (upsert adds `pk = LAST_INSERT_ID(pk)`) | `RETURNING pk` | `RETURNING pk` |
