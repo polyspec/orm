@@ -30,7 +30,25 @@ func TestStyledColumnStateFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, c := range fixture.Cases {
-		if c.ID == "unselected" || c.ID == "nonnull_sql_null" {
+		switch c.ID {
+		case "unselected":
+			// A styled value that the row did not select refuses to be read.
+			t.Run(c.ID, func(t *testing.T) {
+				if _, err := json.Marshal(StyledValue{}); ErrorCode(err) != c.Error {
+					t.Fatalf("unselected value error = %v; want %s", err, c.Error)
+				}
+				if err := ColumnUnselected("payload"); ErrorCode(err) != c.Error {
+					t.Fatalf("unselected column error = %v; want %s", err, c.Error)
+				}
+			})
+			continue
+		case "nonnull_sql_null":
+			// SQL NULL written to a column that is not nullable is refused.
+			t.Run(c.ID, func(t *testing.T) {
+				if _, err := NormalizeStyled(codecStages([]string{c.Style}), false, SqlNull()); err == nil || !strings.Contains(err.Error(), c.Error) {
+					t.Fatalf("non-null SQL NULL error = %v; want %s", err, c.Error)
+				}
+			})
 			continue
 		}
 		t.Run(c.ID, func(t *testing.T) {

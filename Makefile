@@ -158,7 +158,7 @@ TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mts
 # dbspec-rust-check, dbspec-ts-check, dbspec-compare-check)은 feature-verify-rust나 feature-verify-other 안에서 한 번
 # 실행되므로 목록에 다시 넣지 않는다. contracts/check-inputs.json은 target마다 scope를 선언한다: owner target은
 # make owner-check도 고르고, suite target은 이 전체 suite에서만 실행한다.
-CHECK_TARGETS = runner-check scripts-typecheck documents-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check testcase-check repo-check test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check install-cli-check markdown-table-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check bind-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check markdown-conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-language-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-coverage feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check python-check
+CHECK_TARGETS = runner-check scripts-typecheck documents-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check testcase-check repo-check test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check install-cli-check markdown-table-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check bind-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check conformance-ts-suite-check markdown-conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-language-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-coverage feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check python-check
 # CI는 make check를 CI group마다 job 하나로 나눠 동시에 실행한다(.github/workflows/ci.yml의 job test, matrix group).
 # job마다 `make check GROUP=<group>`이 CI_TARGETS_<group>을 실행하고, group은 함께 CHECK_TARGETS의 모든 target을 한
 # 번씩 실행한다(make repo-check가 확인한다). group은 CI 실행에서 잰 target의 시간으로 job마다 setup과 함께 10분 안에
@@ -179,7 +179,7 @@ CI_GROUPS = static clients_db clients_pooler conformance dbspec dbspec_apply fea
 CI_TARGETS_static = runner-check documents-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check testcase-check repo-check test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check install-cli-check markdown-table-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check codec-check bind-check fuzz-check package-check ts-model-check dbspec-language-check feature-unit-check
 CI_TARGETS_clients_db = rust-driver-check example-check client-db-check dialect-facts-check go-test-check
 CI_TARGETS_clients_pooler = client-pooler-check
-CI_TARGETS_conformance = ts-check scripts-typecheck ts-min-check conformance-check markdown-conformance-check
+CI_TARGETS_conformance = ts-check scripts-typecheck ts-min-check conformance-check conformance-ts-suite-check markdown-conformance-check
 CI_TARGETS_feature_helpers = feature-helper-check
 CI_TARGETS_python = python-check
 CI_TARGETS_dbspec = case-database-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-plan-ts-check dbspec-plan-rust-check dbspec-plan-php-check
@@ -310,6 +310,13 @@ dbspec-introspect-check:
 # dbspec-introspect-ts-check는 TypeScript client를 build하고 dbspec-introspect-check의 round
 # trip과 미지원 case를 그 introspectDbspec으로 MySQL, PostgreSQL, SQLite에서 실행한다.
 .PHONY: dbspec-introspect-ts-check
+# conformance-ts-suite-check runs the conformance vectors of each dialect as node:test tests named by their vectors, the
+# TypeScript bindings of the conformance units of config/parity.json, each on a bench database it seeds and drops itself.
+.PHONY: conformance-ts-suite-check
+conformance-ts-suite-check: lease-tool
+	$(HOLD_TYPESCRIPT)
+	$(TSC_BUILD)
+	$(WITH_TEST_ENV) node --test --conditions=orm-test packages/ts/tests/coverage_conformance_mysql.mjs packages/ts/tests/coverage_conformance_postgres.mjs packages/ts/tests/coverage_conformance_sqlite.mjs
 dbspec-introspect-ts-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)

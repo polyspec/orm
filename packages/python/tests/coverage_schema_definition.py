@@ -3,8 +3,10 @@
 # formatting and its refusal, and the declaration positions of a parse. Expected values come only from the
 # fixture.
 import json
+import unittest
 
 from .coverage_case import REPOSITORY_ROOT, run_cases
+from .vector_case import VectorCase, vector_tests
 from polyspec.orm.dbspec import (
     analyze_dbspec,
     dbspec_manifest,
@@ -144,14 +146,30 @@ def dbspec_parse_positions():
         )
 
 
-run_cases(
-    {
-        "dbspec_emit_round_trip": dbspec_emit_round_trip,
-        "dbspec_manifest_hash": dbspec_manifest_hash,
-        "dbspec_render_ddl": dbspec_render_ddl,
-        "dbspec_analyze_tokens": dbspec_analyze_tokens,
-        "dbspec_format": dbspec_format,
-        "dbspec_format_refusal": dbspec_format_refusal,
-        "dbspec_parse_positions": dbspec_parse_positions,
-    }
-)
+CASES = {
+    "dbspec_emit_round_trip": dbspec_emit_round_trip,
+    "dbspec_manifest_hash": dbspec_manifest_hash,
+    "dbspec_render_ddl": dbspec_render_ddl,
+    "dbspec_analyze_tokens": dbspec_analyze_tokens,
+    "dbspec_format": dbspec_format,
+    "dbspec_format_refusal": dbspec_format_refusal,
+    "dbspec_parse_positions": dbspec_parse_positions,
+}
+
+
+class Case(VectorCase):
+    """A case of schema_definition.json."""
+
+
+def load_tests(
+    loader: unittest.TestLoader, tests: unittest.TestSuite, _pattern: object
+) -> unittest.TestSuite:
+    """One test for each case of the fixture, named by the case id."""
+    tests.addTests(
+        vector_tests(Case, FIXTURE["cases"], lambda test, case: CASES[case["id"]]())
+    )
+    return tests
+
+
+if __name__ == "__main__":
+    run_cases(CASES)

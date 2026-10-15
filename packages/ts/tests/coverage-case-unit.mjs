@@ -3,6 +3,10 @@
 // 검사한다(contracts/features.json의 helpers). 전체 coverage는 make check가 실행한다.
 // Usage: node packages/ts/tests/coverage-case-unit.mjs
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { errorCode, featureDatabase, runCases, withCleanup } from './coverage_case.mjs';
 import { cases, COMPUTE } from '../../../tests/testcase.mts';
 
@@ -27,9 +31,21 @@ await run.run('coverage_case/runs-requested-cases-in-order', COMPUTE, async () =
   assert.deepEqual(ran, ['b', 'a']);
   assert.deepEqual(lines, ['CASE b PASS', 'CASE a PASS']);
 });
-await run.run('coverage_case/refuses-missing-repeated-and-unknown-ids', COMPUTE, async () => {
-  for (const ids of [[], ['a', 'a'], ['z']])
+await run.run('coverage_case/refuses-repeated-and-unknown-ids', COMPUTE, async () => {
+  for (const ids of [['a', 'a'], ['z']])
     await assert.rejects(withArguments(ids, () => runCases('x.mjs', { a: async () => {} }, 1000)), /^Error: usage: x\.mjs a\.\.\.; got /);
+});
+// Without a case ID, runCases registers each case of the suite as a top-level node:test test named by its ID.
+await run.run('coverage_case/registers-the-suite-without-ids', COMPUTE, () => {
+  const directory = mkdtempSync(join(tmpdir(), 'coverage-case-'));
+  try {
+    const file = join(directory, 'suite.mjs');
+    writeFileSync(file, `import { runCases } from ${JSON.stringify(new URL('./coverage_case.mjs', import.meta.url).href)};\n` +
+      "await runCases('suite.mjs', { only: async () => {} }, 1000, { b: async () => {}, a: async () => { throw new Error('a fails'); } });\n");
+    const result = spawnSync(process.execPath, ['--test', '--test-reporter=tap', file], { encoding: 'utf8' });
+    assert.equal(result.status, 1, result.stderr);
+    assert.deepEqual([...result.stdout.matchAll(/^(not ok|ok) \d+ - (\S+)$/gm)].map(m => [m[1], m[2]]), [['ok', 'b'], ['not ok', 'a']]);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 await run.run('coverage_case/stops-a-case-at-its-deadline', COMPUTE, async () => {
   let timer;

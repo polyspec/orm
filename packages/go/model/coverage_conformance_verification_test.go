@@ -79,3 +79,78 @@ func TestCoverageConformanceVector(t *testing.T) {
 		}
 	}
 }
+
+// TestCoverageConformanceMySQL runs every vector of tests/conformance/vectors.json on the MySQL
+// bench database (BENCH_MYSQL_DSN) and checks each as a subtest named by the vector.
+func TestCoverageConformanceMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	runConformanceVectors(t, "BENCH_MYSQL_DSN", "vectors.json")
+}
+
+// TestCoverageConformancePostgres runs every vector of tests/conformance/vectors.postgres.json on
+// the PostgreSQL bench database (BENCH_POSTGRES_DSN), a subtest per vector.
+func TestCoverageConformancePostgres(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	runConformanceVectors(t, "BENCH_POSTGRES_DSN", "vectors.postgres.json")
+}
+
+// TestCoverageConformanceSQLite runs every vector of tests/conformance/vectors.sqlite.json on the
+// SQLite bench database (BENCH_SQLITE_DSN), a subtest per vector.
+func TestCoverageConformanceSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	runConformanceVectors(t, "BENCH_SQLITE_DSN", "vectors.sqlite.json")
+}
+
+// runConformanceVectors runs the Go conformance runner once over every vector of the expect file,
+// in file order as the conformance check runs it, on the bench database of the DSN variable, and
+// compares each printed vector with its recorded expect in a subtest named by the vector. The
+// bench database is required; the test never skips without it.
+func runConformanceVectors(t *testing.T, dsnVariable, expectFile string) {
+	t.Helper()
+	dsn := os.Getenv(dsnVariable)
+	if dsn == "" {
+		t.Fatalf("%s is required: the bench database that the conformance check runs on; run make databases-create, which seeds the bench databases and writes their DSNs", dsnVariable)
+	}
+	root := filepath.Join("..", "..", "..")
+	raw, err := os.ReadFile(filepath.Join(root, "tests", "conformance", expectFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var recorded struct {
+		Vectors []struct {
+			Name   string `json:"name"`
+			Expect any    `json:"expect"`
+		} `json:"vectors"`
+	}
+	if err := json.Unmarshal(raw, &recorded); err != nil {
+		t.Fatalf("%s: %v", expectFile, err)
+	}
+	cmd := exec.Command("go", "run", "-tags", "ormtest", "./tests/conformance/runner_go", "-dsn", dsn)
+	cmd.Dir = root
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("runner_go: %v\n%s", err, bytes.ReplaceAll(stderr.Bytes(), []byte(dsn), []byte("[redacted]")))
+	}
+	var output map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("runner_go output: %v", err)
+	}
+	if len(output) != len(recorded.Vectors) {
+		t.Errorf("runner_go printed %d vectors, %s has %d", len(output), expectFile, len(recorded.Vectors))
+	}
+	for _, v := range recorded.Vectors {
+		t.Run(v.Name, func(t *testing.T) {
+			if v.Expect == nil {
+				t.Fatalf("%s: vector %s has no expect", expectFile, v.Name)
+			}
+			got, ok := output[v.Name]
+			if !ok {
+				t.Fatalf("runner_go did not print vector %s", v.Name)
+			}
+			if !reflect.DeepEqual(got, v.Expect) {
+				t.Fatalf("vector %s:\n got %v\nwant %v", v.Name, got, v.Expect)
+			}
+		})
+	}
+}

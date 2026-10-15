@@ -47,6 +47,7 @@
     "package-check": {"scope": "owner", "needs": ["go", "rust", "php", "composer", "node-modules"], "inputs": ["scripts/package-check.mts"]},
     "dbspec-ddl-check": {"scope": "owner", "needs": ["go", "databases"], "inputs": ["tests/dialects/ddl_physical_test.go", "tests/dialects/schema_documents_physical_test.go"]},
     "dbspec-introspect-check": {"scope": "owner", "needs": ["go", "databases"], "inputs": ["tests/dialects/introspect_physical_test.go", "tests/dbspec/introspect.json"]},
+    "conformance-ts-suite-check": {"scope": "owner", "needs": ["go", "node-modules", "databases"], "inputs": ["packages/ts/tests/coverage_conformance_mysql.mjs", "packages/ts/tests/coverage_conformance_postgres.mjs", "packages/ts/tests/coverage_conformance_sqlite.mjs", "packages/ts/tests/conformance_case.mjs"]},
     "dbspec-introspect-ts-check": {"scope": "owner", "needs": ["go", "node-modules", "databases"], "inputs": ["packages/ts/tests/dbspec-introspect.mjs", "packages/ts/tests/dbspec-introspect-round-trip.mjs", "packages/ts/tests/introspect_case.mjs"]},
     "dbspec-introspect-php-check": {"scope": "owner", "needs": ["go", "php", "composer", "databases"], "inputs": ["packages/php/tests/DbspecIntrospectTest.php"]},
     "dbspec-introspect-php-extension-check": {"scope": "owner", "needs": ["go", "php", "composer", "php-extension-tools", "databases"], "inputs": ["packages/php-ext/tests/DbspecIntrospectTest.php", "packages/php-ext/src/introspect.c"]},

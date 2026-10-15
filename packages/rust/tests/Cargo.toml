@@ -32,6 +32,13 @@ path = "../../../examples/thin-slice/rust/main.rs"
 
 # markdown_conformance는 flowmark server가 필요하므로 workspace의 모든 test에서 빠지고, make
 # markdown-conformance-check/rust가 FLOWMARK와 함께 --test markdown_conformance로 실행한다.
+# One libtest-mimic trial per conformance vector of each dialect (polyspec_orm_testcase::trial). Its trials read the
+# seeded bench databases of the run (BENCH_*_DSN), which make check and the runner of a run give.
+[[test]]
+name = "coverage_conformance_verification"
+path = "tests/coverage_conformance_verification.rs"
+harness = false
+
 [[test]]
 name = "markdown_conformance"
 path = "tests/markdown_conformance.rs"

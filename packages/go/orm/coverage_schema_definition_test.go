@@ -233,3 +233,18 @@ func TestCoverageDbspecParsePositions(t *testing.T) {
 		}
 	}
 }
+
+// TestCoverageSchemaDefinition runs every case of contracts/fixtures/schema_definition.json as a subtest named by its id,
+// with the test of that case, so the parity check runs the suite under its case ids.
+func TestCoverageSchemaDefinition(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	runFixtureCases(t, "schema_definition", map[string]func(*testing.T){
+		"dbspec_emit_round_trip": TestCoverageDbspecEmitRoundTrip,
+		"dbspec_manifest_hash":   TestCoverageDbspecManifestHash,
+		"dbspec_render_ddl":      TestCoverageDbspecRenderDdl,
+		"dbspec_analyze_tokens":  TestCoverageDbspecAnalyzeTokens,
+		"dbspec_format":          TestCoverageDbspecFormat,
+		"dbspec_format_refusal":  TestCoverageDbspecFormatRefusal,
+		"dbspec_parse_positions": TestCoverageDbspecParsePositions,
+	})
+}

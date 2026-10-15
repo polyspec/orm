@@ -190,6 +190,25 @@ func (r *eventRun) checked(s eventStep) error {
 // runEventCases는 vector의 모든 case를 driver에서 실행한다. subtests이면 case마다
 // subtest로 실행하고, 아니면(coverage는 test 하나의 결과만 받는다) 차례로 실행한다.
 func runEventCases(t *testing.T, driver string, subtests bool) {
+	cases := eventCases(t)
+	recording := os.Getenv("ORM_EVENTS_RECORD") == "1"
+	recorded := map[string][]eventRecord{}
+	for _, c := range cases {
+		runOne := func(t *testing.T) { runEventCase(t, driver, c, recording, recorded) }
+		if subtests {
+			t.Run(c.ID, runOne)
+		} else {
+			runOne(t)
+		}
+	}
+	if recording {
+		recordEvents(t, driver, recorded)
+	}
+}
+
+// eventCases reads the cases of tests/events/vectors.json in file order.
+func eventCases(t *testing.T) []eventCase {
+	t.Helper()
 	raw, err := os.ReadFile(eventsVector)
 	if err != nil {
 		t.Fatal(err)
@@ -200,59 +219,67 @@ func runEventCases(t *testing.T, driver string, subtests bool) {
 	if err := json.Unmarshal(raw, &doc); err != nil {
 		t.Fatal(err)
 	}
-	recording := os.Getenv("ORM_EVENTS_RECORD") == "1"
-	recorded := map[string][]eventRecord{}
-	for _, c := range doc.Cases {
-		runOne := func(t *testing.T) {
-			s := fixtureSchema(t, "statement_events")
-			dsn := newDatabase(t, driver)
-			db, err := orm.ConnectSchema(dsn, s, orm.Config{})
-			if err != nil {
-				t.Fatal(err)
+	return doc.Cases
+}
+
+// TestStatementEvents runs every case of tests/events/vectors.json as a subtest named by its id,
+// and each case on MySQL, PostgreSQL and SQLite in a new case database of each, so the parity
+// check runs the suite under its case ids. It never records; the per-driver tests do.
+func TestStatementEvents(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	for _, c := range eventCases(t) {
+		t.Run(c.ID, func(t *testing.T) {
+			for _, driver := range []string{"mysql", "postgres", "sqlite"} {
+				t.Logf("driver %s", driver)
+				runEventCase(t, driver, c, false, nil)
 			}
-			defer db.Close()
-			if c.Install == nil || *c.Install {
-				if err := db.Utils().Schema().Install(s); err != nil {
-					t.Fatal(err)
-				}
-			}
-			r := &eventRun{t: t, db: db, schema: s, ent: rowEntity("event_probe", s, "seq", "label"), numbers: map[int64]int64{}}
-			if r.stopRec, err = db.Subscribe(r.record); err != nil {
-				t.Fatal(err)
-			}
-			for _, s := range c.Steps {
-				r.checked(s)
-			}
-			got := r.records
-			if c.Compare == "tables" {
-				got = nil
-				for _, rec := range r.records {
-					if len(rec.Tables) > 0 {
-						got = append(got, rec)
-					}
-				}
-			}
-			if got == nil {
-				got = []eventRecord{}
-			}
-			if recording {
-				recorded[c.ID] = got
-				return
-			}
-			if want := c.Events[driver]; !reflect.DeepEqual(normalized(got), normalized(want)) {
-				gotJSON, _ := json.MarshalIndent(got, "", "  ")
-				wantJSON, _ := json.MarshalIndent(want, "", "  ")
-				t.Fatalf("%s events\n got %s\nwant %s", driver, gotJSON, wantJSON)
-			}
-		}
-		if subtests {
-			t.Run(c.ID, runOne)
-		} else {
-			runOne(t)
+		})
+	}
+}
+
+// runEventCase runs case c on driver in a new case database and compares its events with the
+// vector, or keeps them in recorded when recording.
+func runEventCase(t *testing.T, driver string, c eventCase, recording bool, recorded map[string][]eventRecord) {
+	t.Helper()
+	s := fixtureSchema(t, "statement_events")
+	dsn := newDatabase(t, driver)
+	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if c.Install == nil || *c.Install {
+		if err := db.Utils().Schema().Install(s); err != nil {
+			t.Fatal(err)
 		}
 	}
+	r := &eventRun{t: t, db: db, schema: s, ent: rowEntity("event_probe", s, "seq", "label"), numbers: map[int64]int64{}}
+	if r.stopRec, err = db.Subscribe(r.record); err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range c.Steps {
+		r.checked(s)
+	}
+	got := r.records
+	if c.Compare == "tables" {
+		got = nil
+		for _, rec := range r.records {
+			if len(rec.Tables) > 0 {
+				got = append(got, rec)
+			}
+		}
+	}
+	if got == nil {
+		got = []eventRecord{}
+	}
 	if recording {
-		recordEvents(t, driver, recorded)
+		recorded[c.ID] = got
+		return
+	}
+	if want := c.Events[driver]; !reflect.DeepEqual(normalized(got), normalized(want)) {
+		gotJSON, _ := json.MarshalIndent(got, "", "  ")
+		wantJSON, _ := json.MarshalIndent(want, "", "  ")
+		t.Fatalf("%s events\n got %s\nwant %s", driver, gotJSON, wantJSON)
 	}
 }
 
