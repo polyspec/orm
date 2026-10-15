@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d3828b28c16510333e6ece1970e204e92dc0388e9074672550cbbe34781f1f92 -->
+<!-- source-sha256: 0b9b9ae0ebc5cbd04fd9b62650980340d9617ae153f122d4d78a4fe7ff411b74 -->
 # 변경 이력
 
 ## Unreleased
 
+- conformance vector가 모든 database에서 오름차순과 내림차순 read의 NULL 순서를 고정한다. (#T82-1)
 - Go bind vector test가 deadline이 있는 case로 보고한다. (#T91-1)
 - TypeScript symbol 기록이 CompositeAccount의 contains method를 담는다. (#T79-1-1)
 - push-gate가 다시 mise.toml의 Node.js release로 시작한다. (#T181-4)
