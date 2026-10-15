@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The PHP extension runs the dbspec sets and schema-definition suites from its own package. (#T111)
 - The begin message carries the read-only option in every client. (#T107)
 - A changed read at commit is refused, not retried. (#T106)
 - TypeScript and Python decode a request's shape as strictly as Go. (#T110)
