@@ -98,7 +98,9 @@ function checkOp(e: Entity, c: Column, op: string, k: ChainKey): ChainKey {
     if (!opAllowed(c, `${engineOp[op]}_col`) || clientStyles(c).length > 0) throw new NameError(`${e.name}.${c.name} cannot be compared with a column`);
     return k;
   }
-  let allowed = opAllowed(c, engineOp[op]!);
+  const engine = engineOp[op];
+  if (engine === undefined) throw new NameError(`${op} is no chain operator`);
+  let allowed = opAllowed(c, engine);
   if (op === '' || op === 'ne') allowed ||= opAllowed(c, 'is_null');
   if (['gt', 'lt', 'ge', 'le', ''].includes(op) && functionColumn(c)) allowed = true;
   if (!allowed) throw new NameError(`${e.name}.${c.name} does not accept the ${op === '' ? 'equality' : op} operator`);
@@ -138,7 +140,8 @@ function parseKey(m: Manifest, e: Entity, ix: Map<string, Column>, ws: readonly 
   };
   const whole = ix.get(text);
   if (whole) attempt(() => checkOp(e, whole, '', key({ column: whole.name })));
-  const op = leadingOps[ws[0]!];
+  const [first = ''] = ws;
+  const op = leadingOps[first];
   if (op !== undefined && ws.length > 1) {
     if (ws[0] === 'Ne' && ws[1] === 'Tuple') attempt(() => tupleKey(e, ix, ws.slice(2), 'ne_tuple'));
     else {
@@ -148,7 +151,7 @@ function parseKey(m: Manifest, e: Entity, ix: Map<string, Column>, ws: readonly 
   }
   if (ws[0] === 'Tuple') attempt(() => tupleKey(e, ix, ws.slice(1), 'tuple'));
   for (let i = 1; i < ws.length - 1; i++) {
-    const cmp = compareOps[ws[i]!];
+    const cmp = compareOps[ws[i] ?? ''];
     if (cmp === undefined) continue;
     const left = ix.get(ws.slice(0, i).join(''));
     if (!left) continue;
@@ -160,7 +163,8 @@ function parseKey(m: Manifest, e: Entity, ix: Map<string, Column>, ws: readonly 
     }
     attempt(() => checkOp(e, left, cmp, key({ op: cmp, column: left.name, compare })));
   }
-  if (candidates.length === 1) return candidates[0]!;
+  const [only] = candidates;
+  if (candidates.length === 1 && only !== undefined) return only;
   if (candidates.length === 0) throw new NameError(errors.length > 0 ? `${text}: ${errors.join('; ')}` : `${text} is not a column of ${e.name}`);
   throw new NameError(`${text} has more than one meaning`);
 }
