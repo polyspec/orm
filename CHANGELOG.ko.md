@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 65ddbebbe044378567d761e8cc4f58681818fc90a4270db4d13d7b3f1fb28d3c -->
+<!-- source-sha256: 3cafab6795853b607be3bc418d066611601994fdbccf0dd8210b10ff5cca6b86 -->
 # 변경 이력
 
 ## Unreleased
 
+- MySQL contains가 PostgreSQL, SQLite처럼 ASCII 대소문자만 접는다. (#T79)
 - kit-check가 mise.lock 옆의 mise lock sidecar를 owner로 갖는다. (#T181-3)
 - Python dbspec introspection과 apply가 공개 Connection protocol을 받는다. (#T181-2)
 - vulture 도구의 lock sidecar를 mise.lock 옆에 추적해 새 checkout이 도구를 설치한다. (#T181-1)
