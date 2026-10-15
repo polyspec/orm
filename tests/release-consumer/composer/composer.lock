@@ -91,10 +91,10 @@
         },
         {
             "name": "polyspec/orm",
-            "version": "0.0.17",
+            "version": "0.0.18",
             "dist": {
                 "type": "zip",
-                "url": "artifacts/polyspec-orm-php-0.0.17.zip",
+                "url": "artifacts/polyspec-orm-php-0.0.18.zip",
                 "shasum": ""
             },
             "require": {

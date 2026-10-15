@@ -1,6 +1,6 @@
 {
   "name": "@polyspec/dbspec-language",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "description": "The dbspec language service: diagnostics with ranges, tokens, folding and formatting of one document",
   "license": "MIT",
   "type": "module",
@@ -31,7 +31,7 @@
     "build": "tsc -p tsconfig.build.json && tsc -p src/cli/tsconfig.json"
   },
   "dependencies": {
-    "@polyspec/orm": "0.0.17"
+    "@polyspec/orm": "0.0.18"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

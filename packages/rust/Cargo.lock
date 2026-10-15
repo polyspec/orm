@@ -1497,7 +1497,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "aes-gcm",
  "base64",
@@ -1530,7 +1530,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-build"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "bigdecimal",
  "futures-util",
@@ -1552,7 +1552,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-case-clock"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "polyspec-orm-testcase",
  "rustix",
@@ -1560,7 +1560,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-case-database"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "polyspec-orm",
  "polyspec-orm-testcase",
@@ -1571,7 +1571,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-schema"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "jsonschema",
  "polyspec-orm-case-clock",
@@ -1585,7 +1585,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-testcase"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "libtest-mimic",
  "tokio",
@@ -1593,7 +1593,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-tests"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "chrono",
  "polyspec-orm",

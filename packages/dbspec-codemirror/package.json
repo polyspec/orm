@@ -1,6 +1,6 @@
 {
   "name": "@polyspec/dbspec-codemirror",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "description": "CodeMirror 6 extension for dbspec documents: token classes, diagnostics, folding and formatting from @polyspec/dbspec-language",
   "license": "MIT",
   "type": "module",
@@ -23,7 +23,7 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@polyspec/dbspec-language": "0.0.17"
+    "@polyspec/dbspec-language": "0.0.18"
   },
   "peerDependencies": {
     "@codemirror/language": "^6.13.1",

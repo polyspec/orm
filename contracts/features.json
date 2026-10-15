@@ -1,6 +1,6 @@
 {
   "manifest_version": 1,
-  "contract_version": "0.0.17",
+  "contract_version": "0.0.18",
   "source": {
     "read_order": [
       "contracts/features.json",
