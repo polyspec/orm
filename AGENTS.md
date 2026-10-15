@@ -244,7 +244,10 @@ vendors; this file states only the rules of orm.
 
 - A release starts with a version-bump commit `chore(release): Release X.Y.Z (#<checklist ID>)` on
   `main`, after the CI of the commit that carries the work succeeded: it sets VERSION and every
-  package file that `config/release.json` names in `manifests` to X.Y.Z (`make version-check`) and
+  package file that `config/release.json` names in `manifests` to X.Y.Z (`make version-check`),
+  re-locks each such composer.json that has a `composer.lock` (`packages/php-ext`) with
+  `composer update --lock` in its directory, since the content-hash of the lock covers `version`,
+  then runs `make dependency-review RECORD=1` (`make dependency-policy-check` fails a stale lock), and
   renames `## Unreleased` to `## X.Y.Z` in CHANGELOG.md and CHANGELOG.ko.md, below a new empty
   `## Unreleased`.
 - After the CI of that commit succeeded (`push-gate` and `ci-passed`), the maintainer tags it
