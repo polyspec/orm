@@ -26,7 +26,7 @@ make markdown-conformance-check
 `make install-flowmark` installs the pinned `flowmark` at `.runtime/bin/flowmark`, and
 `make markdown-conformance-check` passes that path as `FLOWMARK` to each runner, each on a server and a corpus of its
 own (`make markdown-conformance-check/<client>` runs one; the TypeScript one builds the package first). A runner
-reads the build information of `FLOWMARK` (the PHP and Python runners with `go version -m`) and fails unless its main module is `github.com/polyspec/flowmark` at the version of
+reads the build information of `FLOWMARK` (the PHP runner and the Python runner with `go version -m`) and fails unless its main module is `github.com/polyspec/flowmark` at the version of
 `flowmark.version`; a missing or other build fails the run and is never skipped. A build of a flowmark checkout
 at the pinned revision carries the same version, so `make markdown-conformance-check FLOWMARK=<its path>` runs
 the cases on it.

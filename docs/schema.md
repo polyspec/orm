@@ -23,17 +23,17 @@ The `github.com/polyspec/orm/packages/go/generator` package exposes Go generatio
 
 The schema operations are functions of each client library. They take parsed documents and a dialect (`mysql`, `postgres` or `sqlite`) and return statements or located diagnostics.
 
-| Operation | Go `packages/go/engine/dbspec` | PHP `Polyspec\Orm\Dbspec\Dbspec` | TypeScript | Rust |
-|---|---|---|---|---|
-| Render the statements of a document set ([dialects](dialects.md#rendered-statements)) | `Render` | `render` | `renderDbspec` | `polyspec_orm_schema::dbspec::render` |
-| Introspect a database into a document ([dialects](dialects.md#introspection)) | `Introspect` | `introspect` | `introspectDbspec` | `polyspec_orm::dbspec::introspect` |
-| Diff a plan against its source ([plans](plans.md)) | `Diff` | `diff` | `diffPlan` | `polyspec_orm_schema::dbspec::diff` |
-| Compare a database with a document set ([installation](#_4-schema-installation)) | `InstalledDifferences` | `installedDifferences` | `installedDifferences` | `polyspec_orm_schema::dbspec::installed_differences` |
-| Write the steps of a plan with their rollback statements ([plans](plans.md#steps)) | `PlanSteps` | `planSteps` | `planSteps` | `polyspec_orm_schema::dbspec::plan_steps` |
-| Apply a plan chain ([plans](plans.md#apply)) | `Apply` | `apply` | `applyPlans` | `polyspec_orm::dbspec::apply` |
-| Continue an interrupted plan ([plans](plans.md#apply)) | `Recover` | `recover` | `recoverPlans` | `polyspec_orm::dbspec::recover` |
-| Roll back the last plan ([plans](plans.md#apply)) | `Rollback` | `rollback` | `rollbackPlans` | `polyspec_orm::dbspec::rollback` |
-| Finalize the applied plans ([plans](plans.md#apply)) | `Finalize` | `finalize` | `finalizePlans` | `polyspec_orm::dbspec::finalize` |
+| Operation | Go `packages/go/engine/dbspec` | PHP `Polyspec\Orm\Dbspec\Dbspec` | TypeScript | Rust | Python |
+|---|---|---|---|---|---|
+| Render the statements of a document set ([dialects](dialects.md#rendered-statements)) | `Render` | `render` | `renderDbspec` | `polyspec_orm_schema::dbspec::render` | `polyspec.orm.dbspec.render.render_dbspec` |
+| Introspect a database into a document ([dialects](dialects.md#introspection)) | `Introspect` | `introspect` | `introspectDbspec` | `polyspec_orm::dbspec::introspect` | `polyspec.orm.dbspec.introspect.introspect_dbspec` |
+| Diff a plan against its source ([plans](plans.md)) | `Diff` | `diff` | `diffPlan` | `polyspec_orm_schema::dbspec::diff` | `polyspec.orm.dbspec.plan_diff.diff_plan` |
+| Compare a database with a document set ([installation](#_4-schema-installation)) | `InstalledDifferences` | `installedDifferences` | `installedDifferences` | `polyspec_orm_schema::dbspec::installed_differences` | `polyspec.orm.dbspec.installed.installed_differences` |
+| Write the steps of a plan with their rollback statements ([plans](plans.md#steps)) | `PlanSteps` | `planSteps` | `planSteps` | `polyspec_orm_schema::dbspec::plan_steps` | `polyspec.orm.dbspec.plan_steps.plan_steps` |
+| Apply a plan chain ([plans](plans.md#apply)) | `Apply` | `apply` | `applyPlans` | `polyspec_orm::dbspec::apply` | `polyspec.orm.dbspec.apply.apply_plans` |
+| Continue an interrupted plan ([plans](plans.md#apply)) | `Recover` | `recover` | `recoverPlans` | `polyspec_orm::dbspec::recover` | `polyspec.orm.dbspec.apply.recover_plans` |
+| Roll back the last plan ([plans](plans.md#apply)) | `Rollback` | `rollback` | `rollbackPlans` | `polyspec_orm::dbspec::rollback` | `polyspec.orm.dbspec.apply.rollback_plans` |
+| Finalize the applied plans ([plans](plans.md#apply)) | `Finalize` | `finalize` | `finalizePlans` | `polyspec_orm::dbspec::finalize` | `polyspec.orm.dbspec.apply.finalize_plans` |
 
 [mermaid.md](mermaid.md) specifies the export of a document to a Mermaid `erDiagram` and the import of a diagram into a document.
 

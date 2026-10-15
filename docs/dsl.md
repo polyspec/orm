@@ -126,7 +126,7 @@ Key   = [Operator] Column
 
 - Null is accepted only for nullable columns. Go, Rust, and TypeScript reject null for a non-null column at compile time; PHP and Python return `CONFIG`.
 - Lists are accepted only without an operator, with `Eq`, and with `Ne`. Other operators reject lists and null.
-- PHP, TypeScript and Python use the language null value, Go uses `orm.Null`, and Rust uses `Null`.
+- PHP, TypeScript and Python use their own null value, Go uses `orm.Null`, and Rust uses `Null`.
 - Go methods use generic type parameters with the allowed value types of each column. Integer columns accept `int`, `int32`, `int64`, and slices of those types.
 - An unexecuted model as the value renders `IN (SELECT …)`, or `NOT IN` with `Ne`. The model must add exactly one column with `addColumn<Col>()`; otherwise `CONFIG` is returned.
 - An ORM function value applies a function from section 10. A column function wraps the column, and the compared value is the second method argument, for example `andEqCreatedTs(Orm::year(), 2026)`. A value function is the compared value, for example `andGtCreatedTs(Orm::daysAgo(7))`.

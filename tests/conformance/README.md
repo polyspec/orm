@@ -145,7 +145,7 @@ counters and verifies the original state after every execution. Keys and update 
 as `$SEQ` and `$TS`, and AES ciphertexts with random nonces as `$AES`; masking
 does not exempt a database state change.
 
-The PHP and TypeScript runners execute write vectors in transactions and return
+The PHP runner and the TypeScript runner execute write vectors in transactions and return
 unexpected vector errors to the checker. They reject invalid derived integers,
 missing selected result fields, invalid query binds, and result values that
 cannot be represented exactly. Ordered JSON numbers remain exact in the output.

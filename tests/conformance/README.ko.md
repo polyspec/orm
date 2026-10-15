@@ -1,5 +1,5 @@
 <!-- doc-id: tests-conformance-readme -->
-<!-- source-sha256: df0eddf2aebadbcf212b80f9b2c475702ae40f3afb508a7a6b0c156e691c165a -->
+<!-- source-sha256: 966bc24549c861211d6b6204aa39bd5680f56c83b5516345a3ac8a093ab4873a -->
 # 적합성 벡터
 
 한 문서와 다섯 실행기를 사용한다. 각 벡터는 Go, PHP, Rust, TypeScript, Python으로 같은 체인을 작성한다. 각 실행기는 데이터베이스에서 체인을 실행하고 다음 JSON을 출력한다.

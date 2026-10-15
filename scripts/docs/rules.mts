@@ -168,6 +168,41 @@ for (const file of ['docs/protocol.md', 'docs/protocol.ko.md']) {
   }
 }
 
+// Structured places: a table whose header names two or more client languages has one column per declared client, and a
+// sentence that uses two or more client names as the set ("the clients", "implementations", "languages", "runners" or
+// "planners", in English or Korean) names all of them. A subset statement about some clients is not checked.
+const clientDisplay = [...new Set(clients.map(client => clientNames[client] ?? client))];
+const names = clientDisplay.join('|');
+const setNoun = /\b(clients?|implementations?|languages?|runners?|planners?)\b|클라이언트|구현|언어|러너|플래너/i;
+const enumerated = new RegExp(`\\b(?:${names})\\b(?: extension)?(?:(?:\\s*[,·]\\s*(?:(?:and|or)\\s+)?(?:the\\s+)?|\\s+(?:and|or)\\s+)(?:${names})\\b(?: extension)?)+`, 'g');
+for (const file of [...sources, ...translations.values()]) {
+  if (file.includes(`${path.sep}docs${path.sep}plans${path.sep}`) || path.basename(file).startsWith('CHANGELOG')) continue;
+  const lines = (await readFile(file, 'utf8')).replace(/```[\s\S]*?```|<!--[\s\S]*?-->/g, block => block.replace(/[^\n]/g, '')).replace(/`/g, '').split('\n');
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index] ?? '';
+    const next = lines[index + 1] ?? '';
+    if (/^\s*\|/.test(line) && /^\s*\|[\s:|-]+\|\s*$/.test(next)) {
+      const header = line.split('|').slice(1, -1).map(cell => cell.trim());
+      const languages = header.map(cell => cell.split(/\s+/)[0] ?? '').filter(cell => clientDisplay.includes(cell));
+      if (languages.length >= 2) {
+        for (const name of clientDisplay) {
+          if (!languages.includes(name)) fail('docs.implementation-count', `${relative(file)} line ${index + 1} table header names ${languages.join(', ')} and has no ${name} column`);
+        }
+      }
+    }
+    for (const match of line.matchAll(enumerated)) {
+      // The run is the set when a set noun stands within two words before or after it in the same sentence.
+      const start = match.index ?? 0;
+      const before = line.slice(0, start).split(/[.!?。]\s+/).pop()?.trim().split(/\s+/).slice(-2).join(' ') ?? '';
+      const after = line.slice(start + match[0].length).split(/[.!?。]\s+/)[0]?.trim().split(/\s+/).slice(0, 2).join(' ') ?? '';
+      if (!setNoun.test(before) && !setNoun.test(after)) continue;
+      const found = new Set([...match[0].matchAll(new RegExp(`\\b(${names})\\b`, 'g'))].map(item => item[1] ?? ''));
+      const missing = clientDisplay.filter(name => !found.has(name));
+      if (missing.length) fail('docs.implementation-count', `${relative(file)} line ${index + 1} uses ${JSON.stringify(match[0])} as the set and omits ${missing.join(', ')}`);
+    }
+  }
+}
+
 if (failures.length) {
   console.error(failures.join('\n'));
   process.exit(1);

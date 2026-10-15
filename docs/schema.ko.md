@@ -1,5 +1,5 @@
 <!-- doc-id: schema -->
-<!-- source-sha256: f7ad3c5576dca2ed347c5847e4097a8c3b20af1ebef5b48e8d84f605f441be1a -->
+<!-- source-sha256: 159b2b8ad24446b7bb8e5774b83d327a88d1f8350cdb958c871ba0b39966512b -->
 # 스키마
 
 스키마 source는 dbspec document(`.dbs`)의 집합이다. [dbspec.md](dbspec.md)가 언어, 검증 규칙, manifest text와 두 hash를 정의한다. `contracts/fixtures/bench/bench.dbs`는 테스트와 벤치마크의 스키마다. 다른 스키마 파일은 없으며 모든 generator, runtime, 스키마 작업이 document set을 읽는다.
@@ -24,17 +24,17 @@
 
 스키마 작업은 각 클라이언트 라이브러리의 함수다. 함수는 parse한 document와 dialect(`mysql`, `postgres`, `sqlite`)를 받아 statement나 위치가 있는 diagnostic을 돌려준다.
 
-| 작업 | Go `packages/go/engine/dbspec` | PHP `Polyspec\Orm\Dbspec\Dbspec` | TypeScript | Rust |
-|---|---|---|---|---|
-| document set의 statement 렌더링([방언](dialects.md#rendered-statements)) | `Render` | `render` | `renderDbspec` | `polyspec_orm_schema::dbspec::render` |
-| 데이터베이스를 document로 introspect([방언](dialects.md#introspection)) | `Introspect` | `introspect` | `introspectDbspec` | `polyspec_orm::dbspec::introspect` |
-| plan과 source의 diff([plans](plans.md)) | `Diff` | `diff` | `diffPlan` | `polyspec_orm_schema::dbspec::diff` |
-| 데이터베이스를 document set과 비교([설치](#_4-schema-installation)) | `InstalledDifferences` | `installedDifferences` | `installedDifferences` | `polyspec_orm_schema::dbspec::installed_differences` |
-| plan의 step과 rollback statement 작성([plans](plans.md#steps)) | `PlanSteps` | `planSteps` | `planSteps` | `polyspec_orm_schema::dbspec::plan_steps` |
-| plan chain 적용([plans](plans.md#apply)) | `Apply` | `apply` | `applyPlans` | `polyspec_orm::dbspec::apply` |
-| 중단된 plan 이어 가기([plans](plans.md#apply)) | `Recover` | `recover` | `recoverPlans` | `polyspec_orm::dbspec::recover` |
-| 마지막 plan rollback([plans](plans.md#apply)) | `Rollback` | `rollback` | `rollbackPlans` | `polyspec_orm::dbspec::rollback` |
-| 적용한 plan finalize([plans](plans.md#apply)) | `Finalize` | `finalize` | `finalizePlans` | `polyspec_orm::dbspec::finalize` |
+| 작업 | Go `packages/go/engine/dbspec` | PHP `Polyspec\Orm\Dbspec\Dbspec` | TypeScript | Rust | Python |
+|---|---|---|---|---|---|
+| document set의 statement 렌더링([방언](dialects.md#rendered-statements)) | `Render` | `render` | `renderDbspec` | `polyspec_orm_schema::dbspec::render` | `polyspec.orm.dbspec.render.render_dbspec` |
+| 데이터베이스를 document로 introspect([방언](dialects.md#introspection)) | `Introspect` | `introspect` | `introspectDbspec` | `polyspec_orm::dbspec::introspect` | `polyspec.orm.dbspec.introspect.introspect_dbspec` |
+| plan과 source의 diff([plans](plans.md)) | `Diff` | `diff` | `diffPlan` | `polyspec_orm_schema::dbspec::diff` | `polyspec.orm.dbspec.plan_diff.diff_plan` |
+| 데이터베이스를 document set과 비교([설치](#_4-schema-installation)) | `InstalledDifferences` | `installedDifferences` | `installedDifferences` | `polyspec_orm_schema::dbspec::installed_differences` | `polyspec.orm.dbspec.installed.installed_differences` |
+| plan의 step과 rollback statement 작성([plans](plans.md#steps)) | `PlanSteps` | `planSteps` | `planSteps` | `polyspec_orm_schema::dbspec::plan_steps` | `polyspec.orm.dbspec.plan_steps.plan_steps` |
+| plan chain 적용([plans](plans.md#apply)) | `Apply` | `apply` | `applyPlans` | `polyspec_orm::dbspec::apply` | `polyspec.orm.dbspec.apply.apply_plans` |
+| 중단된 plan 이어 가기([plans](plans.md#apply)) | `Recover` | `recover` | `recoverPlans` | `polyspec_orm::dbspec::recover` | `polyspec.orm.dbspec.apply.recover_plans` |
+| 마지막 plan rollback([plans](plans.md#apply)) | `Rollback` | `rollback` | `rollbackPlans` | `polyspec_orm::dbspec::rollback` | `polyspec.orm.dbspec.apply.rollback_plans` |
+| 적용한 plan finalize([plans](plans.md#apply)) | `Finalize` | `finalize` | `finalizePlans` | `polyspec_orm::dbspec::finalize` | `polyspec.orm.dbspec.apply.finalize_plans` |
 
 [mermaid.md](mermaid.md)는 document를 Mermaid `erDiagram`으로 내보내는 방법과 diagram을 document로 가져오는 방법을 정한다.
 

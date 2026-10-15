@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: fbe3358377b0667444fba04a683f5a914c176390acd0fb71210015809677fbdc -->
+<!-- source-sha256: 106a760a283590e2c2926784a9c6b3352df619e38587bfdd0ca93cdd11ab60ff -->
 # 변경 이력
 
 ## Unreleased
 
+- 문서의 표와 집합 나열이 선언된 모든 client를 적으며, 문서 규칙이 이를 검사한다. (#T77-11-1)
 - 문서가 config/parity.json의 모든 구현을 적으며, 문서 규칙이 낡은 개수를 거부한다. (#T77-11)
 - make check와 CI가 PHP extension의 dbspec suite를 실행한다. (#T188)
 - 모든 AES vector가 각 client가 읽는 명시적 name을 가진다. (#T112)

@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 756013b5aa6270df39ac32604945922012c42960c32b0c89e1d8591b69a8f994 -->
+<!-- source-sha256: 499c68c652142d03bce704bdbb9b78dd6056ce70b7f4c47c57d666c7c8b9ddf7 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -39,19 +39,19 @@ flowchart LR
 
 ## 3. 자료형과 값 — IF-02
 
-| 논리 타입 | Go | PHP | Rust | TypeScript |
-|---|---|---|---|---|
-| `I64` | `int64` | `int` | `i64` | `number` |
-| `F64` | `float64` | `float` | `f64` | `number` |
-| `Bool` | `bool` | `bool` | `bool` | `boolean` |
-| `Text` | `string` | `string` | `String` | `string` |
-| `Bytes` | `[]byte` | `string` | `Vec<u8>` | `Uint8Array` |
-| `DateTime` | `time.Time` | `DateTimeImmutable` | `NaiveDateTime` | `Date` |
-| `JsonValue` | `any` | `mixed` | `serde_json::Value` | `unknown` |
-| `Optional<T>` | `*T` | `?T` | `Option<T>` | `T \| null` |
-| `List<T>` | slice | array | `Vec<T>` | `T[]` |
-| `Result<T>` | `(T, error)` | 반환 또는 예외 | `Result<T>` | `Promise<T>` |
-| `Key` | `orm.Key` | 타입 있는 키 | `polyspec_orm::Key` | `Key` |
+| 논리 타입 | Go | PHP | Rust | TypeScript | Python |
+|---|---|---|---|---|---|
+| `I64` | `int64` | `int` | `i64` | `number` | `int` |
+| `F64` | `float64` | `float` | `f64` | `number` | `float` |
+| `Bool` | `bool` | `bool` | `bool` | `boolean` | `bool` |
+| `Text` | `string` | `string` | `String` | `string` | `str` |
+| `Bytes` | `[]byte` | `string` | `Vec<u8>` | `Uint8Array` | `bytes` |
+| `DateTime` | `time.Time` | `DateTimeImmutable` | `NaiveDateTime` | `Date` | `str` |
+| `JsonValue` | `any` | `mixed` | `serde_json::Value` | `unknown` | `StyledValue` |
+| `Optional<T>` | `*T` | `?T` | `Option<T>` | `T \| null` | `T \| None` |
+| `List<T>` | slice | array | `Vec<T>` | `T[]` | `list` |
+| `Result<T>` | `(T, error)` | 반환 또는 예외 | `Result<T>` | `Promise<T>` | 반환 또는 예외 |
+| `Key` | `orm.Key` | 타입 있는 키 | `polyspec_orm::Key` | `Key` | `str` |
 
 null, 빈 목록, 누락 필드, 기본값은 서로 다른 상태다. 직렬화는 코덱 명세가 요구하는 논리 타입과 필드 순서를 유지한다.
 
@@ -110,12 +110,12 @@ classDiagram
 
 ### 5.1 생성과 언어별 표기
 
-| 작업 | PHP | Go | Rust | TypeScript |
-|---|---|---|---|---|
-| 모델 생성 | `new Product` | `model.Product()` | `Product::new()` | `new Product()` |
-| 연결 | `->connect($db)` 또는 `($db)` | `.Connect(db)` | `.connect(&db)` | `.connect(db)` |
-| 컬렉션 종단 | `gets()` | `Gets()` | `gets().await?` | `gets()` |
-| 개수 종단 | `getCount()` | `GetCount()` | `get_count().await?` | `getCount()` |
+| 작업 | PHP | Go | Rust | TypeScript | Python |
+|---|---|---|---|---|---|
+| 모델 생성 | `new Product` | `model.Product()` | `Product::new()` | `new Product()` | `Product()` |
+| 연결 | `->connect($db)` 또는 `($db)` | `.Connect(db)` | `.connect(&db)` | `.connect(db)` | `.connect(db)` |
+| 컬렉션 종단 | `gets()` | `Gets()` | `gets().await?` | `gets()` | `gets()` |
+| 개수 종단 | `getCount()` | `GetCount()` | `get_count().await?` | `getCount()` | `get_count()` |
 
 생성 표기는 호스트 언어를 따른다. 메서드 역할, 저장 요청, 결과 타입, 오류 동작, 호출 순서는 같다.
 

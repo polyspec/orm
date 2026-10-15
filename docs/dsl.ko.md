@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: d56fe6594dcae47e7ffee71196e8a7f79b0e4c1acadc3c8648622cfc6e5773f8 -->
+<!-- source-sha256: 99a3ce43ffd5afae307f29a1e6014fea36a46f69859cedcc42de30b64b2a75c6 -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -127,7 +127,7 @@ Key   = [Operator] Column
 
 - null은 nullable 컬럼에서만 허용한다. Go·Rust·TypeScript는 NOT NULL 컬럼의 null을 컴파일 단계에서 거부하고 PHP와 Python은 `CONFIG`를 반환한다.
 - 목록은 연산자가 없거나 `Eq`·`Ne`일 때만 허용한다. 다른 연산자는 목록과 null을 거부한다.
-- PHP, TypeScript, Python은 언어의 null 값을, Go는 `orm.Null`을, Rust는 `Null`을 사용한다.
+- PHP, TypeScript, Python은 각자의 null 값을, Go는 `orm.Null`을, Rust는 `Null`을 사용한다.
 - Go 메서드는 컬럼별 허용 값 타입을 제네릭 타입 매개변수로 제한한다. 정수 컬럼은 `int`, `int32`, `int64`와 각 타입의 슬라이스를 허용한다.
 - 실행하지 않은 모델을 값으로 넘기면 `IN (SELECT …)`, `Ne`와 함께 쓰면 `NOT IN`을 출력한다. 모델은 `addColumn<Col>()`로 컬럼 하나만 추가해야 하며 아니면 `CONFIG`를 반환한다.
 - ORM 함수 값은 10절의 함수를 적용한다. 컬럼 함수는 컬럼을 감싸며 비교 값은 메서드의 두 번째 인자다. 예: `andEqCreatedTs(Orm::year(), 2026)`. 값 함수는 비교 값 자체다. 예: `andGtCreatedTs(Orm::daysAgo(7))`.

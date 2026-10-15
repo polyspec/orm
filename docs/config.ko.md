@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: d4819e54dc6b0c8005f1c6e019da9673b28bc26833a3342df203088ff918b83c -->
+<!-- source-sha256: d993045a1ddde8e0df0d3c9eee639783ce6318bb0803d9ddd9f92ef81df05ccd -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -82,7 +82,7 @@ PgBouncer 설정:
 | 설정 | 값 | 이유 |
 |---|---|---|
 | `pool_mode` | `transaction` | 서버 연결 하나가 한 번에 클라이언트 트랜잭션 하나 또는 트랜잭션 밖의 문 하나를 처리한다. |
-| `max_prepared_statements` | 0보다 큰 값(PgBouncer 기본값 200) | Go, Rust, TypeScript 클라이언트는 문을 프로토콜 수준의 이름 있는 prepared statement로 실행하고, PHP 클라이언트는 PostgreSQL 문을 bind와 함께 unnamed statement로 실행하며, Python 클라이언트(psycopg)는 문을 unnamed로 실행하다가 그 연결에서 다섯 번 실행한 뒤 이름 있는 statement로 준비한다. 0이면 한 서버 연결에서 준비한 문이 다음 서버 연결에 없어서 PgBouncer가 `prepared statement … already exists` 또는 `does not exist`를 반환한다. |
+| `max_prepared_statements` | 0보다 큰 값(PgBouncer 기본값 200) | Go 클라이언트, Rust 클라이언트, TypeScript 클라이언트는 문을 프로토콜 수준의 이름 있는 prepared statement로 실행하고, PHP 클라이언트는 PostgreSQL 문을 bind와 함께 unnamed statement로 실행하며, Python 클라이언트(psycopg)는 문을 unnamed로 실행하다가 그 연결에서 다섯 번 실행한 뒤 이름 있는 statement로 준비한다. 0이면 한 서버 연결에서 준비한 문이 다음 서버 연결에 없어서 PgBouncer가 `prepared statement … already exists` 또는 `does not exist`를 반환한다. |
 | `track_extra_parameters` | `statement_timeout` | 연결이 `statementTimeoutMs`를 설정할 때 필요하다. 클라이언트는 `statement_timeout`을 startup 매개변수로 전달한다. PgBouncer는 추적하지 않는 startup 매개변수를 거부하고, 추적하는 매개변수는 그 클라이언트 연결에 배정하는 모든 서버 연결에만 설정한다. |
 
 - 클라이언트가 트랜잭션 밖에서 정하는 PostgreSQL 세션 상태는 시간대뿐이다. 모든 클라이언트는 시간대를 startup 매개변수 `TimeZone=UTC`로 보내며, PgBouncer는 `TimeZone`을 기본으로 추적한다. 트랜잭션 옵션(`SET TRANSACTION`, `SET LOCAL statement_timeout`), `utils().setLocal`(`set_config(…, true)`), `utils().lock`(`pg_advisory_xact_lock`)은 트랜잭션과 함께 끝난다.

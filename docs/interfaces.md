@@ -38,19 +38,19 @@ The planner does not receive database credentials or parameter values. The execu
 
 ## 3. Types and values — IF-02
 
-| Logical type | Go | PHP | Rust | TypeScript |
-|---|---|---|---|---|
-| `I64` | `int64` | `int` | `i64` | `number` |
-| `F64` | `float64` | `float` | `f64` | `number` |
-| `Bool` | `bool` | `bool` | `bool` | `boolean` |
-| `Text` | `string` | `string` | `String` | `string` |
-| `Bytes` | `[]byte` | `string` | `Vec<u8>` | `Uint8Array` |
-| `DateTime` | `time.Time` | `DateTimeImmutable` | `NaiveDateTime` | `Date` |
-| `JsonValue` | `any` | `mixed` | `serde_json::Value` | `unknown` |
-| `Optional<T>` | `*T` | `?T` | `Option<T>` | `T \| null` |
-| `List<T>` | slice | array | `Vec<T>` | `T[]` |
-| `Result<T>` | `(T, error)` | return or exception | `Result<T>` | `Promise<T>` |
-| `Key` | `orm.Key` | typed key | `polyspec_orm::Key` | `Key` |
+| Logical type | Go | PHP | Rust | TypeScript | Python |
+|---|---|---|---|---|---|
+| `I64` | `int64` | `int` | `i64` | `number` | `int` |
+| `F64` | `float64` | `float` | `f64` | `number` | `float` |
+| `Bool` | `bool` | `bool` | `bool` | `boolean` | `bool` |
+| `Text` | `string` | `string` | `String` | `string` | `str` |
+| `Bytes` | `[]byte` | `string` | `Vec<u8>` | `Uint8Array` | `bytes` |
+| `DateTime` | `time.Time` | `DateTimeImmutable` | `NaiveDateTime` | `Date` | `str` |
+| `JsonValue` | `any` | `mixed` | `serde_json::Value` | `unknown` | `StyledValue` |
+| `Optional<T>` | `*T` | `?T` | `Option<T>` | `T \| null` | `T \| None` |
+| `List<T>` | slice | array | `Vec<T>` | `T[]` | `list` |
+| `Result<T>` | `(T, error)` | return or exception | `Result<T>` | `Promise<T>` | return or exception |
+| `Key` | `orm.Key` | typed key | `polyspec_orm::Key` | `Key` | `str` |
 
 Null, an empty list, a missing field, and a default value are different states. Serialization preserves the logical type and field order required by the codec specification.
 
@@ -109,12 +109,12 @@ Every public client accepts one DSN URI. `mysql://`, `postgres://`, and `sqlite:
 
 ### 5.1 Creation and language forms
 
-| Operation | PHP | Go | Rust | TypeScript |
-|---|---|---|---|---|
-| model creation | `new Product` | `model.Product()` | `Product::new()` | `new Product()` |
-| connection | `->connect($db)` or `($db)` | `.Connect(db)` | `.connect(&db)` | `.connect(db)` |
-| collection terminal | `gets()` | `Gets()` | `gets().await?` | `gets()` |
-| count terminal | `getCount()` | `GetCount()` | `get_count().await?` | `getCount()` |
+| Operation | PHP | Go | Rust | TypeScript | Python |
+|---|---|---|---|---|---|
+| model creation | `new Product` | `model.Product()` | `Product::new()` | `new Product()` | `Product()` |
+| connection | `->connect($db)` or `($db)` | `.Connect(db)` | `.connect(&db)` | `.connect(db)` | `.connect(db)` |
+| collection terminal | `gets()` | `Gets()` | `gets().await?` | `gets()` | `gets()` |
+| count terminal | `getCount()` | `GetCount()` | `get_count().await?` | `getCount()` | `get_count()` |
 
 The creation spelling follows the host language. The method role, stored request, result type, error behavior, and call order remain the same.
 
