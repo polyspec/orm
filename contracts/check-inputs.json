@@ -30,7 +30,7 @@
     "ts-min-check": {"scope": "owner", "needs": ["go", "node-modules", "databases"], "inputs": ["scripts/typescript/node-min.mts"]},
     "rust-check": {"scope": "suite", "needs": ["go", "rust"]},
     "go-fmt-check": {"scope": "owner", "needs": ["go"], "lints": ["**/*.go"]},
-    "go-vet-check": {"scope": "owner", "needs": ["go"], "lints": ["**/*.go", "go.work", "go.work.sum", "**/go.mod", "**/go.sum"]},
+    "go-vet-check": {"scope": "owner", "needs": ["go"], "inputs": ["tests/analyzers/**"], "lints": ["**/*.go", "go.work", "go.work.sum", "**/go.mod", "**/go.sum"]},
     "rust-fmt-check": {"scope": "owner", "needs": ["rust"], "lints": ["packages/rust/**/*.rs", "benchmarks/rust/**/*.rs", "tests/interfaces/rust/**/*.rs"]},
     "rust-150-check": {"scope": "owner", "needs": ["go", "rust"], "inputs": ["scripts/check-rust-150.mts"]},
     "rust-driver-check": {"scope": "owner", "needs": ["go", "rust", "databases"], "inputs": ["benchmarks/rust/**"]},
