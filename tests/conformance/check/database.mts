@@ -2,6 +2,7 @@
 // physical tests write through it. Every value is read as the database sends it, without a conversion that could lose
 // precision: MySQL values are the bytes of the text protocol, PostgreSQL values their text form, SQLite integers bigint.
 import { DatabaseSync } from 'node:sqlite';
+import { inspect } from 'node:util';
 import mysql from 'mysql2/promise';
 import pg from 'pg';
 
@@ -101,7 +102,7 @@ export function sqliteDatabase(db: DatabaseSync): StateDatabase {
   const bind = (params: unknown[]): (null | number | bigint | string | Uint8Array)[] => params.map(value => {
     if (value === null || typeof value === 'number' || typeof value === 'bigint' || typeof value === 'string' || value instanceof Uint8Array) return value;
     if (typeof value === 'boolean') return value ? 1 : 0;
-    throw new Error(`a SQLite parameter of an unsupported type: ${String(value)}`);
+    throw new Error(`a SQLite parameter of an unsupported type: ${inspect(value)}`);
   });
   return {
     driver: 'sqlite',

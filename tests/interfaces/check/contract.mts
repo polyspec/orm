@@ -60,7 +60,7 @@ export function checkRules(lang: string, actual: Symbols, rules: Rule[], order: 
 // normalizeName은 글자와 숫자만 소문자로 남긴 이름이다. 언어마다 다른 이름 형식(MultiStatement, multi_statement,
 // multiStatement)이 같은 이름이 된다.
 function normalizeName(value: string): string {
-  return [...value].filter(char => /^[\p{L}\p{Nd}]$/u.test(char)).map(char => char.toLowerCase()).join('');
+  return value.replaceAll(/[^\p{L}\p{Nd}]/gu, '').toLowerCase();
 }
 
 /** checkProhibitedSymbols는 금지 symbol이 이름 형식과 무관하게 선언이나 signature에 나오는 곳마다 한 줄을 돌려준다. */

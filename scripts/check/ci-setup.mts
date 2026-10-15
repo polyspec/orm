@@ -7,7 +7,6 @@
 // CI는 make check를 CI group(Makefile의 CI_GROUPS와 CI_TARGETS_<group>)마다 job 하나로 실행한다. job의 step group-needs
 // (make ci-group-needs)가 그 group의 target이 선언한 need에서 GROUP_OUTPUTS의 값을 step output으로 쓰고, setup step은
 // STEP_OUTPUT이 적은 그 output이 true일 때만 실행한다. 그래서 group은 자기 target이 필요로 하는 setup만 한다.
-import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { declaredNeeds } from './inputs.mts';

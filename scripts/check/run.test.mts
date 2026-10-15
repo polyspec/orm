@@ -9,7 +9,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
-import { summarize, type CheckRecord } from './record.mts';
+import { readRecord, summarize, type CheckRecord } from './record.mts';
 import type { StepRecord } from './report.mts';
 import { errorMessage } from '../../tests/errors.mts';
 
@@ -151,7 +151,7 @@ function checkout(t: { after: (f: () => void) => void }) {
     record: (): CheckRecord => {
       const runs = readdirSync(join(root, '.runtime/check'));
       assert.equal(runs.length, 1, `runs of the checkout: ${runs.join(', ')}`);
-      return JSON.parse(readFileSync(join(root, '.runtime/check', runs[0] ?? '', 'record.json'), 'utf8'));
+      return readRecord(join(root, '.runtime/check', runs[0] ?? '', 'record.json'));
     },
   };
 }
@@ -279,7 +279,7 @@ caseTest('a failed setup step blocks only the targets that need it, and the repo
     assert.match(summaryText, /keeps only its last 262144 bytes/);
     // CI의 summary 단계는 같은 실행 id의 summary를 GITHUB_STEP_SUMMARY에 쓴다.
     process.env.GITHUB_STEP_SUMMARY = stepSummary;
-    const { runSummary } = await import(resolve(repo, 'scripts/check/summary.mts'));
+    const { runSummary } = await import('./summary.mts');
     const published = runSummary(c.root, '1234-1');
     delete process.env.GITHUB_STEP_SUMMARY;
     assert.equal(published.passed, false);
@@ -298,7 +298,7 @@ caseTest('the summary step reports a runner that did not finish, with the partia
     const result = c.run('c', { ORM_CHECK_RUN_ID: '99-2', GITHUB_STEP_SUMMARY: stepSummary });
     assert.equal(result.signal, 'SIGKILL');
     process.env.GITHUB_STEP_SUMMARY = stepSummary;
-    const { runSummary } = await import(resolve(repo, 'scripts/check/summary.mts'));
+    const { runSummary } = await import('./summary.mts');
     const { text, passed } = runSummary(c.root, '99-2');
     delete process.env.GITHUB_STEP_SUMMARY;
     assert.equal(passed, false);
@@ -356,7 +356,7 @@ caseTest('the parts of a target after a failed part still run under make -k', PR
     mkdirSync(join(base, 'bin'));
     const log = join(base, 'ran.log');
     writeFileSync(join(base, 'bin/node'), `#!/bin/sh\necho "$*" >> ${log}\ncase "$*" in *check.test.mts*) echo 'FAIL version unit: expected 0, actual 1'; exit 1;; esac\n`, { mode: 0o755 });
-    const { command } = await import(resolve(repo, 'scripts/check/run.mts'));
+    const { command } = await import('./run.mts');
     const lines2 = [];
     const previous = process.env.PATH;
     process.env.PATH = `${join(base, 'bin')}:${previous}`;
@@ -386,7 +386,7 @@ caseTest('the summary step keeps the record and the server logs in the report of
     writeFileSync(join(servers, 'mysql', 'ibdata1'), 'data');
     writeFileSync(join(servers, 'postgres.log'), 'FATAL:  role "orm" does not exist\n');
     writeFileSync(join(servers, 'mysql.log'), `${'y'.repeat(2 * 1024 * 1024)}[ERROR] Aborting\n`);
-    const { runSummary } = await import(resolve(repo, 'scripts/check/summary.mts'));
+    const { runSummary } = await import('./summary.mts');
     runSummary(c.root, '555-1', servers);
     const report = join(c.root, '.runtime/check/ci_555_1/report');
     assert.deepEqual(JSON.parse(readFileSync(join(report, 'record.json'), 'utf8')), c.record());
@@ -429,7 +429,7 @@ caseTest('an unhandled error of the runner is recorded as the reason of a crashe
     const record = c.record();
     assert.equal(record.result, 'crashed');
     assert.match(record.reason ?? '', /^runner error: Error: boom outside the runner\n {4}at /);
-    const { runSummary } = await import(resolve(repo, 'scripts/check/summary.mts'));
+    const { runSummary } = await import('./summary.mts');
     const { text } = runSummary(c.root, '8-1');
     assert.match(text, /The runner did not finish: runner error: Error: boom outside the runner/);
   } finally {
@@ -478,7 +478,7 @@ caseTest('a target log keeps its head and its tail within the size limit', PROCE
 // job log에서 runner의 STEP 접두사를 뗀 그대로)을 읽는다. lane 접두사가 붙은 실패와 오류 줄이 나온 순서대로 첫 실패 줄이
 // 되고, PASS와 STEP 줄은 들어가지 않는다.
 caseTest('the first failure lines of a target are its failure and error lines', COMPUTE, async () => {
-  const { failures } = await import(resolve(repo, 'scripts/check/report.mts'));
+  const { failures } = await import('./report.mts');
   const found = failures();
   for (const line of readFileSync(resolve(repo, 'scripts/check/fixtures/client-db-check-lanes.txt'), 'utf8').split('\n').filter(Boolean)) found.line(line);
   found.exit('make --no-print-directory -k client-db-check exited with 2');
@@ -499,7 +499,7 @@ caseTest('the first failure lines of a target are its failure and error lines', 
 // 적은 뒤 `FAIL <case> ...: the errors reported above`만 쓴다. 그 앞의 보고 줄이 FAIL 줄 앞의 첫 실패 줄이 되므로, log가
 // 가운데를 줄여도 이유가 남는다. 앞서 통과한 case의 줄은 들어가지 않는다.
 caseTest('a FAIL that points at the errors reported above keeps those errors as first failure lines', COMPUTE, async () => {
-  const { failures } = await import(resolve(repo, 'scripts/check/report.mts'));
+  const { failures } = await import('./report.mts');
   const found = failures();
   const step = 'STEP features/performance_gate/preempted-timing elapsed=1m15.37s: ';
   for (const line of [
@@ -522,7 +522,7 @@ caseTest('a FAIL that points at the errors reported above keeps those errors as 
 // 일부러 실패하는 출력(`FAIL sample/...`)을 보이고 PASS로 끝난다. 그 줄은 target의 실패가 아니므로 첫 실패 줄에서 빠지고,
 // 그 뒤의 진짜 실패가 첫 실패 줄이 된다.
 caseTest('the failure lines of a case that passed are not the first failure lines of the target', COMPUTE, async () => {
-  const { failures } = await import(resolve(repo, 'scripts/check/report.mts'));
+  const { failures } = await import('./report.mts');
   const found = failures();
   const sample = Array.from({ length: 25 }, (_, i) => `FAIL sample/owner/typescript/none run ${i} elapsed=31ms: unexpected test output: {"success":true}`);
   for (const line of [
@@ -540,7 +540,7 @@ caseTest('the failure lines of a case that passed are not the first failure line
 // 경고 case(G5.73)는 성능 측정이 기준값을 넘은 `WARNING` 줄이 실패가 아니라 경고로 모이고, summary가 그것을 따로
 // 적는지 본다.
 caseTest('a WARNING line is kept as a warning, not a failure, and the summary lists it', COMPUTE, async () => {
-  const { failureLine, failures, summary } = await import(resolve(repo, 'scripts/check/report.mts'));
+  const { failureLine, failures, summary } = await import('./report.mts');
   const found = failures();
   const warned = 'dbspec_stress median parse CPU of 401.000 ms is 11.50 times the reference CPU of 34.870 ms, above the reference ratio 11.0 (docs/dbspec.md, Verification); machine Linux aarch64, PHP 8.5.4';
   for (const line of ['RUN dbspec_stress deadline=10m0s', `STEP features/helpers/dbspec-stress elapsed=2s: WARNING ${warned}`, 'PASS dbspec_stress elapsed=2.5s']) found.line(line);
@@ -574,7 +574,7 @@ caseTest('a target that runs out of space says so with the free space of / and /
 // `driver-error/...`는 오류 낱말을 담지만 그 단계 줄은 database를 만들고 지운 것일 뿐이므로 첫 실패 줄이 아니고, 첫 실패
 // 줄은 Rust lane의 실패다.
 caseTest('a case name that holds an error word does not make its step lines failures', COMPUTE, async () => {
-  const { failures } = await import(resolve(repo, 'scripts/check/report.mts'));
+  const { failures } = await import('./report.mts');
   const found = failures();
   for (const line of [
     '[typescript] RUN driver-error/trigger_refused/sqlite deadline=30s',
@@ -714,7 +714,7 @@ caseTest('a CI group job records a target not-run when it needs a setup step tha
 // 단계가 없고, database가 필요한 target은 not-run이며, 나머지 target은 실행되고, summary와 target log가 그 실행의
 // 보고서에 남는다.
 caseTest('a run without servers runs the targets that need no database and reports them', PROCESS, async () => {
-  const { runChecks } = await import(resolve(repo, 'scripts/check/run.mts'));
+  const { runChecks } = await import('./run.mts');
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'run-')));
   try {
     execFileSync('git', ['init', '-q'], { cwd: root });

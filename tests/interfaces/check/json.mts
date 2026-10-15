@@ -3,6 +3,7 @@
 // MarshalIndent의 형식이다. conformance 결과와 state contract의 값은 숫자를 그 원문 그대로 비교하므로(i64 정밀도와
 // 1과 1.0의 구분) losslessJson이 숫자를 JsonNumber로 읽는다.
 import { readFileSync } from 'node:fs';
+import { inspect } from 'node:util';
 
 /** A JSON number kept as its source text, as Go's json.Number. */
 export class JsonNumber {
@@ -51,7 +52,7 @@ function write(value: unknown, indent: string, current: string): string {
     const colon = indent === '' ? ':' : ': ';
     return `{${open}${entries.map(([key, item]) => `${quote(key)}${colon}${write(item, indent, inner)}`).join(comma)}${close}}`;
   }
-  throw new Error(`json: unsupported value ${String(value)}`);
+  throw new Error(`json: unsupported value ${inspect(value)}`);
 }
 
 /** losslessJson parses JSON text with every number as a JsonNumber holding its source text. */

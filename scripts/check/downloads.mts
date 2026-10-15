@@ -5,7 +5,7 @@
 // 적는다. 결과는 빠진 것마다 { need, message }이고 need는 contracts/check-inputs.json의 needs다(rust, go,
 // node-modules, composer).
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { readComposer, readComposerPackages, readNpmLock } from '../json/formats.mts';

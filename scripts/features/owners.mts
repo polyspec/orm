@@ -161,7 +161,7 @@ export function manifestInputErrors(manifest: OwnersManifest, tracked: string[])
   };
   const checkPatterns = (where: string, patterns: unknown[]) => {
     for (const pattern of patterns)
-      if (typeof pattern !== 'string' || !matches(pattern)) errors.push(`${where}: input ${pattern} matches no tracked file`);
+      if (typeof pattern !== 'string' || !matches(pattern)) errors.push(`${where}: input ${typeof pattern === 'string' ? pattern : JSON.stringify(pattern)} matches no tracked file`);
   };
   const owners: [string, string[]][] = [];
   for (const feature of manifest.features ?? []) {

@@ -62,8 +62,6 @@ export type Context = { step: Step; signal?: AbortSignal };
 /** A vector as the checker reads it: its name, its chain and its expectation (undefined when none is recorded). */
 type Vector = { name: string; chain: string; expect: Json | undefined };
 
-type VectorList = { vectors?: { name?: string; chain?: string; expect?: unknown }[] };
-
 /** The usage of the program: it ends the program with the exit status 2. */
 class UsageError extends Error {}
 

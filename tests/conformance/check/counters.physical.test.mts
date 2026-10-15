@@ -62,16 +62,17 @@ for (const { driver, env } of benchDatabases) {
     try {
       const before = await snapshotDatabase(db, driver);
       const counters = await readCounters(db, driver);
-      let id: bigint | null = null;
+      // The runner callback sets the id, so it is held in an object that the checker does not narrow to null.
+      const inserted: { id: bigint | null } = { id: null };
       try {
         const runnerError = new Error('runner failed');
         await assert.rejects(runAndCheckState(db, driver, 'rust', 'first', async () => {
-          id = await insertTask(db, driver, 'failed-run-check');
+          inserted.id = await insertTask(db, driver, 'failed-run-check');
           throw runnerError;
         }), (error: unknown) => errorIncludes(error, runnerError) && error instanceof Error && error.message.includes(`changed ${driver} database state`),
         'runner failure and remaining row must both be reported');
       } finally {
-        if (id !== null) await db.exec(`DELETE FROM task WHERE seq = ${id}`);
+        if (inserted.id !== null) await db.exec(`DELETE FROM task WHERE seq = ${inserted.id}`);
         await restoreCounters(db, driver, counters);
         assert.equal(await snapshotDatabase(db, driver), before, 'failed-run test did not restore all rows and counters');
       }

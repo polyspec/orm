@@ -19,7 +19,7 @@ function build(step: Step): Promise<Record<string, string>> {
       lines.flush();
       if (code !== 0) return reject(new Error(`scripts/docs/build.mts exited with ${code}`));
       files(dist, { hidden: true })
-        .then(list => Promise.all(list.map(async file => [path.relative(dist, file), hash(await readFile(file))])))
+        .then(list => Promise.all(list.map(async (file): Promise<[string, string]> => [path.relative(dist, file), hash(await readFile(file))])))
         .then(entries => resolve(Object.fromEntries(entries)), reject);
     });
   });

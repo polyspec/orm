@@ -1,7 +1,7 @@
 // The stop tests of scripts/test-servers.mts. make test-servers-check builds tests/stop-process and tests/lease and passes
 // their paths as STOP_PROCESS and LEASE.
 import assert from 'node:assert/strict';
-import { execFileSync, spawn, spawnSync, type SpawnSyncReturns } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

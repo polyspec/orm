@@ -51,7 +51,7 @@ export function collisions(schemas: string[], tables: string[][]): string[] {
   group(schemas, 'schemas ');
   const bySchema = new Map<string, string[]>();
   for (const [schema = '', table = ''] of tables) bySchema.set(schema.toLowerCase(), [...(bySchema.get(schema.toLowerCase()) ?? []), table]);
-  for (const [schema, names] of [...bySchema].sort()) group(names, `tables of ${schema}: `);
+  for (const [schema, names] of [...bySchema].sort(([a], [b]) => (a < b ? -1 : Number(a > b)))) group(names, `tables of ${schema}: `);
   return out;
 }
 

@@ -18,7 +18,7 @@
 //            (lease 아래에서 실행한다: build하고 test binary와 dep-info를 <run dir>로 복사해 binaries.json에 적는다.
 //             scripts/features/coverage.mts도 쓴다.)
 import { spawn, spawnSync } from 'node:child_process';
-import { constants, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { constants, copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { runLong, stepLines, type Step } from './testcase.mts';
 import { parseCargoMessage } from '../scripts/json/formats.mts';

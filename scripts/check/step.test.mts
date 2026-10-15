@@ -62,9 +62,9 @@ caseTest('a passed step that leaves a process in its group fails and the process
   let pid = 0;
   try {
     const { lines, step } = collect();
-    const error = await run('sh', ['-c', `sleep 37 >/dev/null 2>&1 & echo $! > ${pidFile}; ${UNTIL_EXEC}`], step).then(() => null, error => error);
+    const error = await run('sh', ['-c', `sleep 37 >/dev/null 2>&1 & echo $! > ${pidFile}; ${UNTIL_EXEC}`], step).then(() => null, (error: unknown) => error);
     pid = Number(readFileSync(pidFile, 'utf8'));
-    assert.ok(error, 'the step fails');
+    assert.ok(error instanceof Error, 'the step fails');
     assert.match(error.message, new RegExp(`left 1 processes: ${pid} sleep 37`));
     assert.ok(lines.some(line => line.includes(`left 1 processes: ${pid} sleep 37`)), lines.join(' | '));
     assert.equal(alive(pid), false, `process ${pid} is killed`);

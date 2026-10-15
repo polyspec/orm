@@ -1,7 +1,6 @@
 // The copies of @polyspec/kit in this checkout: kit.copies of the package.json of the installed package maps each copy to its
 // file in the package. make kit-sync writes them and make kit-check holds them byte for byte; they are kit's, so the rules of
 // this repository skip them.
-import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { errorCode } from '../../tests/errors.mts';
