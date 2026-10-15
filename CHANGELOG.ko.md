@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 03a4e78c2a41bdb8553750c10d52bfb9468510fffc6966829bb70d9afdc2015c -->
+<!-- source-sha256: 7da168a364e5749851524c7d8464bb8b77d2b3199ee8e3811a7c2ea56ad8a074 -->
 # 변경 이력
 
 ## Unreleased
 
+- commit에서 바뀐 read는 다시 시도하지 않고 거부한다. (#T106)
 - TypeScript와 Python이 Go만큼 엄격하게 request shape를 decode한다. (#T110)
 - ip 인코더가 공백을 자르지 않고 거부한다. (#T109)
 - 한 단계짜리 text stage list를 모든 client가 같게 저장한다. (#T108)
