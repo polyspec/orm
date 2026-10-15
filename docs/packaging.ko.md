@@ -1,5 +1,5 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: be2e96d4816db5fb45055bf7fb79bab453a7bd566f4871c1d1804f6f1fab10cf -->
+<!-- source-sha256: 15a8550b81f146f11d57306cc20005ce671a4675f660760c4ea05fe65ad7a769 -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
@@ -57,4 +57,4 @@ psycopg의 binary extra는 그것이 펼쳐지는 두 plain requirement `psycopg
 release하는 manifest는 packages/ts/package.json, packages/php/composer.json, packages/php-ext/composer.json이다. 그것들은 다른 저장소의 polyspec package를 정확한 version으로 받고 repository를 선언하지 않는다. release하지 않는 두 private root manifest가 이 저장소에서 그 version을 푼다:
 
 - 저장소 root의 package.json은 `workspaces`에 `packages/*`를 두고, 그 `overrides`는 `@polyspec/ordered-json`을 GitHub Release의 tarball URL(release tag를 적는다)에서 받고, vitepress의 최신 release가 advisory가 있는 `vite` 5에 의존하므로 `vite` 7을 받는다. root의 `npm ci`가 workspace를 설치하고. root의 package-lock.json이 유일한 npm lockfile이다.
-- 저장소 root의 composer.json은 packages/php를 `path` repository에서, polyspec/ordered-json을 `dist`가 GitHub Release의 zip URL과 그 shasum인 `package` repository에서 설치한다. URL이 release tag를 적는다. purrphp/yaml은 fork min-median-max/yaml의 `vcs` repository에서 설치한다. 그 `vendor-dir`은 vendor-php다. root의 vendor는 Go module의 vendor directory이기 때문이다. `config.platform.php`는 client의 가장 낮은 PHP인 `8.4.0`이다. root의 composer.lock이 유일한 Composer lockfile이고, PHP test는 vendor-php/autoload.php를 load한다.
+- 저장소 root의 composer.json은 packages/php를 `path` repository에서, polyspec/ordered-json을 `dist`가 GitHub Release의 zip URL과 그 shasum인 `package` repository에서 설치한다. URL이 release tag를 적는다. purrphp/yaml은 fork min-median-max/yaml의 `vcs` repository에서 설치한다. development dependency인 opis/json-schema `2.6.0-p1`은 fork min-median-max/json-schema의 `vcs` repository(`no-api`)에서 설치한다. 이 release는 모든 error를 모으는 mode에서 모든 거부를 보고하며 PHP vector runner(tests/dbspec/vectors.php)가 쓴다. 공개되는 manifest는 이를 요구하지 않으므로 consumer는 아무것도 선언하지 않는다. 그 `vendor-dir`은 vendor-php다. root의 vendor는 Go module의 vendor directory이기 때문이다. `config.platform.php`는 client의 가장 낮은 PHP인 `8.4.0`이다. root의 composer.lock이 유일한 Composer lockfile이고, PHP test는 vendor-php/autoload.php를 load한다.

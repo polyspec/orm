@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "49106037020dce1e7991436f828eb199",
+    "content-hash": "e7a48724a664b86687425f9152877f98",
     "packages": [
         {
             "name": "nikic/php-parser",
@@ -510,16 +510,16 @@
         },
         {
             "name": "opis/json-schema",
-            "version": "2.6.0",
+            "version": "v2.6.0-p1",
             "source": {
                 "type": "git",
-                "url": "https://github.com/opis/json-schema.git",
-                "reference": "8458763e0dd0b6baa310e04f1829fc73da4e8c8a"
+                "url": "https://github.com/min-median-max/json-schema",
+                "reference": "d810833cd43de0ec2c367db6e812e12bf4440e47"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/opis/json-schema/zipball/8458763e0dd0b6baa310e04f1829fc73da4e8c8a",
-                "reference": "8458763e0dd0b6baa310e04f1829fc73da4e8c8a",
+                "url": "https://api.github.com/repos/min-median-max/json-schema/zipball/d810833cd43de0ec2c367db6e812e12bf4440e47",
+                "reference": "d810833cd43de0ec2c367db6e812e12bf4440e47",
                 "shasum": ""
             },
             "require": {
@@ -544,7 +544,16 @@
                     "Opis\\JsonSchema\\": "src/"
                 }
             },
-            "notification-url": "https://packagist.org/downloads/",
+            "autoload-dev": {
+                "psr-4": {
+                    "Opis\\JsonSchema\\Test\\": "tests/"
+                }
+            },
+            "scripts": {
+                "tests": [
+                    "./vendor/bin/phpunit --verbose --color"
+                ]
+            },
             "license": [
                 "Apache-2.0"
             ],
@@ -567,11 +576,7 @@
                 "validation",
                 "validator"
             ],
-            "support": {
-                "issues": "https://github.com/opis/json-schema/issues",
-                "source": "https://github.com/opis/json-schema/tree/2.6.0"
-            },
-            "time": "2025-10-17T12:46:48+00:00"
+            "time": "2026-10-15T02:57:09+00:00"
         },
         {
             "name": "opis/string",
