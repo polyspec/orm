@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d56d5746db8e37a61b8789aac41238823504cf93d61c1bf4bcea2dab6f4b3efa -->
+<!-- source-sha256: c4744b90e520b65d81d2f13ae262c176926964ac4ca7fdb591384fb3d5f68cd7 -->
 # 변경 이력
 
 ## Unreleased
 
+- dialect 사실이 각 database에서 RESTRICT 검사의 행 순서를 기록한다. (#T100)
 - PHP rollback test가 session 수가 아니라 connection id로 session을 찾는다. (#T53)
 - PHP extension이 자기 package에서 dbspec sets와 schema-definition suite를 실행한다. (#T111)
 - begin 메시지가 모든 client에서 read-only 옵션을 포함한다. (#T107)
