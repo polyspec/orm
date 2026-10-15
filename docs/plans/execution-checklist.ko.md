@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: e6d9c57f12a421575ef930ae5a02d1f806f4a14f21d63af3b313692ba62c9064 -->
+<!-- source-sha256: fda3a87bbd561602e98b9f7bebf448372c556f75763d9a3e3e1163101630318b -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -996,7 +996,7 @@
   - [!] T131-1 주석 언어 검사: 각 생태계 자신의 tokenizer(Go `go/scanner`, TypeScript scanner, Python `tokenize`, PHP `token_get_all`; tokenizer가 없는 언어는 먼저 S1의 rebuild 기록)로 모든 code 파일의 주석 token을 꺼내 한글이 있으면 파일과 줄을 대며 실패하는 얇은 도구; 현재 tree에서 red다. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Retry: 그 orm release가 공개되면 시작한다.
   - [!] T131-2 Go 주석을 영어로. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Retry: 그 orm release가 공개되면 시작한다.
   - [!] T131-3 TypeScript와 JavaScript 주석을 영어로. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Retry: 그 orm release가 공개되면 시작한다.
-  - [ ] T131-4 PHP와 PHP extension 주석을 영어로.
+  - [!] T131-4 PHP와 PHP extension 주석을 영어로. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Retry: 그 orm release가 공개되면 시작한다.
   - [ ] T131-5 Python 주석을 영어로.
   - [ ] T131-6 Rust 주석을 영어로.
   - [ ] T131-7 Makefile, script, 나머지 파일을 영어로; T131-1의 검사가 통과하고 check target에 들어간다.
