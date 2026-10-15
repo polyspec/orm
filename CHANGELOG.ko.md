@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4207be82b392ffd3832fca420da50b727ddb1717ec4abc00a7d04ffbd5c97520 -->
+<!-- source-sha256: 9dd12aa1bd5fc1af26323b1521a22d23db61af8ad5857deb090e4563bf677eef -->
 # 변경 이력
 
 ## Unreleased
 
+- IR read 답 fixture가 모든 client의 decoding이 같음을 증명한다. (#T105)
 - 모든 client가 선언된 MySQL session sql_mode 하나를 쓴다. (#T104)
 - MySQL이 다른 database처럼 client가 encode한 hex를 쓴다. (#T103)
 - probe와 인용 검사가 한 statement의 fault 순서를 기록한다. (#T101)
