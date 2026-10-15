@@ -288,6 +288,12 @@ func postgresProbes() []Probe {
 				"CREATE TABLE s (a int, b int, FOREIGN KEY (a, b) REFERENCES p (a, b))", "INSERT INTO s VALUES (1, NULL)")
 			e.Fails("INSERT INTO c VALUES (1, NULL)", "23503")
 		}),
+		p("fk.restrict_statement_end", "one DELETE of a referenced row and its referencing row is accepted in either row order", func(e *Env) {
+			e.Exec("CREATE TABLE t (id int PRIMARY KEY, pid int REFERENCES t (id) ON DELETE RESTRICT)", "INSERT INTO t VALUES (1, NULL), (2, 1)", "DELETE FROM t WHERE id IN (1, 2)")
+			e.Want("SELECT COUNT(*) FROM t", "0")
+			e.Exec("CREATE TABLE u (id int PRIMARY KEY, pid int REFERENCES u (id) ON DELETE RESTRICT)", "INSERT INTO u VALUES (1, 2), (2, NULL)", "DELETE FROM u WHERE id IN (1, 2)")
+			e.Want("SELECT COUNT(*) FROM u", "0")
+		}),
 		p("fk.set_default", "ON DELETE SET DEFAULT is supported", func(e *Env) {
 			e.Exec("CREATE TABLE p (id int PRIMARY KEY)", "INSERT INTO p VALUES (0), (1)",
 				"CREATE TABLE c (pid int DEFAULT 0 REFERENCES p (id) ON DELETE SET DEFAULT)", "INSERT INTO c VALUES (1)", "DELETE FROM p WHERE id = 1")

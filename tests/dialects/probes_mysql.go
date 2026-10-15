@@ -387,6 +387,13 @@ func mysqlProbes() []Probe {
 			e.Exec("CREATE TABLE p (id bigint PRIMARY KEY)")
 			e.Fails("CREATE TABLE c (pid int, FOREIGN KEY (pid) REFERENCES p (id))", "3780")
 		}),
+		p("fk.restrict_row_order", "one DELETE of a referenced row and its referencing row is refused (1451) when the referenced row comes first, and accepted otherwise", func(e *Env) {
+			e.Exec("CREATE TABLE t (id int PRIMARY KEY, pid int, FOREIGN KEY (pid) REFERENCES t (id) ON DELETE RESTRICT)", "INSERT INTO t VALUES (1, NULL), (2, 1)")
+			e.Fails("DELETE FROM t WHERE id IN (1, 2)", "1451")
+			e.Want("SELECT COUNT(*) FROM t", "2")
+			e.Exec("CREATE TABLE u (id int PRIMARY KEY, pid int, FOREIGN KEY (pid) REFERENCES u (id) ON DELETE RESTRICT)", "INSERT INTO u VALUES (2, NULL)", "INSERT INTO u VALUES (1, 2)", "DELETE FROM u WHERE id IN (1, 2)")
+			e.Want("SELECT COUNT(*) FROM u", "0")
+		}),
 		p("fk.cascade_skips_triggers", "a row deleted by ON DELETE CASCADE does not fire the child's DELETE trigger", func(e *Env) {
 			e.Exec("CREATE TABLE p (id int PRIMARY KEY)",
 				"CREATE TABLE c (id int PRIMARY KEY, pid int, FOREIGN KEY (pid) REFERENCES p (id) ON DELETE CASCADE)",

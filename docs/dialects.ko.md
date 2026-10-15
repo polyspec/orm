@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 48768e11e919ef2d7f9e6335f2f048fac58f516074fe563d3909cdccfff4b820 -->
+<!-- source-sha256: 4e848f866310484cf06b80a7dcc7a0da56d3aaaa6f46cefed900898506012b4a -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -150,7 +150,7 @@ SQLite STRICT table은 storage class를 검사하지만 타입 이름은 `INT`, 
 
 | 기능 | MySQL 8.4 | PostgreSQL 17 | SQLite | Probe | 결정과 중립 rendering | Introspection |
 |---|---|---|---|---|---|---|
-| 동작 | `RESTRICT`, `NO ACTION`(둘 다 즉시), `CASCADE`, `SET NULL`. Catalog는 생략한 동작을 `NO ACTION`으로, 쓴 동작은 쓴 대로 기록한다 | 모든 동작. `NO ACTION`은 문장 끝에, `RESTRICT`는 즉시 검사한다 | 모든 동작. `NO ACTION`은 문장 끝에, `RESTRICT`는 즉시 검사한다 | `mysql.fk.rule_catalog` | **Decision:** delete와 update에 `restrict`, `cascade`, `set_null`을 지원하며 명시 keyword `RESTRICT`, `CASCADE`, `SET NULL`로 생성한다. MySQL은 `NO ACTION`을 즉시 검사하므로 `NO ACTION`은 지원하지 않는다 | MySQL `REFERENTIAL_CONSTRAINTS.UPDATE_RULE`/`DELETE_RULE`, PostgreSQL `pg_constraint.confupdtype`/`confdeltype`, SQLite `pragma_foreign_key_list.on_update`/`on_delete` |
+| 동작 | `RESTRICT`, `NO ACTION`(둘 다 즉시), `CASCADE`, `SET NULL`. Catalog는 생략한 동작을 `NO ACTION`으로, 쓴 동작은 쓴 대로 기록한다 | 모든 동작. `NO ACTION`은 문장 끝에, `RESTRICT`는 즉시 검사한다 | 모든 동작. `NO ACTION`은 문장 끝에, `RESTRICT`는 즉시 검사한다 | `mysql.fk.rule_catalog`, `mysql.fk.restrict_row_order`, `sqlite.fk.restrict_row_order`, `postgres.fk.restrict_statement_end` | **Decision:** delete와 update에 `restrict`, `cascade`, `set_null`을 지원하며 명시 keyword `RESTRICT`, `CASCADE`, `SET NULL`로 생성한다. MySQL은 `NO ACTION`을 즉시 검사하므로 `NO ACTION`은 지원하지 않는다. 하나의 `DELETE`가 참조되는 행과 그 행을 참조하는 행을 함께 지우면, MySQL과 SQLite는 참조되는 행이 행 순서에서 먼저 나올 때 거부하고 PostgreSQL은 받아들인다; 이식 가능한 코드는 참조하는 행을 먼저 지운다. | MySQL `REFERENTIAL_CONSTRAINTS.UPDATE_RULE`/`DELETE_RULE`, PostgreSQL `pg_constraint.confupdtype`/`confdeltype`, SQLite `pragma_foreign_key_list.on_update`/`on_delete` |
 | `SET DEFAULT` | 받아서 기록하지만 부모 삭제는 실패한다(1451) | 지원한다 | 지원한다 | `mysql.fk.set_default_acts_as_restrict`, `postgres.fk.set_default` | **Decision:** 지원하지 않는다 | 미지원으로 보고한다 |
 | Deferrable | 없다(1064) | `DEFERRABLE INITIALLY DEFERRED`는 COMMIT에서 검사한다(23503) | 같다 | `mysql.fk.deferrable_rejected`, `postgres.fk.deferrable`, `sqlite.fk.deferrable` | **Decision:** 지원하지 않는다. 순환은 nullable 컬럼과 이후 update로 만든다 | 미지원으로 보고한다 |
 | `MATCH` | `MATCH FULL`은 `MATCH_OPTION FULL`로 기록하지만 `SHOW CREATE TABLE`에서 빠지며 검사하지 않는다 | `MATCH FULL`은 일부가 NULL인 key를 거부한다(23503) | 받지만 `NONE`으로 기록하고 검사하지 않는다 | `mysql.fk.match_full_not_enforced`, `postgres.fk.match_full`, `sqlite.fk.match_not_enforced` | **Decision:** 기본 `MATCH SIMPLE`만 지원한다 | MySQL `MATCH_OPTION`, PostgreSQL `confmatchtype`, SQLite `pragma_foreign_key_list.match` |

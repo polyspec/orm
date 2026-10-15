@@ -211,6 +211,13 @@ func sqliteProbes() []Probe {
 			e.WantRows("SELECT name FROM pragma_table_info('pragma_foreign_key_list')", "id,seq,table,from,to,on_update,on_delete,match")
 			e.Want("SELECT id || ' ' || \"table\" || ' ' || \"from\" || ' ' || \"to\" || ' ' || on_update || ' ' || on_delete FROM pragma_foreign_key_list('c')", "0 p pid id NO ACTION SET NULL")
 		}),
+		p("fk.restrict_row_order", "one DELETE of a referenced row and its referencing row is refused (FOREIGN KEY constraint failed) when the referenced row comes first, and accepted otherwise", func(e *Env) {
+			e.Exec("PRAGMA foreign_keys = ON", "CREATE TABLE t (id INTEGER PRIMARY KEY, pid int REFERENCES t (id) ON DELETE RESTRICT)", "INSERT INTO t VALUES (1, NULL), (2, 1)")
+			e.Fails("DELETE FROM t WHERE id IN (1, 2)", "FOREIGN KEY constraint failed")
+			e.Want("SELECT COUNT(*) FROM t", "2")
+			e.Exec("CREATE TABLE u (id INTEGER PRIMARY KEY, pid int REFERENCES u (id) ON DELETE RESTRICT)", "INSERT INTO u VALUES (1, 2), (2, NULL)", "DELETE FROM u WHERE id IN (1, 2)")
+			e.Want("SELECT COUNT(*) FROM u", "0")
+		}),
 		p("fk.cascade_fires_triggers", "a row deleted by ON DELETE CASCADE fires the child's DELETE trigger", func(e *Env) {
 			e.Exec("PRAGMA foreign_keys = ON", "CREATE TABLE p (id INTEGER PRIMARY KEY)",
 				"CREATE TABLE c (id INTEGER PRIMARY KEY, pid int REFERENCES p (id) ON DELETE CASCADE)", "CREATE TABLE log (id int)",

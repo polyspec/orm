@@ -84,3 +84,24 @@ func TestProbeCitations(t *testing.T) {
 		}
 	}
 }
+
+// TestRestrictRowOrder verifies that docs/dialects.md and its Korean twin
+// state the RESTRICT timing of one multi-row delete: MySQL and SQLite refuse
+// it when the referenced row comes first, PostgreSQL accepts it, and portable
+// code deletes the referencing rows first.
+func TestRestrictRowOrder(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	rules := map[string]string{
+		"dialects.md":    "One `DELETE` that removes a referenced row and a row referencing it is refused by MySQL and SQLite when the referenced row comes first in their row order and accepted by PostgreSQL; portable code deletes the referencing rows first.",
+		"dialects.ko.md": "하나의 `DELETE`가 참조되는 행과 그 행을 참조하는 행을 함께 지우면, MySQL과 SQLite는 참조되는 행이 행 순서에서 먼저 나올 때 거부하고 PostgreSQL은 받아들인다; 이식 가능한 코드는 참조하는 행을 먼저 지운다.",
+	}
+	for page, rule := range rules {
+		text, err := os.ReadFile(filepath.Join("..", "..", "docs", page))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(text), rule) {
+			t.Errorf("docs/%s does not state the RESTRICT row order rule: %s", page, rule)
+		}
+	}
+}
