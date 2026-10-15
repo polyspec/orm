@@ -409,6 +409,11 @@ export function armFixedClock(db: Db, micros: number): void {
   db['shared'].fixedClock = micros;
 }
 
+/** The affected count of the last successful write on db's connection, or null before one. test entry point `src/testing.ts`만 호출한다. */
+export function readLastAffected(db: Db): number | null {
+  return db['shared'].lastAffected;
+}
+
 /** Transaction control statement kinds, which the statement fault does not refuse. */
 const CONTROL_KINDS: ReadonlySet<StatementKind> = new Set<StatementKind>(['begin', 'commit', 'rollback', 'savepoint', 'release', 'rollback_to']);
 
@@ -418,7 +423,7 @@ export class Db {
   // point의 failNextRollback이 설정하는 test fault다.
   // events는 subscriber 목록과 transaction 번호이고, rowLockTable은 SQLite row lock table을 이 연결에서
   // 만들었는지다.
-  private readonly shared: { closed: boolean; rollbackFault: boolean; statementFault: { code: string; message: string } | null; fixedClock: number | null; events: Subscribers; rowLockTable: boolean } = { closed: false, rollbackFault: false, statementFault: null, fixedClock: null, events: new Subscribers(), rowLockTable: false };
+  private readonly shared: { closed: boolean; rollbackFault: boolean; statementFault: { code: string; message: string } | null; fixedClock: number | null; lastAffected: number | null; events: Subscribers; rowLockTable: boolean } = { closed: false, rollbackFault: false, statementFault: null, fixedClock: null, lastAffected: null, events: new Subscribers(), rowLockTable: false };
   public readonly signal: AbortSignal | undefined = undefined;
   /** The hook of the handle (withRequestHook); a connection has none. */
   public readonly requestHook: RequestHook | undefined = undefined;
@@ -1348,6 +1353,7 @@ export async function write(ex: Executor, given: Request, givenParams: readonly 
     const upsert = request.kind === 'insert' && (request.on_duplicate?.length ?? 0) > 0;
     return { key, affected: upsert ? 1 : result.affected };
   });
+  ex.db['shared'].lastAffected = affected;
   return { key, affected, request, params };
 }
 

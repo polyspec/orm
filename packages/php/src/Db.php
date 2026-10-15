@@ -1021,6 +1021,7 @@ final class Db
             if (isset($r->ir['optimistic']) && $affected === 0) {
                 throw new OrmException(Code::OPTIMISTIC_LOCK, 'the row changed after it was read');
             }
+            $this->state->lastAffected = $affected;
             return [$keys[0] ?? null, $affected];
         }
         $step = $this->plan($r)['steps'][0];
@@ -1046,6 +1047,7 @@ final class Db
         if (isset($r->ir['optimistic']) && $affected === 0) {
             throw new OrmException(Code::OPTIMISTIC_LOCK, 'the row changed after it was read');
         }
+        $this->state->lastAffected = $affected;
         return [$id, $affected];
     }
 

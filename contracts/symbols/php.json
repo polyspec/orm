@@ -1107,6 +1107,7 @@
   "packages/php/src/DbState.php::Polyspec\\Orm\\DbState": "final class Polyspec\\Orm\\DbState extends  implements  uses ",
   "packages/php/src/DbState.php::Polyspec\\Orm\\DbState::$closed": "public bool",
   "packages/php/src/DbState.php::Polyspec\\Orm\\DbState::$fixedClock": "public ?DateTimeImmutable",
+  "packages/php/src/DbState.php::Polyspec\\Orm\\DbState::$lastAffected": "public ?int",
   "packages/php/src/DbState.php::Polyspec\\Orm\\DbState::$pdo": "public ?PDO",
   "packages/php/src/DbState.php::Polyspec\\Orm\\DbState::$rollbackFault": "public bool",
   "packages/php/src/DbState.php::Polyspec\\Orm\\DbState::$rowLockReady": "public bool",

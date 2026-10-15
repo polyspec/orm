@@ -58,6 +58,10 @@ const timeLayout = "2006-01-02 15:04:05.000000"
 // entry point; clock_ormtest.go sets it in a build with the tag ormtest.
 var clockVectors func(run func(string, func() (any, error)), db *orm.DB)
 
+// affectedVectors declares the vectors that read the write result through the test
+// entry point; affected_ormtest.go sets it in a build with the tag ormtest.
+var affectedVectors func(run func(string, func() (any, error)), db *orm.DB)
+
 // mask hides the identity of rows a vector created: their keys and update
 // times wherever they are bound, including statements logged earlier.
 func mask(seqs []int64, times ...time.Time) {
@@ -278,7 +282,7 @@ func run() (status int) {
 	writeVectors := map[string]bool{
 		"write_cycle": true, "now_defaults": true, "required_columns": true,
 		"creates_and_save": true, "delete_recursive": true, "contains_ascii_fold": true, "contains_binary_code_point": true,
-		"datetime_p0_roundtrip": true, "time_p3_roundtrip": true, "upsert_one_key": true,
+		"datetime_p0_roundtrip": true, "time_p3_roundtrip": true, "upsert_one_key": true, "affected_counts": true,
 		"clock_truncate_write": true, "clock_compare_six_digits": true,
 	}
 	// vector는 선언 순서대로 모은 뒤, 선택을 검사하고 그 순서로 실행한다.
@@ -953,6 +957,9 @@ func run() (status int) {
 	// The clock vectors need the test entry point of the client, which only a build
 	// with the tag ormtest has (clock_ormtest.go); conformance builds the runner with
 	// it, and the checker refuses an output that lacks a declared vector.
+	if affectedVectors != nil {
+		affectedVectors(run, db)
+	}
 	if clockVectors != nil {
 		clockVectors(run, db)
 	}

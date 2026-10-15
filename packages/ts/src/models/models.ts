@@ -1540,6 +1540,7 @@ export class UpsertCell extends Model {
   public forceIndexUqUpsertCellCode(): this { this[CORE].index = 'uq_upsert_cell_code'; return this; }
 
   declare code: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
+  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
   declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   /** Returns the value or relation result named AesHexEmail. */
   declare getAesHexEmail: <T = unknown>() => T;

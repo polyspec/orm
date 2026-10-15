@@ -1049,6 +1049,11 @@ func write(ex executor, r *request) (key any, affected int64, err error) {
 		return nil, 0, err
 	}
 	defer done()
+	defer func() {
+		if err == nil {
+			ex.base().m.lastAffected.Store(affected + 1)
+		}
+	}()
 	if err := applyRequestHook(ex, r); err != nil {
 		return nil, 0, err
 	}

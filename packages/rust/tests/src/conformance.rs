@@ -773,6 +773,34 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         })
         .retry(0)
     );
+    // A write counts each written row once (docs/protocol.md "Write"): an upsert is 1 whether it inserts or updates,
+    // and an update counts the row it matched even when the row already holds the value. The count is read through the
+    // test entry point (docs/protocol.md "Test write result").
+    run!(
+        "affected_counts",
+        db.transaction(async || {
+            let created = UpsertCell::new().connect(db).set_code("c1").set_label("x").duplication(UpsertCell::new().set_label("y")).create().await?;
+            let seq = created.get_seq().unwrap();
+            mask(shared, &[seq], &[]);
+            let upsert_inserted = polyspec_orm::testing::last_affected(db);
+            UpsertCell::new().connect(db).set_code("c1").set_label("x").duplication(UpsertCell::new().set_label("y")).create().await?;
+            let upsert_updated = polyspec_orm::testing::last_affected(db);
+            let mut row = UpsertCell::new().connect(db).get_by_seq(seq).await?.set_label("y");
+            row.update(false).await?;
+            let update_unchanged = polyspec_orm::testing::last_affected(db);
+            let mut row = row.set_label("z");
+            row.update(false).await?;
+            let update_changed = polyspec_orm::testing::last_affected(db);
+            row.delete(false).await?;
+            Ok::<Value, polyspec_orm::Error>(json!({
+                "upsert_inserted": upsert_inserted,
+                "upsert_updated": upsert_updated,
+                "update_unchanged": update_unchanged,
+                "update_changed": update_changed
+            }))
+        })
+        .retry(0)
+    );
     // One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now` hold
     // that clock truncated to their digits, and a datetime(p) column compares with a clock at six digits. The executor
     // clock is fixed at .999999 through the test entry point, so a rounding clock shows as the next second; MySQL writes

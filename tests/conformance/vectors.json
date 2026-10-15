@@ -2990,6 +2990,114 @@
       }
     },
     {
+      "name": "affected_counts",
+      "chain": "UpsertCell setCode('c1')-\u003esetLabel('x')-\u003eduplication(setLabel('y'))-\u003ecreate() twice (inserts, then updates), getBySeq(seq)-\u003esetLabel('y')-\u003eupdate() (the row already holds the value), setLabel('z')-\u003eupdate(), each followed by the affected count of the test entry point; delete()",
+      "expect": {
+        "result": {
+          "update_changed": 1,
+          "update_unchanged": 1,
+          "upsert_inserted": 1,
+          "upsert_updated": 1
+        },
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "START TRANSACTION",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "c1",
+              "x",
+              "y"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `upsert_cell` (`code`, `label`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `label` = ?, `seq` = LAST_INSERT_ID(`seq`)",
+            "tables": [
+              "upsert_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "c1",
+              "x",
+              "y"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `upsert_cell` (`code`, `label`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `label` = ?, `seq` = LAST_INSERT_ID(`seq`)",
+            "tables": [
+              "upsert_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`code` AS `a__code`, `a`.`label` AS `a__label` FROM `upsert_cell` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1",
+            "tables": [
+              "upsert_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "y",
+              "$SEQ"
+            ],
+            "error": null,
+            "kind": "update",
+            "sql": "UPDATE `upsert_cell` SET `label` = ? WHERE `upsert_cell`.`seq` = ?",
+            "tables": [
+              "upsert_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "z",
+              "$SEQ"
+            ],
+            "error": null,
+            "kind": "update",
+            "sql": "UPDATE `upsert_cell` SET `label` = ? WHERE `upsert_cell`.`seq` = ?",
+            "tables": [
+              "upsert_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM `upsert_cell` WHERE `upsert_cell`.`seq` = ?",
+            "tables": [
+              "upsert_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          }
+        ]
+      }
+    },
+    {
       "name": "clock_truncate_write",
       "chain": "FixClock(db, '2026-06-01 12:34:56.999999'); ClockCell setLabel('write')-\u003ecreate() leaving at0, at3 and at6 to default now; getBySeq(seq): at0 and at3 equal at6 truncated to 0 and 3 digits; delete()",
       "expect": {

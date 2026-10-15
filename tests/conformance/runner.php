@@ -159,7 +159,7 @@ $db->subscribe(static function (StatementEvent $e): void {
 $out = [];
 /** @var array<string, callable> vector 이름별 chain, 선언 순서 */
 $vectors = [];
-$writeVectors = array_fill_keys(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'upsert_one_key', 'clock_truncate_write', 'clock_compare_six_digits'], true);
+$writeVectors = array_fill_keys(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'upsert_one_key', 'affected_counts', 'clock_truncate_write', 'clock_compare_six_digits'], true);
 
 /** vector를 선언한다. 선택된 vector는 모든 선언이 끝난 뒤 선언 순서대로 실행한다. */
 function vector(string $name, callable $fn): void
@@ -544,6 +544,25 @@ vector('upsert_one_key', function () use ($db): array {
     }
     $updated->delete();
     return ['inserted' => picks($inserted, 'label'), 'updated' => picks($updated, 'label'), 'unassigned' => $unassigned];
+});
+
+// A write counts each written row once (docs/protocol.md "Write"): an upsert is 1 whether it inserts or updates, and an
+// update counts the row it matched even when the row already holds the value. The count is read through the test entry
+// point (docs/protocol.md "Test write result").
+vector('affected_counts', function () use ($db): array {
+    $out = [];
+    $created = (new UpsertCell)($db)->setCode('c1')->setLabel('x')->duplication((new UpsertCell)->setLabel('y'))->create();
+    mask([$created->getSeq()]);
+    $out['upsert_inserted'] = Faults::lastAffected($db);
+    (new UpsertCell)($db)->setCode('c1')->setLabel('x')->duplication((new UpsertCell)->setLabel('y'))->create();
+    $out['upsert_updated'] = Faults::lastAffected($db);
+    $row = (new UpsertCell)($db)->getBySeq($created->getSeq());
+    $row->setLabel('y')->update();
+    $out['update_unchanged'] = Faults::lastAffected($db);
+    $row->setLabel('z')->update();
+    $out['update_changed'] = Faults::lastAffected($db);
+    $row->delete();
+    return $out;
 });
 
 // One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now` hold that

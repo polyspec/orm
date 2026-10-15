@@ -329,6 +329,10 @@ pub(crate) struct DbInner {
     /// feature `test-faults`가 있는 build만 가진다.
     #[cfg(feature = "test-faults")]
     pub(crate) fixed_clock: Mutex<Option<String>>,
+    /// 연결의 마지막 성공한 write 결과의 affected다. `polyspec_orm::testing::last_affected`가 읽는다.
+    /// feature `test-faults`가 있는 build만 가진다.
+    #[cfg(feature = "test-faults")]
+    pub(crate) last_affected: Mutex<Option<u64>>,
 }
 
 /// A database connection. Cloning is cheap and keeps the identity.
@@ -499,6 +503,8 @@ impl Db {
                 statement_fault: Mutex::new(None),
                 #[cfg(feature = "test-faults")]
                 fixed_clock: Mutex::new(None),
+                #[cfg(feature = "test-faults")]
+                last_affected: Mutex::new(None),
             }),
             hook: None,
         };
