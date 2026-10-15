@@ -67,6 +67,22 @@ function dbspec_check_case(string $kind, array $case, float $cpuSeconds): void
     cpuCaseEnd($id, $clock);
 }
 
+
+/**
+ * The cases of the section $kind as PHPUnit data sets named by their bare ids, the case ids of that suite of
+ * config/parity.json, each with its kind and case. A repeated id is refused.
+ */
+function dbspec_case_ids(string $kind, array $cases): iterable
+{
+    $seen = [];
+    foreach ($cases as $case) {
+        if (isset($seen[$case['id']])) {
+            throw new RuntimeException("repeated case id $kind/{$case['id']}");
+        }
+        $seen[$case['id']] = true;
+        yield $case['id'] => [$kind, $case];
+    }
+}
 /**
  * The data sets of one kind of cases, each named "<kind>/<id>" and holding [kind, case]. A repeated id is an error.
  *

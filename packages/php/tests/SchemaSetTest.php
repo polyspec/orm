@@ -380,43 +380,47 @@ final class SchemaSetTest extends TestCase
         self::check($runs === $connectRuns, "connectSchema ran $runs statements, connect $connectRuns");
     }
 
+    /** @return list<array<string, mixed>> the cases of contracts/fixtures/install/changed_database.json */
+    private static function changedDatabaseFixture(): array
+    {
+        $fixture = json_decode((string) file_get_contents(dirname(__DIR__, 3) . "/contracts/fixtures/install/changed_database.json"), true, flags: JSON_THROW_ON_ERROR);
+        self::check($fixture['cases'] !== [], 'contracts/fixtures/install/changed_database.json has no cases');
+        return $fixture['cases'];
+    }
+
     /**
      * install은 table 이름만이 아니라 database 전체를 set과 비교한다(docs/schema.md "Schema
      * installation"). contracts/fixtures/install/changed_database.json의 case마다 statement로 ORM 밖에서
      * 바꾼 database에 같은 set을 다시 install하면 dialect의 message인 CONFIG이고 database는 그대로다.
      */
-    private static function installVerifiesTheDatabase(string $dsn): void
+    private static function installVerifiesTheDatabase(string $dsn, array $case): void
     {
-        $fixture = json_decode((string) file_get_contents(self::$root . "/contracts/fixtures/install/changed_database.json"), true, flags: JSON_THROW_ON_ERROR);
-        self::check($fixture['cases'] !== [], 'contracts/fixtures/install/changed_database.json has no cases');
         [$driver] = Orm::parseDsn($dsn);
-        foreach ($fixture['cases'] as $case) {
-            self::check($case['operation'] === 'install', "{$case['id']}: the operation {$case['operation']}, want install");
-            $document = (string) file_get_contents(self::$root . "/contracts/fixtures/{$case['document']}");
-            $documents = RuntimeModel::parse([basename($case['document']) => $document]);
-            $model = RuntimeModel::build($documents);
-            $schema = new Schema($model->manifestText, $model->manifestHash);
-            $db = Orm::connect($dsn, new Config());
+        self::check($case['operation'] === 'install', "{$case['id']}: the operation {$case['operation']}, want install");
+        $document = (string) file_get_contents(self::$root . "/contracts/fixtures/{$case['document']}");
+        $documents = RuntimeModel::parse([basename($case['document']) => $document]);
+        $model = RuntimeModel::build($documents);
+        $schema = new Schema($model->manifestText, $model->manifestHash);
+        $db = Orm::connect($dsn, new Config());
+        try {
+            $db->utils()->schema()->install($schema);
+            $db->pdo()->exec($case['statement']);
+            $want = "{$case['expected']['code']}: {$case['expected']['message'][$driver]}";
             try {
                 $db->utils()->schema()->install($schema);
-                $db->pdo()->exec($case['statement']);
-                $want = "{$case['expected']['code']}: {$case['expected']['message'][$driver]}";
-                try {
-                    $db->utils()->schema()->install($schema);
-                    self::check(false, "{$case['id']}: install over the changed database: no error, want $want");
-                } catch (OrmException $e) {
-                    self::check($e->code_ === $case['expected']['code'] && $e->getMessage() === $want, "{$case['id']}: install over the changed database: {$e->code_} {$e->getMessage()}, want $want");
-                }
-                $db->pdo()->query($case['remaining'])->fetchAll();
-                // 다음 case는 같은 case database를 쓰므로 이 case의 table을 지운다.
-                foreach ($documents as $parsed) {
-                    foreach ($parsed->tables as $table) {
-                        $db->pdo()->exec("DROP TABLE {$table->name}");
-                    }
-                }
-            } finally {
-                $db->close();
+                self::check(false, "{$case['id']}: install over the changed database: no error, want $want");
+            } catch (OrmException $e) {
+                self::check($e->code_ === $case['expected']['code'] && $e->getMessage() === $want, "{$case['id']}: install over the changed database: {$e->code_} {$e->getMessage()}, want $want");
             }
+            $db->pdo()->query($case['remaining'])->fetchAll();
+            // 다음 case는 같은 case database를 쓰므로 이 case의 table을 지운다.
+            foreach ($documents as $parsed) {
+                foreach ($parsed->tables as $table) {
+                    $db->pdo()->exec("DROP TABLE {$table->name}");
+                }
+            }
+        } finally {
+            $db->close();
         }
     }
 
@@ -468,10 +472,21 @@ final class SchemaSetTest extends TestCase
         with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::registerSendsNoStatement($dsn));
     }
 
-    #[DataProvider('drivers')]
-    public function test_install_verifies_the_database(string $driver): void
+    /** @return iterable<string, array{array<string, mixed>}> the cases of changed_database.json by their ids */
+    public static function changedDatabaseCases(): iterable
     {
-        // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::installVerifiesTheDatabase($dsn));
+        foreach (self::changedDatabaseFixture() as $case) {
+            yield $case['id'] => [$case];
+        }
+    }
+
+    // Each case of changed_database.json runs on every driver, in a case database of its own per driver, removed when it
+    // ends, also when it fails.
+    #[DataProvider('changedDatabaseCases')]
+    public function test_install_verifies_the_database(array $case): void
+    {
+        foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
+            with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::installVerifiesTheDatabase($dsn, $case));
+        }
     }
 }

@@ -359,10 +359,11 @@ func expectDocument(document *Document, diagnostics []Diagnostic) error {
 	return nil
 }
 
-func TestSharedVectors(t *testing.T) {
+// TestCanonicalVectors, TestNormalizeVectors and TestInvalidVectors check the
+// canonical, normalize and invalid cases of tests/dbspec/cases.json, one suite each.
+func TestCanonicalVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	vectors := loadVectors(t)
-	for _, c := range vectors.Canonical {
+	for _, c := range loadVectors(t).Canonical {
 		t.Run(c.ID, func(t *testing.T) {
 			runTimed(t, c.ID, 5*time.Second, func() error {
 				text, set, err := c.documentSet()
@@ -380,7 +381,11 @@ func TestSharedVectors(t *testing.T) {
 			})
 		})
 	}
-	for _, c := range vectors.Normalize {
+}
+
+func TestNormalizeVectors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	for _, c := range loadVectors(t).Normalize {
 		t.Run(c.ID, func(t *testing.T) {
 			runTimed(t, c.ID, 5*time.Second, func() error {
 				text, set, err := c.documentSet()
@@ -398,7 +403,11 @@ func TestSharedVectors(t *testing.T) {
 			})
 		})
 	}
-	for _, c := range vectors.Invalid {
+}
+
+func TestInvalidVectors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	for _, c := range loadVectors(t).Invalid {
 		t.Run(c.ID, func(t *testing.T) {
 			runTimed(t, c.ID, 5*time.Second, func() error {
 				text, set, err := c.documentSet()
@@ -466,14 +475,12 @@ func TestFileVectors(t *testing.T) {
 		}
 		t.Run(c.ID, func(t *testing.T) {
 			for _, reader := range readers {
-				t.Run(reader.kind, func(t *testing.T) {
-					runTimed(t, c.ID+" "+reader.kind, 5*time.Second, func() error {
-						text, diagnostics, err := reader.read()
-						if err != nil {
-							return err
-						}
-						return expectFileRead(path, reader.name, text, diagnostics, c.Errors)
-					})
+				runTimed(t, c.ID+" "+reader.kind, 5*time.Second, func() error {
+					text, diagnostics, err := reader.read()
+					if err != nil {
+						return err
+					}
+					return expectFileRead(path, reader.name, text, diagnostics, c.Errors)
 				})
 			}
 		})

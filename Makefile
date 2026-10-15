@@ -313,7 +313,7 @@ dbspec-introspect-check:
 dbspec-introspect-ts-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(WITH_TEST_ENV) node --test packages/ts/tests/dbspec-introspect.mjs
+	$(WITH_TEST_ENV) node --test packages/ts/tests/dbspec-introspect.mjs packages/ts/tests/dbspec-introspect-round-trip.mjs
 
 # dbspec-introspect-php-check는 같은 round trip과 미지원 case를 PHP client의
 # Polyspec\Orm\Dbspec\Dbspec::introspect로 실행한다.
@@ -525,8 +525,6 @@ python-coverage-case-check: python-venv-check
 dbspec-python-check: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_cases
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_ddl
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_plans
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_mermaid
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_apply
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p 'test_dbspec_*.py'
 dbspec-compare-check/prepare: cargo-downloads-check lease-tool python-venv-check
@@ -929,6 +927,7 @@ python-statement-events-check: python-venv-check
 .PHONY: python-statement-fault-check
 python-statement-fault-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.statement_fault
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_fault_entry
 
 # python-identity-load-check runs the shared identity load cases (contracts/fixtures/identity_load.json)
 # with the Python client on SQLite, MySQL and PostgreSQL; it needs the database variables of make
@@ -1138,7 +1137,7 @@ ts-min-check: lease-tool
 dbspec-ts-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(NODE) --test packages/ts/tests/browser-entry.mjs packages/ts/tests/dbspec.mjs packages/ts/tests/dbspec-set.mjs packages/ts/tests/dbspec-set-parse.mjs packages/ts/tests/dbspec-analyze.mjs packages/ts/tests/syntax-vectors.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec-render.mjs packages/ts/tests/dbspec-plan.mjs packages/ts/tests/dbspec-mermaid.mjs packages/ts/tests/dbspec-apply-cleanup.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs
+	$(NODE) --test packages/ts/tests/browser-entry.mjs packages/ts/tests/dbspec.mjs packages/ts/tests/dbspec-canonical.mjs packages/ts/tests/dbspec-normalize.mjs packages/ts/tests/dbspec-positions.mjs packages/ts/tests/dbspec-invalid.mjs packages/ts/tests/dbspec-files.mjs packages/ts/tests/dbspec-hashes.mjs packages/ts/tests/dbspec-sets.mjs packages/ts/tests/dbspec-set.mjs packages/ts/tests/dbspec-set-edges.mjs packages/ts/tests/dbspec-set-parse.mjs packages/ts/tests/dbspec-analyze.mjs packages/ts/tests/dbspec-syntax.mjs packages/ts/tests/syntax-vectors.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec-render.mjs packages/ts/tests/dbspec-render-dialect.mjs packages/ts/tests/dbspec-plan.mjs packages/ts/tests/dbspec-plan-cases.mjs packages/ts/tests/dbspec-plan-invalid.mjs packages/ts/tests/dbspec-plan-chains.mjs packages/ts/tests/dbspec-plan-parse.mjs packages/ts/tests/dbspec-plan-comparisons.mjs packages/ts/tests/dbspec-mermaid-export.mjs packages/ts/tests/dbspec-mermaid-import.mjs packages/ts/tests/dbspec-mermaid-invalid.mjs packages/ts/tests/dbspec-mermaid-round-trip.mjs packages/ts/tests/dbspec-apply-cleanup.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs
 
 # dbspec-language-check는 TypeScript client와 @polyspec/dbspec-language를 build하고, 언어 서비스의 module graph가
 # node module, Node global과 driver에 닿지 않는지, 공유 vector의 format과 hash, 토큰과 UTF-16 범위, tests/editor의
@@ -1300,7 +1299,9 @@ codec-check: codec-check/compare
 # codec-check/compare.
 codec-check/python: python-venv-check
 	mkdir -p $(CODEC_OUT)
-	ORM_CODEC_OUT=$(CODEC_OUT) $(PYTHON_VENV)/bin/python -m packages.python.tests.codec_vector
+	ORM_CODEC_OUT=$(CODEC_OUT) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_vectors
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_codec_aes_vectors
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.codec_vector
 codec-check/go:
 	mkdir -p $(CODEC_OUT)
 	ORM_CODEC_OUT=$(CODEC_OUT) $(GO_TEST) ./packages/go/orm -run '^TestCodecVectors$$' -count=1

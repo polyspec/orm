@@ -118,21 +118,34 @@ function dbspec_set_described(object $result): array
 }
 
 /**
- * The data sets of every vector case and of the focused cases ("focused/<id>"), each holding [case]. A repeated id is
- * an error.
+ * The data sets of the vector cases of tests/dbspec/set-files.json, named by their case ids, each holding [case]. A
+ * repeated id is an error.
  *
  * @return iterable<string, array{array<string, mixed>}>
  */
 function dbspec_set_sets(string $root): iterable
 {
+    return dbspec_set_named(dbspec_set_cases($root));
+}
+
+/**
+ * The data sets of the focused cases, named by their ids, each holding [case]. A repeated id is an error.
+ *
+ * @return iterable<string, array{array<string, mixed>}>
+ */
+function dbspec_set_focused_sets(): iterable
+{
+    return dbspec_set_named(dbspec_set_focused());
+}
+
+/** @return iterable<string, array{array<string, mixed>}> */
+function dbspec_set_named(iterable $cases): iterable
+{
     $seen = [];
-    foreach ([['', dbspec_set_cases($root)], ['focused/', dbspec_set_focused()]] as [$prefix, $cases]) {
-        foreach ($cases as $case) {
-            $name = $prefix . $case['id'];
-            Assert::assertFalse(isset($seen[$name]), "repeated set case id $name");
-            $seen[$name] = true;
-            yield $name => [$case];
-        }
+    foreach ($cases as $case) {
+        Assert::assertFalse(isset($seen[$case['id']]), "repeated set case id {$case['id']}");
+        $seen[$case['id']] = true;
+        yield $case['id'] => [$case];
     }
 }
 

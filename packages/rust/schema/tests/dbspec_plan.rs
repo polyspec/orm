@@ -99,14 +99,14 @@ fn plan_vectors() -> Vec<Trial> {
     for case in cases {
         let name = case["id"].as_str().expect("id").to_owned();
         let case = case.clone();
-        trials.push(polyspec_orm_testcase::trial(format!("plan_vectors::{name}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || {
+        trials.push(polyspec_orm_testcase::trial(format!("plan_vectors::cases::{name}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || {
             plan_vectors_cases(&case)
         }));
     }
     for case in invalid {
         let name = case["id"].as_str().expect("id").to_owned();
         let case = case.clone();
-        trials.push(polyspec_orm_testcase::trial(format!("plan_vectors::{name}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || {
+        trials.push(polyspec_orm_testcase::trial(format!("plan_vectors::invalid::{name}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || {
             plan_vectors_invalid(&case)
         }));
     }

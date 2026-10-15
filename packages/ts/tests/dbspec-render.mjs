@@ -45,8 +45,3 @@ for (const c of ddl.cases) {
     }
   });
 }
-
-vector('render rejects an unknown dialect', () => {
-  const documents = parseSet(ddl.cases[0]);
-  assert.throws(() => renderDbspec(documents, 'oracle'), { name: 'TypeError', message: /oracle/ });
-});

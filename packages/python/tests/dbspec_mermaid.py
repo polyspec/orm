@@ -8,16 +8,13 @@
 #
 # A failed check raises CheckFailed. The checks do not use assert, which python -O removes.
 import json
-import unittest
 from pathlib import Path
-from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 # The client and ordered-json come from the packages installed into the venv.
 
 from polyspec.orm.dbspec import emit_dbspec, parse_dbspec, read_dbspec_file  # noqa: E402
 from polyspec.orm.dbspec.mermaid import export_mermaid, import_mermaid  # noqa: E402
-from .vector_case import VectorCase, vector_tests  # noqa: E402
 
 
 class CheckFailed(Exception):
@@ -117,33 +114,23 @@ def run_round_trip(c) -> None:
     )
 
 
-class Case(VectorCase):
-    """A case of the vector file of this module."""
+# The run of each kind of mermaid.json; each kind runs from its own module (test_dbspec_mermaid_<kind>.py).
+RUNS = {
+    "export": run_export,
+    "import": run_import,
+    "invalid": run_invalid,
+    "round_trip": run_round_trip,
+}
 
 
-def load_tests(
-    loader: unittest.TestLoader, tests: unittest.TestSuite, _pattern: object
-) -> unittest.TestSuite:
-    """One test for each case of every kind, named by the case id."""
+def kind_cases(kind: str) -> list:
+    """The cases of one kind of mermaid.json, in the order of the file, after the checks of the file itself."""
     vectors = json.loads(
         (ROOT / "tests" / "dbspec" / "mermaid.json").read_text(encoding="utf-8")
     )
     equal(vectors["version"], 1, "mermaid vectors version")
     check(
-        all(vectors[kind] for kind in ("export", "import", "invalid", "round_trip")),
+        all(vectors[k] for k in ("export", "import", "invalid", "round_trip")),
         "mermaid vectors have export, import, invalid and round trip cases",
     )
-    for kind, run in (
-        ("export", run_export),
-        ("import", run_import),
-        ("invalid", run_invalid),
-        ("round_trip", run_round_trip),
-    ):
-        tests.addTests(
-            vector_tests(Case, vectors[kind], lambda _test, c, run=run: run(c))
-        )
-    return tests
-
-
-if __name__ == "__main__":
-    testcase.main()
+    return vectors[kind]

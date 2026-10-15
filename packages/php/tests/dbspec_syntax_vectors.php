@@ -169,7 +169,7 @@ function dbspec_syntax_sets(string $root, array $cases): iterable
             throw new RuntimeException("$id: the inputs repeat this case");
         }
         $seen[$id] = true;
-        yield "syntax/$id" => [$want[$id] ?? null, $text, $documents];
+        yield $id => [$want[$id] ?? null, $text, $documents];
     }
 }
 

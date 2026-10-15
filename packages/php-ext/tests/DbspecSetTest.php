@@ -46,6 +46,17 @@ final class DbspecSetTest extends TestCase
         return dbspec_set_sets(dirname(__DIR__, 3));
     }
 
+    public static function focusedCases(): iterable
+    {
+        return dbspec_set_focused_sets();
+    }
+
+    #[DataProvider('focusedCases')]
+    public function test_focused(array $case): void
+    {
+        $this->test_set($case);
+    }
+
     #[DataProvider('setCases')]
     public function test_set(array $case): void
     {

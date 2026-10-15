@@ -41,7 +41,7 @@ final class DbspecRenderTest extends TestCase
             throw new RuntimeException('Missing ddl vectors');
         }
         foreach ($vectors['cases'] as $case) {
-            yield 'ddl/' . $case['id'] => [$case];
+            yield $case['id'] => [$case];
         }
     }
 

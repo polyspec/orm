@@ -74,7 +74,7 @@ final class DbspecMermaidTest extends TestCase
     public static function exportCases(): iterable
     {
         foreach (mermaid_vectors()['export'] as $case) {
-            yield 'mermaid/export/' . $case['id'] => [$case];
+            yield $case['id'] => [$case];
         }
     }
 
@@ -93,7 +93,7 @@ final class DbspecMermaidTest extends TestCase
     public static function importCases(): iterable
     {
         foreach (mermaid_vectors()['import'] as $case) {
-            yield 'mermaid/import/' . $case['id'] => [$case];
+            yield $case['id'] => [$case];
         }
     }
 
@@ -111,7 +111,7 @@ final class DbspecMermaidTest extends TestCase
     public static function invalidCases(): iterable
     {
         foreach (mermaid_vectors()['invalid'] as $case) {
-            yield 'mermaid/invalid/' . $case['id'] => [$case];
+            yield $case['id'] => [$case];
         }
     }
 
@@ -129,7 +129,7 @@ final class DbspecMermaidTest extends TestCase
     public static function roundtripCases(): iterable
     {
         foreach (mermaid_vectors()['round_trip'] as $case) {
-            yield 'mermaid/round_trip/' . $case['id'] => [$case];
+            yield $case['id'] => [$case];
         }
     }
 

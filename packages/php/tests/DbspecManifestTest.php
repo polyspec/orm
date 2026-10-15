@@ -52,7 +52,7 @@ final class DbspecManifestTest extends TestCase
     public static function hashesCases(): iterable
     {
         foreach (dbspec_read_cases()['hashes'] as $case) {
-            yield 'hashes/' . $case['id'] => [$case];
+            yield $case['id'] => [$case];
         }
     }
 
@@ -80,7 +80,7 @@ final class DbspecManifestTest extends TestCase
     public static function setsCases(): iterable
     {
         foreach (dbspec_read_cases()['sets'] as $case) {
-            yield 'sets/' . $case['id'] => [$case];
+            yield $case['id'] => [$case];
         }
     }
 

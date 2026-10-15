@@ -30,17 +30,38 @@ final class DbspecTest extends TestCase
         }
     }
 
-    /** dbspec_read_cases refuses a missing or unknown section or field of every section, naming it. */
-    public static function documentCases(): iterable
+    /** The canonical cases of tests/dbspec/cases.json, one data set per case id. */
+    public static function canonicalCases(): iterable
     {
-        $cases = dbspec_read_cases();
-        foreach (['canonical', 'normalize', 'invalid'] as $kind) {
-            yield from dbspec_case_sets($kind, $cases[$kind]);
-        }
+        return dbspec_case_ids('canonical', dbspec_read_cases()['canonical']);
     }
 
-    #[DataProvider('documentCases')]
-    public function test_document(string $kind, array $case): void
+    /** The normalize cases of tests/dbspec/cases.json, one data set per case id. */
+    public static function normalizeCases(): iterable
+    {
+        return dbspec_case_ids('normalize', dbspec_read_cases()['normalize']);
+    }
+
+    /** The invalid cases of tests/dbspec/cases.json, one data set per case id. */
+    public static function invalidCases(): iterable
+    {
+        return dbspec_case_ids('invalid', dbspec_read_cases()['invalid']);
+    }
+
+    #[DataProvider('canonicalCases')]
+    public function test_canonical(string $kind, array $case): void
+    {
+        dbspec_check_case($kind, $case, 2.0);
+    }
+
+    #[DataProvider('normalizeCases')]
+    public function test_normalize(string $kind, array $case): void
+    {
+        dbspec_check_case($kind, $case, 2.0);
+    }
+
+    #[DataProvider('invalidCases')]
+    public function test_invalid(string $kind, array $case): void
     {
         dbspec_check_case($kind, $case, 2.0);
     }
@@ -48,7 +69,7 @@ final class DbspecTest extends TestCase
     public static function positionCases(): iterable
     {
         foreach (dbspec_read_cases()['positions'] as $case) {
-            yield 'positions/' . $case['id'] => [$case];
+            yield $case['id'] => [$case];
         }
     }
 
@@ -65,14 +86,19 @@ final class DbspecTest extends TestCase
     public static function fileCases(): iterable
     {
         foreach (dbspec_read_cases()['files'] as $case) {
-            foreach (['file', 'bytes'] as $kind) {
-                yield 'files/' . $case['id'] . '/' . $kind => [$case, $kind];
-            }
+            yield $case['id'] => [$case];
         }
     }
 
     #[DataProvider('fileCases')]
-    public function test_files(array $case, string $kind): void
+    public function test_files(array $case): void
+    {
+        foreach (['file', 'bytes'] as $kind) {
+            $this->checkFile($case, $kind);
+        }
+    }
+
+    private function checkFile(array $case, string $kind): void
     {
         $fileMessages = ['signature' => ' is not a dbspec document', 'encoding' => ' is not valid UTF-8'];
         $path = dirname(__DIR__, 3) . '/tests/dbspec/' . $case['path'];

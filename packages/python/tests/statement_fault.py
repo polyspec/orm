@@ -7,10 +7,7 @@ import contextlib
 from polyspec.orm import testing
 import json
 import os
-import subprocess
-import sys
 import tempfile
-import tomllib
 import unittest
 import uuid
 from pathlib import Path
@@ -23,7 +20,6 @@ import pymysql
 from .test_sqlite import generate_document
 
 ROOT = Path(__file__).resolve().parents[3]
-PACKAGE = Path(__file__).resolve().parents[1]
 
 from polyspec.orm.database import Db  # noqa: E402
 from polyspec.orm.errors import OrmError  # noqa: E402
@@ -255,43 +251,6 @@ class StatementFaultTest(unittest.TestCase):
             self.assertEqual(self.count(db), 1)
 
         self.each_dialect("empty_argument_refused", run)
-
-
-class StatementFaultEntryTest(unittest.TestCase):
-    deadline = testcase.PROCESS
-
-    def test_the_package_entry_point_does_not_export_the_fault(self):
-        import polyspec.orm
-
-        self.assertFalse(hasattr(polyspec.orm, "fail_next_statement"))
-        self.assertNotIn("fail_next_statement", polyspec.orm.__all__)
-        self.assertTrue(callable(testing.fail_next_statement))
-
-    def test_the_distribution_holds_the_test_entry_point_that_no_import_loads(self):
-        with (PACKAGE / "pyproject.toml").open("rb") as file:
-            find = tomllib.load(file)["tool"]["setuptools"]["packages"]["find"]
-        self.assertNotIn("polyspec.orm.testing", find.get("exclude", []))
-        loaded = subprocess.run(
-            [
-                sys.executable,
-                "-c",
-                "import sys, polyspec.orm, polyspec.orm.database; "
-                'print("polyspec.orm.testing" in sys.modules)',
-            ],
-            capture_output=True,
-            text=True,
-        )
-        self.assertEqual(loaded.returncode, 0, loaded.stderr)
-        self.assertEqual(loaded.stdout.strip(), "False")
-
-
-class StatementFaultFixtureTest(unittest.TestCase):
-    def test_every_fixture_case_has_a_test_method(self):
-        for case in FIXTURE["cases"]:
-            self.assertTrue(
-                callable(getattr(StatementFaultTest, f"test_{case}", None)),
-                f"fixture case {case} has no test method",
-            )
 
 
 if __name__ == "__main__":

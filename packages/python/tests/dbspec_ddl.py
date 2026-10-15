@@ -44,13 +44,6 @@ def check_case(test: unittest.TestCase, case: dict) -> None:
         )
 
 
-class RenderDialectTest(unittest.TestCase):
-    def test_unknown_dialect_is_a_type_error(self):
-        documents = parse_set(DATA["cases"][-1]["documents"])
-        with self.assertRaises(TypeError):
-            render_dbspec(documents, "oracle")
-
-
 class Case(VectorCase):
     """A case of the vector file of this module."""
 

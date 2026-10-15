@@ -36,6 +36,17 @@ final class DbspecSetTest extends TestCase
         dbspec_set_check($case, static fn(string $path): object => Dbspec::readSet($path));
     }
 
+    public static function focusedCases(): iterable
+    {
+        return dbspec_set_focused_sets();
+    }
+
+    #[DataProvider('focusedCases')]
+    public function test_focused(array $case): void
+    {
+        $this->test_set($case);
+    }
+
     public function test_a_set_path_without_a_directory_reads_from_the_working_directory(): void
     {
         mkdir("{$this->work}/cwd", 0o700, true);

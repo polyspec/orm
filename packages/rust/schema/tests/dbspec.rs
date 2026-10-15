@@ -163,7 +163,7 @@ fn assert_keys(value: &Value, keys: &[&str], id: &str) {
     }
 }
 
-/// The canonical, normalize, invalid and positions cases of cases.json, each the trial `shared_dbspec_vectors::<id>`.
+/// The canonical, normalize, invalid and positions cases of cases.json, each the trial `shared_dbspec_vectors::<kind>::<id>`.
 fn shared_dbspec_vectors(file: &Value, seen: &mut std::collections::BTreeSet<String>) -> Vec<Trial> {
     let mut trials = Vec::new();
     for kind in ["canonical", "normalize", "invalid", "positions"] {
@@ -173,13 +173,17 @@ fn shared_dbspec_vectors(file: &Value, seen: &mut std::collections::BTreeSet<Str
             let id = case["id"].as_str().unwrap();
             assert!(!id.is_empty() && seen.insert(id.to_owned()), "case id {id} is nonempty and unique");
             let case = case.clone();
-            trials.push(polyspec_orm_testcase::trial(format!("shared_dbspec_vectors::{id}"), polyspec_orm_testcase::wall_for_cpu(CASE_DEADLINE), move || {
-                if kind == "positions" {
-                    run_positions(&case);
-                } else {
-                    run(&case, kind);
-                }
-            }));
+            trials.push(polyspec_orm_testcase::trial(
+                format!("shared_dbspec_vectors::{kind}::{id}"),
+                polyspec_orm_testcase::wall_for_cpu(CASE_DEADLINE),
+                move || {
+                    if kind == "positions" {
+                        run_positions(&case);
+                    } else {
+                        run(&case, kind);
+                    }
+                },
+            ));
         }
     }
     trials

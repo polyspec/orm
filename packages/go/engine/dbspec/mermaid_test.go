@@ -134,21 +134,33 @@ func mermaidDrops(us []Unsupported) [][3]string {
 	return out
 }
 
-// TestMermaidVectors는 tests/dbspec/mermaid.json의 export, import, invalid
-// case를 확인한다(docs/mermaid.md).
-func TestMermaidVectors(t *testing.T) {
+// TestMermaidExportVectors, TestMermaidImportVectors, TestMermaidInvalidVectors and
+// TestMermaidRoundTripVectors check the export, import, invalid and round_trip
+// cases of tests/dbspec/mermaid.json (docs/mermaid.md), one suite each.
+func TestMermaidExportVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	v := loadMermaidVectors(t)
-	for _, c := range v.Export {
+	for _, c := range loadMermaidVectors(t).Export {
 		t.Run(c.ID, func(t *testing.T) { checkMermaidExport(t, c) })
 	}
-	for _, c := range v.Import {
+}
+
+func TestMermaidImportVectors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	for _, c := range loadMermaidVectors(t).Import {
 		t.Run(c.ID, func(t *testing.T) { checkMermaidImport(t, c) })
 	}
-	for _, c := range v.Invalid {
+}
+
+func TestMermaidInvalidVectors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	for _, c := range loadMermaidVectors(t).Invalid {
 		t.Run(c.ID, func(t *testing.T) { checkMermaidInvalid(t, c) })
 	}
-	for _, c := range v.RoundTrip {
+}
+
+func TestMermaidRoundTripVectors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	for _, c := range loadMermaidVectors(t).RoundTrip {
 		t.Run(c.ID, func(t *testing.T) { checkMermaidRoundTrip(t, c) })
 	}
 }

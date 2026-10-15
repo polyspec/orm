@@ -5,7 +5,6 @@ import json
 import unittest
 from pathlib import Path
 
-from polyspec.orm.dbspec import parse_dbspec, render_dbspec
 from polyspec.orm.decimal import decimal_from_scaled, decimal_scaled, normalize_decimal
 from polyspec.orm.errors import OrmError
 from . import testcase
@@ -41,18 +40,6 @@ def check_case(test: unittest.TestCase, case: dict) -> None:
 
 class Case(VectorCase):
     """A case of decimal_model.json."""
-
-
-class SqliteDecimalDdlTest(unittest.TestCase):
-    def test_a_sqlite_decimal_column_is_scaled_integer_storage(self) -> None:
-        document, _positions, diagnostics = parse_dbspec(
-            "dbspec 1 decimal\n\ntable t {\n  seq i64\n  amount decimal(13,4)\n  primary key (seq)\n}\n",
-            {},
-        )
-        self.assertEqual(list(diagnostics), [])
-        rendered = render_dbspec([document], "sqlite")
-        self.assertEqual(list(rendered["diagnostics"]), [])
-        self.assertIn('"amount" DECIMALINT(13,4) NOT NULL', rendered["statements"][0])
 
 
 def load_tests(

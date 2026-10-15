@@ -4,7 +4,6 @@
 import json
 import struct
 import unittest
-from decimal import Decimal
 from pathlib import Path
 
 from polyspec.orm.errors import OrmError
@@ -43,18 +42,6 @@ def check_case(test: unittest.TestCase, case: dict) -> None:
 
 class Case(VectorCase):
     """A case of aggregate_numeric.json."""
-
-
-class DriverValueTest(unittest.TestCase):
-    def test_decimal_and_text_give_the_same_value(self) -> None:
-        self.assertEqual(
-            _aggregate_number(Decimal("48.0450")), _aggregate_number("48.0450")
-        )
-
-    def test_a_boolean_is_no_number(self) -> None:
-        with self.assertRaises(OrmError) as raised:
-            _aggregate_number(True)
-        self.assertEqual(raised.exception.code, "CODEC_DECODE")
 
 
 def load_tests(

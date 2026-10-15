@@ -82,7 +82,7 @@ fn run(body: impl FnOnce() -> Result<(), String>) {
     }
 }
 
-/// Each case of tests/dbspec/mermaid.json, of every kind, is the trial `mermaid_vectors::<id>`.
+/// Each case of tests/dbspec/mermaid.json, of every kind, is the trial `mermaid_vectors::<kind>::<id>`.
 fn mermaid_vectors() -> Vec<Trial> {
     let vectors = vectors();
     let mut trials = Vec::new();
@@ -92,7 +92,7 @@ fn mermaid_vectors() -> Vec<Trial> {
         for case in cases(&vectors, kind) {
             let id = case["id"].as_str().expect("id").to_owned();
             let case = case.clone();
-            trials.push(polyspec_orm_testcase::trial(format!("mermaid_vectors::{id}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || {
+            trials.push(polyspec_orm_testcase::trial(format!("mermaid_vectors::{kind}::{id}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE), move || {
                 run(|| check(&case))
             }));
         }
