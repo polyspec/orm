@@ -1331,7 +1331,7 @@ bind-check/typescript: lease-tool
 	$(TSC_BUILD)
 	$(NODE) packages/ts/tests/markdown.mjs
 bind-check/python: python-venv-check
-	$(PYTHON_VENV)/bin/python -m unittest packages.python.tests.test_markdown.BindMessageVectors packages.python.tests.test_markdown.BindVectors
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase packages.python.tests.test_markdown.BindMessageVectors packages.python.tests.test_markdown.BindVectors
 bind-check/php: php-vendor-check
 	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test_bind_(message_)?vectors' packages/php/tests/MarkdownTest.php
 
