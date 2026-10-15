@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2e10cfb6e68f0035fddd4149ffdbfad17f51bf9e2a52f31c6fa50fa84f9b13d1 -->
+<!-- source-sha256: b5faa0a22f130cbc858ba5ba7814635dbd2504bd412a5294f3813023a5b4673c -->
 # 변경 이력
 
 ## Unreleased
 
+- parity가 모든 구현의 모든 feature unit을 묶는다. (#T148-3-3)
 - 공유 vector case id에 slash가 없어 parity가 모든 case를 묶는다. (#T148-3-3-1)
 - Python bind vector가 case harness로 실행된다. (#T89-4)
 - 모든 client가 statement 전에 non-null column의 NULL을 거부한다. (#T90)
