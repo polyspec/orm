@@ -4,7 +4,7 @@
 import { connect as netConnect, type Socket } from 'node:net';
 import { parse as parseJson, type Value } from '@polyspec/ordered-json';
 import { hostEncode } from './codec.js';
-import { decodeAssembly, formatInstant, type Db, type Executor, type Result } from './database.js';
+import { decodeAssembly, formatInstant, timeValue, type Db, type Executor, type Result } from './database.js';
 import type { PoolBounds, PoolStats } from './driver.js';
 import { functionType, paramUses, type ParamUse } from './engine/params.js';
 import { entityOf, fieldOf, type Entity, type RuntimeModel } from './engine/model.js';
@@ -267,10 +267,10 @@ export function savepointLine(op: 'savepoint' | 'release' | 'rollback_to', name:
 
 /**
  * parameter i의 runtime value model JSON이다: decimal은 string, bytes는 base64, datetime은 UTC의
- * YYYY-MM-DD HH:MM:SS.ffffff, date는 YYYY-MM-DD, time은 HH:MM:SS.ffffff다. 어느 form인지는 parameter가 채우는
+ * YYYY-MM-DD HH:MM:SS.ffffff, date는 YYYY-MM-DD, time은 HH:MM:SS.ffffff다(p 뒤 자리는 0, 문자열 값도 같다). 어느 form인지는 parameter가 채우는
  * slot의 type이 정한다. hex와 ip style column의 slot은 SQL 연결처럼 client가 값을 encode해 보낸다.
  */
-function markdownParam(db: Db, i: number, value: unknown, uses: readonly ParamUse[]): string {
+export function markdownParam(db: Pick<Db, 'zone' | 'aesKey'>, i: number, value: unknown, uses: readonly ParamUse[]): string {
   const use = uses[0];
   if (use?.column !== undefined && value !== null && value !== undefined) {
     const host = use.column.stages.filter(s => s === 'aes' || s === 'hex' || s === 'ip');
@@ -283,6 +283,7 @@ function markdownParam(db: Db, i: number, value: unknown, uses: readonly ParamUs
   }
   if (value instanceof Uint8Array) return JSON.stringify(Buffer.from(value).toString('base64'));
   if (typeof value === 'string' && use?.type === 'bytes') return JSON.stringify(Buffer.from(value).toString('base64'));
+  if (typeof value === 'string' && (use?.type === 'date' || use?.type === 'time' || use?.type === 'datetime')) return JSON.stringify(timeValue(value, use.type, db.zone, 6));
   if (typeof value === 'bigint') return value.toString();
   if (typeof value === 'number' && !Number.isFinite(value)) throw new OrmError('CODEC_ENCODE', `parameter ${i} (${value}) has no JSON form`);
   if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return JSON.stringify(value);

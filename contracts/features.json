@@ -94,7 +94,11 @@
         "packages/go/orm/markdown_test.go",
         "packages/php/tests/MarkdownTest.php",
         "packages/rust/orm/tests/markdown.rs",
-        "packages/ts/tests/markdown.mjs"
+        "packages/ts/tests/markdown.mjs",
+        "packages/go/orm/markdown_param_test.go",
+        "packages/rust/orm/tests/unit/bind_message.rs",
+        "packages/python/tests/test_markdown.py",
+        "tests/bind/vectors.json"
       ],
       "docs": [
         "docs/config.md",
@@ -129,6 +133,36 @@
           "inputs": [
             "packages/rust/orm/tests/markdown.rs",
             "packages/rust/orm/src/markdown.rs"
+          ]
+        },
+        {
+          "id": "bind-message-go",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestBindMessageVectors$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/orm/markdown_param_test.go",
+            "packages/go/orm/markdown.go",
+            "tests/bind/vectors.json"
+          ]
+        },
+        {
+          "id": "bind-message-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts bind-message-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib markdown::bind_message_tests",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/orm/tests/unit/bind_message.rs",
+            "packages/rust/orm/src/markdown.rs",
+            "tests/bind/vectors.json"
+          ]
+        },
+        {
+          "id": "bind-message-python",
+          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_markdown.BindMessageVectors",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_markdown.py",
+            "packages/python/src/polyspec/orm/markdown.py",
+            "tests/bind/vectors.json"
           ]
         },
         {

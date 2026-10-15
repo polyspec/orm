@@ -344,7 +344,7 @@ async fn markdown_call(ex: &Executor, req: &mut Req) -> Result<(Vec<u8>, Arc<Man
     let uses = engine::param_uses(&manifest, &req.ir);
     let mut params = Vec::with_capacity(req.params.len());
     for (i, value) in req.params.iter().enumerate() {
-        params.push(markdown_param(i, value, uses[i].first(), &db.inner.cfg.aes_key)?);
+        params.push(markdown_param(i, value, uses[i].first(), &db.inner.cfg.aes_key, &db.inner.zone)?);
     }
     let now = db.inner.zone.now().format("%Y-%m-%d %H:%M:%S%.6f").to_string();
     let msg = MdRequest { ir_version: req.ir.ir_version, manifest_hash: &req.ir.manifest_hash, request: &req.ir, params, now };
@@ -369,9 +369,9 @@ async fn markdown_call(ex: &Executor, req: &mut Req) -> Result<(Vec<u8>, Arc<Man
 }
 
 /// parameter i의 runtime value model JSON이다: decimal은 string, bytes는 base64, datetime은 UTC의
-/// `YYYY-MM-DD HH:MM:SS.ffffff`, date는 `YYYY-MM-DD`, time은 `HH:MM:SS.ffffff`다. 어느 form인지는 parameter가
+/// `YYYY-MM-DD HH:MM:SS.ffffff`, date는 `YYYY-MM-DD`, time은 `HH:MM:SS.ffffff`다(p 뒤 자리는 0, 문자열 값도 같다). 어느 form인지는 parameter가
 /// 채우는 slot의 type이 정한다. hex와 ip style column의 slot은 SQL 연결처럼 client가 값을 encode해 보낸다.
-fn markdown_param(i: usize, value: &Param, slot: Option<&ParamUse<'_>>, aes_key: &str) -> Result<Value> {
+fn markdown_param(i: usize, value: &Param, slot: Option<&ParamUse<'_>>, aes_key: &str, zone: &crate::db::Zone) -> Result<Value> {
     let ty = slot.map(|u| u.ty.as_str()).unwrap_or("");
     let mut value = value.clone();
     if let Some(column) = slot.and_then(|u| u.column) {
@@ -396,6 +396,7 @@ fn markdown_param(i: usize, value: &Param, slot: Option<&ParamUse<'_>>, aes_key:
             .map(Value::Number)
             .ok_or_else(|| Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("parameter {i} ({x}) has no JSON form") })?,
         Param::Str(s) if ty == "bytes" => base64(s.as_bytes()),
+        Param::Str(s) if matches!(ty, "date" | "time" | "datetime") => Value::String(crate::db::message_time_text(&s, ty, zone)?),
         Param::Str(s) => Value::String(s),
         Param::Bytes(b) => base64(&b),
         Param::DateTime(t) => time(t),
@@ -692,3 +693,7 @@ pub(crate) async fn markdown_write(ex: &Executor, req: &mut Req) -> Result<(Vec<
     let keys = a.keys.iter().map(|raw| aggregate_value(raw)).collect::<Result<Vec<_>>>()?;
     Ok((keys, affected))
 }
+
+#[cfg(test)]
+#[path = "../tests/unit/bind_message.rs"]
+mod bind_message_tests;

@@ -371,7 +371,7 @@ func markdownCall(ex executor, r *request) (json.RawMessage, *runtimemodel.Model
 
 // markdownParam은 parameter i의 runtime value model JSON이다: decimal은 string, bytes는
 // base64, datetime은 UTC의 YYYY-MM-DD HH:MM:SS.ffffff, date는 YYYY-MM-DD, time은
-// HH:MM:SS.ffffff다. 어느 form인지는 parameter가 채우는 slot의 type이 정한다. hex와 ip
+// HH:MM:SS.ffffff다(p 뒤 자리는 0). time 값의 문자열도 그 form으로 쓴다. 어느 form인지는 parameter가 채우는 slot의 type이 정한다. hex와 ip
 // style column의 slot은 SQL 연결처럼 client가 값을 encode해 보낸다.
 func (d *DB) markdownParam(i int, v any, uses []ir.ParamUse) (json.RawMessage, error) {
 	var use ir.ParamUse
@@ -400,8 +400,14 @@ func (d *DB) markdownParam(i int, v any, uses []ir.ParamUse) (json.RawMessage, e
 	case []byte:
 		v = base64.StdEncoding.EncodeToString(x)
 	case string:
-		if use.Type == "bytes" {
+		switch use.Type {
+		case "bytes":
 			v = base64.StdEncoding.EncodeToString([]byte(x))
+		case "date", "time", "datetime":
+			var err error
+			if v, err = d.sqliteTimeValue(x, use.Type, 6); err != nil {
+				return nil, err
+			}
 		}
 	}
 	b, err := marshalPlain(v)

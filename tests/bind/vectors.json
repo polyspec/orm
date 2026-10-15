@@ -1,0 +1,15 @@
+{
+  "zone": "+00:00",
+  "message": [
+    {"name": "time-p0", "type": "time", "precision": 0, "value": "10:00:00", "json": "10:00:00.000000"},
+    {"name": "time-p3", "type": "time", "precision": 3, "value": "10:00:00.123", "json": "10:00:00.123000"},
+    {"name": "time-p3-whole", "type": "time", "precision": 3, "value": "10:00:00", "json": "10:00:00.000000"},
+    {"name": "time-p6", "type": "time", "precision": 6, "value": "23:59:59.999999", "json": "23:59:59.999999"},
+    {"name": "datetime-p0", "type": "datetime", "precision": 0, "value": "2024-01-02 03:04:05", "json": "2024-01-02 03:04:05.000000"},
+    {"name": "datetime-p3-t", "type": "datetime", "precision": 3, "value": "2024-01-02T03:04:05.5", "json": "2024-01-02 03:04:05.500000"},
+    {"name": "datetime-offset", "type": "datetime", "precision": 6, "value": "2024-01-02 03:04:05+09:00", "json": "2024-01-01 18:04:05.000000"},
+    {"name": "date", "type": "date", "precision": 0, "value": "2024-01-02", "json": "2024-01-02"},
+    {"name": "time-not-clock", "type": "time", "precision": 0, "value": "10:00", "code": "CODEC_ENCODE"},
+    {"name": "datetime-not-date", "type": "datetime", "precision": 0, "value": "2024-13-01 00:00:00", "code": "CODEC_ENCODE"}
+  ]
+}

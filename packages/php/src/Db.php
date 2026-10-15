@@ -1117,10 +1117,28 @@ final class Db
      */
     private function bindTimeValue(mixed $v, string $colType, int $precision): mixed
     {
+        return self::timeValue($v, $colType, $precision, $this->zone);
+    }
+
+    /**
+     * date, time, datetime 값을 offset 없는 text로 쓴다(bindTimeValue). time은 `HH:MM:SS`에 precision 자리의
+     * 소수를 붙인 text다. IR executor message는 precision 6으로 쓴다(docs/protocol.md §5).
+     *
+     * @internal
+     */
+    public static function timeValue(mixed $v, string $colType, int $precision, \DateTimeZone $zone): mixed
+    {
+        if ($colType === 'time' && is_string($v)) {
+            if (preg_match('/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?$/D', $v, $m) !== 1 || (int) $m[1] > 23 || (int) $m[2] > 59 || (int) $m[3] > 59) {
+                throw new OrmException(Code::CODEC_ENCODE, "time value \"$v\" is not HH:MM:SS[.ffffff]");
+            }
+            $fraction = str_pad($m[4] ?? '', 6, '0');
+            return "$m[1]:$m[2]:$m[3]" . ($precision > 0 ? '.' . substr($fraction, 0, $precision) : '');
+        }
         if ($v instanceof \DateTimeInterface) {
             return $colType === 'date'
                 ? $v->format('Y-m-d')
-                : self::timeText(\DateTimeImmutable::createFromInterface($v)->setTimezone($this->zone), $precision);
+                : self::timeText(\DateTimeImmutable::createFromInterface($v)->setTimezone($zone), $precision);
         }
         if (!is_string($v)) {
             return $v;
@@ -1137,19 +1155,19 @@ final class Db
         }
         $fraction = $m[3] ?? '';
         $text = $m[1] . ' ' . $m[2] . '.' . str_pad($fraction, 6, '0');
-        $zone = $m[4] ?? '';
-        if ($zone === '') {
+        $offset = $m[4] ?? '';
+        if ($offset === '') {
             $t = \DateTimeImmutable::createFromFormat('!Y-m-d H:i:s.u', $text);
             if ($t === false || $t->format('Y-m-d H:i:s.u') !== $text) {
                 throw self::invalidTimeText($v, $colType);
             }
             return self::timeText($t, $precision);
         }
-        $t = \DateTimeImmutable::createFromFormat('!Y-m-d H:i:s.uP', $text . ($zone === 'Z' ? '+00:00' : $zone));
+        $t = \DateTimeImmutable::createFromFormat('!Y-m-d H:i:s.uP', $text . ($offset === 'Z' ? '+00:00' : $offset));
         if ($t === false || $t->format('Y-m-d H:i:s.u') !== $text) {
             throw self::invalidTimeText($v, $colType);
         }
-        return self::timeText($t->setTimezone($this->zone), $precision);
+        return self::timeText($t->setTimezone($zone), $precision);
     }
 
     private static function invalidTimeText(string $v, string $colType): OrmException

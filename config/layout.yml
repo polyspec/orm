@@ -44,6 +44,7 @@ rules:
       - "tests/*"
       - "!tests/kit"
       # Shared vectors and the cross-language runners that compare the clients' results.
+      - "!tests/bind"
       - "!tests/codec"
       - "!tests/conformance"
       - "!tests/dbspec"

@@ -50,7 +50,7 @@ final class Markdown
 
     /**
      * parameter $i의 runtime value model JSON 값이다: decimal은 string, bytes는 base64, datetime은
-     * UTC의 YYYY-MM-DD HH:MM:SS.ffffff, date는 YYYY-MM-DD, time은 HH:MM:SS.ffffff다. 어느 form인지는
+     * UTC의 YYYY-MM-DD HH:MM:SS.ffffff, date는 YYYY-MM-DD, time은 HH:MM:SS.ffffff다(p 뒤 자리는 0, 문자열 값도 같다). 어느 form인지는
      * parameter가 채우는 slot의 type이 정한다. hex와 ip style column의 slot은 SQL 연결처럼 client가
      * 값을 encode해 보낸다.
      *
@@ -76,6 +76,9 @@ final class Markdown
         }
         if ($v instanceof Bytes) {
             return base64_encode($v->bytes);
+        }
+        if (is_string($v) && in_array($use['type'], ['date', 'time', 'datetime'], true)) {
+            return Db::timeValue($v, $use['type'], 6, $db->zone());
         }
         if (is_string($v) && $use['type'] === 'bytes') {
             return base64_encode($v);
