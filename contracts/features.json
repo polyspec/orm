@@ -3033,6 +3033,7 @@
             "packages/python/tests/dbspec_ddl.py",
             "packages/python/tests/dbspec_plans.py",
             "packages/python/tests/dbspec_mermaid.py",
+            "packages/python/tests/dbspec_apply.py",
             "packages/python/tests/test_dbspec_analyze.py",
             "packages/python/tests/test_dbspec_set_files.py",
             "packages/python/tests/test_dbspec_set_parse.py",

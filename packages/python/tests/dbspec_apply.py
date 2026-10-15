@@ -1,12 +1,13 @@
 # 공유 plan 사례(tests/dbspec/plans.json)의 chain을 SQLite에 적용한다
 # (docs/plans.md "Apply"). 첫 plan만 적용하고, chain 전체를 적용하고, 둘째
 # plan의 statement 1 뒤에 멈추고 이어 가고, 마지막 plan을 되돌린다. MySQL과
-# PostgreSQL은 conformance가 검사한다.
+# PostgreSQL은 conformance와 apply 순서쌍 비교(dbspec_apply_runner.py, make dbspec-apply-pairs-check)가
+# 검사한다. 실행: make dbspec-python-check
 import json
 import os
 import sqlite3
-import sys
 import tempfile
+import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -14,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[3]
 from polyspec.orm.dbspec.apply import apply_plans, recover_plans, rollback_plans  # noqa: E402
 from polyspec.orm.dbspec.plan import parse_plan  # noqa: E402
 from polyspec.orm.dbspec.plan_steps import plan_steps  # noqa: E402
+from . import testcase  # noqa: E402
 
 NOW = 1_700_000_000_000_000
 
@@ -55,9 +57,10 @@ def history(conn: Conn) -> list:
     return sorted(tuple(row) for row in rows)
 
 
-def main() -> None:
-    with tempfile.TemporaryDirectory(prefix='dbspec-apply-') as tmp:
-        scenarios(tmp)
+class DbspecApplyTest(unittest.TestCase):
+    def test_sqlite_scenarios(self) -> None:
+        with tempfile.TemporaryDirectory(prefix='dbspec-apply-') as tmp:
+            scenarios(tmp)
 
 
 def scenarios(tmp: str) -> None:
@@ -106,8 +109,7 @@ def scenarios(tmp: str) -> None:
         history(conn)
     assert conn.value('SELECT COUNT(*) FROM "users"') == 0
     conn.close()
-    print('apply: 4 sqlite scenarios agree')
 
 
 if __name__ == '__main__':
-    main()
+    testcase.main()

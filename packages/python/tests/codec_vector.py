@@ -1,8 +1,11 @@
 # 공유 codec vector 검사: tests/codec/vectors.json의 모든 vector와 AES vector를
 # decode, encode, round trip으로 확인한다 (packages/ts/tests/codec-vector.mjs와
-# 같은 검사). 실행: python packages/python/tests/codec_vector.py
+# 같은 검사). ORM_CODEC_OUT(make codec-check)이 있으면 각 vector의 encode 출력을
+# 그 directory의 python.json에 쓰고, PHP의 CodecVectorsTest가 그것을 decode해 비교한다.
+# 실행: make codec-check/python
 import base64
 import json
+import os
 import unittest
 from pathlib import Path
 
@@ -14,6 +17,9 @@ from .vector_case import VectorCase, vector_tests
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
+# The base64 encoding of each codec vector (None for SQL NULL), by vector name, which tearDownModule writes to
+# ORM_CODEC_OUT for the cross-check of codec-check/compare.
+OUTPUT: dict = {}
 
 
 def canonical(value):
@@ -66,6 +72,7 @@ def check_vector(test: unittest.TestCase, vector: dict) -> None:
     encoded = encode(stages_of(vector['styles']), decoded)
     encoded_b64 = None if encoded is None else base64.b64encode(
         encoded.encode('utf-8') if isinstance(encoded, str) else encoded).decode('ascii')
+    OUTPUT[name] = encoded_b64
     if vector['deterministic'] and encoded_b64 != vector['encoded_b64']:
         failures.append(f'{name}: encoded {encoded_b64} want {vector["encoded_b64"]}')
     round_trip = decode(stages_of(vector['styles']), encoded)
@@ -131,6 +138,18 @@ class CodecVectorTest(unittest.TestCase):
     def test_blind_index(self):
         self.assertEqual(blind_index('member@example.test', 'blind-key'),
                          '1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8')
+
+
+def tearDownModule() -> None:  # noqa: N802 - unittest's function name
+    """Writes the encoded output of every codec vector only to the directory that ORM_CODEC_OUT (make codec-check)
+    names, through a temporary file renamed into place."""
+    directory = os.environ.get('ORM_CODEC_OUT')
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+        temporary = os.path.join(directory, f'python.json.tmp-{os.getpid()}')
+        with open(temporary, 'w', encoding='utf-8') as handle:
+            handle.write(json.dumps(OUTPUT, indent=2) + '\n')
+        os.replace(temporary, os.path.join(directory, 'python.json'))
 
 
 class Case(VectorCase):

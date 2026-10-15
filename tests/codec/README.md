@@ -9,9 +9,10 @@ the reference vectors for each style stack and value, with stored bytes (base64)
 | `go test ./packages/go/orm -run TestCodecVectors` | decodes every vector to the value; deterministic styles re-encode byte-identically; round trip | `$ORM_CODEC_OUT/go.json` |
 | `cargo test -p polyspec-orm --lib codec::tests::vectors` (in `packages/rust`) | same | `$ORM_CODEC_OUT/rust.json` |
 | `node packages/ts/tests/codec-vector.mjs` | same | `$ORM_CODEC_OUT/typescript.json` |
-| `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecVectorsTest.php` | same for PHP, then decodes the three outputs in `$ORM_CODEC_OUT` — what Go, Rust and TypeScript wrote must read back as the same value | — |
+| `python -m packages.python.tests.codec_vector` (the venv of `make install-python`) | same | `$ORM_CODEC_OUT/python.json` |
+| `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecVectorsTest.php` | same for PHP, then decodes the four outputs in `$ORM_CODEC_OUT` — what Go, Rust, TypeScript and Python wrote must read back as the same value | — |
 
-`make codec-check` runs all four in that order with `ORM_CODEC_OUT` set to a directory of its own run,
+`make codec-check` runs all five in that order with `ORM_CODEC_OUT` set to a directory of its own run,
 so the checker reads only what this run wrote, never an output that another target or an earlier run
 left. A runner writes its output only when `ORM_CODEC_OUT` is set, through a temporary file and a
 rename.

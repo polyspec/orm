@@ -366,17 +366,18 @@ dbspec-apply-stress-bench:
 	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyStressPlan$$/^($(APPLY_STRESS_DIALECTS))$$' -count=1
 
 # dbspec-apply-pairs-check는 TypeScript client와 Rust apply runner를 build하고,
-# tests/dbspec/apply의 Go, PHP, TypeScript, Rust와 PHP 확장 orm_dbspec(이 실행의 directory에 build한다) runner의 모든 순서쌍마다 MySQL, PostgreSQL,
+# tests/dbspec/apply의 Go, PHP, TypeScript, Rust와 PHP 확장 orm_dbspec(이 실행의 directory에 build한다) runner와 Python runner
+# packages/python/tests/dbspec_apply_runner.py의 모든 순서쌍마다 MySQL, PostgreSQL,
 # SQLite에서 chain의 첫 plan을 한 client로, 나머지를 다른 client로 적용하고, 첫 client가 멈춘
 # plan을 둘째 client가 recover로 마치며, 다시 멈춘 plan을 둘째 client가 rollback한다. history
 # row와 introspect한 schema text가 chain의 것과 같아야 한다.
 .PHONY: dbspec-apply-pairs-check
-dbspec-apply-pairs-check: cargo-downloads-check lease-tool
+dbspec-apply-pairs-check: cargo-downloads-check lease-tool python-venv-check
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
-	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(RUN_TARGET)/debug/examples/dbspec_apply ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyChainAcrossClients$$' -count=1
+	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(RUN_TARGET)/debug/examples/dbspec_apply ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyChainAcrossClients$$' -count=1
 	rm -rf $(RUN_DIR)
 
 # dbspec-apply-rust-check는 2000 table plan을 뺀 dbspec-apply-check의 scenario를 Rust client의
@@ -513,7 +514,7 @@ python-interface-unit-check: python-venv-check
 python-coverage-case-check: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.coverage_case_test
 # dbspec-python-check is the Python verification of schema_definition (contracts/features.json schema-python): the shared
-# vectors of tests/dbspec (cases.json and its files, ddl.json, plans.json, mermaid.json, syntax.json, show-create.json and
+# vectors of tests/dbspec (cases.json and its files, ddl.json, plans.json and its SQLite apply chain, mermaid.json, syntax.json, show-create.json and
 # set-files.json) and the unit tests of syntax analysis, formatting and the set reader.
 .PHONY: dbspec-python-check
 dbspec-python-check: python-venv-check
@@ -521,6 +522,7 @@ dbspec-python-check: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_ddl
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_plans
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_mermaid
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_apply
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p 'test_dbspec_*.py'
 dbspec-compare-check/prepare: cargo-downloads-check lease-tool python-venv-check
 	$(HOLD_TYPESCRIPT)
@@ -1272,17 +1274,18 @@ go-vet-check/orm:
 	$(RUN_LONG) go-vet/orm -- go vet -vettool=$(ORM_VET) $(GO_PACKAGES)
 
 # codec-check는 PHP codec으로 tests/codec/vectors.json을 decode하고 encode한 뒤, 이 target이 실행한 Go, Rust,
-# TypeScript codec test가 이 make 실행의 directory(CODEC_OUT, ORM_CODEC_OUT)에 쓴 출력을 decode한다
+# TypeScript, Python codec test가 이 make 실행의 directory(CODEC_OUT, ORM_CODEC_OUT)에 쓴 출력을 decode한다
 # (tests/codec/README.md). 다른 target이나 앞선 실행이 쓴 출력은 읽지 않으므로, 그 출력은 언제나 이 checkout의
-# 지금 code의 것이다. 세 writer는 서로 독립된 부분이므로 하나가 실패해도 나머지가 실행되고(make -k), 비교는 세
+# 지금 code의 것이다. 네 writer는 서로 독립된 부분이므로 하나가 실패해도 나머지가 실행되고(make -k), 비교는 네
 # 출력을 모두 읽으므로 그 뒤에 온다. 실패한 실행의 directory는 runner가 보고서로 옮긴다.
 CODEC_OUT = $(abspath .runtime/run)/codec-check-$$PPID
 .PHONY: codec-check codec-check/go codec-check/rust codec-check/typescript codec-check/python codec-check/compare
-codec-check: codec-check/compare codec-check/python
-# codec-check/python runs the shared vectors through the Python codec; it prints each vector of its
-# PYTHON_EXCLUSIONS as skipped.
+codec-check: codec-check/compare
+# codec-check/python runs the shared vectors through the Python codec and writes its encodings to ORM_CODEC_OUT for
+# codec-check/compare.
 codec-check/python: python-venv-check
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.codec_vector
+	mkdir -p $(CODEC_OUT)
+	ORM_CODEC_OUT=$(CODEC_OUT) $(PYTHON_VENV)/bin/python -m packages.python.tests.codec_vector
 codec-check/go:
 	mkdir -p $(CODEC_OUT)
 	ORM_CODEC_OUT=$(CODEC_OUT) $(GO_TEST) ./packages/go/orm -run '^TestCodecVectors$$' -count=1
@@ -1294,7 +1297,7 @@ codec-check/typescript: lease-tool
 	mkdir -p $(CODEC_OUT)
 	$(TSC_BUILD)
 	ORM_CODEC_OUT=$(CODEC_OUT) node packages/ts/tests/codec-vector.mjs
-codec-check/compare: php-vendor-check codec-check/go codec-check/rust codec-check/typescript
+codec-check/compare: php-vendor-check codec-check/go codec-check/rust codec-check/typescript codec-check/python
 	ORM_CODEC_OUT=$(CODEC_OUT) php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecVectorsTest.php
 	rm -rf $(CODEC_OUT)
 
