@@ -1,6 +1,5 @@
 # Statement events show an executor clock bind as $NOW and a bound secret as $SECRET
 # (docs/usage.md "Statement events").
-import datetime
 import tempfile
 import unittest
 from pathlib import Path
@@ -33,7 +32,7 @@ class EventPlaceholdersTest(unittest.TestCase):
     def test_clock_and_secret_binds_are_shown_as_placeholders(self):
         events = []
         self.db.subscribe(events.append)
-        start = datetime.datetime(2026, 6, 1, tzinfo=datetime.timezone.utc)
+        start = "2026-06-01 00:00:00"
         (
             self.models.Author()
             .connect(self.db)

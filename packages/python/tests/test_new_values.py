@@ -1,6 +1,5 @@
 # A value attached with NewLabel stays on the created model and is written in its output, as the
 # Go client writes it (docs/usage.md "Model writes").
-import datetime
 import tempfile
 import unittest
 from pathlib import Path
@@ -31,7 +30,7 @@ class NewValuesTest(unittest.TestCase):
         cls.db.close()
 
     def test_created_model_writes_its_attached_value(self):
-        start = datetime.datetime(2026, 6, 1, tzinfo=datetime.timezone.utc)
+        start = "2026-06-01 00:00:00"
         created = (
             self.models.Author()
             .connect(self.db)

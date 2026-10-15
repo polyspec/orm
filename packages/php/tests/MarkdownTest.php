@@ -173,7 +173,7 @@ final class MarkdownTest extends TestCase
         $server = markdown_fake_server(['{"ok":true}', '{"rows":[]}']);
         $db = \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
         $groups = (new \Polyspec\Orm\Tests\MarkdownModel\Tasks())->connect($db)
-            ->due(new DateTimeImmutable('2026-10-01 00:00:00', new DateTimeZone('UTC')))->groupByOwner()->getsCount()->toArray();
+            ->due('2026-10-01')->groupByOwner()->getsCount()->toArray();
         self::assertFalse($groups !== [], 'group count of no rows = ' . json_encode($groups));
         $db->close();
         $received = markdown_received($server);
@@ -224,6 +224,11 @@ final class MarkdownTest extends TestCase
                 return $v;
             }
             return match (true) {
+                isset($v['native']) => match ($v['native']) {
+                    'date' => new \DateTimeImmutable('2024-01-02', new \DateTimeZone('UTC')),
+                    'time' => new \DateTimeImmutable('0001-01-01 10:00:00', new \DateTimeZone('UTC')),
+                    'datetime' => new \DateTimeImmutable('2024-01-02 03:04:05', new \DateTimeZone('UTC')),
+                },
                 isset($v['int']) => (int) $v['int'],
                 isset($v['f64']) => match ($v['f64']) { 'NaN' => NAN, 'Infinity' => INF, '-Infinity' => -INF },
                 isset($v['bytes']) => new \Polyspec\Orm\Bytes(base64_decode($v['bytes'], true)),

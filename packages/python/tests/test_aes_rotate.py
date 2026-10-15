@@ -29,9 +29,7 @@ class AesRotateTest(unittest.TestCase):
         from .test_sqlite import DDL, run_script
 
         run_script(cls.db, DDL)
-        import datetime
-
-        start = datetime.datetime(2026, 6, 1, tzinfo=datetime.timezone.utc)
+        start = "2026-06-01 00:00:00"
         for name in ("a", "b", "c"):
             (
                 cls.models.Author()

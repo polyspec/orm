@@ -144,7 +144,7 @@ final class ParamCheck
             case 'date':
             case 'time':
             case 'datetime':
-                if (!is_string($v) && !$v instanceof \DateTimeInterface) {
+                if (!is_string($v)) {
                     throw $kind();
                 }
                 try {
@@ -153,7 +153,7 @@ final class ParamCheck
                     throw new OrmException(Code::CODEC_ENCODE, "parameter $i: " . $e->getMessage(), $e);
                 }
                 if ($type !== 'time' && (!is_string($text) || preg_match('/^\d{4}-/', $text) !== 1 || str_starts_with($text, '0000'))) {
-                    $shown = is_string($v) ? "\"$v\"" : $v->format('Y-m-d H:i:s.uP');
+                    $shown = "\"$v\"";
                     throw new OrmException(Code::CODEC_ENCODE, "parameter $i ($shown) is outside 0001-01-01 to 9999-12-31");
                 }
                 return;

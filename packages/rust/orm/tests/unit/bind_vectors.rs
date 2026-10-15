@@ -15,6 +15,10 @@ fn vector_value(v: &Value) -> Param {
         Value::Bool(b) => Param::Bool(*b),
         Value::Number(n) => n.as_i64().map(Param::I64).unwrap_or_else(|| Param::F64(n.as_f64().unwrap())),
         Value::String(s) => Param::Str(s.clone()),
+        Value::Object(o) if o.get("native") == Some(&Value::from("date")) => Param::Date(chrono::NaiveDate::from_ymd_opt(2024, 1, 2).unwrap()),
+        Value::Object(o) if o.get("native") == Some(&Value::from("datetime")) => {
+            Param::DateTime(chrono::NaiveDate::from_ymd_opt(2024, 1, 2).unwrap().and_hms_opt(3, 4, 5).unwrap())
+        }
         Value::Object(o) if o.contains_key("int") => Param::I64(o["int"].as_str().unwrap().parse().unwrap()),
         Value::Object(o) if o.contains_key("f64") => Param::F64(match o["f64"].as_str().unwrap() {
             "NaN" => f64::NAN,
@@ -37,6 +41,10 @@ fn bind_vectors() {
     let mut failed = Vec::new();
     for c in cases {
         let name = c["name"].as_str().unwrap();
+        // Rust has no native time value (Param has no time variant): a native time case has no Rust form.
+        if c["value"].get("native") == Some(&Value::from("time")) {
+            continue;
+        }
         let s = &c["slot"];
         let slot = ParamSlot {
             ty: s["type"].as_str().unwrap(),

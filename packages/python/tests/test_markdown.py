@@ -202,6 +202,15 @@ def vector_value(value):
 
     if not isinstance(value, dict):
         return value
+    if "native" in value:
+        # A native value of the tagged kind: the host object a Python program passes for it.
+        import datetime
+
+        return {
+            "date": datetime.date(2024, 1, 2),
+            "time": datetime.time(10, 0, 0),
+            "datetime": datetime.datetime(2024, 1, 2, 3, 4, 5),
+        }[value["native"]]
     if "int" in value:
         return int(value["int"])
     if "f64" in value:

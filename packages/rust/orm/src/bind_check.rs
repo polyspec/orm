@@ -122,14 +122,10 @@ pub(crate) fn check_param(i: usize, v: &Param, s: &ParamSlot<'_>, zone: &Zone) -
             time_value(v.clone(), s.precision).map_err(|e| encode_error(format!("parameter {i}: {e}")))?;
         }
         "date" | "datetime" => {
-            let text = match v {
-                Param::Str(_) | Param::DateTime(_) => {
-                    match bound_time_value(v.clone(), ty, s.precision, zone).map_err(|e| encode_error(format!("parameter {i}: {e}")))? {
-                        Param::Str(text) => text,
-                        _ => return Err(kind()),
-                    }
-                }
-                Param::Date(d) => d.format("%Y-%m-%d").to_string(),
+            // Only text is a value of a date or datetime slot: a chrono value is a host value Rust refuses.
+            let Param::Str(_) = v else { return Err(kind()) };
+            let text = match bound_time_value(v.clone(), ty, s.precision, zone).map_err(|e| encode_error(format!("parameter {i}: {e}")))? {
+                Param::Str(text) => text,
                 _ => return Err(kind()),
             };
             let b = text.as_bytes();

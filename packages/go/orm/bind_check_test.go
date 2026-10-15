@@ -45,6 +45,17 @@ func vectorValue(t *testing.T, raw json.RawMessage) any {
 		return f
 	case map[string]any:
 		switch {
+		case x["native"] != nil:
+			// A native value of the tagged kind: the host time value a Go program passes for it.
+			switch x["native"] {
+			case "date":
+				return time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)
+			case "time":
+				return time.Date(1, 1, 1, 10, 0, 0, 0, time.UTC)
+			case "datetime":
+				return time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
+			}
+			t.Fatalf("native kind %v is not a time kind", x["native"])
 		case x["int"] != nil:
 			n, ok := new(big.Int).SetString(x["int"].(string), 10)
 			if !ok || !n.IsInt64() {

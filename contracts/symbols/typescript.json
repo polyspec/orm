@@ -371,7 +371,7 @@
   "packages/ts/src/database.ts::decodeAssembly": "export function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void",
   "packages/ts/src/database.ts::driverLimit": "function driverLimit(driver: string): number",
   "packages/ts/src/database.ts::expandParent": "function expandParent(step: PlanStep, source: readonly unknown[]): { sql: string; values: unknown[]; }",
-  "packages/ts/src/database.ts::formatInstant": "export function formatInstant(instant: Date, zone: string): string",
+  "packages/ts/src/database.ts::formatInstant": "function formatInstant(instant: Date, zone: string): string",
   "packages/ts/src/database.ts::fraction": "function fraction(digits: string | undefined, precision: number): string | undefined",
   "packages/ts/src/database.ts::frames": "function frames(): readonly TxFrame[]",
   "packages/ts/src/database.ts::guarded": "async function guarded\u003cT\u003e(ex: Executor, work: () =\u003e Promise\u003cT\u003e): Promise\u003cT\u003e",

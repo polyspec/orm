@@ -99,7 +99,7 @@ export function checkParam(i: number, value: unknown, slot: ParamSlot, zone: str
       if (!(value instanceof Uint8Array || typeof value === 'string')) throw kind();
       return;
     case 'date': case 'time': case 'datetime': {
-      if (!(value instanceof Date || typeof value === 'string')) throw kind();
+      if (typeof value !== 'string') throw kind();
       let text: string;
       try {
         text = timeValue(value, slot.type, zone, slot.precision);

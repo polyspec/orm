@@ -402,16 +402,6 @@ func (d *DB) markdownParam(i int, v any, uses []ir.ParamUse) (json.RawMessage, e
 		}
 	}
 	switch x := v.(type) {
-	case time.Time:
-		t := x.In(d.location)
-		switch use.Type {
-		case "date":
-			v = t.Format("2006-01-02")
-		case "time":
-			v = t.Format("15:04:05.000000")
-		default:
-			v = t.Format("2006-01-02 15:04:05.000000")
-		}
 	case []byte:
 		v = base64.StdEncoding.EncodeToString(x)
 	case string:

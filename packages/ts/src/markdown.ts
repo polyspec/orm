@@ -5,7 +5,7 @@ import { connect as netConnect, type Socket } from 'node:net';
 import { parse as parseJson, type Value } from '@polyspec/ordered-json';
 import { checkAssign, checkParam, useSlotType } from './bind_check.js';
 import { hostEncode } from './codec.js';
-import { decodeAssembly, formatInstant, timeValue, type Db, type Executor, type Result } from './database.js';
+import { decodeAssembly, timeValue, type Db, type Executor, type Result } from './database.js';
 import type { PoolBounds, PoolStats } from './driver.js';
 import { functionType, paramUses, type ParamUse } from './engine/params.js';
 import { entityOf, fieldOf, type Entity, type RuntimeModel } from './engine/model.js';
@@ -275,11 +275,6 @@ export function markdownParam(db: Pick<Db, 'zone' | 'aesKey'>, i: number, value:
   if (use?.column !== undefined && value !== null && value !== undefined) {
     const host = use.column.stages.filter(s => s === 'aes' || s === 'hex' || s === 'ip');
     if (host.length > 0) value = hostEncode(value, host, db.aesKey);
-  }
-  if (value instanceof Date) {
-    if (Number.isNaN(value.getTime())) throw new OrmError('CODEC_ENCODE', `parameter ${i} is an invalid Date`);
-    const text = formatInstant(value, db.zone);
-    value = use?.type === 'date' ? text.slice(0, 10) : use?.type === 'time' ? text.slice(11) : text;
   }
   if (value instanceof Uint8Array) return JSON.stringify(Buffer.from(value).toString('base64'));
   if (typeof value === 'string' && use?.type === 'bytes') return JSON.stringify(Buffer.from(value).toString('base64'));

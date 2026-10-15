@@ -5,7 +5,6 @@ import (
 	"math"
 	"regexp"
 	"strings"
-	"time"
 	"unicode/utf8"
 
 	"github.com/polyspec/orm/packages/go/engine/ir"
@@ -124,9 +123,7 @@ func (d *DB) checkParam(i int, v any, s paramSlot) error {
 			return kind()
 		}
 	case "date", "time", "datetime":
-		switch v.(type) {
-		case string, time.Time:
-		default:
+		if _, ok := v.(string); !ok {
 			return kind()
 		}
 		out, err := d.bindTimeValue(v, s.Type, s.Precision)

@@ -243,7 +243,7 @@ const NOW = '$NOW';
 function pad2(n: number): string { return String(n).padStart(2, '0'); }
 
 /** Formats an instant in a connection time zone as date-time text with six fraction digits. */
-export function formatInstant(instant: Date, zone: string): string {
+function formatInstant(instant: Date, zone: string): string {
   const shifted = new Date(instant.getTime() + zoneOffset(zone) * 60_000);
   const micro = String(shifted.getUTCMilliseconds()).padStart(3, '0') + '000';
   const year = shifted.getUTCFullYear();
@@ -275,11 +275,6 @@ function fraction(digits: string | undefined, precision: number): string | undef
  * time zone. Returns undefined for any other value.
  */
 function timeForm(value: unknown, colType: string, zone: string, precision: number): string | undefined {
-  if (value instanceof Date) {
-    if (Number.isNaN(value.getTime()) || colType === 'time') return undefined;
-    const text = formatInstant(value, zone);
-    return colType === 'date' ? text.slice(0, 10) : timeForm(text, colType, zone, precision);
-  }
   if (typeof value !== 'string') return undefined;
   if (colType === 'date') {
     const [, year, month, day] = dateText.exec(value) ?? [];
@@ -1084,7 +1079,6 @@ export class Db {
           if (slot.host_styles.includes('blind_index')) {
             if (value !== null) value = blindIndex(value, this.blindIndexKey);
           } else if (slot.host_styles.length > 0) value = hostEncode(value, slot.host_styles, this.aesKey);
-          if (value instanceof Date) value = formatInstant(value, this.zone);
           push(value);
           break;
         }

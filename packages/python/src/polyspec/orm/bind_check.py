@@ -2,7 +2,6 @@
 # "Parameters"): the SQL bind path reads the slot of the plan step, an IR executor the uses of param_uses.
 from __future__ import annotations
 
-import datetime
 import math
 import re
 from dataclasses import dataclass
@@ -146,7 +145,7 @@ def check_param(i: int, value, slot: ParamSlot, zone: str) -> None:
         if not isinstance(value, (bytes, bytearray, memoryview, str)):
             raise kind()
     elif t in ("date", "time", "datetime"):
-        if not isinstance(value, (str, datetime.date, datetime.time)):
+        if not isinstance(value, str):
             raise kind()
         try:
             text = time_value(value, t, zone, slot.precision)

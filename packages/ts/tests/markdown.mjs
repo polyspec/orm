@@ -179,6 +179,8 @@ for (const c of bind.message) {
 // "Parameters"). Go의 TestBindVectors와 같은 case다.
 function vectorValue(value) {
   if (value === null || typeof value !== 'object') return value;
+  // A native value of the tagged kind: the host object a TypeScript program passes for it.
+  if (value.native !== undefined) return new Date(Date.UTC(2024, 0, 2, 3, 4, 5));
   if (value.int !== undefined) return BigInt(value.int);
   if (value.f64 !== undefined) return Number(value.f64);
   if (value.bytes !== undefined) return new Uint8Array(Buffer.from(value.bytes, 'base64'));

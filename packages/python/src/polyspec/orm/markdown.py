@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import base64
-import datetime
 import json
 import socket
 from dataclasses import dataclass
@@ -242,9 +241,7 @@ def markdown_param(db, i: int, value, uses: list[ParamUse]):
             value = host_encode(value, host, db.aes_key)
     if value is None or isinstance(value, bool):
         return value
-    if use.type in ("date", "time", "datetime") and isinstance(
-        value, (str, datetime.date, datetime.time)
-    ):
+    if use.type in ("date", "time", "datetime") and isinstance(value, str):
         return time_value(value, use.type, db.zone, 6)
     if isinstance(value, (bytes, bytearray)):
         return base64.b64encode(bytes(value)).decode("ascii")
