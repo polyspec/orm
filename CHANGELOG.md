@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Every implementation reads an empty key_by as absent; protocol.md states it. (#T77-7)
 - Python runs every shared suite; its aggregates answer CODEC_DECODE for a value out of range, a SQLite DSN with a broken percent escape is CONFIG, and a MySQL install publishes its statement events. (#T77-3)
 - The Python codec and apply runners run in the shared checks; the Python PostgreSQL apply restores lock_timeout with a $1 marker. (#T77-2)
 - The Python tests report through the shared harness: RUN with a deadline, STEP, PASS, FAIL and SKIP, as the other implementations do. (#T77-1)
