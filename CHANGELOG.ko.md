@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 934977da9a2ab2362dd16273dbad677de2ea339f48689572da35ba5c3d28613e -->
+<!-- source-sha256: 482b4f3b0d727e65b3a86b96a278fe8a86af62e7fafe8ff1f0c124fd2d3409d3 -->
 # 변경 이력
 
 ## Unreleased
 
+- Python test가 다른 구현처럼 공유 harness로 보고한다: deadline과 함께 RUN, STEP, PASS, FAIL, SKIP. (#T77-1)
 - PHP client가 YAML 1.2.2 표로 core schema를 해석하는 fork min-median-max/yaml v1.0.0-p1로 YAML을 읽는다. consumer는 docs/packaging.md처럼 fork의 vcs repository를 선언한다. (#T142-1-1)
 - repository 검사가 Makefile을 모든 target을 prerequisite, recipe와 함께 이름 짓는 reader 하나로 읽는다. (#T137-1-4-2-2)
 - repository 검사가 workflow의 run text와 Makefile recipe를 줄이나 pattern이 아니라 shell 명령으로 읽는다. (#T137-1-4-2-1)
