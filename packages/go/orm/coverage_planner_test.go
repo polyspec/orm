@@ -202,6 +202,18 @@ func TestCoveragePlannerBindTypesInsert(t *testing.T) {
 	compilePlannerCase(t, "planner_bind_types_insert")
 }
 
+// TestCoveragePlannerTimeSelect는 time(p) column을 p자리 text로 읽고 비교하는 값을 text로 bind한다.
+func TestCoveragePlannerTimeSelect(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_time_select")
+}
+
+// TestCoveragePlannerTimeInsert는 time(p)과 datetime(p) 값을 그 slot의 precision으로 bind한다.
+func TestCoveragePlannerTimeInsert(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_time_insert")
+}
+
 // TestCoveragePlannerParentKeyTypes는 composite key relation의 parent slot이 key type을 싣는지 확인한다.
 func TestCoveragePlannerParentKeyTypes(t *testing.T) {
 	testcase.Start(t, testcase.Compute)

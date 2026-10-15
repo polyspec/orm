@@ -1680,6 +1680,173 @@
         "mysql": [
           {
             "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "precision": 3,
+                "type": "time"
+              }
+            ],
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`at` AS `a__at`, CAST(`a`.`clock` AS CHAR) AS `a__clock` FROM `time_cell` AS `a` WHERE `a`.`clock` = ?",
+            "tables": [
+              "time_cell"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "precision": 3,
+                "type": "time"
+              }
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"at\" AS \"a__at\", substr(to_char(\"a\".\"clock\", 'HH24:MI:SS.US'), 1, 12) AS \"a__clock\" FROM \"time_cell\" AS \"a\" WHERE \"a\".\"clock\" = CAST(CAST($1 AS text) AS time)",
+            "tables": [
+              "time_cell"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "precision": 3,
+                "type": "time"
+              }
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"at\" AS \"a__at\", \"a\".\"clock\" AS \"a__clock\" FROM \"time_cell\" AS \"a\" WHERE \"a\".\"clock\" = ?",
+            "tables": [
+              "time_cell"
+            ]
+          }
+        ]
+      },
+      "id": "planner_time_select",
+      "input": {
+        "entity": "time_cell",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "clock",
+                "op": "eq",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "precision": 0,
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "precision": 3,
+                "type": "time"
+              }
+            ],
+            "sql": "INSERT INTO `time_cell` (`at`, `clock`) VALUES (?, ?)",
+            "tables": [
+              "time_cell"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "precision": 0,
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "precision": 3,
+                "type": "time"
+              }
+            ],
+            "sql": "INSERT INTO \"time_cell\" (\"at\", \"clock\") VALUES ($1, CAST(CAST($2 AS text) AS time)) RETURNING \"seq\"",
+            "tables": [
+              "time_cell"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "precision": 0,
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "precision": 3,
+                "type": "time"
+              }
+            ],
+            "sql": "INSERT INTO \"time_cell\" (\"at\", \"clock\") VALUES (?, ?) RETURNING \"seq\"",
+            "tables": [
+              "time_cell"
+            ]
+          }
+        ]
+      },
+      "id": "planner_time_insert",
+      "input": {
+        "entity": "time_cell",
+        "ir_version": 1,
+        "kind": "insert",
+        "n_params": 2,
+        "set": [
+          {
+            "column": "at",
+            "p": 0
+          },
+          {
+            "column": "clock",
+            "p": 1
+          }
+        ]
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
             "slots": [],
             "sql": "SELECT `a`.`tenant_id` AS `a__tenant_id`, `a`.`account_id` AS `a__account_id`, `a`.`name` AS `a__name` FROM `composite_account` AS `a`",
             "tables": [

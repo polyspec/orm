@@ -104,6 +104,15 @@ class _Dialect:
     def write_expr(self, ph: str, stages) -> str:
         return ph
 
+    def read_time(self, col: str, precision: int) -> str:
+        """time(p) column을 소수 정확히 p자리의 값 text `HH:MM:SS`로 읽는다. database가 그 text를 쓴다(MySQL
+        CAST AS CHAR, PostgreSQL to_char). SQLite는 그 text를 저장한다."""
+        return col
+
+    def write_time(self, ph: str) -> str:
+        """time(p) 값을 text로 bind한다. PostgreSQL은 text를 time으로 cast한다."""
+        return ph
+
     def now(self, precision: int) -> str:
         return "CURRENT_TIMESTAMP"
 
@@ -180,6 +189,9 @@ class MysqlDialect(_Dialect):
                 expr = f"INET6_NTOA({expr})"
         return expr
 
+    def read_time(self, col, precision):
+        return f"CAST({col} AS CHAR)"
+
     def write_expr(self, ph, stages):
         expr = ph
         for stage in stages:
@@ -237,6 +249,14 @@ class PostgresDialect(_Dialect):
 
     name = "postgres"
     insert_returning_id = True
+
+    def read_time(self, col, precision):
+        if precision == 0:
+            return f"to_char({col}, 'HH24:MI:SS')"
+        return f"substr(to_char({col}, 'HH24:MI:SS.US'), 1, {9 + precision})"
+
+    def write_time(self, ph):
+        return f"CAST(CAST({ph} AS text) AS time)"
 
     def nulls_order(self, desc):
         return " NULLS LAST" if desc else " NULLS FIRST"

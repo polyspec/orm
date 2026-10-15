@@ -61,6 +61,13 @@ func (Postgres) WriteExpr(ph func() string, _ []string) (string, int) {
 }
 
 func (Postgres) HostNow() bool { return false }
+func (Postgres) ReadTime(col string, precision int) string {
+	if precision == 0 {
+		return "to_char(" + col + ", 'HH24:MI:SS')"
+	}
+	return fmt.Sprintf("substr(to_char(%s, 'HH24:MI:SS.US'), 1, %d)", col, 9+precision)
+}
+func (Postgres) WriteTime(ph string) string { return "CAST(CAST(" + ph + " AS text) AS time)" }
 func (Postgres) RowLock(mode string) (string, bool) {
 	switch mode {
 	case "update":

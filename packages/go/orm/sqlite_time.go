@@ -15,13 +15,14 @@ var (
 	sqliteDateText     = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 )
 
-// sqliteTimeValue writes a date, datetime or time value in the text form SQLite stores,
-// so a string value compares equal to the stored value. A datetime or time has exactly
+// bindTimeValue writes a date, datetime or time value in the text form SQLite stores,
+// so a string value compares equal to the stored value; every driver binds that text
+// (docs/dialects.md). A datetime or time has exactly
 // precision fraction digits, as the column's CHECK requires: the digits past precision
 // must be zero (an IR message writes six, protocol.md §5) and are dropped, and a
 // non-zero digit there is no value of the column (CODEC_ENCODE). A datetime string with
 // an offset is converted to the connection time zone.
-func (d *DB) sqliteTimeValue(v any, colType string, precision int) (any, error) {
+func (d *DB) bindTimeValue(v any, colType string, precision int) (any, error) {
 	switch x := v.(type) {
 	case time.Time:
 		switch colType {

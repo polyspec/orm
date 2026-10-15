@@ -4,10 +4,10 @@ from typing import Self
 from polyspec.orm import Model, Schema, register_model
 
 # The manifest text of the dbspec document set the models were generated from.
-MANIFEST_TEXT = "dbspec 1 bench\n\ntable author {\n  seq i64 identity\n  name varchar(191)\n  description text null\n  created_ts datetime(6) default now\n  updated_ts datetime(6) default now\n  is_close bool default false\n  is_display bool default false\n  display_start_dt datetime(6) null\n  display_end_dt datetime(6) null\n  is_allday bool default false\n  target_club_reader_count i32 default 0\n  success_count i32 default 0\n  reader_count i32 default 0\n  read_count i32 default 0\n  photo_url varchar(191) null\n  user_seq i64\n  service_seq i64\n  service_region_seq i64\n  service_member_seq i64\n  start_dt datetime(6)\n  end_dt datetime(6)\n  uuid varchar(36) null\n  is_single_work bool default false\n  like_count i32 default 0\n  aes_key_version i32 default 1\n  aes_hex_email varchar(255) null\n  email_blind_index varchar(64) null\n  aes_hex_phone varchar(255) null\n  phone_blind_index varchar(64) null\n  price decimal(13,3) null\n  ip bytes null\n  gz_extend bytes null\n  json_setting text null\n  jsons_tags text null\n  base64_extra text null\n  serialize_data text null\n  primary key (seq)\n  unique uq_author_uuid (uuid)\n  index ik (service_region_seq, is_close, is_display, is_allday)\n  index ix_author_service_member (service_member_seq)\n  index ix_email_blind_index (email_blind_index)\n  index ix_phone_blind_index (phone_blind_index)\n  index ix_service (service_seq, is_close)\n  index ix_user (user_seq, is_close)\n  foreign key fk_author_service (service_seq) references service (seq) on delete restrict on update restrict\n  foreign key fk_author_service_member (service_member_seq) references service_member (seq) on delete restrict on update restrict\n  foreign key fk_author_service_region (service_region_seq) references service_region (seq) on delete restrict on update restrict\n  foreign key fk_author_user (user_seq) references user (seq) on delete restrict on update restrict\n  check ck_author_counts (target_club_reader_count >= 0 and success_count >= 0 and reader_count >= 0 and read_count >= 0 and like_count >= 0)\n  settings {\n    updated updated_ts\n    select explicit description email_blind_index phone_blind_index ip gz_extend json_setting jsons_tags base64_extra serialize_data aes_key_version\n    codec aes_hex_email aes hex\n    codec aes_hex_phone aes hex\n    codec base64_extra base64\n    codec gz_extend gz\n    codec ip ip\n    codec json_setting ordered_json\n    codec jsons_tags ordered_json\n    codec serialize_data serialize\n    aes_version aes_key_version\n    blind_index aes_hex_email email_blind_index\n    blind_index aes_hex_phone phone_blind_index\n  }\n}\n\ntable user {\n  seq i64 identity\n  name varchar(191)\n  primary key (seq)\n}\n\ntable service {\n  seq i64 identity\n  name varchar(191)\n  primary key (seq)\n}\n\ntable service_region {\n  seq i64 identity\n  service_seq i64\n  name varchar(191)\n  primary key (seq)\n  index ix_service_region_service (service_seq)\n  foreign key fk_service_region_service (service_seq) references service (seq) on delete restrict on update restrict\n}\n\ntable service_member {\n  seq i64 identity\n  service_seq i64\n  user_seq i64\n  primary key (seq)\n  index ix_service_member_service (service_seq)\n  index ix_service_member_user (user_seq)\n  foreign key fk_service_member_service (service_seq) references service (seq) on delete restrict on update restrict\n  foreign key fk_service_member_user (user_seq) references user (seq) on delete restrict on update restrict\n}\n\ntable composite_account {\n  tenant_id i64\n  account_id i64\n  name varchar(191)\n  primary key (tenant_id, account_id)\n}\n\ntable composite_membership {\n  tenant_id i64\n  account_id i64\n  role varchar(191)\n  primary key (tenant_id, account_id)\n  foreign key fk_composite_membership_account (tenant_id, account_id) references composite_account (tenant_id, account_id) on delete cascade on update restrict\n  settings {\n    navigation fk_composite_membership_account account memberships\n  }\n}\n\ntable soft_record {\n  seq i64 identity\n  name varchar(191)\n  deleted_at datetime(6) null\n  primary key (seq)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable account {\n  seq i64 identity\n  name varchar(191)\n  primary key (seq)\n}\n\ntable project {\n  seq i64 identity\n  name varchar(191)\n  primary key (seq)\n}\n\ntable account_project {\n  account_seq i64\n  project_seq i64\n  primary key (account_seq, project_seq)\n  index ix_account_project_project (project_seq)\n  foreign key fk_account_project_account (account_seq) references account (seq) on delete restrict on update restrict\n  foreign key fk_account_project_project (project_seq) references project (seq) on delete restrict on update restrict\n}\n\ntable task {\n  seq i64 identity\n  title varchar(191)\n  state varchar(8)\n  primary key (seq)\n  check ck_task_state (state in ('open', 'done'))\n}\n\ntable hex_cell {\n  seq i64 identity\n  label varchar(32)\n  value varchar(64) null\n  primary key (seq)\n  settings {\n    codec value hex\n  }\n}\n"
+MANIFEST_TEXT = "dbspec 1 bench\n\ntable author {\n  seq i64 identity\n  name varchar(191)\n  description text null\n  created_ts datetime(6) default now\n  updated_ts datetime(6) default now\n  is_close bool default false\n  is_display bool default false\n  display_start_dt datetime(6) null\n  display_end_dt datetime(6) null\n  is_allday bool default false\n  target_club_reader_count i32 default 0\n  success_count i32 default 0\n  reader_count i32 default 0\n  read_count i32 default 0\n  photo_url varchar(191) null\n  user_seq i64\n  service_seq i64\n  service_region_seq i64\n  service_member_seq i64\n  start_dt datetime(6)\n  end_dt datetime(6)\n  uuid varchar(36) null\n  is_single_work bool default false\n  like_count i32 default 0\n  aes_key_version i32 default 1\n  aes_hex_email varchar(255) null\n  email_blind_index varchar(64) null\n  aes_hex_phone varchar(255) null\n  phone_blind_index varchar(64) null\n  price decimal(13,3) null\n  ip bytes null\n  gz_extend bytes null\n  json_setting text null\n  jsons_tags text null\n  base64_extra text null\n  serialize_data text null\n  primary key (seq)\n  unique uq_author_uuid (uuid)\n  index ik (service_region_seq, is_close, is_display, is_allday)\n  index ix_author_service_member (service_member_seq)\n  index ix_email_blind_index (email_blind_index)\n  index ix_phone_blind_index (phone_blind_index)\n  index ix_service (service_seq, is_close)\n  index ix_user (user_seq, is_close)\n  foreign key fk_author_service (service_seq) references service (seq) on delete restrict on update restrict\n  foreign key fk_author_service_member (service_member_seq) references service_member (seq) on delete restrict on update restrict\n  foreign key fk_author_service_region (service_region_seq) references service_region (seq) on delete restrict on update restrict\n  foreign key fk_author_user (user_seq) references user (seq) on delete restrict on update restrict\n  check ck_author_counts (target_club_reader_count >= 0 and success_count >= 0 and reader_count >= 0 and read_count >= 0 and like_count >= 0)\n  settings {\n    updated updated_ts\n    select explicit description email_blind_index phone_blind_index ip gz_extend json_setting jsons_tags base64_extra serialize_data aes_key_version\n    codec aes_hex_email aes hex\n    codec aes_hex_phone aes hex\n    codec base64_extra base64\n    codec gz_extend gz\n    codec ip ip\n    codec json_setting ordered_json\n    codec jsons_tags ordered_json\n    codec serialize_data serialize\n    aes_version aes_key_version\n    blind_index aes_hex_email email_blind_index\n    blind_index aes_hex_phone phone_blind_index\n  }\n}\n\ntable user {\n  seq i64 identity\n  name varchar(191)\n  primary key (seq)\n}\n\ntable service {\n  seq i64 identity\n  name varchar(191)\n  primary key (seq)\n}\n\ntable service_region {\n  seq i64 identity\n  service_seq i64\n  name varchar(191)\n  primary key (seq)\n  index ix_service_region_service (service_seq)\n  foreign key fk_service_region_service (service_seq) references service (seq) on delete restrict on update restrict\n}\n\ntable service_member {\n  seq i64 identity\n  service_seq i64\n  user_seq i64\n  primary key (seq)\n  index ix_service_member_service (service_seq)\n  index ix_service_member_user (user_seq)\n  foreign key fk_service_member_service (service_seq) references service (seq) on delete restrict on update restrict\n  foreign key fk_service_member_user (user_seq) references user (seq) on delete restrict on update restrict\n}\n\ntable composite_account {\n  tenant_id i64\n  account_id i64\n  name varchar(191)\n  primary key (tenant_id, account_id)\n}\n\ntable composite_membership {\n  tenant_id i64\n  account_id i64\n  role varchar(191)\n  primary key (tenant_id, account_id)\n  foreign key fk_composite_membership_account (tenant_id, account_id) references composite_account (tenant_id, account_id) on delete cascade on update restrict\n  settings {\n    navigation fk_composite_membership_account account memberships\n  }\n}\n\ntable soft_record {\n  seq i64 identity\n  name varchar(191)\n  deleted_at datetime(6) null\n  primary key (seq)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable account {\n  seq i64 identity\n  name varchar(191)\n  primary key (seq)\n}\n\ntable project {\n  seq i64 identity\n  name varchar(191)\n  primary key (seq)\n}\n\ntable account_project {\n  account_seq i64\n  project_seq i64\n  primary key (account_seq, project_seq)\n  index ix_account_project_project (project_seq)\n  foreign key fk_account_project_account (account_seq) references account (seq) on delete restrict on update restrict\n  foreign key fk_account_project_project (project_seq) references project (seq) on delete restrict on update restrict\n}\n\ntable task {\n  seq i64 identity\n  title varchar(191)\n  state varchar(8)\n  primary key (seq)\n  check ck_task_state (state in ('open', 'done'))\n}\n\ntable hex_cell {\n  seq i64 identity\n  label varchar(32)\n  value varchar(64) null\n  primary key (seq)\n  settings {\n    codec value hex\n  }\n}\n\ntable time_cell {\n  seq i64 identity\n  at datetime(0)\n  clock time(3)\n  primary key (seq)\n}\n"
 
 MANIFEST_HASH = (
-    "sha256:27675b7fddd99bfdcb47f88bd4050552b25c1c345d84908a29b1b6d339d91322"
+    "sha256:6b97fb31e729ecb3a5032a1fc7c2cae93b59b7a7cedd718d7004ce31586fb875"
 )
 
 # The generated schema value: install takes it to create the tables and register the set.
@@ -3027,3 +3027,132 @@ class HexCell(Model):
 
     def value(self, value, *compared) -> Self:
         return Model.__getattr__(self, "value")(value, *compared)
+
+
+class TimeCell(Model):
+    """A time_cell model or row."""
+
+    @property
+    def entity_def(self):
+        return model.entity_of("time_cell", TimeCell)
+
+    def get_seq(self):
+        """seq: int."""
+        return self.core.column("seq")
+
+    def set_seq(self, value) -> Self:
+        self.core.set_value("seq", value)
+        return self
+
+    def add_column_seq(self) -> Self:
+        self.core.add_column("seq")
+        return self
+
+    def remove_column_seq(self) -> Self:
+        self.core.remove_column("seq")
+        return self
+
+    def group_by_seq(self) -> Self:
+        self.core.group_by.append("seq")
+        return self
+
+    def key_name_seq(self) -> Self:
+        self.core.key_name = "seq"
+        return self
+
+    def order_by_seq_asc(self, *fn) -> Self:
+        self.core.order_by("seq", False, fn)
+        return self
+
+    def order_by_seq_desc(self, *fn) -> Self:
+        self.core.order_by("seq", True, fn)
+        return self
+
+    def plus_seq(self, n) -> Self:
+        self.core.put_plus("seq", n)
+        return self
+
+    def minus_seq(self, n) -> Self:
+        self.core.put_minus("seq", n)
+        return self
+
+    def sum_seq(self) -> Self:
+        self.core.aggregate("sum", "seq")
+        return self
+
+    def avg_seq(self) -> Self:
+        self.core.aggregate("avg", "seq")
+        return self
+
+    def get_at(self):
+        """at: str."""
+        return self.core.column("at")
+
+    def set_at(self, value) -> Self:
+        self.core.set_value("at", value)
+        return self
+
+    def add_column_at(self) -> Self:
+        self.core.add_column("at")
+        return self
+
+    def remove_column_at(self) -> Self:
+        self.core.remove_column("at")
+        return self
+
+    def group_by_at(self) -> Self:
+        self.core.group_by.append("at")
+        return self
+
+    def key_name_at(self) -> Self:
+        self.core.key_name = "at"
+        return self
+
+    def order_by_at_asc(self, *fn) -> Self:
+        self.core.order_by("at", False, fn)
+        return self
+
+    def order_by_at_desc(self, *fn) -> Self:
+        self.core.order_by("at", True, fn)
+        return self
+
+    def get_clock(self):
+        """clock: str."""
+        return self.core.column("clock")
+
+    def set_clock(self, value) -> Self:
+        self.core.set_value("clock", value)
+        return self
+
+    def add_column_clock(self) -> Self:
+        self.core.add_column("clock")
+        return self
+
+    def remove_column_clock(self) -> Self:
+        self.core.remove_column("clock")
+        return self
+
+    def group_by_clock(self) -> Self:
+        self.core.group_by.append("clock")
+        return self
+
+    def key_name_clock(self) -> Self:
+        self.core.key_name = "clock"
+        return self
+
+    def order_by_clock_asc(self, *fn) -> Self:
+        self.core.order_by("clock", False, fn)
+        return self
+
+    def order_by_clock_desc(self, *fn) -> Self:
+        self.core.order_by("clock", True, fn)
+        return self
+
+    def seq(self, value, *compared) -> Self:
+        return Model.__getattr__(self, "seq")(value, *compared)
+
+    def at(self, value, *compared) -> Self:
+        return Model.__getattr__(self, "at")(value, *compared)
+
+    def clock(self, value, *compared) -> Self:
+        return Model.__getattr__(self, "clock")(value, *compared)

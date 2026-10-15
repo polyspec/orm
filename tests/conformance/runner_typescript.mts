@@ -9,7 +9,7 @@
 // Each --vector selects one vector by name; without one every vector runs.
 // The models embed the manifest of contracts/fixtures/bench/bench.dbs.
 import {
-  AesKeyring, Author, type Collection, type Model, CompositeAccount, HexCell, Service, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, User, connect, orm,
+  AesKeyring, Author, type Collection, type Model, CompositeAccount, HexCell, Service, TimeCell, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, User, connect, orm,
 } from '../../packages/ts/dist/index.js';
 import { parseArgs } from 'node:util';
 import { derivedInteger, executeVector, resultValue } from './result_typescript.mts';
@@ -132,7 +132,7 @@ async function main() {
     log.push({ sql: e.sql, binds: e.binds.map(norm), kind: e.kind, tables: [...e.tables], transaction, error: e.error === null ? null : code(e.error) });
   });
   const out: Record<string, { statements: Logged[]; result: unknown }> = {};
-  const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point']);
+  const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip']);
   const declared = new Set<string>();
   const run = async (name: string, fn: () => Promise<unknown>) => {
     declared.add(name);
@@ -468,6 +468,24 @@ async function main() {
     white_space: await caught(new HexCell().connect(db).getBySeq(1)),
     odd_length: await caught(new HexCell().connect(db).getBySeq(2)),
   }));
+  // A datetime(p) or time(p) value is bound with exactly p fraction digits, the form the SQLite CHECK of the column
+  // requires (docs/dialects.md); zeros past p are dropped. Each vector inserts, reads the row back by the same
+  // parameter and deletes it.
+  const at = new Date(Date.UTC(2026, 5, 1, 12, 34, 56));
+  await run('datetime_p0_roundtrip', async () => {
+    const created = await new TimeCell().connect(db).setAt(at).setClock('10:11:12').create();
+    mask([created.getSeq()]);
+    const rows = await new TimeCell().connect(db).at(at).gets();
+    await created.delete();
+    return picks(rows, 'clock');
+  });
+  await run('time_p3_roundtrip', async () => {
+    const created = await new TimeCell().connect(db).setAt(at).setClock('10:11:12.345000').create();
+    mask([created.getSeq()]);
+    const rows = await new TimeCell().connect(db).clock('10:11:12.345').gets();
+    await created.delete();
+    return picks(rows, 'clock');
+  });
 
   await db.close();
   const unknown = selected.filter(name => !declared.has(name));

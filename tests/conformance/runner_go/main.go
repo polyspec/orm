@@ -274,6 +274,7 @@ func run() (status int) {
 	writeVectors := map[string]bool{
 		"write_cycle": true, "now_defaults": true, "required_columns": true,
 		"creates_and_save": true, "delete_recursive": true, "contains_ascii_fold": true, "contains_binary_code_point": true,
+		"datetime_p0_roundtrip": true, "time_p3_roundtrip": true,
 	}
 	// vector는 선언 순서대로 모은 뒤, 선택을 검사하고 그 순서로 실행한다.
 	var declared []declaredVector
@@ -864,6 +865,51 @@ func run() (status int) {
 		_, whiteSpace := model.HexCell().Connect(db).GetBySeq(1)
 		_, oddLength := model.HexCell().Connect(db).GetBySeq(2)
 		return map[string]any{"white_space": code(whiteSpace), "odd_length": code(oddLength)}, nil
+	})
+
+	// A datetime(p) or time(p) value is bound with exactly p fraction digits, the
+	// form the SQLite CHECK of the column requires (docs/dialects.md); zeros past p
+	// are dropped. Each vector inserts, reads the row back by the same parameter and
+	// deletes it.
+	timeCell := func() *model.TimeCellModel { return model.TimeCell().Connect(db) }
+	at := time.Date(2026, 6, 1, 12, 34, 56, 0, time.UTC)
+	run("datetime_p0_roundtrip", func() (any, error) {
+		row, err := timeCell().SetAt(at).SetClock("10:11:12")
+		if err != nil {
+			return nil, err
+		}
+		created, err := row.Create()
+		if err != nil {
+			return nil, err
+		}
+		mask([]int64{created.GetSeq()})
+		rows, err := timeCell().At(at).Gets()
+		if err != nil {
+			return nil, err
+		}
+		if err := created.Delete(); err != nil {
+			return nil, err
+		}
+		return picks(rows, "clock"), nil
+	})
+	run("time_p3_roundtrip", func() (any, error) {
+		row, err := timeCell().SetAt(at).SetClock("10:11:12.345000")
+		if err != nil {
+			return nil, err
+		}
+		created, err := row.Create()
+		if err != nil {
+			return nil, err
+		}
+		mask([]int64{created.GetSeq()})
+		rows, err := timeCell().Clock("10:11:12.345").Gets()
+		if err != nil {
+			return nil, err
+		}
+		if err := created.Delete(); err != nil {
+			return nil, err
+		}
+		return picks(rows, "clock"), nil
 	})
 
 	vectors, err := selectVectors(declared, selected)

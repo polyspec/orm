@@ -510,6 +510,9 @@ func (p *Planner) selectGroupCountList(b *builder, sb *strings.Builder, s *scope
 			sb.WriteString(", ")
 		}
 		expr, _ := p.D.ReadExpr(p.qcol(s, name), p.readSQLStyles(col.Codec), func() string { return b.secret("aes") })
+		if col.Type == "time" {
+			expr = p.D.ReadTime(expr, col.Precision)
+		}
 		out := s.alias + "__" + name
 		sb.WriteString(expr + " AS " + p.D.Quote(out))
 		*outNames = append(*outNames, out)
@@ -565,6 +568,9 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 		default:
 			e, _ := p.D.ReadExpr(p.qcol(s, c.column), p.readSQLStyles(col.Codec), func() string { return b.secret("aes") })
 			expr = e
+			if col.Type == "time" {
+				expr = p.D.ReadTime(expr, col.Precision)
+			}
 			styles = p.clientStyles(col.Codec)
 		}
 		sb.WriteString(expr + " AS " + p.D.Quote(s.alias+"__"+c.name))
@@ -955,6 +961,9 @@ func (p *Planner) renderValue(b *builder, col *runtimemodel.Field, i int) (strin
 	if len(styles) == 0 {
 		ph := b.colParam(i, col, "")
 		b.binds[len(b.binds)-1].HostStyles = host
+		if col.Type == "time" {
+			ph = p.D.WriteTime(ph)
+		}
 		return ph, nil
 	}
 	first := true

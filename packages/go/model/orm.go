@@ -11,7 +11,7 @@ import (
 var _ time.Time
 
 // ManifestHash is the manifestHash of the document set the models were generated from.
-const ManifestHash = "sha256:27675b7fddd99bfdcb47f88bd4050552b25c1c345d84908a29b1b6d339d91322"
+const ManifestHash = "sha256:6b97fb31e729ecb3a5032a1fc7c2cae93b59b7a7cedd718d7004ce31586fb875"
 
 // ManifestText is the manifest text of the document set the models were generated from.
 const ManifestText = "dbspec 1 bench\n" +
@@ -180,6 +180,13 @@ const ManifestText = "dbspec 1 bench\n" +
 	"  settings {\n" +
 	"    codec value hex\n" +
 	"  }\n" +
+	"}\n" +
+	"\n" +
+	"table time_cell {\n" +
+	"  seq i64 identity\n" +
+	"  at datetime(0)\n" +
+	"  clock time(3)\n" +
+	"  primary key (seq)\n" +
 	"}\n"
 
 // Schema is the generated schema value: the manifest text with its declared
@@ -193,7 +200,7 @@ func Connect(dsn string, cfg orm.Config) (*orm.DB, error) { return orm.ConnectSc
 
 // ormModel is any generated model; a model value is a subquery.
 type ormModel interface {
-	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *CompositeAccountModel | *CompositeMembershipModel | *SoftRecordModel | *AccountModel | *ProjectModel | *AccountProjectModel | *TaskModel | *HexCellModel
+	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *CompositeAccountModel | *CompositeMembershipModel | *SoftRecordModel | *AccountModel | *ProjectModel | *AccountProjectModel | *TaskModel | *HexCellModel | *TimeCellModel
 }
 
 type argBoolEq interface {
@@ -234,7 +241,7 @@ type argTimeEq interface {
 
 // hasSeq is a model with the column seq.
 type hasSeq interface {
-	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *SoftRecordModel | *AccountModel | *ProjectModel | *TaskModel | *HexCellModel
+	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *SoftRecordModel | *AccountModel | *ProjectModel | *TaskModel | *HexCellModel | *TimeCellModel
 	Orm_() *orm.Core
 }
 

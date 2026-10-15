@@ -2737,6 +2737,138 @@
           }
         ]
       }
+    },
+    {
+      "name": "datetime_p0_roundtrip",
+      "chain": "TimeCell setAt(2026-06-01 12:34:56)-\u003esetClock('10:11:12')-\u003ecreate(), at(same value)-\u003egets() picking clock, delete(): datetime(0) is bound with no fraction digits",
+      "expect": {
+        "result": [
+          {
+            "clock": "10:11:12.000"
+          }
+        ],
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "BEGIN IMMEDIATE",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "2026-06-01 12:34:56",
+              "10:11:12.000"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"time_cell\" (\"at\", \"clock\") VALUES (?, ?) RETURNING \"seq\"",
+            "tables": [
+              "time_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "2026-06-01 12:34:56"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"at\" AS \"a__at\", \"a\".\"clock\" AS \"a__clock\" FROM \"time_cell\" AS \"a\" WHERE \"a\".\"at\" = ?",
+            "tables": [
+              "time_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"time_cell\" WHERE \"time_cell\".\"seq\" = ?",
+            "tables": [
+              "time_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "time_p3_roundtrip",
+      "chain": "TimeCell setAt(2026-06-01 12:34:56)-\u003esetClock('10:11:12.345000')-\u003ecreate(), clock('10:11:12.345')-\u003egets() picking clock, delete(): time(3) is bound with three fraction digits, zeros past p dropped",
+      "expect": {
+        "result": [
+          {
+            "clock": "10:11:12.345"
+          }
+        ],
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "BEGIN IMMEDIATE",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "2026-06-01 12:34:56",
+              "10:11:12.345"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"time_cell\" (\"at\", \"clock\") VALUES (?, ?) RETURNING \"seq\"",
+            "tables": [
+              "time_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "10:11:12.345"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"at\" AS \"a__at\", \"a\".\"clock\" AS \"a__clock\" FROM \"time_cell\" AS \"a\" WHERE \"a\".\"clock\" = ?",
+            "tables": [
+              "time_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"time_cell\" WHERE \"time_cell\".\"seq\" = ?",
+            "tables": [
+              "time_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          }
+        ]
+      }
     }
   ]
 }

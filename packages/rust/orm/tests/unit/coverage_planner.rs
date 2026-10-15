@@ -189,6 +189,20 @@ fn coverage_planner_bind_types_insert() {
 
 #[test]
 #[ignore = "run by feature-check"]
+fn coverage_planner_time_select() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_time_select");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_time_insert() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_time_insert");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
 fn coverage_planner_parent_key_types() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_parent_key_types");
