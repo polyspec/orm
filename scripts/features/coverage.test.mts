@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { caseTest } from '../../tests/testcase.mts';
+import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { execFileSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { chmod, mkdtemp, mkdir, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { packageDirectoryOf } from './packages.mts';
-import { checkCoverage, databases, executeCoverage, languages, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
+import { checkCoverage, databases, executeCoverage, languages, NATIVE_DEADLINE, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
 
 /** The sample contract of these cases: one feature, every client owning it, and one Go dependent. */
@@ -570,4 +570,11 @@ caseTest('every native run reports its start, steps, result and elapsed time', 8
   ];
   assert.equal(lines.length, expected.length, lines.join('\n'));
   lines.forEach((line, index) => assert.match(line, new RegExp(expected[index] ?? ''), lines.join('\n')));
+});
+
+// The deadline of one native process of a coverage run is an outer bound against a hung process; each test bounds its own
+// work by the class it declares (testcase.Start, caseTest), the longest of which is PROCESS. A shorter outer bound stops a
+// test inside its own deadline, as it stopped the Go model_generation case (testcase.Process) after 120000 ms (T185).
+caseTest('a coverage process deadline is not shorter than the longest declared test class', COMPUTE, () => {
+  assert.ok(NATIVE_DEADLINE >= PROCESS, `NATIVE_DEADLINE ${NATIVE_DEADLINE} ms is shorter than PROCESS ${PROCESS} ms`);
 });
