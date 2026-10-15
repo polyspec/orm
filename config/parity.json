@@ -215,7 +215,7 @@
         { "implementation": "go", "test": "packages/go/model/coverage_conformance_verification_test.go", "symbol": "TestCoverageConformanceMySQL" },
         { "implementation": "php", "test": "packages/php/tests/CoverageConformanceVerificationTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/coverage_conformance_mysql.mjs" },
-        { "implementation": "python", "test": "tests/conformance/runner_python.py" },
+        { "implementation": "python", "test": "packages/python/tests/conformance_mysql.py" },
         { "implementation": "rust", "test": "packages/rust/tests/tests/coverage_conformance_verification.rs", "symbol": "conformance_mysql" }
       ]
     },
@@ -226,7 +226,7 @@
         { "implementation": "go", "test": "packages/go/model/coverage_conformance_verification_test.go", "symbol": "TestCoverageConformancePostgres" },
         { "implementation": "php", "test": "packages/php/tests/CoverageConformanceVerificationTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/coverage_conformance_postgres.mjs" },
-        { "implementation": "python", "test": "tests/conformance/runner_python.py" },
+        { "implementation": "python", "test": "packages/python/tests/conformance_postgres.py" },
         { "implementation": "rust", "test": "packages/rust/tests/tests/coverage_conformance_verification.rs", "symbol": "conformance_postgres" }
       ]
     },
@@ -237,7 +237,7 @@
         { "implementation": "go", "test": "packages/go/model/coverage_conformance_verification_test.go", "symbol": "TestCoverageConformanceSQLite" },
         { "implementation": "php", "test": "packages/php/tests/CoverageConformanceVerificationTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/coverage_conformance_sqlite.mjs" },
-        { "implementation": "python", "test": "tests/conformance/runner_python.py" },
+        { "implementation": "python", "test": "packages/python/tests/conformance_sqlite.py" },
         { "implementation": "rust", "test": "packages/rust/tests/tests/coverage_conformance_verification.rs", "symbol": "conformance_sqlite" }
       ]
     },
