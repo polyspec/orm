@@ -131,9 +131,9 @@ async fn runtime_value_types() {
         let mut short = connected(&db);
         short.core_mut().set("small", Param::from(1i16));
         short.core_mut().set("code", Param::from(uuid));
-        short.core_mut().set("opens", Param::from("08:30:00.25"));
+        short.core_mut().set("opens", Param::from("08:30:00.2501"));
         short.core_mut().set("day", Param::Date(day));
-        assert_eq!(code(polyspec_orm::model::create(&mut short).await), polyspec_orm::codes::CODEC_ENCODE, "{driver}: time text without p fraction digits");
+        assert_eq!(code(polyspec_orm::model::create(&mut short).await), polyspec_orm::codes::CODEC_ENCODE, "{driver}: time text with a non-zero digit past p");
         let mut missing = connected(&db);
         missing.core_mut().set("code", Param::from(uuid));
         missing.core_mut().set("opens", Param::from("08:30:00.250"));
