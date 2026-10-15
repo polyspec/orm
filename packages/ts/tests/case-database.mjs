@@ -110,15 +110,16 @@ export async function createCaseDatabase(dialect, step) {
 export async function withCaseDatabase(dialect, step, body) {
   const database = await createCaseDatabase(dialect, step);
   let failure = null;
+  let result;
   try {
-    return await body(database);
+    result = await body(database);
   } catch (error) {
     failure = error;
-    throw error;
-  } finally {
-    try { await database.drop(); } catch (error) {
-      if (failure === null) throw error;
-      failure.message = `${failure.message}; and ${error.message}`;
-    }
   }
+  try { await database.drop(); } catch (error) {
+    if (failure === null) throw error;
+    failure.message = `${failure.message}; and ${error.message}`;
+  }
+  if (failure !== null) throw failure;
+  return result;
 }

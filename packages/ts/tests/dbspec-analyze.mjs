@@ -6,7 +6,6 @@
 import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { analyzeDbspec, formatDbspec, parseDbspec } from '../dist/dbspec/index.js';
 import { generate, join, render, vectorInputs } from '../../../scripts/dbspec/syntax-vectors.mts';
 import { readCases } from '../../../tests/dbspec/cases.mts';

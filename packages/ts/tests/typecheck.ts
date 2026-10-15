@@ -52,12 +52,14 @@ export async function valid(db: Db): Promise<void> {
 
 export async function invalid(db: Db): Promise<void> {
   const b = new Author().connect(db);
+  // An unknown column names no chain, getsBy or orderBy method of the model.
+  const chains: Extract<keyof Author, 'notAColumn' | 'getsByNotAColumn' | 'orderByNotAColumnAsc'>[] = [];
   // @ts-expect-error an unknown column is not a chain name
-  b.notAColumn(1);
+  chains.push('notAColumn');
   // @ts-expect-error an unknown column is not a getsBy name
-  await b.getsByNotAColumn(1);
+  chains.push('getsByNotAColumn');
   // @ts-expect-error an unknown column is not an orderBy name
-  b.orderByNotAColumnAsc();
+  chains.push('orderByNotAColumnAsc');
   // @ts-expect-error a string is not an integer column value
   b.serviceSeq('7');
   // @ts-expect-error null is not a value of a NOT NULL column

@@ -55,7 +55,7 @@ function rejectsLostOutput(label, read) {
 await suite.run('styled-value/lost-output', COMPUTE, () => {
   rejectsLostOutput('styled toJSON', () => orm.StyledValue.value({ missing: undefined }).toJSON());
   rejectsLostOutput('nested styled JSON.stringify', () => JSON.stringify(orm.StyledValue.value({ nested: { missing: undefined } })));
-  rejectsLostOutput('styled array gap', () => orm.StyledValue.value([, 'present']).toJSON());
+  rejectsLostOutput('styled array gap', () => orm.StyledValue.value(Object.assign([], { 1: 'present' })).toJSON());
   const hidden = Object.defineProperty({ present: 1 }, 'missing', { value: 2 });
   rejectsLostOutput('hidden styled member', () => orm.StyledValue.value(hidden).toJSON());
   const keyed = { present: 1, [Symbol('missing')]: 2 };

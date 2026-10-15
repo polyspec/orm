@@ -33,7 +33,7 @@ function textOf(c, name) {
 /** The set of a case for one of its documents: the other documents by name. */
 function setOf(c, name) {
   const set = {};
-  for (const [other, lines] of Object.entries(c.documents)) {
+  for (const other of Object.keys(c.documents)) {
     if (other !== name) set[other] = textOf(c, other);
   }
   return set;

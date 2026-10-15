@@ -6,14 +6,13 @@
 // Usage: node packages/ts/tests/sqlite-concurrency.mjs (after npm run typescript:build)
 // The test starts itself as a writer process: sqlite-concurrency.mjs writer <dsn> <name> <count>
 import { spawn } from 'node:child_process';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OrmError, SCHEMA, Service, connect } from '../dist/index.js';
 import { PROCESS, runCase } from '../../../tests/testcase.mts';
 
-const benchPath = fileURLToPath(new URL('../../../contracts/fixtures/bench/bench.dbs', import.meta.url));
 
 /** Runs count transactions that read the service count and then insert one service. */
 async function writeServices(db, name, count) {
@@ -38,7 +37,6 @@ if (process.argv[2] === 'writer') {
 }
 
 const work = await mkdtemp(join(tmpdir(), 'orm-ts-sqlite-lock-'));
-const bench = await readFile(benchPath, 'utf8');
 let failures = 0;
 let current = '';
 function check(cond, message) {

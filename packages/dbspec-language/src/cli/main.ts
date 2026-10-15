@@ -55,7 +55,9 @@ function reportDiagnostics(path: string, text: string, diagnostics: readonly Dia
   const lines = parserLines(text);
   for (const d of diagnostics) {
     const { line, character } = d.range.start;
-    report(path, { line: line + 1, column: codePointColumn(lines[line]!, character), rule: d.rule, message: d.message });
+    const text = lines[line];
+    if (text === undefined) throw new Error(`${path}: a diagnostic names line ${line + 1} past the ${lines.length} lines of the text`);
+    report(path, { line: line + 1, column: codePointColumn(text, character), rule: d.rule, message: d.message });
   }
 }
 
@@ -121,7 +123,10 @@ function formatFile(path: string, mode: Mode): number {
 
 async function readStdin(): Promise<Uint8Array> {
   const chunks: Uint8Array[] = [];
-  for await (const chunk of process.stdin) chunks.push(chunk as Uint8Array);
+  for await (const chunk of process.stdin as AsyncIterable<unknown>) {
+    if (!(chunk instanceof Uint8Array)) throw new Error('standard input gave a chunk that is not bytes');
+    chunks.push(chunk);
+  }
   const bytes = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
   let at = 0;
   for (const chunk of chunks) {

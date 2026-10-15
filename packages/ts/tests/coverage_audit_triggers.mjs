@@ -121,7 +121,7 @@ await runCases('coverage_audit_triggers.mjs', {
   // label과 audit column만 기록한다. client가 쓴 insert, update, soft delete를 audit trigger가 고른 column만으로
   // 기록하고, history table에는 기록하는 column만 있다.
   async audit_selected_columns() {
-    const { card: Card, tag: Tag, audit: Audit } = auditModels(auditColumnsText);
+    const { card: Card, tag: Tag } = auditModels(auditColumnsText);
     await withInstalled(schemaOf(auditColumnsText), auditColumnsTables, ['card', 'tag'], async (db, driver, dsn) => {
       const adb = db;
       let seq;

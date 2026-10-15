@@ -8,7 +8,6 @@
 //
 // Usage: node packages/ts/tests/model.mjs (after npm run typescript:build)
 import { chmod, mkdtemp, readFile, rm } from 'node:fs/promises';
-import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -21,7 +20,14 @@ import { DATABASE, sections } from '../../../tests/testcase.mts';
 import * as modelModule from '../dist/model.js';
 import { caseName, mysqlConnection, postgresClient, relatedDsn, withCaseDatabase } from './case-database.mjs';
 
-const require = createRequire(new URL('../package.json', import.meta.url));
+/** Drops the table of a case through the pooler's single database; a failure names the table. */
+async function dropPoolerTable(dsn, table) {
+  const client = postgresClient(dsn);
+  await client.connect();
+  try { await client.query(`DROP TABLE IF EXISTS "${table}"`); } catch (error) {
+    throw new Error(`drop table ${table}: ${error.message}`);
+  } finally { await client.end(); }
+}
 const root = new URL('../../..', import.meta.url).pathname;
 const args = process.argv.slice(2);
 if (args.length !== 0 && (args.length !== 4 || args[0] !== '--case' || args[1] !== 'styledStates' || args[2] !== '--dialect' || !['sqlite', 'mysql', 'postgres'].includes(args[3]))) {
@@ -859,11 +865,7 @@ try {
         } finally { await release(); await bounded.close(); await plain.close(); }
       } finally {
         await setup.close();
-        const client = postgresClient(single);
-        await client.connect();
-        try { await client.query(`DROP TABLE IF EXISTS "${table}"`); } catch (error) {
-          throw new Error(`drop table ${table}: ${error.message}`);
-        } finally { await client.end(); }
+        await dropPoolerTable(single, table);
         caseLog.step(`table ${table} dropped`);
       }
     } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
