@@ -794,6 +794,7 @@
       ],
       "tests": [
         "packages/go/model/model_test.go",
+        "packages/go/model/time_text_test.go",
         "packages/go/orm/assignment_propagation_test.go",
         "packages/go/orm/conversion_error_test.go",
         "packages/go/orm/collection_key_test.go",
@@ -884,10 +885,11 @@
         },
         {
           "id": "queries-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/model -run 'Conditions|JoinsAndRelations|ColumnsAndSubqueries' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/model -run 'Conditions|JoinsAndRelations|ColumnsAndSubqueries|TimeSetterRecordsBadText' -count=1",
           "shard": "other",
           "inputs": [
-            "packages/go/model/model_test.go"
+            "packages/go/model/model_test.go",
+            "packages/go/model/time_text_test.go"
           ]
         },
         {

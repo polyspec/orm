@@ -338,13 +338,15 @@ func (x *SoftRecordModel) OrderByNameDesc(fn ...orm.Func) *SoftRecordModel {
 // GetDeletedAt returns deleted_at.
 func (x *SoftRecordModel) GetDeletedAt() *time.Time { return x.fDeletedAt }
 
-// SetDeletedAt sets deleted_at; nil stores NULL.
-func (x *SoftRecordModel) SetDeletedAt(v *time.Time) *SoftRecordModel {
-	x.fDeletedAt = v
+// SetDeletedAt sets deleted_at from its text form; nil stores NULL. A text that is not a time is the statement's error: Create, Update and the query builders return it, and no statement is sent.
+func (x *SoftRecordModel) SetDeletedAt(v *string) *SoftRecordModel {
 	if v == nil {
+		x.fDeletedAt = nil
 		x.m.SetNull("deleted_at")
-	} else {
-		x.m.Set("deleted_at", *v)
+		return x
+	}
+	if parsed, ok := x.m.SetTimeText("deleted_at", *v); ok {
+		x.fDeletedAt = &parsed
 	}
 	return x
 }

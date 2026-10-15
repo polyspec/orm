@@ -94,6 +94,8 @@ fn generated_rows_reject_unselected_fields_and_separate_group_results() {
     let text = generate("fn main() { let row = ZoneEvent::new(); let _ = row.get_start_dt(); let _ = row.gets_count(); }").unwrap();
     assert!(!text.contains("pub start_dt:"), "typed fields cannot bypass checked getters");
     assert!(text.contains("pub fn get_start_dt(&self) -> polyspec_orm::Result<polyspec_orm::chrono::NaiveDateTime>"), "getter must report missing selection");
+    // A date setter takes the text form, fallible because the text is parsed into the typed field (T189).
+    assert!(text.contains("pub fn set_start_dt(mut self, v: impl Into<String>) -> polyspec_orm::Result<Self>"), "a date setter must take text");
     assert!(text.contains("pub async fn gets_count(&self) -> polyspec_orm::Result<polyspec_orm::GroupRows>"), "group rows must not be partial models");
 }
 

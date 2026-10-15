@@ -179,8 +179,8 @@ final class ModelTest extends TestCase
                 ->setServiceSeq($f['service']->getSeq())
                 ->setServiceRegionSeq($f['module']->getSeq())
                 ->setServiceMemberSeq($f['member']->getSeq())
-                ->setStartDt(self::$start->modify("+$i hours"))
-                ->setEndDt(self::$start->modify('+48 hours'))
+                ->setStartDt(self::$start->modify("+$i hours")->format('Y-m-d H:i:s'))
+                ->setEndDt(self::$start->modify('+48 hours')->format('Y-m-d H:i:s'))
                 ->setReadCount($i * 10)
                 ->setIsClose($i % 2 === 1);
             if ($i < 2) {
@@ -580,7 +580,7 @@ final class ModelTest extends TestCase
         $created = (new Author)($db)
             ->setName('zone')->setUserSeq($f['users'][0]->getSeq())->setServiceSeq($f['service']->getSeq())
             ->setServiceRegionSeq($f['module']->getSeq())->setServiceMemberSeq($f['member']->getSeq())
-            ->setStartDt($midnight)->setEndDt($midnight->modify('+1 day'))->create();
+            ->setStartDt($midnight->format('Y-m-d H:i:s'))->setEndDt($midnight->modify('+1 day')->format('Y-m-d H:i:s'))->create();
         $row = (new Author)($db)->getBySeq($created->getSeq());
         self::check($row !== null, 'row');
         $start = $row->getStartDt();

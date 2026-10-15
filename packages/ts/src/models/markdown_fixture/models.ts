@@ -134,7 +134,7 @@ export class People extends Model {
   public sumScore(): this { this[CORE].aggregate('sum', 'score'); return this; }
   public avgScore(): this { this[CORE].aggregate('avg', 'score'); return this; }
   public getJoined(): string { const value = this[CORE].column('joined'); if (typeof value === 'string') return value; throw new TypeError('people.joined holds a value of type ' + typeof value + ', not string'); }
-  public setJoined(value: string | Date): this { this[CORE].setValue('joined', value); return this; }
+  public setJoined(value: string): this { this[CORE].setValue('joined', value); return this; }
   public addColumnJoined(): this { this[CORE].addColumn('joined'); return this; }
   public removeColumnJoined(): this { this[CORE].removeColumn('joined'); return this; }
   public groupByJoined(): this { this[CORE].groupBy.push('joined'); return this; }
@@ -142,7 +142,7 @@ export class People extends Model {
   public orderByJoinedAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('joined', false, fn); return this; }
   public orderByJoinedDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('joined', true, fn); return this; }
   public getDeletedAt(): string | null { const value = this[CORE].column('deleted_at'); if (value === null || typeof value === 'string') return value; throw new TypeError('people.deleted_at holds a value of type ' + typeof value + ', not string | null'); }
-  public setDeletedAt(value: string | Date | null): this { this[CORE].setValue('deleted_at', value); return this; }
+  public setDeletedAt(value: string | null): this { this[CORE].setValue('deleted_at', value); return this; }
   public addColumnDeletedAt(): this { this[CORE].addColumn('deleted_at'); return this; }
   public removeColumnDeletedAt(): this { this[CORE].removeColumn('deleted_at'); return this; }
   public groupByDeletedAt(): this { this[CORE].groupBy.push('deleted_at'); return this; }
@@ -150,7 +150,7 @@ export class People extends Model {
   public orderByDeletedAtAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('deleted_at', false, fn); return this; }
   public orderByDeletedAtDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('deleted_at', true, fn); return this; }
   public getUpdatedAt(): string | null { const value = this[CORE].column('updated_at'); if (value === null || typeof value === 'string') return value; throw new TypeError('people.updated_at holds a value of type ' + typeof value + ', not string | null'); }
-  public setUpdatedAt(value: string | Date | null): this { this[CORE].setValue('updated_at', value); return this; }
+  public setUpdatedAt(value: string | null): this { this[CORE].setValue('updated_at', value); return this; }
   public addColumnUpdatedAt(): this { this[CORE].addColumn('updated_at'); return this; }
   public removeColumnUpdatedAt(): this { this[CORE].removeColumn('updated_at'); return this; }
   public groupByUpdatedAt(): this { this[CORE].groupBy.push('updated_at'); return this; }
@@ -204,7 +204,7 @@ export class Tasks extends Model {
   public sumPoints(): this { this[CORE].aggregate('sum', 'points'); return this; }
   public avgPoints(): this { this[CORE].aggregate('avg', 'points'); return this; }
   public getDue(): string | null { const value = this[CORE].column('due'); if (value === null || typeof value === 'string') return value; throw new TypeError('tasks.due holds a value of type ' + typeof value + ', not string | null'); }
-  public setDue(value: string | Date | null): this { this[CORE].setValue('due', value); return this; }
+  public setDue(value: string | null): this { this[CORE].setValue('due', value); return this; }
   public addColumnDue(): this { this[CORE].addColumn('due'); return this; }
   public removeColumnDue(): this { this[CORE].removeColumn('due'); return this; }
   public groupByDue(): this { this[CORE].groupBy.push('due'); return this; }

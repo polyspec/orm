@@ -137,13 +137,9 @@ final class Generator
             $t = $styled ? '\\Polyspec\\Orm\\StyledValue' : self::type($c);
             $nt = !$styled && $c['nullable'] ? "?$t" : $t;
             $b .= "\n    public function get$p(): $nt\n    {\n        return \$this->readColumn(" . self::str($c['name']) . ");\n    }\n";
-            $param = $nt;
-            $value = '$v';
-            if ($t === '\\DateTimeImmutable') {
-                $param = $c['nullable'] ? '?\\DateTimeInterface' : '\\DateTimeInterface';
-                $value = $c['nullable'] ? '$v === null ? null : \\DateTimeImmutable::createFromInterface($v)' : '\\DateTimeImmutable::createFromInterface($v)';
-            }
-            $b .= "\n    public function set$p($param \$v): static\n    {\n        return \$this->writeColumn(" . self::str($c['name']) . ", $value);\n    }\n";
+            // A date, time or datetime setter takes the text form, as the loaded value does (T189).
+            $param = $t === '\\DateTimeImmutable' ? ($c['nullable'] ? '?string' : 'string') : $nt;
+            $b .= "\n    public function set$p($param \$v): static\n    {\n        return \$this->writeColumn(" . self::str($c['name']) . ", \$v);\n    }\n";
         }
         return $b . self::queryMethods($e) . "}\n";
     }

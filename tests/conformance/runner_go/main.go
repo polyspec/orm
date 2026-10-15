@@ -612,7 +612,7 @@ func run() (status int) {
 		email := "cycle@example.com"
 		row, err := author().
 			SetName("cycle").SetUserSeq(1).SetServiceSeq(999).SetServiceRegionSeq(1).SetServiceMemberSeq(1).
-			SetStartDt(start).SetEndDt(start).SetPrice(&price)
+			SetStartDt(dateTimeText(start)).SetEndDt(dateTimeText(start)).SetPrice(&price)
 		if err != nil {
 			return nil, err
 		}
@@ -658,7 +658,7 @@ func run() (status int) {
 		before := time.Now()
 		created, err := author().
 			SetName("clock").SetUserSeq(1).SetServiceSeq(999).SetServiceRegionSeq(1).SetServiceMemberSeq(1).
-			SetStartDt(start).SetEndDt(start).
+			SetStartDt(dateTimeText(start)).SetEndDt(dateTimeText(start)).
 			Create()
 		if err != nil {
 			return nil, err
@@ -827,7 +827,7 @@ func run() (status int) {
 			seq := created.GetSeq()
 			mask([]int64{seq})
 			deletedAt := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-			if _, err := created.SetDeletedAt(&deletedAt).Update(); err != nil {
+			if _, err := created.SetDeletedAt(textPtr(dateTimeText(deletedAt))).Update(); err != nil {
 				return err
 			}
 			_, hidden := model.SoftRecord().GetBySeq(seq)
@@ -875,7 +875,7 @@ func run() (status int) {
 				mask([]int64{service.GetSeq(), record.GetSeq()})
 				if name == "soft-join-deleted" {
 					deletedAt := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-					if _, err := record.SetDeletedAt(&deletedAt).Update(); err != nil {
+					if _, err := record.SetDeletedAt(textPtr(dateTimeText(deletedAt))).Update(); err != nil {
 						return err
 					}
 				}
@@ -1034,7 +1034,7 @@ func run() (status int) {
 	timeCell := func() *model.TimeCellModel { return model.TimeCell().Connect(db) }
 	at := time.Date(2026, 6, 1, 12, 34, 56, 0, time.UTC)
 	run("datetime_p0_roundtrip", func() (any, error) {
-		row, err := timeCell().SetAt(at).SetClock("10:11:12")
+		row, err := timeCell().SetAt(dateTimeText(at)).SetClock("10:11:12")
 		if err != nil {
 			return nil, err
 		}
@@ -1053,7 +1053,7 @@ func run() (status int) {
 		return picks(rows, "clock"), nil
 	})
 	run("time_p3_roundtrip", func() (any, error) {
-		row, err := timeCell().SetAt(at).SetClock("10:11:12.345000")
+		row, err := timeCell().SetAt(dateTimeText(at)).SetClock("10:11:12.345000")
 		if err != nil {
 			return nil, err
 		}
@@ -1141,7 +1141,7 @@ func run() (status int) {
 	}
 	bindCell := func() *model.BindCellModel { return model.BindCell().Connect(db) }
 	run("datetime_precision_rejected", func() (any, error) {
-		row, err := timeCell().SetAt(at.Add(500 * time.Millisecond)).SetClock("10:11:12")
+		row, err := timeCell().SetAt(dateTimeText(at.Add(500 * time.Millisecond))).SetClock("10:11:12")
 		if err != nil {
 			return nil, err
 		}
@@ -1343,3 +1343,9 @@ func check(err error) {
 		panic(exit(1))
 	}
 }
+
+// dateTimeText is the text form of a datetime column, which the setters take (T189).
+func dateTimeText(t time.Time) string { return t.Format("2006-01-02 15:04:05.999999") }
+
+// textPtr returns the pointer to a text value, the form of a nullable setter.
+func textPtr(s string) *string { return &s }

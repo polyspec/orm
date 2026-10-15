@@ -57,9 +57,9 @@ final class SoftRecord extends Model
         return $this->readColumn('deleted_at');
     }
 
-    public function setDeletedAt(?\DateTimeInterface $v): static
+    public function setDeletedAt(?string $v): static
     {
-        return $this->writeColumn('deleted_at', $v === null ? null : \DateTimeImmutable::createFromInterface($v));
+        return $this->writeColumn('deleted_at', $v);
     }
 
     public function addColumnDeletedAt(): static

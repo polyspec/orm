@@ -95,7 +95,7 @@ final class RuntimeDbTest extends TestCase
     private static function case_i16_values_and_defaults(Db $db): void {
         $low = (new Sample)($db)->setLevel(-32768)->create();
         $high = (new Sample)($db)->setLevel(32767)->setNote('n')->setToken('0f8fad5b-d9cb-469f-a165-70867728950e')
-            ->setDay(new DateTimeImmutable('2026-02-03'))->setClock('12:34:56.789')->create();
+            ->setDay('2026-02-03')->setClock('12:34:56.789')->create();
         $row = (new Sample)($db)->getBySeq($low->getSeq());
         self::want($row->getLevel() === -32768, 'i16 low ' . var_export($row->getLevel(), true));
         self::want($row->getAmount() === 7 && $row->getLabel() === 'x', 'database defaults');

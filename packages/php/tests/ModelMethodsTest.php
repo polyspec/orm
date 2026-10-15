@@ -103,4 +103,18 @@ final class ModelMethodsTest extends TestCase
             self::assertFalse(var_export((array) $declared, true) !== var_export((array) $chained, true), "$method builds another query than the chain of its name");
         }
     }
+
+    /** A date, time or datetime setter takes the text form, never a native value (T189). */
+    public function test_a_time_setter_takes_the_text_form(): void
+    {
+        $cases = [
+            [\Polyspec\Orm\Tests\Model\TimeCell::class, 'setAt', 'string'],
+            [\Polyspec\Orm\Tests\Model\Author::class, 'setCreatedTs', 'string'],
+            [\Polyspec\Orm\Tests\Model\Author::class, 'setDisplayStartDt', '?string'],
+        ];
+        foreach ($cases as [$class, $method, $type]) {
+            $param = (new \ReflectionMethod($class, $method))->getParameters()[0];
+            self::assertSame($type, (string) $param->getType(), "$class::$method takes a native value");
+        }
+    }
 }

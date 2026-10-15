@@ -20,7 +20,7 @@ pub(crate) fn fallible_setters(model: &RuntimeModel) -> HashSet<(String, String)
             entity
                 .fields
                 .iter()
-                .filter(|column| column.styled_value() || matches!(column.ty, Type::Decimal(..)))
+                .filter(|column| column.styled_value() || matches!(column.ty, Type::Decimal(..) | Type::Date | Type::DateTime(_)))
                 .map(move |column| (model.clone(), format!("set_{}", column.name)))
         })
         .collect()
@@ -999,6 +999,14 @@ fn model_source(gm: &Model<'_>) -> String {
                 let _ = write!(b, "    /// Sets {col} after exact decimal validation.\n    pub fn set_{col}(mut self, v: impl polyspec_orm::IntoNullable<String>) -> polyspec_orm::Result<Self> {{\n        let value = v.into_nullable();\n        let value = match value {{ Some(text) => Some(polyspec_orm::decimal::normalize(&text, {precision}, {scale})?), None => None }};\n        self.__orm.set({col:?}, value.clone().into());\n        self.{id} = value;\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n");
             } else {
                 let _ = write!(b, "    /// Sets {col} after exact decimal validation.\n    pub fn set_{col}(mut self, v: impl Into<String>) -> polyspec_orm::Result<Self> {{\n        let value = polyspec_orm::decimal::normalize(&v.into(), {precision}, {scale})?;\n        self.__orm.set({col:?}, value.clone().into());\n        self.{id} = value;\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n");
+            }
+        } else if matches!(c.ty, Type::Date | Type::DateTime(_)) && c.codec.is_empty() {
+            // The setter takes the text form and parses it into the typed field (T189).
+            let parse = if matches!(c.ty, Type::Date) { "as_date" } else { "as_datetime" };
+            if c.nullable {
+                let _ = write!(b, "    /// Sets {col} from its text form; None or Null stores NULL.\n    pub fn set_{col}(mut self, v: impl polyspec_orm::IntoNullable<String>) -> polyspec_orm::Result<Self> {{\n        let text = v.into_nullable();\n        let value = match &text {{ Some(s) => Some(polyspec_orm::Val::Str(s.clone()).{parse}()?), None => None }};\n        self.__orm.set({col:?}, text.into());\n        self.{id} = value;\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n");
+            } else {
+                let _ = write!(b, "    /// Sets {col} from its text form.\n    pub fn set_{col}(mut self, v: impl Into<String>) -> polyspec_orm::Result<Self> {{\n        let text: String = v.into();\n        let value = polyspec_orm::Val::Str(text.clone()).{parse}()?;\n        self.__orm.set({col:?}, text.into());\n        self.{id} = value;\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n");
             }
         } else if fd != bt {
             let _ = write!(

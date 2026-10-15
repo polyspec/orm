@@ -103,9 +103,9 @@ final class People extends Model
         return $this->readColumn('joined');
     }
 
-    public function setJoined(\DateTimeInterface $v): static
+    public function setJoined(string $v): static
     {
-        return $this->writeColumn('joined', \DateTimeImmutable::createFromInterface($v));
+        return $this->writeColumn('joined', $v);
     }
 
     public function getDeletedAt(): ?\DateTimeImmutable
@@ -113,9 +113,9 @@ final class People extends Model
         return $this->readColumn('deleted_at');
     }
 
-    public function setDeletedAt(?\DateTimeInterface $v): static
+    public function setDeletedAt(?string $v): static
     {
-        return $this->writeColumn('deleted_at', $v === null ? null : \DateTimeImmutable::createFromInterface($v));
+        return $this->writeColumn('deleted_at', $v);
     }
 
     public function getUpdatedAt(): ?\DateTimeImmutable
@@ -123,9 +123,9 @@ final class People extends Model
         return $this->readColumn('updated_at');
     }
 
-    public function setUpdatedAt(?\DateTimeInterface $v): static
+    public function setUpdatedAt(?string $v): static
     {
-        return $this->writeColumn('updated_at', $v === null ? null : \DateTimeImmutable::createFromInterface($v));
+        return $this->writeColumn('updated_at', $v);
     }
 
     /** The condition of active: a value, a list, a value function, a model, or a column function and its compared value. */

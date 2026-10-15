@@ -42,9 +42,9 @@ func init() {
 		run("clock_compare_six_digits", func() (any, error) {
 			orm.FixClock(db, "2026-06-01 12:34:56.999999")
 			created, err := clockCell().SetLabel("compare").
-				SetAt0(time.Date(2026, 6, 1, 12, 34, 56, 0, time.UTC)).
-				SetAt3(time.Date(2026, 6, 1, 12, 34, 56, 999000000, time.UTC)).
-				SetAt6(time.Date(2026, 6, 1, 12, 34, 56, 0, time.UTC)).Create()
+				SetAt0("2026-06-01 12:34:56").
+				SetAt3("2026-06-01 12:34:56.999").
+				SetAt6("2026-06-01 12:34:56").Create()
 			if err != nil {
 				return nil, err
 			}

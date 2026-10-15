@@ -276,6 +276,10 @@ table typed {
 		"fFlag bool", "fBlob []byte", "fAddress *string", "fSecret string",
 		"fPacked orm.StyledValue", "fEncoded orm.StyledValue", "fDoc orm.StyledValue",
 		"orm.AsInt16(v)", "orm.AsTimeText(v, 3)", `orm.NormalizeStyled([]string{"gz"}, true, v)`,
+		// The setters of date, time and datetime take the text form, never the native value (T189).
+		"func (x *TypedModel) SetDay(v string) *TypedModel",
+		"func (x *TypedModel) SetStamp(v *string) *TypedModel",
+		"func (x *TypedModel) SetClock(v string) (*TypedModel, error)",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("typed.go does not contain %q", want)

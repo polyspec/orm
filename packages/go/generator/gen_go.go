@@ -673,6 +673,17 @@ func (x *T) ForShareNoWait() *T { x.m.Lock("share_nowait"); return x }
 		if gt == "orm.StyledValue" {
 			fmt.Fprintf(&b, "// Get%s returns %s.\nfunc (x *%s) Get%s() (orm.StyledValue, error) {\n\tif !x.m.Selected(%q) { return orm.StyledValue{}, orm.ColumnUnselected(%q) }\n\treturn x.%s, nil\n}\n\n", p, c.Name, t, p, c.Name, c.Name, f)
 			fmt.Fprintf(&b, "// Set%s sets %s.\nfunc (x *%s) Set%s(v orm.StyledValue) (*%s, error) {\n\tnormalized, err := orm.NormalizeStyled(%#v, %t, v)\n\tif err != nil { return nil, err }\n\tx.%s = normalized\n\tx.m.Set(%q, normalized)\n\treturn x, nil\n}\n\n", p, c.Name, t, p, t, clientStyles(c), c.Null, f, c.Name)
+		} else if (c.Type == "date" || c.Type == "datetime") && len(c.Codec) == 0 {
+			// The setter takes the text form and keeps the parsed time in the typed field; a text that is not a
+			// time is the statement's error (T189).
+			fmt.Fprintf(&b, "// Get%s returns %s.\nfunc (x *%s) Get%s() %s { return x.%s }\n\n", p, c.Name, t, p, ft, f)
+			if c.Null {
+				fmt.Fprintf(&b, "// Set%s sets %s from its text form; nil stores NULL. A text that is not a time is the statement's error: Create, Update and the query builders return it, and no statement is sent.\nfunc (x *%s) Set%s(v *string) *%s {\n\tif v == nil {\n\t\tx.%s = nil\n\t\tx.m.SetNull(%q)\n\t\treturn x\n\t}\n", p, c.Name, t, p, t, f, c.Name)
+				fmt.Fprintf(&b, "\tif parsed, ok := x.m.SetTimeText(%q, *v); ok {\n\t\tx.%s = &parsed\n\t}\n\treturn x\n}\n\n", c.Name, f)
+			} else {
+				fmt.Fprintf(&b, "// Set%s sets %s from its text form. A text that is not a time is the statement's error: Create, Update and the query builders return it, and no statement is sent.\nfunc (x *%s) Set%s(v string) *%s {\n", p, c.Name, t, p, t)
+				fmt.Fprintf(&b, "\tif parsed, ok := x.m.SetTimeText(%q, v); ok {\n\t\tx.%s = parsed\n\t}\n\treturn x\n}\n\n", c.Name, f)
+			}
 		} else if (c.Type == "decimal" || c.Type == "time") && len(c.Codec) == 0 {
 			normalize := fmt.Sprintf("orm.NormalizeDecimal(%%s, %d, %d)", c.Precision, c.Scale)
 			if c.Type == "time" {

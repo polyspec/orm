@@ -502,10 +502,11 @@ func (x *PeopleModel) AvgScore() *PeopleModel           { x.m.Aggregate("avg", "
 // GetJoined returns joined.
 func (x *PeopleModel) GetJoined() time.Time { return x.fJoined }
 
-// SetJoined sets joined.
-func (x *PeopleModel) SetJoined(v time.Time) *PeopleModel {
-	x.fJoined = v
-	x.m.Set("joined", v)
+// SetJoined sets joined from its text form. A text that is not a time is the statement's error: Create, Update and the query builders return it, and no statement is sent.
+func (x *PeopleModel) SetJoined(v string) *PeopleModel {
+	if parsed, ok := x.m.SetTimeText("joined", v); ok {
+		x.fJoined = parsed
+	}
 	return x
 }
 
@@ -525,13 +526,15 @@ func (x *PeopleModel) OrderByJoinedDesc(fn ...orm.Func) *PeopleModel {
 // GetDeletedAt returns deleted_at.
 func (x *PeopleModel) GetDeletedAt() *time.Time { return x.fDeletedAt }
 
-// SetDeletedAt sets deleted_at; nil stores NULL.
-func (x *PeopleModel) SetDeletedAt(v *time.Time) *PeopleModel {
-	x.fDeletedAt = v
+// SetDeletedAt sets deleted_at from its text form; nil stores NULL. A text that is not a time is the statement's error: Create, Update and the query builders return it, and no statement is sent.
+func (x *PeopleModel) SetDeletedAt(v *string) *PeopleModel {
 	if v == nil {
+		x.fDeletedAt = nil
 		x.m.SetNull("deleted_at")
-	} else {
-		x.m.Set("deleted_at", *v)
+		return x
+	}
+	if parsed, ok := x.m.SetTimeText("deleted_at", *v); ok {
+		x.fDeletedAt = &parsed
 	}
 	return x
 }
@@ -552,13 +555,15 @@ func (x *PeopleModel) OrderByDeletedAtDesc(fn ...orm.Func) *PeopleModel {
 // GetUpdatedAt returns updated_at.
 func (x *PeopleModel) GetUpdatedAt() *time.Time { return x.fUpdatedAt }
 
-// SetUpdatedAt sets updated_at; nil stores NULL.
-func (x *PeopleModel) SetUpdatedAt(v *time.Time) *PeopleModel {
-	x.fUpdatedAt = v
+// SetUpdatedAt sets updated_at from its text form; nil stores NULL. A text that is not a time is the statement's error: Create, Update and the query builders return it, and no statement is sent.
+func (x *PeopleModel) SetUpdatedAt(v *string) *PeopleModel {
 	if v == nil {
+		x.fUpdatedAt = nil
 		x.m.SetNull("updated_at")
-	} else {
-		x.m.Set("updated_at", *v)
+		return x
+	}
+	if parsed, ok := x.m.SetTimeText("updated_at", *v); ok {
+		x.fUpdatedAt = &parsed
 	}
 	return x
 }

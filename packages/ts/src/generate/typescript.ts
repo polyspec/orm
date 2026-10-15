@@ -47,7 +47,8 @@ function jsonStage(c: Column): boolean {
 function tsSet(c: Column): string {
   if (jsonStage(c)) return 'StyledValue<JsonValue | CodecValue>';
   if (styledStage(c)) return 'StyledValue<CodecValue>';
-  const t = tsScalar(c);
+  // A time column's setter takes the text form, as its getter returns it (T189).
+  const t = category(c) === 'time' ? 'string' : tsScalar(c);
   return c.nullable && t !== 'unknown' ? `${t} | null` : t;
 }
 

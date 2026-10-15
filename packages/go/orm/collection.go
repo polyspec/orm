@@ -535,6 +535,19 @@ func AsBool(v any) (bool, error) {
 }
 
 // AsTime converts a database value to time.Time.
+// SetTimeText sets a date or datetime column from its text form and returns the parsed time, which the typed field
+// keeps. A text that is not a time is recorded as the statement's error, which the statement returns, and the column
+// is not set (T189).
+func (c *Core) SetTimeText(column, text string) (time.Time, bool) {
+	t, err := AsTime(text)
+	if err != nil {
+		c.failErr(codecErr(CodeCodecEncode, "column %s: %v", column, err))
+		return time.Time{}, false
+	}
+	c.Set(column, text)
+	return t, true
+}
+
 func AsTime(v any) (time.Time, error) {
 	switch x := v.(type) {
 	case time.Time:

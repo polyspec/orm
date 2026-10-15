@@ -765,10 +765,11 @@ func (x *AuthorModel) OrderByDescriptionDesc(fn ...orm.Func) *AuthorModel {
 // GetCreatedTs returns created_ts.
 func (x *AuthorModel) GetCreatedTs() time.Time { return x.fCreatedTs }
 
-// SetCreatedTs sets created_ts.
-func (x *AuthorModel) SetCreatedTs(v time.Time) *AuthorModel {
-	x.fCreatedTs = v
-	x.m.Set("created_ts", v)
+// SetCreatedTs sets created_ts from its text form. A text that is not a time is the statement's error: Create, Update and the query builders return it, and no statement is sent.
+func (x *AuthorModel) SetCreatedTs(v string) *AuthorModel {
+	if parsed, ok := x.m.SetTimeText("created_ts", v); ok {
+		x.fCreatedTs = parsed
+	}
 	return x
 }
 
@@ -788,10 +789,11 @@ func (x *AuthorModel) OrderByCreatedTsDesc(fn ...orm.Func) *AuthorModel {
 // GetUpdatedTs returns updated_ts.
 func (x *AuthorModel) GetUpdatedTs() time.Time { return x.fUpdatedTs }
 
-// SetUpdatedTs sets updated_ts.
-func (x *AuthorModel) SetUpdatedTs(v time.Time) *AuthorModel {
-	x.fUpdatedTs = v
-	x.m.Set("updated_ts", v)
+// SetUpdatedTs sets updated_ts from its text form. A text that is not a time is the statement's error: Create, Update and the query builders return it, and no statement is sent.
+func (x *AuthorModel) SetUpdatedTs(v string) *AuthorModel {
+	if parsed, ok := x.m.SetTimeText("updated_ts", v); ok {
+		x.fUpdatedTs = parsed
+	}
 	return x
 }
 
@@ -857,13 +859,15 @@ func (x *AuthorModel) OrderByIsDisplayDesc(fn ...orm.Func) *AuthorModel {
 // GetDisplayStartDt returns display_start_dt.
 func (x *AuthorModel) GetDisplayStartDt() *time.Time { return x.fDisplayStartDt }
 
-// SetDisplayStartDt sets display_start_dt; nil stores NULL.
-func (x *AuthorModel) SetDisplayStartDt(v *time.Time) *AuthorModel {
-	x.fDisplayStartDt = v
+// SetDisplayStartDt sets display_start_dt from its text form; nil stores NULL. A text that is not a time is the statement's error: Create, Update and the query builders return it, and no statement is sent.
+func (x *AuthorModel) SetDisplayStartDt(v *string) *AuthorModel {
 	if v == nil {
+		x.fDisplayStartDt = nil
 		x.m.SetNull("display_start_dt")
-	} else {
-		x.m.Set("display_start_dt", *v)
+		return x
+	}
+	if parsed, ok := x.m.SetTimeText("display_start_dt", *v); ok {
+		x.fDisplayStartDt = &parsed
 	}
 	return x
 }
@@ -890,13 +894,15 @@ func (x *AuthorModel) OrderByDisplayStartDtDesc(fn ...orm.Func) *AuthorModel {
 // GetDisplayEndDt returns display_end_dt.
 func (x *AuthorModel) GetDisplayEndDt() *time.Time { return x.fDisplayEndDt }
 
-// SetDisplayEndDt sets display_end_dt; nil stores NULL.
-func (x *AuthorModel) SetDisplayEndDt(v *time.Time) *AuthorModel {
-	x.fDisplayEndDt = v
+// SetDisplayEndDt sets display_end_dt from its text form; nil stores NULL. A text that is not a time is the statement's error: Create, Update and the query builders return it, and no statement is sent.
+func (x *AuthorModel) SetDisplayEndDt(v *string) *AuthorModel {
 	if v == nil {
+		x.fDisplayEndDt = nil
 		x.m.SetNull("display_end_dt")
-	} else {
-		x.m.Set("display_end_dt", *v)
+		return x
+	}
+	if parsed, ok := x.m.SetTimeText("display_end_dt", *v); ok {
+		x.fDisplayEndDt = &parsed
 	}
 	return x
 }
@@ -1270,10 +1276,11 @@ func (x *AuthorModel) AvgServiceMemberSeq() *AuthorModel {
 // GetStartDt returns start_dt.
 func (x *AuthorModel) GetStartDt() time.Time { return x.fStartDt }
 
-// SetStartDt sets start_dt.
-func (x *AuthorModel) SetStartDt(v time.Time) *AuthorModel {
-	x.fStartDt = v
-	x.m.Set("start_dt", v)
+// SetStartDt sets start_dt from its text form. A text that is not a time is the statement's error: Create, Update and the query builders return it, and no statement is sent.
+func (x *AuthorModel) SetStartDt(v string) *AuthorModel {
+	if parsed, ok := x.m.SetTimeText("start_dt", v); ok {
+		x.fStartDt = parsed
+	}
 	return x
 }
 
@@ -1293,10 +1300,11 @@ func (x *AuthorModel) OrderByStartDtDesc(fn ...orm.Func) *AuthorModel {
 // GetEndDt returns end_dt.
 func (x *AuthorModel) GetEndDt() time.Time { return x.fEndDt }
 
-// SetEndDt sets end_dt.
-func (x *AuthorModel) SetEndDt(v time.Time) *AuthorModel {
-	x.fEndDt = v
-	x.m.Set("end_dt", v)
+// SetEndDt sets end_dt from its text form. A text that is not a time is the statement's error: Create, Update and the query builders return it, and no statement is sent.
+func (x *AuthorModel) SetEndDt(v string) *AuthorModel {
+	if parsed, ok := x.m.SetTimeText("end_dt", v); ok {
+		x.fEndDt = parsed
+	}
 	return x
 }
 

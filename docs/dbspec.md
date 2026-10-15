@@ -344,6 +344,8 @@ A client builds one runtime model from the document set, and generated code is p
 | `time(p)` | `string` `HH:MM:SS` with p fraction digits | `string` | `string` | `String` | `str` |
 | `datetime(p)` | `time.Time` in UTC | `\DateTimeImmutable` in UTC | `string` `YYYY-MM-DD HH:MM:SS` with p fraction digits | `NaiveDateTime` | `str` `YYYY-MM-DD HH:MM:SS` with p fraction digits, in UTC |
 
+A generated setter of a `date`, `time(p)` or `datetime(p)` column takes the text form in every language: `string` in Go and TypeScript, `str` in Python, `string` in PHP and `String` in Rust. A native date or time value is not accepted by the setter, so the type check reports it before the statement; the text is checked when the setter runs and the bind layer checks it again.
+
 ## Diagrams
 
 `diagram <name> { <table> at <x> <y> ... }` places tables for a view. Coordinates are integers from −2147483648 to 2147483647 in diagram units; a table appears in a diagram at most once, and a diagram may leave tables out. Diagrams change no hash and no rendering. A document may hold several diagrams.

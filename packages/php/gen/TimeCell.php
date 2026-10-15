@@ -47,9 +47,9 @@ final class TimeCell extends Model
         return $this->readColumn('at');
     }
 
-    public function setAt(\DateTimeInterface $v): static
+    public function setAt(string $v): static
     {
-        return $this->writeColumn('at', \DateTimeImmutable::createFromInterface($v));
+        return $this->writeColumn('at', $v);
     }
 
     public function getClock(): string

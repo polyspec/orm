@@ -260,7 +260,7 @@ export class Author extends Model {
   public orderByDescriptionAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('description', false, fn); return this; }
   public orderByDescriptionDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('description', true, fn); return this; }
   public getCreatedTs(): string { const value = this[CORE].column('created_ts'); if (typeof value === 'string') return value; throw new TypeError('author.created_ts holds a value of type ' + typeof value + ', not string'); }
-  public setCreatedTs(value: string | Date): this { this[CORE].setValue('created_ts', value); return this; }
+  public setCreatedTs(value: string): this { this[CORE].setValue('created_ts', value); return this; }
   public addColumnCreatedTs(): this { this[CORE].addColumn('created_ts'); return this; }
   public removeColumnCreatedTs(): this { this[CORE].removeColumn('created_ts'); return this; }
   public groupByCreatedTs(): this { this[CORE].groupBy.push('created_ts'); return this; }
@@ -268,7 +268,7 @@ export class Author extends Model {
   public orderByCreatedTsAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('created_ts', false, fn); return this; }
   public orderByCreatedTsDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('created_ts', true, fn); return this; }
   public getUpdatedTs(): string { const value = this[CORE].column('updated_ts'); if (typeof value === 'string') return value; throw new TypeError('author.updated_ts holds a value of type ' + typeof value + ', not string'); }
-  public setUpdatedTs(value: string | Date): this { this[CORE].setValue('updated_ts', value); return this; }
+  public setUpdatedTs(value: string): this { this[CORE].setValue('updated_ts', value); return this; }
   public addColumnUpdatedTs(): this { this[CORE].addColumn('updated_ts'); return this; }
   public removeColumnUpdatedTs(): this { this[CORE].removeColumn('updated_ts'); return this; }
   public groupByUpdatedTs(): this { this[CORE].groupBy.push('updated_ts'); return this; }
@@ -292,7 +292,7 @@ export class Author extends Model {
   public orderByIsDisplayAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('is_display', false, fn); return this; }
   public orderByIsDisplayDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('is_display', true, fn); return this; }
   public getDisplayStartDt(): string | null { const value = this[CORE].column('display_start_dt'); if (value === null || typeof value === 'string') return value; throw new TypeError('author.display_start_dt holds a value of type ' + typeof value + ', not string | null'); }
-  public setDisplayStartDt(value: string | Date | null): this { this[CORE].setValue('display_start_dt', value); return this; }
+  public setDisplayStartDt(value: string | null): this { this[CORE].setValue('display_start_dt', value); return this; }
   public addColumnDisplayStartDt(): this { this[CORE].addColumn('display_start_dt'); return this; }
   public removeColumnDisplayStartDt(): this { this[CORE].removeColumn('display_start_dt'); return this; }
   public groupByDisplayStartDt(): this { this[CORE].groupBy.push('display_start_dt'); return this; }
@@ -300,7 +300,7 @@ export class Author extends Model {
   public orderByDisplayStartDtAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('display_start_dt', false, fn); return this; }
   public orderByDisplayStartDtDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('display_start_dt', true, fn); return this; }
   public getDisplayEndDt(): string | null { const value = this[CORE].column('display_end_dt'); if (value === null || typeof value === 'string') return value; throw new TypeError('author.display_end_dt holds a value of type ' + typeof value + ', not string | null'); }
-  public setDisplayEndDt(value: string | Date | null): this { this[CORE].setValue('display_end_dt', value); return this; }
+  public setDisplayEndDt(value: string | null): this { this[CORE].setValue('display_end_dt', value); return this; }
   public addColumnDisplayEndDt(): this { this[CORE].addColumn('display_end_dt'); return this; }
   public removeColumnDisplayEndDt(): this { this[CORE].removeColumn('display_end_dt'); return this; }
   public groupByDisplayEndDt(): this { this[CORE].groupBy.push('display_end_dt'); return this; }
@@ -420,7 +420,7 @@ export class Author extends Model {
   public sumServiceMemberSeq(): this { this[CORE].aggregate('sum', 'service_member_seq'); return this; }
   public avgServiceMemberSeq(): this { this[CORE].aggregate('avg', 'service_member_seq'); return this; }
   public getStartDt(): string { const value = this[CORE].column('start_dt'); if (typeof value === 'string') return value; throw new TypeError('author.start_dt holds a value of type ' + typeof value + ', not string'); }
-  public setStartDt(value: string | Date): this { this[CORE].setValue('start_dt', value); return this; }
+  public setStartDt(value: string): this { this[CORE].setValue('start_dt', value); return this; }
   public addColumnStartDt(): this { this[CORE].addColumn('start_dt'); return this; }
   public removeColumnStartDt(): this { this[CORE].removeColumn('start_dt'); return this; }
   public groupByStartDt(): this { this[CORE].groupBy.push('start_dt'); return this; }
@@ -428,7 +428,7 @@ export class Author extends Model {
   public orderByStartDtAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('start_dt', false, fn); return this; }
   public orderByStartDtDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('start_dt', true, fn); return this; }
   public getEndDt(): string { const value = this[CORE].column('end_dt'); if (typeof value === 'string') return value; throw new TypeError('author.end_dt holds a value of type ' + typeof value + ', not string'); }
-  public setEndDt(value: string | Date): this { this[CORE].setValue('end_dt', value); return this; }
+  public setEndDt(value: string): this { this[CORE].setValue('end_dt', value); return this; }
   public addColumnEndDt(): this { this[CORE].addColumn('end_dt'); return this; }
   public removeColumnEndDt(): this { this[CORE].removeColumn('end_dt'); return this; }
   public groupByEndDt(): this { this[CORE].groupBy.push('end_dt'); return this; }
@@ -1098,7 +1098,7 @@ export class SoftRecord extends Model {
   public orderByNameAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', false, fn); return this; }
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
   public getDeletedAt(): string | null { const value = this[CORE].column('deleted_at'); if (value === null || typeof value === 'string') return value; throw new TypeError('soft_record.deleted_at holds a value of type ' + typeof value + ', not string | null'); }
-  public setDeletedAt(value: string | Date | null): this { this[CORE].setValue('deleted_at', value); return this; }
+  public setDeletedAt(value: string | null): this { this[CORE].setValue('deleted_at', value); return this; }
   public addColumnDeletedAt(): this { this[CORE].addColumn('deleted_at'); return this; }
   public removeColumnDeletedAt(): this { this[CORE].removeColumn('deleted_at'); return this; }
   public groupByDeletedAt(): this { this[CORE].groupBy.push('deleted_at'); return this; }
@@ -1441,7 +1441,7 @@ export class TimeCell extends Model {
   public sumSeq(): this { this[CORE].aggregate('sum', 'seq'); return this; }
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
   public getAt(): string { const value = this[CORE].column('at'); if (typeof value === 'string') return value; throw new TypeError('time_cell.at holds a value of type ' + typeof value + ', not string'); }
-  public setAt(value: string | Date): this { this[CORE].setValue('at', value); return this; }
+  public setAt(value: string): this { this[CORE].setValue('at', value); return this; }
   public addColumnAt(): this { this[CORE].addColumn('at'); return this; }
   public removeColumnAt(): this { this[CORE].removeColumn('at'); return this; }
   public groupByAt(): this { this[CORE].groupBy.push('at'); return this; }
@@ -1512,7 +1512,7 @@ export class ClockCell extends Model {
   public orderByLabelAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('label', false, fn); return this; }
   public orderByLabelDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('label', true, fn); return this; }
   public getAt0(): string { const value = this[CORE].column('at0'); if (typeof value === 'string') return value; throw new TypeError('clock_cell.at0 holds a value of type ' + typeof value + ', not string'); }
-  public setAt0(value: string | Date): this { this[CORE].setValue('at0', value); return this; }
+  public setAt0(value: string): this { this[CORE].setValue('at0', value); return this; }
   public addColumnAt0(): this { this[CORE].addColumn('at0'); return this; }
   public removeColumnAt0(): this { this[CORE].removeColumn('at0'); return this; }
   public groupByAt0(): this { this[CORE].groupBy.push('at0'); return this; }
@@ -1520,7 +1520,7 @@ export class ClockCell extends Model {
   public orderByAt0Asc(...fn: ColumnFunction[]): this { this[CORE].orderBy('at0', false, fn); return this; }
   public orderByAt0Desc(...fn: ColumnFunction[]): this { this[CORE].orderBy('at0', true, fn); return this; }
   public getAt3(): string { const value = this[CORE].column('at3'); if (typeof value === 'string') return value; throw new TypeError('clock_cell.at3 holds a value of type ' + typeof value + ', not string'); }
-  public setAt3(value: string | Date): this { this[CORE].setValue('at3', value); return this; }
+  public setAt3(value: string): this { this[CORE].setValue('at3', value); return this; }
   public addColumnAt3(): this { this[CORE].addColumn('at3'); return this; }
   public removeColumnAt3(): this { this[CORE].removeColumn('at3'); return this; }
   public groupByAt3(): this { this[CORE].groupBy.push('at3'); return this; }
@@ -1528,7 +1528,7 @@ export class ClockCell extends Model {
   public orderByAt3Asc(...fn: ColumnFunction[]): this { this[CORE].orderBy('at3', false, fn); return this; }
   public orderByAt3Desc(...fn: ColumnFunction[]): this { this[CORE].orderBy('at3', true, fn); return this; }
   public getAt6(): string { const value = this[CORE].column('at6'); if (typeof value === 'string') return value; throw new TypeError('clock_cell.at6 holds a value of type ' + typeof value + ', not string'); }
-  public setAt6(value: string | Date): this { this[CORE].setValue('at6', value); return this; }
+  public setAt6(value: string): this { this[CORE].setValue('at6', value); return this; }
   public addColumnAt6(): this { this[CORE].addColumn('at6'); return this; }
   public removeColumnAt6(): this { this[CORE].removeColumn('at6'); return this; }
   public groupByAt6(): this { this[CORE].groupBy.push('at6'); return this; }

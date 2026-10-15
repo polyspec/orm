@@ -59,9 +59,9 @@ final class ClockCell extends Model
         return $this->readColumn('at0');
     }
 
-    public function setAt0(\DateTimeInterface $v): static
+    public function setAt0(string $v): static
     {
-        return $this->writeColumn('at0', \DateTimeImmutable::createFromInterface($v));
+        return $this->writeColumn('at0', $v);
     }
 
     public function getAt3(): \DateTimeImmutable
@@ -69,9 +69,9 @@ final class ClockCell extends Model
         return $this->readColumn('at3');
     }
 
-    public function setAt3(\DateTimeInterface $v): static
+    public function setAt3(string $v): static
     {
-        return $this->writeColumn('at3', \DateTimeImmutable::createFromInterface($v));
+        return $this->writeColumn('at3', $v);
     }
 
     public function getAt6(): \DateTimeImmutable
@@ -79,9 +79,9 @@ final class ClockCell extends Model
         return $this->readColumn('at6');
     }
 
-    public function setAt6(\DateTimeInterface $v): static
+    public function setAt6(string $v): static
     {
-        return $this->writeColumn('at6', \DateTimeImmutable::createFromInterface($v));
+        return $this->writeColumn('at6', $v);
     }
 
     public function addColumnAt0(): static

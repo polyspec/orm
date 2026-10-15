@@ -380,13 +380,15 @@ func (x *TasksModel) AvgPoints() *TasksModel          { x.m.Aggregate("avg", "po
 // GetDue returns due.
 func (x *TasksModel) GetDue() *time.Time { return x.fDue }
 
-// SetDue sets due; nil stores NULL.
-func (x *TasksModel) SetDue(v *time.Time) *TasksModel {
-	x.fDue = v
+// SetDue sets due from its text form; nil stores NULL. A text that is not a time is the statement's error: Create, Update and the query builders return it, and no statement is sent.
+func (x *TasksModel) SetDue(v *string) *TasksModel {
 	if v == nil {
+		x.fDue = nil
 		x.m.SetNull("due")
-	} else {
-		x.m.Set("due", *v)
+		return x
+	}
+	if parsed, ok := x.m.SetTimeText("due", *v); ok {
+		x.fDue = &parsed
 	}
 	return x
 }

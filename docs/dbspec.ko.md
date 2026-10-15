@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 744e8b57bb06c85bb64872f11392d3852d16f12ae76f5060c21fc4139ab0ca48 -->
+<!-- source-sha256: 8f56878e45ea095251c2ff6aeef54e9923f7ce3dbc1a59fc43b1cade0d4a2ea5 -->
 # dbspec
 
 [English](dbspec.md)
@@ -345,6 +345,8 @@ client는 문서 집합으로 runtime model 하나를 만들고, 생성 코드�
 | `date` | `time.Time` | `\DateTimeImmutable` | `string` `YYYY-MM-DD` | `NaiveDate` | `str` `YYYY-MM-DD` |
 | `time(p)` | 소수 자릿수가 p인 `string` `HH:MM:SS` | `string` | `string` | `String` | `str` |
 | `datetime(p)` | UTC의 `time.Time` | UTC의 `\DateTimeImmutable` | 소수 자릿수가 p인 `string` `YYYY-MM-DD HH:MM:SS` | `NaiveDateTime` | 소수 자릿수가 p인 UTC의 `str` `YYYY-MM-DD HH:MM:SS` |
+
+생성된 `date`, `time(p)`, `datetime(p)` 컬럼의 setter는 모든 언어에서 텍스트 형태를 받는다: Go와 TypeScript는 `string`, Python은 `str`, PHP는 `string`, Rust는 `String`이다. 네이티브 날짜·시간 값은 setter가 받지 않아 문장을 실행하기 전에 타입 검사가 거부하며, 텍스트는 setter 실행 시 검사되고 바인드 계층이 다시 검사한다.
 
 ## Diagram
 

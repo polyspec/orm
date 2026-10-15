@@ -529,8 +529,8 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
                 .set_service_seq(999)
                 .set_service_region_seq(1)
                 .set_service_member_seq(1)
-                .set_start_dt(start)
-                .set_end_dt(start)
+                .set_start_dt(txt(start))?
+                .set_end_dt(txt(start))?
                 .set_price("12.500")?
                 .set_ip("10.0.0.1")
                 .set_aes_hex_email("cycle@example.com");
@@ -575,8 +575,8 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
                 .set_service_seq(999)
                 .set_service_region_seq(1)
                 .set_service_member_seq(1)
-                .set_start_dt(start)
-                .set_end_dt(start)
+                .set_start_dt(txt(start))?
+                .set_end_dt(txt(start))?
                 .create()
                 .await?;
             let seq = created.get_seq().unwrap();
@@ -691,7 +691,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
                 let seq = created.get_seq().unwrap();
                 mask(shared, &[seq], &[]);
                 let deleted_at = chrono::NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(3, 4, 5).unwrap();
-                created = created.set_deleted_at(deleted_at);
+                created = created.set_deleted_at(txt(deleted_at))?;
                 created.update(false).await?;
                 let hidden = SoftRecord::new().get_by_seq(seq).await;
                 result.lock().unwrap().insert("hidden".into(), code_of(hidden));
@@ -730,7 +730,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
                     mask(shared, &[service.get_seq().unwrap(), record.get_seq().unwrap()], &[]);
                     if *name == "soft-join-deleted" {
                         let deleted_at = chrono::NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(3, 4, 5).unwrap();
-                        record = record.set_deleted_at(deleted_at);
+                        record = record.set_deleted_at(txt(deleted_at))?;
                         record.update(false).await?;
                     }
                 }
@@ -809,7 +809,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     run!(
         "datetime_p0_roundtrip",
         db.transaction(async || {
-            let created = TimeCell::new().connect(db).set_at(at).set_clock("10:11:12").create().await?;
+            let created = TimeCell::new().connect(db).set_at(txt(at))?.set_clock("10:11:12").create().await?;
             mask(shared, &[created.get_seq().unwrap()], &[]);
             let rows = TimeCell::new().connect(db).at(at).gets().await?;
             created.delete(false).await?;
@@ -820,7 +820,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     run!(
         "time_p3_roundtrip",
         db.transaction(async || {
-            let created = TimeCell::new().connect(db).set_at(at).set_clock("10:11:12.345000").create().await?;
+            let created = TimeCell::new().connect(db).set_at(txt(at))?.set_clock("10:11:12.345000").create().await?;
             mask(shared, &[created.get_seq().unwrap()], &[]);
             let rows = TimeCell::new().connect(db).clock("10:11:12.345").gets().await?;
             created.delete(false).await?;
@@ -904,7 +904,10 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             }
         };
     }
-    run!("datetime_precision_rejected", rejected!(TimeCell::new().connect(db).set_at(at + chrono::Duration::milliseconds(500)).set_clock("10:11:12").create()));
+    run!(
+        "datetime_precision_rejected",
+        rejected!(TimeCell::new().connect(db).set_at(txt(at + chrono::Duration::milliseconds(500)))?.set_clock("10:11:12").create())
+    );
     run!("varchar_length_rejected", rejected!(BindCell::new().connect(db).set_label("123456789").create()));
     run!("text_nul_rejected", rejected!(BindCell::new().connect(db).set_label("nul").set_body("a\u{0}b").create()));
     run!("uuid_form_rejected", rejected!(BindCell::new().connect(db).set_label("uuid").set_token("123E4567-E89B-12D3-A456-426614174000").create()));
@@ -961,9 +964,9 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             let created = ClockCell::new()
                 .connect(db)
                 .set_label("compare")
-                .set_at0(day.and_hms_opt(12, 34, 56).unwrap())
-                .set_at3(day.and_hms_milli_opt(12, 34, 56, 999).unwrap())
-                .set_at6(day.and_hms_opt(12, 34, 56).unwrap())
+                .set_at0(txt(day.and_hms_opt(12, 34, 56).unwrap()))?
+                .set_at3(txt(day.and_hms_milli_opt(12, 34, 56, 999).unwrap()))?
+                .set_at6(txt(day.and_hms_opt(12, 34, 56).unwrap()))?
                 .create()
                 .await?;
             mask(shared, &[created.get_seq().unwrap()], &[]);
@@ -1032,4 +1035,9 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         rows.to_array()
     });
     out
+}
+
+/// The text form of a datetime column, which the date setters take (T189).
+fn txt(t: chrono::NaiveDateTime) -> String {
+    t.format("%Y-%m-%d %H:%M:%S%.f").to_string()
 }

@@ -299,8 +299,13 @@ func (x *TimeCellModel) AvgSeq() *TimeCellModel          { x.m.Aggregate("avg", 
 // GetAt returns at.
 func (x *TimeCellModel) GetAt() time.Time { return x.fAt }
 
-// SetAt sets at.
-func (x *TimeCellModel) SetAt(v time.Time) *TimeCellModel { x.fAt = v; x.m.Set("at", v); return x }
+// SetAt sets at from its text form. A text that is not a time is the statement's error: Create, Update and the query builders return it, and no statement is sent.
+func (x *TimeCellModel) SetAt(v string) *TimeCellModel {
+	if parsed, ok := x.m.SetTimeText("at", v); ok {
+		x.fAt = parsed
+	}
+	return x
+}
 
 func (x *TimeCellModel) AddColumnAt() *TimeCellModel    { x.m.AddColumn("at"); return x }
 func (x *TimeCellModel) RemoveColumnAt() *TimeCellModel { x.m.RemoveColumn("at"); return x }

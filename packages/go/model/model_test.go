@@ -93,8 +93,8 @@ func seed(t *testing.T, db *orm.DB) fixture {
 			SetServiceSeq(f.service.GetSeq()).
 			SetServiceRegionSeq(f.module.GetSeq()).
 			SetServiceMemberSeq(f.member.GetSeq()).
-			SetStartDt(start.Add(time.Duration(i) * time.Hour)).
-			SetEndDt(start.Add(48 * time.Hour)).
+			SetStartDt(start.Add(time.Duration(i) * time.Hour).Format(time.DateTime)).
+			SetEndDt(start.Add(48 * time.Hour).Format(time.DateTime)).
 			SetReadCount(int32(i * 10)).
 			SetIsClose(i%2 == 1)
 		if i < 2 {

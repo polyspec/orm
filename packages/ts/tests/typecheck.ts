@@ -56,6 +56,9 @@ export async function invalid(db: Db): Promise<void> {
   const chains: Extract<keyof Author, 'notAColumn' | 'getsByNotAColumn' | 'orderByNotAColumnAsc'>[] = [];
   // @ts-expect-error an unknown column is not a chain name
   chains.push('notAColumn');
+  // A date setter takes the text form: a native Date is not a value of the setter (T189).
+  // @ts-expect-error a native Date is not accepted by a date setter
+  void new Author().connect(db).setStartDt(new Date());
   // @ts-expect-error an unknown column is not a getsBy name
   chains.push('getsByNotAColumn');
   // @ts-expect-error an unknown column is not an orderBy name

@@ -195,9 +195,11 @@ final class MarkdownConformanceTest extends TestCase
     }
 
     /** 날짜 하나다. */
-    private static function day(string $text): DateTimeImmutable
+    /** The text form of a date, which the date setters take; the text is checked by its parse. */
+    private static function day(string $text): string
     {
-        return new DateTimeImmutable($text, new DateTimeZone('UTC'));
+        new DateTimeImmutable($text, new DateTimeZone('UTC'));
+        return $text;
     }
 
     /**

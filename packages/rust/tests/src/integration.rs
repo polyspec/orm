@@ -162,8 +162,10 @@ async fn seed(db: &Db) -> Fixture {
             .set_service_seq(service.get_seq().unwrap())
             .set_service_region_seq(module.get_seq().unwrap())
             .set_service_member_seq(member.get_seq().unwrap())
-            .set_start_dt(start() + chrono::Duration::hours(i))
-            .set_end_dt(start() + chrono::Duration::hours(48))
+            .set_start_dt(txt(start() + chrono::Duration::hours(i)))
+            .unwrap()
+            .set_end_dt(txt(start() + chrono::Duration::hours(48)))
+            .unwrap()
             .set_read_count(i as i32 * 10)
             .set_is_close(i % 2 == 1);
         if i < 2 {
@@ -635,8 +637,10 @@ async fn json_values(t: &Target) {
         .set_service_seq(f.service.get_seq().unwrap())
         .set_service_region_seq(f.authors[0].get_service_region_seq().unwrap())
         .set_service_member_seq(f.member.get_seq().unwrap())
-        .set_start_dt(start())
-        .set_end_dt(start());
+        .set_start_dt(txt(start()))
+        .unwrap()
+        .set_end_dt(txt(start()))
+        .unwrap();
     let created = match created.set_json_setting(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::parse("[]").unwrap())) {
         Ok(row) => row,
         Err(error) => panic!("set json_setting: {error}"),
@@ -748,4 +752,9 @@ async fn main() {
             drop(case);
         }
     }
+}
+
+/// The text form of a datetime column, which the date setters take (T189).
+fn txt(t: chrono::NaiveDateTime) -> String {
+    t.format("%Y-%m-%d %H:%M:%S%.f").to_string()
 }

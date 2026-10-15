@@ -392,7 +392,15 @@ abstract class Model implements \JsonSerializable
                 throw new OrmException(Code::CODEC_ENCODE, "$column does not accept SQL NULL");
             }
         }
-        $this->values[$column] = $value;
+        $stored = $value;
+        if (in_array($col['type'], ['date', 'datetime'], true) && $value !== null) {
+            if (!is_string($value)) {
+                throw new OrmException(Code::CODEC_ENCODE, "$column requires its text form");
+            }
+            // The text is checked now; the getter returns the parsed time in the connection's zone (T189).
+            $stored = self::timeValue($value, $this->conn?->zone() ?? new \DateTimeZone('UTC'));
+        }
+        $this->values[$column] = $stored;
         $sqlNull = $value === null || ($value instanceof StyledValue && $value->kind === 'sql-null');
         $this->putSet($column, $sqlNull ? ['null' => true] : ['value' => $value]);
         return $this;
@@ -1873,11 +1881,13 @@ abstract class Model implements \JsonSerializable
         $this->keyWhere($r, $keys);
         $updated = $meta['updated'];
         if ($optimistic) {
-            $version = $loaded && $updated !== '' ? self::resolved($this->row['original'][$updated] ?? null) : null;
-            if ($version === null) {
+            $raw = $loaded && $updated !== '' ? ($this->row['original'][$updated] ?? null) : null;
+            if ($raw === null) {
                 throw new OrmException(Code::CONFIG, 'update(true) requires a row loaded with its update time column');
             }
-            $r->ir['optimistic'] = ['column' => $updated, 'p' => $r->param($version)];
+            // The version goes down as the text the row was loaded with, which the bind layer takes for a datetime slot (T189).
+            $text = $raw instanceof PendingTime ? $raw->text : self::resolved($raw)->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s.u');
+            $r->ir['optimistic'] = ['column' => $updated, 'p' => $r->param($text)];
         }
         $db->writeOf($frame, $r);
         if ($loaded) {

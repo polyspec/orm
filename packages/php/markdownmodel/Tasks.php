@@ -80,9 +80,9 @@ final class Tasks extends Model
         return $this->readColumn('due');
     }
 
-    public function setDue(?\DateTimeInterface $v): static
+    public function setDue(?string $v): static
     {
-        return $this->writeColumn('due', $v === null ? null : \DateTimeImmutable::createFromInterface($v));
+        return $this->writeColumn('due', $v);
     }
 
     public function getDone(): bool

@@ -2,7 +2,6 @@
 # and Rust models do: each getter returns the type of its column, None for a null column, and each setter takes it; a
 # getter whose value has another type raises TypeError, as a typed PHP getter and a TypeScript getter do. The cases
 # read the committed bench models (polyspec.orm.models.models) through typing.get_type_hints.
-import datetime
 import typing
 import unittest
 
@@ -18,8 +17,8 @@ CASES = [
     (models.Author, "name", str, str),
     (models.Author, "description", str | None, str | None),
     (models.Author, "price", str | None, str | None),
-    (models.Author, "created_ts", str, str | datetime.date),
-    (models.Author, "display_start_dt", str | None, str | datetime.date | None),
+    (models.Author, "created_ts", str, str),
+    (models.Author, "display_start_dt", str | None, str | None),
     (models.Author, "aes_hex_email", str | None, str | None),
     (models.Author, "ip", str | None, str | None),
     (models.Author, "gz_extend", StyledValue, StyledValue),

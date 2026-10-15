@@ -223,12 +223,12 @@ func (s *served) dsn(corpus, token string) string {
 
 func ptr[T any](v T) *T { return &v }
 
-func day(s string) *time.Time {
-	d, err := time.Parse(time.DateOnly, s)
-	if err != nil {
+// day returns the text form of a date; the setter takes the text and the text is checked here.
+func day(s string) *string {
+	if _, err := time.Parse(time.DateOnly, s); err != nil {
 		panic(err)
 	}
-	return &d
+	return &s
 }
 
 // errStop는 transaction을 rollback시키려고 callback이 돌려주는 오류다.

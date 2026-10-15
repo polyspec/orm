@@ -350,8 +350,13 @@ func (x *ClockCellModel) OrderByLabelDesc(fn ...orm.Func) *ClockCellModel {
 // GetAt0 returns at0.
 func (x *ClockCellModel) GetAt0() time.Time { return x.fAt0 }
 
-// SetAt0 sets at0.
-func (x *ClockCellModel) SetAt0(v time.Time) *ClockCellModel { x.fAt0 = v; x.m.Set("at0", v); return x }
+// SetAt0 sets at0 from its text form. A text that is not a time is the statement's error: Create, Update and the query builders return it, and no statement is sent.
+func (x *ClockCellModel) SetAt0(v string) *ClockCellModel {
+	if parsed, ok := x.m.SetTimeText("at0", v); ok {
+		x.fAt0 = parsed
+	}
+	return x
+}
 
 func (x *ClockCellModel) AddColumnAt0() *ClockCellModel    { x.m.AddColumn("at0"); return x }
 func (x *ClockCellModel) RemoveColumnAt0() *ClockCellModel { x.m.RemoveColumn("at0"); return x }
@@ -369,8 +374,13 @@ func (x *ClockCellModel) OrderByAt0Desc(fn ...orm.Func) *ClockCellModel {
 // GetAt3 returns at3.
 func (x *ClockCellModel) GetAt3() time.Time { return x.fAt3 }
 
-// SetAt3 sets at3.
-func (x *ClockCellModel) SetAt3(v time.Time) *ClockCellModel { x.fAt3 = v; x.m.Set("at3", v); return x }
+// SetAt3 sets at3 from its text form. A text that is not a time is the statement's error: Create, Update and the query builders return it, and no statement is sent.
+func (x *ClockCellModel) SetAt3(v string) *ClockCellModel {
+	if parsed, ok := x.m.SetTimeText("at3", v); ok {
+		x.fAt3 = parsed
+	}
+	return x
+}
 
 func (x *ClockCellModel) AddColumnAt3() *ClockCellModel    { x.m.AddColumn("at3"); return x }
 func (x *ClockCellModel) RemoveColumnAt3() *ClockCellModel { x.m.RemoveColumn("at3"); return x }
@@ -388,8 +398,13 @@ func (x *ClockCellModel) OrderByAt3Desc(fn ...orm.Func) *ClockCellModel {
 // GetAt6 returns at6.
 func (x *ClockCellModel) GetAt6() time.Time { return x.fAt6 }
 
-// SetAt6 sets at6.
-func (x *ClockCellModel) SetAt6(v time.Time) *ClockCellModel { x.fAt6 = v; x.m.Set("at6", v); return x }
+// SetAt6 sets at6 from its text form. A text that is not a time is the statement's error: Create, Update and the query builders return it, and no statement is sent.
+func (x *ClockCellModel) SetAt6(v string) *ClockCellModel {
+	if parsed, ok := x.m.SetTimeText("at6", v); ok {
+		x.fAt6 = parsed
+	}
+	return x
+}
 
 func (x *ClockCellModel) AddColumnAt6() *ClockCellModel    { x.m.AddColumn("at6"); return x }
 func (x *ClockCellModel) RemoveColumnAt6() *ClockCellModel { x.m.RemoveColumn("at6"); return x }

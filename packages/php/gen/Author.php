@@ -100,9 +100,9 @@ final class Author extends Model
         return $this->readColumn('created_ts');
     }
 
-    public function setCreatedTs(\DateTimeInterface $v): static
+    public function setCreatedTs(string $v): static
     {
-        return $this->writeColumn('created_ts', \DateTimeImmutable::createFromInterface($v));
+        return $this->writeColumn('created_ts', $v);
     }
 
     public function getUpdatedTs(): \DateTimeImmutable
@@ -110,9 +110,9 @@ final class Author extends Model
         return $this->readColumn('updated_ts');
     }
 
-    public function setUpdatedTs(\DateTimeInterface $v): static
+    public function setUpdatedTs(string $v): static
     {
-        return $this->writeColumn('updated_ts', \DateTimeImmutable::createFromInterface($v));
+        return $this->writeColumn('updated_ts', $v);
     }
 
     public function getIsClose(): bool
@@ -140,9 +140,9 @@ final class Author extends Model
         return $this->readColumn('display_start_dt');
     }
 
-    public function setDisplayStartDt(?\DateTimeInterface $v): static
+    public function setDisplayStartDt(?string $v): static
     {
-        return $this->writeColumn('display_start_dt', $v === null ? null : \DateTimeImmutable::createFromInterface($v));
+        return $this->writeColumn('display_start_dt', $v);
     }
 
     public function getDisplayEndDt(): ?\DateTimeImmutable
@@ -150,9 +150,9 @@ final class Author extends Model
         return $this->readColumn('display_end_dt');
     }
 
-    public function setDisplayEndDt(?\DateTimeInterface $v): static
+    public function setDisplayEndDt(?string $v): static
     {
-        return $this->writeColumn('display_end_dt', $v === null ? null : \DateTimeImmutable::createFromInterface($v));
+        return $this->writeColumn('display_end_dt', $v);
     }
 
     public function getIsAllday(): bool
@@ -260,9 +260,9 @@ final class Author extends Model
         return $this->readColumn('start_dt');
     }
 
-    public function setStartDt(\DateTimeInterface $v): static
+    public function setStartDt(string $v): static
     {
-        return $this->writeColumn('start_dt', \DateTimeImmutable::createFromInterface($v));
+        return $this->writeColumn('start_dt', $v);
     }
 
     public function getEndDt(): \DateTimeImmutable
@@ -270,9 +270,9 @@ final class Author extends Model
         return $this->readColumn('end_dt');
     }
 
-    public function setEndDt(\DateTimeInterface $v): static
+    public function setEndDt(string $v): static
     {
-        return $this->writeColumn('end_dt', \DateTimeImmutable::createFromInterface($v));
+        return $this->writeColumn('end_dt', $v);
     }
 
     public function getUuid(): ?string
