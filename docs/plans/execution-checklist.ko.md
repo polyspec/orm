@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 1c7c7dba02cb4762c1b0e3289bc1f31930f5b501d21085f317704b2454409f6d -->
+<!-- source-sha256: d96b05667575035ceb643d84bc1fc0d7671ae225c7c5db0823fb143ea8dc2be8 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1185,6 +1185,7 @@
     Evidence: interface-check가 위의 want/got 줄로 실패했다. Connection을 export하고 그 symbol 둘(과 checker가 계산한 python snapshot hash)을 기록하자 interface-check, lint-python, python-unit-check, repository 검사가 통과한다.
   - [o] T181-3 mise lock sidecar의 owner를 선언한다 (T181-1에 이어). 원인: T181-1이 .mise/locks/pypi-vulture/2.16/uv.lock을 owner 없이 추적해 main에서 feature-unit-check/owners가 실패했다("every tracked file selects a behaviour test or declares its scope"). 완료 조건: mise.lock을 검증하는 kit-check가 .mise/locks/**를 owner로 갖고 owners 검사가 통과한다.
     Evidence: owners 검사가 그 경로 하나를 finding으로 적었다. contracts/check-inputs.json의 kit-check input에 .mise/locks/**를 넣자 통과하고, kit-check, layout-check, repository 검사도 통과한다.
+- [!] T182 PHP extension에 protocol 전체를 구현한다. 원인: packages/php-ext는 dbspec parser와 emitter(parse.c, emit.c)만 구현한다. IR 검증기, message encoder, planner, 실행기가 없어 planner, bind, conformance vector를 하나도 실행하지 않고, 다른 구현은 모두 실행한다(T79, T81, T91, T92에서 발견). owner 판정(2026-10-15): extension은 구현이 중단된 것이며 명세 전체를 구현해야 한다. 지금 병렬로 진행하면 열린 항목의 완료가 늦어지므로 orm 안정 release 뒤에 시작한다. 완료 조건: extension이 다른 다섯 구현과 함께 모든 공유 vector(planner, bind, MySQL, PostgreSQL, SQLite의 conformance)를 통과하고, parity가 모든 query unit에 그것을 포함한다. Retry: orm 안정 release가 나오면 시작한다.
 - [o] T156 모든 생성기가 모든 key의 모든 prefix마다 유형 있는 메서드를 선언한다. 원인: scan한 소스가 호출하는 메서드만 생성되어, 어떤 소스도 호출하지 않는 key prefix에는 메서드가 없었다(hyper U-97). 완료 조건: Go, Rust, TypeScript model이 primary key, unique key, index의 모든 prefix마다 메서드를 선언하고, Python은 같은 이름을 실행 시점에 해석하며, symbol 기록과 docs/usage.md를 갱신한다.
   - [o] T156-1 T156 이후 orm main CI를 다시 green으로 만든다 (T156에 이어). 원인: run 38502539388이 실패했다. Python key-prefix 테스트가 PYTHONPATH를 바꾸고 지워진 packages/orm-python/bin/orm-gen을 실행했고, Go와 Rust key-prefix 테스트가 testcase를 시작하지 않았으며, generator/gen_go_key_prefix_test.go가 어떤 feature에도 속하지 않았고, src/models/markdown_fixture에 key-prefix 메서드가 없었다. 완료 조건: 각각을 고치고 그 소유 검사가 통과한다.
   - [o] T156-2 Go markdown model을 다시 생성한다 (T156에 이어). 원인: run 38504701356이 go-markdown-model-generated에서 실패했다. packages/orm-go/markdownmodel에 key-prefix 메서드가 없었다. 완료 조건: go generate가 폴더를 바꾸지 않는다.
