@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0b9b9ae0ebc5cbd04fd9b62650980340d9617ae153f122d4d78a4fe7ff411b74 -->
+<!-- source-sha256: 0b997df9d846ecb493958d9227ce53e0ff8c4c7727f0bb72d440d8d55e7ef0e4 -->
 # 변경 이력
 
 ## Unreleased
 
+- conformance vector가 모든 database에서 scalar column subquery를 고정한다. (#T84-1)
 - conformance vector가 모든 database에서 오름차순과 내림차순 read의 NULL 순서를 고정한다. (#T82-1)
 - Go bind vector test가 deadline이 있는 case로 보고한다. (#T91-1)
 - TypeScript symbol 기록이 CompositeAccount의 contains method를 담는다. (#T79-1-1)
