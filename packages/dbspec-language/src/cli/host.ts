@@ -17,7 +17,7 @@ export const nodeSetHost: SetHost = Object.freeze({
       stat = lstatSync(path);
     } catch (thrown) {
       // No entry is there: the path or one of its directories does not exist, or a component is not a directory.
-      const code = (thrown as NodeJS.ErrnoException).code;
+      const code = thrown instanceof Error && 'code' in thrown ? thrown.code : undefined;
       if (code === 'ENOENT' || code === 'ENOTDIR') return null;
       throw thrown;
     }

@@ -193,8 +193,7 @@ function examinePath(host: SetHost, entry: DbspecSetPath, prefix: string): Resol
   const fileError = (detail: string): ResolveError => error('set.file', entry.path, `${entry.path}: ${detail}`);
   let parent = rootOf(prefix);
   let current = prefix;
-  for (let i = 0; i < segments.length; i++) {
-    const segment = segments[i]!;
+  for (const [i, segment] of segments.entries()) {
     current += (i === 0 ? '' : '/') + segment;
     const last = i === segments.length - 1;
     if (segment !== '..') {
@@ -267,9 +266,11 @@ function readListed(host: SetHost, owner: Owner): { files: ListedFile[] } | { er
  * diagnostic of a header that names none.
  */
 function headerName(text: string, path: string): string | SetFileDiagnostic {
-  const parsed = parseDbspecSet([text], [])[0]!;
+  const [parsed] = parseDbspecSet([text], []);
+  if (parsed === undefined) throw new Error(`${path}: the set parser returned no document for one text`);
   if (parsed.name !== '') return parsed.name;
-  const d = parsed.diagnostics.find(x => x.rule === 'header') ?? parsed.diagnostics[0]!;
+  const d = parsed.diagnostics.find(x => x.rule === 'header') ?? parsed.diagnostics[0];
+  if (d === undefined) throw new Error(`${path}: a header that names no document has no diagnostic`);
   return Object.freeze({ path, rule: d.rule, line: d.line, column: d.column, message: d.message });
 }
 
@@ -312,8 +313,11 @@ function setOf(files: readonly ListedFile[]): { set: Readonly<Record<string, str
   return { set: Object.freeze(set), diagnostics };
 }
 
+/** The empty list of a result that has no entries, typed as the empty tuple of the result types. */
+const NONE: readonly [] = Object.freeze([]);
+
 function failure(setFile: string | null, errors: readonly ResolveError[]): ResolvedSet {
-  return Object.freeze({ setFile, set: null, diagnostics: Object.freeze([]) as readonly [], errors: Object.freeze([...errors]) });
+  return Object.freeze({ setFile, set: null, diagnostics: NONE, errors: Object.freeze([...errors]) });
 }
 
 /**
@@ -358,13 +362,15 @@ export function resolveSet(path: string, host: SetHost): ResolvedSet {
   if (owner !== undefined) {
     const listed = readListed(host, owner);
     if ('errors' in listed) errors.push(...listed.errors);
+    else if (errors.length === 0) {
+      const { set, diagnostics } = setOf(listed.files);
+      return Object.freeze({ setFile: owner.setFile, set, diagnostics: Object.freeze(diagnostics), errors: NONE });
+    }
     if (owners.length > 1) {
       errors.push(error('set.owner', path, `${path} is in the documents of ${owners.length} set files: ${owners.map(o => o.setFile).join(' and ')}`));
     }
-    if (errors.length > 0) return failure(owner.setFile, errors);
-    const { set, diagnostics } = setOf((listed as { files: ListedFile[] }).files);
-    return Object.freeze({ setFile: owner.setFile, set, diagnostics: Object.freeze(diagnostics), errors: Object.freeze([]) as readonly [] });
+    return failure(owner.setFile, errors);
   }
   if (errors.length > 0) return failure(null, errors);
-  return Object.freeze({ setFile: null, set: Object.freeze({}), diagnostics: Object.freeze([]), errors: Object.freeze([]) as readonly [] });
+  return Object.freeze({ setFile: null, set: Object.freeze({}), diagnostics: Object.freeze([]), errors: NONE });
 }
