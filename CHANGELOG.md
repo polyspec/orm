@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The committed Go models hold the service relation of a service region. (#T85-1)
 - The Rust value test asserts the time rule of T92. (#T92-2)
 - Go matches a bool if_parent by the column logical type, and a conformance vector pins flattened relations. (#T85)
 - A conformance vector pins the scalar column subquery on every database. (#T84-1)
