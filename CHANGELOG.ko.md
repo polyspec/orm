@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a2f942c47a8d81472aa11e982673b3bbc28571f4e18feea6e9945f38b49bd2bb -->
+<!-- source-sha256: 6a48c78aaa81f9ae76eb26bdcba8d5c205c28e057b004ced58ead51ab493ccac -->
 # 변경 이력
 
 ## Unreleased
 
+- repository 검사가 workflow의 run text와 Makefile recipe를 줄이나 pattern이 아니라 shell 명령으로 읽는다. (#T137-1-4-2-1)
 - Rust show-create vector가 공개 catalog 경로로 실행되고, 각 case는 id로 이름 붙은 trial이다. (#T148-2-1)
 ## 0.0.18
 
