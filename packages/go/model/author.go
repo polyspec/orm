@@ -1957,6 +1957,11 @@ func (x *AuthorModel) BetweenReadCount[T0 argIntBetween](v0 T0) *AuthorModel {
 	return x
 }
 
+func (x *AuthorModel) DescriptionNeName[T0 hasName](v0 T0) *AuthorModel {
+	x.m.Where("", chainAuthorDescriptionNeName, v0)
+	return x
+}
+
 func (x *AuthorModel) EmailBlindIndex[T0 argStringEqNull](v0 T0) *AuthorModel {
 	x.m.Where("", chainAuthorEmailBlindIndex, v0)
 	return x
@@ -2010,6 +2015,16 @@ func (x *AuthorModel) IsDisplay[T0 argBoolEq](v0 T0) *AuthorModel {
 	return x
 }
 
+func (x *AuthorModel) JoinNameWithSeq[C hasSeq](child C) *AuthorModel {
+	x.m.Join("inner", "name", "seq", child)
+	return x
+}
+
+func (x *AuthorModel) JoinReadCountWithSeq[C hasSeq](child C) *AuthorModel {
+	x.m.Join("inner", "read_count", "seq", child)
+	return x
+}
+
 func (x *AuthorModel) JoinServiceMemberSeqWithSeq[C hasSeq](child C) *AuthorModel {
 	x.m.Join("inner", "service_member_seq", "seq", child)
 	return x
@@ -2035,6 +2050,11 @@ func (x *AuthorModel) LeftJoinUserSeqWithSeq[C hasSeq](child C) *AuthorModel {
 	return x
 }
 
+func (x *AuthorModel) LikeCount[T0 argIntEq](v0 T0) *AuthorModel {
+	x.m.Where("", chainAuthorLikeCount, v0)
+	return x
+}
+
 func (x *AuthorModel) LtReadCount[T0 argIntCmp](v0 T0) *AuthorModel {
 	x.m.Where("", chainAuthorLtReadCount, v0)
 	return x
@@ -2044,6 +2064,11 @@ func (x *AuthorModel) MatchSeqWithUserSeq() *AuthorModel { x.m.Match("seq", "use
 
 func (x *AuthorModel) Name[T0 argStringEq](v0 T0) *AuthorModel {
 	x.m.Where("", chainAuthorName, v0)
+	return x
+}
+
+func (x *AuthorModel) NameEqSeq[T0 hasSeq](v0 T0) *AuthorModel {
+	x.m.Where("", chainAuthorNameEqSeq, v0)
 	return x
 }
 
@@ -2080,6 +2105,11 @@ func (x *AuthorModel) PhotoUrl[T0 argStringEqNull](v0 T0) *AuthorModel {
 	return x
 }
 
+func (x *AuthorModel) PriceEqSeq[T0 hasSeq](v0 T0) *AuthorModel {
+	x.m.Where("", chainAuthorPriceEqSeq, v0)
+	return x
+}
+
 func (x *AuthorModel) ReadCount[T0 argIntEq](v0 T0) *AuthorModel {
 	x.m.Where("", chainAuthorReadCount, v0)
 	return x
@@ -2087,6 +2117,11 @@ func (x *AuthorModel) ReadCount[T0 argIntEq](v0 T0) *AuthorModel {
 
 func (x *AuthorModel) ReadCountGtSeq[T0 hasSeq](v0 T0) *AuthorModel {
 	x.m.Where("", chainAuthorReadCountGtSeq, v0)
+	return x
+}
+
+func (x *AuthorModel) ReadCountLtSeq[T0 hasSeq](v0 T0) *AuthorModel {
+	x.m.Where("", chainAuthorReadCountLtSeq, v0)
 	return x
 }
 
@@ -2173,6 +2208,8 @@ var chainAuthorAndUuid = []orm.ChainKey{{Column: "uuid"}}
 
 var chainAuthorBetweenReadCount = []orm.ChainKey{{Op: "between", Column: "read_count"}}
 
+var chainAuthorDescriptionNeName = []orm.ChainKey{{Op: "ne", Column: "description", Compare: "name"}}
+
 var chainAuthorEmailBlindIndex = []orm.ChainKey{{Column: "email_blind_index"}}
 
 var chainAuthorGeReadCount = []orm.ChainKey{{Op: "ge", Column: "read_count"}}
@@ -2197,9 +2234,13 @@ var chainAuthorIsClose = []orm.ChainKey{{Column: "is_close"}}
 
 var chainAuthorIsDisplay = []orm.ChainKey{{Column: "is_display"}}
 
+var chainAuthorLikeCount = []orm.ChainKey{{Column: "like_count"}}
+
 var chainAuthorLtReadCount = []orm.ChainKey{{Op: "lt", Column: "read_count"}}
 
 var chainAuthorName = []orm.ChainKey{{Column: "name"}}
+
+var chainAuthorNameEqSeq = []orm.ChainKey{{Column: "name", Compare: "seq"}}
 
 var chainAuthorNePhotoUrl = []orm.ChainKey{{Op: "ne", Column: "photo_url"}}
 
@@ -2211,9 +2252,13 @@ var chainAuthorPhoneBlindIndex = []orm.ChainKey{{Column: "phone_blind_index"}}
 
 var chainAuthorPhotoUrl = []orm.ChainKey{{Column: "photo_url"}}
 
+var chainAuthorPriceEqSeq = []orm.ChainKey{{Column: "price", Compare: "seq"}}
+
 var chainAuthorReadCount = []orm.ChainKey{{Column: "read_count"}}
 
 var chainAuthorReadCountGtSeq = []orm.ChainKey{{Op: "gt", Column: "read_count", Compare: "seq"}}
+
+var chainAuthorReadCountLtSeq = []orm.ChainKey{{Op: "lt", Column: "read_count", Compare: "seq"}}
 
 var chainAuthorSeq = []orm.ChainKey{{Column: "seq"}}
 

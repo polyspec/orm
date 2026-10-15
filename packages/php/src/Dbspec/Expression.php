@@ -22,7 +22,6 @@ final class Expression
     private const ORDERINGS = ['<' => true, '<=' => true, '>' => true, '>=' => true];
     private const ARITHMETIC = ['+' => true, '-' => true, '*' => true, '/' => true];
     private const KEYWORDS = ['and' => true, 'or' => true, 'not' => true, 'in' => true, 'between' => true, 'is' => true, 'null' => true, 'true' => true, 'false' => true];
-    private const TEXT = ['varchar' => true, 'text' => true];
 
     private int $at = 0;
     /** @var array<int, string> index in the line => class of the tokens the predicate read (docs/dbspec.md "Syntax analysis") */
@@ -399,17 +398,14 @@ final class Expression
         $this->literals[$literal[3]] = $canonical;
     }
 
+    /** Whether two column types meet, by the table that the IR validator also reads. */
     private static function columnsMeet(ColumnType $a, ColumnType $b): bool
     {
-        if ($a->isInteger() || $b->isInteger()) {
-            return $a->isInteger() && $b->isInteger();
-        }
-        if (isset(self::TEXT[$a->name]) || isset(self::TEXT[$b->name])) {
-            return isset(self::TEXT[$a->name]) && isset(self::TEXT[$b->name]);
-        }
-        return match ($a->name) {
-            'decimal' => $b->name === 'decimal' && $a->parameters[1] === $b->parameters[1],
-            default => $a->name === $b->name && $a->parameters === $b->parameters,
-        };
+        return self::meetKind($a) === self::meetKind($b);
+    }
+
+    private static function meetKind(ColumnType $t): string
+    {
+        return Meet::kind($t->name, $t->name === 'decimal' ? $t->parameters[1] : 0, in_array($t->name, ['decimal', 'time', 'datetime'], true) ? $t->parameters[0] : 0);
     }
 }

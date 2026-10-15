@@ -601,6 +601,7 @@ export class Author extends Model {
   declare andUuid: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare betweenReadCount: (v0: readonly [number, number]) => this;
   declare betweenStartDt: (v0: readonly [string | Date, string | Date]) => this;
+  declare descriptionNeName: (v0: Author | User | Service | ServiceRegion | CompositeAccount | SoftRecord | Account | Project) => this;
   declare emailBlindIndex: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare geReadCount: (v0: number | ValueFunction) => this;
   declare getByName: (v0: string | readonly (string)[] | ValueFunction | Model) => Promise<this>;
@@ -613,14 +614,18 @@ export class Author extends Model {
   declare gtStartDt: (...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) => this;
   declare isClose: (v0: boolean | readonly (boolean)[] | ValueFunction | Model) => this;
   declare isDisplay: (v0: boolean | readonly (boolean)[] | ValueFunction | Model) => this;
+  declare joinNameWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | UpsertCell | UuidCell | BindCell) => this;
+  declare joinReadCountWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | UpsertCell | UuidCell | BindCell) => this;
   declare joinServiceMemberSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | UpsertCell | UuidCell | BindCell) => this;
   declare joinServiceSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | UpsertCell | UuidCell | BindCell) => this;
   declare joinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | UpsertCell | UuidCell | BindCell) => this;
   declare leftJoinServiceRegionSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | UpsertCell | UuidCell | BindCell) => this;
   declare leftJoinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | UpsertCell | UuidCell | BindCell) => this;
+  declare likeCount: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare ltReadCount: (v0: number | ValueFunction) => this;
   declare matchSeqWithUserSeq: () => this;
   declare name: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
+  declare nameEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | UpsertCell | UuidCell | BindCell) => this;
   declare nePhotoUrl: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare newLabel: (value: unknown) => this;
   declare orGtReadCount: (v0: number | ValueFunction) => this;
@@ -628,8 +633,10 @@ export class Author extends Model {
   declare orderByReadCountDescAndSeqAsc: () => this;
   declare phoneBlindIndex: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare photoUrl: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
+  declare priceEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | UpsertCell | UuidCell | BindCell) => this;
   declare readCount: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare readCountGtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | UpsertCell | UuidCell | BindCell) => this;
+  declare readCountLtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | UpsertCell | UuidCell | BindCell) => this;
   declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare serviceMemberSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare serviceRegionSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
@@ -748,6 +755,8 @@ export class Service extends Model {
   declare gtSeq: (v0: number | ValueFunction) => this;
   declare joinNameWithName: (child: Author | User | Service | ServiceRegion | CompositeAccount | SoftRecord | Account | Project) => this;
   declare leftJoinNameWithName: (child: Author | User | Service | ServiceRegion | CompositeAccount | SoftRecord | Account | Project) => this;
+  declare matchLikeCountWithSeq: () => this;
+  declare matchNameWithSeq: () => this;
   declare matchServiceSeqWithSeq: () => this;
   declare name: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
   declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
@@ -979,6 +988,8 @@ export class CompositeAccount extends Model {
   declare getReadTotal: <T = unknown>() => T;
   /** Returns the value or relation result named Record. */
   declare getRecord: <T = unknown>() => T;
+  /** Returns the value or relation result named Seq. */
+  declare getSeq: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
@@ -1048,6 +1059,8 @@ export class CompositeMembership extends Model {
   declare getReadTotal: <T = unknown>() => T;
   /** Returns the value or relation result named Record. */
   declare getRecord: <T = unknown>() => T;
+  /** Returns the value or relation result named Seq. */
+  declare getSeq: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
@@ -1274,6 +1287,8 @@ export class AccountProject extends Model {
   declare getReadTotal: <T = unknown>() => T;
   /** Returns the value or relation result named Record. */
   declare getRecord: <T = unknown>() => T;
+  /** Returns the value or relation result named Seq. */
+  declare getSeq: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */

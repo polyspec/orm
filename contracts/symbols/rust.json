@@ -2624,6 +2624,7 @@
   "packages/rust/schema/src/dbspec/model.rs::Table#wire": "{\"checks\":\"list\u003cCheck\u003e\",\"closing\":\"list\u003ctext\u003e\",\"columns\":\"list\u003cColumn\u003e\",\"comments\":\"list\u003ctext\u003e\",\"foreign_keys\":\"list\u003cForeignKey\u003e\",\"indexes\":\"list\u003cIndex\u003e\",\"name\":\"Name\",\"primary\":\"list\u003cPrimaryKey\u003e\",\"settings\":\"Settings\",\"uniques\":\"list\u003cUnique\u003e\"}",
   "packages/rust/schema/src/dbspec/model.rs::Table::column": "pub fn column (\u0026 self , name : \u0026 str) -\u003e Option \u003c \u0026 Column \u003e",
   "packages/rust/schema/src/dbspec/model.rs::Type": "pub enum Type  { I16 , I32 , I64 , Bool , Decimal (u8 , u8) , F64 , Varchar (u16) , Text , Bytes , Uuid , Date , Time (u8) , DateTime (u8) , }",
+  "packages/rust/schema/src/dbspec/model.rs::Type::meet_kind": "pub fn meet_kind (\u0026 self) -\u003e String",
   "packages/rust/schema/src/dbspec/model.rs::Type::name": "pub fn name (\u0026 self) -\u003e \u0026 'static str",
   "packages/rust/schema/src/dbspec/model.rs::Type::render": "pub fn render (\u0026 self) -\u003e String",
   "packages/rust/schema/src/dbspec/model.rs::Unique": "pub struct Unique  { pub comments : Vec \u003c String \u003e , pub name : Name , pub columns : Vec \u003c Name \u003e , }",

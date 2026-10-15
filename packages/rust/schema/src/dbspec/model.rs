@@ -79,6 +79,22 @@ pub enum Type {
 }
 
 impl Type {
+    /// The class of a column type in the one table of which two columns compare alike on the three databases: two
+    /// columns meet when their kinds are equal. Integers share a class and so do varchar and text; a decimal carries its
+    /// scale and a time or datetime its precision; every other type is its own class. dbspec's check validation and the
+    /// IR validator of polyspec-orm both read it, so the two cannot drift (docs/dbspec.md "Checks").
+    #[doc(hidden)]
+    pub fn meet_kind(&self) -> String {
+        match self {
+            Type::I16 | Type::I32 | Type::I64 => "integer".into(),
+            Type::Varchar(_) | Type::Text => "string".into(),
+            Type::Decimal(_, scale) => format!("decimal scale {scale}"),
+            Type::Time(p) => format!("time precision {p}"),
+            Type::DateTime(p) => format!("datetime precision {p}"),
+            other => other.name().into(),
+        }
+    }
+
     /// parameter를 뺀 type 이름: `decimal(13,2)`는 `decimal`이다.
     pub fn name(&self) -> &'static str {
         match self {

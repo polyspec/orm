@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm;
 
+use Polyspec\Orm\Dbspec\Meet;
+
 /** 요청(docs/protocol.md)을 runtime model에 대해 검증한다. */
 final class Validator
 {
@@ -596,27 +598,10 @@ final class Validator
         return $candidates[0]['columns'];
     }
 
-    /**
-     * Whether two columns compare alike on the three databases, as dbspec's check operands do: integers with integers,
-     * decimals of one scale, f64, bool, varchar and text together, uuid, date, time or datetime of one precision, and
-     * bytes with bytes.
-     */
+    /** Whether two columns compare alike on the three databases, by the table that dbspec's check operands also read. */
     private static function meets(array $a, array $b): bool
     {
-        $integer = static fn (string $t): bool => $t === 'i16' || $t === 'i32' || $t === 'i64';
-        if ($integer($a['type'])) {
-            return $integer($b['type']);
-        }
-        if ($a['type'] === 'decimal') {
-            return $b['type'] === 'decimal' && $a['scale'] === $b['scale'];
-        }
-        if ($a['type'] === 'varchar' || $a['type'] === 'text') {
-            return $b['type'] === 'varchar' || $b['type'] === 'text';
-        }
-        if ($a['type'] === 'time' || $a['type'] === 'datetime') {
-            return $b['type'] === $a['type'] && $a['precision'] === $b['precision'];
-        }
-        return $a['type'] === $b['type'];
+        return Meet::kind($a['type'], $a['scale'] ?? 0, $a['precision'] ?? 0) === Meet::kind($b['type'], $b['scale'] ?? 0, $b['precision'] ?? 0);
     }
 
     /**

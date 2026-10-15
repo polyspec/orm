@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: ef8bd54ed9fd66dd976ab67e6726a8088327d1f6441f9ee3d477e0750c33f3ef -->
+<!-- source-sha256: 744e8b57bb06c85bb64872f11392d3852d16f12ae76f5060c21fc4139ab0ca48 -->
 # dbspec
 
 [English](dbspec.md)
@@ -203,6 +203,9 @@ operand는 같은 table의 column이나 literal이다. 세 database는 양쪽 �
 | `date` | `date` column |
 | `time(p)` | p가 같은 `time` column |
 | `datetime(p)` | p가 같은 `datetime` column |
+| `bytes` | `bytes` column |
+
+각 구현은 이 표를 한 곳에만 지니며, IR validator도 column 비교, subquery, join, relation의 두 column에 이 표를 읽으므로([protocol](protocol.ko.md)) 둘은 어긋나지 않는다. check는 type을 비교하기 전에 `bytes` column을 거부하므로 `bytes` 행은 요청에만 쓰인다. conformance vector `column_pairs`는 만나는 쌍과 만나지 않는 쌍을 세 database에서 실행한다.
 
 `bool` operand에는 `=`, `<>`, `in`만 쓴다.
 

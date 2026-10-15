@@ -2811,6 +2811,93 @@
       }
     },
     {
+      "name": "column_pairs",
+      "chain": "readCountLtSeq(joined service), descriptionNeName(joined service), likeCount(user subquery), joinReadCountWithSeq, relation matchLikeCountWithSeq; nameEqSeq, priceEqSeq, name(user subquery), joinNameWithSeq, relation matchNameWithSeq refused",
+      "expect": {
+        "result": {
+          "col_decimal_i64": "OPERATOR_NOT_ALLOWED",
+          "col_i32_i64": 10000,
+          "col_text_varchar": 100000,
+          "col_varchar_i64": "OPERATOR_NOT_ALLOWED",
+          "in_i32_i64": 98970,
+          "in_varchar_i64": "OPERATOR_NOT_ALLOWED",
+          "join_i32_i64": 10100,
+          "join_varchar_i64": "OPERATOR_NOT_ALLOWED",
+          "relation_i32_i64": 2,
+          "relation_varchar_i64": "OPERATOR_NOT_ALLOWED"
+        },
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` INNER JOIN `service` AS `service_model` ON `a`.`service_seq` = `service_model`.`seq` WHERE `a`.`read_count` \u003c `service_model`.`seq`",
+            "tables": [
+              "author",
+              "service"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` INNER JOIN `service` AS `service_model` ON `a`.`service_seq` = `service_model`.`seq` WHERE `a`.`description` != `service_model`.`name`",
+            "tables": [
+              "author",
+              "service"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`like_count` IN (SELECT `s1`.`seq` FROM `user` AS `s1`)",
+            "tables": [
+              "author",
+              "user"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` INNER JOIN `service` AS `service_model` ON `a`.`read_count` = `service_model`.`seq`",
+            "tables": [
+              "author",
+              "service"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` ORDER BY `a`.`seq` ASC LIMIT 0, 2",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              1,
+              2
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `service` AS `a` WHERE `a`.`seq` IN (?, ?)",
+            "tables": [
+              "service"
+            ],
+            "transaction": null
+          }
+        ]
+      }
+    },
+    {
       "name": "aes_status",
       "chain": "utils()-\u003eaes()-\u003estatus(model, keyring)",
       "expect": {

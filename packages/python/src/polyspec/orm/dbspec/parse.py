@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
 from polyspec.orm.dbspec.emit import CANONICAL, emit_document, type_text
 from polyspec.orm.dbspec.names import generated_names
+from polyspec.orm.meet import meet_kind
 from polyspec.orm.dbspec.model import (
     DbspecAnalysis,
     DbspecCheck,
@@ -326,17 +327,10 @@ def default_of(t: DbspecType, tok: Tk):
     return "a bytes column has no default"
 
 
-def meet_kind(t: DbspecType) -> str:
-    """check의 피연산자 종류: 두 column은 종류가 같아야 만난다."""
-    if t.kind in ("i16", "i32", "i64"):
-        return "integer"
-    if t.kind in ("varchar", "text"):
-        return "string"
-    if t.kind == "decimal":
-        return f"decimal scale {t.scale}"
-    if t.kind in ("time", "datetime"):
-        return f"{t.kind} precision {t.precision}"
-    return t.kind
+def meet_kind_of(t: DbspecType) -> str:
+    """The kind of value a column holds in a check, by the table that the IR validator also reads: two columns meet
+    when their kinds are equal."""
+    return meet_kind(t.kind, t.scale or 0, t.precision or 0)
 
 
 # 예약어는 이름이 아니다 (docs/dbspec.md "Names").
@@ -2554,7 +2548,7 @@ class DocumentParser:
                 if (
                     left.type is not None
                     and right.type is not None
-                    and meet_kind(left.type) != meet_kind(right.type)
+                    and meet_kind_of(left.type) != meet_kind_of(right.type)
                 ):
                     issue(
                         right.tok,

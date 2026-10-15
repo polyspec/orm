@@ -1,6 +1,10 @@
 package dbspec
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/polyspec/orm/packages/go/engine/internal/meet"
+)
 
 // checkTyper validates the types of one check predicate of table t and
 // rewrites its literals into the canonical default form of the column they
@@ -69,20 +73,10 @@ func checkLiteral(typ Type, v token) (string, bool) {
 	return canonicalDefault(typ, v)
 }
 
-// meets reports whether two column types compare alike on the three
-// databases.
+// meets reports whether two column types compare alike on the three databases, by the table that the IR validator
+// also reads (meet.Kind).
 func meets(a, b Type) bool {
-	switch {
-	case isInteger(a):
-		return isInteger(b)
-	case a.Kind == TypeDecimal:
-		return b.Kind == TypeDecimal && a.Scale == b.Scale
-	case a.Kind == TypeVarchar || a.Kind == TypeText:
-		return b.Kind == TypeVarchar || b.Kind == TypeText
-	case a.Kind == TypeTime || a.Kind == TypeDatetime:
-		return b.Kind == a.Kind && a.Precision == b.Precision
-	}
-	return a.Kind == b.Kind
+	return meet.Kind(string(a.Kind), a.Scale, a.Precision) == meet.Kind(string(b.Kind), b.Scale, b.Precision)
 }
 
 var orderings = map[string]bool{"<": true, "<=": true, ">": true, ">=": true}

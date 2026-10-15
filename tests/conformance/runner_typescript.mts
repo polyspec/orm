@@ -483,6 +483,27 @@ async function main() {
     if (failed !== boom) throw failed;
     return result;
   });
+  await run('column_pairs', async () => {
+    // Two compared columns meet as dbspec check operands do (docs/dbspec.md "Checks"): a comparison of two columns, a
+    // column in a subquery column, a join and a relation run when their columns meet, here i32 with i64 and text with
+    // varchar, and fail with OPERATOR_NOT_ALLOWED before any statement when they do not.
+    const result: Record<string, unknown> = {};
+    const s1 = new Service();
+    result.col_i32_i64 = await author().joinServiceSeqWithSeq(s1).readCountLtSeq(s1).getCount();
+    const s2 = new Service();
+    result.col_text_varchar = await author().joinServiceSeqWithSeq(s2).descriptionNeName(s2).getCount();
+    result.in_i32_i64 = await author().likeCount(new User().addColumnSeq()).getCount();
+    result.join_i32_i64 = await author().joinReadCountWithSeq(new Service()).getCount();
+    result.relation_i32_i64 = (await author().relation(new Service().matchLikeCountWithSeq()).orderBySeqAsc().limit(0, 2).gets()).values().length;
+    const s3 = new Service();
+    result.col_varchar_i64 = await caught(author().joinServiceSeqWithSeq(s3).nameEqSeq(s3).getCount());
+    const s4 = new Service();
+    result.col_decimal_i64 = await caught(author().joinServiceSeqWithSeq(s4).priceEqSeq(s4).getCount());
+    result.in_varchar_i64 = await caught(author().name(new User().addColumnSeq()).getCount());
+    result.join_varchar_i64 = await caught(author().joinNameWithSeq(new Service()).getCount());
+    result.relation_varchar_i64 = await caught(author().relation(new Service().matchNameWithSeq()).limit(0, 1).gets());
+    return result;
+  });
   await run('aes_status', async () => {
     const keyring = new AesKeyring(new Map([[1, 'bench-salt']]), 1);
     const status = await db.utils().aes().status(new Author(), keyring);

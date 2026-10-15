@@ -201,6 +201,9 @@ An operand is a column of the same table or a literal. The three databases evalu
 | `date` | a `date` column |
 | `time(p)` | a `time` column of the same p |
 | `datetime(p)` | a `datetime` column of the same p |
+| `bytes` | a `bytes` column |
+
+Each implementation keeps this table once, and the IR validator reads it too, for the two columns of a column comparison, a subquery, a join and a relation ([protocol](protocol.md)), so the two cannot drift. A check refuses a `bytes` column before its types are compared, so the `bytes` row serves only a request. The conformance vector `column_pairs` runs pairs that meet and pairs that do not on the three databases.
 
 A `bool` operand takes only `=`, `<>` and `in`.
 

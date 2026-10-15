@@ -2,6 +2,7 @@
 // request; the rules below are the shared statement rules.
 import type { Assignment, Group, Item, Join, Predicate, Request, RequestQuery, Subquery, OrmFunction } from '../ir.js';
 import { OrmError } from '../runtime_error.js';
+import { meetKind } from '../meet.js';
 import { columnFunctionArity, columnFunctionTypes, isValueFunction, valueFunctionUnits } from './dialect.js';
 import { entityOf, fieldOf as columnOf, type Entity, type Field as Column, type RuntimeModel } from './model.js';
 
@@ -65,18 +66,9 @@ export function opAllowed(c: Column, op: string): boolean {
   return opsByType[c.type]?.includes(op) ?? false;
 }
 
-/**
- * Whether two columns compare alike on the three databases, as dbspec's check operands do: integers with integers,
- * decimals of one scale, f64, bool, varchar and text together, uuid, date, time or datetime of one precision, and bytes
- * with bytes.
- */
+/** Whether two columns compare alike on the three databases, by the table that dbspec's check operands also read. */
 function meets(a: Column, b: Column): boolean {
-  const integer = (t: string): boolean => t === 'i16' || t === 'i32' || t === 'i64';
-  if (integer(a.type)) return integer(b.type);
-  if (a.type === 'decimal') return b.type === 'decimal' && a.scale === b.scale;
-  if (a.type === 'varchar' || a.type === 'text') return b.type === 'varchar' || b.type === 'text';
-  if (a.type === 'time' || a.type === 'datetime') return b.type === a.type && a.precision === b.precision;
-  return a.type === b.type;
+  return meetKind(a.type, a.scale ?? 0, a.precision ?? 0) === meetKind(b.type, b.scale ?? 0, b.precision ?? 0);
 }
 
 /**

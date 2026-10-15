@@ -17,6 +17,7 @@ import { typeText } from './emit.js';
 import { containsWordRune } from './unicode_word.js';
 import { rendererName } from './names.js';
 import { present } from '../present.js';
+import { meetKind } from '../meet.js';
 
 interface RawDiagnostic {
   readonly rule: DbspecRule;
@@ -646,24 +647,9 @@ function defaultOf(type: DbspecType, tok: Tk): DbspecDefault | string {
   }
 }
 
-/** The kind of value a column holds in a check: two columns meet when their kinds are equal. */
-function meetKind(type: DbspecType): string {
-  switch (type.kind) {
-    case 'i16':
-    case 'i32':
-    case 'i64':
-      return 'integer';
-    case 'varchar':
-    case 'text':
-      return 'string';
-    case 'decimal':
-      return `decimal scale ${type.scale}`;
-    case 'time':
-    case 'datetime':
-      return `${type.kind} precision ${type.precision}`;
-    default:
-      return type.kind;
-  }
+/** The kind of value a column holds in a check, by the table that the IR validator also reads: two columns meet when their kinds are equal. */
+function meetKindOf(type: DbspecType): string {
+  return meetKind(type.kind, type.kind === 'decimal' ? type.scale : 0, type.kind === 'decimal' || type.kind === 'time' || type.kind === 'datetime' ? type.precision : 0);
 }
 
 /** A check operand: a column (column set) or a literal at its slot of the canonical text. */
@@ -2167,7 +2153,7 @@ class DocumentParser {
     const compare = (left: Operand, op: Tk, right: Operand): void => {
       if (ORDERINGS.has(op.t) && (isBool(left) || isBool(right))) issue(op, `${op.t} does not compare bool values`);
       if (left.column !== null && right.column !== null) {
-        if (left.type !== null && right.type !== null && meetKind(left.type) !== meetKind(right.type)) {
+        if (left.type !== null && right.type !== null && meetKindOf(left.type) !== meetKindOf(right.type)) {
           issue(right.tok, `column ${right.tok.t} (${typeText(right.type)}) does not meet column ${left.tok.t} (${typeText(left.type)})`);
         }
       } else if (left.column !== null) fit(left, right);

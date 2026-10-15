@@ -751,6 +751,28 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         }
         Ok::<Value, polyspec_orm::Error>(Value::Object(result.into_inner().unwrap()))
     });
+    run!("column_pairs", async {
+        // Two compared columns meet as dbspec check operands do (docs/dbspec.md "Checks"): a comparison of two
+        // columns, a column in a subquery column, a join and a relation run when their columns meet, here i32 with
+        // i64 and text with varchar, and fail with OPERATOR_NOT_ALLOWED before any statement when they do not.
+        let mut result = Map::new();
+        let s1 = Service::new();
+        result.insert("col_i32_i64".into(), json!(author().join_service_seq_with_seq(s1.clone()).read_count_lt_seq(&s1).get_count().await?));
+        let s2 = Service::new();
+        result.insert("col_text_varchar".into(), json!(author().join_service_seq_with_seq(s2.clone()).description_ne_name(&s2).get_count().await?));
+        result.insert("in_i32_i64".into(), json!(author().like_count(User::new().add_column_seq()).get_count().await?));
+        result.insert("join_i32_i64".into(), json!(author().join_read_count_with_seq(Service::new()).get_count().await?));
+        let related = author().relation(Service::new().match_like_count_with_seq()).order_by_seq_asc().limit(0, 2).gets().await?;
+        result.insert("relation_i32_i64".into(), json!(related.models().count()));
+        let s3 = Service::new();
+        result.insert("col_varchar_i64".into(), code_of(author().join_service_seq_with_seq(s3.clone()).name_eq_seq(&s3).get_count().await));
+        let s4 = Service::new();
+        result.insert("col_decimal_i64".into(), code_of(author().join_service_seq_with_seq(s4.clone()).price_eq_seq(&s4).get_count().await));
+        result.insert("in_varchar_i64".into(), code_of(author().name(User::new().add_column_seq()).get_count().await));
+        result.insert("join_varchar_i64".into(), code_of(author().join_name_with_seq(Service::new()).get_count().await));
+        result.insert("relation_varchar_i64".into(), code_of(author().relation(Service::new().match_name_with_seq()).limit(0, 1).gets().await));
+        Ok::<Value, polyspec_orm::Error>(Value::Object(result))
+    });
     run!("aes_status", async {
         let keyring = AesKeyring::new([(1, "bench-salt".to_owned())].into_iter().collect(), 1)?;
         let status = db.utils().aes().status(&Author::new(), &keyring).await?;

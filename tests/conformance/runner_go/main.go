@@ -907,6 +907,77 @@ func run() (status int) {
 		}
 		return result, nil
 	})
+	run("column_pairs", func() (any, error) {
+		// Two compared columns meet as dbspec check operands do (docs/dbspec.md "Checks"): a comparison of two
+		// columns, a column in a subquery column, a join and a relation run when their columns meet, here i32 with i64
+		// and text with varchar, and fail with OPERATOR_NOT_ALLOWED before any statement when they do not.
+		result := map[string]any{}
+		joined := func() *model.ServiceModel { return model.Service() }
+		meets := []struct {
+			name  string
+			count func() (int64, error)
+		}{
+			{"col_i32_i64", func() (int64, error) {
+				s := joined()
+				return author().JoinServiceSeqWithSeq(s).ReadCountLtSeq(s).GetCount()
+			}},
+			{"col_text_varchar", func() (int64, error) {
+				s := joined()
+				return author().JoinServiceSeqWithSeq(s).DescriptionNeName(s).GetCount()
+			}},
+			{"in_i32_i64", func() (int64, error) {
+				return author().LikeCount(model.User().AddColumnSeq()).GetCount()
+			}},
+			{"join_i32_i64", func() (int64, error) {
+				return author().JoinReadCountWithSeq(joined()).GetCount()
+			}},
+			{"relation_i32_i64", func() (int64, error) {
+				rows, err := author().Relation(model.Service().MatchLikeCountWithSeq()).OrderBySeqAsc().Limit(0, 2).Gets()
+				if err != nil {
+					return 0, err
+				}
+				return int64(len(rows.Slice())), nil
+			}},
+		}
+		for _, m := range meets {
+			n, err := m.count()
+			if err != nil {
+				return nil, err
+			}
+			result[m.name] = n
+		}
+		refused := []struct {
+			name string
+			run  func() error
+		}{
+			{"col_varchar_i64", func() error {
+				s := joined()
+				_, err := author().JoinServiceSeqWithSeq(s).NameEqSeq(s).GetCount()
+				return err
+			}},
+			{"col_decimal_i64", func() error {
+				s := joined()
+				_, err := author().JoinServiceSeqWithSeq(s).PriceEqSeq(s).GetCount()
+				return err
+			}},
+			{"in_varchar_i64", func() error {
+				_, err := author().Name(model.User().AddColumnSeq()).GetCount()
+				return err
+			}},
+			{"join_varchar_i64", func() error {
+				_, err := author().JoinNameWithSeq(joined()).GetCount()
+				return err
+			}},
+			{"relation_varchar_i64", func() error {
+				_, err := author().Relation(model.Service().MatchNameWithSeq()).Limit(0, 1).Gets()
+				return err
+			}},
+		}
+		for _, r := range refused {
+			result[r.name] = code(r.run())
+		}
+		return result, nil
+	})
 	run("aes_status", func() (any, error) {
 		keyring, err := orm.NewAESKeyring(map[int32]string{1: "bench-salt"}, 1)
 		if err != nil {

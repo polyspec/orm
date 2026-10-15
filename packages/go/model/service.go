@@ -316,6 +316,13 @@ func (x *ServiceModel) LeftJoinNameWithName[C hasName](child C) *ServiceModel {
 	return x
 }
 
+func (x *ServiceModel) MatchLikeCountWithSeq() *ServiceModel {
+	x.m.Match("like_count", "seq")
+	return x
+}
+
+func (x *ServiceModel) MatchNameWithSeq() *ServiceModel { x.m.Match("name", "seq"); return x }
+
 func (x *ServiceModel) MatchServiceSeqWithSeq() *ServiceModel {
 	x.m.Match("service_seq", "seq")
 	return x

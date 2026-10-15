@@ -1058,6 +1058,54 @@ def main():
 
     run("joins_soft_deleted", joins_soft_deleted)
 
+    def column_pairs():
+        # Two compared columns meet as dbspec check operands do (docs/dbspec.md "Checks"): a comparison of two
+        # columns, a column in a subquery column, a join and a relation run when their columns meet, here i32 with i64
+        # and text with varchar, and fail with OPERATOR_NOT_ALLOWED before any statement when they do not.
+        result = {}
+        s1 = Service()
+        result["col_i32_i64"] = (
+            author().join_service_seq_with_seq(s1).read_count_lt_seq(s1).get_count()
+        )
+        s2 = Service()
+        result["col_text_varchar"] = (
+            author().join_service_seq_with_seq(s2).description_ne_name(s2).get_count()
+        )
+        result["in_i32_i64"] = author().like_count(User().add_column_seq()).get_count()
+        result["join_i32_i64"] = (
+            author().join_read_count_with_seq(Service()).get_count()
+        )
+        result["relation_i32_i64"] = len(
+            author()
+            .relation(Service().match_like_count_with_seq())
+            .order_by_seq_asc()
+            .limit(0, 2)
+            .gets()
+            .values()
+        )
+        s3 = Service()
+        result["col_varchar_i64"] = caught(
+            lambda: author().join_service_seq_with_seq(s3).name_eq_seq(s3).get_count()
+        )
+        s4 = Service()
+        result["col_decimal_i64"] = caught(
+            lambda: author().join_service_seq_with_seq(s4).price_eq_seq(s4).get_count()
+        )
+        result["in_varchar_i64"] = caught(
+            lambda: author().name(User().add_column_seq()).get_count()
+        )
+        result["join_varchar_i64"] = caught(
+            lambda: author().join_name_with_seq(Service()).get_count()
+        )
+        result["relation_varchar_i64"] = caught(
+            lambda: (
+                author().relation(Service().match_name_with_seq()).limit(0, 1).gets()
+            )
+        )
+        return result
+
+    run("column_pairs", column_pairs)
+
     def aes_status():
         keyring = AesKeyring({1: "bench-salt"}, 1)
         status = db.utils().aes().status(Author(), keyring)

@@ -8,6 +8,7 @@ from polyspec.orm.engine.dialect import (
 )
 from polyspec.orm.engine.model import Entity, Field, RuntimeModel, entity_of, field_of
 from polyspec.orm.errors import OrmError
+from polyspec.orm.meet import meet_kind
 from polyspec.orm.names import COLUMN_OPS, NUMERIC_TYPES, OPS_BY_TYPE, op_allowed
 
 __all__ = ["IR_VERSION", "validate"]
@@ -45,19 +46,11 @@ def _is_safe(value) -> bool:
 
 
 def _meets(a: Field, b: Field) -> bool:
-    """Whether two columns compare alike on the three databases, as dbspec's check operands do: integers with integers,
-    decimals of one scale, f64, bool, varchar and text together, uuid, date, time or datetime of one precision, and
-    bytes with bytes."""
-    integers = ("i16", "i32", "i64")
-    if a.type in integers:
-        return b.type in integers
-    if a.type == "decimal":
-        return b.type == "decimal" and a.scale == b.scale
-    if a.type in ("varchar", "text"):
-        return b.type in ("varchar", "text")
-    if a.type in ("time", "datetime"):
-        return b.type == a.type and a.precision == b.precision
-    return a.type == b.type
+    """Whether two columns compare alike on the three databases, by the table that dbspec's check operands also
+    read."""
+    return meet_kind(a.type, a.scale or 0, a.precision or 0) == meet_kind(
+        b.type, b.scale or 0, b.precision or 0
+    )
 
 
 def _col_pair_op_allowed(left: Field, right: Field, op: str) -> bool:

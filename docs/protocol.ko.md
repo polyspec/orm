@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 29ed16d7ff51ccb4037bb1c00e03408610a33c7e65338010d37a02f609265394 -->
+<!-- source-sha256: aee5cb116aafb4f4d2c2069aeff452756e5216beece2a81a313bed66b9fb343f -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -99,7 +99,7 @@ Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
 - `ref.path`는 SQL 문장 루트에서 시작하는 조인 경로(`""`는 루트, `a/b`는 중첩 조인)이거나, 서브쿼리를 소유한 모델을 뜻하는 `^`다. relation과 서브쿼리는 자기 문장이므로 그 `""`는 자기 루트다. 검증은 요청 종류가 render하지 않는 relation이나 서브쿼리 안의 ref도 모두 푼다. 조인되지 않은 이름을 지나는 경로는 `ENTITY_NOT_JOINED`, 서브쿼리 밖의 `^`는 `IR_INVALID`, 대상 모델에 없는 column은 `COLUMN_UNKNOWN`으로 실패한다.
 - `tests/ir/validate.json`의 공유 case가 검증 규칙을 고정한다. 모든 클라이언트가 각자 자기 패키지에서(Go는 `packages/go/engine/ir`에서) 이 파일을 읽어 각 요청을 자기 검증기에만 준다. PHP 확장 `orm_dbspec`은 dbspec 표면만 구현하고(`packages/php-ext/stubs/orm_dbspec.stub.php`) 요청 검증기가 없다. PHP 프로그램은 PHP 클라이언트의 `Polyspec\Orm\Validator`로 요청을 검증하고 계획한다.
 - `fn`은 `p`와 비교하기 전에 `column`에 컬럼 함수를 적용한다. `value`는 `column`을 값 함수와 비교한다. 함수는 구조만 전달하며 각 dialect가 [dialect](dialects.md)의 설명대로 SQL을 만든다. 알 수 없는 함수는 `FUNCTION_UNKNOWN`을 반환한다.
-- 열 비교의 두 컬럼, 컬럼 `in`/`not_in` subquery 컬럼, join의 `left`와 `right`, 각 relation key 쌍은 dbspec check 피연산자가 만나는 대로([dbspec](dbspec.md)) 만난다: 정수는 정수와, `decimal`은 같은 scale의 `decimal`과, `f64`, `bool`, `varchar`와 `text`는 서로, `uuid`, `date`, 같은 precision의 `time` 또는 `datetime`, `bytes`는 `bytes`와 만난다. 그 밖의 쌍은 `OPERATOR_NOT_ALLOWED`로 실패한다. database마다 답이 다르기 때문이다(PostgreSQL은 `integer = varchar`를 거절하고 MySQL은 강제 변환하며 SQLite는 affinity로 비교한다).
+- 열 비교의 두 컬럼, 컬럼 `in`/`not_in` subquery 컬럼, join의 `left`와 `right`, 각 relation key 쌍은 dbspec check 피연산자가 만나는 대로([dbspec](dbspec.md)) 만난다: 정수는 정수와, `decimal`은 같은 scale의 `decimal`과, `f64`, `bool`, `varchar`와 `text`는 서로, `uuid`, `date`, 같은 precision의 `time` 또는 `datetime`, `bytes`는 `bytes`와 만난다. 그 밖의 쌍은 `OPERATOR_NOT_ALLOWED`로 실패한다. database마다 답이 다르기 때문이다(PostgreSQL은 `integer = varchar`를 거절하고 MySQL은 강제 변환하며 SQLite는 affinity로 비교한다). validator는 dbspec check 검증의 표를 읽으며, conformance vector `column_pairs`가 두 종류의 쌍을 모두 실행한다.
 - 스칼라 컬럼 subquery(`agg` 없는 `columns.sub`)는 count가 1인 `limit`(`offset`은 무엇이든)과, 모든 primary key 컬럼을 포함하고 `random` 항목이 없는 `order`를 가지므로 모든 database에서 많아야 한 행을 내고 일치하는 행이 없으면 NULL이다. 그것이 없으면 요청은 `IR_INVALID`이다. 여러 행에 MySQL은 1242, PostgreSQL은 21000으로 답하고 SQLite는 첫 행을 돌려주기 때문이다. `limit`은 `in` subquery(MySQL 1235)와 집계 subquery에서는 계속 `IR_INVALID`이다.
 - 열 비교(`eq_col` 등)는 기본 연산자(`eq_col`이면 `eq`)가 왼쪽 컬럼 type의 연산자이고 어느 컬럼도 codec이 없을 때 허용되므로, `bool gt_col`, `bytes gt_col`, `aes` 컬럼의 `eq_col`은 `OPERATOR_NOT_ALLOWED`로 실패한다. codec이 `ip` 하나뿐인 두 컬럼은 양쪽이 dialect의 같은 저장 형태이므로 `eq_col`과 `not_eq_col`을 받는다.
 - `not`은 하위 묶음을 부정하며 `NOT (…)`로 렌더링된다. `not`을 가진 top-level `where`나 `on` 묶음은 `IR_INVALID`다.

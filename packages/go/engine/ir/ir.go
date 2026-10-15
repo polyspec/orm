@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/polyspec/orm/packages/go/engine/dialect"
+	"github.com/polyspec/orm/packages/go/engine/internal/meet"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 )
 
@@ -614,24 +615,12 @@ func itemConn(item Item) string {
 	return ""
 }
 
-// meets reports whether two columns compare alike on the three databases, as dbspec's check operands do: integers with
-// integers, decimals of one scale, f64, bool, varchar and text together, uuid, date, time or datetime of one precision,
-// and bytes with bytes.
+// meets reports whether two columns compare alike on the three databases, by the table that dbspec's check operands
+// also read (meet.Kind).
 func meets(a, b *runtimemodel.Field) bool {
-	switch {
-	case isInteger(a.Type):
-		return isInteger(b.Type)
-	case a.Type == "decimal":
-		return b.Type == "decimal" && a.Scale == b.Scale
-	case a.Type == "varchar" || a.Type == "text":
-		return b.Type == "varchar" || b.Type == "text"
-	case a.Type == "time" || a.Type == "datetime":
-		return b.Type == a.Type && a.Precision == b.Precision
-	}
-	return a.Type == b.Type
+	return meet.Kind(a.Type, a.Scale, a.Precision) == meet.Kind(b.Type, b.Scale, b.Precision)
 }
 
-func isInteger(t string) bool { return t == "i16" || t == "i32" || t == "i64" }
 
 // colPairOpAllowed reports whether the column comparison op may compare the columns left and right: its base operator
 // (eq for eq_col) must be one of the left column's type, and neither column may have a codec, since a codec's stored

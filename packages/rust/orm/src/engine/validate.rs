@@ -89,22 +89,9 @@ pub(super) fn conflict_key(ent: &Entity, set: &[ir::Assign]) -> Result<Vec<Strin
     }
 }
 
-/// Whether two columns compare alike on the three databases, as dbspec's check operands do: integers with integers,
-/// decimals of one scale, f64, bool, varchar and text together, uuid, date, time or datetime of one precision, and
-/// bytes with bytes.
+/// Whether two columns compare alike on the three databases, by the table that dbspec's check operands also read.
 fn meets(a: &Field, b: &Field) -> bool {
-    use polyspec_orm_schema::dbspec::Type;
-    let integer = |t: &Type| matches!(t, Type::I16 | Type::I32 | Type::I64);
-    match (&a.ty, &b.ty) {
-        (x, y) if integer(x) => integer(y),
-        (Type::Decimal(_, s), Type::Decimal(_, t)) => s == t,
-        (Type::Decimal(..), _) => false,
-        (Type::Varchar(_) | Type::Text, Type::Varchar(_) | Type::Text) => true,
-        (Type::Varchar(_) | Type::Text, _) => false,
-        (Type::Time(p), Type::Time(q)) | (Type::DateTime(p), Type::DateTime(q)) => p == q,
-        (Type::Time(_) | Type::DateTime(_), _) => false,
-        (x, y) => x.name() == y.name(),
-    }
+    a.ty.meet_kind() == b.ty.meet_kind()
 }
 
 /// Whether the column comparison `op` may compare `left` with `right`: its base operator (eq for eq_col) must be one

@@ -39,16 +39,9 @@ pub(crate) fn set_literals(document: &mut Document, literals: Vec<CheckLiterals>
     }
 }
 
-/// Two column types whose values the three databases compare alike.
+/// Two column types whose values the three databases compare alike, by the table that the IR validator also reads.
 fn meets(a: Type, b: Type) -> bool {
-    use Type::*;
-    match (a, b) {
-        (I16 | I32 | I64, I16 | I32 | I64) | (F64, F64) | (Bool, Bool) | (Uuid, Uuid) | (Date, Date) => true,
-        (Varchar(_) | Text, Varchar(_) | Text) => true,
-        (Decimal(_, s), Decimal(_, t)) => s == t,
-        (Time(p), Time(q)) | (DateTime(p), DateTime(q)) => p == q,
-        _ => false,
-    }
+    a.meet_kind() == b.meet_kind()
 }
 
 struct Typing<'f> {
