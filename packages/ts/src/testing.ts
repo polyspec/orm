@@ -2,7 +2,7 @@
 // `orm-test`에서만 `@polyspec/orm/testing`으로 export하므로, process는
 // Node가 `--conditions=orm-test`로 실행될 때만 이것을 resolve한다. package entry
 // point는 이것을 export하지 않는다.
-import { armFixedClock, armRollbackFault, armStatementFault, type Db } from './database.js';
+import { armFixedClock, armRollbackFault, armStatementFault, readLastAffected, type Db } from './database.js';
 
 /**
  * db의 connection에 test fault를 설정한다: callback이 실패한 다음 transaction의
@@ -35,4 +35,12 @@ export function fixClock(db: Db, clock: string): void {
   if (m === null) throw new TypeError('fixClock: clock must be YYYY-MM-DD HH:MM:SS.ffffff');
   const millis = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), Number(m[6]));
   armFixedClock(db, millis * 1000 + Number(m[7]));
+}
+
+/**
+ * db의 connection에서 마지막으로 성공한 write 결과의 affected다. 성공한 write가 없었으면 null이다
+ * (docs/protocol.md "Test write result").
+ */
+export function lastAffected(db: Db): number | null {
+  return readLastAffected(db);
 }

@@ -1250,7 +1250,8 @@
         "packages/ts/tests/identity-load.mjs",
         "packages/python/tests/identity_load.py",
         "packages/rust/orm/tests/identity_load.rs",
-        "packages/go/orm/time_precision_test.go"
+        "packages/go/orm/time_precision_test.go",
+        "packages/python/tests/test_mysql_found_rows.py"
       ],
       "docs": [
         "docs/dsl.md",
@@ -1462,6 +1463,15 @@
             "packages/rust/orm/tests/identity_load.rs",
             "contracts/fixtures/identity_load.dbs",
             "contracts/fixtures/identity_load.json"
+          ]
+        },
+        {
+          "id": "mysql-found-rows-python",
+          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_mysql_found_rows",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_mysql_found_rows.py",
+            "packages/python/src/polyspec/orm/database.py"
           ]
         },
         {

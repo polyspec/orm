@@ -11,7 +11,7 @@
 import {
   AesKeyring, Author, ClockCell, type Collection, type Model, CompositeAccount, HexCell, Service, TimeCell, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, UpsertCell, User, connect, orm,
 } from '../../packages/ts/dist/index.js';
-import { fixClock } from '../../packages/ts/dist/testing.js';
+import { fixClock, lastAffected } from '../../packages/ts/dist/testing.js';
 import { parseArgs } from 'node:util';
 import { derivedInteger, executeVector, resultValue } from './result_typescript.mts';
 import { errorMessage } from '../errors.mts';
@@ -133,7 +133,7 @@ async function main() {
     log.push({ sql: e.sql, binds: e.binds.map(norm), kind: e.kind, tables: [...e.tables], transaction, error: e.error === null ? null : code(e.error) });
   });
   const out: Record<string, { statements: Logged[]; result: unknown }> = {};
-  const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'upsert_one_key', 'clock_truncate_write', 'clock_compare_six_digits']);
+  const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'upsert_one_key', 'affected_counts', 'clock_truncate_write', 'clock_compare_six_digits']);
   const declared = new Set<string>();
   const run = async (name: string, fn: () => Promise<unknown>) => {
     declared.add(name);
@@ -505,6 +505,25 @@ async function main() {
     }
     await updated.delete();
     return { inserted: picks(inserted, 'label'), updated: picks(updated, 'label'), unassigned };
+  });
+  // A write counts each written row once (docs/protocol.md "Write"): an upsert is 1 whether it inserts or updates, and an
+  // update counts the row it matched even when the row already holds the value. The count is read through the test
+  // entry point (docs/protocol.md "Test write result").
+  await run('affected_counts', async () => {
+    const out: Record<string, number | null> = {};
+    const upsert = () => new UpsertCell().connect(db).setCode('c1').setLabel('x').duplication(new UpsertCell().setLabel('y')).create();
+    const created = await upsert();
+    mask([created.getSeq()]);
+    out.upsert_inserted = lastAffected(db);
+    await upsert();
+    out.upsert_updated = lastAffected(db);
+    const row = await new UpsertCell().connect(db).getBySeq(created.getSeq());
+    await row.setLabel('y').update();
+    out.update_unchanged = lastAffected(db);
+    await row.setLabel('z').update();
+    out.update_changed = lastAffected(db);
+    await row.delete();
+    return out;
   });
 
   // One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now` hold that

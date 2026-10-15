@@ -37,3 +37,11 @@ func FixClock(db *DB, clock string) {
 	}
 	db.m.fixedClock.Store(&t)
 }
+
+// LastAffected는 db의 connection과 그 모든 handle에서 마지막으로 성공한 write 결과의
+// affected와 true를 돌려준다. 성공한 write가 없었으면 0과 false다(docs/protocol.md
+// "Test write result"). 이 함수는 build tag ormtest가 있는 build에만 있다.
+func LastAffected(db *DB) (int64, bool) {
+	n := db.m.lastAffected.Load()
+	return n - 1, n > 0
+}

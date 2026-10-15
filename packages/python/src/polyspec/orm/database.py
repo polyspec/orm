@@ -824,6 +824,7 @@ class _Shared:
         "rollback_fault",
         "statement_fault",
         "fixed_clock",
+        "last_affected",
     )
 
     def __init__(self):
@@ -834,6 +835,8 @@ class _Shared:
         self.statement_fault = None
         # fix_clock이 고정한 executor clock(UTC epoch의 microsecond)이다.
         self.fixed_clock = None
+        # 마지막으로 성공한 write 결과의 affected다. last_affected가 읽는다.
+        self.last_affected = None
 
 
 @dataclass(frozen=True)
@@ -1595,6 +1598,11 @@ def _arm_rollback_fault(db: Db) -> None:
     db._shared.rollback_fault = True
 
 
+def _read_last_affected(db: Db) -> int | None:
+    """connection에서 마지막으로 성공한 write 결과의 affected다. test entry point polyspec.orm.testing만 부른다."""
+    return db._shared.last_affected
+
+
 def _arm_fixed_clock(db: Db, micros: int) -> None:
     """connection의 executor clock을 micros(UTC epoch의 microsecond)로 고정한다. test entry point
     polyspec.orm.testing만 부르며 package entry point는 export하지 않는다."""
@@ -2000,7 +2008,9 @@ def write(ex: Executor, request: dict, params):
         upsert = request["kind"] == "insert" and bool(request.get("on_duplicate"))
         return {"id": identity_id, "affected": 1 if upsert else result["affected"]}
 
-    return {**_guarded(ex, work), "request": request, "params": params}
+    written = _guarded(ex, work)
+    ex.db._shared.last_affected = written["affected"]
+    return {**written, "request": request, "params": params}
 
 
 def statement(ex: Executor, request: dict, params):

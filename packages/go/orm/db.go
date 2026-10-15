@@ -143,6 +143,11 @@ type dbMutable struct {
 	// fixedClock는 FixClock이 설정하는 test clock이다. 설정되면 executor clock은
 	// 이 시각이다. build tag ormtest가 있는 build만 설정할 수 있다.
 	fixedClock atomic.Pointer[time.Time]
+
+	// lastAffected는 연결의 마지막 성공한 write 결과의 affected에 1을 더한 값이며,
+	// write가 없었으면 0이다. LastAffected가 읽고, build tag ormtest가 있는 build만
+	// 그것을 가진다.
+	lastAffected atomic.Int64
 }
 
 // engineFor는 이 연결에 등록된 schema의 engine을 반환한다. 요청의 generated

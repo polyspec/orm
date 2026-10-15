@@ -49,3 +49,9 @@ pub fn fix_clock(db: &Db, clock: &str) {
     assert!(parsed.is_ok() && clock.len() == 26, "fix_clock: the clock is not YYYY-MM-DD HH:MM:SS.ffffff");
     *db.inner.fixed_clock.lock().unwrap() = Some(clock.to_owned());
 }
+
+/// `db`의 connection과 그 모든 clone에서 마지막으로 성공한 write 결과의 affected다. 성공한 write가
+/// 없었으면 None이다(docs/protocol.md "Test write result").
+pub fn last_affected(db: &Db) -> Option<u64> {
+    *db.inner.last_affected.lock().unwrap()
+}

@@ -61,4 +61,13 @@ final class Faults
             $db->state->fixedClock = $t;
         }, null, Db::class))($db);
     }
+
+    /**
+     * connection에서 마지막으로 성공한 write 결과의 affected다. 성공한 write가 없었으면 null이다
+     * (docs/protocol.md "Test write result").
+     */
+    public static function lastAffected(Db $db): ?int
+    {
+        return (\Closure::bind(static fn(Db $db): ?int => $db->state->lastAffected, null, Db::class))($db);
+    }
 }

@@ -334,6 +334,7 @@ def main():
         "datetime_p0_roundtrip",
         "time_p3_roundtrip",
         "upsert_one_key",
+        "affected_counts",
         "clock_truncate_write",
         "clock_compare_six_digits",
     }
@@ -1077,6 +1078,39 @@ def main():
         }
 
     run("upsert_one_key", upsert_one_key)
+
+    # A write counts each written row once (docs/protocol.md "Write"): an upsert is 1 whether it inserts or updates,
+    # and an update counts the row it matched even when the row already holds the value. The count is read through
+    # the test entry point (docs/protocol.md "Test write result").
+    from polyspec.orm.testing import last_affected
+
+    def affected_counts():
+        out = {}
+
+        def upsert():
+            return (
+                UpsertCell()
+                .connect(db)
+                .set_code("c1")
+                .set_label("x")
+                .duplication(UpsertCell().set_label("y"))
+                .create()
+            )
+
+        created = upsert()
+        mask([created.get_seq()])
+        out["upsert_inserted"] = last_affected(db)
+        upsert()
+        out["upsert_updated"] = last_affected(db)
+        row = UpsertCell().connect(db).get_by_seq(created.get_seq())
+        row.set_label("y").update()
+        out["update_unchanged"] = last_affected(db)
+        row.set_label("z").update()
+        out["update_changed"] = last_affected(db)
+        row.delete()
+        return out
+
+    run("affected_counts", affected_counts)
 
     # One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now`
     # hold that clock truncated to their digits, and a datetime(p) column compares with a clock at six digits. The

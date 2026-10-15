@@ -942,6 +942,15 @@ fn assign(r: &mut Req, ent: &dbspec::Entity, s: &SetSpec) -> Result<ir::Assign> 
 /// 생성된 identity, markdown executor에서는 그것이 답한 첫 key다(identity는 정수, key_prefix key는 text).
 /// key가 없으면 Null이다.
 async fn write(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<(Val, u64)> {
+    let written = write_request(ex, conn, req).await;
+    #[cfg(feature = "test-faults")]
+    if let Ok((_, affected)) = &written {
+        *ex.db().inner.last_affected.lock().unwrap() = Some(*affected);
+    }
+    written
+}
+
+async fn write_request(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<(Val, u64)> {
     hook_request(conn, ex, req)?;
     let db = ex.db().clone();
     let (key, affected) = if db.is_markdown() {

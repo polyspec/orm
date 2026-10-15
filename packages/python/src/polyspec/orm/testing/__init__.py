@@ -10,9 +10,10 @@ from polyspec.orm.database import (
     _arm_fixed_clock,
     _arm_rollback_fault,
     _arm_statement_fault,
+    _read_last_affected,
 )
 
-__all__ = ["fail_next_rollback", "fail_next_statement", "fix_clock"]
+__all__ = ["fail_next_rollback", "fail_next_statement", "fix_clock", "last_affected"]
 
 
 def fail_next_rollback(db: Db) -> None:
@@ -48,3 +49,9 @@ def fix_clock(db: Db, clock: str) -> None:
     _arm_fixed_clock(
         db, (delta.days * 86400 + delta.seconds) * 1_000_000 + delta.microseconds
     )
+
+
+def last_affected(db: Db) -> int | None:
+    """db의 connection에서 마지막으로 성공한 write 결과의 affected다. 성공한 write가 없었으면 None이다
+    (docs/protocol.md "Test write result")."""
+    return _read_last_affected(db)

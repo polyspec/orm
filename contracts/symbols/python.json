@@ -1739,6 +1739,7 @@
   "packages/python/src/polyspec/orm/testing/__init__.py::fail_next_rollback": "def fail_next_rollback(db: Db) -\u003e None",
   "packages/python/src/polyspec/orm/testing/__init__.py::fail_next_statement": "def fail_next_statement(db: Db, code: str, message: str) -\u003e None",
   "packages/python/src/polyspec/orm/testing/__init__.py::fix_clock": "def fix_clock(db: Db, clock: str) -\u003e None",
+  "packages/python/src/polyspec/orm/testing/__init__.py::last_affected": "def last_affected(db: Db) -\u003e int | None",
   "packages/python/src/polyspec/orm/utils.py::AesRotationStatus": "class AesRotationStatus",
   "packages/python/src/polyspec/orm/utils.py::AesRotationStatus#field.current": "int",
   "packages/python/src/polyspec/orm/utils.py::AesRotationStatus#field.pending": "int",

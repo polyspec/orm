@@ -359,11 +359,17 @@ func (x *UpsertCellModel) Code[T0 argStringEq](v0 T0) *UpsertCellModel {
 	return x
 }
 
+func (x *UpsertCellModel) GetBySeq[T0 argIntEq](v0 T0) (*UpsertCellModel, error) {
+	return oneUpsertCell(x.m.By(chainUpsertCellGetBySeq, v0))
+}
+
 func (x *UpsertCellModel) Seq[T0 argIntEq](v0 T0) *UpsertCellModel {
 	x.m.Where("", chainUpsertCellSeq, v0)
 	return x
 }
 
 var chainUpsertCellCode = []orm.ChainKey{{Column: "code"}}
+
+var chainUpsertCellGetBySeq = []orm.ChainKey{{Column: "seq"}}
 
 var chainUpsertCellSeq = []orm.ChainKey{{Column: "seq"}}
