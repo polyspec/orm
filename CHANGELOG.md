@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The optimistic update binds the loaded row's version as canonical text in Go and Rust. (#T89-3-2)
 - The conformance runners send date, time and datetime inputs as canonical text. (#T89-3-1)
 - The docs rules check passes `make lint-ts`: its file is read through a shape guard, and the line filter uses `startsWith`. (#T77-11-2)
 - Rows load with their identity keys, and compiled statements execute through a public call in every client. (#T120)
