@@ -63,6 +63,7 @@
     "dbspec-language-check": {"scope": "owner", "needs": ["node-modules"], "inputs": ["packages/dbspec-language/**", "packages/ts/src/dbspec/**", "packages/ts/tsconfig.build.json", "tests/dbspec/cases.json", "tests/dbspec/cases.mts", "tests/dbspec/schema/**", "tests/dbspec/syntax.json", "tests/editor/**", "scripts/typescript/build.mts"]},
     "dbspec-plan-php-check": {"scope": "owner", "needs": ["go", "php", "composer", "databases"], "inputs": ["packages/php/tests/DbspecPlanApplyTest.php"]},
     "dbspec-apply-php-check": {"scope": "owner", "needs": ["go", "php", "composer", "databases"], "inputs": ["packages/php/tests/DbspecApplyTest.php"]},
+    "dbspec-php-extension-check": {"scope": "owner", "needs": ["go", "php", "composer", "php-extension-tools", "databases"], "inputs": ["packages/php-ext/tests/DbspecSetsTest.php", "packages/php-ext/tests/CoverageSchemaDefinitionTest.php", "packages/php-ext/src/**", "tests/dbspec/cases.json", "contracts/fixtures/schema_definition.json"]},
     "dbspec-apply-php-extension-check": {"scope": "owner", "needs": ["go", "php", "composer", "php-extension-tools", "databases"], "inputs": ["packages/php-ext/tests/DbspecApplyTest.php", "packages/php-ext/src/apply.c"]},
     "dbspec-apply-rust-check": {"scope": "owner", "needs": ["go", "rust", "databases"], "inputs": ["packages/rust/orm/tests/dbspec_apply.rs"]},
     "dbspec-apply-ts-check": {"scope": "owner", "needs": ["go", "node-modules", "databases"], "inputs": ["packages/ts/tests/dbspec-apply-physical.mjs"]},
