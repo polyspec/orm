@@ -277,6 +277,16 @@ func mysqlProbes() []Probe {
 			e.WantRows("SELECT a FROM t ORDER BY a DESC", "2,1,NULL")
 			e.Fails("SELECT a FROM t ORDER BY a ASC NULLS FIRST", "1064")
 		}),
+		p("fault.check_before_unique", "a row that breaks a CHECK and a unique key is refused with the CHECK fault", func(e *Env) {
+			e.Exec("CREATE TABLE t (id int PRIMARY KEY, a int CHECK (a > 0))", "INSERT INTO t VALUES (1, 1)")
+			e.Fails("INSERT INTO t VALUES (1, -1)", "3819")
+			e.Fails("INSERT INTO t VALUES (1, 2)", "1062")
+		}),
+		p("fault.fk_statement_end", "a foreign key is checked per row: one INSERT whose first row references its second row is refused (1452)", func(e *Env) {
+			e.Exec("CREATE TABLE t (id int PRIMARY KEY, pid int, FOREIGN KEY (pid) REFERENCES t (id))")
+			e.Fails("INSERT INTO t VALUES (2, 1), (1, NULL)", "1452")
+			e.Want("SELECT COUNT(*) FROM t", "0")
+		}),
 		p("unique.nulls_distinct", "a unique key accepts several NULLs", func(e *Env) {
 			e.Exec("CREATE TABLE t (a int, UNIQUE KEY uq (a))", "INSERT INTO t VALUES (NULL), (NULL)")
 		}),

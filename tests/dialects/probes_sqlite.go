@@ -148,6 +148,16 @@ func sqliteProbes() []Probe {
 			e.WantRows("SELECT a FROM t ORDER BY a ASC", "NULL,1,2")
 			e.WantRows("SELECT a FROM t ORDER BY a DESC", "2,1,NULL")
 		}),
+		p("fault.check_before_unique", "a row that breaks a CHECK and a unique key is refused with the CHECK fault", func(e *Env) {
+			e.Exec("PRAGMA foreign_keys = ON", "CREATE TABLE t (id int PRIMARY KEY, a int CHECK (a > 0))", "INSERT INTO t VALUES (1, 1)")
+			e.Fails("INSERT INTO t VALUES (1, -1)", "CHECK constraint failed")
+			e.Fails("INSERT INTO t VALUES (1, 2)", "UNIQUE constraint failed")
+		}),
+		p("fault.fk_statement_end", "a foreign key is checked at the end of the statement: one INSERT whose first row references its second row is accepted, and a reference no row of the statement satisfies is refused", func(e *Env) {
+			e.Exec("PRAGMA foreign_keys = ON", "CREATE TABLE t (id int PRIMARY KEY, pid int REFERENCES t (id))", "INSERT INTO t VALUES (2, 1), (1, NULL)")
+			e.Want("SELECT COUNT(*) FROM t", "2")
+			e.Fails("INSERT INTO t VALUES (4, 3), (5, NULL)", "FOREIGN KEY constraint failed")
+		}),
 		p("unique.nulls_distinct", "a unique key accepts several NULLs", func(e *Env) {
 			e.Exec("CREATE TABLE t (a int UNIQUE)", "INSERT INTO t VALUES (NULL), (NULL)")
 		}),

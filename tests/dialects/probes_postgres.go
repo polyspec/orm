@@ -228,6 +228,16 @@ func postgresProbes() []Probe {
 			e.Exec("CREATE TABLE t1 (a int)", "CREATE TABLE t2 (a int)", "CREATE INDEX ix ON t1 (a)")
 			e.Fails("CREATE INDEX ix ON t2 (a)", "42P07")
 		}),
+		p("fault.check_before_unique", "a row that breaks a CHECK and a unique key is refused with the CHECK fault", func(e *Env) {
+			e.Exec("CREATE TABLE t (id int PRIMARY KEY, a int CHECK (a > 0))", "INSERT INTO t VALUES (1, 1)")
+			e.Fails("INSERT INTO t VALUES (1, -1)", "23514")
+			e.Fails("INSERT INTO t VALUES (1, 2)", "23505")
+		}),
+		p("fault.fk_statement_end", "a foreign key is checked at the end of the statement: one INSERT whose first row references its second row is accepted, and a reference no row of the statement satisfies is refused", func(e *Env) {
+			e.Exec("CREATE TABLE t (id int PRIMARY KEY, pid int REFERENCES t (id))", "INSERT INTO t VALUES (2, 1), (1, NULL)")
+			e.Want("SELECT COUNT(*) FROM t", "2")
+			e.Fails("INSERT INTO t VALUES (4, 3), (5, NULL)", "23503")
+		}),
 		p("unique.name_schema_scope", "a unique constraint name is an index name and is unique in the schema (42P07)", func(e *Env) {
 			e.Exec("CREATE TABLE t1 (a int, CONSTRAINT uq UNIQUE (a))")
 			e.Fails("CREATE TABLE t2 (a int, CONSTRAINT uq UNIQUE (a))", "42P07")

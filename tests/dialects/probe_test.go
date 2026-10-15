@@ -1,6 +1,11 @@
 package dialects
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -27,4 +32,55 @@ func TestProbeIDs(t *testing.T) {
 		}
 	}
 	t.Logf("%d probe IDs valid in %s", len(probes), time.Since(begin).Round(time.Microsecond))
+}
+
+// citedProbe is a probe ID written as inline code in a dialects page.
+var citedProbe = regexp.MustCompile("`((?:mysql|postgres|sqlite)\\.[a-z0-9_]+\\.[a-z0-9_]+)`")
+
+// TestProbeCitations verifies that docs/dialects.md and its Korean twin cite
+// every fact probe and cite no probe ID that neither a fact probe nor a DDL
+// vector of tests/dbspec/ddl.json runs, so a probed fact has its rule and a
+// rule cites only probes that run.
+func TestProbeCitations(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	known := map[string]bool{}
+	probes := All()
+	for _, p := range probes {
+		known[p.ID] = true
+	}
+	raw, err := os.ReadFile(filepath.Join("..", "dbspec", "ddl.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vectors struct {
+		Cases []struct {
+			ID string `json:"id"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(raw, &vectors); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range vectors.Cases {
+		for _, db := range []string{"mysql", "postgres", "sqlite"} {
+			known[db+".ddl."+strings.ReplaceAll(c.ID, "-", "_")] = true
+		}
+	}
+	for _, page := range []string{"dialects.md", "dialects.ko.md"} {
+		text, err := os.ReadFile(filepath.Join("..", "..", "docs", page))
+		if err != nil {
+			t.Fatal(err)
+		}
+		cited := map[string]bool{}
+		for _, match := range citedProbe.FindAllStringSubmatch(string(text), -1) {
+			cited[match[1]] = true
+			if !known[match[1]] {
+				t.Errorf("docs/%s cites %s, which no probe runs", page, match[1])
+			}
+		}
+		for _, p := range probes {
+			if !cited[p.ID] {
+				t.Errorf("docs/%s does not cite the probe %s (%s)", page, p.ID, p.Fact)
+			}
+		}
+	}
 }
