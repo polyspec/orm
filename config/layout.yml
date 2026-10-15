@@ -32,54 +32,11 @@ rules:
       - "!packages/dbspec-codemirror"
       - "!packages/dbspec-vscode"
 
+  # S5: the root files of the repository besides those of kit (config/layout.kit.yml): VERSION, the one version of the
+  # repository that config/release.json names and the version-bump commit sets, and the community health files, which
+  # GitHub reads only from the root, .github/ or docs/, each with its Korean twin (K145).
   - id: layout-root-files
-    paths:
-      - "*"
-      - "!README.md"
-      - "!README.ko.md"
-      - "!AGENTS.md"
-      - "!AGENTS.ko.md"
-      - "!PRINCIPLES.md"
-      - "!PRINCIPLES.ko.md"
-      - "!CHANGELOG.md"
-      - "!CHANGELOG.ko.md"
-      - "!LICENSE"
-      - "!Makefile"
-      - "!kit.json"
-      - "!package.json"
-      - "!package-lock.json"
-      - "!tsconfig.json"
-      - "!.gitignore"
-      - "!.gitattributes"
-      - "!.node-version"
-      - "!mise.toml"
-      - "!mise.lock"
-      - "!.php-version"
-      - "!rust-toolchain.toml"
-      - "!ruff.toml"
-      - "!phpcs.xml.dist"
-      - "!phpstan.dist.neon"
-      - "!Cargo.toml"
-      - "!Cargo.lock"
-      - "!go.work"
-      - "!go.work.sum"
-      - "!.golangci.yml"
-      - "!.oxlintrc.json"
-      - "!knip.json"
-      - "!.editorconfig"
-      # The one version of the repository, which config/release.json names and the version-bump commit sets.
-      - "!VERSION"
-      # The private Composer root that installs packages/php as a path repository for the PHP checks, as package.json is
-      # the npm root of the workspace.
-      - "!composer.json"
-      - "!composer.lock"
-      # The community health files, which GitHub reads only from the root, .github/ or docs/; each has its Korean twin.
-      - "!CODE_OF_CONDUCT.md"
-      - "!CODE_OF_CONDUCT.ko.md"
-      - "!CONTRIBUTING.md"
-      - "!CONTRIBUTING.ko.md"
-      - "!SECURITY.md"
-      - "!SECURITY.ko.md"
+    vars: { root_files: "{VERSION,CODE_OF_CONDUCT.md,CODE_OF_CONDUCT.ko.md,CONTRIBUTING.md,CONTRIBUTING.ko.md,SECURITY.md,SECURITY.ko.md}" }
 
   # S7: the root tests/ holds what every client runs or is compared by, and the tests of the repository's own tools.
   - id: layout-root-tests
