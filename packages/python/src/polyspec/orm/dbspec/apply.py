@@ -8,7 +8,7 @@ import datetime
 import re
 from typing import Callable
 
-from polyspec.orm.dbspec.introspect import _Connection, introspect_dbspec
+from polyspec.orm.dbspec.introspect import Connection, introspect_dbspec
 from polyspec.orm.dbspec.model import DbspecPlan
 from polyspec.orm.dbspec.manifest import dbspec_manifest
 from polyspec.orm.dbspec.plan import chain_plans
@@ -822,7 +822,7 @@ def _new_applier(connection, dialect: str, plans, now, events) -> _Applier:
 
 
 def apply_plans(
-    connection: _Connection,
+    connection: Connection,
     dialect: str,
     plans: list[DbspecPlan],
     now: Callable[[], int],
@@ -844,7 +844,7 @@ def apply_plans(
 
 
 def recover_plans(
-    connection: _Connection,
+    connection: Connection,
     dialect: str,
     plans: list[DbspecPlan],
     now: Callable[[], int],
@@ -876,7 +876,7 @@ def recover_plans(
 
 
 def rollback_plans(
-    connection: _Connection,
+    connection: Connection,
     dialect: str,
     plans: list[DbspecPlan],
     now: Callable[[], int],
@@ -948,7 +948,7 @@ def rollback_plans(
 
 
 def finalize_plans(
-    connection: _Connection,
+    connection: Connection,
     dialect: str,
     plans: list[DbspecPlan],
     now: Callable[[], int],

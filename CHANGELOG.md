@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Python dbspec introspection and apply take a public Connection protocol. (#T181-2)
 - The lock sidecar of the vulture tool is tracked beside mise.lock, so a fresh checkout installs its tools. (#T181-1)
 - The repository takes kit 0.0.50: node is a tool of mise.toml, every recipe starts its tools by their paths, and make lint-python runs ruff and vulture and passes. (#T181)
 - The PHP and PHP extension vector runners report every schema refusal through the fork min-median-max/json-schema v2.6.0-p1, as the other runners do. (#T137-1-4-3-1)

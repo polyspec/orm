@@ -126,6 +126,8 @@
   "packages/python/src/polyspec/orm/dbspec/installed.py::installed_differences": "def installed_differences(live: DbspecDocument, unsupported: list[Unsupported], target: DbspecDocument) -\u003e list[str]",
   "packages/python/src/polyspec/orm/dbspec/installed.py::qualified": "def qualified(table: str, name: str) -\u003e str",
   "packages/python/src/polyspec/orm/dbspec/installed.py::schema_document": "def schema_document(tables) -\u003e DbspecDocument",
+  "packages/python/src/polyspec/orm/dbspec/introspect.py::Connection": "class Connection(Protocol)",
+  "packages/python/src/polyspec/orm/dbspec/introspect.py::Connection.execute": "def execute(self, sql: str, values: list) -\u003e list",
   "packages/python/src/polyspec/orm/dbspec/introspect.py::introspect_catalog": "def introspect_catalog(query, dialect: str, name: str) -\u003e dict",
   "packages/python/src/polyspec/orm/dbspec/introspect.py::introspect_dbspec": "def introspect_dbspec(connection: Connection, dialect: str, name: str) -\u003e dict",
   "packages/python/src/polyspec/orm/dbspec/introspect_catalog.py::Catalog": "class Catalog",
