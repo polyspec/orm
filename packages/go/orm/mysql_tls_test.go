@@ -2,7 +2,9 @@ package orm
 
 import (
 	"context"
+	"encoding/json"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -79,5 +81,44 @@ func TestMySQLTLSConnection(t *testing.T) {
 		if _, err := version(ctx, dsns[env]); err == nil || !strings.Contains(err.Error(), "certificate") {
 			t.Errorf("the connection with %s: %v; want a refused certificate", name, err)
 		}
+	}
+}
+
+// TestMySQLSessionSQLMode는 client가 연결마다 정하는 session sql_mode를
+// tests/dsn/mysql-session.json의 값과 비교한다: 연결은 server 기본값이 아니라
+// 선언한 mode를 읽는다(docs/config.md "Runtime connection").
+func TestMySQLSessionSQLMode(t *testing.T) {
+	ctx := testcase.Start(t, testcase.Database).Context()
+	dsn := os.Getenv("ORM_TEST_MYSQL_DSN")
+	if dsn == "" {
+		t.Fatal("ORM_TEST_MYSQL_DSN is required; run make test-servers")
+	}
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "tests", "dsn", "mysql-session.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vector struct {
+		SQLMode struct {
+			Session string `json:"session"`
+		} `json:"sql_mode"`
+	}
+	if err := json.Unmarshal(raw, &vector); err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := parseDSN(dsn, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := openSQL("mysql", parsed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var mode string
+	if err := db.QueryRowContext(ctx, "SELECT @@SESSION.sql_mode").Scan(&mode); err != nil {
+		t.Fatal(err)
+	}
+	if mode != vector.SQLMode.Session {
+		t.Errorf("@@SESSION.sql_mode = %q; want %q", mode, vector.SQLMode.Session)
 	}
 }

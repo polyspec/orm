@@ -8,6 +8,8 @@ final class Orm
 {
     /** milliseconds a SQLite connection waits for a lock when the DSN sets no _pragma=busy_timeout(ms) */
     private const SQLITE_BUSY_TIMEOUT_MS = 5000;
+    /** MySQL 연결마다 정하는 session sql_mode다. 결과가 server 설정에 따르지 않는다(tests/dsn/mysql-session.json). */
+    private const MYSQL_SQL_MODE = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
 
     /** scheme마다 DSN이 받는 parameter다(docs/config.md). 다른 parameter는 CONFIG다. */
     private const DSN_PARAMETERS = [
@@ -53,7 +55,7 @@ final class Orm
                 $options = [
                     \Pdo\Mysql::ATTR_FOUND_ROWS => true,
                     // MySQL bounds SELECT statements with max_execution_time.
-                    \Pdo\Mysql::ATTR_INIT_COMMAND => "SET time_zone = '+00:00'" . ($config->statementTimeoutMs > 0 ? ', SESSION max_execution_time = ' . $config->statementTimeoutMs : ''),
+                    \Pdo\Mysql::ATTR_INIT_COMMAND => "SET time_zone = '+00:00', sql_mode = '" . self::MYSQL_SQL_MODE . "'" . ($config->statementTimeoutMs > 0 ? ', SESSION max_execution_time = ' . $config->statementTimeoutMs : ''),
                 ] + self::mysqlTlsOptions($sslCa);
                 break;
             case 'postgres':

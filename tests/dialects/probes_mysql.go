@@ -87,6 +87,12 @@ func mysqlProbes() []Probe {
 			e.Exec("CREATE TABLE t (c char(5))", "INSERT INTO t VALUES ('ab  ')")
 			e.Want("SELECT CONCAT('[', c, ']') FROM t", "[ab]")
 		}),
+		p("session.sql_mode_set", "SET SESSION sql_mode to the declared modes reads back in the server's order and makes STRICT_ALL_TABLES the session's strict mode", func(e *Env) {
+			e.Exec("SET SESSION sql_mode = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'")
+			e.Want("SELECT @@SESSION.sql_mode", "ONLY_FULL_GROUP_BY,STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION")
+			e.Exec("CREATE TABLE t (a tinyint)")
+			e.Fails("INSERT INTO t VALUES (128)", "1264")
+		}),
 		p("text.max_bytes", "TEXT holds at most 65535 bytes (1406)", func(e *Env) {
 			e.Exec("CREATE TABLE t (v text)", "INSERT INTO t VALUES (REPEAT('a', 65535))")
 			e.Fails("INSERT INTO t VALUES (REPEAT('a', 65536))", "1406")

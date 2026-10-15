@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 5f12f9f3ac422d03230a0286b09d7410af4f5d2b7e0d5f2d57a5ec83951112e6 -->
+<!-- source-sha256: dd635444923af1345981ce0981ded1fcabce3b61bc37798ebf7516c960d39e75 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -67,7 +67,7 @@ import하지 않으면 `orm.Open`은 필요한 import를 포함한 `CONFIG`를 �
 
 | 항목 | 값 |
 |---|---|
-| MySQL | 8.4.11, `sql_mode`에 `STRICT_TRANS_TABLES` 포함, `lower_case_table_names=1`, `log_bin=1`, `log_bin_trust_function_creators=0`, `explicit_defaults_for_timestamp=1`, 서버 시간대 `SYSTEM`(KST) (`mysql.env.server`) |
+| MySQL | 8.4.11, 서버 `sql_mode`에 `STRICT_TRANS_TABLES` 포함, 모든 클라이언트가 [config](config.ko.md)의 세션 `sql_mode`를 정함(`mysql.session.sql_mode_set`), `lower_case_table_names=1`, `log_bin=1`, `log_bin_trust_function_creators=0`, `explicit_defaults_for_timestamp=1`, 서버 시간대 `SYSTEM`(KST) (`mysql.env.server`) |
 | PostgreSQL | 17.11, `TimeZone=Asia/Seoul`, database collation `C`, `max_identifier_length=63` (`postgres.env.server`) |
 | SQLite (probe) | `modernc.org/sqlite` v1.58.0의 3.53.4 (`sqlite.env.library`) |
 | SQLite, Go client | `modernc.org/sqlite` v1.58.0(`packages/go/go.mod`), `select sqlite_version()` 결과 3.53.4 |

@@ -72,6 +72,9 @@ DSN_PARAMETERS = {
 }
 
 SQLITE_BUSY_TIMEOUT_MS = 5000
+# The session sql_mode of every MySQL connection, so that a result does not depend on the
+# server's setting (tests/dsn/mysql-session.json, docs/config.md "Runtime connection").
+MYSQL_SQL_MODE = "STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
 ROW_LOCK_TABLES = ["orm__row_lock"]
 ROW_LOCK_DDL = (
     'CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY '
@@ -685,7 +688,7 @@ class _MysqlConnection:
             )
         except Exception as error:
             _raise_driver_error("mysql", error)
-        self.execute("SET time_zone = '+00:00'", [])
+        self.execute(f"SET time_zone = '+00:00', sql_mode = '{MYSQL_SQL_MODE}'", [])
 
     def execute(self, sql: str, values):
         cursor = self.connection.cursor()

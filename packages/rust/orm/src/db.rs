@@ -277,6 +277,11 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
     Ok(ParsedDsn { options, zone })
 }
 
+/// The session sql_mode of every MySQL connection, so that a coercion, truncation
+/// or grouping result does not depend on the server's setting
+/// (tests/dsn/mysql-session.json, docs/config.md "Runtime connection").
+const MYSQL_SQL_MODE: &str = "STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION";
+
 /// The connection pool of a database, or of the flowmark server connections of
 /// a markdown corpus.
 #[derive(Clone)]
@@ -452,6 +457,10 @@ impl Db {
                 pool_options::<sqlx::MySql>(pool_size, idle, cfg.pool_lifetime_ms, &owner)
                     .after_connect(move |conn, _| {
                         Box::pin(async move {
+                            // sqlx adds PIPES_AS_CONCAT and NO_ENGINE_SUBSTITUTION to the
+                            // server's sql_mode, and the IGNORE_SPACE client flag adds that
+                            // mode; this replaces them with the declared one.
+                            sqlx::query(sqlx::AssertSqlSafe(format!("SET SESSION sql_mode = '{MYSQL_SQL_MODE}'"))).execute(&mut *conn).await?;
                             if timeout > 0 {
                                 sqlx::query(sqlx::AssertSqlSafe(format!("SET SESSION max_execution_time = {timeout}"))).execute(&mut *conn).await?;
                             }

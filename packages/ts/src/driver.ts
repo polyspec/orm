@@ -718,6 +718,13 @@ function boundMySqlPool(pool: MySqlCorePool, bounds: PoolBounds): void {
   }
 }
 
+/**
+ * The session sql_mode of every MySQL connection, so that a coercion, truncation or grouping result does not depend on
+ * the server's setting; it also replaces the IGNORE_SPACE that mysql2's default client flags add
+ * (tests/dsn/mysql-session.json, docs/config.md "Runtime connection").
+ */
+const MYSQL_SQL_MODE = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+
 export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, statementCacheSize: number, statementTimeoutMs = 0): DriverPool {
   const url = new URL(dsn);
   url.searchParams.delete('timezone');
@@ -745,7 +752,8 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
       const core = mysqlCorePool(created);
       core.on('connection', connection => {
         // MySQL bounds SELECT statements with max_execution_time.
-        const session = statementTimeoutMs > 0 ? `SET time_zone = '+00:00', SESSION max_execution_time = ${statementTimeoutMs}` : `SET time_zone = '+00:00'`;
+        const zone = `SET time_zone = '+00:00', sql_mode = '${MYSQL_SQL_MODE}'`;
+        const session = statementTimeoutMs > 0 ? `${zone}, SESSION max_execution_time = ${statementTimeoutMs}` : zone;
         connection.query(session, error => { if (error) setup.error = error; });
       });
       boundMySqlPool(core, bounds);

@@ -72,7 +72,7 @@ Notation: "renderer CHECK" is a CHECK constraint that the renderer writes for a 
 
 | Item | Value |
 |---|---|
-| MySQL | 8.4.11; `sql_mode` includes `STRICT_TRANS_TABLES`; `lower_case_table_names=1`; `log_bin=1`; `log_bin_trust_function_creators=0`; `explicit_defaults_for_timestamp=1`; server time zone `SYSTEM` (KST) (`mysql.env.server`) |
+| MySQL | 8.4.11; server `sql_mode` includes `STRICT_TRANS_TABLES`, and every client sets the session `sql_mode` of [config](config.md) (`mysql.session.sql_mode_set`); `lower_case_table_names=1`; `log_bin=1`; `log_bin_trust_function_creators=0`; `explicit_defaults_for_timestamp=1`; server time zone `SYSTEM` (KST) (`mysql.env.server`) |
 | PostgreSQL | 17.11; `TimeZone=Asia/Seoul`; database collation `C`; `max_identifier_length=63` (`postgres.env.server`) |
 | SQLite (probes) | 3.53.4 through `modernc.org/sqlite` v1.58.0 (`sqlite.env.library`) |
 | SQLite, Go client | `modernc.org/sqlite` v1.58.0 (`packages/go/go.mod`): 3.53.4 from `select sqlite_version()` |

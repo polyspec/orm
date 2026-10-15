@@ -258,10 +258,11 @@
         },
         {
           "id": "dsn-mysql-tls-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'MySQLTLS' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'MySQL(TLS|SessionSQLMode)' -count=1",
           "shard": "other",
           "inputs": [
-            "packages/go/orm/mysql_tls_test.go"
+            "packages/go/orm/mysql_tls_test.go",
+            "tests/dsn/mysql-session.json"
           ]
         },
         {
@@ -269,7 +270,8 @@
           "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/MysqlTlsTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/MysqlTlsTest.php"
+            "packages/php/tests/MysqlTlsTest.php",
+            "tests/dsn/mysql-session.json"
           ]
         },
         {
@@ -277,7 +279,17 @@
           "command": "node packages/ts/tests/mysql_tls.mjs",
           "shard": "other",
           "inputs": [
-            "packages/ts/tests/mysql_tls.mjs"
+            "packages/ts/tests/mysql_tls.mjs",
+            "tests/dsn/mysql-session.json"
+          ]
+        },
+        {
+          "id": "dsn-mysql-session-python",
+          "command": "make python-mysql-session-check",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/mysql_session.py",
+            "tests/dsn/mysql-session.json"
           ]
         },
         {
@@ -285,7 +297,8 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts dsn-mysql-tls-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test mysql_tls",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/mysql_tls.rs"
+            "packages/rust/orm/tests/mysql_tls.rs",
+            "tests/dsn/mysql-session.json"
           ]
         },
         {

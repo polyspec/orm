@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "note": "Every client sets the session sql_mode to set on each MySQL connection it opens, after the driver's own setup, and a connection then reads @@SESSION.sql_mode as session, the server's order of the same modes (probe mysql.session.sql_mode_set). A case connects with ORM_TEST_MYSQL_DSN through the client's own connection setup and reads @@SESSION.sql_mode. docs/config.md \"Runtime connection\" and docs/dialects.md \"Probe environment\".",
+  "sql_mode": {
+    "set": "STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+    "session": "ONLY_FULL_GROUP_BY,STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
+  }
+}

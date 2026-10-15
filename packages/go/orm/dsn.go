@@ -32,6 +32,12 @@ type parsedDSN struct {
 // server default. Every connection reads and writes datetime values in UTC
 // (docs/dialects.md "Date and time"), so the timezone parameter accepts only
 // UTC or +00:00.
+
+// mysqlSQLMode is the session sql_mode of every MySQL connection, so that a
+// coercion, truncation or grouping result does not depend on the server's
+// setting (tests/dsn/mysql-session.json, docs/config.md "Runtime connection").
+const mysqlSQLMode = "STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
+
 func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme == "" {
@@ -57,6 +63,7 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 			q.Del("socket")
 		}
 		q.Set("time_zone", quoteText("+00:00"))
+		q.Set("sql_mode", quoteText(mysqlSQLMode))
 		q.Set("clientFoundRows", "true")
 		if statementTimeoutMs > 0 {
 			// MySQL bounds SELECT statements with max_execution_time.
