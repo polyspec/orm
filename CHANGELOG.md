@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Every dbspec compare runner validates the vectors against the shared JSON Schemas of tests/dbspec/schema with its ecosystem's validator; the runners' own field checks are removed. (#T137-1-4-3)
 - The repository checks read the workflows as YAML documents, the shell commands with the unbash parser, and Go source with go/analysis analyzers that go vet runs (make go-vet-check). (#T137-1-4-2)
 - The introspection and native rule tests read the moved schema and contracts, and tests/testcase.mts gives a case a temporary folder that it removes when the case ends. (#T137-1-8)
 - bench/ is benchmarks/, the shared bench schema is contracts/fixtures/bench/, and the Composer release is the http:composer tool of mise.toml; .composer-version is removed, and make layout-check passes. (#T137-1-7)
