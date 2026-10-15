@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 17db2c8008316148da7da9d9419084ea55daaaa652e04776945b6dd5682029cd -->
+<!-- source-sha256: 1a5e6117933eadc5c7396ab6944c1c1f3fc96634a4669182b261d4db4d07fab2 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1085,7 +1085,8 @@
     - [o] T148-2-2 옮긴 Rust vector를 workspace에서 실행하고 측정 시간은 경고한다 (T148-2에 이어). 원인: main CI가 실패했다: T148-2의 검증 명령이 ORM_RUST_TEST_FEATURES의 workspace feature와 함께 -p polyspec-orm을 썼고, packages/rust/schema/tests/dbspec_plan.rs가 CPU 시간으로 case를 실패시켰다. Evidence: planner-rust-validate, codec-vectors-rust, encryption-codec-rust가 통과하고 저장소 검사가 통과한다.
   - [ ] T148-3 모든 parity unit을 bind하고 parity R2와 R3를 통과한다 (T148-1, T148-2에 이어). 원인: parity 검사가 모든 unit에서 R2 binding 누락 15줄과 R3 196줄을 보고한다. 완료 조건: make parity-check가 통과하며, 끝에 한 번 실행한다.
     - [!] T148-3-1 PHP와 PHP extension parity binding을 root Composer project의 PHPUnit으로 실행한다 (T148-3에 이어). 원인: kit의 PHP runner는 package마다 vendor/bin/phpunit을 찾는데 orm은 root Composer project(vendor-php, T148-1-1)에 PHPUnit을 한 번 설치하므로 R3 binding 59개가 시작하지 못한다. 완료 조건: 가장 가까운 Composer project에서 PHPUnit을 찾는 kit 0.0.50(K178) 뒤 parity가 그것을 실행한다. 우회 원인: kit 도구가 정한다. Retry: kit 0.0.50이 release될 때(T181).
-    - [ ] T148-3-2 parity R2가 binding이 없다고 보고하는 Python feature를 bind한다 (T148-3에 이어). 원인: aggregate-numeric, authenticated-encryption, decimal-model, planner, styled-column-states, install-changed-database, sqlite-paths, statement-events에 Python binding이 없고 대부분 Python test도 없다. 완료 조건: 각각 config/parity.json에 bind된 Python test가 있거나, 먼저 Python에 feature를 구현한다.
+    - [o] T148-3-2 parity R2가 binding이 없다고 보고하는 Python feature를 bind한다 (T148-3에 이어). 원인: aggregate-numeric, authenticated-encryption, decimal-model, planner, styled-column-states, install-changed-database, sqlite-paths, statement-events에 Python binding이 없고 대부분 Python test도 없다. 완료 조건: 각각 config/parity.json에 bind된 Python test가 있거나, 먼저 Python에 feature를 구현한다.
+      Evidence: T77-3이 Python feature 8개를 각각 fixture id로 case를 실행하는 test에 bind했다. make parity-declarations-check가 python R2 줄을 보고하지 않는다.
     - [ ] T148-3-3 parity R2가 binding이 없다고 보고하는 Go, PHP, PHP extension, Rust feature를 bind한다 (T148-3에 이어). 원인: go의 codec, codec-aes, dbspec-syntax, php와 rust의 codec-aes, php-extension의 schema-definition과 dbspec-sets에 binding이 없다. 완료 조건: 각각 그것을 실행하는 test에 bind한다.
       - [ ] T148-3-3-1 공유 vector case 이름에서 slash를 뺀다 (T148-3-3에 이어). 원인: tests/codec/vectors.json의 case 91개(yaml_core/...)와 tests/dbspec/syntax.json의 304개(canonical/..., invalid/...)가 slash를 담아 Go가 subtest로 중첩하므로, kit이 codec과 dbspec-syntax unit의 Go binding을 거부한다. T148-3-3의 나머지 unit 5개는 bind했다(Go, PHP, Rust의 codec-aes, PHP extension의 dbspec-sets와 schema-definition). 완료 조건: 모든 vector file과 runner에서 공유 case id에 slash가 없고, Go codec과 dbspec-syntax unit이 bind되며, parity가 그것에 R2를 보고하지 않는다.
     - [ ] T148-3-4 여러 suite를 실행하는 binding file을 나눈다 (T148-3에 이어). 원인: R3 63줄이 suite에 없는 case를 보고한다. 모든 언어의 dbspec cases, mermaid, plans, codec file이 한 file에서 다른 suite의 case나 추가 test를 실행한다. 완료 조건: 각 binding file이 suite 하나를 그 case id로 실행한다.
