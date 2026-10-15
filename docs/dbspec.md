@@ -318,7 +318,7 @@ A document set owns the documents that its tool lists as its documents. A docume
 A client builds one runtime model from the document set, and generated code is produced from the same model:
 
 - **Entities.** One entity per table of every document of the set, documents in name order and tables in document order. The entity name is the `entity` setting or the table name; generated type names are its snake_case segments with their first letters in upper case (`service_member` → `ServiceMember`).
-- **Fields.** One field per column, named as the column, in column order, with the value type of the table below. A `null` column takes the language's absent value: Go a pointer (`[]byte` and styled values stay unwrapped), PHP `?T`, TypeScript `T | null`, Rust `Option<T>`.
+- **Fields.** One field per column, named as the column, in column order, with the value type of the table below. A `null` column takes the language's absent value: Go a pointer (`[]byte` and styled values stay unwrapped), PHP `?T`, TypeScript `T | null`, Rust `Option<T>`, Python `T | None`; a Python getter whose value has another type raises `TypeError`.
 - **Keys.** The primary key columns identify a row; the identity column is never written by an insert and its generated key is returned. An upsert conflicts on the primary key or a unique key, which the call names.
 - **Default select set.** Every column except those of `select explicit`; reading a column that was not selected fails with `COLUMN_UNSELECTED`. No type or codec leaves a column out by itself.
 - **Defaults.** An insert that omits a column with a default takes the database default; the executor does not fill it, except that on SQLite, whose clock has millisecond resolution, it binds the client clock for an omitted `default now` column ([protocol](protocol.md)). An insert that omits a non-null column without a default fails with `IR_INVALID` before reaching the database.
@@ -327,19 +327,19 @@ A client builds one runtime model from the document set, and generated code is p
 - **Relations.** Generated code joins two entities through the match methods of their columns, as before; a joined result is reached under the alias the call gives or under `<entity>_model` and `<entity>_models`.
 - **Connection.** A raw connection takes the DSN URI and its configuration and registers no set; it never takes a schema path. Generated code carries the manifest text and `manifestHash`, and its connect helper opens a connection and registers that set on it; `utils().schema().register(schema)` registers a set on an open connection and `install` registers the set it installs. Registering reads nothing from the database. A set registered by its schema value has its runtime model from its manifest text and external text, so it needs no loaded generated code; PHP uses the arrays of the generated classes once their bootstrap has run. A request carries `manifestHash` and runs only on a connection where its set is registered ([protocol](protocol.md)).
 
-| dbspec | Go | PHP | TypeScript | Rust |
-| --- | --- | --- | --- | --- |
-| `i16` | `int16` | `int` | `number` | `i16` |
-| `i32` | `int32` | `int` | `number` | `i32` |
-| `i64` | `int64` | `int` | `number` (a safe integer) | `i64` |
-| `bool` | `bool` | `bool` | `boolean` | `bool` |
-| `decimal(p,s)` | `string` with exactly s fraction digits | `string` | `string` | `String` |
-| `f64` | `float64` | `float` | `number` | `f64` |
-| `varchar(n)`, `text`, `uuid` | `string` | `string` | `string` | `String` |
-| `bytes` | `[]byte` | `string` | `Uint8Array` | `Vec<u8>` |
-| `date` | `time.Time` | `\DateTimeImmutable` | `string` `YYYY-MM-DD` | `NaiveDate` |
-| `time(p)` | `string` `HH:MM:SS` with p fraction digits | `string` | `string` | `String` |
-| `datetime(p)` | `time.Time` in UTC | `\DateTimeImmutable` in UTC | `string` `YYYY-MM-DD HH:MM:SS` with p fraction digits | `NaiveDateTime` |
+| dbspec | Go | PHP | TypeScript | Rust | Python |
+| --- | --- | --- | --- | --- | --- |
+| `i16` | `int16` | `int` | `number` | `i16` | `int` |
+| `i32` | `int32` | `int` | `number` | `i32` | `int` |
+| `i64` | `int64` | `int` | `number` (a safe integer) | `i64` | `int` |
+| `bool` | `bool` | `bool` | `boolean` | `bool` | `bool` |
+| `decimal(p,s)` | `string` with exactly s fraction digits | `string` | `string` | `String` | `str` |
+| `f64` | `float64` | `float` | `number` | `f64` | `float` |
+| `varchar(n)`, `text`, `uuid` | `string` | `string` | `string` | `String` | `str` |
+| `bytes` | `[]byte` | `string` | `Uint8Array` | `Vec<u8>` | `bytes` |
+| `date` | `time.Time` | `\DateTimeImmutable` | `string` `YYYY-MM-DD` | `NaiveDate` | `str` `YYYY-MM-DD` |
+| `time(p)` | `string` `HH:MM:SS` with p fraction digits | `string` | `string` | `String` | `str` |
+| `datetime(p)` | `time.Time` in UTC | `\DateTimeImmutable` in UTC | `string` `YYYY-MM-DD HH:MM:SS` with p fraction digits | `NaiveDateTime` | `str` `YYYY-MM-DD HH:MM:SS` with p fraction digits, in UTC |
 
 ## Diagrams
 

@@ -12,6 +12,18 @@ __all__ = ["Core"]
 # 만든다.
 PLAIN_STAGES = frozenset({"aes", "hex", "ip"})
 
+# The Python types of the value of each column category and the name a getter's TypeError gives them.
+_GETTER_TYPES = {
+    "styled": ((StyledValue,), "StyledValue"),
+    "int": ((int,), "int"),
+    "float": ((int, float), "float"),
+    "decimal": ((str,), "str"),
+    "bool": ((bool,), "bool"),
+    "time": ((str,), "str"),
+    "bytes": ((bytes,), "bytes"),
+    "string": ((str,), "str"),
+}
+
 _INTEGER_RANGES = {
     "i16": (-32768, 32767),
     "i32": (-2147483648, 2147483647),
@@ -430,6 +442,26 @@ class Core:
         raise OrmError(
             "COLUMN_UNSELECTED",
             f"{self.ent.entity.name}.{name} was neither selected nor assigned",
+        )
+
+    def typed_column(self, name: str, kind: str):
+        """The value of column name as its generated getter returns it: a value of the type of its category kind
+        (docs/dbspec.md "Runtime model"), or None for a null column. Another value raises TypeError, as a typed
+        getter of the other clients does."""
+        value = self.column(name)
+        field = field_of(self.ent.entity, name)
+        types, label = _GETTER_TYPES[kind]
+        nullable = field is not None and field.nullable and kind != "styled"
+        if value is None and nullable:
+            return value
+        if isinstance(value, types) and not (
+            isinstance(value, bool) and kind in ("int", "float")
+        ):
+            return value
+        expected = f"{label} | None" if nullable else label
+        raise TypeError(
+            f"{self.ent.entity.name}.{name} holds a value of type "
+            f"{type(value).__name__}, not {expected}"
         )
 
     def set_value(self, column: str, value) -> None:

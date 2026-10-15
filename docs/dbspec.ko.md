@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: c2341acdc39dc318062c5a721baaf03c74410099800652a0f94addacb3016bac -->
+<!-- source-sha256: ef8bd54ed9fd66dd976ab67e6726a8088327d1f6441f9ee3d477e0750c33f3ef -->
 # dbspec
 
 [English](dbspec.md)
@@ -320,7 +320,7 @@ manifest와 [rendered statements](dialects.md#rendered-statements)는 한 집합
 client는 문서 집합으로 runtime model 하나를 만들고, 생성 코드도 같은 model에서 만든다.
 
 - **Entity.** 집합의 모든 문서의 table마다 entity 하나다. 문서는 이름 순, table은 문서 순서다. entity 이름은 `entity` setting이나 table 이름이다. 생성 type 이름은 snake_case 조각의 첫 글자를 대문자로 쓴 것이다(`service_member` → `ServiceMember`).
-- **Field.** column마다 field 하나이며 이름은 column 이름, 순서는 column 순서, 값 type은 아래 표를 따른다. `null` column은 언어의 없음 값을 쓴다: Go는 pointer(`[]byte`와 styled 값은 감싸지 않음), PHP는 `?T`, TypeScript는 `T | null`, Rust는 `Option<T>`.
+- **Field.** column마다 field 하나이며 이름은 column 이름, 순서는 column 순서, 값 type은 아래 표를 따른다. `null` column은 언어의 없음 값을 쓴다: Go는 pointer(`[]byte`와 styled 값은 감싸지 않음), PHP는 `?T`, TypeScript는 `T | null`, Rust는 `Option<T>`, Python은 `T | None`이다. 값의 type이 다른 Python getter는 `TypeError`를 던진다.
 - **Key.** primary key column이 row를 식별한다. identity column은 insert가 쓰지 않으며 생성된 key를 돌려준다. upsert는 호출이 지정한 primary key나 unique key에서 충돌한다.
 - **기본 select 집합.** `select explicit`에 없는 모든 column이다. 선택하지 않은 column을 읽으면 `COLUMN_UNSELECTED`로 실패한다. type이나 codec이 스스로 column을 빼지는 않는다.
 - **Default.** default가 있는 column을 생략한 insert는 database default를 받으며 executor는 채우지 않는다. 단 clock이 millisecond 해상도인 SQLite에서는 생략한 `default now` column에 클라이언트 clock을 bind한다([protocol](protocol.ko.md)). default 없는 non-null column을 생략한 insert는 database에 닿기 전에 `IR_INVALID`로 실패한다.
@@ -329,19 +329,19 @@ client는 문서 집합으로 runtime model 하나를 만들고, 생성 코드�
 - **Relation.** 생성 코드는 이전처럼 column의 match method로 두 entity를 join한다. join 결과는 호출이 준 alias나 `<entity>_model`, `<entity>_models`로 얻는다.
 - **Connection.** raw connection은 DSN URI와 설정을 받고 set을 등록하지 않으며, schema 경로는 받지 않는다. 생성 코드는 manifest text와 `manifestHash`를 담고, 그 connect helper가 connection을 열어 그 set을 등록한다. `utils().schema().register(schema)`는 열린 connection에 set을 등록하고, `install`은 자기가 설치한 set을 등록한다. 등록은 database를 읽지 않는다. schema 값으로 등록한 set은 manifest text와 external text에서 runtime model을 얻으므로 읽은 생성 코드가 필요 없다. PHP는 생성 class의 bootstrap이 실행된 뒤에는 그 array를 쓴다. request는 `manifestHash`를 담고 그 set이 등록된 connection에서만 실행된다([protocol](protocol.md)).
 
-| dbspec | Go | PHP | TypeScript | Rust |
-| --- | --- | --- | --- | --- |
-| `i16` | `int16` | `int` | `number` | `i16` |
-| `i32` | `int32` | `int` | `number` | `i32` |
-| `i64` | `int64` | `int` | `number`(safe integer) | `i64` |
-| `bool` | `bool` | `bool` | `boolean` | `bool` |
-| `decimal(p,s)` | 소수 자릿수가 정확히 s인 `string` | `string` | `string` | `String` |
-| `f64` | `float64` | `float` | `number` | `f64` |
-| `varchar(n)`, `text`, `uuid` | `string` | `string` | `string` | `String` |
-| `bytes` | `[]byte` | `string` | `Uint8Array` | `Vec<u8>` |
-| `date` | `time.Time` | `\DateTimeImmutable` | `string` `YYYY-MM-DD` | `NaiveDate` |
-| `time(p)` | 소수 자릿수가 p인 `string` `HH:MM:SS` | `string` | `string` | `String` |
-| `datetime(p)` | UTC의 `time.Time` | UTC의 `\DateTimeImmutable` | 소수 자릿수가 p인 `string` `YYYY-MM-DD HH:MM:SS` | `NaiveDateTime` |
+| dbspec | Go | PHP | TypeScript | Rust | Python |
+| --- | --- | --- | --- | --- | --- |
+| `i16` | `int16` | `int` | `number` | `i16` | `int` |
+| `i32` | `int32` | `int` | `number` | `i32` | `int` |
+| `i64` | `int64` | `int` | `number`(safe integer) | `i64` | `int` |
+| `bool` | `bool` | `bool` | `boolean` | `bool` | `bool` |
+| `decimal(p,s)` | 소수 자릿수가 정확히 s인 `string` | `string` | `string` | `String` | `str` |
+| `f64` | `float64` | `float` | `number` | `f64` | `float` |
+| `varchar(n)`, `text`, `uuid` | `string` | `string` | `string` | `String` | `str` |
+| `bytes` | `[]byte` | `string` | `Uint8Array` | `Vec<u8>` | `bytes` |
+| `date` | `time.Time` | `\DateTimeImmutable` | `string` `YYYY-MM-DD` | `NaiveDate` | `str` `YYYY-MM-DD` |
+| `time(p)` | 소수 자릿수가 p인 `string` `HH:MM:SS` | `string` | `string` | `String` | `str` |
+| `datetime(p)` | UTC의 `time.Time` | UTC의 `\DateTimeImmutable` | 소수 자릿수가 p인 `string` `YYYY-MM-DD HH:MM:SS` | `NaiveDateTime` | 소수 자릿수가 p인 UTC의 `str` `YYYY-MM-DD HH:MM:SS` |
 
 ## Diagram
 

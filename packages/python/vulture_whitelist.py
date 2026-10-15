@@ -78,6 +78,7 @@ _.minus_p
 # Core methods that the generated models (src/polyspec/orm/models, excluded as generated text) and every model that
 # orm-gen writes call.
 _.add_column
+_.typed_column
 _.remove_column
 _.aggregate
 _.put_plus
