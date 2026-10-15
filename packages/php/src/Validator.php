@@ -315,6 +315,12 @@ final class Validator
         };
     }
 
+    /** The type of the interval of a relative time function: seconds take a fraction, the other units an integer. */
+    public static function intervalType(string $name): string
+    {
+        return (Dialect::VALUE_FUNCTION_UNITS[$name] ?? '') === 'second' ? 'f64' : 'i32';
+    }
+
     /** @param list<list<array{type: string, column: ?array}>> $out */
     private static function addUse(array &$out, int $i, string $type, ?array $col): void
     {
@@ -388,7 +394,7 @@ final class Validator
         $col = RuntimeModel::column($ent, $p['column'] ?? '');
         foreach ($p['value']['ps'] ?? [] as $i) {
             // 상대 시각 함수의 간격이다: 초는 소수를, 나머지 단위는 정수를 받는다.
-            self::addUse($out, $i, (Dialect::VALUE_FUNCTION_UNITS[$p['value']['name']] ?? '') === 'second' ? 'f64' : 'i32', null);
+            self::addUse($out, $i, self::intervalType($p['value']['name']), null);
         }
         if ($p['op'] === 'contains' || $p['op'] === 'contains_binary') {
             if (isset($p['p'])) {

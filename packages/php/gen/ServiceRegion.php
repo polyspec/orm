@@ -24,7 +24,7 @@ final class ServiceRegion extends Model
             'columns' => [
                 'seq' => ['name' => 'seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => false],
                 'service_seq' => ['name' => 'service_seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => true],
-                'name' => ['name' => 'name', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false],
+                'name' => ['name' => 'name', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false, 'length' => 191],
             ],
             'unique' => [],
             'indexes' => ['ix_service_region_service' => ['service_seq']],

@@ -23,8 +23,8 @@ final class UpsertCell extends Model
             'audit_record' => '',
             'columns' => [
                 'seq' => ['name' => 'seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => false],
-                'code' => ['name' => 'code', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false],
-                'label' => ['name' => 'label', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false],
+                'code' => ['name' => 'code', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false, 'length' => 16],
+                'label' => ['name' => 'label', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false, 'length' => 16],
             ],
             'unique' => ['uq_upsert_cell_code' => ['code']],
             'indexes' => [],

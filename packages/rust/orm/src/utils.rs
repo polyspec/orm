@@ -53,6 +53,7 @@ fn step(sql: String, types: &[&str]) -> Step {
                 key_types: Vec::new(),
                 precision: 0,
                 scale: 0,
+                length: 0,
             })
             .collect(),
         assemble: None,

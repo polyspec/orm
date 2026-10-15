@@ -9,6 +9,7 @@ import unittest
 
 from polyspec.orm.engine import model_of_documents, parse_document_set
 from polyspec.orm.engine.dialect import dialect_of
+from polyspec.orm.engine.params import param_uses
 from polyspec.orm.engine.planner import Planner
 from polyspec.orm.engine.validate import validate
 from polyspec.orm.errors import OrmError
@@ -54,6 +55,9 @@ def planner_slot(slot: dict) -> dict:
     # A datetime or time slot carries its fraction digits.
     if out["type"] in ("datetime", "time"):
         out["precision"] = slot.get("precision", 0)
+    # A varchar param slot carries its length.
+    if slot["from"] == "param" and out["type"] == "varchar":
+        out["length"] = slot.get("length", 0)
     return out
 
 
@@ -88,6 +92,41 @@ def compile_case(case: dict) -> None:
         expect_equal(statements, case["expected"][dialect], f"{dialect} statements")
 
 
+def param_uses_case(case: dict) -> None:
+    """Validates the request of a param_uses case and compares the uses of each parameter."""
+    expect_equal(case["operation"], "param_uses", f"operation of case {case['id']}")
+    model = model_of(case)
+    request = dict(
+        json.loads(json.dumps(case["input"])), manifest_hash=model.manifest_hash
+    )
+    validate(model, request)
+    uses = [
+        [
+            {"type": u.type}
+            if u.column is None
+            else {
+                "type": u.type,
+                "column": u.column.name,
+                "length": u.column.length,
+                "null": u.column.nullable,
+                "precision": u.column.precision,
+                "scale": u.column.scale,
+            }
+            for u in use
+        ]
+        for use in param_uses(model, request)
+    ]
+    expect_equal(uses, case["expected"]["uses"], "param uses")
+
+
+def run_case(case: dict) -> None:
+    """Runs a case by its operation."""
+    if case["operation"] == "param_uses":
+        param_uses_case(case)
+    else:
+        compile_case(case)
+
+
 class Case(VectorCase):
     """A case of planner.json."""
 
@@ -97,7 +136,7 @@ def load_tests(
 ) -> unittest.TestSuite:
     """One test for each case of the fixture, named by the case id."""
     tests.addTests(
-        vector_tests(Case, FIXTURE["cases"], lambda test, case: compile_case(case))
+        vector_tests(Case, FIXTURE["cases"], lambda test, case: run_case(case))
     )
     return tests
 
@@ -105,8 +144,5 @@ def load_tests(
 if __name__ == "__main__":
     expect_equal(FIXTURE["feature"], "planner", "the feature of planner.json")
     run_cases(
-        {
-            case["id"]: (lambda case=case: compile_case(case))
-            for case in FIXTURE["cases"]
-        }
+        {case["id"]: (lambda case=case: run_case(case)) for case in FIXTURE["cases"]}
     )

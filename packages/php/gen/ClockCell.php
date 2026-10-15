@@ -23,7 +23,7 @@ final class ClockCell extends Model
             'audit_record' => '',
             'columns' => [
                 'seq' => ['name' => 'seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => false],
-                'label' => ['name' => 'label', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false],
+                'label' => ['name' => 'label', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false, 'length' => 8],
                 'at0' => ['name' => 'at0', 'type' => 'datetime', 'nullable' => false, 'default' => true, 'default_now' => true, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false, 'precision' => 0],
                 'at3' => ['name' => 'at3', 'type' => 'datetime', 'nullable' => false, 'default' => true, 'default_now' => true, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false, 'precision' => 3],
                 'at6' => ['name' => 'at6', 'type' => 'datetime', 'nullable' => false, 'default' => true, 'default_now' => true, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false, 'precision' => 6],

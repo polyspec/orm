@@ -109,7 +109,7 @@ impl<'m> ParamUses<'m> {
         let f = ent.field(&p.column);
         if let Some(value) = &p.value {
             for &i in &value.ps {
-                self.add(i, super::planner::value_function_arg_type(&value.name).to_owned(), None);
+                self.add(i, interval_type(&value.name).to_owned(), None);
             }
         }
         if p.op == "contains" || p.op == "contains_binary" {
@@ -140,5 +140,14 @@ pub(crate) fn function_type(name: &str, f: Option<&Field>) -> String {
         "day_of_week" | "year" | "month" => "i64".into(),
         "date" => "date".into(),
         _ => f.map(|f| f.ty.name().to_owned()).unwrap_or_else(|| "text".into()),
+    }
+}
+
+/// 상대 시각 함수가 받는 간격 값의 type이다. 초는 소수를, 나머지 단위는 정수를 받는다.
+pub(crate) fn interval_type(name: &str) -> &'static str {
+    if super::dialect::value_function_unit(name) == Some("second") {
+        "f64"
+    } else {
+        "i32"
     }
 }

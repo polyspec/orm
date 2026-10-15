@@ -22,9 +22,9 @@ final class People extends Model
             'audit' => '',
             'audit_record' => '',
             'columns' => [
-                'id' => ['name' => 'id', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => false],
-                'name' => ['name' => 'name', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false],
-                'email' => ['name' => 'email', 'type' => 'varchar', 'nullable' => true, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false],
+                'id' => ['name' => 'id', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => false, 'length' => 32],
+                'name' => ['name' => 'name', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false, 'length' => 64],
+                'email' => ['name' => 'email', 'type' => 'varchar', 'nullable' => true, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false, 'length' => 64],
                 'age' => ['name' => 'age', 'type' => 'i32', 'nullable' => true, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false],
                 'active' => ['name' => 'active', 'type' => 'bool', 'nullable' => false, 'default' => true, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false],
                 'score' => ['name' => 'score', 'type' => 'decimal', 'nullable' => false, 'default' => true, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false, 'precision' => 6, 'scale' => 2],

@@ -113,6 +113,8 @@ func (b *builder) colParam(i int, col *runtimemodel.Field, transform string) str
 	case "datetime", "time":
 		// 값은 column의 소수 자리 수만큼의 자리로 bind된다. 0은 소수 자리가 없다는 뜻이다.
 		s.Precision = col.Precision
+	case "varchar":
+		s.Length = col.Length
 	}
 	return b.slot(s)
 }
@@ -559,7 +561,7 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 				return err
 			}
 			expr = e
-			typ = functionType(c.fn.Name, col)
+			typ = ir.FunctionType(c.fn.Name, col)
 			col = nil
 		case c.sub != nil:
 			e, err := p.subSelect(b, s, c.sub)
@@ -831,7 +833,7 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 		return lhs + op + "(" + inner + ")", nil
 	}
 	if pr.Value != nil {
-		arg := func() string { return b.param(pr.Value.Ps[0], valueFunctionArgType(pr.Value.Name)) }
+		arg := func() string { return b.param(pr.Value.Ps[0], ir.IntervalType(pr.Value.Name)) }
 		// A clock that the ORM compares keeps six fraction digits; a datetime(p < 6)
 		// column compares as its value extended to six digits (docs/protocol.md "Clock").
 		value, ok := p.D.ValueFunction(pr.Value.Name, arg, func() string { return b.now(6) })
@@ -848,7 +850,7 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 		if err != nil {
 			return "", err
 		}
-		fnType := functionType(pr.Fn.Name, col)
+		fnType := ir.FunctionType(pr.Fn.Name, col)
 		plain := func(i int) string { return b.param(i, fnType) }
 		switch pr.Op {
 		case "in", "not_in":
@@ -1005,15 +1007,6 @@ func styleInputType(style string) string {
 		return "text"
 	}
 	return "bytes"
-}
-
-// valueFunctionArgType은 상대 시각 함수가 받는 간격 값의 type이다. 초는 소수를
-// 받고 나머지 단위는 정수를 받는다.
-func valueFunctionArgType(name string) string {
-	if dialect.ValueFunctionUnits[name] == "second" {
-		return "f64"
-	}
-	return "i32"
 }
 
 func (p *Planner) resolvePath(s *scope, path string) (*scope, error) {
@@ -1595,20 +1588,6 @@ func (p *Planner) subSelect(b *builder, outer *scope, sub *ir.Sub) (string, erro
 		sb.WriteString(order + p.D.Limit(sub.Query.Limit.Offset, sub.Query.Limit.Count))
 	}
 	return sb.String(), nil
-}
-
-// functionType is the assembled type of a column function result.
-func functionType(name string, col *runtimemodel.Field) string {
-	switch name {
-	case "day_of_week", "year", "month":
-		return "i64"
-	case "date":
-		return "date"
-	}
-	if col != nil {
-		return col.Type
-	}
-	return "text"
 }
 
 // subType is the assembled type of a scalar subquery column.

@@ -4,7 +4,8 @@
 import type { Assemble, Assignment, BindSlot, Child, Group, KeyReference, OrmFunction, Plan, PlanStep, Predicate, Request, RequestQuery, Subquery } from '../ir.js';
 import { OrmError } from '../runtime_error.js';
 import { present } from '../present.js';
-import { type Dialect, valueFunctionUnits } from './dialect.js';
+import { type Dialect } from './dialect.js';
+import { functionType, intervalType } from './params.js';
 import { entityOf, fieldOf as columnOf, type Entity, type Field as Column, type RuntimeModel } from './model.js';
 import { conflictKey, restoreKey } from './validate.js';
 
@@ -74,11 +75,12 @@ class Builder {
     if (type === 'datetime' || type === 'time') s.precision = 6;
     return this.typed(s);
   }
-  /** The value Params[i] compared with or assigned to col: col's type, with the digits of a decimal, time or datetime. */
+  /** The value Params[i] compared with or assigned to col: col's type, with the digits of a decimal, time or datetime and the length of a varchar. */
   public colParam(i: number, col: Column, transform = ''): string {
     const s = slot({ from: 'param', param: i, transform, col_type: col.type });
     if (col.type === 'decimal' || col.type === 'time' || col.type === 'datetime') s.precision = col.precision;
     if (col.type === 'decimal') s.scale = col.scale;
+    if (col.type === 'varchar') s.length = col.length;
     return this.typed(s);
   }
   /** A key of the executor configuration; a key is text. */
@@ -198,19 +200,6 @@ function conflictTarget(ent: Entity, set: readonly Assignment[]): readonly strin
 /** The type of the value a SQL-side style function takes from its placeholder: hex takes bytes, ip takes text. */
 function styleInputType(style: string): string {
   return style === 'ip' ? 'text' : 'bytes';
-}
-
-/** The type of the interval a relative time function takes: seconds take a fraction, the other units an integer. */
-function valueFunctionArgType(name: string): string {
-  return valueFunctionUnits[name] === 'second' ? 'f64' : 'i32';
-}
-
-function functionType(name: string, col: Column | undefined): string {
-  switch (name) {
-    case 'day_of_week': case 'year': case 'month': return 'i64';
-    case 'date': return 'date';
-  }
-  return col?.type ?? 'string';
 }
 
 function placedJoins(g: Group, out: Set<string>): void {
@@ -594,7 +583,7 @@ export class Planner {
       const fn = pr.value;
       // A clock that the ORM compares keeps six fraction digits; a datetime(p < 6) column compares as its value
       // extended to six digits (docs/protocol.md "Clock").
-      const value = this.d.valueFunction(fn.name, () => b.param(present(fn.ps?.[0], `the argument of ${fn.name}`), valueFunctionArgType(fn.name)), () => b.now(6));
+      const value = this.d.valueFunction(fn.name, () => b.param(present(fn.ps?.[0], `the argument of ${fn.name}`), intervalType(fn.name)), () => b.now(6));
       if (value === undefined) fail('CAPABILITY_UNSUPPORTED', `${fn.name} is not available on ${this.d.name}`);
       if (col.type === 'datetime' && fn.name !== 'today') lhs = this.d.clockOperand(lhs, col.precision);
       return `${lhs} ${cmp(op)} ${value}`;

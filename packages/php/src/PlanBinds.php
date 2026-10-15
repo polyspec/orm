@@ -68,7 +68,7 @@ final class PlanBinds
 
     /**
      * column $col과 비교하거나 $col에 할당하는 값 Params[$i]의 placeholder다. type은 $col의 type이고
-     * decimal의 precision과 scale, datetime의 precision을 싣는다.
+     * decimal의 precision과 scale, datetime의 precision, varchar의 length를 싣는다.
      *
      * @param list<string> $hostStyles
      */
@@ -87,6 +87,8 @@ final class PlanBinds
             $slot['scale'] = $col['scale'];
         } elseif ($col['type'] === 'datetime' || $col['type'] === 'time') {
             $slot['precision'] = $col['precision'];
+        } elseif ($col['type'] === 'varchar') {
+            $slot['length'] = $col['length'];
         }
         return $this->typed($slot);
     }

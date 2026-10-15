@@ -72,6 +72,8 @@ type BindSlot struct {
 	KeyTypes  []string `json:"key_types,omitempty"`
 	Precision int      `json:"precision,omitempty"`
 	Scale     int      `json:"scale,omitempty"`
+	// Length is the n of a varchar(n) slot: a value has at most n characters.
+	Length int `json:"length,omitempty"`
 }
 
 // Assemble maps result columns positionally and describes how rows attach.

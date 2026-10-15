@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use super::dialect::Dialect;
 use super::err;
-use super::params::function_type;
+use super::params::{function_type, interval_type};
 use crate::codes;
 use crate::ir;
 use crate::plan::{Assemble, BindSlot, Child, IfParent, KeyRef, OutCol, ParentRef, Plan, Step};
@@ -155,6 +155,7 @@ impl Builder {
     /// type이고 decimal, time, datetime은 그 자릿수를 싣는다.
     fn col_param(&mut self, i: usize, col: &Field, transform: &str) -> String {
         let (precision, scale) = col_digits(col);
+        let length = if let Type::Varchar(n) = col.ty { n.into() } else { 0 };
         self.slot(BindSlot {
             from: "param".into(),
             param: i,
@@ -162,6 +163,7 @@ impl Builder {
             col_type: col.ty.name().into(),
             precision,
             scale,
+            length,
             ..Default::default()
         })
     }
@@ -321,15 +323,6 @@ fn style_input_type(style: &str) -> &'static str {
         "text"
     } else {
         "bytes"
-    }
-}
-
-/// 상대 시각 함수가 받는 간격 값의 type이다. 초는 소수를, 나머지 단위는 정수를 받는다.
-pub(super) fn value_function_arg_type(name: &str) -> &'static str {
-    if super::dialect::value_function_unit(name) == Some("second") {
-        "f64"
-    } else {
-        "i32"
     }
 }
 
@@ -848,7 +841,7 @@ impl<'m> Planner<'m> {
             let first = v.ps.first().copied();
             let cell = std::cell::RefCell::new(&mut *b);
             let mut arg = || match first {
-                Some(i) => cell.borrow_mut().param(i, value_function_arg_type(&v.name)),
+                Some(i) => cell.borrow_mut().param(i, interval_type(&v.name)),
                 None => String::new(),
             };
             // A clock that the ORM compares keeps six fraction digits; a datetime(p < 6) column
