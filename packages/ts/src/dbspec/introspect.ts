@@ -1,7 +1,7 @@
 // connection의 database를 dbspec 문서로 읽는다 (docs/dialects.md "Introspection").
 // dialect reader가 고정된 수의 catalog query로 중립 catalog을 채우고, catalog이
 // 문서를 만들어 parse한다.
-import type { DbspecMySqlConnection, DbspecPostgresConnection, DbspecSqliteConnection } from './connections.js';
+import { isMySqlConnection, isPostgresConnection, isSqliteConnection, rowArrays, type DbspecMySqlConnection, type DbspecPostgresConnection, type DbspecSqliteConnection } from './connections.js';
 import { CatalogRow, type Catalog, type CatalogQuery, type DbspecUnsupported } from './introspect_catalog.js';
 import { readMySQL } from './introspect_mysql.js';
 import { readPostgres } from './introspect_postgres.js';
@@ -38,11 +38,14 @@ export async function introspectDbspec(
   if (typeof name !== 'string') throw new TypeError('dbspec document name must be a string');
   switch (dialect) {
     case 'mysql':
-      return introspectCatalog(mysqlQuery(connection as DbspecMySqlConnection), dialect, name);
+      if (!isMySqlConnection(connection)) throw missingMethod(dialect, 'query');
+      return introspectCatalog(mysqlQuery(connection), dialect, name);
     case 'postgres':
-      return introspectCatalog(postgresQuery(connection as DbspecPostgresConnection), dialect, name);
+      if (!isPostgresConnection(connection)) throw missingMethod(dialect, 'query');
+      return introspectCatalog(postgresQuery(connection), dialect, name);
     case 'sqlite':
-      return introspectCatalog(sqliteQuery(connection as DbspecSqliteConnection), dialect, name);
+      if (!isSqliteConnection(connection)) throw missingMethod(dialect, 'prepare');
+      return introspectCatalog(sqliteQuery(connection), dialect, name);
     default:
       throw new TypeError(`unknown dbspec dialect ${String(dialect)}`);
   }
@@ -71,35 +74,30 @@ export async function introspectCatalog(query: CatalogQuery, dialect: DbspecDial
   return Object.freeze({ document, unsupported: Object.freeze(unsupported.map(u => Object.freeze({ ...u }))) });
 }
 
-function requireMethod(connection: unknown, method: string, dialect: DbspecDialect): void {
-  if (connection === null || typeof connection !== 'object' || typeof (connection as Record<string, unknown>)[method] !== 'function') {
-    throw new TypeError(`a ${dialect} connection must have a ${method} method`);
-  }
+function missingMethod(dialect: DbspecDialect, method: string): TypeError {
+  return new TypeError(`a ${dialect} connection must have a ${method} method`);
 }
 
 /** mysql2의 text protocol query다. row는 값 배열이다. */
 function mysqlQuery(connection: DbspecMySqlConnection): CatalogQuery {
-  requireMethod(connection, 'query', 'mysql');
   return async sql => {
     const [rows] = await connection.query({ sql, rowsAsArray: true });
-    return (rows as unknown[][]).map(values => new CatalogRow(sql, values));
+    return rowArrays(rows, 'mysql').map(values => new CatalogRow(sql, values));
   };
 }
 
 function postgresQuery(connection: DbspecPostgresConnection): CatalogQuery {
-  requireMethod(connection, 'query', 'postgres');
   return async sql => {
     const result = await connection.query({ text: sql, rowMode: 'array' });
-    return (result.rows as unknown[][]).map(values => new CatalogRow(sql, values));
+    return rowArrays(result.rows, 'postgres').map(values => new CatalogRow(sql, values));
   };
 }
 
 /** node:sqlite statement 하나를 준비해 값 배열의 row로 읽는다. 같은 이름의 결과 column이 겹치지 않도록 배열로 받는다. */
 function sqliteQuery(connection: DbspecSqliteConnection): CatalogQuery {
-  requireMethod(connection, 'prepare', 'sqlite');
   return async sql => {
     const statement = connection.prepare(sql);
     statement.setReturnArrays(true);
-    return (statement.all() as unknown[][]).map(values => new CatalogRow(sql, values));
+    return rowArrays(statement.all(), 'sqlite').map(values => new CatalogRow(sql, values));
   };
 }

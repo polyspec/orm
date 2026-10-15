@@ -1,6 +1,7 @@
 // request parameter가 채우는 slot이다. IR executor message는 각 parameter를 그 slot type의 form으로 쓰므로
 // (docs/protocol.md §5 Parameters) client가 여기서 type을 읽는다.
 import type { Assignment, Group, Predicate, Request, RequestQuery } from '../ir.js';
+import { present } from '../present.js';
 import { valueFunctionUnits } from './dialect.js';
 import { entityOf, fieldOf, type Entity, type Field, type RuntimeModel } from './model.js';
 
@@ -27,7 +28,8 @@ export function paramUses(m: RuntimeModel, r: Request): ParamUse[][] {
   if (ent !== undefined) {
     for (const a of r.set ?? []) u.assign(ent, a);
     for (const a of r.on_duplicate ?? []) u.assign(ent, a);
-    for (const row of r.rows ?? []) row.forEach((i, j) => u.column(i, fieldOf(ent, r.set![j]!.column)));
+    const set = r.set ?? [];
+    for (const row of r.rows ?? []) row.forEach((i, j) => u.column(i, fieldOf(ent, present(set[j], `the assignment of row value ${j + 1}`).column)));
     if (r.optimistic) u.column(r.optimistic.p, fieldOf(ent, r.optimistic.column));
   }
   return u.out;
@@ -41,7 +43,7 @@ class ParamUses {
   }
 
   private add(i: number, use: ParamUse): void {
-    if (i >= 0 && i < this.out.length) this.out[i]!.push(use);
+    this.out[i]?.push(use);
   }
 
   public column(i: number, f: Field | undefined): void {
@@ -76,11 +78,11 @@ class ParamUses {
     if (p.sub) this.query(p.sub.query, undefined);
     if (p.op === 'tuple_in' || p.op === 'tuple_not_in') {
       const cols = p.cols ?? [];
-      if (cols.length > 0) (p.ps ?? []).forEach((i, k) => this.column(i, fieldOf(ent, cols[k % cols.length]!)));
+      if (cols.length > 0) (p.ps ?? []).forEach((i, k) => this.column(i, fieldOf(ent, present(cols[k % cols.length], `tuple column ${k % cols.length + 1}`))));
       return;
     }
     const f = fieldOf(ent, p.column ?? '');
-    for (const i of p.value?.ps ?? []) this.add(i, { type: intervalType(p.value!.name) });
+    if (p.value !== undefined) for (const i of p.value.ps ?? []) this.add(i, { type: intervalType(p.value.name) });
     if (p.op === 'contains' || p.op === 'contains_binary') {
       if (p.p !== undefined) this.add(p.p, { type: 'text' });
       return;

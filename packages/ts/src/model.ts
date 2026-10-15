@@ -1,5 +1,5 @@
 import { CORE, Core, RowState, configError, isModel, styledField, type EntityDef, type ModelLike, type SetSpec } from './core.js';
-import { encode, type CodecValue, type JsonValue } from './codec.js';
+import { encodeStyled } from './codec.js';
 import { Value as OrderedJsonValue, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
 import { Db, keyOfValues, keyText, keyValue, paginate, query, readTime, resolve, rowKey, scalar, scalarKey, statement, write, type Executor, type Key, type Result, type Written } from './database.js';
 import { restoreKey } from './engine/validate.js';
@@ -7,6 +7,7 @@ import { fieldOf, type Entity, type Field, type RuntimeModel } from './engine/mo
 import type { Assemble, Request } from './ir.js';
 import { markdownLinks } from './markdown.js';
 import { columnName, parseChain, parseOrder, snake, splitPair, upperFirst, type ChainKey } from './names.js';
+import { present } from './present.js';
 import { OrmError } from './runtime_error.js';
 import { StyledValue, orderedJsonOutput } from './styled_value.js';
 import { normalizeDecimal } from './decimal.js';
@@ -26,13 +27,68 @@ type Resolved = (this: Model, ...args: unknown[]) => unknown;
 const protocolNames = new Set(['then', 'catch', 'finally', 'toJSON', 'constructor', 'inspect', 'nodeType', 'asymmetricMatch', '$$typeof', 'toString', 'valueOf', 'length', 'prototype']);
 const resolvers = new WeakMap<object, Map<string, Resolved | undefined>>();
 
+/** Whether `value` is the entity definition that a generated model class carries. */
+function isEntityDef(value: unknown): value is EntityDef {
+  return typeof value === 'object' && value !== null && 'model' in value && 'entity' in value
+    && typeof Reflect.get(value, 'create') === 'function';
+}
+
+/** The entity definition of the model class `ctor`; a class without one is a CONFIG error. */
+function entityDefOf(ctor: unknown): EntityDef {
+  const def: unknown = typeof ctor === 'function' ? Reflect.get(ctor, 'entity') : undefined;
+  if (!isEntityDef(def)) throw configError('a model class has no entity definition');
+  return def;
+}
+
+/** Whether `value` is a model of the entity of `model`: the rows and groups that a model makes are of its entity. */
+function isModelOf<M extends Model>(model: M, value: unknown): value is M {
+  return value instanceof Model && value[CORE].ent.entity === model[CORE].ent.entity;
+}
+
+/** `value` as a model of the entity of `model`; another value is an INTERNAL error. */
+function modelOf<M extends Model>(model: M, value: unknown): M {
+  if (!isModelOf(model, value)) throw new OrmError('INTERNAL', `a model of ${model[CORE].ent.entity.name} received another value`);
+  return value;
+}
+
+/** Whether every row of `rows` is a model of the entity of `model`. */
+function isCollectionOf<M extends Model>(model: M, rows: Collection): rows is Collection<M> {
+  return rows.values().every(row => isModelOf(model, row));
+}
+
+/** `rows` as rows of the entity of `model`; a row of another entity is an INTERNAL error. */
+function collectionOf<M extends Model>(model: M, rows: Collection): Collection<M> {
+  if (!isCollectionOf(model, rows)) throw new OrmError('INTERNAL', `the rows of ${model[CORE].ent.entity.name} hold another model`);
+  return rows;
+}
+
+/** `value` as a model: the self of a core is the model that made it. */
+function asModel(value: unknown): Model {
+  if (!(value instanceof Model)) throw new OrmError('INTERNAL', 'the self of a core is no model');
+  return value;
+}
+
+/** The text of a cell that a text column reads. */
+function cellText(value: unknown): string {
+  if (value instanceof Uint8Array) return Buffer.from(value).toString();
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'bigint' || typeof value === 'boolean') return String(value);
+  return JSON.stringify(value) ?? typeof value;
+}
+
+const truthyCells: readonly unknown[] = [true, 1, 1n, '1', 't', 'true'];
+const falsyCells: readonly unknown[] = [false, 0, 0n, '0', 'f', 'false'];
+
 const handler: ProxyHandler<Model> = {
   get(target, prop, receiver) {
-    if (typeof prop !== 'string' || prop in target) return Reflect.get(target, prop, receiver);
-    const ctor = target.constructor as ModelClass;
+    if (typeof prop !== 'string' || prop in target) {
+      const value: unknown = Reflect.get(target, prop, receiver);
+      return value;
+    }
+    const ctor = target.constructor;
     let cache = resolvers.get(ctor);
     if (cache === undefined) { cache = new Map(); resolvers.set(ctor, cache); }
-    if (!cache.has(prop)) cache.set(prop, protocolNames.has(prop) ? undefined : resolveName(ctor.entity, prop));
+    if (!cache.has(prop)) cache.set(prop, protocolNames.has(prop) ? undefined : resolveName(entityDefOf(ctor), prop));
     return cache.get(prop);
   },
 };
@@ -46,7 +102,7 @@ export abstract class Model implements ModelLike {
   declare public readonly [CORE]: Core;
 
   public constructor(core?: Core) {
-    const def = (new.target as unknown as ModelClass).entity;
+    const def = entityDefOf(new.target);
     const c = core ?? new Core(def);
     const proxy = new Proxy(this, handler);
     Object.defineProperty(this, CORE, { value: c, enumerable: false });
@@ -61,13 +117,13 @@ export abstract class Model implements ModelLike {
   /** Joins the next condition with OR, opens an OR group, or places a joined model's conditions. */
   public or(arg?: ((q: this) => unknown) | Model): this { this[CORE].connector('or', arg === undefined ? [] : [arg]); return this; }
   /** A negated group, NOT (…), as the first condition or after a connector written as a separate call. */
-  public not(fn: (q: this) => unknown): this { this[CORE].negated('', fn as (m: ModelLike) => unknown); return this; }
+  public not(fn: (q: this) => unknown): this { this[CORE].negated('', m => fn(modelOf(this, m))); return this; }
   /** A negated group joined with AND. */
-  public andNot(fn: (q: this) => unknown): this { this[CORE].negated('and', fn as (m: ModelLike) => unknown); return this; }
+  public andNot(fn: (q: this) => unknown): this { this[CORE].negated('and', m => fn(modelOf(this, m))); return this; }
   /** A negated group joined with OR. */
-  public orNot(fn: (q: this) => unknown): this { this[CORE].negated('or', fn as (m: ModelLike) => unknown); return this; }
+  public orNot(fn: (q: this) => unknown): this { this[CORE].negated('or', m => fn(modelOf(this, m))); return this; }
   /** Sets the join ON conditions. */
-  public on(fn: (q: this) => unknown): this { this[CORE].setOn(fn as (m: ModelLike) => unknown); return this; }
+  public on(fn: (q: this) => unknown): this { this[CORE].setOn(m => fn(modelOf(this, m))); return this; }
   public relation(child: Model): this { this[CORE].relation(false, child); return this; }
   public relations(child: Model): this { this[CORE].relation(true, child); return this; }
   public limit(offset: number, count: number): this { this[CORE].setLimit(offset, count); return this; }
@@ -77,8 +133,8 @@ export abstract class Model implements ModelLike {
   public parentNode(): this { this[CORE].parentNode = true; return this; }
   public groupLimit(n: number): this { this[CORE].setGroupLimit(n); return this; }
   public deleteLock(): this { this[CORE].deleteLock = true; return this; }
-  public fetchKey(fn: (row: this) => Key): this { this[CORE].fetchKey = fn as (m: ModelLike) => unknown; return this; }
-  public fetchValue(fn: (row: this) => unknown): this { this[CORE].fetchValue = fn as (m: ModelLike) => unknown; return this; }
+  public fetchKey(fn: (row: this) => Key): this { this[CORE].fetchKey = m => fn(modelOf(this, m)); return this; }
+  public fetchValue(fn: (row: this) => unknown): this { this[CORE].fetchValue = m => fn(modelOf(this, m)); return this; }
   public forUpdate(): this { this[CORE].lock = 'update'; return this; }
   public forShare(): this { this[CORE].lock = 'share'; return this; }
   public forUpdateNoWait(): this { this[CORE].lock = 'update_nowait'; return this; }
@@ -88,19 +144,22 @@ export abstract class Model implements ModelLike {
   /** Returns the first matching row; NO_ROWS when no row matches. */
   public async get(): Promise<this> {
     const rows = await load(this[CORE], 'one');
-    const row = rows.first() as this | undefined;
+    const row = rows.first();
     if (row === undefined) throw new OrmError('NO_ROWS', 'query matched no rows');
-    return row;
+    return modelOf(this, row);
   }
   /** Returns the matching rows. */
-  public async gets(): Promise<Collection<this>> { return load(this[CORE], 'all') as Promise<Collection<this>>; }
+  public async gets(): Promise<Collection<this>> { return collectionOf(this, await load(this[CORE], 'all')); }
   /** Returns grouped values and checked row counts without partial models. */
   public async getsCount(): Promise<GroupRows> { return grouped(this[CORE]); }
   public async getCount(): Promise<number> { return Number(await scalarOf(this[CORE], 'count')); }
   public async getSum(): Promise<number> { return aggregate(this[CORE], 'sum'); }
   public async getAvg(): Promise<number> { return aggregate(this[CORE], 'avg'); }
   /** Returns one page of matching rows. */
-  public async getsPage(page: number, perPage: number): Promise<Page<this>> { return pageOf(this[CORE], page, perPage) as Promise<Page<this>>; }
+  public async getsPage(page: number, perPage: number): Promise<Page<this>> {
+    const found = await pageOf(this[CORE], page, perPage);
+    return { ...found, items: collectionOf(this, found.items) };
+  }
   /** Returns the statement of gets() without executing it. */
   public async getQuery(): Promise<{ sql: string; binds: unknown[] }> {
     const c = this[CORE];
@@ -110,13 +169,13 @@ export abstract class Model implements ModelLike {
     return statement(ex, r.finish(), r.params);
   }
   /** Inserts the row and returns the created row. */
-  public async create(): Promise<this> { return create(this[CORE]) as Promise<this>; }
+  public async create(): Promise<this> { return modelOf(this, await create(this[CORE])); }
   /** Inserts rows in one transaction and returns the inserted row count. */
   public async creates(rows: readonly this[]): Promise<number> { return creates(this[CORE], rows); }
   /** Writes the changed columns; update(true) requires an unchanged update time. */
   public async update(optimistic = false): Promise<this> { await update(this[CORE], optimistic); return this; }
   /** Updates the row when its primary key is known, otherwise creates it. */
-  public async save(): Promise<this> { return save(this[CORE]) as Promise<this>; }
+  public async save(): Promise<this> { return modelOf(this, await save(this[CORE])); }
   /** Deletes the row; delete(true) first deletes loaded related rows. */
   public async delete(recursive = false): Promise<void> { await deleteRow(this[CORE], recursive); }
   /**
@@ -124,7 +183,7 @@ export abstract class Model implements ModelLike {
    * set values into it, and returns the restored row. A row that is not deleted is returned unchanged; a missing row
    * fails with NO_ROWS.
    */
-  public async restore(): Promise<this> { return restore(this[CORE]) as Promise<this>; }
+  public async restore(): Promise<this> { return modelOf(this, await restore(this[CORE])); }
 
   public toArray(): Record<string, unknown> { return toArray(this[CORE]); }
   public toJSON(): Record<string, unknown> { return toJson(this[CORE]); }
@@ -187,7 +246,7 @@ function convert(type: string, value: unknown, zone: string, declared?: Field): 
   switch (type) {
     case 'i16': case 'i32': case 'i64': {
       const converted = typeof value === 'bigint' ? Number(value) : value;
-      const [min, max] = integerRanges[type]!;
+      const [min, max] = present(integerRanges[type], `the range of ${type}`);
       if (typeof converted !== 'number' || !Number.isSafeInteger(converted) || converted < min || converted > max) {
         throw new OrmError('CODEC_DECODE', `${type} cell is not an exact integer in its range`);
       }
@@ -207,9 +266,9 @@ function convert(type: string, value: unknown, zone: string, declared?: Field): 
     case 'date': case 'time': case 'datetime':
       return readTime(value, type, zone, declared?.precision ?? (type === 'datetime' ? 6 : 0));
     case 'bytes':
-      return value instanceof Uint8Array ? value : new Uint8Array(Buffer.from(String(value)));
+      return value instanceof Uint8Array ? value : new Uint8Array(Buffer.from(cellText(value)));
     case 'varchar': case 'text': case 'uuid':
-      return value instanceof Uint8Array ? Buffer.from(value).toString() : String(value);
+      return cellText(value);
     case 'styled':
       return value;
   }
@@ -249,7 +308,7 @@ class Assembler {
       else st.extra.set(col.name, col.type === 'date' || col.type === 'datetime' ? convert(col.type, row[col.index], this.db.zone) : row[col.index]);
     }
     for (const key of asm.key) {
-      const name = asm.columns.find(col => col.index === key.index)!.name;
+      const name = present(asm.columns.find(col => col.index === key.index), `the key column at ${key.index}`).name;
       st.original.set(name, m.values.get(name));
     }
     if (schema.updated !== '' && st.names.includes(schema.updated)) st.original.set(schema.updated, m.values.get(schema.updated));
@@ -258,7 +317,7 @@ class Assembler {
       if (ch.kind === 'join') {
         const child = joinChild(b, ch.rel);
         const joined = this.joinRow(ch, row);
-        const value = joined !== undefined ? this.model(child, ch.assemble!, joined).self : null;
+        const value = joined !== undefined ? this.model(child, present(ch.assemble, `the assembly of join ${ch.rel}`), joined).self : null;
         st.setRelated(ch.rel, value, false, false);
         continue;
       }
@@ -268,11 +327,11 @@ class Assembler {
         const coll = new Collection();
         for (const cr of rows) {
           const cm = this.model(child, childAsm, cr);
-          coll.put(collectionKey(child, cm, childAsm, cr), cm.self as Model);
+          coll.put(collectionKey(child, cm, childAsm, cr), asModel(cm.self));
         }
         st.setRelated(ch.rel, coll, ch.cascade, false);
       } else {
-        const value = rows.length > 0 ? this.model(child, childAsm, rows[0]!).self : null;
+        const value = rows.length > 0 ? this.model(child, childAsm, present(rows[0], `the row of relation ${ch.rel}`)).self : null;
         st.setRelated(ch.rel, value, ch.cascade, ch.flatten);
       }
     }
@@ -288,7 +347,7 @@ class Assembler {
    */
   private joinRow(ch: Assemble['children'][number], row: readonly unknown[]): readonly unknown[] | undefined {
     if (this.result.markdown) return markdownLinks(row).joins.get(ch.rel) ?? undefined;
-    const first = ch.assemble!.columns[0];
+    const first = present(ch.assemble, `the assembly of join ${ch.rel}`).columns[0];
     return first !== undefined && row[first.index] !== null ? row : undefined;
   }
 
@@ -297,14 +356,14 @@ class Assembler {
    * 답에서는 부모 행의 마지막 칸이 relation 행을 가진다.
    */
   private related(ch: Assemble['children'][number], parent: readonly unknown[]): [unknown[][], Assemble] {
-    if (this.result.markdown) return [markdownLinks(parent).rels.get(ch.rel) ?? [], ch.assemble!];
-    const sr = this.result.steps.get(ch.step)!;
-    const childAsm = sr.step.assemble!;
+    if (this.result.markdown) return [markdownLinks(parent).rels.get(ch.rel) ?? [], present(ch.assemble, `the assembly of relation ${ch.rel}`)];
+    const sr = present(this.result.steps.get(ch.step), `the result of step ${ch.step}`);
+    const childAsm = present(sr.step.assemble, `the assembly of step ${ch.step}`);
     const ifp = sr.step.parent?.if_parent;
     if (ifp && scalarKey(parent[ifp.index]) !== scalarKey(this.result.params[ifp.param])) return [[], childAsm];
     const key = rowKey(parent, ch.parent_keys);
     if (key === undefined) return [[], childAsm];
-    return [(sr.byKey.get(key) ?? []).map(i => sr.data[i]!), childAsm];
+    return [(sr.byKey.get(key) ?? []).map(i => present(sr.data[i], `row ${i} of step ${ch.step}`)), childAsm];
   }
 }
 
@@ -328,7 +387,11 @@ function valueOf(m: Core, name: string): unknown {
 function collectionKey(c: Core, m: Core, asm: Assemble, row: readonly unknown[]): Key {
   if (c.fetchKey) return keyValue(c.fetchKey(m.self));
   if (c.keyName !== '') return keyValue(valueOf(m, c.keyName));
-  if (asm.key.length === 1) return keyValue(m.values.get(asm.columns.find(col => col.index === asm.key[0]!.index)!.name) ?? row[asm.key[0]!.index]);
+  const [only] = asm.key;
+  if (asm.key.length === 1 && only !== undefined) {
+    const column = present(asm.columns.find(col => col.index === only.index), `the key column at ${only.index}`);
+    return keyValue(m.values.get(column.name) ?? row[only.index]);
+  }
   return rowKey(row, asm.key) ?? '';
 }
 
@@ -354,8 +417,8 @@ function groupValue(db: Db, column: Assemble['columns'][number], raw: unknown, s
     return raw;
   }
   if (type === 'bool') {
-    if ([true, 1, 1n, '1', 't', 'true'].includes(raw as never)) return true;
-    if ([false, 0, 0n, '0', 'f', 'false'].includes(raw as never)) return false;
+    if (truthyCells.includes(raw)) return true;
+    if (falsyCells.includes(raw)) return false;
     throw new OrmError('CODEC_DECODE', `group column ${column.name} is not boolean`);
   }
   if (type === 'i16' || type === 'i32' || type === 'i64') {
@@ -364,7 +427,7 @@ function groupValue(db: Db, column: Assemble['columns'][number], raw: unknown, s
     else if (typeof raw === 'bigint') value = Number(raw);
     else if (typeof raw === 'number') value = raw;
     else throw new OrmError('CODEC_DECODE', `group column ${column.name} is not an exact integer`);
-    const [min, max] = integerRanges[type]!;
+    const [min, max] = present(integerRanges[type], `the range of ${type}`);
     if (!Number.isSafeInteger(value) || value < min || value > max) {
       throw new OrmError('CODEC_DECODE', `group column ${column.name} is outside its exact integer range`);
     }
@@ -425,11 +488,11 @@ async function grouped(c: Core): Promise<GroupRows> {
 
 async function assemble(c: Core, ex: Executor, external: Map<Core, Array<{ many: boolean; child: Core }>>, result: Result): Promise<Collection> {
   const a = new Assembler(result, ex.db, c.conn);
-  const asm = result.plan.steps[0]!.assemble!;
+  const asm = present(present(result.plan.steps[0], 'the main step of a plan').assemble, 'the assembly of the main step');
   const out = new Collection();
   for (const row of result.main) {
     const m = a.model(c, asm, row);
-    out.put(collectionKey(c, m, asm, row), m.self as Model);
+    out.put(collectionKey(c, m, asm, row), asModel(m.self));
   }
   for (const [parent, rels] of external) {
     const parents = a.made.get(parent) ?? [];
@@ -475,7 +538,7 @@ async function attachExternal(parents: Core[], rel: { many: boolean; child: Core
     // composite key는 자식 key column 전체를 tuple로 거른다.
     const rights = ch.matches.map(k => k.right);
     const keys: ChainKey[] = rights.length === 1
-      ? [{ conn: '', op: '', column: rights[0]!, columns: [], compare: '' }]
+      ? [{ conn: '', op: '', column: present(rights[0], 'the one key column of a relation'), columns: [], compare: '' }]
       : [{ conn: '', op: 'tuple', column: '', columns: rights, compare: '' }];
     const rows = await load(q.by(keys, [values]), 'all');
     for (const [key, row] of rows.entries()) {
@@ -490,15 +553,16 @@ async function attachExternal(parents: Core[], rel: { many: boolean; child: Core
   }
   const name = ch.resultName(rel.many);
   for (const p of parents) {
-    if (p.row!.related.has(name)) throw configError(`relation result name ${name} is used twice`);
+    const parentRow = present(p.row, 'the loaded row of a relation parent');
+    if (parentRow.related.has(name)) throw configError(`relation result name ${name} is used twice`);
     const v = matchValues(p, ch, 'left');
     const matched = possible(p) && v !== undefined ? byKey.get(keyOfValues(v)) ?? [] : [];
     if (rel.many) {
       const coll = new Collection();
-      for (const [key, m] of matched) coll.put(key, m.self as Model);
-      p.row!.setRelated(name, coll, !ch.deleteLock, false);
+      for (const [key, m] of matched) coll.put(key, asModel(m.self));
+      parentRow.setRelated(name, coll, !ch.deleteLock, false);
     } else {
-      p.row!.setRelated(name, matched.length > 0 ? matched[0]![1].self : null, !ch.deleteLock, ch.parentNode);
+      parentRow.setRelated(name, matched.length > 0 ? present(matched[0], 'the matched row')[1].self : null, !ch.deleteLock, ch.parentNode);
     }
   }
 }
@@ -565,7 +629,7 @@ function encodeValue(schema: Entity, column: string, value: unknown): unknown {
   const codec = col.stages.filter(s => s !== 'aes' && s !== 'hex' && s !== 'ip');
   if (codec.length === 0) return value;
   if (!(value instanceof StyledValue)) throw new OrmError('CODEC_ENCODE', `${column} requires StyledValue`);
-  return encode(codec, value as StyledValue<CodecValue | JsonValue>);
+  return encodeStyled(codec, value);
 }
 
 function assign(r: WriteRequest, schema: Entity, s: SetSpec): NonNullable<Request['set']>[number] {
@@ -600,7 +664,7 @@ async function create(c: Core): Promise<Model> {
   for (const s of c.sets) {
     st.addName(s.column);
     if (s.plus || s.minus) continue;
-    const field = fieldOf(schema, s.column)!;
+    const field = present(fieldOf(schema, s.column), `column ${schema.name}.${s.column}`);
     const type = columnType(field);
     m.values.set(s.column, s.null
       ? (type === 'styled' ? StyledValue.sqlNull() : null)
@@ -610,7 +674,7 @@ async function create(c: Core): Promise<Model> {
   // 않은 하나뿐인 primary key column이다.
   let assignedKey = schema.identity;
   if (assignedKey === '' && ex.db.md !== undefined && schema.primaryKey.length === 1 && key !== null && !c.sets.some(s => s.column === schema.primaryKey[0])) {
-    assignedKey = schema.primaryKey[0]!;
+    assignedKey = present(schema.primaryKey[0], `the primary key of ${schema.name}`);
   }
   if (assignedKey !== '') {
     st.addName(assignedKey);
@@ -625,13 +689,13 @@ async function create(c: Core): Promise<Model> {
   for (const name of c.news) m.setNew(name, c.newValues.get(name));
   c.sets = [];
   c.duplication = undefined;
-  return m.self as Model;
+  return asModel(m.self);
 }
 
 async function creates(c: Core, models: readonly Model[]): Promise<number> {
   const ex = terminal(c);
   if (models.length === 0) return 0;
-  const first = models[0]![CORE];
+  const first = present(models[0], 'the first model of creates')[CORE];
   if (first.sets.length === 0) throw configError('creates requires models with set<Col> values');
   const columns = first.sets.map(s => {
     if (s.plus || s.minus) throw configError('creates accepts stored values only');
@@ -650,7 +714,7 @@ async function creates(c: Core, models: readonly Model[]): Promise<number> {
           throw configError('every model of creates must set the same columns in the same order');
         }
         const ps = mc.sets.map(s => param(r, s.null ? null : encodeValue(schema, s.column, s.value)));
-        if (i === 0) r.ir.set = columns.map((column, j) => ({ column, p: ps[j]! }));
+        if (i === 0) r.ir.set = columns.map((column, j) => ({ column, p: present(ps[j], `the parameter of ${column}`) }));
         else rows.push(ps);
       });
       if (rows.length > 0) r.ir.rows = rows;
@@ -721,14 +785,15 @@ async function update(c: Core, optimistic: boolean): Promise<void> {
   keyWhere(r, schema, keys);
   const column = schema.updated;
   if (optimistic) {
-    const version = loaded && column !== '' ? c.row!.original.get(column) : undefined;
+    const version = loaded && column !== '' ? present(c.row, 'the loaded row of an update').original.get(column) : undefined;
     if (version === undefined || version === null) throw configError('update(true) requires a row loaded with its update time column');
     r.ir.optimistic = { column, p: param(r, version) };
   }
   await write(ex, finishWrite(r), r.params);
   if (loaded) {
-    for (const s of c.sets) if (schema.primaryKey.includes(s.column) && !s.plus && !s.minus) c.row!.original.set(s.column, s.value);
-    c.row!.original.delete(column);
+    const loadedRow = present(c.row, 'the loaded row of an update');
+    for (const s of c.sets) if (schema.primaryKey.includes(s.column) && !s.plus && !s.minus) loadedRow.original.set(s.column, s.value);
+    loadedRow.original.delete(column);
   }
   c.sets = [];
 }
@@ -739,7 +804,7 @@ async function save(c: Core): Promise<Model> {
   try { keyValues(c, c.ent.entity); } catch { known = false; }
   if (known) {
     await update(c, false);
-    return c.self as Model;
+    return asModel(c.self);
   }
   return create(c);
 }
@@ -755,7 +820,9 @@ async function deleteOne(c: Core, recursive: boolean): Promise<void> {
   if (recursive && c.row) {
     for (const [name, value] of c.row.related) {
       if (!c.row.cascade.get(name)) continue;
-      if (value instanceof Collection) for (const row of value.values()) await deleteOne(row[CORE], true);
+      if (value instanceof Collection) {
+        for (const row of value.values()) if (row instanceof Model) await deleteOne(row[CORE], true);
+      }
       else if (isModel(value)) await deleteOne(value[CORE], true);
     }
   }
@@ -782,14 +849,14 @@ async function restore(c: Core): Promise<Model> {
   if (set.length > 0) r.ir.set = set;
   // own 은 model 이 set 값마다 더한 parameter 의 그 set 값이다. hook 은 그 뒤에 parameter 를 더한다.
   const own = new Map<number, SetSpec>();
-  set.forEach((a, i) => { if (a.p !== undefined) own.set(a.p, c.sets[i]!); });
+  set.forEach((a, i) => { if (a.p !== undefined) own.set(a.p, present(c.sets[i], `set value ${i}`)); });
   const written = await write(ex, r.finish(), r.params);
   // written 은 hook 이 남긴 request 이므로 그 key 는 planner 가 고른 key 다.
   const key = restoreKey(schema, written.request).key;
   const q = newModel(c.ent);
   q.conn = c.conn;
   q.whereChain('', key.map((column, i) => ({ conn: i > 0 ? 'and' : '', op: '', column, columns: [], compare: '' })), key.map(column => restoreKeyValue(own, written, column)));
-  return (q.self as Model).get();
+  return asModel(q.self).get();
 }
 
 /**
@@ -797,10 +864,10 @@ async function restore(c: Core): Promise<Model> {
  * 자신의 set 값(read 가 다른 조건 값처럼 변환한다)을, 다른 set item 과 where 의 그 column eq 조건은 hook 이 남긴 parameter 를 쓴다.
  */
 function restoreKeyValue(own: ReadonlyMap<number, SetSpec>, written: Written, column: string): unknown {
-  const a = written.request.set?.find(a => a.column === column && a.p !== undefined);
-  if (a !== undefined) {
-    const s = own.get(a.p!);
-    return s !== undefined && s.column === column ? s.value : written.params[a.p!];
+  const p = written.request.set?.find(a => a.column === column && a.p !== undefined)?.p;
+  if (p !== undefined) {
+    const s = own.get(p);
+    return s !== undefined && s.column === column ? s.value : written.params[p];
   }
   for (const item of written.request.where?.items ?? []) {
     const p = item.pred;
@@ -809,9 +876,14 @@ function restoreKeyValue(own: ReadonlyMap<number, SetSpec>, written: Written, co
   throw new OrmError('INTERNAL', `restore key column ${column} has no value in the request`);
 }
 
+/** The payload of a styled value, which is unknown until a codec reads it. */
+function payloadOf(value: StyledValue<unknown>): unknown {
+  return value.payload();
+}
+
 function arrayValue(value: unknown): unknown {
   if (value instanceof StyledValue) return value.kind === 'sql-null'
-    ? { kind: 'sql-null' } : { kind: 'value', value: value.payload() };
+    ? { kind: 'sql-null' } : { kind: 'value', value: payloadOf(value) };
   if (value instanceof Date) return value.toISOString();
   if (isModel(value)) return toArray(value[CORE]);
   if (value instanceof Collection) return value.toArray();
@@ -886,9 +958,9 @@ function resolveName(def: EntityDef, name: string): Resolved | undefined {
     for (const [prefix, kind] of [['GetsBy', 'all'], ['GetBy', 'one'], ['GetCountBy', 'count']] as const) {
       if (!P.startsWith(prefix)) continue;
       const keys = parseChain(set, schema, P.slice(prefix.length));
-      if (kind === 'count') return function (...args) { return (this[CORE].by(keys, args).self as Model).getCount(); };
-      if (kind === 'one') return function (...args) { return (this[CORE].by(keys, args).self as Model).get(); };
-      return function (...args) { return (this[CORE].by(keys, args).self as Model).gets(); };
+      if (kind === 'count') return function (...args) { return asModel(this[CORE].by(keys, args).self).getCount(); };
+      if (kind === 'one') return function (...args) { return asModel(this[CORE].by(keys, args).self).get(); };
+      return function (...args) { return asModel(this[CORE].by(keys, args).self).gets(); };
     }
     if (P.startsWith('OrderBy')) {
       const keys = parseOrder(schema, P.slice(7));
@@ -933,7 +1005,15 @@ function resolveName(def: EntityDef, name: string): Resolved | undefined {
         }
       }
       const key = outputName(set, schema, rest);
-      return function (fn) { this[CORE].addColumnSub(key, fn as (m: ModelLike) => ModelLike); return this; };
+      return function (fn) {
+        if (typeof fn !== 'function') throw configError(`${name} takes a callback`);
+        this[CORE].addColumnSub(key, m => {
+          const out: unknown = Reflect.apply(fn, undefined, [m]);
+          if (!isModel(out)) throw configError(`the callback of ${name} returns no model`);
+          return out;
+        });
+        return this;
+      };
     }
     if (P.startsWith('Get') && P.length > 3) {
       const key = snake(P.slice(3));

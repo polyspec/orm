@@ -11,6 +11,7 @@ import { entityOf, fieldOf, type Entity, type RuntimeModel } from './engine/mode
 import { validate } from './engine/validate.js';
 import type { Assemble, Child, OutputColumn, Request, RequestQuery, Subquery } from './ir.js';
 import { wallMicros } from './clock.js';
+import { present } from './present.js';
 import { OrmError } from './runtime_error.js';
 
 /** markdown:// DSN의 flowmark server 주소, corpus 이름, token이다(docs/protocol.md §5 "IR executors"). */
@@ -35,11 +36,12 @@ export function parseMarkdownDsn(url: URL): MarkdownDsn {
   try { corpus = decodeURIComponent(url.pathname.replace(/^\//, '')); } catch { corpus = ''; }
   if (corpus === '' || corpus.includes('/')) throw new OrmError('CONFIG', `${dsnForm}; the path ${JSON.stringify(url.pathname)} is not one corpus name: give the corpus root's directory name`);
   const tokens = url.searchParams.getAll('token');
-  if (tokens.length !== 1 || tokens[0] === '') throw new OrmError('CONFIG', `${dsnForm}; give one token, the token of .flowmark/server.json of the corpus`);
+  const [token] = tokens;
+  if (tokens.length !== 1 || token === undefined || token === '') throw new OrmError('CONFIG', `${dsnForm}; give one token, the token of .flowmark/server.json of the corpus`);
   for (const key of url.searchParams.keys()) {
     if (key !== 'token') throw new OrmError('CONFIG', `${dsnForm}; it does not accept ${key}`);
   }
-  return { address: `${url.hostname}:${port}`, corpus, token: tokens[0]! };
+  return { address: `${url.hostname}:${port}`, corpus, token };
 }
 
 function canceled(): OrmError {
@@ -105,7 +107,7 @@ export class MarkdownSession {
     } catch (error) {
       s.close();
       if (signal?.aborted) throw canceled();
-      throw new OrmError('DRIVER', `connecting to the flowmark server ${dsn.address}: ${(error as Error).message}; start flowmark serve for the corpus`, error);
+      throw new OrmError('DRIVER', `connecting to the flowmark server ${dsn.address}: ${error instanceof Error ? error.message : String(error)}; start flowmark serve for the corpus`, error);
     } finally {
       signal?.removeEventListener('abort', abort);
     }
@@ -143,12 +145,12 @@ export class MarkdownSession {
     } catch (error) {
       this.close();
       if (signal?.aborted) throw canceled();
-      throw new OrmError('CONNECTION_LOST', `the flowmark server connection broke: ${(error as Error).message}`, error);
+      throw new OrmError('CONNECTION_LOST', `the flowmark server connection broke: ${error instanceof Error ? error.message : String(error)}`, error);
     } finally {
       signal?.removeEventListener('abort', abort);
     }
-    let answer: Value;
-    try { answer = parseJson(text); } catch { answer = undefined as unknown as Value; }
+    let answer: Value | undefined;
+    try { answer = parseJson(text); } catch { answer = undefined; }
     if (answer === undefined || answer.kind !== 'object') {
       this.close();
       throw new OrmError('INTERNAL', `the flowmark server answered ${JSON.stringify(text)}, not a JSON object`);
@@ -299,8 +301,8 @@ async function markdownCall(ex: Executor, request: Request, params: readonly unk
   const uses = paramUses(model, request);
   const values = params.map((value, i) => markdownParam(db, i, value, uses[i] ?? []));
   const line = `{"ir_version":${JSON.stringify(request.ir_version)},"manifest_hash":${JSON.stringify(request.manifest_hash)},"request":${JSON.stringify(request)},"params":[${values.join(',')}],"now":${JSON.stringify(db.now(wallMicros(), 6))}}`;
-  if (ex.frame !== undefined) return { answer: await ex.frame.md!.call(line, db.signal), model };
-  const pool = db.md!;
+  if (ex.frame !== undefined) return { answer: await present(ex.frame.md, 'the flowmark session of a markdown transaction').call(line, db.signal), model };
+  const pool = present(db.md, 'the flowmark pool of a markdown database');
   const s = await pool.acquire(db.signal);
   try {
     return { answer: await s.call(line, db.signal), model };
@@ -353,7 +355,7 @@ class MarkdownNode {
   private built = false;
 
   public constructor(private readonly m: RuntimeModel, private readonly q: RequestQuery, private readonly groups: boolean, private readonly db: Db) {
-    this.ent = entityOf(m, q.entity)!;
+    this.ent = present(entityOf(m, q.entity), `entity ${q.entity}`);
     this.asm = { entity: this.ent.name, alias: '', columns: [], children: [], key: [] };
     for (const j of q.joins ?? []) {
       const child = new MarkdownNode(m, j.query, false, db);
@@ -363,7 +365,7 @@ class MarkdownNode {
     for (const rel of q.relations ?? []) {
       const child = new MarkdownNode(m, rel.query, false, db);
       this.rels.set(rel.rel, child);
-      const target = entityOf(m, rel.query.entity)!;
+      const target = present(entityOf(m, rel.query.entity), `entity ${rel.query.entity}`);
       const parentKeys = (rel.keys ?? []).map(k => k.left);
       const childKeys = (rel.keys ?? []).map(k => k.right);
       // 이 행이 relation 행의 외래 key가 가리키는 행이면 그 행들은 이 행에 속한다(planner와 같다).
@@ -406,7 +408,7 @@ class MarkdownNode {
     const outputs = members.filter(([name]) => !this.joins.has(name) && !this.rels.has(name)).map(([name]) => name);
     if (!this.built) this.build(outputs);
     if (outputs.length !== this.asm.columns.length) throw answerError(`a row of ${this.ent.name} answers ${JSON.stringify(outputs)}, another output than its first row`);
-    const values: unknown[] = new Array(outputs.length + 1);
+    const values: unknown[] = Array.from({ length: outputs.length + 1 });
     const links = new LinksOf();
     let k = 0;
     for (const [name, value] of members) {
@@ -420,12 +422,14 @@ class MarkdownNode {
         links.rels.set(name, rel.relationRows(value));
         continue;
       }
-      const col = this.asm.columns[k]!;
+      const col = this.asm.columns[k];
+      if (col === undefined) throw answerError(`a row of ${this.ent.name} answers more columns than its first row`);
       if (col.name !== name) throw answerError(`a row of ${this.ent.name} answers ${name} where its first row answers ${col.name}`);
       try {
         values[k] = answerValue(col.type, value);
       } catch (error) {
-        throw new OrmError((error as OrmError).code, `${this.ent.name}.${col.name}: ${(error as Error).message}`);
+        if (!(error instanceof OrmError)) throw error;
+        throw new OrmError(error.code, `${this.ent.name}.${col.name}: ${error.message}`);
       }
       k++;
     }

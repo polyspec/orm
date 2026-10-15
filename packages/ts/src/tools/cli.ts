@@ -28,9 +28,9 @@ interface Parsed {
 
 function parse(args: readonly string[], options: ParseArgsConfig['options']): Parsed {
   try {
-    return parseArgs({ args: normalize(args), options, strict: true, allowPositionals: false }) as Parsed;
+    return parseArgs({ args: normalize(args), options, strict: true, allowPositionals: false });
   } catch (error) {
-    return usage(`orm-gen: ${(error as Error).message}\n${usageText}`);
+    return usage(`orm-gen: ${message(error)}\n${usageText}`);
   }
 }
 
@@ -39,7 +39,7 @@ function text(value: unknown): string {
 }
 
 function message(error: unknown): string {
-  return (error as Error).message;
+  return error instanceof Error ? error.message : String(error);
 }
 
 /**
@@ -49,7 +49,7 @@ function message(error: unknown): string {
 function compareFile(path: string, generated: string): string[] {
   let current: string;
   try { current = readFileSync(path, 'utf8'); } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [`missing: ${path}`];
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return [`missing: ${path}`];
     throw error;
   }
   return current === generated ? [] : [`differs: ${path}`];
@@ -105,7 +105,7 @@ function gen(args: readonly string[]): number {
   if (setPath === '' || out === '') usage();
   const set = readSet(setPath);
   const model = modelOfDocuments(parseDocumentSet(set.documents, set.external));
-  const scan = (values.scan as string[] | undefined) ?? [];
+  const scan = Array.isArray(values.scan) ? values.scan.filter(item => typeof item === 'string') : [];
   if (values.check === true) return report(compareFile(join(out, 'models.ts'), renderTypeScript(model, out, scan)));
   generateTypeScript(model, out, scan);
   console.error(`orm-gen: ${model.entities.size} models (manifest ${model.manifestHash}) → ${out}/models.ts`);

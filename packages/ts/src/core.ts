@@ -1,7 +1,8 @@
-import type { Db } from './database.js';
+import { Db } from './database.js';
 import type { ColumnFunction as IRColumnFunction, Group, Item, Limit, Order, Predicate, KeyPair, Relation, Request, RequestQuery, Subquery, Join, QueryKind } from './ir.js';
 import { fieldOf, type Entity, type Field, type RuntimeModel } from './engine/model.js';
 import type { ChainKey } from './names.js';
+import { present } from './present.js';
 import { OrmError } from './runtime_error.js';
 import { normalizeDecimal } from './decimal.js';
 import { ColumnFunction, ValueFunction } from './values.js';
@@ -171,15 +172,13 @@ export class Core {
   }
 
   public subject(): Core {
-    let c: Core = this;
-    while (c.target !== undefined) c = c.target;
-    return c;
+    return this.target === undefined ? this : this.target.subject();
   }
 
   public connect(db: unknown): void {
     if (this.group) return this.fail('connect is not allowed inside a group callback');
-    if (db === undefined || db === null) return this.fail('connect requires a database');
-    this.conn = db as Db;
+    if (!(db instanceof Db)) return this.fail('connect requires a database');
+    this.conn = db;
   }
 
   public newGroup(): Core {
@@ -201,7 +200,7 @@ export class Core {
     if (typeof value === 'function') {
       const group = this.newGroup();
       const model = this.ent.create(group);
-      (value as (m: ModelLike) => unknown)(model);
+      Reflect.apply(value, undefined, [model]);
       this.addGroup(conn, group);
       return;
     }
@@ -258,7 +257,7 @@ export class Core {
       case 'tuple': case 'ne_tuple': {
         if (!Array.isArray(value)) throw configError('tuple values must be a list');
         if (value.length === 0) throw new OrmError('EMPTY_IN', 'tuple condition received an empty list');
-        const rows = value.map(row => {
+        const rows = value.map((row: unknown): unknown[] => {
           if (!Array.isArray(row) || row.length !== key.columns.length) throw configError('tuple values must be value groups of the tuple columns');
           return row;
         });
@@ -272,7 +271,7 @@ export class Core {
       if (!isModel(value)) throw configError(`column comparison ${key.column} requires a model`);
       return [p({ kind: 'ref', op: `${operators[key.op]}_col`, ref: value[CORE], refCol: key.compare }), 0];
     }
-    const op = operators[key.op]!;
+    const op = present(operators[key.op], `the operator ${key.op}`);
     const nullable = key.op === '' || key.op === 'ne';
     if (value === null) {
       if (!nullable) throw configError(`null is not accepted by the ${key.op} operator`);
@@ -361,7 +360,7 @@ export class Core {
       if (value.kind === 'value') value.payload();
     } else if (value !== null) {
       const range = integerRanges[field.type];
-      if (range !== undefined && (!Number.isSafeInteger(value) || (value as number) < range[0] || (value as number) > range[1])) {
+      if (range !== undefined && (typeof value !== 'number' || !Number.isSafeInteger(value) || value < range[0] || value > range[1])) {
         throw new OrmError('CODEC_ENCODE', `${column} (${field.type}) requires an integer from ${range[0]} to ${range[1]}`);
       }
       if (field.type === 'decimal') {
@@ -430,7 +429,7 @@ export class Core {
   public build(kind: QueryKind): BuiltRequest {
     const r = new BuiltRequest(kind, this.ent.model.manifestHash);
     if (this.error) { r.fail(this.error); return r; }
-    const q = r.query(this, new Frame(this, undefined), '');
+    const q = r.query(this, new Frame(this, undefined));
     if (q) Object.assign(r.ir, q);
     return r;
   }
@@ -460,11 +459,19 @@ class Frame {
   }
 }
 
+/** `value`, a list that a condition holds; anything else is a CONFIG error that names `what`. */
+function listOf(value: unknown, what: string): readonly unknown[] {
+  if (!Array.isArray(value)) throw configError(`${what} must be a list`);
+  return value;
+}
+
 function pad<T>(values: readonly T[]): T[] {
   let n = 1;
   while (n < values.length) n <<= 1;
   const out = [...values];
-  while (out.length < n) out.push(values[values.length - 1]!);
+  const last = values.slice(-1);
+  if (last.length === 0) return out;
+  while (out.length < n) out.push(...last);
   return out;
 }
 
@@ -495,7 +502,7 @@ export class BuiltRequest {
     return this.ir;
   }
 
-  public query(c: Core, f: Frame, path: string): RequestQuery | undefined {
+  public query(c: Core, f: Frame): RequestQuery | undefined {
     if (c.error) { this.fail(c.error); return undefined; }
     if (c.where.pending !== '') { this.fail(configError(`connector ${c.where.pending} without a following condition`)); return undefined; }
     const q: RequestQuery = { entity: c.ent.entity.name };
@@ -506,11 +513,11 @@ export class BuiltRequest {
     if (this.error) return undefined;
     if (columns) q.columns = columns;
     for (const j of c.joins) {
-      const childPath = f.paths.get(j.child)!;
+      const childPath = present(f.paths.get(j.child), 'the path of a joined model');
       const name = childPath.slice(childPath.lastIndexOf('/') + 1);
       if (this.joinPaths.has(childPath)) { this.fail(configError(`join result name ${name} is used twice`)); return undefined; }
       this.joinPaths.add(childPath);
-      const child = this.query(j.child, f, childPath);
+      const child = this.query(j.child, f);
       if (!child) return undefined;
       if (j.child.on) child.on = this.group(j.child.on, j.child, f);
       const join: Join = { rel: name, kind: j.kind, query: child, left: j.left, right: j.right };
@@ -545,7 +552,7 @@ export class BuiltRequest {
 
   private relation(rel: RelSpec): Relation | undefined {
     const ch = rel.child;
-    const q = this.query(ch, new Frame(ch, undefined), '');
+    const q = this.query(ch, new Frame(ch, undefined));
     if (!q) return undefined;
     if (ch.limit) { this.fail(new OrmError('LIMIT_IN_RELATION', `${ch.ent.entity.name} relation uses limit; use groupLimit`)); return undefined; }
     if (ch.parentNode) q.flatten = true;
@@ -610,32 +617,32 @@ export class BuiltRequest {
       case 'tuple':
         delete out.column;
         if (p.cols !== undefined) out.cols = p.cols;
-        out.ps = (p.value as unknown[][]).flatMap(row => row.map(v => this.param(v)));
+        out.ps = listOf(p.value, 'tuple values').flatMap(row => listOf(row, 'a tuple value group').map(v => this.param(v)));
         break;
       case 'between':
-        out.ps = (p.value as unknown[]).map(v => this.param(v));
+        out.ps = listOf(p.value, 'between values').map(v => this.param(v));
         break;
       case 'list':
-        out.ps = pad(p.value as unknown[]).map(v => this.param(v));
+        out.ps = pad(listOf(p.value, 'list values')).map(v => this.param(v));
         break;
       case 'null':
         break;
       case 'ref':
-        try { out.ref = { path: f.pathOf(p.ref!.subject()), column: p.refCol! }; }
+        try { out.ref = { path: f.pathOf(present(p.ref, 'the model of a column comparison').subject()), column: present(p.refCol, 'the column of a column comparison') }; }
         catch (error) { this.fail(error); return undefined; }
         break;
       case 'sub': {
-        const sub = this.subquery(p.sub!.self, owner.subject(), false);
+        const sub = this.subquery(present(p.sub, 'the model of a subquery condition').self, owner.subject(), false);
         if (!sub) return undefined;
         out.sub = sub;
         break;
       }
       case 'column_fn':
-        out.fn = p.fn!.ir(v => this.param(v));
+        out.fn = present(p.fn, 'the function of a column function condition').ir(v => this.param(v));
         out.p = this.param(p.value);
         break;
       case 'value_fn':
-        out.value = p.fn!.ir(v => this.param(v));
+        out.value = present(p.fn, 'the function of a value function condition').ir(v => this.param(v));
         break;
       default:
         out.p = this.param(p.value);
@@ -648,7 +655,7 @@ export class BuiltRequest {
     const c = m[CORE];
     if (c.conn !== undefined) { this.fail(configError('a subquery model cannot have its own connection')); return undefined; }
     if (c.relations.length > 0) { this.fail(configError('a subquery model cannot load relations')); return undefined; }
-    const q = this.query(c, new Frame(c, outer), '');
+    const q = this.query(c, new Frame(c, outer));
     if (!q) return undefined;
     const sub: Subquery = { query: q };
     if (scalar && c.agg !== '') {

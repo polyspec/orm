@@ -1,6 +1,8 @@
 // The set reader (docs/dbspec.md "Document sets"): readDbspecSet reads the set file dbspec-set.json and the files it
 // lists, in the four steps of the specification, without following a symbolic link. The rules that read no file run
 // through parseSet (set_file.ts). It is Node-only, so the browser entry (entry.ts) does not reach it.
+import { present } from '../present.js';
+import { inspect } from 'node:util';
 import { closeSync, constants, fstatSync, lstatSync, openSync, readdirSync, readFileSync, type Stats } from 'node:fs';
 import {
   parseSetOn,
@@ -35,7 +37,7 @@ function failure(errors: readonly DbspecSetError[]): DbspecSetResult {
 }
 
 function reason(error: unknown): string {
-  return (error as Error).message;
+  return error instanceof Error ? error.message : inspect(error);
 }
 
 /**
@@ -69,7 +71,8 @@ function examine(path: string): Stats | Error {
   try {
     return lstatSync(path);
   } catch (error) {
-    return error as Error;
+    if (error instanceof Error) return error;
+    throw error;
   }
 }
 
@@ -128,7 +131,7 @@ function examinePath(entry: DbspecSetPath, prefix: string): DbspecSetError | nul
   let parent = rootOf(prefix);
   let current = prefix;
   for (let i = 0; i < segments.length; i++) {
-    const segment = segments[i]!;
+    const segment = present(segments[i], 'segments[i]');
     current += (i === 0 ? '' : '/') + segment;
     const last = i === segments.length - 1;
     // The name is compared before the lstat, so that a spelling that only a case-folding file system resolves is
@@ -190,6 +193,7 @@ export function readDbspecSet(path: string): DbspecSetResult {
     files.set(entry, Object.freeze({ path: entry.path, bytes: read.bytes }));
   }
   if (stepThree.length > 0 || stepFour.length > 0) return failure([...stepThree, ...stepFour]);
-  const list = (paths: readonly DbspecSetPath[]): readonly DbspecSetFile[] => Object.freeze(paths.map(p => files.get(p)!));
-  return Object.freeze({ documents: list(parsed.documents), external: list(parsed.external), errors: Object.freeze([]) as readonly [] });
+  const list = (paths: readonly DbspecSetPath[]): readonly DbspecSetFile[] => Object.freeze(paths.map(p => present(files.get(p), 'files.get(p)')));
+  const noErrors: readonly [] = Object.freeze([]);
+  return Object.freeze({ documents: list(parsed.documents), external: list(parsed.external), errors: noErrors });
 }

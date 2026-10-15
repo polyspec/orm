@@ -1,5 +1,6 @@
 // schema plan 문서와 plan chain (docs/plans.md "Plan document", "Chain").
 // 기준은 Go 엔진(engine/dbspec/plan.go)이며 diagnostic message는 Go와 같은 바이트다.
+import { present } from '../present.js';
 import { createHash } from 'node:crypto';
 import { isSchemaText } from './compare.js';
 import { emitDbspec, parseDbspec } from './index.js';
@@ -56,7 +57,7 @@ const PLAN_RENAME_COLUMN = new RegExp(`^rename column ${NAME}\\.${NAME} ${NAME}$
 const PLAN_DROP_TABLE = new RegExp(`^allow drop table ${NAME}$`);
 const PLAN_DROP_COLUMN = new RegExp(`^allow drop column ${NAME}\\.${NAME}$`);
 
-const NO_DIAGNOSTICS = Object.freeze([]) as readonly [];
+const NO_DIAGNOSTICS: readonly [] = Object.freeze([]);
 
 function compare(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
@@ -91,12 +92,12 @@ export function parsePlan(text: string): DbspecPlanResult {
   if (typeof text !== 'string') throw new TypeError('plan text must be a string');
   if (!text.endsWith('\n')) return failed(text.split('\n').length, 'a plan ends with a line end');
   const lines = text.slice(0, -1).split('\n');
-  const header = PLAN_HEADER.exec(lines[0]!);
-  if (header === null || RESERVED.has(header[1]!) || Buffer.byteLength(header[1]!, 'utf8') > 63) return failed(1, 'the first line is exactly `dbplan 1 <name>`');
-  const name = header[1]!;
-  const fromLine = lines.length < 2 ? null : PLAN_FROM.exec(lines[1]!);
+  const header = PLAN_HEADER.exec(present(lines[0], 'lines[0]'));
+  if (header === null || RESERVED.has(present(header[1], 'header[1]')) || Buffer.byteLength(present(header[1], 'header[1]'), 'utf8') > 63) return failed(1, 'the first line is exactly `dbplan 1 <name>`');
+  const name = present(header[1], 'header[1]');
+  const fromLine = lines.length < 2 ? null : PLAN_FROM.exec(present(lines[1], 'lines[1]'));
   if (fromLine === null) return failed(2, 'the second line is `from empty` or `from <schemaHash>`');
-  const from = fromLine[1] === 'empty' ? null : fromLine[1]!;
+  const from = fromLine[1] === 'empty' ? null : present(fromLine[1], 'fromLine[1]');
   const renameTables: DbspecTableRename[] = [];
   const renameColumns: DbspecColumnRename[] = [];
   const dropTables: string[] = [];
@@ -105,7 +106,7 @@ export function parsePlan(text: string): DbspecPlanResult {
   const given = new Map<string, number>();
   let i = 2;
   for (; i < lines.length && lines[i] !== ''; i++) {
-    const line = lines[i]!;
+    const line = present(lines[i], 'lines[i]');
     const n = i + 1;
     const at = seen.get(line);
     if (at !== undefined) return failed(n, `line ${at} repeats this line`);
@@ -117,7 +118,7 @@ export function parsePlan(text: string): DbspecPlanResult {
       const other = given.get(`table ${r[2]}`);
       if (other !== undefined) return failed(n, `line ${other} renames another table to ${r[2]}`);
       given.set(`table ${r[2]}`, n);
-      renameTables.push(Object.freeze({ old: r[1]!, new: r[2]! }));
+      renameTables.push(Object.freeze({ old: present(r[1], 'r[1]'), new: present(r[2], 'r[2]') }));
     } else if ((r = PLAN_RENAME_COLUMN.exec(line)) !== null) {
       const error = planNames(r.slice(1));
       if (error !== '') return failed(n, error);
@@ -125,15 +126,15 @@ export function parsePlan(text: string): DbspecPlanResult {
       const other = given.get(key);
       if (other !== undefined) return failed(n, `line ${other} renames another column to ${r[1]}.${r[3]}`);
       given.set(key, n);
-      renameColumns.push(Object.freeze({ table: r[1]!, old: r[2]!, new: r[3]! }));
+      renameColumns.push(Object.freeze({ table: present(r[1], 'r[1]'), old: present(r[2], 'r[2]'), new: present(r[3], 'r[3]') }));
     } else if ((r = PLAN_DROP_TABLE.exec(line)) !== null) {
       const error = planNames(r.slice(1));
       if (error !== '') return failed(n, error);
-      dropTables.push(r[1]!);
+      dropTables.push(present(r[1], 'r[1]'));
     } else if ((r = PLAN_DROP_COLUMN.exec(line)) !== null) {
       const error = planNames(r.slice(1));
       if (error !== '') return failed(n, error);
-      dropColumns.push(Object.freeze({ table: r[1]!, name: r[2]! }));
+      dropColumns.push(Object.freeze({ table: present(r[1], 'r[1]'), name: present(r[2], 'r[2]') }));
     } else {
       return failed(n, 'a header line is `rename table`, `rename column`, `allow drop table` or `allow drop column`');
     }
@@ -142,8 +143,8 @@ export function parsePlan(text: string): DbspecPlanResult {
   const offset = i + 1;
   // plan은 database 전체를 하나의 schema로 옮긴다. 외부 문서를 쓰는 set의 table은 install과 addTablesAndColumns가 만든다.
   for (let k = offset; k < lines.length; k++) {
-    if (lines[k]!.startsWith('use ')) {
-      return failed(k + 1, `a plan targets a whole database, and its target uses the external document ${lines[k]!.split(/\s+/)[1]}: install a set that uses external documents with install or addTablesAndColumns`);
+    if (present(lines[k], 'lines[k]').startsWith('use ')) {
+      return failed(k + 1, `a plan targets a whole database, and its target uses the external document ${present(lines[k], 'lines[k]').split(/\s+/)[1]}: install a set that uses external documents with install or addTablesAndColumns`);
     }
   }
   const schemaText = lines.slice(offset).join('\n') + '\n';
@@ -210,7 +211,8 @@ export function emitPlan(plan: DbspecPlan): string {
  * "Chain"), or gives the `chain` diagnostics that name the plans.
  */
 export function chainPlans(plans: readonly DbspecPlan[]): DbspecChainResult {
-  if (!Array.isArray(plans)) throw new TypeError('plans must be an array of parsed plans');
+  const list: unknown = plans;
+  if (!Array.isArray(list)) throw new TypeError('plans must be an array of parsed plans');
   // plan이 없으면 table이 없는 database의 빈 chain이다.
   if (plans.length === 0) return Object.freeze({ plans: Object.freeze([]), diagnostics: NO_DIAGNOSTICS });
   // 빈 database에서 시작하는 plan의 key는 ''이다.
@@ -223,7 +225,7 @@ export function chainPlans(plans: readonly DbspecPlan[]): DbspecChainResult {
   }
   const out: DbspecDiagnostic[] = [];
   for (const from of [...byFrom.keys()].sort(compare)) {
-    const ps = byFrom.get(from)!;
+    const ps = present(byFrom.get(from), 'byFrom.get(from)');
     if (ps.length > 1) {
       const names = ps.map(p => p.name).sort(compare);
       out.push(planDiagnostic('chain', 1, `plans ${names.join(', ')} start from the same schema`));
@@ -233,7 +235,7 @@ export function chainPlans(plans: readonly DbspecPlan[]): DbspecChainResult {
   if (out.length > 0) return Object.freeze({ plans: null, diagnostics: Object.freeze(out) });
   const chain: DbspecPlan[] = [];
   const visited = new Set<DbspecPlan>();
-  for (let p: DbspecPlan | undefined = byFrom.get('')![0]; p !== undefined; p = byFrom.get(p.to)?.[0]) {
+  for (let p: DbspecPlan | undefined = present(byFrom.get(''), 'byFrom.get(\'\')')[0]; p !== undefined; p = byFrom.get(p.to)?.[0]) {
     if (visited.has(p)) {
       return Object.freeze({ plans: null, diagnostics: Object.freeze([planDiagnostic('chain', 1, `plan ${p.name} closes a cycle`)]) });
     }

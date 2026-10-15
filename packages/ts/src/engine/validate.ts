@@ -150,7 +150,7 @@ class Validator {
     const ent = this.entity(q.entity);
     if (q.columns) {
       const cols = q.columns;
-      if (cols.mode !== undefined && cols.mode !== '' && cols.mode !== 'all' && cols.mode !== 'none') fail('IR_INVALID', `columns.mode "${cols.mode}"`);
+      if (cols.mode !== undefined && cols.mode !== '' && cols.mode !== 'all' && cols.mode !== 'none') fail('IR_INVALID', `columns.mode "${String(cols.mode)}"`);
       for (const c of [...cols.add ?? [], ...cols.remove ?? []]) if (!columnOf(ent, c)) fail('COLUMN_UNKNOWN', `${q.entity}.${c}`);
       const outputs = new Set<string>();
       for (const [out, cf] of Object.entries(cols.fn ?? {})) {
@@ -167,15 +167,15 @@ class Validator {
     }
     const joined = new Map<string, Join>();
     for (const j of q.joins ?? []) {
-      if (j.kind !== 'inner' && j.kind !== 'left') fail('IR_INVALID', `join kind "${j.kind}"`);
+      if (j.kind !== 'inner' && j.kind !== 'left') fail('IR_INVALID', `join kind "${String(j.kind)}"`);
       if (j.rel === '' || joined.has(j.rel)) fail('IR_INVALID', `join name "${j.rel}" is empty or used twice`);
       if (!j.left || !j.right || !j.query) fail('IR_INVALID', `join ${j.rel}: left, right and query are required`);
       const target = this.entity(j.query.entity);
-      if (!columnOf(ent, j.left)) fail('COLUMN_UNKNOWN', `${ent.name}.${j.left}`);
-      if (!columnOf(target, j.right)) fail('COLUMN_UNKNOWN', `${target.name}.${j.right}`);
-      if (!meets(columnOf(ent, j.left)!, columnOf(target, j.right)!)) fail('OPERATOR_NOT_ALLOWED', `join ${j.rel}: ${ent.name}.${j.left} does not meet ${target.name}.${j.right}`);
+      const left = columnOf(ent, j.left) ?? fail('COLUMN_UNKNOWN', `${ent.name}.${j.left}`);
+      const right = columnOf(target, j.right) ?? fail('COLUMN_UNKNOWN', `${target.name}.${j.right}`);
+      if (!meets(left, right)) fail('OPERATOR_NOT_ALLOWED', `join ${j.rel}: ${ent.name}.${j.left} does not meet ${target.name}.${j.right}`);
       joined.set(j.rel, j);
-      this.query(j.query, s.joins.get(j.rel)!, true, false);
+      this.query(j.query, s.joins.get(j.rel) ?? fail('IR_INVALID', `join ${j.rel} has no scope`), true, false);
     }
     if (!isJoin && q.on) fail('IR_INVALID', 'on[] is only valid on join children');
     if (q.on?.not || q.where?.not) fail('IR_INVALID', 'not applies to a nested group');
@@ -195,15 +195,15 @@ class Validator {
       if (columnOf(ent, r.rel)) fail('COLUMN_ALIAS_CONFLICT', `${q.entity}.${r.rel} is already a column`);
       if (!r.query) fail('IR_INVALID', `relation ${r.rel} needs a query`);
       const kind = r.kind ?? '';
-      if (!Array.isArray(r.keys) || r.keys.length === 0 || (kind !== 'one' && kind !== 'many')) fail('IR_INVALID', `relation ${r.rel}: keys and kind one|many are required`);
+      const keys = Array.isArray(r.keys) && r.keys.length > 0 && (kind === 'one' || kind === 'many') ? r.keys : fail('IR_INVALID', `relation ${r.rel}: keys and kind one|many are required`);
       const target = this.entity(r.query.entity);
       const lefts = new Set<string>();
       const rights = new Set<string>();
-      for (const k of r.keys!) {
+      for (const k of keys) {
         if (!k.left || !k.right) fail('IR_INVALID', `relation ${r.rel}: every key needs left and right`);
-        if (!columnOf(ent, k.left)) fail('COLUMN_UNKNOWN', `${q.entity}.${k.left}`);
-        if (!columnOf(target, k.right)) fail('COLUMN_UNKNOWN', `${target.name}.${k.right}`);
-        if (!meets(columnOf(ent, k.left)!, columnOf(target, k.right)!)) fail('OPERATOR_NOT_ALLOWED', `relation ${r.rel}: ${q.entity}.${k.left} does not meet ${target.name}.${k.right}`);
+        const left = columnOf(ent, k.left) ?? fail('COLUMN_UNKNOWN', `${q.entity}.${k.left}`);
+        const right = columnOf(target, k.right) ?? fail('COLUMN_UNKNOWN', `${target.name}.${k.right}`);
+        if (!meets(left, right)) fail('OPERATOR_NOT_ALLOWED', `relation ${r.rel}: ${q.entity}.${k.left} does not meet ${target.name}.${k.right}`);
         // 한 column이 두 성분에 나오면 key가 아니다.
         if (lefts.has(k.left) || rights.has(k.right)) fail('IR_INVALID', `relation ${r.rel}: key column ${k.left} or ${k.right} is used twice`);
         lefts.add(k.left);
@@ -215,8 +215,8 @@ class Validator {
       if (r.query.if_parent && !columnOf(ent, r.query.if_parent.column)) fail('COLUMN_UNKNOWN', `${q.entity}.${r.query.if_parent.column} (if_parent)`);
       this.query(r.query, this.scopes(r.query, undefined, undefined), false, true);
     }
-    if ((q.key_by ?? '') !== '') {
-      const keyColumn = columnOf(ent, q.key_by!) ?? fail('COLUMN_UNKNOWN', `${q.entity}.${q.key_by}`);
+    if (q.key_by !== undefined && q.key_by !== '') {
+      const keyColumn = columnOf(ent, q.key_by) ?? fail('COLUMN_UNKNOWN', `${q.entity}.${q.key_by}`);
       // A NULL collection key has no answer that every language shares.
       if (keyColumn.nullable) fail('IR_INVALID', `key_by ${q.key_by} is nullable`);
     }
@@ -227,8 +227,8 @@ class Validator {
     for (const o of q.order ?? []) {
       const kinds = [(o.column ?? '') !== '', o.random === true].filter(Boolean).length;
       if (kinds !== 1) fail('IR_INVALID', 'order needs exactly one of column, random');
-      if ((o.column ?? '') !== '') {
-        const col = columnOf(ent, o.column!) ?? fail('COLUMN_UNKNOWN', `${q.entity}.${o.column}`);
+      if (o.column !== undefined && o.column !== '') {
+        const col = columnOf(ent, o.column) ?? fail('COLUMN_UNKNOWN', `${q.entity}.${o.column}`);
         if (o.fn) this.columnFunction(ent, col, o.fn);
       } else if (o.fn) fail('IR_INVALID', 'order function needs a column');
     }
@@ -237,7 +237,7 @@ class Validator {
       if (q !== this.root) fail('IR_INVALID', "group_by is only valid on the request's root query");
       // An order item of a grouped query sorts the groups: only a group column (or random) has a value per group.
       for (const o of q.order ?? []) {
-        if ((o.column ?? '') !== '' && !q.group_by!.includes(o.column!)) fail('IR_INVALID', `order by ${o.column}, which is not a group column`);
+        if (o.column !== undefined && o.column !== '' && !(q.group_by ?? []).includes(o.column)) fail('IR_INVALID', `order by ${o.column}, which is not a group column`);
       }
     }
     if (q.limit && (!Number.isSafeInteger(q.limit.offset) || !Number.isSafeInteger(q.limit.count) || q.limit.offset < 0 || q.limit.count <= 0)) {
@@ -250,14 +250,15 @@ class Validator {
     if (lock !== '' && (isJoin || isRelation || q.group_by !== undefined || (q.limit_per_parent ?? 0) > 0)) {
       fail('IR_INVALID', 'row lock is only valid on a root row select');
     }
-    if ((q.force_index ?? '') !== '' && !ent.indexes.includes(q.force_index!)) fail('INDEX_UNKNOWN', `${q.entity}.${q.force_index}`);
+    if (q.force_index !== undefined && q.force_index !== '' && !ent.indexes.includes(q.force_index)) fail('INDEX_UNKNOWN', `${q.entity}.${q.force_index}`);
   }
 
   private group(s: Scope, g: Group, joined: ReadonlyMap<string, Join>): void {
     g.items.forEach((it, i) => {
-      const present = [it.pred, it.group, it.joined].filter(v => v !== undefined);
-      if (present.length !== 1) fail('IR_INVALID', 'where item must be exactly one of pred/group/joined');
-      const conn = present[0]!.conn ?? '';
+      const given = [it.pred, it.group, it.joined].filter(v => v !== undefined);
+      const [only] = given;
+      if (given.length !== 1 || only === undefined) fail('IR_INVALID', 'where item must be exactly one of pred/group/joined');
+      const conn = only.conn ?? '';
       if (conn !== '' && conn !== 'and' && conn !== 'or') fail('IR_INVALID', `conn "${conn}"`);
       if (i === 0 && conn === 'or') fail('OR_AT_GROUP_START', 'a group may not start with OR');
       // group 의 첫 item 은 앞 형제가 없으므로 conn 을 갖지 않는다.
@@ -275,7 +276,7 @@ class Validator {
   }
 
   private pred(s: Scope, p: Predicate): void {
-    const ent = s.ent!;
+    const ent = s.ent ?? fail('IR_INVALID', `scope ${s.name} has no entity`);
     this.params(p.ps);
     if (p.p !== undefined) this.params([p.p]);
     const ps = p.ps ?? [];
@@ -293,13 +294,13 @@ class Validator {
     if ((p.cols ?? []).length > 0) fail('IR_INVALID', 'cols is only valid with tuple_in or tuple_not_in');
     const column = p.column ?? '';
     if (p.sub) {
-      if (!columnOf(ent, column)) fail('COLUMN_UNKNOWN', `${ent.name}.${column}`);
+      const compared = columnOf(ent, column) ?? fail('COLUMN_UNKNOWN', `${ent.name}.${column}`);
       if (p.op !== 'in' && p.op !== 'not_in') fail('IR_INVALID', 'subquery needs in or not_in');
       if (p.p !== undefined || ps.length > 0 || p.fn || p.value) fail('IR_INVALID', 'subquery pred may not carry values');
       this.sub(p.sub, false, s);
       // sub checked the subquery column; it meets the compared column as check operands do.
       const subColumn = columnOf(this.entity(p.sub.query.entity), p.sub.column ?? '');
-      if (subColumn && !meets(columnOf(ent, column)!, subColumn)) fail('OPERATOR_NOT_ALLOWED', `${ent.name}.${column} does not meet the subquery column ${p.sub.query.entity}.${p.sub.column}`);
+      if (subColumn && !meets(compared, subColumn)) fail('OPERATOR_NOT_ALLOWED', `${ent.name}.${column} does not meet the subquery column ${p.sub.query.entity}.${p.sub.column}`);
       return;
     }
     if (p.fn || p.value) {
@@ -322,7 +323,7 @@ class Validator {
         }
         return;
       }
-      const value = p.value!;
+      const value = p.value ?? fail('IR_INVALID', 'a predicate without fn needs a value function');
       if (!isValueFunction(value.name)) fail('FUNCTION_UNKNOWN', value.name);
       if (c.type !== 'date' && c.type !== 'datetime') fail('OPERATOR_NOT_ALLOWED', `${value.name} on ${ent.name}.${column} (${c.type})`);
       const want = Object.hasOwn(valueFunctionUnits, value.name) ? 1 : 0;
@@ -439,14 +440,16 @@ export function conflictKey(ent: Entity, set: readonly Assignment[]): readonly s
   for (const u of ent.uniques) candidates.push({ name: `unique (${u.join(', ')})`, columns: u });
   if (candidates.length === 0) fail('IR_INVALID', 'on_duplicate needs exactly one conflict key; no key can meet the row');
   if (candidates.length !== 1) fail('IR_INVALID', `on_duplicate needs exactly one conflict key; ${candidates.map(k => k.name).join(', ')} can meet the row`);
-  const missing = candidates[0]!.columns.find(c => !assigned.has(c));
-  if (missing !== undefined) fail('IR_INVALID', `on_duplicate needs exactly one conflict key; ${candidates[0]!.name} can meet the row but the insert does not assign ${missing}`);
-  return candidates[0]!.columns;
+  const [candidate] = candidates;
+  if (candidate === undefined || candidates.length !== 1) fail('IR_INVALID', `on_duplicate needs exactly one conflict key; ${candidates.map(k => k.name).join(', ')} can meet the row`);
+  const missing = candidate.columns.find(c => !assigned.has(c));
+  if (missing !== undefined) fail('IR_INVALID', `on_duplicate needs exactly one conflict key; ${candidate.name} can meet the row but the insert does not assign ${missing}`);
+  return candidate.columns;
 }
 
 /** Checks a request against the manifest. */
 export function validate(m: RuntimeModel, r: Request): void {
-  if (r.ir_version !== IR_VERSION) fail('VERSION_MISMATCH', `ir_version ${r.ir_version}, engine ${IR_VERSION}`);
+  if (r.ir_version !== IR_VERSION) fail('VERSION_MISMATCH', `ir_version ${String(r.ir_version)}, engine ${String(IR_VERSION)}`);
   if (r.manifest_hash !== m.manifestHash) fail('SCHEMA_HASH_MISMATCH', `client ${r.manifest_hash}, engine ${m.manifestHash}`);
   if (!kinds.has(r.kind)) fail('IR_INVALID', `unknown kind "${r.kind}"`);
   if (r.load === true && (r.kind !== 'insert' || (r.on_duplicate ?? []).length > 0)) fail('IR_INVALID', 'load is only valid on insert without on_duplicate');
@@ -472,24 +475,26 @@ export function validate(m: RuntimeModel, r: Request): void {
       if (r.kind === 'insert' && (a.plus_p !== undefined || a.minus_p !== undefined)) fail('IR_INVALID', `insert cannot assign ${a.column} by plus or minus`);
       // The key is the table's own. A restore checks its set with its key below.
       if (r.kind === 'update') {
-        const c = columnOf(ent, a.column)!;
+        const c = columnOf(ent, a.column) ?? fail('COLUMN_UNKNOWN', `${r.entity}.${a.column}`);
         if (c.primary || c.identity) fail('IR_INVALID', `cannot update ${a.column}`);
       }
     }
   }
-  if ((r.rows ?? []).length > 0) {
+  const rows = r.rows ?? [];
+  if (rows.length > 0) {
     if (r.kind !== 'insert' || (r.on_duplicate ?? []).length > 0) fail('IR_INVALID', 'rows are only valid on insert without on_duplicate');
     for (const a of r.set ?? []) if (a.p === undefined) fail('IR_INVALID', `multi-row insert assigns ${r.entity}.${a.column} without a value`);
-    r.rows!.forEach((row, i) => {
+    rows.forEach((row, i) => {
       if (row.length !== (r.set ?? []).length) fail('IR_INVALID', `insert row ${i + 1} has ${row.length} values for ${(r.set ?? []).length} columns`);
       v.params(row);
     });
   }
-  if ((r.on_duplicate ?? []).length > 0) {
+  const onDuplicate = r.on_duplicate ?? [];
+  if (onDuplicate.length > 0) {
     if (r.kind !== 'insert') fail('IR_INVALID', 'on_duplicate is only valid on insert');
-    for (const a of r.on_duplicate!) {
+    for (const a of onDuplicate) {
       v.assign(ent, r, a);
-      const c = columnOf(ent, a.column)!;
+      const c = columnOf(ent, a.column) ?? fail('COLUMN_UNKNOWN', `${r.entity}.${a.column}`);
       if (c.primary || c.identity) fail('IR_INVALID', `on_duplicate cannot assign ${r.entity}.${a.column}`);
     }
     conflictKey(ent, r.set ?? []);
@@ -535,7 +540,7 @@ export function restoreKey(ent: Entity, r: Request): RestoreParts {
   for (const a of r.set ?? []) if (a.p !== undefined) valued.add(a.column);
   const covered = (columns: readonly string[]) => columns.length > 0 && columns.every(c => valued.has(c));
   // indexes 의 앞부분이 uniques 와 같은 순서의 unique key 이름이다.
-  const uniques = ent.uniques.map((columns, i) => ({ name: ent.indexes[i]!, columns })).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  const uniques = ent.uniques.map((columns, i) => ({ name: ent.indexes[i] ?? fail('IR_INVALID', `${ent.name} has no index name for unique key ${i + 1}`), columns })).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   const key = covered(ent.primaryKey) ? ent.primaryKey : uniques.find(u => covered(u.columns))?.columns
     ?? fail('IR_INVALID', `restore of ${ent.name} gives no primary key or unique key a value in its set or in an eq condition of its where`);
   const where: Item[] = [...items];
@@ -546,7 +551,7 @@ export function restoreKey(ent: Entity, r: Request): RestoreParts {
       continue;
     }
     // The key and the soft delete column are the table's own: a restore clears the latter itself.
-    const c = columnOf(ent, a.column)!;
+    const c = columnOf(ent, a.column) ?? fail('COLUMN_UNKNOWN', `${ent.name}.${a.column}`);
     if (c.primary || c.identity || a.column === ent.softDelete) fail('IR_INVALID', `restore cannot assign ${a.column}`);
     set.push(a);
   }

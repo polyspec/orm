@@ -1,6 +1,7 @@
 // introspection의 중립 중간 model과 문서 만들기 (docs/dialects.md "Introspection").
 // dialect reader가 catalog을 채우고, document가 dbspec text를 쓰고 parse해서
 // parse가 거부한 줄의 객체를 미지원으로 보고하고 뺀다.
+import { present } from '../present.js';
 import { typeText } from './emit.js';
 import type { DbspecAction, DbspecDocument, DbspecType } from './model.js';
 import { parseDocument } from './parse.js';
@@ -92,7 +93,7 @@ export class Catalog {
 
   /** type이 정해지지 않은 column을 뺀다. */
   dropColumn(table: string, column: string): void {
-    const t = this.table(table)!;
+    const t = present(this.table(table), 'this.table(table)');
     const i = t.columns.findIndex(c => c.name === column);
     if (i >= 0) t.columns.splice(i, 1);
   }
@@ -124,7 +125,7 @@ export class Catalog {
       }
       const removed = new Set<string>();
       for (const d of parsed.diagnostics) {
-        const o = objects.get(d.line)!;
+        const o = present(objects.get(d.line), 'objects.get(d.line)');
         const key = `${o.kind}\x00${o.table}\x00${o.name}`;
         if (removed.has(key) || (o.kind !== 'table' && rejected.has(o.table))) continue;
         removed.add(key);
@@ -221,7 +222,7 @@ export class Catalog {
 }
 
 function firstField(s: string): string {
-  return s.trim().split(/\s+/)[0]!;
+  return present(s.trim().split(/\s+/)[0], 's.trim().split(/\\s+/)[0]');
 }
 
 /** catalog의 참조 action을 dbspec action으로 바꾼다. 없으면 null이다. */

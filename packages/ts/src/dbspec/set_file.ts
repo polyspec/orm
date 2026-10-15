@@ -1,3 +1,4 @@
+import { present } from '../present.js';
 // The rules of a set file that read no file (docs/dbspec.md "Document sets"): the name dbspec-set.json of the last
 // segment of the set file's path (step 1), the JSON of step 2 and the normal form of each path (step 3). This module
 // reads no Node global and loads no driver: the bytes come from the caller, as a Uint8Array, so it runs in a browser
@@ -54,7 +55,8 @@ export function setError(rule: DbspecSetRule, path: string, message: string): Db
 }
 
 function failed(error: DbspecSetError): DbspecSetParseResult {
-  return Object.freeze({ documents: null, external: null, errors: Object.freeze([error]) as readonly [DbspecSetError] });
+  const errors: readonly [DbspecSetError] = Object.freeze([error]);
+  return Object.freeze({ documents: null, external: null, errors });
 }
 
 /**
@@ -105,7 +107,8 @@ export function parseSetOn(bytes: Uint8Array, path: string, windows: boolean): D
   try {
     value = JSON.parse(text);
   } catch (error) {
-    return json('set.json', `the set file is not JSON: ${(error as Error).message}`);
+    if (!(error instanceof SyntaxError)) throw error;
+    return json('set.json', `the set file is not JSON: ${error.message}`);
   }
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return json('set.json', 'the set file is not one JSON object');
   // JSON.parse reports neither the depth, nor a lone surrogate escape, nor a repeated key: a token scan checks them.
@@ -114,7 +117,7 @@ export function parseSetOn(bytes: Uint8Array, path: string, windows: boolean): D
   if (scan.loneSurrogate) return json('set.json', 'a string of the set file escapes a lone surrogate');
   if (scan.repeated !== null) return json('set.key', `the key ${JSON.stringify(scan.repeated)} appears twice`);
 
-  const object = value as Record<string, unknown>;
+  const object: Record<string, unknown> = Object.fromEntries(Object.entries(value));
   const unknown = Object.keys(object).filter(key => !KEYS.has(key)).sort(compareCodePoints);
   if (unknown.length > 0) return json('set.key', `unknown key${unknown.length > 1 ? 's' : ''} ${unknown.map(k => JSON.stringify(k)).join(', ')}`);
   if (!Object.hasOwn(object, 'schema')) return json('set.schema', 'the key "schema" is missing');
@@ -122,7 +125,8 @@ export function parseSetOn(bytes: Uint8Array, path: string, windows: boolean): D
   if (!Object.hasOwn(object, 'documents')) return json('set.key', 'the key "documents" is missing');
   if (!isStrings(object.documents)) return json('set.key', '"documents" is not an array of strings');
   if (object.documents.length === 0) return json('set.empty', '"documents" is empty');
-  if (Object.hasOwn(object, 'external') && !isStrings(object.external)) return json('set.key', '"external" is not an array of strings');
+  const externalPaths: unknown = Object.hasOwn(object, 'external') ? object.external : [];
+  if (!isStrings(externalPaths)) return json('set.key', '"external" is not an array of strings');
 
   const { prefix } = splitSetPath(path, windows);
   const errors: DbspecSetError[] = [];
@@ -133,7 +137,7 @@ export function parseSetOn(bytes: Uint8Array, path: string, windows: boolean): D
     return Object.freeze({ written: w, path: prefix + w, error });
   }));
   const documents = entries(object.documents, false);
-  const external = entries((object.external as string[] | undefined) ?? [], true);
+  const external = entries(externalPaths, true);
   return Object.freeze({ documents, external, errors: Object.freeze(errors) });
 }
 
@@ -143,10 +147,10 @@ function isStrings(value: unknown): value is string[] {
 
 /** Compares two strings by code point, not by UTF-16 code unit. */
 function compareCodePoints(a: string, b: string): number {
-  const x = [...a];
-  const y = [...b];
+  const x = Array.from(a);
+  const y = Array.from(b);
   for (let i = 0; i < Math.min(x.length, y.length); i++) {
-    const d = x[i]!.codePointAt(0)! - y[i]!.codePointAt(0)!;
+    const d = present(present(x[i], 'x[i]').codePointAt(0), 'x[i].codePointAt(0)') - present(present(y[i], 'y[i]').codePointAt(0), 'y[i].codePointAt(0)');
     if (d !== 0) return d;
   }
   return x.length - y.length;
@@ -180,7 +184,8 @@ function scanJson(text: string): { depth: boolean; loneSurrogate: boolean; repea
       const top = stack.at(-1);
       if (top !== undefined && top.keys !== null && top.expectKey) {
         top.expectKey = false;
-        const key = JSON.parse(token) as string;
+        const key: unknown = JSON.parse(token);
+        if (typeof key !== 'string') throw new Error(`the JSON key token ${token} is not a string`);
         if (top.keys.has(key) && repeated === null) repeated = key;
         top.keys.add(key);
       }
@@ -204,10 +209,10 @@ function hasLoneSurrogateEscape(token: string): boolean {
   }
   const unit = (at: number): number => parseInt(token.slice(at + 2, at + 6), 16);
   for (let k = 0; k < units.length; k++) {
-    const u = unit(units[k]!);
+    const u = unit(present(units[k], 'units[k]'));
     if (u >= 0xd800 && u <= 0xdbff) {
       const next = units[k + 1];
-      if (next === units[k]! + 6 && unit(next) >= 0xdc00 && unit(next) <= 0xdfff) { k++; continue; }
+      if (next === present(units[k], 'units[k]') + 6 && unit(next) >= 0xdc00 && unit(next) <= 0xdfff) { k++; continue; }
       return true;
     }
     if (u >= 0xdc00 && u <= 0xdfff) return true;
@@ -216,14 +221,20 @@ function hasLoneSurrogateEscape(token: string): boolean {
 }
 
 /** The characters that a segment never holds: `/`, `\`, `:`, `<`, `>`, `"`, `|`, `?`, `*`, NUL and U+0001 to U+001F. */
-const FORBIDDEN = /[/\\:<>"|?*\u0000-\u001f]/;
+const FORBIDDEN = /[/\\:<>"|?*]/;
+
+/** Whether `segment` holds a control character, U+0000 to U+001F, which a path name cannot hold. */
+function hasControl(segment: string): boolean {
+  for (let i = 0; i < segment.length; i++) if (segment.charCodeAt(i) < 0x20) return true;
+  return false;
+}
 /** The device names of Windows, matched against the part of a segment before its first `.`, trailing spaces removed. */
 const DEVICE = /^(?:CON|PRN|AUX|NUL|COM[0-9¹²³]|LPT[0-9¹²³])$/i;
 
 /** Why a written path has no normal form, or null when it has one. */
 function normalFormProblem(path: string, external: boolean): string | null {
   const segments = path.split('/');
-  if (!segments.at(-1)!.endsWith('.dbs')) return 'does not end in a segment ending in .dbs';
+  if (!present(segments.at(-1), 'segments.at(-1)').endsWith('.dbs')) return 'does not end in a segment ending in .dbs';
   let leading = true;
   for (const segment of segments) {
     if (segment === '..') {
@@ -233,10 +244,10 @@ function normalFormProblem(path: string, external: boolean): string | null {
     }
     leading = false;
     if (segment === '') return 'has an empty segment';
-    if (FORBIDDEN.test(segment)) return `has the segment ${JSON.stringify(segment)} with a character that a path name cannot hold`;
+    if (FORBIDDEN.test(segment) || hasControl(segment)) return `has the segment ${JSON.stringify(segment)} with a character that a path name cannot hold`;
     if (segment === '.') return 'has a . segment';
     if (segment.endsWith('.') || segment.endsWith(' ')) return `has the segment ${JSON.stringify(segment)} ending in a dot or a space`;
-    if (DEVICE.test(segment.split('.')[0]!.replace(/ +$/, ''))) return `has the segment ${JSON.stringify(segment)} named after a Windows device`;
+    if (DEVICE.test(present(segment.split('.')[0], 'segment.split(\'.\')[0]').replace(/ +$/, ''))) return `has the segment ${JSON.stringify(segment)} named after a Windows device`;
   }
   return null;
 }

@@ -84,7 +84,8 @@ export function compareSchemas(source: DbspecDocument, target: DbspecDocument): 
     found.sort((a, b) => KINDS.indexOf(a.kind) - KINDS.indexOf(b.kind) || compare(a.name, b.name));
     differences.push(...found);
   }
-  return Object.freeze({ differences: Object.freeze(differences), diagnostics: Object.freeze([]) as readonly [] });
+  const noDiagnostics: readonly [] = Object.freeze([]);
+  return Object.freeze({ differences: Object.freeze(differences), diagnostics: noDiagnostics });
 }
 
 /**

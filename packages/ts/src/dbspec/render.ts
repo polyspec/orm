@@ -1,5 +1,6 @@
 // dbspec 문서 집합을 한 dialect의 문장으로 쓴다 (docs/dialects.md "Rendered statements").
 // 문장의 바이트는 tests/dbspec/ddl.json과 Go 엔진(engine/dbspec/render.go)과 같다.
+import { present } from '../present.js';
 import { readCheck, type CheckExpr, type CheckOperand } from './check.js';
 import { checkSet } from './set.js';
 import { auditRecords, type DbspecAuditSetting } from './audit.js';import { rendererName } from './names.js';
@@ -36,11 +37,11 @@ function useOrder(documents: readonly DbspecDocument[]): DbspecDocument[] {
     if (done.has(document.name)) return;
     done.add(document.name);
     for (const name of sorted(document.uses.map(u => u.document), n => n)) {
-      visit(byName.get(name)!);
+      visit(present(byName.get(name), 'byName.get(name)'));
     }
     out.push(document);
   };
-  for (const name of sorted([...byName.keys()], n => n)) visit(byName.get(name)!);
+  for (const name of sorted([...byName.keys()], n => n)) visit(present(byName.get(name), 'byName.get(name)'));
   return out;
 }
 
@@ -477,5 +478,6 @@ export function renderDbspecStatements(documents: readonly DbspecDocument[], dia
     }
   }
   for (const document of ordered) for (const t of document.tables) add(t.name, r.triggers(t));
-  return Object.freeze({ statements: Object.freeze(out), diagnostics: Object.freeze([]) as readonly [] });
+  const noDiagnostics: readonly [] = Object.freeze([]);
+  return Object.freeze({ statements: Object.freeze(out), diagnostics: noDiagnostics });
 }

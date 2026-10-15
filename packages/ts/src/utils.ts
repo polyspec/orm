@@ -1,13 +1,14 @@
 import { hostDecode, hostEncode } from './codec.js';
 import { CORE, isModel } from './core.js';
 import { activeFor, registerSet, schemaModel, type Db, type Runner, type Schema, type TxFrame } from './database.js';
-import type { DriverName, DriverSession, DriverValue, PoolStats } from './driver.js';
+import { driverValue, type DriverName, type DriverSession, type DriverValue, type PoolStats } from './driver.js';
 import type { StatementKind } from './events.js';
 import { AesKeyring } from './aes.js';
 import { addTablesAndColumnsSteps, dbspecManifest, emitDbspec, externalDifferences, installedDifferences, parseDbspec, renderDbspecStatements, type DbspecDocument } from './dbspec/index.js';
 import { introspectCatalog, type DbspecIntrospection } from './dbspec/introspect.js';
 import { CatalogRow } from './dbspec/introspect_catalog.js';
 import type { RuntimeModel } from './engine/model.js';
+import { present } from './present.js';
 import { OrmError, joinedErrors, rollbackFailed } from './runtime_error.js';
 
 export interface AesRotationStatus {
@@ -76,7 +77,7 @@ function externalTexts(model: RuntimeModel): Record<string, string> {
 
 /** 연결의 database를 introspect한다. run은 연결의 statement를 보낸다. catalog query는 table을 가리키지 않는 schema statement다. */
 async function introspect(run: Runner, driver: DriverName): Promise<DbspecIntrospection> {
-  return introspectCatalog(async sql => (await run('schema', [], sql)).rows.map(values => new CatalogRow(sql, values as unknown[])), driver, 'schema');
+  return introspectCatalog(async sql => (await run('schema', [], sql)).rows.map(values => new CatalogRow(sql, values)), driver, 'schema');
 }
 
 /**
@@ -100,12 +101,10 @@ function schemaTarget(model: RuntimeModel): DbspecDocument {
   const manifest = dbspecManifest(model.documents);
   // schema text의 use 줄은 외부 문서를 가리키므로 외부 문서를 집합으로 삼아 parse한다.
   const parsed = manifest.manifest === null ? null : parseDbspec(manifest.manifest.schemaText, externalTexts(model));
-  const failed = manifest.manifest === null ? manifest.diagnostics : parsed!.diagnostics;
-  if (failed.length > 0) {
-    const d = failed[0]!;
-    throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
-  }
-  return parsed!.document!;
+  const failed = parsed === null ? manifest.diagnostics : parsed.diagnostics;
+  const [d] = failed;
+  if (d !== undefined) throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
+  return present(parsed?.document, 'the document of a schema text without diagnostics');
 }
 
 /** Operations outside the query syntax. */
@@ -140,7 +139,7 @@ export class Utils {
   public async run<T>(fn: (frame: TxFrame) => Promise<T>): Promise<T> {
     const frame = activeFor(this.db);
     if (frame) return fn(frame);
-    return this.db.transaction(() => fn(activeFor(this.db)!), { retry: 0 });
+    return this.db.transaction(() => fn(present(activeFor(this.db), 'the frame of the transaction that run opened')), { retry: 0 });
   }
 
   /**
@@ -249,7 +248,7 @@ export class SchemaUtils {
     const driver = this.u.db.pool.name;
     const rendered = renderDbspecStatements(model.documents, driver);
     if (rendered.statements === null) {
-      const d = rendered.diagnostics[0]!;
+      const d = present(rendered.diagnostics[0], 'a diagnostic of a document set that renders no statements');
       throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
     }
     const statements = rendered.statements;
@@ -379,7 +378,8 @@ export class PrivilegeUtils {
 
   public async inspectTable(table: string): Promise<TablePrivileges> {
     const qualified = this.table(table);
-    const row = (await this.u.read('utility', [table], `SELECT has_table_privilege(current_user, $1, 'INSERT'), has_table_privilege(current_user, $1, 'SELECT'), has_table_privilege(current_user, $1, 'UPDATE'), has_table_privilege(current_user, $1, 'DELETE'), has_table_privilege(current_user, $1, 'TRUNCATE')`, [qualified]))[0]!;
+    const row = (await this.u.read('utility', [table], `SELECT has_table_privilege(current_user, $1, 'INSERT'), has_table_privilege(current_user, $1, 'SELECT'), has_table_privilege(current_user, $1, 'UPDATE'), has_table_privilege(current_user, $1, 'DELETE'), has_table_privilege(current_user, $1, 'TRUNCATE')`, [qualified]))[0];
+    if (row === undefined) throw new OrmError('INTERNAL', `the privileges of ${table} returned no row`);
     return { insert: row[0] === true, select: row[1] === true, update: row[2] === true, delete: row[3] === true, truncate: row[4] === true };
   }
 }
@@ -430,7 +430,12 @@ export class AesUtils {
     const where = [...spec.keys.map((k, i) => `${q(k)} = ${ph(spec.columns.length + 2 + i)}`), `${q(spec.version)} = ${ph(spec.columns.length + 2 + spec.keys.length)}`];
     const updateSql = `UPDATE ${q(spec.table)} SET ${sets.join(', ')} WHERE ${where.join(' AND ')}`;
     const codec = {
-      decode: (value: unknown, styles: readonly string[], key: string) => hostDecode(value as string | Uint8Array | null, styles, key),
+      decode: (value: unknown, styles: readonly string[], key: string) => {
+        if (value !== null && typeof value !== 'string' && !(value instanceof Uint8Array)) {
+          throw new OrmError('CODEC_DECODE', `aes rotation read a ${typeof value} value of ${key}`);
+        }
+        return hostDecode(value, styles, key);
+      },
       encode: (value: unknown, styles: readonly string[], key: string) => hostEncode(value, styles, key),
     };
     return this.u.run(async frame => {
@@ -445,7 +450,12 @@ export class AesUtils {
           before[spec.version] = version;
           spec.columns.forEach((c, i) => { before[c.name] = values[spec.keys.length + 1 + i]; });
           const after = keyring.rotateRow(before, spec.version, spec.columns, keyring.currentVersion, codec);
-          const params = [...spec.columns.map(c => after[c.name]), keyring.currentVersion, ...spec.keys.map(k => before[k]), version] as DriverValue[];
+          const params: DriverValue[] = [
+            ...spec.columns.map(c => driverValue(after[c.name], `the rotated column ${c.name}`)),
+            keyring.currentVersion,
+            ...spec.keys.map(k => driverValue(before[k], `the key column ${k}`)),
+            version,
+          ];
           const result = await frame.statement('utility', [spec.table], updateSql, params);
           if (result.affected !== 1) throw new OrmError('DEADLOCK', `aes rotation of ${spec.table} changed ${result.affected} rows`);
           rotated++;

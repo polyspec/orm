@@ -2,11 +2,14 @@
 // 되돌리고, 적용한 plan을 finalize한다(docs/plans.md "Apply"). 기준은 Go 엔진
 // (engine/dbspec/apply.go)이며 lock, session 설정, history table, step, 검증과 효과
 // query가 Go와 같다.
+import { present } from '../present.js';
 import mysql from 'mysql2/promise';
 import pg from 'pg';
-import type { DbspecMySqlConnection, DbspecPostgresConnection, DbspecSqliteConnection } from './connections.js';
+import { inspect } from 'node:util';
+import { isMySqlConnection, isPostgresConnection, isSqliteConnection, rowArrays, type DbspecMySqlConnection, type DbspecPostgresConnection, type DbspecSqliteConnection } from './connections.js';
 import { dbspecManifest } from './index.js';
-import { introspectDbspec } from './introspect.js';
+import { introspectCatalog } from './introspect.js';
+import { CatalogRow } from './introspect_catalog.js';
 import type { DbspecDocument } from './model.js';
 import { chainPlans, type DbspecPlan } from './plan.js';
 import { effectText, planSteps, type DbspecEffect, type DbspecPlanStep } from './plan_steps.js';
@@ -61,7 +64,7 @@ export class DbspecApplyError extends Error {
     if (plan !== '') message += ` ${plan}`;
     if (code === 'failed' || code === 'interrupted' || code === 'irreversible' || code === 'nulls' || (code === 'session' && plan !== '')) message += ` at step ${step}`;
     if (detail !== '') message += `: ${detail}`;
-    if (cause !== undefined) message += `: ${cause instanceof Error ? cause.message : String(cause)}`;
+    if (cause !== undefined) message += `: ${cause instanceof Error ? cause.message : typeof cause === 'string' ? cause : inspect(cause)}`;
     super(message, cause === undefined ? undefined : { cause });
     this.name = 'DbspecApplyError';
     this.code = code;
@@ -132,8 +135,13 @@ export const EFFECT_QUERIES: Readonly<Record<DbspecDialect, Readonly<Record<stri
 });
 
 // mysql2/promise는 PromisePool class를 내보내지만 type 선언에는 없다.
-const MYSQL_POOL = (mysql as unknown as { PromisePool: abstract new (...args: never[]) => unknown }).PromisePool;
-if (typeof MYSQL_POOL !== 'function') throw new Error('mysql2/promise does not export PromisePool');
+const MYSQL_POOL = mysqlPoolClass();
+
+function mysqlPoolClass(): Function {
+  const value: unknown = Reflect.get(mysql, 'PromisePool');
+  if (typeof value !== 'function') throw new Error('mysql2/promise does not export PromisePool');
+  return value;
+}
 
 /** dialect connection 하나의 statement 실행과 row 읽기다. row는 값 배열이다. */
 interface Session {
@@ -141,40 +149,38 @@ interface Session {
   rows(sql: string, args?: readonly (string | number)[]): Promise<unknown[][]>;
 }
 
-function requireMethod(connection: unknown, method: string, dialect: DbspecDialect): void {
-  if (connection === null || typeof connection !== 'object' || typeof (connection as Record<string, unknown>)[method] !== 'function') {
-    throw new TypeError(`a ${dialect} connection must have a ${method} method`);
-  }
+function missingMethod(dialect: DbspecDialect, method: string): TypeError {
+  return new TypeError(`a ${dialect} connection must have a ${method} method`);
 }
 
 function session(connection: unknown, dialect: DbspecDialect): Session {
   switch (dialect) {
     case 'mysql': {
-      requireMethod(connection, 'query', dialect);
+      if (!isMySqlConnection(connection)) throw missingMethod(dialect, 'query');
       // pool은 statement마다 다른 connection을 쓰므로 lock과 기록이 맞지 않는다.
       if (connection instanceof MYSQL_POOL) throw new TypeError('apply needs one mysql connection, not a pool');
-      const c = connection as DbspecMySqlConnection;
+      const c = connection;
       return {
         exec: async (sql, args = []) => {
           await c.query({ sql }, [...args]);
         },
-        rows: async (sql, args = []) => (await c.query({ sql, rowsAsArray: true }, [...args]))[0] as unknown[][],
+        rows: async (sql, args = []) => rowArrays((await c.query({ sql, rowsAsArray: true }, [...args]))[0], 'mysql'),
       };
     }
     case 'postgres': {
-      requireMethod(connection, 'query', dialect);
+      if (!isPostgresConnection(connection)) throw missingMethod(dialect, 'query');
       if (connection instanceof pg.Pool) throw new TypeError('apply needs one postgres client, not a pool');
-      const c = connection as DbspecPostgresConnection;
+      const c = connection;
       return {
         exec: async (sql, args = []) => {
           await c.query({ text: sql, values: [...args] });
         },
-        rows: async (sql, args = []) => (await c.query({ text: sql, values: [...args], rowMode: 'array' })).rows as unknown[][],
+        rows: async (sql, args = []) => rowArrays((await c.query({ text: sql, values: [...args], rowMode: 'array' })).rows, 'postgres'),
       };
     }
     case 'sqlite': {
-      requireMethod(connection, 'prepare', dialect);
-      const c = connection as DbspecSqliteConnection;
+      if (!isSqliteConnection(connection)) throw missingMethod(dialect, 'prepare');
+      const c = connection;
       return {
         exec: async (sql, args = []) => {
           if (args.length === 0) c.exec(sql);
@@ -183,7 +189,7 @@ function session(connection: unknown, dialect: DbspecDialect): Session {
         rows: async (sql, args = []) => {
           const statement = c.prepare(sql);
           statement.setReturnArrays(true);
-          return statement.all(...args) as unknown[][];
+          return rowArrays(statement.all(...args), 'sqlite');
         },
       };
     }
@@ -229,7 +235,10 @@ async function finish(f: () => Promise<void>, ...ends: (() => Promise<unknown>)[
   try {
     await f();
   } catch (error) {
-    if (error instanceof AggregateError && cleanupAggregates.has(error)) failures.push(...error.errors);
+    if (error instanceof AggregateError && cleanupAggregates.has(error)) {
+      const errors: readonly unknown[] = error.errors;
+      failures.push(...errors);
+    }
     else failures.push(error);
   }
   for (const end of ends) {
@@ -279,7 +288,7 @@ class Applier {
   async queryRow(sql: string, args: readonly (string | number)[] = []): Promise<unknown[]> {
     const rows = await this.s.rows(sql, args);
     if (rows.length === 0) throw new Error(`${sql} returned no row`);
-    return rows[0]!;
+    return present(rows[0], 'rows[0]');
   }
 
   async queryValue(sql: string, args: readonly (string | number)[] = []): Promise<unknown> {
@@ -429,7 +438,7 @@ class Applier {
     }
     if (this.history.size !== position) throw new DbspecApplyError('chain', '', 0, 'the history records a plan that is not in the chain');
     for (const p of this.chain.slice(0, Math.max(position - 1, 0))) {
-      const state = this.history.get(p.name)!.state;
+      const state = present(this.history.get(p.name), 'this.history.get(p.name)').state;
       if (state !== APPLIED && state !== DONE) throw new DbspecApplyError('chain', p.name, 0, `a plan before the last is ${state}`);
     }
     return position;
@@ -440,8 +449,8 @@ class Applier {
     const position = await this.position();
     let want = '';
     if (position > 0) {
-      const p = this.chain[position - 1]!;
-      const row = this.history.get(p.name)!;
+      const p = present(this.chain[position - 1], 'this.chain[position - 1]');
+      const row = present(this.history.get(p.name), 'this.history.get(p.name)');
       if (row.state !== APPLIED && row.state !== DONE) {
         throw new DbspecApplyError('interrupted', p.name, row.step, `the plan is ${row.state}; run recover or rollback`);
       }
@@ -457,9 +466,9 @@ class Applier {
 
   /** database의 introspection이 want schemaHash(빈 문자열이면 빈 database)이고 미지원 객체가 없는지 확인한다. */
   async verify(want: string): Promise<void> {
-    const { document, unsupported } = await introspectDbspec(this.connection as never, this.dialect as never, 'schema');
+    const { document, unsupported } = await introspectCatalog(async sql => (await this.s.rows(sql)).map(values => new CatalogRow(sql, values)), this.dialect, 'schema');
     if (unsupported.length > 0) {
-      const u = unsupported[0]!;
+      const u = present(unsupported[0], 'unsupported[0]');
       throw new Error(`the database has ${unsupported.length} objects that dbspec cannot express, first ${u.kind} ${u.table} ${u.name}: ${u.reason}`);
     }
     let got = '';
@@ -474,9 +483,9 @@ class Applier {
   /** chain에서 plan의 앞 plan target을 source로 step을 쓴다. */
   steps(p: DbspecPlan): readonly DbspecPlanStep[] {
     const i = this.chain.indexOf(p);
-    const source: DbspecDocument | null = i > 0 ? this.chain[i - 1]!.schema : null;
+    const source: DbspecDocument | null = i > 0 ? present(this.chain[i - 1], 'this.chain[i - 1]').schema : null;
     const { steps, diagnostics } = planSteps(source, p, this.dialect);
-    if (steps === null) throw new DbspecApplyError('chain', p.name, 0, diagnostics[0]!.message);
+    if (steps === null) throw new DbspecApplyError('chain', p.name, 0, present(diagnostics[0], 'diagnostics[0]').message);
     return steps;
   }
 
@@ -487,7 +496,7 @@ class Applier {
     const rolling = row.state === ROLLING_BACK;
     const uncertain = rolling ? k - 1 : k;
     if (uncertain < 0 || uncertain >= steps.length) return k;
-    const e = steps[uncertain]!.effect;
+    const e = present(steps[uncertain], 'steps[uncertain]').effect;
     const held = e.kind !== 'repeat' && (await this.effect(p, uncertain, e));
     // 앞으로 갈 때 repeat step은 다시 실행하고, 뒤로 갈 때는 그 rollback을 다시 실행한다.
     const took = held || (!forward && e.kind === 'repeat');
@@ -533,7 +542,7 @@ class Applier {
   async forward(p: DbspecPlan, steps: readonly DbspecPlanStep[], start: number): Promise<void> {
     const end = finalizeStart(steps);
     for (let i = start; i < end; i++) {
-      const step = steps[i]!;
+      const step = present(steps[i], 'steps[i]');
       let statement = step.statement;
       if (step.restore !== '' && (await this.effect(p, i, step.restoreIf))) statement = step.restore;
       await this.run(p, steps, i, statement);
@@ -553,7 +562,7 @@ class Applier {
   /** finalize step을 start부터 실행하고 row를 done으로 바꾼다. */
   async finalizeFrom(p: DbspecPlan, steps: readonly DbspecPlanStep[], start: number): Promise<void> {
     for (let i = start; i < steps.length; i++) {
-      await this.run(p, steps, i, steps[i]!.statement);
+      await this.run(p, steps, i, present(steps[i], 'steps[i]').statement);
       await this.setStep(p, i + 1);
     }
     await this.record(p, DONE, steps.length);
@@ -623,7 +632,7 @@ class Applier {
   }
 
   irreversible(p: DbspecPlan, steps: readonly DbspecPlanStep[], i: number): DbspecApplyError {
-    return new DbspecApplyError('irreversible', p.name, i, steps[i]!.finalize ? 'a finalize step has no rollback' : steps[i]!.irreversible);
+    return new DbspecApplyError('irreversible', p.name, i, present(steps[i], 'steps[i]').finalize ? 'a finalize step has no rollback' : present(steps[i], 'steps[i]').irreversible);
   }
 
   async emit(kind: DbspecApplyEventKind, plan: string, step: number, steps: number, statement: string): Promise<void> {
@@ -685,7 +694,7 @@ function newApplier(connection: unknown, dialect: DbspecDialect, plans: readonly
   if (typeof now !== 'function') throw new TypeError('now must be a function that returns the microseconds since the epoch');
   if (events !== undefined && events !== null && typeof events !== 'function') throw new TypeError('events must be a function or null');
   const { plans: chain, diagnostics } = chainPlans(plans);
-  if (chain === null) throw new DbspecApplyError('chain', '', 0, diagnostics[0]!.message);
+  if (chain === null) throw new DbspecApplyError('chain', '', 0, present(diagnostics[0], 'diagnostics[0]').message);
   return new Applier(connection, dialect, chain, now, events ?? null);
 }
 
@@ -739,8 +748,8 @@ export async function recoverPlans(connection: Connection, dialect: DbspecDialec
   await a.session(async () => {
     const position = await a.position();
     if (position === 0) return;
-    const p = a.chain[position - 1]!;
-    const row = a.history.get(p.name)!;
+    const p = present(a.chain[position - 1], 'a.chain[position - 1]');
+    const row = present(a.history.get(p.name), 'a.history.get(p.name)');
     if (row.state === APPLIED || row.state === DONE) return;
     const steps = a.steps(p);
     const k = await a.resolve(p, row, steps, true);
@@ -770,8 +779,8 @@ export async function rollbackPlans(connection: Connection, dialect: DbspecDiale
   await a.session(async () => {
     const position = await a.position();
     if (position === 0) return;
-    const p = a.chain[position - 1]!;
-    const row = a.history.get(p.name)!;
+    const p = present(a.chain[position - 1], 'a.chain[position - 1]');
+    const row = present(a.history.get(p.name), 'a.history.get(p.name)');
     const steps = a.steps(p);
     let k = row.step;
     const applied = row.state === APPLIED || row.state === DONE;
@@ -785,12 +794,12 @@ export async function rollbackPlans(connection: Connection, dialect: DbspecDiale
     } else {
       k = await a.resolve(p, row, steps, false);
     }
-    if (k > 0 && steps[k - 1]!.rollback === '') throw a.irreversible(p, steps, k - 1);
+    if (k > 0 && present(steps[k - 1], 'steps[k - 1]').rollback === '') throw a.irreversible(p, steps, k - 1);
     if (applied) await a.nullChecks(p, steps.slice(0, k));
     await a.emit('rollback', p.name, 0, steps.length, '');
     await a.record(p, ROLLING_BACK, k);
     for (let i = k - 1; i >= 0; i--) {
-      const step = steps[i]!;
+      const step = present(steps[i], 'steps[i]');
       if (step.rollback === '') throw a.irreversible(p, steps, i);
       let statement = step.rollback;
       if (step.rollbackRestore !== '' && (await a.effect(p, i, step.restoreIf))) statement = step.rollbackRestore;
@@ -822,7 +831,7 @@ export async function finalizePlans(connection: Connection, dialect: DbspecDiale
   await a.session(async () => {
     const position = await a.settled();
     for (const p of a.chain.slice(0, position)) {
-      if (a.history.get(p.name)!.state !== APPLIED) continue;
+      if (present(a.history.get(p.name), 'a.history.get(p.name)').state !== APPLIED) continue;
       const steps = a.steps(p);
       await a.emit('finalize', p.name, 0, steps.length, '');
       const start = finalizeStart(steps);

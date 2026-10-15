@@ -1,4 +1,5 @@
 import { Value as OrderedJsonValue, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
+import { present } from './present.js';
 import { OrmError } from './runtime_error.js';
 
 /** The SQL NULL state or an encoded value of a styled column. */
@@ -10,8 +11,10 @@ export class StyledValue<T = unknown> {
 
   public payload(): T {
     if (this.kind === 'sql-null') throw new OrmError('CODEC_DECODE', 'SQL NULL has no styled value');
-    assertNoOmittedValue(this.stored, new Set(), 0);
-    return this.stored as T;
+    const stored = this.stored;
+    assertNoOmittedValue(stored, new Set(), 0);
+    if (stored === undefined) throw new OrmError('CODEC_DECODE', 'styled value has no payload');
+    return stored;
   }
 
   public toJSON(): { kind: 'sql-null' } | { kind: 'value'; value: unknown } {
@@ -31,7 +34,7 @@ function assertNoOmittedValue(value: unknown, ancestors: Set<object>, depth: num
   if (value === null || typeof value !== 'object' || value instanceof OrderedJsonValue) return;
   if (ancestors.has(value)) throw new OrmError('CODEC_ENCODE', 'styled value contains a cycle');
   ancestors.add(value);
-  const prototype = Object.getPrototypeOf(value);
+  const prototype: unknown = Object.getPrototypeOf(value);
   if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) {
     const writer = (value as { toJSON?: unknown }).toJSON;
     if (typeof writer !== 'function') throw new OrmError('CODEC_ENCODE', 'styled value object has no JSON representation');
@@ -56,7 +59,7 @@ function assertNoOmittedValue(value: unknown, ancestors: Set<object>, depth: num
       if (typeof name !== 'string' || !Object.getOwnPropertyDescriptor(value, name)?.enumerable) {
         throw new OrmError('CODEC_ENCODE', `styled value member ${String(name)} would be omitted`);
       }
-      try { assertNoOmittedValue((value as Record<string, unknown>)[name], ancestors, depth + 1); }
+      try { assertNoOmittedValue(Reflect.get(value, name), ancestors, depth + 1); }
       catch (error) {
         if (error instanceof OrmError && error.code === 'CODEC_ENCODE') throw new OrmError('CODEC_ENCODE', `styled value member ${JSON.stringify(name)}: ${error.message}`);
         throw error;
@@ -74,9 +77,9 @@ export function orderedJsonOutput(value: OrderedJsonValue): unknown {
     if (/^(0|[1-9][0-9]*)$/.test(name) && Number(name) < 4294967295 || JSON.stringify(name) !== key.raw) {
       throw new OrmError('CODEC_ENCODE', `JSON.stringify cannot preserve the object key ${key.raw}; use toJSONText`);
     }
-    return [name, orderedJsonOutput(value.members.get(name)!)];
+    return [name, orderedJsonOutput(present(value.members.get(name), `the member ${key.raw} of an ordered-json object`))];
   }));
-  const rawJSON = (JSON as { rawJSON?: (text: string) => unknown }).rawJSON;
-  if (rawJSON === undefined) throw new OrmError('CODEC_ENCODE', 'JSON.rawJSON is required to write an ordered-json value');
-  return rawJSON(orderedJsonStringify(value));
+  const rawJSON: unknown = Reflect.get(JSON, 'rawJSON');
+  if (typeof rawJSON !== 'function') throw new OrmError('CODEC_ENCODE', 'JSON.rawJSON is required to write an ordered-json value');
+  return Reflect.apply(rawJSON, JSON, [orderedJsonStringify(value)]);
 }

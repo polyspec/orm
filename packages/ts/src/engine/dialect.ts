@@ -124,7 +124,7 @@ export const mysql: Dialect = {
   decodesStage: s => s === 'ip',
   hostNow: false,
   rowLock: lockSuffix,
-  columnFunction(name, col, arg) {
+  columnFunction(name, col) {
     switch (name) {
       case 'day_of_week': return `DAYOFWEEK(${col})`;
       case 'year': return `YEAR(${col})`;
@@ -166,7 +166,7 @@ export const postgres: Dialect = {
   decodesStage: () => false,
   hostNow: false,
   rowLock: lockSuffix,
-  columnFunction(name, col, arg) {
+  columnFunction(name, col) {
     switch (name) {
       case 'day_of_week': return `(EXTRACT(DOW FROM ${col})::int + 1)`;
       case 'year': return `EXTRACT(YEAR FROM ${col})::int`;
@@ -180,7 +180,9 @@ export const postgres: Dialect = {
     if (name === 'today') return 'CURRENT_DATE';
     const unit = valueFunctionUnits[name];
     if (unit === undefined) return undefined;
-    const field = ({ second: 'secs', minute: 'mins', hour: 'hours', day: 'days', month: 'months' } as Record<string, string>)[unit]!;
+    const fields: Readonly<Record<string, string>> = { second: 'secs', minute: 'mins', hour: 'hours', day: 'days', month: 'months' };
+    const field = fields[unit];
+    if (field === undefined) throw new Error(`the interval unit ${unit} has no make_interval field`);
     const cast = field === 'secs' ? 'double precision' : 'integer';
     return `(now()${name.endsWith('_later') ? ' + ' : ' - '}make_interval(${field} => CAST(${arg()} AS ${cast})))`;
   },
@@ -201,8 +203,7 @@ export const postgres: Dialect = {
 export const sqlite: Dialect = {
   name: 'sqlite',
   quote(ident) {
-    const parts = ident.split('.');
-    return quoteWith('"', parts.length === 1 ? parts[0]! : parts.join('__'));
+    return quoteWith('"', ident.split('.').join('__'));
   },
   placeholder: () => '?',
   like: (col, ph) => `${col} LIKE ${ph} ESCAPE '\\'`,
@@ -218,7 +219,7 @@ export const sqlite: Dialect = {
   hostNow: true,
   // The executor takes an ORM-owned lock row; the SQL suffix stays empty.
   rowLock: mode => lockSuffix(mode) === undefined ? undefined : '',
-  columnFunction(name, col, arg) {
+  columnFunction(name, col) {
     switch (name) {
       case 'day_of_week': return `(CAST(strftime('%w', ${col}) AS INTEGER) + 1)`;
       case 'year': return `CAST(strftime('%Y', ${col}) AS INTEGER)`;

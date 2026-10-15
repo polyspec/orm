@@ -1,6 +1,7 @@
 // dbspec 문서를 표준 Mermaid erDiagram으로 쓰고 읽는다 (docs/mermaid.md).
 // 기준은 Go 엔진(engine/dbspec/mermaid.go)이며 text, 문서, 뺀 객체와 diagnostic이
 // Go와 같은 바이트다. 정규식의 공백은 Go의 \s([\t\n\f\r ])로 쓴다.
+import { present } from '../present.js';
 import { typeText } from './emit.js';
 import { byteOrder, Catalog, type DbspecUnsupported, type ITable } from './introspect_catalog.js';
 import type { DbspecDiagnostic, DbspecDocument, DbspecSettings, DbspecTable, DbspecType } from './model.js';
@@ -24,7 +25,8 @@ export type DbspecMermaidImport =
  * (docs/mermaid.md "Export").
  */
 export function exportMermaid(document: DbspecDocument): DbspecMermaidExport {
-  if (document === null || typeof document !== 'object' || !Array.isArray(document.tables)) {
+  const input: unknown = document;
+  if (input === null || typeof input !== 'object' || !Array.isArray(Reflect.get(input, 'tables'))) {
     throw new TypeError('exportMermaid takes a parsed dbspec document');
   }
   const dropped: DbspecUnsupported[] = [];
@@ -129,6 +131,8 @@ const LABEL = /^([a-z][a-z0-9_]*) \(([a-z0-9_, ]+)\) references \(([a-z0-9_, ]+)
 // comment 뒤에 공백 하나를 붙인 text에 맞춘다. 각 부분이 공백 하나로 끝나야 하므로
 // 부분 사이에 공백이 정확히 하나 있다. Go의 .은 \n 말고 모든 문자다.
 const SUFFIX = /^(?:(null) )?(?:(identity) )?(?:default ([^\n]+) )?$/;
+/** The kinds of the types without parameters, the first group of KNOWN_TYPE. */
+const SIMPLE_KINDS = ['i16', 'i32', 'i64', 'bool', 'f64', 'text', 'bytes', 'uuid', 'date'] as const;
 const KNOWN_TYPE = /^(i16|i32|i64|bool|f64|text|bytes|uuid|date)$|^varchar\((\d+)\)$|^(time|datetime)\((\d)\)$|^decimal\((\d+)-(\d+)\)$/;
 // Go strings.TrimSpace가 지우는 Unicode 공백이다.
 const GO_SPACE = '[\\t\\n\\v\\f\\r \\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000]';
@@ -205,18 +209,18 @@ export function importMermaid(text: string, name: string): DbspecMermaidImport {
       }
       const m = ATTRIBUTE.exec(line);
       if (m === null) return fail(n, 'an attribute is <type> <name> [PK|FK|UK, ...] ["comment"]');
-      const keys = m[3]!.split(',').map(k => trimSpace(k)).filter(k => k !== '');
-      open.attributes.push({ type: m[1]!, name: m[2]!, comment: m[4] ?? '', keys });
+      const keys = present(m[3], 'm[3]').split(',').map(k => trimSpace(k)).filter(k => k !== '');
+      open.attributes.push({ type: present(m[1], 'm[1]'), name: present(m[2], 'm[2]'), comment: m[4] ?? '', keys });
       continue;
     }
     const start = ENTITY_START.exec(line);
     if (start !== null) {
-      open = entity(start[1]!);
+      open = entity(present(start[1], 'start[1]'));
       continue;
     }
     const r = RELATION.exec(line);
     if (r !== null) {
-      relations.push({ left: entity(r[1]!).name, leftCard: r[2]!, rightCard: r[4]!, right: entity(r[5]!).name, label: trimQuotes(r[6]!) });
+      relations.push({ left: entity(present(r[1], 'r[1]')).name, leftCard: present(r[2], 'r[2]'), rightCard: present(r[4], 'r[4]'), right: entity(present(r[5], 'r[5]')).name, label: trimQuotes(present(r[6], 'r[6]')) });
       continue;
     }
     return fail(n, 'a line is an entity block, an attribute, a relationship, a %% comment or blank');
@@ -231,7 +235,7 @@ export function importMermaid(text: string, name: string): DbspecMermaidImport {
       continue;
     }
     c.addTable(e.name);
-    const t = c.table(e.name)!;
+    const t = present(c.table(e.name), 'c.table(e.name)');
     for (const a of e.attributes) {
       if (!validName(a.name)) {
         c.report('column', e.name, a.name, 'the attribute name is not a dbspec name');
@@ -260,7 +264,7 @@ export function importMermaid(text: string, name: string): DbspecMermaidImport {
   }
   const columnIn = (t: ITable, n: string) => t.columns.find(col => col.name === n);
   const isFK = (entityName: string, column: string): boolean => {
-    const a = byName.get(entityName)!.attributes.find(x => x.name === column);
+    const a = present(byName.get(entityName), 'byName.get(entityName)').attributes.find(x => x.name === column);
     return a !== undefined && a.keys.includes('FK');
   };
   const usedFK = new Map<string, Set<string>>();
@@ -283,14 +287,14 @@ export function importMermaid(text: string, name: string): DbspecMermaidImport {
       c.report('relationship', child, r.label, 'the label does not give the foreign key columns, or an end is not a table');
       continue;
     }
-    const cols = splitNames(m[2]!);
-    const refs = splitNames(m[3]!);
+    const cols = splitNames(present(m[2], 'm[2]'));
+    const refs = splitNames(present(m[3], 'm[3]'));
     let ok = cols.length === refs.length;
     let nullable = false;
     if (ok) {
       for (const [i, col] of cols.entries()) {
         const cc = columnIn(ct, col);
-        if (cc === undefined || !isFK(child, col) || columnIn(pt, refs[i]!) === undefined) {
+        if (cc === undefined || !isFK(child, col) || columnIn(pt, present(refs[i], 'refs[i]')) === undefined) {
           ok = false;
           break;
         }
@@ -298,15 +302,15 @@ export function importMermaid(text: string, name: string): DbspecMermaidImport {
       }
     }
     if (!ok) {
-      c.report('relationship', child, m[1]!, `its columns are not FK attributes of ${child} or its referenced columns are not attributes of ${parent}`);
+      c.report('relationship', child, present(m[1], 'm[1]'), `its columns are not FK attributes of ${child} or its referenced columns are not attributes of ${parent}`);
       continue;
     }
     let wantParent = nullable ? '|o' : '||';
     if (manyLeft) wantParent = wantParent === '|o' ? 'o|' : '||';
     if (parentCard !== wantParent || (childCard !== 'o{' && childCard !== '}o')) {
-      c.report('cardinality', child, m[1]!, "the cardinalities differ from the ones the foreign key's nullability gives");
+      c.report('cardinality', child, present(m[1], 'm[1]'), "the cardinalities differ from the ones the foreign key's nullability gives");
     }
-    ct.fks.push({ name: m[1]!, columns: cols, table: parent, refs, onDelete: 'restrict', onUpdate: 'restrict' });
+    ct.fks.push({ name: present(m[1], 'm[1]'), columns: cols, table: parent, refs, onDelete: 'restrict', onUpdate: 'restrict' });
     let used = usedFK.get(child);
     if (used === undefined) usedFK.set(child, (used = new Set()));
     for (const col of cols) used.add(col);
@@ -333,10 +337,11 @@ export function importMermaid(text: string, name: string): DbspecMermaidImport {
     // catalog이 문서를 만들지 못하면(문서 이름이 dbspec 이름이 아닌 경우 등) Go처럼 1행의 diagnostic이다.
     return fail(1, error instanceof Error ? error.message : String(error));
   }
+  const noDiagnostics: readonly [] = Object.freeze([]);
   return Object.freeze({
     document: result.document,
     dropped: Object.freeze(result.unsupported.map(u => Object.freeze({ ...u }))),
-    diagnostics: Object.freeze([]) as readonly [],
+    diagnostics: noDiagnostics,
   });
 }
 
@@ -360,16 +365,16 @@ function within(digits: string, lo: number, hi: number): number | null {
 function importType(s: string): DbspecType | null {
   const m = KNOWN_TYPE.exec(s);
   if (m === null) return null;
-  if (m[1] !== undefined) return { kind: m[1] as 'i16' };
+  if (m[1] !== undefined) return { kind: present(SIMPLE_KINDS.find(k => k === m[1]), `the simple type ${m[1]}`) };
   if (m[2] !== undefined) {
     const length = within(m[2], 1, 16383);
     return length === null ? null : { kind: 'varchar', length };
   }
   if (m[3] !== undefined) {
-    const precision = within(m[4]!, 0, 6);
-    return precision === null ? null : { kind: m[3] as 'time' | 'datetime', precision };
+    const precision = within(present(m[4], 'm[4]'), 0, 6);
+    return precision === null ? null : { kind: m[3] === 'time' ? 'time' : 'datetime', precision };
   }
-  const precision = within(m[5]!, 1, 18);
-  const scale = precision === null ? null : within(m[6]!, 0, precision);
+  const precision = within(present(m[5], 'm[5]'), 1, 18);
+  const scale = precision === null ? null : within(present(m[6], 'm[6]'), 0, precision);
   return precision === null || scale === null ? null : { kind: 'decimal', precision, scale };
 }

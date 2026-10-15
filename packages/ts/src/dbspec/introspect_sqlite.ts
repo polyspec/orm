@@ -1,9 +1,10 @@
 // SQLite의 main database를 catalog으로 읽는다 (docs/dialects.md "Introspection").
 // sqlite_master와 table-valued pragma를 join해 모든 table을 한 번에 읽는다.
+import { present } from '../present.js';
 import { actionName, Catalog, tableTypes, type CatalogQuery, type DbspecUnsupported, type IForeignKey } from './introspect_catalog.js';
 import { CheckDecodeError, decodeCheck, unscaledDecimal } from './introspect_check.js';
 import { recognizeTriggers, type ITrigger } from './introspect_trigger.js';
-import type { DbspecAction, DbspecType } from './model.js';
+import type { DbspecType } from './model.js';
 import { rendererName } from './names.js';
 import { Renderer } from './render.js';
 
@@ -65,7 +66,7 @@ export async function readSQLite(query: CatalogQuery): Promise<Catalog> {
       c.report('view', name, name, 'a view has no dbspec definition');
     } else if (kind === 'trigger') {
       if (!triggers.has(table)) triggers.set(table, []);
-      triggers.get(table)!.push({ name, statements: [text] });
+      present(triggers.get(table), 'triggers.get(table)').push({ name, statements: [text] });
     }
   }
   const renderer = new Renderer('sqlite');
@@ -75,7 +76,7 @@ export async function readSQLite(query: CatalogQuery): Promise<Catalog> {
     r.integer(5);
     const t = c.table(table);
     if (t === undefined) continue;
-    const st = parsed.get(table)!;
+    const st = present(parsed.get(table), 'parsed.get(table)');
     if (hidden !== 0) {
       c.report('column', table, name, 'a generated column has no dbspec definition');
       continue;
@@ -112,7 +113,7 @@ export async function readSQLite(query: CatalogQuery): Promise<Catalog> {
     t.columns.push({ name, type, nullable: notNull === 0, identity, dflt: value });
   }
   for (const t of c.tables) {
-    const st = parsed.get(t.name)!;
+    const st = present(parsed.get(t.name), 'parsed.get(t.name)');
     for (const name of st.order) {
       const expression = st.checks.get(name);
       if (expression === undefined) continue;
@@ -229,25 +230,25 @@ function parseSQLiteTable(text: string): { table: SqliteTable; unsupported: Dbsp
   for (const item of splitTopLevel(text.slice(open + 1, -1))) {
     let m: RegExpExecArray | null;
     if ((m = IDENTITY_COLUMN.exec(item)) !== null) {
-      st.identity = m[1]!;
+      st.identity = present(m[1], 'm[1]');
       st.primary = [st.identity];
     } else if ((m = PRIMARY_KEY_ITEM.exec(item)) !== null) {
-      st.primary = unquoteList(m[1]!);
+      st.primary = unquoteList(present(m[1], 'm[1]'));
     } else if ((m = FOREIGN_KEY_ITEM.exec(item)) !== null) {
       st.fks.push({
-        name: m[1]!,
-        columns: unquoteList(m[2]!),
-        table: m[3]!,
-        refs: unquoteList(m[4]!),
-        onDelete: actionName(m[5]!) as DbspecAction,
-        onUpdate: actionName(m[6]!) as DbspecAction,
+        name: present(m[1], 'm[1]'),
+        columns: unquoteList(present(m[2], 'm[2]')),
+        table: present(m[3], 'm[3]'),
+        refs: unquoteList(present(m[4], 'm[4]')),
+        onDelete: present(actionName(present(m[5], 'm[5]')), `the ON DELETE action ${m[5] ?? ''}`),
+        onUpdate: present(actionName(present(m[6], 'm[6]')), `the ON UPDATE action ${m[6] ?? ''}`),
       });
     } else if ((m = CHECK_ITEM.exec(item)) !== null) {
-      st.checks.set(m[1]!, m[2]!);
-      st.order.push(m[1]!);
+      st.checks.set(present(m[1], 'm[1]'), present(m[2], 'm[2]'));
+      st.order.push(present(m[1], 'm[1]'));
     } else if ((m = CONSTRAINT_ITEM.exec(item)) !== null) {
       // 이름 없는 constraint는 이름이 빈 객체로 보고한다. primary key의 다른 형식은 table을 읽지 못하게 한다.
-      const kind = ({ CHECK: 'check', UNIQUE: 'unique', 'FOREIGN KEY': 'foreign_key' } as Record<string, DbspecUnsupported['kind']>)[m[2]!];
+      const kind = ({ CHECK: 'check', UNIQUE: 'unique', 'FOREIGN KEY': 'foreign_key' } as Record<string, DbspecUnsupported['kind']>)[present(m[2], 'm[2]')];
       if (kind === undefined) {
         st.unsupported = `the primary key ${JSON.stringify(item)} has no dbspec definition`;
         return { table: st, unsupported: [] };
@@ -255,7 +256,7 @@ function parseSQLiteTable(text: string): { table: SqliteTable; unsupported: Dbsp
       unsupported.push({ kind, table: '', name: m[1] ?? '', reason: `the table item ${JSON.stringify(item)} has no dbspec definition` });
     } else if ((m = COLUMN_ITEM.exec(item)) !== null) {
       // 정의는 pragma_table_xinfo가 읽고, 그 text는 renderer 형식인지 확인한다.
-      st.columns.set(m[1]!, item);
+      st.columns.set(present(m[1], 'm[1]'), item);
     } else {
       st.unsupported = `the table item ${JSON.stringify(item)} has no dbspec definition`;
       return { table: st, unsupported: [] };
@@ -271,7 +272,7 @@ function splitTopLevel(text: string): string[] {
   let start = 0;
   let quote = '';
   for (let i = 0; i < text.length; i++) {
-    const ch = text[i]!;
+    const ch = present(text[i], 'text[i]');
     if (quote !== '') {
       if (ch === quote) quote = '';
     } else if (ch === "'" || ch === '"') {
