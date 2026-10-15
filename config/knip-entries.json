@@ -17,12 +17,8 @@
     "packages/ts": {
       "reason": "the TypeScript client @polyspec/orm, a workspace of the root package.json",
       "entries": {
-        "src/index.ts": "the . export of @polyspec/orm, built to dist/index.js",
         "tests/*.mjs": "the TypeScript client tests, each run by node from a make target (ts-check/test, client-unit-check, client-db-check and the feature checks of contracts/features.json)",
         "tests/*.ts": "the type tests of the TypeScript client, which tsc checks through packages/ts/tsconfig.json and orm-gen scans for the models",
-        "src/bin/orm-gen.ts": "the orm-gen command, the bin of @polyspec/orm",
-        "src/testing.ts": "the ./testing export of @polyspec/orm under the orm-test condition",
-        "src/dbspec/entry.ts": "the ./dbspec export of @polyspec/orm",
         "src/tools/cli.ts": "the dbspec tool command that the dbspec checks run from packages/ts/dist",
         "src/models/markdown_fixture/models.ts": "the generated models of the Markdown fixture, which the markdown tests load from dist",
         "src/models/decimal_fixture/models.ts": "the generated models of the decimal fixture, which the decimal tests load from dist"
