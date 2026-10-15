@@ -811,7 +811,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         db.transaction(async || {
             let created = TimeCell::new().connect(db).set_at(txt(at))?.set_clock("10:11:12").create().await?;
             mask(shared, &[created.get_seq().unwrap()], &[]);
-            let rows = TimeCell::new().connect(db).at(at).gets().await?;
+            let rows = TimeCell::new().connect(db).at(txt(at)).gets().await?;
             created.delete(false).await?;
             Ok::<Value, polyspec_orm::Error>(picks(&rows, &["clock"]))
         })

@@ -326,7 +326,7 @@ vector('aes_values', function () use ($author): array {
 });
 
 vector('write_cycle', function () use ($author): array {
-    $start = new DateTimeImmutable('2026-06-01 00:00:00', new DateTimeZone('UTC'));
+    $start = '2026-06-01 00:00:00.000000';
     $created = $author()
         ->setName('cycle')->setUserSeq(1)->setServiceSeq(999)->setServiceRegionSeq(1)->setServiceMemberSeq(1)
         ->setStartDt($start)->setEndDt($start)->setPrice('12.500')->setIp('10.0.0.1')->setAesHexEmail('cycle@example.com')
@@ -349,7 +349,7 @@ vector('write_cycle', function () use ($author): array {
 });
 
 vector('now_defaults', function () use ($author): array {
-    $start = new DateTimeImmutable('2026-06-01 00:00:00', new DateTimeZone('UTC'));
+    $start = '2026-06-01 00:00:00.000000';
     $before = microtime(true);
     $created = $author()
         ->setName('clock')->setUserSeq(1)->setServiceSeq(999)->setServiceRegionSeq(1)->setServiceMemberSeq(1)
@@ -471,7 +471,7 @@ vector('restore', function () use ($db): array {
             $created = (new SoftRecord)->setName('restore')->create();
             $seq = $created->getSeq();
             mask([$seq]);
-            $created->setDeletedAt(new DateTimeImmutable('2026-01-02 03:04:05', new DateTimeZone('UTC')))->update();
+            $created->setDeletedAt('2026-01-02 03:04:05.000000')->update();
             $result['hidden'] = caught(fn() => (new SoftRecord)->getBySeq($seq));
             // key 밖의 값은 지워진 행을 되돌릴 때만 쓴다. 두 번째 restore는 지워지지 않은 행을 바꾸지
             // 않고 돌려준다.
@@ -506,7 +506,7 @@ vector('joins_soft_deleted', function () use ($db): array {
                 $record = (new SoftRecord)->setName($name)->create();
                 mask([$service->getSeq(), $record->getSeq()]);
                 if ($name === 'soft-join-deleted') {
-                    $record->setDeletedAt(new DateTimeImmutable('2026-01-02 03:04:05', new DateTimeZone('UTC')))->update();
+                    $record->setDeletedAt('2026-01-02 03:04:05.000000')->update();
                 }
             }
             $inner = (new Service)->joinNameWithName((new SoftRecord)->aliasRecord())->name($names)->orderByNameAsc()->gets();
@@ -579,7 +579,7 @@ vector('hex_malformed', fn(): array => [
 // A datetime(p) or time(p) value is bound with exactly p fraction digits, the form the SQLite CHECK of the column
 // requires (docs/dialects.md); zeros past p are dropped. Each vector inserts, reads the row back by the same parameter
 // and deletes it.
-$at = new DateTimeImmutable('2026-06-01 12:34:56', new DateTimeZone('UTC'));
+$at = '2026-06-01 12:34:56';
 vector('datetime_p0_roundtrip', function () use ($db, $at): array {
     $created = (new TimeCell)($db)->setAt($at)->setClock('10:11:12')->create();
     mask([$created->getSeq()]);
@@ -656,7 +656,7 @@ $rejected = static function (callable $create): array {
     $created->delete();
     return ['code' => null];
 };
-vector('datetime_precision_rejected', fn(): array => $rejected(fn() => (new TimeCell)($db)->setAt(new DateTimeImmutable('2026-06-01 12:34:56.5', new DateTimeZone('UTC')))->setClock('10:11:12')->create()));
+vector('datetime_precision_rejected', fn(): array => $rejected(fn() => (new TimeCell)($db)->setAt('2026-06-01 12:34:56.5')->setClock('10:11:12')->create()));
 vector('varchar_length_rejected', fn(): array => $rejected(fn() => (new BindCell)($db)->setLabel('123456789')->create()));
 vector('text_nul_rejected', fn(): array => $rejected(fn() => (new BindCell)($db)->setLabel('nul')->setBody("a\0b")->create()));
 vector('uuid_form_rejected', fn(): array => $rejected(fn() => (new BindCell)($db)->setLabel('uuid')->setToken('123E4567-E89B-12D3-A456-426614174000')->create()));
@@ -697,9 +697,9 @@ vector('clock_compare_six_digits', function () use ($db): array {
     Faults::fixClock($db, '2026-06-01 12:34:56.999999');
     $utc = new DateTimeZone('UTC');
     $created = (new ClockCell)($db)->setLabel('compare')
-        ->setAt0(new DateTimeImmutable('2026-06-01 12:34:56', $utc))
-        ->setAt3(new DateTimeImmutable('2026-06-01 12:34:56.999', $utc))
-        ->setAt6(new DateTimeImmutable('2026-06-01 12:34:56', $utc))->create();
+        ->setAt0('2026-06-01 12:34:56')
+        ->setAt3('2026-06-01 12:34:56.999')
+        ->setAt6('2026-06-01 12:34:56')->create();
     mask([$created->getSeq()]);
     $geNow = (new ClockCell)($db)->label('compare')->andGeAt0(Orm::now())->getCount();
     $ltNow = (new ClockCell)($db)->label('compare')->andLtAt3(Orm::now())->getCount();

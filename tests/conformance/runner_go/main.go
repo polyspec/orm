@@ -1043,7 +1043,7 @@ func run() (status int) {
 			return nil, err
 		}
 		mask([]int64{created.GetSeq()})
-		rows, err := timeCell().At(at).Gets()
+		rows, err := timeCell().At(dateTimeText(at)).Gets()
 		if err != nil {
 			return nil, err
 		}

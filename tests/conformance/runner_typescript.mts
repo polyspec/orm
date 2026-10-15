@@ -303,7 +303,7 @@ async function main() {
     return { row: row.toArray(), found };
   });
   await run('write_cycle', async () => {
-    const start = new Date(Date.UTC(2026, 5, 1));
+    const start = '2026-06-01 00:00:00.000000';
     const created = await author()
       .setName('cycle').setUserSeq(1).setServiceSeq(999).setServiceRegionSeq(1).setServiceMemberSeq(1)
       .setStartDt(start).setEndDt(start).setPrice('12.500').setIp('10.0.0.1').setAesHexEmail('cycle@example.com')
@@ -326,7 +326,7 @@ async function main() {
     return { created: createdArray, updated, stale, deleted: gone };
   });
   await run('now_defaults', async () => {
-    const start = new Date(Date.UTC(2026, 5, 1));
+    const start = '2026-06-01 00:00:00.000000';
     const before = Date.now();
     const created = await author()
       .setName('clock').setUserSeq(1).setServiceSeq(999).setServiceRegionSeq(1).setServiceMemberSeq(1)
@@ -443,7 +443,7 @@ async function main() {
         const created = await new SoftRecord().setName('restore').create();
         const seq = created.getSeq();
         mask([seq]);
-        await created.setDeletedAt(new Date(Date.UTC(2026, 0, 2, 3, 4, 5))).update();
+        await created.setDeletedAt('2026-01-02 03:04:05.000000').update();
         result.hidden = await caught(new SoftRecord().getBySeq(seq));
         for (const [name, value] of [['restored', 'restore-2'], ['again', 'ignored']] as const) {
           const array = (await new SoftRecord().setSeq(seq).setName(value).restore()).toArray();
@@ -471,7 +471,7 @@ async function main() {
           const service = await new Service().setName(name).create();
           const record = await new SoftRecord().setName(name).create();
           mask([service.getSeq(), record.getSeq()]);
-          if (name === 'soft-join-deleted') await record.setDeletedAt(new Date(Date.UTC(2026, 0, 2, 3, 4, 5))).update();
+          if (name === 'soft-join-deleted') await record.setDeletedAt('2026-01-02 03:04:05.000000').update();
         }
         const inner = await new Service().joinNameWithName(new SoftRecord().aliasRecord()).name(names).orderByNameAsc().gets();
         result.inner = picks(inner, 'name');
@@ -528,7 +528,7 @@ async function main() {
   // A datetime(p) or time(p) value is bound with exactly p fraction digits, the form the SQLite CHECK of the column
   // requires (docs/dialects.md); zeros past p are dropped. Each vector inserts, reads the row back by the same
   // parameter and deletes it.
-  const at = new Date(Date.UTC(2026, 5, 1, 12, 34, 56));
+  const at = '2026-06-01 12:34:56.000000';
   await run('datetime_p0_roundtrip', async () => {
     const created = await new TimeCell().connect(db).setAt(at).setClock('10:11:12').create();
     mask([created.getSeq()]);
@@ -603,7 +603,7 @@ async function main() {
       return { code: code(error) };
     }
   };
-  await run('datetime_precision_rejected', () => rejected(() => new TimeCell().connect(db).setAt(new Date(Date.UTC(2026, 5, 1, 12, 34, 56, 500))).setClock('10:11:12').create()));
+  await run('datetime_precision_rejected', () => rejected(() => new TimeCell().connect(db).setAt('2026-06-01 12:34:56.500000').setClock('10:11:12').create()));
   await run('varchar_length_rejected', () => rejected(() => new BindCell().connect(db).setLabel('123456789').create()));
   await run('text_nul_rejected', () => rejected(() => new BindCell().connect(db).setLabel('nul').setBody('a\u0000b').create()));
   await run('uuid_form_rejected', () => rejected(() => new BindCell().connect(db).setLabel('uuid').setToken('123E4567-E89B-12D3-A456-426614174000').create()));
@@ -641,8 +641,8 @@ async function main() {
   await run('clock_compare_six_digits', async () => {
     fixClock(db, '2026-06-01 12:34:56.999999');
     const created = await new ClockCell().connect(db).setLabel('compare')
-      .setAt0(new Date(Date.UTC(2026, 5, 1, 12, 34, 56))).setAt3(new Date(Date.UTC(2026, 5, 1, 12, 34, 56, 999)))
-      .setAt6(new Date(Date.UTC(2026, 5, 1, 12, 34, 56))).create();
+      .setAt0('2026-06-01 12:34:56.000000').setAt3('2026-06-01 12:34:56.999000')
+      .setAt6('2026-06-01 12:34:56.000000').create();
     mask([created.getSeq()]);
     const geNow = await new ClockCell().connect(db).label('compare').andGeAt0(orm.now()).getCount();
     const ltNow = await new ClockCell().connect(db).label('compare').andLtAt3(orm.now()).getCount();

@@ -741,9 +741,7 @@ def main():
     run("aes_values", aes_values)
 
     def write_cycle():
-        import datetime as dt
-
-        start = dt.datetime(2026, 6, 1, tzinfo=dt.timezone.utc)
+        start = "2026-06-01 00:00:00.000000"
         created = (
             author()
             .set_name("cycle")
@@ -796,7 +794,7 @@ def main():
         import time
 
         before = time.time()
-        start = datetime.datetime(2026, 6, 1, tzinfo=datetime.timezone.utc)
+        start = "2026-06-01 00:00:00.000000"
         created = (
             author()
             .set_name("clock")
@@ -983,9 +981,7 @@ def main():
                 created = SoftRecord().set_name("restore").create()
                 seq = created.get_seq()
                 mask([seq])
-                created.set_deleted_at(
-                    datetime.datetime(2026, 1, 2, 3, 4, 5, tzinfo=datetime.timezone.utc)
-                ).update()
+                created.set_deleted_at("2026-01-02 03:04:05.000000").update()
                 result["hidden"] = caught(lambda: SoftRecord().get_by_seq(seq))
                 for name, value in [("restored", "restore-2"), ("again", "ignored")]:
                     array = (
@@ -1023,11 +1019,7 @@ def main():
                     record = SoftRecord().set_name(name).create()
                     mask([service.get_seq(), record.get_seq()])
                     if name == "soft-join-deleted":
-                        record.set_deleted_at(
-                            datetime.datetime(
-                                2026, 1, 2, 3, 4, 5, tzinfo=datetime.timezone.utc
-                            )
-                        ).update()
+                        record.set_deleted_at("2026-01-02 03:04:05.000000").update()
                 inner = (
                     Service()
                     .join_name_with_name(SoftRecord().alias_record())
@@ -1148,7 +1140,7 @@ def main():
     # A datetime(p) or time(p) value is bound with exactly p fraction digits, the form the SQLite CHECK of the column
     # requires (docs/dialects.md); zeros past p are dropped. Each vector inserts, reads the row back by the same
     # parameter and deletes it.
-    at = datetime.datetime(2026, 6, 1, 12, 34, 56, tzinfo=datetime.timezone.utc)
+    at = "2026-06-01 12:34:56.000000"
 
     def datetime_p0_roundtrip():
         created = TimeCell().connect(db).set_at(at).set_clock("10:11:12").create()
@@ -1271,7 +1263,7 @@ def main():
             lambda: (
                 TimeCell()
                 .connect(db)
-                .set_at(at.replace(microsecond=500000))
+                .set_at("2026-06-01 12:34:56.500000")
                 .set_clock("10:11:12")
                 .create()
             )
@@ -1352,14 +1344,13 @@ def main():
 
     def clock_compare_six_digits():
         fix_clock(db, "2026-06-01 12:34:56.999999")
-        utc = datetime.timezone.utc
         created = (
             ClockCell()
             .connect(db)
             .set_label("compare")
-            .set_at0(datetime.datetime(2026, 6, 1, 12, 34, 56, tzinfo=utc))
-            .set_at3(datetime.datetime(2026, 6, 1, 12, 34, 56, 999000, tzinfo=utc))
-            .set_at6(datetime.datetime(2026, 6, 1, 12, 34, 56, tzinfo=utc))
+            .set_at0("2026-06-01 12:34:56.000000")
+            .set_at3("2026-06-01 12:34:56.999000")
+            .set_at6("2026-06-01 12:34:56.000000")
             .create()
         )
         mask([created.get_seq()])
