@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2b388451cef868371368b5586eb157c2990426ad2409505404d415c1ca84d8c1 -->
+<!-- source-sha256: a2f942c47a8d81472aa11e982673b3bbc28571f4e18feea6e9945f38b49bd2bb -->
 # 변경 이력
 
 ## Unreleased
 
+- Rust show-create vector가 공개 catalog 경로로 실행되고, 각 case는 id로 이름 붙은 trial이다. (#T148-2-1)
 ## 0.0.18
 
 - Unicode 표 생성기가 TypeScript 조회를 검사한 읽기로 내보낸다. (#T180-2)
