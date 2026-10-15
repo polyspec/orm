@@ -1212,6 +1212,19 @@ pub async fn update<M: Model>(m: &mut M, optimistic: bool) -> Result<()> {
         let Some(version) = version else {
             return Err(config("update(true) requires a row loaded with its update time column"));
         };
+        // The loaded version is a native datetime; it is bound in the canonical text of its column
+        // type, as every other date, time and datetime parameter is (T89-3-2).
+        let version = match version {
+            Param::DateTime(t) => {
+                let text = match ent.field(&column).map(|f| f.ty.name()) {
+                    Some("date") => t.format("%Y-%m-%d").to_string(),
+                    Some("time") => t.format("%H:%M:%S%.6f").to_string(),
+                    _ => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string(),
+                };
+                Param::Str(text)
+            }
+            other => other,
+        };
         let p = req.p(version);
         req.ir.optimistic = Some(ir::Optimist { column: column.clone(), p });
     }

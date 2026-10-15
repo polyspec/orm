@@ -1139,6 +1139,16 @@ func (c *Core) Update(optimistic []bool) error {
 		if !ok || version == nil {
 			return configErr("update(true) requires a row loaded with its update time column")
 		}
+		// The loaded version is a native time; it is bound in the canonical text of its column
+		// type and precision, as every other date, time and datetime parameter is (T89-3-2).
+		if t, native := version.(time.Time); native {
+			f := ent.Field(column)
+			text, err := d.bindTimeValue(t, f.Type, f.Precision)
+			if err != nil {
+				return err
+			}
+			version = text
+		}
 		r.ir.Optimistic = &ir.Optimist{Column: column, P: r.param(version)}
 	}
 	r.ir.NParams = len(r.params)
