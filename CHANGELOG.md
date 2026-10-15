@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Each parity binding runs one suite. (#T148-3-4)
 - Parity binds every feature unit in every implementation. (#T148-3-3)
 - Shared vector case ids use no slash, so parity binds every case. (#T148-3-3-1)
 - The Python bind vectors run through the case harness. (#T89-4)

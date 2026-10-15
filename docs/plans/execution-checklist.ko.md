@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 566f8d1f30319db273b787cd956458e4e6631f6f2256be5c08c42bf49ae9e0f5 -->
+<!-- source-sha256: 56cb68ed77788631a46d45fcced69d19b08ee56d590c25190ebc675d5c00209a -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1125,7 +1125,8 @@
       Evidence: T148-3-3-1 뒤 parity R2가 0을 보고한다. 이 항목이 적은 Go, PHP, PHP extension, Rust unit이 묶였다.
       - [o] T148-3-3-1 공유 vector case 이름에서 slash를 뺀다 (T148-3-3에 이어). 원인: tests/codec/vectors.json의 case 91개(yaml_core/...)와 tests/dbspec/syntax.json의 304개(canonical/..., invalid/...)가 slash를 담아 Go가 subtest로 중첩하므로, kit이 codec과 dbspec-syntax unit의 Go binding을 거부한다. T148-3-3의 나머지 unit 5개는 bind했다(Go, PHP, Rust의 codec-aes, PHP extension의 dbspec-sets와 schema-definition). 완료 조건: 모든 vector file과 runner에서 공유 case id에 slash가 없고, Go codec과 dbspec-syntax unit이 bind되며, parity가 그것에 R2를 보고하지 않는다.
         Evidence: 91개 codec case id와 304개 syntax case id가 두 generator와 모든 runner에서 부분을 "."로 잇고, Go codec과 dbspec-syntax unit이 symbol/id subtest로 묶이며, parity R2가 2에서 0이 되고 make codec-check와 dbspec-compare-check가 통과한다.
-    - [ ] T148-3-4 여러 suite를 실행하는 binding file을 나눈다 (T148-3에 이어). 원인: R3 63줄이 suite에 없는 case를 보고한다. 모든 언어의 dbspec cases, mermaid, plans, codec file이 한 file에서 다른 suite의 case나 추가 test를 실행한다. 완료 조건: 각 binding file이 suite 하나를 그 case id로 실행한다.
+    - [o] T148-3-4 여러 suite를 실행하는 binding file을 나눈다 (T148-3에 이어). 원인: R3 63줄이 suite에 없는 case를 보고한다. 모든 언어의 dbspec cases, mermaid, plans, codec file이 한 file에서 다른 suite의 case나 추가 test를 실행한다. 완료 조건: 각 binding file이 suite 하나를 그 case id로 실행한다.
+      Evidence: suite마다 Go function, Rust trial module, PHP data-provider method, node file, Python module이 하나이고, 다른 test는 그 옆으로 옮겨 make target에서 계속 실행된다. 공유 file의 R3 줄이 모두 사라졌다(다음 항목 전 R3 161에서 38).
     - [ ] T148-3-5 feature-coverage binding의 case에 이름을 준다 (T148-3에 이어). 원인: Go, TypeScript, Rust의 coverage_* binding이 case 이름을 보고하지 않고(R3 not executed), Rust codec과 styled-state case는 id를 가질 수 없는 lib test다. 완료 조건: 각 case가 id로 실행된다.
     - [ ] T148-3-6 Python conformance runner를 test로 실행한다 (T148-3에 이어). 원인: tests/conformance/runner_python.py가 parity에서 5(실행한 test 없음)로 끝나고 Python root 밖에 있다(R6). 완료 조건: Python conformance case가 Python package 안에서 id로 실행된다.
     - [ ] T148-3-7 parity R4, R5, R6, R7, R9, R10을 통과한다 (T148-3에 이어). 원인: parity 검사가 R5 396건(bind되지 않은 test file), R10 120건(client를 넷으로 세는 문서), R6 78건(root 밖 test), R4 4건(선언되지 않은 suite), R9 4건(오래된 client 목록), R7 2건(오류 code를 선언하지 않는 TypeScript와 Python)을 보고한다. 완료 조건: 각 규칙이 통과하고, 큰 묶음은 더 나눈다.
