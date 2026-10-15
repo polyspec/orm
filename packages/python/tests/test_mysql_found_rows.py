@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 
 
 from polyspec.orm import database  # noqa: E402
+from . import testcase
 
 
 class _Parsed:
@@ -26,4 +27,4 @@ class MysqlFoundRowsTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

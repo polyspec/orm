@@ -7,6 +7,7 @@ from pathlib import Path
 
 from polyspec.orm.placeholders import for_postgres  # noqa: E402
 from polyspec.orm.utils import POSTGRES_ADVISORY_LOCK, POSTGRES_SET_LOCAL  # noqa: E402
+from . import testcase
 
 
 class PostgresUtilityStatements(unittest.TestCase):
@@ -22,4 +23,4 @@ class PostgresUtilityStatements(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

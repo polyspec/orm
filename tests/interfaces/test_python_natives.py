@@ -7,6 +7,7 @@ import json
 import re
 import unittest
 from pathlib import Path
+from packages.python.tests import testcase
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -208,4 +209,4 @@ class OwnerNativesTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

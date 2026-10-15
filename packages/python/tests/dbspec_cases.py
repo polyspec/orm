@@ -11,6 +11,7 @@ from polyspec.orm.dbspec import (DbspecPosition, check_set, dbspec_manifest, emi
                                  format_dbspec, parse_dbspec, read_dbspec_file)
 from .dbspec_cases_reader import read_cases  # noqa: E402
 from .vector_case import VectorCase, vector_tests  # noqa: E402
+from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -241,4 +242,4 @@ class DbspecPositionTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

@@ -7,6 +7,7 @@ from pathlib import Path
 
 
 from polyspec.orm.dbspec.introspect import introspect_dbspec  # noqa: E402
+from . import testcase
 
 
 class _Connection:
@@ -28,4 +29,4 @@ class SqliteUnsupportedMessageTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

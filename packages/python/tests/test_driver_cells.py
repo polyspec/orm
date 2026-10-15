@@ -12,6 +12,7 @@ import pymysql  # noqa: E402
 from psycopg.pq import Format  # noqa: E402
 from psycopg.postgres import types as pg_types  # noqa: E402
 from pymysql.constants import FIELD_TYPE  # noqa: E402
+from . import testcase
 
 
 class MysqlCells(unittest.TestCase):
@@ -33,4 +34,4 @@ class PostgresCells(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

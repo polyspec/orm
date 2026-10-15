@@ -6,12 +6,14 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 ORM_GEN = [sys.executable, '-m', 'polyspec.orm.bin_orm_gen']
 
 
 class KeyPrefixTest(unittest.TestCase):
+    deadline = testcase.PROCESS
     def test_key_prefix_names_resolve_without_a_scan(self):
         with tempfile.TemporaryDirectory(prefix='orm-key-prefix-') as tmp:
             set_dir = Path(tmp) / 'set'
@@ -35,4 +37,4 @@ class KeyPrefixTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

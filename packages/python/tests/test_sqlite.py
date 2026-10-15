@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -109,6 +110,7 @@ def run_script(db, text: str) -> None:
 
 
 class SqliteEndToEndTest(unittest.TestCase):
+    deadline = testcase.PROCESS
     @classmethod
     def setUpClass(cls):
         tmp = tempfile.TemporaryDirectory(prefix='orm-sqlite-')
@@ -297,6 +299,7 @@ class SqliteEndToEndTest(unittest.TestCase):
 
 
 class SqliteAuditTest(unittest.TestCase):
+    deadline = testcase.PROCESS
     @classmethod
     def setUpClass(cls):
         tmp = tempfile.TemporaryDirectory(prefix='orm-audit-')
@@ -344,4 +347,4 @@ class SqliteAuditTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

@@ -11,6 +11,7 @@ from polyspec.ordered_json import Value as OrderedJson, stringify as ordered_jso
 from polyspec.orm.codec import CodecError, blind_index, decode, encode, host_decode, host_encode
 from polyspec.orm.styled_value import StyledValue
 from .vector_case import VectorCase, vector_tests
+from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -146,4 +147,4 @@ def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: 
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

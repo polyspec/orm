@@ -8,6 +8,7 @@ from pathlib import Path
 
 
 from polyspec.orm.placeholders import for_mysql, for_postgres  # noqa: E402
+from . import testcase
 
 
 class MysqlPlaceholders(unittest.TestCase):
@@ -56,4 +57,4 @@ class PostgresPlaceholders(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

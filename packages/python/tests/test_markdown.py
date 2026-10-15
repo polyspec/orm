@@ -4,7 +4,6 @@ import queue
 import socket
 import sys
 import threading
-import time
 import unittest
 from pathlib import Path
 
@@ -12,6 +11,7 @@ from pathlib import Path
 from polyspec.orm.database import Db, parse_dsn  # noqa: E402
 from polyspec.orm.errors import OrmError  # noqa: E402
 from polyspec.orm.markdown import MarkdownDsn  # noqa: E402
+from . import testcase
 
 TOKEN = '0123456789abcdef0123456789abcdef'
 CONNECT_LINE = '{"op":"connect","corpus":"tracker","token":"0123456789abcdef0123456789abcdef"}'
@@ -68,13 +68,6 @@ def raised(run):
 
 
 class MarkdownTest(unittest.TestCase):
-    def setUp(self):
-        self.started = time.monotonic()
-        print(f'RUN  markdown/{self._testMethodName}', flush=True)
-
-    def tearDown(self):
-        print(f'END  markdown/{self._testMethodName} elapsed={time.monotonic() - self.started:.3f}s', flush=True)
-
     def test_parse_markdown_dsn(self):
         parsed = parse_dsn(f'markdown://127.0.0.1:4100/tracker?token={TOKEN}')
         self.assertEqual(parsed.driver, 'markdown')
@@ -146,4 +139,4 @@ class MarkdownTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

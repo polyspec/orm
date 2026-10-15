@@ -12,6 +12,7 @@ from polyspec.orm.engine import model_of_documents, parse_document_set  # noqa: 
 from polyspec.orm.engine.validate import validate  # noqa: E402
 from polyspec.orm.errors import OrmError  # noqa: E402
 from .vector_case import VectorCase, vector_tests  # noqa: E402
+from . import testcase
 
 
 FILE = json.loads((ROOT / 'tests' / 'ir' / 'validate.json').read_text())
@@ -42,4 +43,4 @@ def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: 
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

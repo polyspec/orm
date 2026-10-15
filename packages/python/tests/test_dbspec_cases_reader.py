@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from .dbspec_cases_reader import CasesError, check_cases
+from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -43,4 +44,4 @@ class DbspecCasesReaderTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

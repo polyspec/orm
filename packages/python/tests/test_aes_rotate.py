@@ -11,6 +11,7 @@ from .test_sqlite import generate
 ROOT = Path(__file__).resolve().parents[3]
 
 from polyspec.orm.aes import AesKeyring  # noqa: E402
+from . import testcase
 
 
 class AesRotateTest(unittest.TestCase):
@@ -48,4 +49,4 @@ class AesRotateTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

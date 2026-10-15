@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[3]
 from polyspec.orm.dbspec import parse_dbspec  # noqa: E402
 from polyspec.orm.dbspec.render import render_dbspec  # noqa: E402
 from .vector_case import VectorCase, vector_tests  # noqa: E402
+from . import testcase
 
 
 def parse_set(documents: dict) -> list:
@@ -56,4 +57,4 @@ def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: 
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

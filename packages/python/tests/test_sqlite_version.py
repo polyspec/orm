@@ -9,6 +9,7 @@ from unittest import mock
 
 from polyspec.orm.database import Db
 from polyspec.orm.errors import OrmError
+from . import testcase
 
 
 class SqliteVersionTest(unittest.TestCase):
@@ -32,4 +33,4 @@ class SqliteVersionTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

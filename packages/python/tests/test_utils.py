@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[3]
 
 from polyspec.orm.aes import AesKeyring  # noqa: E402
 from polyspec.orm.errors import OrmError  # noqa: E402
+from . import testcase
 
 
 class UtilsTest(unittest.TestCase):
@@ -65,4 +66,4 @@ class UtilsTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

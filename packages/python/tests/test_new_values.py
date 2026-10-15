@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from .test_sqlite import DDL, generate, run_script
+from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -34,4 +35,4 @@ class NewValuesTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

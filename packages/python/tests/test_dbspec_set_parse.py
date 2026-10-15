@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from polyspec.orm.dbspec import parse_dbspec_set
+from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 VECTORS = ROOT / 'tests' / 'dbspec' / 'set-parse.json'
@@ -42,4 +43,4 @@ class SetParseVectors(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

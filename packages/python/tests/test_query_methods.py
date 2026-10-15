@@ -8,6 +8,7 @@ import tempfile
 import typing
 import unittest
 from pathlib import Path
+from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 ORM_GEN = [sys.executable, '-m', 'polyspec.orm.bin_orm_gen']
@@ -16,6 +17,7 @@ SCHEMA = ('dbspec 1 methods\n\ntable item {\n  seq i64\n  account_seq i64\n  pro
 
 
 class QueryMethodsTest(unittest.TestCase):
+    deadline = testcase.PROCESS
     @classmethod
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory(prefix='orm-query-methods-')
@@ -55,4 +57,4 @@ class QueryMethodsTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

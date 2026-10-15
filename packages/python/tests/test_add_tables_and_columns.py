@@ -12,6 +12,7 @@ from polyspec.orm.database import Db  # noqa: E402
 from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec  # noqa: E402
 from polyspec.orm.errors import OrmError  # noqa: E402
 from polyspec.orm.schema import Schema  # noqa: E402
+from . import testcase
 
 USERS_ID = 'table users {\n  id i64 identity\n  primary key (id)\n}\n'
 USERS_EMAIL_NULL = 'table users {\n  id i64 identity\n  email varchar(191) null\n  primary key (id)\n}\n'
@@ -60,4 +61,4 @@ class AddTablesAndColumnsTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[3]
 
 from polyspec.orm.codec import CodecError, decode, host_decode  # noqa: E402
 from .vector_case import VectorCase, vector_tests  # noqa: E402
+from . import testcase
 
 
 VECTORS = json.loads((ROOT / 'tests' / 'codec' / 'decode-vectors.json').read_text())['vectors']
@@ -44,4 +45,4 @@ def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: 
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

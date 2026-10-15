@@ -7,6 +7,7 @@ from pathlib import Path
 
 
 from polyspec.orm.dbspec import add_tables_and_columns_steps, parse_dbspec  # noqa: E402
+from . import testcase
 
 
 def document(body: str):
@@ -56,4 +57,4 @@ class AddTablesAndColumnsStepsTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

@@ -7,11 +7,13 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from packages.python.tests import testcase
 
 EXTRACTOR = Path(__file__).resolve().parent / 'python.py'
 
 
 class PythonExtractorTest(unittest.TestCase):
+    deadline = testcase.PROCESS
     def extract(self, source: str) -> dict:
         with tempfile.TemporaryDirectory(prefix='interfaces-python-') as root:
             package = Path(root) / 'pkg'
@@ -76,4 +78,4 @@ class PythonExtractorTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

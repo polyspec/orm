@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[3]
 from polyspec.orm.dbspec import emit_dbspec, parse_dbspec, read_dbspec_file  # noqa: E402
 from polyspec.orm.dbspec.mermaid import export_mermaid, import_mermaid  # noqa: E402
 from .vector_case import VectorCase, vector_tests  # noqa: E402
+from . import testcase
 
 
 class CheckFailed(Exception):
@@ -119,4 +120,4 @@ def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: 
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

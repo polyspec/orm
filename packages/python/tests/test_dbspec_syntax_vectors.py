@@ -9,6 +9,7 @@ from pathlib import Path
 from polyspec.orm.dbspec import analyze_dbspec
 from .dbspec_cases_reader import read_cases  # noqa: E402
 from .vector_case import VectorCase, vector_tests  # noqa: E402
+from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 SECTIONS = ('canonical', 'normalize', 'invalid')
@@ -91,4 +92,4 @@ def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: 
     return tests
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

@@ -10,6 +10,7 @@ from .test_sqlite import DDL, generate, run_script
 ROOT = Path(__file__).resolve().parents[3]
 
 from polyspec.orm.values import orm  # noqa: E402
+from . import testcase
 
 
 class AliasColumnsTest(unittest.TestCase):
@@ -40,4 +41,4 @@ class AliasColumnsTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

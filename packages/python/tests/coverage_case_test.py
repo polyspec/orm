@@ -10,6 +10,7 @@ from pathlib import Path
 
 
 from .coverage_case import REPOSITORY_ROOT, run_cases  # noqa: E402
+from . import testcase
 
 
 def run_with_arguments(ids, cases):
@@ -57,4 +58,4 @@ class CoverageCaseTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

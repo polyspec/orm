@@ -6,6 +6,7 @@ from pathlib import Path
 
 
 from polyspec.orm.dbspec import analyze_dbspec, format_dbspec, parse_dbspec
+from . import testcase
 
 
 def tokens_of(text, documents=None):
@@ -110,4 +111,4 @@ class FormatTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

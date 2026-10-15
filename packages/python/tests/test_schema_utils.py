@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from .test_sqlite import generate
+from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -31,7 +32,7 @@ class SchemaAccessorTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()
 
 
 class SchemaRegisterTest(unittest.TestCase):

@@ -11,6 +11,7 @@ from .test_sqlite import DDL, generate, run_script
 ROOT = Path(__file__).resolve().parents[3]
 
 from polyspec.orm.errors import OrmError  # noqa: E402
+from . import testcase
 
 
 class SubscriberErrorTest(unittest.TestCase):
@@ -55,4 +56,4 @@ class SubscriberErrorTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

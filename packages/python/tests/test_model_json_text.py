@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[3]
 from polyspec.ordered_json import parse as parse_json  # noqa: E402
 from polyspec.orm.errors import OrmError  # noqa: E402
 from polyspec.orm.styled_value import StyledValue  # noqa: E402
+from . import testcase
 
 STORED = '{"b":1,"1":2,"a":1.50,"e":1E2,"s":"\\u00e9"}'
 # 선택하지 않은 key column도 planner가 함께 읽으므로 행 순서에 들어간다.
@@ -103,4 +104,4 @@ class ModelJsonTextTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

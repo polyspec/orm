@@ -4,6 +4,7 @@
 import unittest
 
 from polyspec.orm import OrmError, RuntimeModel
+from . import testcase
 
 OWNED = 'dbspec 1 shop\n\nuse core { account }\n\ntable item {\n  seq i64\n  account_seq i64\n  primary key (seq)\n  index ix_item_account (account_seq)\n  foreign key fk_item_account (account_seq) references account (seq) on delete restrict on update restrict\n}\n'
 EXTERNAL = 'dbspec 1 core\n\ntable account {\n  seq i64\n  primary key (seq)\n}\n'
@@ -25,4 +26,4 @@ class LoadSetTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

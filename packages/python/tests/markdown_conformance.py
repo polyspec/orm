@@ -8,7 +8,6 @@ import shutil
 import subprocess
 import tempfile
 import threading
-import time
 import unittest
 from pathlib import Path
 
@@ -18,6 +17,7 @@ from .test_sqlite import generate  # noqa: E402
 from .vector_case import VectorCase, vector_tests  # noqa: E402
 
 from polyspec.orm import Collection, Model, OrmError  # noqa: E402
+from . import testcase
 
 CONFORMANCE_DIR = ROOT / 'tests' / 'markdown'
 FLOWMARK_MODULE = 'github.com/polyspec/flowmark'
@@ -397,19 +397,15 @@ def check_case(test: unittest.TestCase, case: dict) -> None:
     failure the later cases fail with the case that stopped them."""
     if 'stopped' in STATE:
         test.fail(f'not run: {STATE["stopped"]} failed, and this case reads the corpus state it leaves')
-    print(f'RUN  {case["id"]}', flush=True)
-    case_started = time.monotonic()
     reason = run_case(STATE['served'], case, STATE['funcs'][case['id']])
-    elapsed = time.monotonic() - case_started
     if reason is not None:
         STATE['stopped'] = case['id']
-        print(f'FAIL {case["id"]} elapsed={elapsed:.3f}s: {reason}', flush=True)
         test.fail(reason)
-    print(f'PASS {case["id"]} elapsed={elapsed:.3f}s', flush=True)
 
 
 class Case(VectorCase):
     """A case of the vector file of this module."""
+    deadline = testcase.PROCESS
 
 
 def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
@@ -419,4 +415,4 @@ def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: 
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()
