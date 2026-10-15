@@ -362,7 +362,7 @@ export function resolveSet(path: string, host: SetHost): ResolvedSet {
   if (owner !== undefined) {
     const listed = readListed(host, owner);
     if ('errors' in listed) errors.push(...listed.errors);
-    else if (errors.length === 0) {
+    else if (errors.length === 0 && owners.length === 1) {
       const { set, diagnostics } = setOf(listed.files);
       return Object.freeze({ setFile: owner.setFile, set, diagnostics: Object.freeze(diagnostics), errors: NONE });
     }
