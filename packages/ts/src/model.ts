@@ -730,7 +730,7 @@ async function creates(c: Core, models: readonly Model[]): Promise<number> {
  * (docs/protocol.md "Relation steps"): each the largest power of two that is at most the rows left and at most
  * the bind-limit chunk, floor(bind limit / columns) and at least 1.
  */
-function insertParts(rows: number, columns: number, driver: string): number[] {
+export function insertParts(rows: number, columns: number, driver: string): number[] {
   const chunk = Math.max(1, Math.floor((driver === 'sqlite' ? 999 : 65535) / columns));
   const parts: number[] = [];
   for (let left = rows; left > 0;) {
