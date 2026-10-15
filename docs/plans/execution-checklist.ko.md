@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 03f2b17533735e238980259195db8a27f6ad9c20fb000398195bbeeec413c359 -->
+<!-- source-sha256: e6d9c57f12a421575ef930ae5a02d1f806f4a14f21d63af3b313692ba62c9064 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -995,7 +995,7 @@
 - [ ] T131 code 주석을 영어로 번역한다. 원인: AGENTS가 code 주석은 한국어라고 적어, 주석은 영어라는 owner 규칙(kit PRINCIPLES, K84)과 어긋났다. 2026-10-13 기준 728개 파일에 한국어 주석 10,059줄이 남아 있다. 인수 조건: code 파일의 주석에 한글이 없으며, 이를 어기면 실패하는 검사가 check target에 들어 있다; AGENTS가 영어 규칙을 적는다.
   - [!] T131-1 주석 언어 검사: 각 생태계 자신의 tokenizer(Go `go/scanner`, TypeScript scanner, Python `tokenize`, PHP `token_get_all`; tokenizer가 없는 언어는 먼저 S1의 rebuild 기록)로 모든 code 파일의 주석 token을 꺼내 한글이 있으면 파일과 줄을 대며 실패하는 얇은 도구; 현재 tree에서 red다. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Retry: 그 orm release가 공개되면 시작한다.
   - [!] T131-2 Go 주석을 영어로. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Retry: 그 orm release가 공개되면 시작한다.
-  - [ ] T131-3 TypeScript와 JavaScript 주석을 영어로.
+  - [!] T131-3 TypeScript와 JavaScript 주석을 영어로. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Retry: 그 orm release가 공개되면 시작한다.
   - [ ] T131-4 PHP와 PHP extension 주석을 영어로.
   - [ ] T131-5 Python 주석을 영어로.
   - [ ] T131-6 Rust 주석을 영어로.
