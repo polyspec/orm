@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 126fa9d7f3003ff4077fb839163d71a2890144a246a46f118d429d6d4a46e9af -->
+<!-- source-sha256: 4638cac03b32871b0cf14c73b63a398ffd6a58fe1676a52b270ea8e289553769 -->
 # 변경 이력
 
 ## Unreleased
 
+- toArray가 모든 client에서 datetime과 time을 소수 여섯 자리로 쓴다. (#T121)
 - optimistic update가 Go와 Rust에서 읽은 행의 version을 정규 text로 바인딩한다. (#T89-3-2)
 - conformance runner가 date, time, datetime 입력을 정규 text로 보낸다. (#T89-3-1)
 - 문서 규칙 검사가 `make lint-ts`를 통과한다. 파일을 모양 검사 guard로 읽고, 줄 필터는 `startsWith`를 쓴다. (#T77-11-2)
