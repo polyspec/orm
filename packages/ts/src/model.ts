@@ -912,7 +912,18 @@ function pairs(c: Core): Array<[string, unknown]> {
 }
 
 function toArray(c: Core): Record<string, unknown> {
-  return Object.fromEntries(pairs(c).map(([k, v]) => [k, arrayValue(v)]));
+  return Object.fromEntries(pairs(c).map(([k, v]) => [k, temporalOutput(fieldOf(c.ent.entity, k)?.type ?? '', arrayValue(v))]));
+}
+
+/**
+ * A time or datetime text of the array form has six fraction digits, zeros past the column precision: the
+ * text the database gives has the column precision (docs/protocol.md section 5, Read).
+ */
+function temporalOutput(columnType: string, value: unknown): unknown {
+  if (typeof value !== 'string' || (columnType !== 'time' && columnType !== 'datetime')) return value;
+  const dot = value.indexOf('.');
+  const digits = dot < 0 ? '' : value.slice(dot + 1);
+  return `${dot < 0 ? value : value.slice(0, dot)}.${(digits + '000000').slice(0, 6)}`;
 }
 
 /**

@@ -1420,6 +1420,12 @@ pub fn to_array(m: &dyn AnyModel) -> Result<serde_json::Value> {
             None => st.extra.get(name).cloned().ok_or_else(|| missing_output_column(c, name))?,
         };
         let value = v.to_json()?;
+        // A time or datetime text from the database has the column precision; the array form has six digits.
+        let temporal_text = c.ent.entity_schema()?.field(name).is_some_and(|f| matches!(f.ty, dbspec::Type::Time(_) | dbspec::Type::DateTime(_)));
+        let value = match &v {
+            Val::Str(text) if temporal_text => serde_json::json!(six_fraction_digits(text)),
+            _ => value,
+        };
         let value = if styled_column(c, name)? {
             if matches!(v, Val::Null) {
                 serde_json::json!({"kind": "sql-null"})
@@ -1527,6 +1533,14 @@ fn json_members(m: &dyn AnyModel) -> Result<Vec<(String, String)>> {
         }
     }
     Ok(out)
+}
+
+/// A time or datetime text with six fraction digits, zeros past the column precision.
+fn six_fraction_digits(text: &str) -> String {
+    match text.split_once('.') {
+        Some((head, fraction)) => format!("{head}.{:0<6}", &fraction[..fraction.len().min(6)]),
+        None => format!("{text}.000000"),
+    }
 }
 
 fn styled_column(c: &Core, name: &str) -> Result<bool> {

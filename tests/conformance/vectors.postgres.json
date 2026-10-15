@@ -3084,7 +3084,7 @@
       "expect": {
         "result": [
           {
-            "clock": "10:11:12.000"
+            "clock": "10:11:12.000000"
           }
         ],
         "statements": [
@@ -3150,7 +3150,7 @@
       "expect": {
         "result": [
           {
-            "clock": "10:11:12.345"
+            "clock": "10:11:12.345000"
           }
         ],
         "statements": [

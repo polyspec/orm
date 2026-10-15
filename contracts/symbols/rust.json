@@ -1672,6 +1672,7 @@
   "packages/rust/orm/src/model.rs::save": "pub async fn save \u003c M : Model \u003e (m : \u0026 mut M) -\u003e Result \u003c M \u003e",
   "packages/rust/orm/src/model.rs::scalar": " async fn scalar (c : \u0026 Core , kind : \u0026 str) -\u003e Result \u003c Val \u003e",
   "packages/rust/orm/src/model.rs::select": " async fn select (ex : \u0026 Executor , conn : \u0026 Option \u003c Db \u003e , req : \u0026 mut Req) -\u003e Result \u003c QueryResult \u003e",
+  "packages/rust/orm/src/model.rs::six_fraction_digits": " fn six_fraction_digits (text : \u0026 str) -\u003e String",
   "packages/rust/orm/src/model.rs::styled_column": " fn styled_column (c : \u0026 Core , name : \u0026 str) -\u003e Result \u003c bool \u003e",
   "packages/rust/orm/src/model.rs::terminal": " fn terminal (c : \u0026 Core) -\u003e Result \u003c Executor \u003e",
   "packages/rust/orm/src/model.rs::to_array": "pub fn to_array (m : \u0026 dyn AnyModel) -\u003e Result \u003c serde_json :: Value \u003e",

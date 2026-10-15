@@ -262,17 +262,9 @@ final class MarkdownConformanceTest extends TestCase
                     ->orderByTitleAsc()->gets()->toArray();
             },
             'relation_many' => static function (Served $s): mixed {
-                $out = (new People())->connect($s->db)->removeAllColumns()->addColumnName()
+                return (new People())->connect($s->db)->removeAllColumns()->addColumnName()
                     ->relations((new Tasks())->removeAllColumns()->addColumnDue()->matchIdWithOwner()->orderByTitleAsc())
                     ->id('P1')->get()->toArray();
-                // date 값은 runtime value model의 text YYYY-MM-DD다(README "Results"). PHP의 array form은 date를
-                // datetime text로 쓰므로 relation 행의 due를 그 text로 쓴다.
-                foreach ($out['tasks_models'] as $i => $task) {
-                    if ($task['due'] !== null) {
-                        $out['tasks_models'][$i]['due'] = (new \DateTimeImmutable($task['due']))->format('Y-m-d');
-                    }
-                }
-                return $out;
             },
             'relation_one' => static function (Served $s): mixed {
                 return (new Tasks())->connect($s->db)->removeAllColumns()->addColumnTitle()

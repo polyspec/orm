@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	orderedjson "github.com/polyspec/ordered-json/packages/go"
@@ -1416,9 +1417,9 @@ func (c *Core) pairs() []pair {
 			continue
 		}
 		if v, ok := c.ent.Value(c.self, name); ok {
-			add(name, arrayValue(v))
+			add(name, c.columnArrayValue(name, v))
 		} else {
-			add(name, arrayValue(st.extra[name]))
+			add(name, c.columnArrayValue(name, st.extra[name]))
 		}
 	}
 	for _, name := range c.news {
@@ -1435,6 +1436,70 @@ func (c *Core) pairs() []pair {
 		}
 	}
 	return out
+}
+
+// columnType returns the dbspec type of a column of the model, or "" when the
+// schema does not declare it.
+func (c *Core) columnType(name string) string {
+	if c.ent == nil || c.ent.Schema == nil {
+		return ""
+	}
+	m, err := c.ent.Schema.Model()
+	if err != nil || m == nil {
+		return ""
+	}
+	e := m.Entities[c.ent.Name]
+	if e == nil {
+		return ""
+	}
+	if f := e.Field(name); f != nil {
+		return f.Type
+	}
+	return ""
+}
+
+// columnArrayValue writes a column value of the array form. A date, datetime
+// and time column each has one temporal form, the runtime value model text of
+// docs/protocol.md section 5 (Read): YYYY-MM-DD, YYYY-MM-DD HH:MM:SS.ffffff and
+// HH:MM:SS.ffffff.
+func (c *Core) columnArrayValue(name string, v any) any {
+	typ := c.columnType(name)
+	switch x := v.(type) {
+	case time.Time:
+		return temporalText(x, typ)
+	case *time.Time:
+		if x == nil {
+			return nil
+		}
+		return temporalText(*x, typ)
+	case string:
+		if typ == "time" || typ == "datetime" {
+			return sixFractionDigits(x)
+		}
+	}
+	return arrayValue(v)
+}
+
+// sixFractionDigits writes the text of a time or datetime column with six fraction digits, the
+// value model form of every column precision, zeros past the declared precision. The text comes from
+// the database with the column precision, so the zeros are added here.
+func sixFractionDigits(text string) string {
+	dot := strings.IndexByte(text, '.')
+	if dot < 0 {
+		return text + ".000000"
+	}
+	return text[:dot+1] + (text[dot+1:] + "000000")[:6]
+}
+
+// temporalText writes a time value in the form of its column type.
+func temporalText(t time.Time, typ string) string {
+	switch typ {
+	case "date":
+		return t.Format(time.DateOnly)
+	case "time":
+		return t.Format("15:04:05.000000")
+	}
+	return t.Format("2006-01-02 15:04:05.000000")
 }
 
 func arrayValue(v any) any {

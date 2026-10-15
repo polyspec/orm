@@ -2265,6 +2265,7 @@
   "packages/ts/src/model.ts::rowText": "function rowText(c: Core): string",
   "packages/ts/src/model.ts::save": "async function save(c: Core): Promise\u003cModel\u003e",
   "packages/ts/src/model.ts::scalarOf": "async function scalarOf(c: Core, kind: 'count' | 'sum' | 'avg', agg = ''): Promise\u003cunknown\u003e",
+  "packages/ts/src/model.ts::temporalOutput": "function temporalOutput(columnType: string, value: unknown): unknown",
   "packages/ts/src/model.ts::terminal": "function terminal(c: Core): Executor",
   "packages/ts/src/model.ts::toArray": "function toArray(c: Core): Record\u003cstring, unknown\u003e",
   "packages/ts/src/model.ts::toJson": "function toJson(c: Core): Record\u003cstring, unknown\u003e",

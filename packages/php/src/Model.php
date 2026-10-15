@@ -2038,7 +2038,7 @@ abstract class Model implements \JsonSerializable
                 continue;
             }
             if (isset($meta['columns'][$name])) {
-                $add($name, self::arrayValue($this->value($name)));
+                $add($name, self::columnArrayValue($meta['columns'][$name]['type'] ?? '', $this->value($name)));
             } else {
                 $add($name, self::arrayValue($st['extra'][$name] ?? null));
             }
@@ -2058,6 +2058,35 @@ abstract class Model implements \JsonSerializable
             }
         }
         return $out;
+    }
+
+    /**
+     * A column value of the array form. A date, datetime and time column each has one temporal form, the runtime
+     * value model text of docs/protocol.md section 5 (Read): YYYY-MM-DD, YYYY-MM-DD HH:MM:SS.ffffff and HH:MM:SS.ffffff.
+     */
+    private static function columnArrayValue(string $type, mixed $v): mixed
+    {
+        if (is_string($v) && in_array($type, ['time', 'datetime'], true)) {
+            return self::sixFractionDigits($v);
+        }
+        if (!$v instanceof \DateTimeInterface) {
+            return self::arrayValue($v);
+        }
+        return match ($type) {
+            'date' => $v->format('Y-m-d'),
+            'time' => $v->format('H:i:s.u'),
+            default => $v->format('Y-m-d H:i:s.u'),
+        };
+    }
+
+    /** A time or datetime text with six fraction digits, zeros past the column precision (the database text has the precision). */
+    private static function sixFractionDigits(string $text): string
+    {
+        $dot = strpos($text, '.');
+        if ($dot === false) {
+            return $text . '.000000';
+        }
+        return substr($text, 0, $dot + 1) . substr(substr($text, $dot + 1) . '000000', 0, 6);
     }
 
     private static function arrayValue(mixed $v): mixed
