@@ -12,7 +12,12 @@ from urllib.parse import urlsplit, parse_qsl
 
 from polyspec.orm.codec import blind_index, decode as codec_decode, host_encode
 from polyspec.orm.clock import wall_micros
-from polyspec.orm.bind_check import bind_slot_type, check_param, transform_param
+from polyspec.orm.bind_check import (
+    bind_slot_type,
+    check_assign,
+    check_param,
+    transform_param,
+)
 from polyspec.orm.decimal import decimal_scaled, normalize_decimal
 from polyspec.orm.engine.dialect import dialect_of
 from polyspec.orm.engine.model import Field, RuntimeModel, field_of
@@ -1037,6 +1042,7 @@ class Db:
                 value = params[slot["param"]]
                 # A transformed value is the text of its operator, and a host-styled value is the input of its
                 # first stage, which host_encode checks.
+                check_assign(slot["param"], value, bind_slot_type(slot))
                 if not slot.get("transform") and not slot.get("host_styles"):
                     check_param(slot["param"], value, bind_slot_type(slot), self.zone)
                 if (

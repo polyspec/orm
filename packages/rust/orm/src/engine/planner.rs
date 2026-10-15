@@ -326,6 +326,18 @@ fn style_input_type(style: &str) -> &'static str {
     }
 }
 
+/// b의 start부터의 param slot을 col의 할당으로 표시하고 sql을 돌려준다: non-null column의 slot은 그 column을 싣고,
+/// executor는 NULL 값을 거부한다.
+fn mark_assigned(b: &mut Builder, start: usize, col: &Field, sql: String) -> String {
+    if !col.nullable {
+        for s in b.binds[start..].iter_mut().filter(|s| s.from == "param") {
+            s.not_null = true;
+            s.column = col.name.clone();
+        }
+    }
+    sql
+}
+
 fn placed_joins(g: &ir::Group, out: &mut Vec<String>) {
     for it in &g.items {
         match it {
@@ -1049,7 +1061,9 @@ impl<'m> Planner<'m> {
             if a.null {
                 return Ok("NULL".into());
             }
-            return Ok(self.blind_value(b, col, a.p.unwrap_or_default()));
+            let start = b.binds.len();
+            let sql = self.blind_value(b, col, a.p.unwrap_or_default());
+            return Ok(mark_assigned(b, start, col, sql));
         }
         let qualified = || format!("{}.{}", self.d.quote(&ent.table), self.d.quote(&col.name));
         if let Some(i) = a.plus_p {
@@ -1066,7 +1080,9 @@ impl<'m> Planner<'m> {
             return Ok("NULL".into());
         }
         let p = a.p.ok_or_else(|| err(codes::IR_INVALID, format!("set {}: exactly one of p/null/plus_p/minus_p", a.column)))?;
-        Ok(self.render_value(b, col, p))
+        let start = b.binds.len();
+        let sql = self.render_value(b, col, p);
+        Ok(mark_assigned(b, start, col, sql))
     }
 
     fn column_of<'e>(&self, ent: &'e Entity, name: &str) -> Result<&'e Field> {

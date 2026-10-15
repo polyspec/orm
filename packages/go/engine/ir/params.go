@@ -11,6 +11,9 @@ import (
 type ParamUse struct {
 	Type   string
 	Column *runtimemodel.Field
+	// Assign marks the assignment of Column (set, rows, on_duplicate): a non-null column
+	// refuses NULL.
+	Assign bool
 }
 
 // ParamUses lists the uses of each parameter of a validated request, by
@@ -31,7 +34,7 @@ func ParamUses(m *runtimemodel.Model, r *Request) [][]ParamUse {
 	}
 	for _, row := range r.Rows {
 		for j, i := range row {
-			u.column(i, ent.Field(r.Set[j].Column))
+			u.assigned(i, ent.Field(r.Set[j].Column))
 		}
 	}
 	if o := r.Optimistic; o != nil {
@@ -59,10 +62,19 @@ func (u *paramUses) column(i int, f *runtimemodel.Field) {
 
 func (u *paramUses) assign(ent *runtimemodel.Entity, a Assign) {
 	f := ent.Field(a.Column)
-	for _, p := range []*int{a.P, a.PlusP, a.MinusP} {
+	for _, p := range []*int{a.PlusP, a.MinusP} {
 		if p != nil {
 			u.column(*p, f)
 		}
+	}
+	if a.P != nil {
+		u.assigned(*a.P, f)
+	}
+}
+
+func (u *paramUses) assigned(i int, f *runtimemodel.Field) {
+	if f != nil {
+		u.add(i, ParamUse{Type: f.Type, Column: f, Assign: true})
 	}
 }
 

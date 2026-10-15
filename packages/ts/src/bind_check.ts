@@ -15,11 +15,14 @@ export interface ParamSlot {
   readonly precision: number;
   readonly scale: number;
   readonly length: number;
+  /** The assignment of the non-null column `column`. */
+  readonly notNull?: boolean;
+  readonly column?: string;
 }
 
 /** The logical type of a param bind slot of a plan step. */
 export function bindSlotType(slot: BindSlot): ParamSlot {
-  return { type: slot.col_type, precision: slot.precision ?? 0, scale: slot.scale ?? 0, length: slot.length ?? 0 };
+  return { type: slot.col_type, precision: slot.precision ?? 0, scale: slot.scale ?? 0, length: slot.length ?? 0, notNull: slot.not_null === true, column: slot.column };
 }
 
 /**
@@ -28,7 +31,7 @@ export function bindSlotType(slot: BindSlot): ParamSlot {
  */
 export function useSlotType(use: ParamUse): ParamSlot {
   const f = use.column;
-  if (f !== undefined && f.type === use.type) return { type: use.type, precision: f.precision, scale: f.scale, length: f.length };
+  if (f !== undefined && f.type === use.type) return { type: use.type, precision: f.precision, scale: f.scale, length: f.length, notNull: use.assign === true && !f.nullable, column: f.name };
   return { type: use.type, precision: use.type === 'datetime' || use.type === 'time' ? 6 : 0, scale: 0, length: 0 };
 }
 
@@ -41,6 +44,13 @@ const integerRanges: Record<string, readonly [bigint, bigint]> = {
 
 function shown(value: unknown): string {
   return typeof value === 'bigint' ? `${value}` : typeof value === 'string' ? JSON.stringify(value) : String(value);
+}
+
+/** Refuses SQL NULL as parameter i when slot assigns a non-null column; it runs for every slot before any statement. */
+export function checkAssign(i: number, value: unknown, slot: ParamSlot): void {
+  if ((value === null || value === undefined) && slot.notNull === true) {
+    throw new OrmError('CODEC_ENCODE', `parameter ${i} assigns NULL to the non-null ${slot.column ?? ''}`);
+  }
 }
 
 /**

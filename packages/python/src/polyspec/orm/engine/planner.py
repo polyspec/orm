@@ -31,6 +31,7 @@ class _Slot:
         "precision",
         "scale",
         "length",
+        "not_null",
     )
 
     def __init__(self, from_, **fields):
@@ -46,6 +47,7 @@ class _Slot:
         self.precision = None
         self.scale = None
         self.length = None
+        self.not_null = False
         for key, value in fields.items():
             setattr(self, key, value)
 
@@ -68,6 +70,8 @@ class _Slot:
             out["scale"] = self.scale
         if self.length is not None:
             out["length"] = self.length
+        if self.not_null:
+            out["not_null"] = True
         return out
 
 
@@ -248,6 +252,16 @@ def _conflict_target(ent: Entity, assignments) -> list:
 
 def _style_input_type(style: str) -> str:
     return "text" if style == "ip" else "bytes"
+
+
+def _mark_assigned(b, start: int, col: Field, sql: str) -> str:
+    """b의 start부터의 param slot을 col의 할당으로 표시하고 sql을 돌려준다: non-null column의 slot은 그 column을
+    싣고, executor는 NULL 값을 거부한다."""
+    if not col.nullable:
+        for slot in b.binds[start:]:
+            if slot.from_ == "param":
+                slot.not_null, slot.column = True, col.name
+    return sql
 
 
 def _placed_joins(group: dict, out: set) -> None:
@@ -992,7 +1006,10 @@ class Planner:
                 )
             if a.get("null"):
                 return "NULL"
-            return self._render_blind_index_value(b, col, a["p"])
+            start = len(b.binds)
+            return _mark_assigned(
+                b, start, col, self._render_blind_index_value(b, col, a["p"])
+            )
         # table 한정 이름: ON CONFLICT DO UPDATE 안에서 맨 이름은 모호하다.
         qualified = f"{self.d.quote(ent.table)}.{self.d.quote(col.name)}"
         if "plus_p" in a:
@@ -1002,7 +1019,8 @@ class Planner:
             return f"CASE WHEN {qualified} > {ph} THEN {qualified} - {b.col_param(a['minus_p'], col)} ELSE 0 END"
         if a.get("null"):
             return "NULL"
-        return self._render_value(b, col, a["p"])
+        start = len(b.binds)
+        return _mark_assigned(b, start, col, self._render_value(b, col, a["p"]))
 
     def _clock(self, b: _Builder, col: Field) -> str:
         """update time과 soft deletion이 datetime column에 쓰는 clock이다. executor clock을

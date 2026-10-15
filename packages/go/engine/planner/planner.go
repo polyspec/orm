@@ -1270,7 +1270,10 @@ func (p *Planner) renderAssign(b *builder, ent *runtimemodel.Entity, col *runtim
 		if a.Null {
 			return "NULL", nil
 		}
-		return p.renderBlindIndexValue(b, col, *a.P)
+		start := len(b.binds)
+		v, err := p.renderBlindIndexValue(b, col, *a.P)
+		b.assigned(start, col)
+		return v, err
 	}
 	switch {
 	case a.PlusP != nil:
@@ -1284,7 +1287,20 @@ func (p *Planner) renderAssign(b *builder, ent *runtimemodel.Entity, col *runtim
 	case a.Null:
 		return "NULL", nil
 	default:
-		return p.renderValue(b, col, *a.P)
+		start := len(b.binds)
+		v, err := p.renderValue(b, col, *a.P)
+		b.assigned(start, col)
+		return v, err
+	}
+}
+
+// assigned marks the param slots from start as the assignment of col: a slot of a non-null
+// column carries the column, and its executor refuses a NULL value.
+func (b *builder) assigned(start int, col *runtimemodel.Field) {
+	for k := start; k < len(b.binds); k++ {
+		if b.binds[k].From == "param" && !col.Null {
+			b.binds[k].NotNull, b.binds[k].Column = true, col.Name
+		}
 	}
 }
 

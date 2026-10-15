@@ -756,7 +756,11 @@ final class Planner
             if (isset($a['plus_p']) || isset($a['minus_p'])) {
                 throw self::err(Code::IR_INVALID, 'blind index assignment must use its AES source value');
             }
-            return !empty($a['null']) ? 'NULL' : $b->blindIndex($a['p'], $col['type']);
+            if (!empty($a['null'])) {
+                return 'NULL';
+            }
+            $start = count($b->slots);
+            return self::markAssigned($b, $start, $col, $b->blindIndex($a['p'], $col['type']));
         }
         // table-qualified: a bare name is ambiguous inside ON CONFLICT DO UPDATE
         $q = $this->d->quote($ent['table']) . '.' . $this->d->quote($col['name']);
@@ -771,7 +775,25 @@ final class Planner
         if (!empty($a['null'])) {
             return 'NULL';
         }
-        return $this->renderValue($b, $col, $a['p']);
+        $start = count($b->slots);
+        return self::markAssigned($b, $start, $col, $this->renderValue($b, $col, $a['p']));
+    }
+
+    /**
+     * Marks the param slots of $b from $start as the assignment of $col and returns $sql: a slot of a non-null column
+     * carries the column, and its executor refuses a NULL value.
+     */
+    private static function markAssigned(PlanBinds $b, int $start, array $col, string $sql): string
+    {
+        if (!$col['nullable']) {
+            for ($k = $start; $k < count($b->slots); $k++) {
+                if ($b->slots[$k]['from'] === 'param') {
+                    $b->slots[$k]['not_null'] = true;
+                    $b->slots[$k]['column'] = $col['name'];
+                }
+            }
+        }
+        return $sql;
     }
 
     private function insertStep(array $r): PlanStep

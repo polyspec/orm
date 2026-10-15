@@ -30,6 +30,8 @@ function plannerSlot(slot) {
   if (slot.col_type === 'datetime' || slot.col_type === 'time') out.precision = slot.precision ?? 0;
   // A varchar param slot carries its length.
   if (slot.from === 'param' && slot.col_type === 'varchar') out.length = slot.length ?? 0;
+  // An assignment slot of a non-null column says so.
+  if (slot.not_null === true) out.not_null = true;
   return out;
 }
 
@@ -44,7 +46,7 @@ function paramUsesCase(id) {
   validate(model, request);
   const uses = paramUses(model, request).map(list => list.map(u => u.column === undefined
     ? { type: u.type }
-    : { type: u.type, column: u.column.name, length: u.column.length, null: u.column.nullable, precision: u.column.precision, scale: u.column.scale }));
+    : { type: u.type, ...(u.assign === true ? { assign: true } : {}), column: u.column.name, length: u.column.length, null: u.column.nullable, precision: u.column.precision, scale: u.column.scale }));
   assert.deepEqual(uses, c.expected.uses, 'param uses');
 }
 

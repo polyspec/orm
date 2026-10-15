@@ -36,6 +36,7 @@ type bindCase struct {
 		Scale     int    `json:"scale"`
 		Length    int    `json:"length"`
 		Transform string `json:"transform"`
+		NotNull   bool   `json:"not_null"`
 	} `json:"slot"`
 	Value json.RawMessage `json:"value"`
 	Bound json.RawMessage `json:"bound"`

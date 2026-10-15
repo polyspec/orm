@@ -215,7 +215,12 @@ class BindVectors(unittest.TestCase):
         import json
         import pathlib
 
-        from polyspec.orm.bind_check import ParamSlot, check_param, transform_param
+        from polyspec.orm.bind_check import (
+            ParamSlot,
+            check_assign,
+            check_param,
+            transform_param,
+        )
 
         root = pathlib.Path(__file__).resolve().parents[3]
         vectors = json.loads((root / "tests/bind/vectors.json").read_text())
@@ -233,6 +238,15 @@ class BindVectors(unittest.TestCase):
                 def bind(value=value, slot=slot, transform=transform):
                     if transform:
                         return transform_param(transform, value)
+                    check_assign(
+                        0,
+                        value,
+                        ParamSlot(
+                            slot.type,
+                            not_null=bool(case["slot"].get("not_null")),
+                            column="column",
+                        ),
+                    )
                     check_param(0, value, slot, vectors["zone"])
                     return value
 

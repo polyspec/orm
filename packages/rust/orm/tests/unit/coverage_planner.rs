@@ -65,6 +65,10 @@ fn run(id: &str) {
                                 if slot.from == "param" && slot.col_type == "varchar" {
                                     out["length"] = json!(slot.length);
                                 }
+                                // An assignment slot of a non-null column says so.
+                                if slot.not_null {
+                                    out["not_null"] = json!(true);
+                                }
                                 out
                             })
                             .collect();
@@ -579,7 +583,11 @@ fn run_param_uses(id: &str) {
                             Type::Time(p) | Type::DateTime(p) => (0, p.into(), 0),
                             _ => (0, 0, 0),
                         };
-                        json!({"type": u.ty, "column": f.name, "length": length, "null": f.nullable, "precision": precision, "scale": scale})
+                        let mut out = json!({"type": u.ty, "column": f.name, "length": length, "null": f.nullable, "precision": precision, "scale": scale});
+                        if u.assign {
+                            out["assign"] = json!(true);
+                        }
+                        out
                     }
                 })
                 .collect()

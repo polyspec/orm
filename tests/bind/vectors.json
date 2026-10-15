@@ -14,6 +14,8 @@
   ],
   "bind": [
     {"name": "null-accepted", "slot": {"type": "varchar", "length": 3}, "value": null, "bound": null},
+    {"name": "null-into-not-null", "slot": {"type": "varchar", "length": 3, "not_null": true}, "value": null, "code": "CODEC_ENCODE"},
+    {"name": "value-into-not-null", "slot": {"type": "varchar", "length": 3, "not_null": true}, "value": "abc", "bound": "abc"},
     {"name": "i16-max", "slot": {"type": "i16"}, "value": 32767, "bound": 32767},
     {"name": "i16-min", "slot": {"type": "i16"}, "value": -32768, "bound": -32768},
     {"name": "i16-above", "slot": {"type": "i16"}, "value": 32768, "code": "CODEC_ENCODE"},

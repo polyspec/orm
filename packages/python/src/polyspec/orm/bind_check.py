@@ -28,6 +28,9 @@ class ParamSlot:
     precision: int = 0
     scale: int = 0
     length: int = 0
+    # The assignment of the non-null column `column`.
+    not_null: bool = False
+    column: str = ""
 
 
 def bind_slot_type(slot: dict) -> ParamSlot:
@@ -37,6 +40,8 @@ def bind_slot_type(slot: dict) -> ParamSlot:
         slot.get("precision") or 0,
         slot.get("scale") or 0,
         slot.get("length") or 0,
+        bool(slot.get("not_null")),
+        slot.get("column") or "",
     )
 
 
@@ -45,7 +50,14 @@ def use_slot_type(use: ParamUse) -> ParamSlot:
     a datetime or time of a function takes six digits."""
     f = use.column
     if f is not None and f.type == use.type:
-        return ParamSlot(use.type, f.precision, f.scale, f.length)
+        return ParamSlot(
+            use.type,
+            f.precision,
+            f.scale,
+            f.length,
+            use.assign and not f.nullable,
+            f.name,
+        )
     return ParamSlot(use.type, 6 if use.type in ("datetime", "time") else 0)
 
 
@@ -61,6 +73,15 @@ _INTEGER_RANGES = {
 
 def _shown(value) -> str:
     return repr(value) if isinstance(value, str) else str(value)
+
+
+def check_assign(i: int, value, slot: ParamSlot) -> None:
+    """Refuses SQL NULL as parameter i when slot assigns a non-null column; it runs for every slot before any
+    statement."""
+    if value is None and slot.not_null:
+        raise OrmError(
+            "CODEC_ENCODE", f"parameter {i} assigns NULL to the non-null {slot.column}"
+        )
 
 
 def check_param(i: int, value, slot: ParamSlot, zone: str) -> None:

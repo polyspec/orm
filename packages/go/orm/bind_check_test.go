@@ -96,7 +96,10 @@ func TestBindVectors(t *testing.T) {
 			if c.Slot.Transform != "" {
 				value, err = transformParam(c.Slot.Transform, value)
 			} else {
-				err = d.checkParam(0, value, slot)
+				slot.NotNull, slot.Column = c.Slot.NotNull, "column"
+				if err = checkAssign(0, value, slot); err == nil {
+					err = d.checkParam(0, value, slot)
+				}
 			}
 			if c.Code != "" {
 				var e *ir.Error

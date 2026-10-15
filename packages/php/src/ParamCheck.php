@@ -32,6 +32,8 @@ final class ParamCheck
             'precision' => (int) ($slot['precision'] ?? 0),
             'scale' => (int) ($slot['scale'] ?? 0),
             'length' => (int) ($slot['length'] ?? 0),
+            'not_null' => (bool) ($slot['not_null'] ?? false),
+            'column' => (string) ($slot['column'] ?? ''),
         ];
     }
 
@@ -46,9 +48,22 @@ final class ParamCheck
     {
         $col = $use['column'];
         if ($col !== null && $col['type'] === $use['type']) {
-            return ['type' => $use['type'], 'precision' => $col['precision'] ?? 0, 'scale' => $col['scale'] ?? 0, 'length' => $col['length'] ?? 0];
+            return ['type' => $use['type'], 'precision' => $col['precision'] ?? 0, 'scale' => $col['scale'] ?? 0, 'length' => $col['length'] ?? 0, 'not_null' => ($use['assign'] ?? false) && !$col['nullable'], 'column' => $col['name']];
         }
         return ['type' => $use['type'], 'precision' => in_array($use['type'], ['datetime', 'time'], true) ? 6 : 0, 'scale' => 0, 'length' => 0];
+    }
+
+    /**
+     * Refuses SQL NULL as parameter $i when $slot assigns a non-null column; it runs for every slot before any
+     * statement.
+     *
+     * @param array{not_null?: bool, column?: string} $slot
+     */
+    public static function checkAssign(int $i, mixed $v, array $slot): void
+    {
+        if ($v === null && ($slot['not_null'] ?? false)) {
+            throw new OrmException(Code::CODEC_ENCODE, "parameter $i assigns NULL to the non-null " . ($slot['column'] ?? ''));
+        }
     }
 
     /**

@@ -352,6 +352,9 @@ func markdownCall(ex executor, r *request) (json.RawMessage, *runtimemodel.Model
 	uses := ir.ParamUses(m, &r.ir)
 	for i, v := range r.params {
 		for _, u := range uses[i] {
+			if err := checkAssign(i, v, useSlotType(u)); err != nil {
+				return nil, nil, err
+			}
 			if u.Column != nil {
 				if _, host := splitHost(u.Column.Codec); len(host) > 0 {
 					continue

@@ -15,11 +15,14 @@ pub(crate) struct ParamSlot<'a> {
     pub(crate) precision: i64,
     pub(crate) scale: i64,
     pub(crate) length: i64,
+    /// The assignment of the non-null column `column`.
+    pub(crate) not_null: bool,
+    pub(crate) column: &'a str,
 }
 
 /// The logical type of a param bind slot of a plan step.
 pub(crate) fn bind_slot_type(b: &BindSlot) -> ParamSlot<'_> {
-    ParamSlot { ty: &b.col_type, precision: b.precision, scale: b.scale, length: b.length }
+    ParamSlot { ty: &b.col_type, precision: b.precision, scale: b.scale, length: b.length, not_null: b.not_null, column: &b.column }
 }
 
 /// The logical type of a parameter use: a use of its column's type takes the column's precision, scale and length; a
@@ -32,10 +35,10 @@ pub(crate) fn use_slot_type<'a>(u: &'a ParamUse<'_>) -> ParamSlot<'a> {
             Type::Varchar(n) => (0, 0, n.into()),
             _ => (0, 0, 0),
         };
-        return ParamSlot { ty: &u.ty, precision, scale, length };
+        return ParamSlot { ty: &u.ty, precision, scale, length, not_null: u.assign && !f.nullable, column: &f.name };
     }
     let precision = if u.ty == "datetime" || u.ty == "time" { 6 } else { 0 };
-    ParamSlot { ty: &u.ty, precision, scale: 0, length: 0 }
+    ParamSlot { ty: &u.ty, precision, scale: 0, length: 0, not_null: false, column: "" }
 }
 
 fn encode_error(msg: String) -> Error {
@@ -46,6 +49,14 @@ fn is_canonical_uuid(text: &str) -> bool {
     let b = text.as_bytes();
     b.len() == 36
         && b.iter().enumerate().all(|(k, &c)| if matches!(k, 8 | 13 | 18 | 23) { c == b'-' } else { c.is_ascii_digit() || (b'a'..=b'f').contains(&c) })
+}
+
+/// Refuses SQL NULL as parameter `i` when `s` assigns a non-null column; it runs for every slot before any statement.
+pub(crate) fn check_assign(i: usize, v: &Param, s: &ParamSlot<'_>) -> Result<()> {
+    if matches!(v, Param::Null) && s.not_null {
+        return Err(encode_error(format!("parameter {i} assigns NULL to the non-null {}", s.column)));
+    }
+    Ok(())
 }
 
 /// Checks the value of parameter `i` against the logical type `s` of a slot it fills: the host value kind, the range

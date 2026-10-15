@@ -32,7 +32,9 @@ type plannerSlot struct {
 	// Precision is the fraction digits of a datetime or time slot.
 	Precision *int `json:"precision,omitempty"`
 	// Length is the n of a varchar(n) param slot.
-	Length   *int     `json:"length,omitempty"`
+	Length *int `json:"length,omitempty"`
+	// NotNull marks a param slot that assigns a non-null column.
+	NotNull  bool     `json:"not_null,omitempty"`
 	KeyTypes []string `json:"key_types,omitempty"`
 }
 
@@ -102,6 +104,7 @@ func compilePlannerCase(t *testing.T, id string) {
 					precision := slot.Precision
 					s.Precision = &precision
 				}
+				s.NotNull = slot.NotNull
 				if slot.From == "param" && slot.ColType == "varchar" {
 					length := slot.Length
 					s.Length = &length
@@ -528,6 +531,7 @@ func TestCoveragePlannerRejectsInSubqueryLimit(t *testing.T) {
 // column slot, the column with its length, precision, scale and nullability.
 type paramUseOut struct {
 	Type      string  `json:"type"`
+	Assign    bool    `json:"assign,omitempty"`
 	Column    *string `json:"column,omitempty"`
 	Length    *int    `json:"length,omitempty"`
 	Null      *bool   `json:"null,omitempty"`
@@ -554,7 +558,7 @@ func paramUsesCase(t *testing.T, id string) {
 	for _, uses := range ir.ParamUses(m, &request) {
 		list := []paramUseOut{}
 		for _, u := range uses {
-			out := paramUseOut{Type: u.Type}
+			out := paramUseOut{Type: u.Type, Assign: u.Assign}
 			if f := u.Column; f != nil {
 				out.Column, out.Length, out.Null, out.Precision, out.Scale = &f.Name, &f.Length, &f.Null, &f.Precision, &f.Scale
 			}

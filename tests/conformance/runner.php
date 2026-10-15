@@ -593,6 +593,14 @@ vector('datetime_precision_rejected', fn(): array => $rejected(fn() => (new Time
 vector('varchar_length_rejected', fn(): array => $rejected(fn() => (new BindCell)($db)->setLabel('123456789')->create()));
 vector('text_nul_rejected', fn(): array => $rejected(fn() => (new BindCell)($db)->setLabel('nul')->setBody("a\0b")->create()));
 vector('uuid_form_rejected', fn(): array => $rejected(fn() => (new BindCell)($db)->setLabel('uuid')->setToken('123E4567-E89B-12D3-A456-426614174000')->create()));
+// A parameter that assigns NULL to a non-null column is CODEC_ENCODE before any statement (docs/protocol.md §5
+// "Parameters"); creates binds each row value as a parameter.
+vector('null_into_not_null', function () use ($db): array {
+    // The typed setter takes a string, so the row writes NULL through the column writer of the model.
+    $null = new BindCell();
+    (new ReflectionMethod(BindCell::class, 'writeColumn'))->invoke($null, 'label', null);
+    return ['code' => caught(fn() => (new BindCell)($db)->creates([(new BindCell)->setLabel('a'), $null]))];
+});
 // A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/protocol.md §2).
 vector('contains_null', function () use ($author): array {
     try {

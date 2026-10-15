@@ -10,7 +10,7 @@ import { COMPUTE, cases } from '../../../tests/testcase.mts';
 import { Db, OrmError } from '../dist/index.js';
 import { parseDsn } from '../dist/driver.js';
 import { markdownParam } from '../dist/markdown.js';
-import { checkParam, transformParam } from '../dist/bind_check.js';
+import { checkAssign, checkParam, transformParam } from '../dist/bind_check.js';
 import { readFileSync } from 'node:fs';
 
 const run = cases();
@@ -183,7 +183,10 @@ for (const c of bind.bind) {
     let code = '';
     try {
       if (c.slot.transform !== undefined) value = transformParam(c.slot.transform, value);
-      else checkParam(0, value, slot, bind.zone);
+      else {
+        checkAssign(0, value, { ...slot, notNull: c.slot.not_null === true, column: 'column' });
+        checkParam(0, value, slot, bind.zone);
+      }
     } catch (error) {
       if (!(error instanceof OrmError)) throw error;
       code = error.code;

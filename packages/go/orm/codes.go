@@ -27,7 +27,7 @@ const (
 	CodeOptimisticLock        = "OPTIMISTIC_LOCK"        // executor: updateOptimistic matched no row (updated_ts changed)
 	CodeWriteConflict         = "WRITE_CONFLICT"         // executor: a target changed since it was read; names the file and line; the client never retries it
 	CodeCodecDecode           = "CODEC_DECODE"           // executor: styled column bytes could not be decoded (docs/codec.md)
-	CodeCodecEncode           = "CODEC_ENCODE"           // executor: a parameter outside its slot's logical type, before any statement (kind, range, scale and precision, time precision, length, U+0000, uuid form), or a styled input that cannot be encoded, including SQL NULL for a non-null column
+	CodeCodecEncode           = "CODEC_ENCODE"           // executor: a parameter outside its slot's logical type, before any statement (kind, range, scale and precision, time precision, length, U+0000, uuid form), or a styled input that cannot be encoded, including SQL NULL for a non-null column (a NULL parameter assigned to a non-null column; raw SQL keeps DRIVER)
 	CodeCodecUnsupported      = "CODEC_UNSUPPORTED"      // executor: PHP objects/references in serialize, unknown style
 	CodeConfig                = "CONFIG"                 // executor: missing secret, bad DSN/paths, transaction misuse
 	CodeCanceled              = "CANCELED"               // executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too
