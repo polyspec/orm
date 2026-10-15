@@ -234,8 +234,9 @@ final class RollbackTest extends TestCase
      * server DSN, as endSession does, so the ended session is the session of the
      * Db and not a session behind a pooler. A pooler in front of the case
      * database (client-pooler-check) keeps its own server sessions there after
-     * the fixture is installed through it, so the session of the Db is the one
-     * session of the case database that appears when the Db connects.
+     * the fixture is installed through it, and another session of the case
+     * database may open while the Db connects, so the session of the Db is found
+     * by the id that its own connection reports.
      */
     private static function firstStatementLost(string $dsn): void
     {
@@ -248,22 +249,23 @@ final class RollbackTest extends TestCase
         }
         $direct = case_dsn_with_database($server, ltrim((string) parse_url($dsn, PHP_URL_PATH), '/'));
         [, $pdo] = self::native($direct);
-        $sessions = static fn (): array => array_map('intval', $pdo->query($driver === 'postgres'
-            ? 'SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()'
-            : 'SELECT ID FROM information_schema.PROCESSLIST WHERE DB = DATABASE() AND ID <> CONNECTION_ID()')->fetchAll(PDO::FETCH_COLUMN));
-        $before = $sessions();
+        // Another client's session in the case database, such as a server connection of a pooler, is open
+        // while the Db connects. It is not the session of the Db, so the Db finds its own session by its id.
+        [, $other] = self::native($direct);
         $db = Orm::connect($direct, new Config());
         $db->utils()->schema()->register(\Polyspec\Orm\Tests\RollbackCase\schema());
         $events = [];
         $db->subscribe(function ($event) use (&$events): void {
             $events[] = $event->error?->code_;
         });
-        $opened = array_values(array_diff($sessions(), $before));
-        self::check(count($opened) === 1, 'the Db opened one session in the case database: ' . json_encode(['before' => $before, 'opened' => $opened]));
+        // The id of the server session of the Db (pg_backend_pid, CONNECTION_ID) is the property only that session has.
+        $id = (int) $db->pdo()->query($driver === 'postgres' ? 'SELECT pg_backend_pid()' : 'SELECT CONNECTION_ID()')->fetchColumn();
+        self::check($id > 0, "the Db reports the id of its session: $id");
+        self::check($id !== (int) $other->query($driver === 'postgres' ? 'SELECT pg_backend_pid()' : 'SELECT CONNECTION_ID()')->fetchColumn(), 'the id of the Db is not the id of the other session');
         if ($driver === 'postgres') {
-            $pdo->prepare('SELECT pg_terminate_backend(?, 5000)')->execute([$opened[0] ?? 0]);
+            $pdo->prepare('SELECT pg_terminate_backend(?, 5000)')->execute([$id]);
         } else {
-            $pdo->exec('KILL ' . ($opened[0] ?? 0));
+            $pdo->exec('KILL ' . $id);
         }
         $e = self::raised(fn() => (new RollbackProbe)($db)->getCount());
         self::check($e instanceof OrmException && $e->code_ === Code::CONNECTION_LOST, 'the first statement fails with CONNECTION_LOST: ' . ($e === null ? 'no error' : $e->getMessage()));
