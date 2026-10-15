@@ -223,7 +223,7 @@ class SchemaInspectionTest(unittest.TestCase):
             )
         self.assertEqual(
             db.utils().stats(),
-            DbStats(max_open_connections=1, open_connections=1, in_use=0, idle=1),
+            DbStats(max_open_connections=10, open_connections=1, in_use=0, idle=1),
         )
 
     def test_sqlite(self):

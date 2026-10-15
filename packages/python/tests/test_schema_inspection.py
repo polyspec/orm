@@ -37,10 +37,10 @@ class SchemaInspectionTest(unittest.TestCase):
             call()
         return caught.exception.code
 
-    def test_stats_report_the_one_connection_of_the_db(self):
+    def test_stats_report_the_pool_of_the_db(self):
         from polyspec.orm.database import DbStats
 
-        idle = DbStats(max_open_connections=1, open_connections=1, in_use=0, idle=1)
+        idle = DbStats(max_open_connections=10, open_connections=1, in_use=0, idle=1)
         self.assertEqual(self.db.stats(), idle)
         self.assertEqual(self.db.utils().stats(), idle)
         seen = []
@@ -48,7 +48,7 @@ class SchemaInspectionTest(unittest.TestCase):
             lambda: seen.append((self.db.stats(), self.db.utils().stats())),
             {"retry": 0},
         )
-        busy = DbStats(max_open_connections=1, open_connections=1, in_use=1, idle=0)
+        busy = DbStats(max_open_connections=10, open_connections=1, in_use=1, idle=0)
         self.assertEqual(seen, [(busy, busy)])
 
     def test_empty_counts_tables_and_views_but_not_the_orm_tables(self):

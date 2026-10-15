@@ -1,8 +1,7 @@
-# The pool options and the statement timeout of the Python client's connection configuration (docs/config.md
-# "Runtime connection"), the cases of test_pool_options, test_statement_timeout and
-# test_statement_timeout_through_a_pooler of packages/php/tests/ModelTest.php. A Db holds one connection, as a PHP Db
-# does, so the pool options are refused with CONFIG naming the poolers; statementTimeoutMs bounds the statements of its
-# connection on MySQL and PostgreSQL, and a locking read past the bound returns CANCELED. MySQL and PostgreSQL need
+# The statement timeout of the Python client's connection configuration (docs/config.md "Runtime connection"), the
+# cases of test_statement_timeout and test_statement_timeout_through_a_pooler of packages/php/tests/ModelTest.php:
+# statementTimeoutMs bounds the statements of its connection on MySQL and PostgreSQL, and a locking read past the bound
+# returns CANCELED. The pool options are the cases of connection_pool.py. MySQL and PostgreSQL need
 # ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN, the pooler case ORM_TEST_PGBOUNCER_SINGLE_DSN, and a missing variable
 # fails the case.
 # Usage: python -m packages.python.tests.connection_config
@@ -89,36 +88,6 @@ def code_of(run) -> str | None:
 
 class ConnectionConfigTest(unittest.TestCase):
     deadline = testcase.DATABASE
-
-    def test_pool_options(self):
-        models, _ = probe_models(TEMP["dir"].name, "pool_probe")
-        for dialect in DIALECTS:
-            with case_database(dialect, TEMP["dir"].name, "orm_pool") as dsn:
-                db = models.connect(dsn)
-                self.assertEqual(
-                    db.stats().max_open_connections,
-                    1,
-                    f"{dialect}: one connection per Db",
-                )
-                db.close()
-                for option, value in (
-                    ("poolSize", 3),
-                    ("poolSize", -1),
-                    ("poolIdleSize", 1),
-                    ("poolLifetimeMs", 1000),
-                ):
-                    with self.assertRaises(
-                        OrmError, msg=f"{dialect}: {option}: {value} connected"
-                    ) as raised:
-                        models.connect(dsn, **{option: value})
-                    self.assertEqual(
-                        raised.exception.code, "CONFIG", f"{dialect} {option}"
-                    )
-                    self.assertIn(
-                        "PgBouncer or ProxySQL",
-                        str(raised.exception),
-                        f"{dialect} {option}",
-                    )
 
     def test_statement_timeout(self):
         table = f"timeout_{uuid.uuid4().hex[:8]}"

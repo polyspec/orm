@@ -110,7 +110,9 @@
         "packages/python/tests/connection_config.py",
         "packages/python/tests/replica.py",
         "packages/python/tests/coverage_dsn.py",
-        "packages/python/tests/connection_utc.py"
+        "packages/python/tests/connection_utc.py",
+        "packages/python/tests/connection_pool.py",
+        "packages/python/tests/mysql_session.py"
       ],
       "docs": [
         "docs/config.md",
@@ -391,6 +393,15 @@
           "shard": "other",
           "inputs": [
             "packages/python/tests/connection_utc.py",
+            "packages/python/src/polyspec/orm/database.py"
+          ]
+        },
+        {
+          "id": "connection-pool-python",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.connection_pool",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/connection_pool.py",
             "packages/python/src/polyspec/orm/database.py"
           ]
         }

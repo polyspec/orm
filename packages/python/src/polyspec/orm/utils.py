@@ -696,26 +696,28 @@ def _sqlite_without_foreign_keys(db, apply):
     def outside(sql: str):
         return db._sent(lambda: db._connection.execute(sql, [])["rows"])
 
-    outside("PRAGMA foreign_keys = OFF")
-    try:
-        db._connection.execute("BEGIN IMMEDIATE", [])
+    # PRAGMA foreign_keys and the transaction belong to one connection, which the sequence holds.
+    with db._held():
+        outside("PRAGMA foreign_keys = OFF")
         try:
-            result = apply(_session_runner(db))
-            broken = db._sent(
-                lambda: db._connection.execute(
-                    "SELECT COUNT(*) FROM pragma_foreign_key_check", []
-                )["rows"]
-            )[0][0]
-            if int(broken) != 0:
-                raise OrmError(
-                    "INTERNAL", f"the rebuilt tables break {broken} foreign keys"
-                )
-            db._connection.execute("COMMIT", [])
+            db._connection.execute("BEGIN IMMEDIATE", [])
+            try:
+                result = apply(_session_runner(db))
+                broken = db._sent(
+                    lambda: db._connection.execute(
+                        "SELECT COUNT(*) FROM pragma_foreign_key_check", []
+                    )["rows"]
+                )[0][0]
+                if int(broken) != 0:
+                    raise OrmError(
+                        "INTERNAL", f"the rebuilt tables break {broken} foreign keys"
+                    )
+                db._connection.execute("COMMIT", [])
+            except BaseException:
+                db._connection.execute("ROLLBACK", [])
+                raise
         except BaseException:
-            db._connection.execute("ROLLBACK", [])
+            outside("PRAGMA foreign_keys = ON")
             raise
-    except BaseException:
         outside("PRAGMA foreign_keys = ON")
-        raise
-    outside("PRAGMA foreign_keys = ON")
     return result

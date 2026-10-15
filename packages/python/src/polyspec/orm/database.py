@@ -2,12 +2,14 @@
 # (docs/config.md, docs/usage.md). 실행은 동기다.
 from __future__ import annotations
 
+import contextlib
 import copy
 import ipaddress
 import json
 import os
 import re
 import sqlite3
+import threading
 import time
 from dataclasses import dataclass
 from urllib.parse import urlsplit, parse_qsl
@@ -675,6 +677,8 @@ class _SqliteConnection:
                 timeout=SQLITE_BUSY_TIMEOUT_MS / 1000,
                 isolation_level=None,
                 detect_types=0,
+                # A pooled connection serves one thread at a time, but not always the thread that opened it.
+                check_same_thread=False,
             )
         except Exception as error:
             _raise_driver_error("sqlite", error)
@@ -897,6 +901,9 @@ class TxFrame:
         self.locks: list = []
         self.locals: dict = {}
         self.connection = None
+        # pooled: the connection came from the pool; lost: a statement of it reported CONNECTION_LOST.
+        self.pooled = False
+        self.lost = False
 
     def run(
         self,
@@ -915,9 +922,14 @@ class TxFrame:
         values = values if values is not None else []
 
         def send():
-            if faultable:
-                return self.db._sent(lambda: self.connection.execute(sql, values))
-            return self.connection.execute(sql, values)
+            try:
+                if faultable:
+                    return self.db._sent(lambda: self.connection.execute(sql, values))
+                return self.connection.execute(sql, values)
+            except OrmError as error:
+                if error.code == "CONNECTION_LOST":
+                    self.lost = True
+                raise
 
         return self.db.events.send(
             kind,
@@ -939,8 +951,36 @@ class Executor:
         self.frame = frame
 
 
-# 연결(root)마다 활성 transaction frame이다. 같은 연결의 handle은 같은 frame을 본다.
-_ACTIVE: dict = {}
+class _ActiveFrames:
+    """연결(root)마다 활성 transaction frame이다. 같은 연결의 handle은 같은 frame을 본다. Each thread has its own
+    frames, so transactions of different threads run on connections of their own."""
+
+    def __init__(self):
+        self._local = threading.local()
+
+    def _frames(self) -> dict:
+        frames = getattr(self._local, "frames", None)
+        if frames is None:
+            frames = self._local.frames = {}
+        return frames
+
+    def get(self, key):
+        return self._frames().get(key)
+
+    def __setitem__(self, key, frame) -> None:
+        self._frames()[key] = frame
+
+    def __delitem__(self, key) -> None:
+        del self._frames()[key]
+
+    def __bool__(self) -> bool:
+        return bool(self._frames())
+
+    def values(self):
+        return self._frames().values()
+
+
+_ACTIVE = _ActiveFrames()
 
 
 def _active_for(db: "Db") -> TxFrame | None:
@@ -964,6 +1004,8 @@ class _Shared:
         "statement_fault",
         "fixed_clock",
         "last_affected",
+        "pool",
+        "held",
     )
 
     def __init__(self):
@@ -976,28 +1018,166 @@ class _Shared:
         self.fixed_clock = None
         # 마지막으로 성공한 write 결과의 affected다. last_affected가 읽는다.
         self.last_affected = None
+        # The connections of the Db, and the connection a thread holds for a sequence of statements.
+        self.pool = None
+        self.held = threading.local()
 
 
-def _connection_config(options: dict) -> int:
+DEFAULT_POOL_SIZE = 10
+
+
+class _PoolConfig:
+    __slots__ = ("size", "idle_size", "lifetime_ms", "statement_timeout_ms")
+
+    def __init__(self, size, idle_size, lifetime_ms, statement_timeout_ms):
+        self.size = size
+        self.idle_size = idle_size
+        self.lifetime_ms = lifetime_ms
+        self.statement_timeout_ms = statement_timeout_ms
+
+
+def _connection_config(options: dict) -> _PoolConfig:
     """Checks the pool options and the statement timeout of the connection configuration (docs/config.md "Runtime
-    connection") and returns the statement timeout in milliseconds. A Db holds one connection, as a PHP Db does, so
-    every pool option other than zero is CONFIG."""
+    connection"), as the Go, TypeScript and Rust clients do: zero or unset poolSize opens at most 10 connections,
+    zero or unset poolIdleSize keeps up to the pool size idle, zero or unset poolLifetimeMs keeps connections without
+    a lifetime, and a negative value or an idle size above the pool size is CONFIG."""
     values = {}
     for name in ("poolSize", "poolIdleSize", "poolLifetimeMs", "statementTimeoutMs"):
         value = options.get(name, 0)
         if isinstance(value, bool) or not isinstance(value, int):
             raise OrmError("CONFIG", f"{name} must be an integer")
+        if value < 0:
+            raise OrmError("CONFIG", f"{name} must not be negative")
         values[name] = value
-    if values["poolSize"] or values["poolIdleSize"] or values["poolLifetimeMs"]:
+    size = values["poolSize"] or DEFAULT_POOL_SIZE
+    if values["poolIdleSize"] > size:
         raise OrmError(
             "CONFIG",
-            "poolSize, poolIdleSize and poolLifetimeMs configure a connection pool, and the Python client opens "
-            "one connection per Db and keeps no pool; pool Python connections with PgBouncer or ProxySQL "
-            '(docs/config.md "Connection poolers")',
+            f"poolIdleSize {values['poolIdleSize']} is above the pool size {size}",
         )
-    if values["statementTimeoutMs"] < 0:
-        raise OrmError("CONFIG", "statement timeout must not be negative")
-    return values["statementTimeoutMs"]
+    return _PoolConfig(
+        size,
+        values["poolIdleSize"] or size,
+        values["poolLifetimeMs"],
+        values["statementTimeoutMs"],
+    )
+
+
+class _Pool:
+    """The connections of a Db (docs/config.md "Runtime connection"). It never opens more than its size; a caller
+    that needs a connection while all of them are in use waits for one. A released connection is closed when the pool
+    already keeps its idle size, when its lifetime has passed or when it was lost; an idle connection past its
+    lifetime is closed when it would be taken."""
+
+    def __init__(self, open_connection, config: _PoolConfig):
+        self._open = open_connection
+        self.size = config.size
+        self._idle_size = config.idle_size
+        self._lifetime = config.lifetime_ms / 1000 if config.lifetime_ms > 0 else None
+        self._idle: list = []
+        # The open time of each open connection by its id; a slot whose connection is opening holds None.
+        self._opened: dict = {}
+        self._in_use = 0
+        self._closed = False
+        self._condition = threading.Condition()
+
+    def _expired(self, connection) -> bool:
+        return (
+            self._lifetime is not None
+            and time.monotonic() - self._opened[id(connection)] >= self._lifetime
+        )
+
+    def _drop(self, connection) -> None:
+        self._opened.pop(id(connection), None)
+        connection.close()
+
+    def acquire(self):
+        with self._condition:
+            while True:
+                if self._closed:
+                    raise OrmError("CONFIG", "database is closed")
+                while self._idle:
+                    connection = self._idle.pop()
+                    if self._expired(connection):
+                        self._drop(connection)
+                        continue
+                    self._in_use += 1
+                    return connection
+                if len(self._opened) < self.size:
+                    # The slot is taken before the connection opens, so no other caller passes the size meanwhile.
+                    self._in_use += 1
+                    slot = object()
+                    self._opened[id(slot)] = None
+                    break
+                self._condition.wait()
+        try:
+            connection = self._open()
+        except BaseException:
+            with self._condition:
+                del self._opened[id(slot)]
+                self._in_use -= 1
+                self._condition.notify()
+            raise
+        with self._condition:
+            del self._opened[id(slot)]
+            self._opened[id(connection)] = time.monotonic()
+        return connection
+
+    def release(self, connection, broken: bool = False) -> None:
+        with self._condition:
+            self._in_use -= 1
+            if (
+                broken
+                or self._closed
+                or len(self._idle) >= self._idle_size
+                or self._expired(connection)
+            ):
+                self._drop(connection)
+            else:
+                self._idle.append(connection)
+            self._condition.notify()
+
+    def close(self) -> None:
+        with self._condition:
+            self._closed = True
+            idle, self._idle = self._idle, []
+            for connection in idle:
+                self._drop(connection)
+            self._condition.notify_all()
+
+    def stats(self) -> tuple[int, int, int]:
+        with self._condition:
+            return len(self._opened), self._in_use, len(self._idle)
+
+
+class _Leased:
+    """The connection of the statements outside a transaction: each statement takes a connection of the pool and
+    returns it, unless the thread holds one for a sequence of statements (Db._held) or has a transaction of the
+    connection open."""
+
+    __slots__ = ("_db",)
+
+    def __init__(self, db: "Db"):
+        self._db = db
+
+    def execute(self, sql: str, values):
+        held = getattr(self._db._shared.held, "connection", None)
+        if held is not None:
+            return held.execute(sql, values)
+        # Inside a transaction of the thread the statement runs on the connection of the transaction.
+        frame = _active_for(self._db)
+        if frame is not None and frame.connection is not None:
+            return frame.connection.execute(sql, values)
+        pool = self._db._shared.pool
+        connection = pool.acquire()
+        broken = False
+        try:
+            return connection.execute(sql, values)
+        except OrmError as error:
+            broken = error.code == "CONNECTION_LOST"
+            raise
+        finally:
+            pool.release(connection, broken)
 
 
 @dataclass(frozen=True)
@@ -1031,7 +1211,8 @@ class Db:
         self.aes_version = options.get("aesVersion", 1)
         self.aes_keyring = options.get("aesKeyring")
         self.audit_source = options.get("auditSource")
-        self.statement_timeout_ms = _connection_config(options)
+        self.pool_config = _connection_config(options)
+        self.statement_timeout_ms = self.pool_config.statement_timeout_ms
         if self.driver == "markdown" and self.statement_timeout_ms > 0:
             unsupported_on_markdown(self, "statement timeout")
         self.engines: dict[str, Engine] = {}
@@ -1044,7 +1225,14 @@ class Db:
         # handle의 root는 그 handle을 파생한 연결이고, 연결 자신은 None이다.
         self._root: Db | None = None
         self.request_hook: RequestHook | None = None
-        self._connection = self._open()
+        if self.driver == "markdown":
+            # A markdown connection keeps one server session (docs/protocol.md §5).
+            self._connection = self._open()
+        else:
+            self._shared.pool = _Pool(self._open, self.pool_config)
+            # The first connection opens now, so a DSN that does not connect fails here.
+            self._shared.pool.release(self._shared.pool.acquire())
+            self._connection = _Leased(self)
 
     def utils(self) -> Utils:
         """The transaction tools of this connection (lock, transaction-local values, AES status)."""
@@ -1053,12 +1241,42 @@ class Db:
         return Utils(self)
 
     def stats(self) -> DbStats:
-        """The connection statistics. A Db holds one connection, as the PHP client does, so the pool size and
-        the open connections are 1, and the connection is in use while a transaction of it is active."""
-        busy = 1 if _active_for(self) is not None else 0
+        """The connection statistics of the pool (docs/interfaces.md "Utilities", stats())."""
+        pool = self._shared.pool
+        if pool is None:
+            # The one server session of a markdown connection, in use while a transaction holds it.
+            busy = 1 if _active_for(self) is not None else 0
+            return DbStats(
+                max_open_connections=1, open_connections=1, in_use=busy, idle=1 - busy
+            )
+        opened, in_use, idle = pool.stats()
         return DbStats(
-            max_open_connections=1, open_connections=1, in_use=busy, idle=1 - busy
+            max_open_connections=pool.size,
+            open_connections=opened,
+            in_use=in_use,
+            idle=idle,
         )
+
+    @contextlib.contextmanager
+    def _held(self):
+        """Holds one connection of the pool for the statements of the thread inside the block, such as a sequence
+        that must run on one connection outside a transaction."""
+        held = self._shared.held
+        if getattr(held, "connection", None) is not None:
+            yield held.connection
+            return
+        pool = self._shared.pool
+        connection = pool.acquire()
+        held.connection = connection
+        broken = False
+        try:
+            yield connection
+        except OrmError as error:
+            broken = error.code == "CONNECTION_LOST"
+            raise
+        finally:
+            held.connection = None
+            pool.release(connection, broken)
 
     @staticmethod
     def connect(dsn: str, options: dict | None = None) -> Db:
@@ -1132,7 +1350,10 @@ class Db:
     def close(self) -> None:
         if not self._shared.closed:
             self._shared.closed = True
-            self._connection.close()
+            if self._shared.pool is None:
+                self._connection.close()
+            else:
+                self._shared.pool.close()
 
     def plan(self, request: dict) -> dict:
         if self._shared.closed:
@@ -1600,7 +1821,7 @@ class Db:
                 steps.append(("utility", "PRAGMA read_uncommitted = 1"))
             if options.get("readOnly"):
                 steps.append(("utility", "PRAGMA query_only = 1"))
-        frame.connection = self._connection
+        frame.connection = self._take_connection(frame)
         began = False
         try:
             for kind, sql in steps:
@@ -1617,6 +1838,21 @@ class Db:
                 raise rollback_failed(error, rollback) from None
             raise
         return frame
+
+    def _take_connection(self, frame: TxFrame):
+        """The connection of a transaction: the one the thread holds, or one of the pool until the transaction
+        ends."""
+        held = getattr(self._shared.held, "connection", None)
+        if held is not None:
+            frame.pooled = False
+            return held
+        frame.pooled = True
+        return self._shared.pool.acquire()
+
+    def _give_back(self, frame: TxFrame) -> None:
+        connection, frame.connection = frame.connection, None
+        if connection is not None and frame.pooled:
+            self._shared.pool.release(connection, frame.lost)
 
     def _finish(self, frame: TxFrame, commit: bool) -> None:
         if frame.finished:
@@ -1661,7 +1897,7 @@ class Db:
                 raise rollback_failed(errors[0] if errors else error, error) from None
             raise
         finally:
-            frame.connection = None
+            self._give_back(frame)
         # The rollback ran; a cleanup error (a lock that was not held or a refused release) is the
         # transaction's error alone.
         if errors:
