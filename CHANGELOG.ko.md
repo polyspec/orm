@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: adb487e0db673543245c27cd5a9fbcbbccb6de8c41a15690626c0319283ea10a -->
+<!-- source-sha256: a4b0bc5ed721359081a152d4c400c430fd36a5d14599ab0d21c917335498c330 -->
 # 변경 이력
 
 ## Unreleased
 
+- 모든 AES vector가 각 client가 읽는 명시적 name을 가진다. (#T112)
 - offset이 없는 PHP datetime이 연결 zone에서 바인딩되며, 일광 절약 시간 wall clock도 포함한다. (#T116)
 - date, time, datetime 매개변수는 모든 client에서 정규 text 형태만 받고, native 값은 CODEC_ENCODE로 거부한다. (#T89-3)
 - TypeScript build가 project reference로 language package를 LSP보다 먼저 build한다. (#T187)
