@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The conformance runners send date, time and datetime inputs as canonical text. (#T89-3-1)
 - The docs rules check passes `make lint-ts`: its file is read through a shape guard, and the line filter uses `startsWith`. (#T77-11-2)
 - Rows load with their identity keys, and compiled statements execute through a public call in every client. (#T120)
 - Generated setters take text for date, time and datetime in every client. (#T189)

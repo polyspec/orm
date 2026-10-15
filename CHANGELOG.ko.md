@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1895fc5cecb13a7bd8a2e7ecc51374471c1edc70d9c6b4b4fb76515dbdf7c483 -->
+<!-- source-sha256: 5ab1adfce2439638b16d556c7ca7a2d0c9441f2ec0c1257a29c7aaafb77ebd73 -->
 # 변경 이력
 
 ## Unreleased
 
+- conformance runner가 date, time, datetime 입력을 정규 text로 보낸다. (#T89-3-1)
 - 문서 규칙 검사가 `make lint-ts`를 통과한다. 파일을 모양 검사 guard로 읽고, 줄 필터는 `startsWith`를 쓴다. (#T77-11-2)
 - 행의 identity 키를 가진 load와 모든 client의 공개 execute 호출이 main에서 이미 성립한다. (#T120)
 - 생성된 setter가 모든 client에서 date, time, datetime에 text를 받는다. (#T189)
