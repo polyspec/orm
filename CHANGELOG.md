@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A conformance vector pins the NULL order of ascending and descending reads on every database. (#T82-1)
 - The Go bind vector test reports as a case with its deadline. (#T91-1)
 - The TypeScript symbol record holds the contains methods of CompositeAccount. (#T79-1-1)
 - push-gate starts the Node.js release of mise.toml again. (#T181-4)
