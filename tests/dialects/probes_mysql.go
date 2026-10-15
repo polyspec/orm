@@ -260,6 +260,12 @@ func mysqlProbes() []Probe {
 			e.Exec("CREATE TABLE t (a int)", "CREATE INDEX "+strings.Repeat("i", 64)+" ON t (a)")
 			e.Fails("CREATE INDEX "+strings.Repeat("j", 65)+" ON t (a)", "1059")
 		}),
+		p("order.null_first_asc", "an order puts NULL first ascending and last descending; MySQL has no NULLS FIRST or NULLS LAST (1064)", func(e *Env) {
+			e.Exec("CREATE TABLE t (a int)", "INSERT INTO t VALUES (2), (NULL), (1)")
+			e.WantRows("SELECT a FROM t ORDER BY a ASC", "NULL,1,2")
+			e.WantRows("SELECT a FROM t ORDER BY a DESC", "2,1,NULL")
+			e.Fails("SELECT a FROM t ORDER BY a ASC NULLS FIRST", "1064")
+		}),
 		p("unique.nulls_distinct", "a unique key accepts several NULLs", func(e *Env) {
 			e.Exec("CREATE TABLE t (a int, UNIQUE KEY uq (a))", "INSERT INTO t VALUES (NULL), (NULL)")
 		}),

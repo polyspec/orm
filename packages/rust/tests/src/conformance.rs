@@ -798,5 +798,19 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         })
         .retry(0)
     );
+    // the seed prices the authors of service 100 except a seq that is a multiple of 3 (benchmarks/sql/seed.*.sql)
+    run!("order_nulls", async {
+        let priced = || author().remove_all_columns().add_column_price().service_seq(100).and_lt_seq(500);
+        let asc = priced().order_by_price_asc().order_by_seq_asc().gets().await?.to_array()?;
+        let desc = priced().order_by_price_desc().order_by_seq_asc().gets().await?.to_array()?;
+        let mut per_parent = serde_json::Map::new();
+        for order in ["asc", "desc"] {
+            let child = Author::new().match_seq_with_user_seq().remove_all_columns().add_column_price();
+            let child = if order == "asc" { child.order_by_price_asc() } else { child.order_by_price_desc() };
+            let users = User::new().connect(db).relations(child.order_by_seq_asc().group_limit(2)).seq(100).gets().await?;
+            per_parent.insert(order.into(), users.to_array()?);
+        }
+        Ok::<Value, polyspec_orm::Error>(json!({"asc": asc, "desc": desc, "limit_per_parent": Value::Object(per_parent)}))
+    });
     out
 }

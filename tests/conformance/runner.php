@@ -554,6 +554,24 @@ vector('clock_compare_six_digits', function () use ($db): array {
     $created->delete();
     return ['at0_ge_now' => $geNow, 'at3_lt_now' => $ltNow];
 });
+// the seed prices the authors of service 100 except a seq that is a multiple of 3 (benchmarks/sql/seed.*.sql)
+vector('order_nulls', function () use ($author, $db): array {
+    $priced = static fn(): Author => $author()->removeAllColumns()->addColumnPrice()->serviceSeq(100)->andLtSeq(500);
+    $asc = $priced()->orderByPriceAsc()->orderBySeqAsc()->gets()->toArray();
+    $desc = $priced()->orderByPriceDesc()->orderBySeqAsc()->gets()->toArray();
+    $perParent = [];
+    foreach (['asc', 'desc'] as $order) {
+        $child = (new Author)->matchSeqWithUserSeq()->removeAllColumns()->addColumnPrice();
+        $order === 'asc' ? $child->orderByPriceAsc() : $child->orderByPriceDesc();
+        $perParent[$order] = (new User)($db)->relations($child->orderBySeqAsc()->groupLimit(2))->seq(100)->gets()->toArray();
+    }
+    return [
+        'asc' => $asc,
+        'desc' => $desc,
+        'limit_per_parent' => $perParent,
+    ];
+});
+
 
 foreach (array_keys($selected) as $name) {
     if (!isset($vectors[$name])) {

@@ -34,3 +34,7 @@ FROM n;
 -- hex_cell holds raw hex cells that no encoder writes: decoding each one is CODEC_DECODE
 -- (vector hex_malformed, docs/codec.md "Decoding is exact").
 INSERT INTO `hex_cell` (`seq`, `label`, `value`) VALUES (1, 'white-space', ' 4F'), (2, 'odd-length', '686');
+
+-- The authors of service 100 hold a price unless their seq is a multiple of 3, so an order
+-- on price meets NULL and values (vector order_nulls, docs/dialects.md).
+UPDATE `author` SET `price` = `seq` % 7 WHERE `service_seq` = 100 AND `seq` % 3 <> 0;

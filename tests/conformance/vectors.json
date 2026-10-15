@@ -3011,6 +3011,224 @@
           }
         ]
       }
+    },
+    {
+      "name": "order_nulls",
+      "chain": "price ascending and descending with NULL prices of service 100 (orderByPriceAsc/Desc()-\u003eorderBySeqAsc()), and the same orders under groupLimit(2) of user 100's authors",
+      "expect": {
+        "result": {
+          "asc": [
+            {
+              "price": null,
+              "seq": 99,
+              "service_member_seq": 100,
+              "service_region_seq": 10,
+              "service_seq": 100,
+              "user_seq": 100
+            },
+            {
+              "price": null,
+              "seq": 399,
+              "service_member_seq": 400,
+              "service_region_seq": 10,
+              "service_seq": 100,
+              "user_seq": 400
+            },
+            {
+              "price": "2.000",
+              "seq": 499,
+              "service_member_seq": 500,
+              "service_region_seq": 10,
+              "service_seq": 100,
+              "user_seq": 500
+            },
+            {
+              "price": "3.000",
+              "seq": 199,
+              "service_member_seq": 200,
+              "service_region_seq": 10,
+              "service_seq": 100,
+              "user_seq": 200
+            },
+            {
+              "price": "5.000",
+              "seq": 299,
+              "service_member_seq": 300,
+              "service_region_seq": 10,
+              "service_seq": 100,
+              "user_seq": 300
+            }
+          ],
+          "desc": [
+            {
+              "price": "5.000",
+              "seq": 299,
+              "service_member_seq": 300,
+              "service_region_seq": 10,
+              "service_seq": 100,
+              "user_seq": 300
+            },
+            {
+              "price": "3.000",
+              "seq": 199,
+              "service_member_seq": 200,
+              "service_region_seq": 10,
+              "service_seq": 100,
+              "user_seq": 200
+            },
+            {
+              "price": "2.000",
+              "seq": 499,
+              "service_member_seq": 500,
+              "service_region_seq": 10,
+              "service_seq": 100,
+              "user_seq": 500
+            },
+            {
+              "price": null,
+              "seq": 99,
+              "service_member_seq": 100,
+              "service_region_seq": 10,
+              "service_seq": 100,
+              "user_seq": 100
+            },
+            {
+              "price": null,
+              "seq": 399,
+              "service_member_seq": 400,
+              "service_region_seq": 10,
+              "service_seq": 100,
+              "user_seq": 400
+            }
+          ],
+          "limit_per_parent": {
+            "asc": [
+              {
+                "author_models": [
+                  {
+                    "price": null,
+                    "seq": 99,
+                    "service_member_seq": 100,
+                    "service_region_seq": 10,
+                    "service_seq": 100,
+                    "user_seq": 100
+                  },
+                  {
+                    "price": null,
+                    "seq": 15099,
+                    "service_member_seq": 100,
+                    "service_region_seq": 10,
+                    "service_seq": 100,
+                    "user_seq": 100
+                  }
+                ],
+                "name": "user-100",
+                "seq": 100
+              }
+            ],
+            "desc": [
+              {
+                "author_models": [
+                  {
+                    "price": "6.000",
+                    "seq": 65099,
+                    "service_member_seq": 100,
+                    "service_region_seq": 10,
+                    "service_seq": 100,
+                    "user_seq": 100
+                  },
+                  {
+                    "price": "5.000",
+                    "seq": 10099,
+                    "service_member_seq": 100,
+                    "service_region_seq": 10,
+                    "service_seq": 100,
+                    "user_seq": 100
+                  }
+                ],
+                "name": "user-100",
+                "seq": 100
+              }
+            ]
+          }
+        },
+        "statements": [
+          {
+            "binds": [
+              100,
+              500
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`price` AS `a__price` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`seq` \u003c ? ORDER BY `a`.`price` ASC, `a`.`seq` ASC",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              100,
+              500
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`price` AS `a__price` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`seq` \u003c ? ORDER BY `a`.`price` DESC, `a`.`seq` ASC",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              100
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`seq` = ?",
+            "tables": [
+              "user"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              100
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `orm_w`.`a__seq`, `orm_w`.`a__user_seq`, `orm_w`.`a__service_seq`, `orm_w`.`a__service_region_seq`, `orm_w`.`a__service_member_seq`, `orm_w`.`a__price` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`price` AS `a__price`, ROW_NUMBER() OVER (PARTITION BY `a`.`user_seq` ORDER BY `a`.`price` ASC, `a`.`seq` ASC) AS `orm_rn` FROM `author` AS `a` WHERE `a`.`user_seq` IN (?)) AS `orm_w` WHERE `orm_w`.`orm_rn` \u003c= 2 ORDER BY `orm_w`.`a__user_seq`, `orm_w`.`orm_rn`",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              100
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`seq` = ?",
+            "tables": [
+              "user"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              100
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `orm_w`.`a__seq`, `orm_w`.`a__user_seq`, `orm_w`.`a__service_seq`, `orm_w`.`a__service_region_seq`, `orm_w`.`a__service_member_seq`, `orm_w`.`a__price` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`price` AS `a__price`, ROW_NUMBER() OVER (PARTITION BY `a`.`user_seq` ORDER BY `a`.`price` DESC, `a`.`seq` ASC) AS `orm_rn` FROM `author` AS `a` WHERE `a`.`user_seq` IN (?)) AS `orm_w` WHERE `orm_w`.`orm_rn` \u003c= 2 ORDER BY `orm_w`.`a__user_seq`, `orm_w`.`orm_rn`",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          }
+        ]
+      }
     }
   ]
 }

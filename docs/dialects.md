@@ -18,7 +18,7 @@ Executors still see the same plan shape: steps, bind slots, assemble.
 | `groupLimit(n)` | `ROW_NUMBER() OVER (…)` | same | same |
 | `tuple<ColA>With<ColB>` | `(a, b) IN ((?, ?), …)` | same | `(a, b) IN (VALUES (?, ?), …)` |
 | `orderByRandom()` | `RAND()` | `random()` | `random()` |
-| `orderBy<Col>Asc()` / `Desc()` on a nullable column | native: NULL first ascending, last descending | `ASC NULLS FIRST` / `DESC NULLS LAST` | native: NULL first ascending, last descending |
+| `orderBy<Col>Asc()` / `Desc()` on a nullable column | native: NULL first ascending, last descending (`mysql.order.null_first_asc`) | `ASC NULLS FIRST` / `DESC NULLS LAST`: NULL is last ascending without it (`postgres.order.null_last_asc`) | native: NULL first ascending, last descending (`sqlite.order.null_first_asc`) |
 | ORM functions | see [DSL](dsl.md#_10-orm-functions) | | |
 | `aes`/`hex` styles | client-side authenticated AES-256-GCM v2 ciphertext, then hex text when `hex` is present | client-side authenticated AES-256-GCM v2 ciphertext, then hex text when `hex` is present | client-side authenticated AES-256-GCM v2 ciphertext, then hex text when `hex` is present |
 | `ip` style | `INET6_ATON` / `INET6_NTOA` | `(?)::inet` / `host(col)` | client-side (16-byte packed) |

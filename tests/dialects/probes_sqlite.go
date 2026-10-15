@@ -137,6 +137,11 @@ func sqliteProbes() []Probe {
 		p("constraint.duplicate_names_accepted", "two constraints of one table may have the same name", func(e *Env) {
 			e.Exec("CREATE TABLE t (a int CONSTRAINT c CHECK (a > 0), b int CONSTRAINT c CHECK (b > 0))")
 		}),
+		p("order.null_first_asc", "an order puts NULL first ascending and last descending", func(e *Env) {
+			e.Exec("CREATE TABLE t (a int)", "INSERT INTO t VALUES (2), (NULL), (1)")
+			e.WantRows("SELECT a FROM t ORDER BY a ASC", "NULL,1,2")
+			e.WantRows("SELECT a FROM t ORDER BY a DESC", "2,1,NULL")
+		}),
 		p("unique.nulls_distinct", "a unique key accepts several NULLs", func(e *Env) {
 			e.Exec("CREATE TABLE t (a int UNIQUE)", "INSERT INTO t VALUES (NULL), (NULL)")
 		}),

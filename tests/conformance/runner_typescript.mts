@@ -512,6 +512,23 @@ async function main() {
     await created.delete();
     return { at0_ge_now: geNow, at3_lt_now: ltNow };
   });
+  // the seed prices the authors of service 100 except a seq that is a multiple of 3 (benchmarks/sql/seed.*.sql)
+  await run('order_nulls', async () => {
+    const priced = () => author().removeAllColumns().addColumnPrice().serviceSeq(100).andLtSeq(500);
+    const asc = (await priced().orderByPriceAsc().orderBySeqAsc().gets()).toArray();
+    const desc = (await priced().orderByPriceDesc().orderBySeqAsc().gets()).toArray();
+    const perParent: Record<string, unknown> = {};
+    for (const order of ['asc', 'desc']) {
+      const child = new Author().matchSeqWithUserSeq().removeAllColumns().addColumnPrice();
+      if (order === 'asc') child.orderByPriceAsc(); else child.orderByPriceDesc();
+      perParent[order] = (await new User().connect(db).relations(child.orderBySeqAsc().groupLimit(2)).seq(100).gets()).toArray();
+    }
+    return {
+      asc,
+      desc,
+      limit_per_parent: perParent,
+    };
+  });
 
   await db.close();
   const unknown = selected.filter(name => !declared.has(name));
