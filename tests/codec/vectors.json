@@ -1304,6 +1304,102 @@
             "encode_error": "CODEC_ENCODE"
         },
         {
+            "name": "ip.leading_space",
+            "styles": [
+                "ip"
+            ],
+            "value": " 192.0.2.1",
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "ip.trailing_space",
+            "styles": [
+                "ip"
+            ],
+            "value": "192.0.2.1 ",
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "ip.trailing_newline",
+            "styles": [
+                "ip"
+            ],
+            "value": "192.0.2.1\n",
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "ip.leading_tab",
+            "styles": [
+                "ip"
+            ],
+            "value": "\t192.0.2.1",
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "ip.inner_space",
+            "styles": [
+                "ip"
+            ],
+            "value": "192.0. 2.1",
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "ip.v6_leading_space",
+            "styles": [
+                "ip"
+            ],
+            "value": " 2001:db8::1",
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "ip.v6_trailing_newline",
+            "styles": [
+                "ip"
+            ],
+            "value": "2001:db8::1\n",
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "ip.v6_inner_space",
+            "styles": [
+                "ip"
+            ],
+            "value": "2001:db8:: 1",
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "ip.leading_nul",
+            "styles": [
+                "ip"
+            ],
+            "value": "\u0000192.0.2.1",
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "ip.inner_nul",
+            "styles": [
+                "ip"
+            ],
+            "value": "192.0.2\u0000.1",
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "ip.leading_form_feed",
+            "styles": [
+                "ip"
+            ],
+            "value": "\f192.0.2.1",
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "ip.trailing_no_break_space",
+            "styles": [
+                "ip"
+            ],
+            "value": "192.0.2.1 ",
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
             "name": "yaml_core.binary_like",
             "styles": [
                 "yaml"

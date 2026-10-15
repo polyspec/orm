@@ -1,7 +1,7 @@
 // The shared codec vectors (tests/codec/vectors.json): each vector is one case named by the vector.
 import { after } from 'node:test';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { StyledValue, decodeCodec, encodeCodec } from '../dist/index.js';
+import { StyledValue, decodeCodec, encodeCodec, hostEncode } from '../dist/index.js';
 import { Value as JsonValue } from '@polyspec/ordered-json';
 import { check, same, shown, stagesOf } from './codec_case.mjs';
 
@@ -13,7 +13,9 @@ for (const vector of vectors) check(vector.name, wrong => {
   if (vector.encode_error !== undefined) {
     // A vector with encode_error has no stored cell: encoding its value fails with that code.
     try {
-      const encoded = encodeCodec(stagesOf(vector.styles), StyledValue.value(vector.value));
+      // A list of host stages only (ip) encodes with the host encode and no key.
+      const host = vector.styles.every(style => ['aes', 'hex', 'ip'].includes(style));
+      const encoded = host ? hostEncode(vector.value, vector.styles, '') : encodeCodec(stagesOf(vector.styles), StyledValue.value(vector.value));
       wrong.push(`encode gave ${shown(encoded)} want ${vector.encode_error}`);
     } catch (error) {
       if (error?.code !== vector.encode_error) wrong.push(`encode ${String(error)} want ${vector.encode_error}`);

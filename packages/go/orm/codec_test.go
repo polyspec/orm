@@ -131,7 +131,14 @@ func TestCodecVectors(t *testing.T) {
 	for _, v := range f.Vectors {
 		t.Run(v.Name, func(t *testing.T) {
 			if v.EncodeError != "" {
-				enc, err := Encode(codecStages(v.Styles), Value(jsonNumbers(reNumber(v.Value))))
+				// A list of host stages only (ip) encodes with the host encode and no key.
+				var enc any
+				var err error
+				if codec, host := splitHost(v.Styles); len(codec) == 0 {
+					enc, err = HostEncode(v.Value, host, "")
+				} else {
+					enc, err = Encode(codecStages(v.Styles), Value(jsonNumbers(reNumber(v.Value))))
+				}
 				if err == nil || ErrorCode(err) != v.EncodeError {
 					t.Errorf("encode gave %#v, %v; want %s", enc, err, v.EncodeError)
 				}

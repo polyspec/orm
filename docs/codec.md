@@ -91,6 +91,8 @@ A stored cell is the output of the encoder, so a read decodes a cell only in the
 - Each language's trimming removes a different set of characters (for example Go and Python strip a form feed, PHP strips NUL, and JavaScript strips a byte order mark), so a lenient read accepts different cells in different clients; an exact read is the one rule that every client implements alike.
 - The rule holds on every database because the client decodes every `hex` cell: MySQL `UNHEX` takes odd-length text and yields NULL for a cell with white space, so no dialect reads `hex` in SQL. No dialect writes `hex` in SQL either: the client encoder writes the upper-case text on every database, and every dialect reads the cell as stored for the host decode.
 
+The `ip` encoder holds to the same rule on the write side: it packs only the exact text of an address and fails with `CODEC_ENCODE` on any white space around or inside it (space, tab, line break, form feed, NUL, a no-break space), in every client. No client trims the input, since two inputs would then store the same bytes and the stored value would not read back as the input; the `ip.*` vectors of `tests/codec/vectors.json` give these cases.
+
 `hex` is upper-case hex digits only: every encoder writes upper case, so a lower-case letter is `CODEC_DECODE`. Go exports the host decode as `orm.HostDecode(raw, styles, aesKey)`, as the other clients export theirs (PHP `Codec::hostDecode`, TypeScript `hostDecode`, Rust `codec::host_decode`, Python `host_decode`); a list without `aes` needs no key.
 
 ## Vectors (`tests/codec`)

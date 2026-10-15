@@ -89,7 +89,8 @@ function aesV2Key(key: string): Buffer {
 
 
 function packIp(value: string): Buffer {
-  const source = value.trim();
+  // The exact text only: white space around the address is CODEC_ENCODE (docs/codec.md).
+  const source = value;
   const version = isIP(source);
   if (version === 4) return Buffer.from(source.split('.').map(Number));
   if (version !== 6) throw new CodecError('CODEC_ENCODE', `ip: ${JSON.stringify(source)} is not an address`);

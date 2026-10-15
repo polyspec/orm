@@ -647,7 +647,8 @@ pub fn hex_decode(s: &str) -> Result<Vec<u8>> {
 
 /// `INET6_ATON`: 4 bytes for IPv4, 16 for IPv6.
 fn pack_ip(s: &str) -> Result<Vec<u8>> {
-    match s.trim().parse::<std::net::IpAddr>() {
+    // The exact text only: white space around the address is CODEC_ENCODE (docs/codec.md).
+    match s.parse::<std::net::IpAddr>() {
         Ok(std::net::IpAddr::V4(a)) => Ok(a.octets().to_vec()),
         Ok(std::net::IpAddr::V6(a)) => Ok(a.octets().to_vec()),
         Err(_) => Err(err(CODEC_ENCODE, format!("ip: {s:?} is not an address"))),

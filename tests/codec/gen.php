@@ -94,6 +94,25 @@ foreach ($textStyles as $name => $chain) {
         ];
     }
 }
+// The ip host stage packs only the exact text of an address: white space around or inside it is CODEC_ENCODE, so two
+// inputs never store the same bytes and the stored value reads back as the input (docs/codec.md, Decoding is exact).
+$ipWhiteSpace = [
+    'leading_space' => ' 192.0.2.1',
+    'trailing_space' => '192.0.2.1 ',
+    'trailing_newline' => "192.0.2.1\n",
+    'leading_tab' => "\t192.0.2.1",
+    'inner_space' => '192.0. 2.1',
+    'v6_leading_space' => ' 2001:db8::1',
+    'v6_trailing_newline' => "2001:db8::1\n",
+    'v6_inner_space' => '2001:db8:: 1',
+    'leading_nul' => "\x00192.0.2.1",
+    'inner_nul' => "192.0.2\x00.1",
+    'leading_form_feed' => "\f192.0.2.1",
+    'trailing_no_break_space' => "192.0.2.1\u{a0}",
+];
+foreach ($ipWhiteSpace as $vname => $v) {
+    $out[] = ['name' => "ip.$vname", 'styles' => ['ip'], 'value' => $v, 'encode_error' => 'CODEC_ENCODE'];
+}
 // Plain scalars read by the YAML 1.2 core schema (YAML 1.2.2, 10.3.2): stored text and value.
 // The text is given, not dumped, since an encoder quotes these strings.
 $yamlCore = [

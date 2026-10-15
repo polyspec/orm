@@ -75,7 +75,8 @@ def _quoted(text: str) -> str:
 
 
 def _pack_ip(value: str) -> bytes:
-    source = value.strip()
+    # The exact text only: white space around the address is CODEC_ENCODE (docs/codec.md).
+    source = value
     try:
         address = ipaddress.ip_address(source)
     except ValueError:

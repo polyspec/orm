@@ -61,7 +61,11 @@ def check_vector(test: unittest.TestCase, vector: dict) -> None:
     if "encode_error" in vector:
         # A vector with encode_error has no stored cell: encoding its value fails with that code.
         with test.assertRaises(CodecError) as raised:
-            encode(stages_of(vector["styles"]), StyledValue.value(vector["value"]))
+            # A list of host stages only (ip) encodes with the host encode and no key.
+            if all(style in ("aes", "hex", "ip") for style in vector["styles"]):
+                host_encode(vector["value"], vector["styles"], "")
+            else:
+                encode(stages_of(vector["styles"]), StyledValue.value(vector["value"]))
         test.assertEqual(raised.exception.code, vector["encode_error"], vector["name"])
         return
     raw = (

@@ -378,7 +378,9 @@ final class Codec
     /** INET6_ATON: 4 bytes for IPv4 (an IPv4-mapped IPv6 address included), 16 for IPv6. */
     private static function packIp(string $s): string
     {
-        $b = @inet_pton(trim($s));
+        // The exact text only: white space around the address is CODEC_ENCODE (docs/codec.md).
+        // inet_pton throws a ValueError on a NUL byte, which is not an address either.
+        $b = str_contains($s, "\0") ? false : @inet_pton($s);
         if ($b === false) {
             throw new OrmException(Code::CODEC_ENCODE, "ip: \"$s\" is not an address");
         }

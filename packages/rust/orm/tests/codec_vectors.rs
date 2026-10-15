@@ -8,7 +8,7 @@
 use std::sync::{Mutex, PoisonError};
 
 use base64::Engine as _;
-use polyspec_orm::codec::{decode, encode, encode_ordered, hex_decode, host_decode};
+use polyspec_orm::codec::{decode, encode, encode_ordered, hex_decode, host_decode, host_encode};
 use polyspec_orm::codes::CODEC_DECODE;
 use polyspec_orm::{ordered_json, Param, StyledValue, Val};
 use polyspec_orm_testcase::Trial;
@@ -83,7 +83,13 @@ fn vectors() -> Vec<Trial> {
 fn vector_case(v: &Vector) {
     if let Some(code) = &v.encode_error {
         let styles: Vec<&str> = v.styles.iter().map(String::as_str).collect();
-        match encode(&styles, StyledValue::Value(&v.value)) {
+        // A list of host stages only (ip) encodes with `host_encode` and no key.
+        let host = v.styles.iter().all(|s| s == "aes" || s == "hex" || s == "ip");
+        let got = match &v.value {
+            Value::String(text) if host => host_encode(&Param::Str(text.clone()), &v.styles, ""),
+            _ => encode(&styles, StyledValue::Value(&v.value)),
+        };
+        match got {
             Err(e) if e.code() == code => return,
             other => panic!("{}: encode gave {other:?}, want {code}", v.name),
         }

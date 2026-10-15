@@ -95,6 +95,8 @@ PHP 배열은 순서 있는 맵이다. 키가 정확히 `0..n-1`인 배열은 �
 - 언어마다 trim이 지우는 문자 집합이 다르다(예를 들어 Go와 Python은 form feed를, PHP는 NUL을, JavaScript는 byte order mark를 지운다). 그래서 너그러운 읽기는 클라이언트마다 다른 셀을 받는다. 정확한 읽기만이 모든 클라이언트가 똑같이 구현하는 규칙이다.
 - 클라이언트가 모든 `hex` 셀을 디코딩하므로 이 규칙은 모든 데이터베이스에서 성립한다. MySQL `UNHEX`는 홀수 길이 text를 받고 공백이 있는 셀에 NULL을 내므로, 어떤 dialect도 `hex`를 SQL에서 읽지 않는다. 어떤 dialect도 `hex`를 SQL에서 쓰지 않는다: 모든 데이터베이스에서 클라이언트 인코더가 대문자 text를 쓰고, 모든 dialect는 저장된 셀을 그대로 읽어 host 디코딩에 넘긴다.
 
+`ip` 인코더도 쓰기 쪽에서 같은 규칙을 지킨다: 모든 클라이언트에서 주소의 정확한 text만 pack하고, 그 둘레나 안의 공백(space, tab, 줄바꿈, form feed, NUL, no-break space)은 모두 `CODEC_ENCODE`로 실패한다. 어떤 클라이언트도 입력을 trim하지 않는다. trim하면 두 입력이 같은 바이트로 저장되고 저장 값이 입력으로 읽히지 않기 때문이다. `tests/codec/vectors.json`의 `ip.*` vector가 이 사례를 담는다.
+
 `hex`는 대문자 hex 숫자만 받는다. 모든 인코더가 대문자를 쓰므로 소문자는 `CODEC_DECODE`다. Go는 다른 클라이언트가 host 디코딩을 공개하듯(PHP `Codec::hostDecode`, TypeScript `hostDecode`, Rust `codec::host_decode`, Python `host_decode`) `orm.HostDecode(raw, styles, aesKey)`를 공개한다. `aes`가 없는 목록에는 key가 필요 없다.
 
 ## 벡터 (`tests/codec`)

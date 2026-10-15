@@ -113,7 +113,8 @@ func BlindIndex(v any, key string) (string, error) {
 
 // packIP is INET6_ATON: 4 bytes for IPv4, 16 for IPv6.
 func packIP(s string) ([]byte, error) {
-	ip := net.ParseIP(strings.TrimSpace(s))
+	// The exact text only: white space around the address is CODEC_ENCODE (docs/codec.md).
+	ip := net.ParseIP(s)
 	if ip == nil {
 		return nil, codecErr(CodeCodecEncode, "ip: %q is not an address", s)
 	}

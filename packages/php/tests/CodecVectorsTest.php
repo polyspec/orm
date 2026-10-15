@@ -66,7 +66,10 @@ final class CodecVectorsTest extends TestCase
         if (isset($v['encode_error'])) {
             // A vector with encode_error has no stored cell: encoding its value fails with that code.
             try {
-                Codec::encode($styles, StyledValue::value($v['value']));
+                // A list of host stages only (ip) encodes with the host encode and no key.
+                count(array_filter($styles, Codec::isHostStyle(...))) === count($styles)
+                    ? Codec::hostEncode($v['value'], $styles, '')
+                    : Codec::encode($styles, StyledValue::value($v['value']));
             } catch (OrmException $e) {
                 self::assertSame($v['encode_error'], $e->code_, 'php encode error');
                 return;
