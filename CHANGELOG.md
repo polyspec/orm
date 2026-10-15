@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A contains value binds as text or NULL in every client. (#T80)
 - Every client checks each parameter against its slot type before a statement, proven by shared bind vectors. (#T89)
 - A feature coverage process runs up to the longest test class, so a test is stopped by its own deadline. (#T185)
 - The repository takes kit 0.0.53. (#T184)
