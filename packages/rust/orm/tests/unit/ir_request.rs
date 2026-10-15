@@ -65,14 +65,14 @@ fn strings(object: &Map<String, Value>, at: &str, key: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
-/// typed request의 직렬화가 생략하거나 채우는 값을 입력에서도 같게 한다: 빈 `conn`은 없는 것과 같고,
+/// typed request의 직렬화가 생략하거나 채우는 값을 입력에서도 같게 한다: 빈 `conn`과 빈 `key_by`는 없는 것과 같고,
 /// 없거나 null인 `ref.path`는 root인 ""다.
 fn normalized(value: &Value) -> Value {
     match value {
         Value::Object(object) => {
             let mut out = Map::new();
             for (key, member) in object {
-                if key == "conn" && member == "" {
+                if (key == "conn" || key == "key_by") && member == "" {
                     continue;
                 }
                 let mut member = normalized(member);
@@ -338,6 +338,7 @@ pub(crate) fn request(input: &Value, manifest_hash: &str) -> ir::Request {
             "where",
             "joins",
             "relations",
+            "key_by",
             "set",
             "on_duplicate",
             "optimistic",

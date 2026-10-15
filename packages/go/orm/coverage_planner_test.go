@@ -311,6 +311,12 @@ func TestCoveragePlannerRejectsNullableKeyBy(t *testing.T) {
 	compilePlannerCase(t, "planner_rejects_nullable_key_by")
 }
 
+// TestCoveragePlannerKeyByEmptyIsAbsent는 빈 key_by가 없는 key_by처럼 읽히는지 확인한다.
+func TestCoveragePlannerKeyByEmptyIsAbsent(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_key_by_empty_is_absent")
+}
+
 // TestCoveragePlannerInsertByValue는 insert by value case가 기대한 대로 compile되는지 확인한다.
 func TestCoveragePlannerInsertByValue(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
