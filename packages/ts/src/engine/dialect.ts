@@ -148,7 +148,8 @@ const mysql: Dialect = {
     if (unit === undefined) return undefined;
     return `${name.endsWith('_later') ? 'DATE_ADD' : 'DATE_SUB'}(NOW(6), INTERVAL ${arg()} ${unit.toUpperCase()})`;
   },
-  containsBinary: (col, value) => `${col} LIKE BINARY ${value('like_contains')}`,
+  // utf8mb4_0900_bin compares code points under LIKE; LIKE BINARY is deprecated since MySQL 8.0.27.
+  containsBinary: (col, value) => `${col} LIKE ${value('like_contains')}`,
   tupleIn: (cols, rows, negate) => tupleIn(cols, rows, negate, false),
   random: () => 'RAND()',
   nullsOrder: () => '',

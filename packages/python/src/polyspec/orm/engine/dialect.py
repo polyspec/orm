@@ -220,7 +220,8 @@ class MysqlDialect(_Dialect):
         return f"{fn}(NOW(6), INTERVAL {arg()} {unit.upper()})"
 
     def contains_binary(self, col, value):
-        return f"{col} LIKE BINARY {value('like_contains')}"
+        # utf8mb4_0900_bin compares code points under LIKE; LIKE BINARY is deprecated since MySQL 8.0.27.
+        return f"{col} LIKE {value('like_contains')}"
 
     def random(self):
         return "RAND()"

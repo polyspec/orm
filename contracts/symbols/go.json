@@ -2183,6 +2183,7 @@
   "packages/go/model/composite_account.go::CompositeAccountModel.AddColumnName": "receiver=*CompositeAccountModel func() *CompositeAccountModel",
   "packages/go/model/composite_account.go::CompositeAccountModel.AddColumnTenantId": "receiver=*CompositeAccountModel func() *CompositeAccountModel",
   "packages/go/model/composite_account.go::CompositeAccountModel.And": "receiver=*CompositeAccountModel func(args ...any) *CompositeAccountModel",
+  "packages/go/model/composite_account.go::CompositeAccountModel.AndLbName": "receiver=*CompositeAccountModel func[T0 argStringLike](v0 T0) *CompositeAccountModel",
   "packages/go/model/composite_account.go::CompositeAccountModel.AndLkName": "receiver=*CompositeAccountModel func[T0 argStringLike](v0 T0) *CompositeAccountModel",
   "packages/go/model/composite_account.go::CompositeAccountModel.AndNot": "receiver=*CompositeAccountModel func(fn func(*CompositeAccountModel)) *CompositeAccountModel",
   "packages/go/model/composite_account.go::CompositeAccountModel.AvgAccountId": "receiver=*CompositeAccountModel func() *CompositeAccountModel",

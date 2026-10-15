@@ -207,7 +207,7 @@ func containsVector(db *orm.DB, cond func(*model.CompositeAccountModel, string) 
 		}
 		matches = append(matches, picks(found, "account_id"))
 	}
-	all, err := model.CompositeAccount().Connect(db).TenantId(902).Gets()
+	all, err := model.CompositeAccount().Connect(db).TenantId(902).OrderByAccountIdAsc().Gets()
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +273,7 @@ func run() (status int) {
 	out := map[string]vector{}
 	writeVectors := map[string]bool{
 		"write_cycle": true, "now_defaults": true, "required_columns": true,
-		"creates_and_save": true, "delete_recursive": true, "contains_ascii_fold": true,
+		"creates_and_save": true, "delete_recursive": true, "contains_ascii_fold": true, "contains_binary_code_point": true,
 	}
 	// vector는 선언 순서대로 모은 뒤, 선택을 검사하고 그 순서로 실행한다.
 	var declared []declaredVector
@@ -719,6 +719,9 @@ func run() (status int) {
 	})
 	run("contains_ascii_fold", func() (any, error) {
 		return containsVector(db, func(q *model.CompositeAccountModel, p string) *model.CompositeAccountModel { return q.AndLkName(p) }, "PPL", "ÉV", "_", "")
+	})
+	run("contains_binary_code_point", func() (any, error) {
+		return containsVector(db, func(q *model.CompositeAccountModel, p string) *model.CompositeAccountModel { return q.AndLbName(p) }, "pp", "É", "PPL", "_")
 	})
 	run("delete_recursive", func() (any, error) {
 		service, err := model.Service().Connect(db).SetName("recursive").Create()

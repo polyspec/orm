@@ -166,7 +166,7 @@ async fn contains_vector(db: &Db, cond: impl Fn(CompositeAccount, &str) -> Compo
         let found = cond(CompositeAccount::new().connect(db).tenant_id(902), p).order_by_account_id_asc().gets().await?;
         matches.push(picks(&found, &["account_id"]));
     }
-    CompositeAccount::new().connect(db).tenant_id(902).gets().await?.delete(false).await?;
+    CompositeAccount::new().connect(db).tenant_id(902).order_by_account_id_asc().gets().await?.delete(false).await?;
     Ok(Value::Array(matches))
 }
 
@@ -629,6 +629,10 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     run!(
         "contains_ascii_fold",
         db.transaction(async || contains_vector(db, |q, p| q.and_lk_name(p), &["PPL", "ÉV", "_", ""]).await).retry(0)
+    );
+    run!(
+        "contains_binary_code_point",
+        db.transaction(async || contains_vector(db, |q, p| q.and_lb_name(p), &["pp", "É", "PPL", "_"]).await).retry(0)
     );
     run!(
         "delete_recursive",

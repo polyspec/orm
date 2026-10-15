@@ -10,7 +10,7 @@ Executors still see the same plan shape: steps, bind slots, assemble.
 | placeholders | `?` | `$n` (the executor renumbers when it expands a `parent` slot to N values) | `?` |
 | LIMIT | `LIMIT off, n` | `LIMIT n OFFSET off` | `LIMIT n OFFSET off` |
 | `Lk` | `F(col) LIKE F(?)`, F being 26 nested `REPLACE` of `A`–`Z` with its lower case: the column's `utf8mb4_0900_bin` compares code points, and `LOWER` or a `_ci` collation would fold beyond ASCII (probes `mysql.like.binary_collation_case_sensitive`, `mysql.like.ascii_fold_replace`) | `ILIKE` under `COLLATE "C"` (probe `postgres.ilike.c_collation_ascii_only`) | `LIKE … ESCAPE '\'` (ASCII case-insensitive, probe `sqlite.like.ascii_only`) |
-| `Lb` | `LIKE BINARY` | `LIKE` | `instr(col, ?) > 0` |
+| `Lb` | `LIKE` (binary collation `utf8mb4_0900_bin`, which compares code points; `LIKE BINARY` is deprecated since MySQL 8.0.27; probe `mysql.like.binary_collation_code_point`) | `LIKE` | `instr(col, ?) > 0` |
 | `Fulltext` / `FulltextBoolean` | `MATCH … AGAINST (… IN NATURAL LANGUAGE/BOOLEAN MODE)`, boolean value normalized (`+a +b*`) | `to_tsvector('simple', coalesce(a,'') || ' ' || …) @@ plainto_tsquery / websearch_to_tsquery('simple', ?)`, value trimmed only | **rejected** (FTS5 needs virtual tables) |
 | `forceIndex<Name>` | `FORCE INDEX (name)` | ignored (no hints) | `INDEXED BY "name"` |
 | insert id | `LAST_INSERT_ID()` (upsert adds `pk = LAST_INSERT_ID(pk)`) | `RETURNING pk` | `RETURNING pk` |

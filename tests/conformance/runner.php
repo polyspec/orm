@@ -154,7 +154,7 @@ $db->subscribe(static function (StatementEvent $e): void {
 $out = [];
 /** @var array<string, callable> vector 이름별 chain, 선언 순서 */
 $vectors = [];
-$writeVectors = array_fill_keys(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold'], true);
+$writeVectors = array_fill_keys(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point'], true);
 
 /** vector를 선언한다. 선택된 vector는 모든 선언이 끝난 뒤 선언 순서대로 실행한다. */
 function vector(string $name, callable $fn): void
@@ -402,11 +402,12 @@ function containsVector(Db $db, callable $cond, string ...$patterns): array
     foreach ($patterns as $p) {
         $matches[] = picks($cond((new CompositeAccount)($db)->tenantId(902), $p)->orderByAccountIdAsc()->gets(), 'account_id');
     }
-    (new CompositeAccount)($db)->tenantId(902)->gets()->delete();
+    (new CompositeAccount)($db)->tenantId(902)->orderByAccountIdAsc()->gets()->delete();
     return $matches;
 }
 
 vector('contains_ascii_fold', fn() => containsVector($db, fn(CompositeAccount $q, string $p) => $q->andLkName($p), 'PPL', 'ÉV', '_', ''));
+vector('contains_binary_code_point', fn() => containsVector($db, fn(CompositeAccount $q, string $p) => $q->andLbName($p), 'pp', 'É', 'PPL', '_'));
 
 vector('delete_recursive', function () use ($db): array {
     $service = (new Service)($db)->setName('recursive')->create();

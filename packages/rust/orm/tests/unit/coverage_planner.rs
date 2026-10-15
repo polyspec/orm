@@ -98,6 +98,13 @@ fn coverage_planner_count() {
 
 #[test]
 #[ignore = "run by feature-check"]
+fn coverage_planner_contains_binary_collation() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_contains_binary_collation");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
 fn coverage_planner_contains_ascii_fold() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_contains_ascii_fold");

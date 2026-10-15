@@ -324,6 +324,7 @@ def main():
         "creates_and_save",
         "delete_recursive",
         "contains_ascii_fold",
+        "contains_binary_code_point",
     }
 
     def run(name, fn):
@@ -872,12 +873,18 @@ def main():
             )
             for p in patterns
         ]
-        CompositeAccount().connect(db).tenant_id(902).gets().delete()
+        CompositeAccount().connect(db).tenant_id(
+            902
+        ).order_by_account_id_asc().gets().delete()
         return matches
 
     run(
         "contains_ascii_fold",
         lambda: contains_vector(lambda q, p: q.and_lk_name(p), "PPL", "ÉV", "_", ""),
+    )
+    run(
+        "contains_binary_code_point",
+        lambda: contains_vector(lambda q, p: q.and_lb_name(p), "pp", "É", "PPL", "_"),
     )
 
     def delete_recursive():

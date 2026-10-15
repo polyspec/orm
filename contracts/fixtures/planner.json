@@ -269,6 +269,78 @@
     },
     {
       "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT COUNT(*) FROM `user` AS `a` WHERE `a`.`name` LIKE ?",
+            "tables": [
+              "user"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT COUNT(*) FROM \"user\" AS \"a\" WHERE \"a\".\"name\" LIKE $1",
+            "tables": [
+              "user"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT COUNT(*) FROM \"user\" AS \"a\" WHERE instr(\"a\".\"name\", ?) > 0",
+            "tables": [
+              "user"
+            ]
+          }
+        ]
+      },
+      "id": "planner_contains_binary_collation",
+      "input": {
+        "entity": "user",
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "name",
+                "op": "contains_binary",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
         "error": "COLUMN_UNKNOWN"
       },
       "id": "planner_rejects_unknown_column",
