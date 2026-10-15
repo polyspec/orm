@@ -183,10 +183,17 @@ export function connect(dsn: string, options: ConnectOptions = {}): Promise<Db> 
 
 const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH);
 
+/** The entity `name` of the model set, which registerModel built from the manifest. */
+function modelEntity(name: string): EntityDef['entity'] {
+  const found = model.entities.get(name);
+  if (found === undefined) throw new Error(`the model set has no entity ${name}`);
+  return found;
+}
+
 /** A author model or row. */
 export class Author extends Model {
-  public static readonly entity: EntityDef = { model, entity: model.entities.get('author')!, create: core => new Author(core) };
-  public getSeq(): number { return this[CORE].column('seq') as number; }
+  public static readonly entity: EntityDef = { model, entity: modelEntity('author'), create: core => new Author(core) };
+  public getSeq(): number { const value = this[CORE].column('seq'); if (typeof value === 'number') return value; throw new TypeError('author.seq holds a value of type ' + typeof value + ', not number'); }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
@@ -198,7 +205,7 @@ export class Author extends Model {
   public minusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, minus: true }); return this; }
   public sumSeq(): this { this[CORE].aggregate('sum', 'seq'); return this; }
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
-  public getName(): string { return this[CORE].column('name') as string; }
+  public getName(): string { const value = this[CORE].column('name'); if (typeof value === 'string') return value; throw new TypeError('author.name holds a value of type ' + typeof value + ', not string'); }
   public setName(value: string): this { this[CORE].setValue('name', value); return this; }
   public addColumnName(): this { this[CORE].addColumn('name'); return this; }
   public removeColumnName(): this { this[CORE].removeColumn('name'); return this; }
@@ -206,7 +213,7 @@ export class Author extends Model {
   public keyNameName(): this { this[CORE].keyName = 'name'; return this; }
   public orderByNameAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', false, fn); return this; }
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
-  public getDescription(): string | null { return this[CORE].column('description') as string | null; }
+  public getDescription(): string | null { const value = this[CORE].column('description'); if (value === null || typeof value === 'string') return value; throw new TypeError('author.description holds a value of type ' + typeof value + ', not string | null'); }
   public setDescription(value: string | null): this { this[CORE].setValue('description', value); return this; }
   public addColumnDescription(): this { this[CORE].addColumn('description'); return this; }
   public removeColumnDescription(): this { this[CORE].removeColumn('description'); return this; }
@@ -214,7 +221,7 @@ export class Author extends Model {
   public keyNameDescription(): this { this[CORE].keyName = 'description'; return this; }
   public orderByDescriptionAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('description', false, fn); return this; }
   public orderByDescriptionDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('description', true, fn); return this; }
-  public getCreatedTs(): string { return this[CORE].column('created_ts') as string; }
+  public getCreatedTs(): string { const value = this[CORE].column('created_ts'); if (typeof value === 'string') return value; throw new TypeError('author.created_ts holds a value of type ' + typeof value + ', not string'); }
   public setCreatedTs(value: string | Date): this { this[CORE].setValue('created_ts', value); return this; }
   public addColumnCreatedTs(): this { this[CORE].addColumn('created_ts'); return this; }
   public removeColumnCreatedTs(): this { this[CORE].removeColumn('created_ts'); return this; }
@@ -222,7 +229,7 @@ export class Author extends Model {
   public keyNameCreatedTs(): this { this[CORE].keyName = 'created_ts'; return this; }
   public orderByCreatedTsAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('created_ts', false, fn); return this; }
   public orderByCreatedTsDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('created_ts', true, fn); return this; }
-  public getUpdatedTs(): string { return this[CORE].column('updated_ts') as string; }
+  public getUpdatedTs(): string { const value = this[CORE].column('updated_ts'); if (typeof value === 'string') return value; throw new TypeError('author.updated_ts holds a value of type ' + typeof value + ', not string'); }
   public setUpdatedTs(value: string | Date): this { this[CORE].setValue('updated_ts', value); return this; }
   public addColumnUpdatedTs(): this { this[CORE].addColumn('updated_ts'); return this; }
   public removeColumnUpdatedTs(): this { this[CORE].removeColumn('updated_ts'); return this; }
@@ -230,7 +237,7 @@ export class Author extends Model {
   public keyNameUpdatedTs(): this { this[CORE].keyName = 'updated_ts'; return this; }
   public orderByUpdatedTsAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('updated_ts', false, fn); return this; }
   public orderByUpdatedTsDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('updated_ts', true, fn); return this; }
-  public getIsClose(): boolean { return this[CORE].column('is_close') as boolean; }
+  public getIsClose(): boolean { const value = this[CORE].column('is_close'); if (typeof value === 'boolean') return value; throw new TypeError('author.is_close holds a value of type ' + typeof value + ', not boolean'); }
   public setIsClose(value: boolean): this { this[CORE].setValue('is_close', value); return this; }
   public addColumnIsClose(): this { this[CORE].addColumn('is_close'); return this; }
   public removeColumnIsClose(): this { this[CORE].removeColumn('is_close'); return this; }
@@ -238,7 +245,7 @@ export class Author extends Model {
   public keyNameIsClose(): this { this[CORE].keyName = 'is_close'; return this; }
   public orderByIsCloseAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('is_close', false, fn); return this; }
   public orderByIsCloseDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('is_close', true, fn); return this; }
-  public getIsDisplay(): boolean { return this[CORE].column('is_display') as boolean; }
+  public getIsDisplay(): boolean { const value = this[CORE].column('is_display'); if (typeof value === 'boolean') return value; throw new TypeError('author.is_display holds a value of type ' + typeof value + ', not boolean'); }
   public setIsDisplay(value: boolean): this { this[CORE].setValue('is_display', value); return this; }
   public addColumnIsDisplay(): this { this[CORE].addColumn('is_display'); return this; }
   public removeColumnIsDisplay(): this { this[CORE].removeColumn('is_display'); return this; }
@@ -246,7 +253,7 @@ export class Author extends Model {
   public keyNameIsDisplay(): this { this[CORE].keyName = 'is_display'; return this; }
   public orderByIsDisplayAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('is_display', false, fn); return this; }
   public orderByIsDisplayDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('is_display', true, fn); return this; }
-  public getDisplayStartDt(): string | null { return this[CORE].column('display_start_dt') as string | null; }
+  public getDisplayStartDt(): string | null { const value = this[CORE].column('display_start_dt'); if (value === null || typeof value === 'string') return value; throw new TypeError('author.display_start_dt holds a value of type ' + typeof value + ', not string | null'); }
   public setDisplayStartDt(value: string | Date | null): this { this[CORE].setValue('display_start_dt', value); return this; }
   public addColumnDisplayStartDt(): this { this[CORE].addColumn('display_start_dt'); return this; }
   public removeColumnDisplayStartDt(): this { this[CORE].removeColumn('display_start_dt'); return this; }
@@ -254,7 +261,7 @@ export class Author extends Model {
   public keyNameDisplayStartDt(): this { this[CORE].keyName = 'display_start_dt'; return this; }
   public orderByDisplayStartDtAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('display_start_dt', false, fn); return this; }
   public orderByDisplayStartDtDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('display_start_dt', true, fn); return this; }
-  public getDisplayEndDt(): string | null { return this[CORE].column('display_end_dt') as string | null; }
+  public getDisplayEndDt(): string | null { const value = this[CORE].column('display_end_dt'); if (value === null || typeof value === 'string') return value; throw new TypeError('author.display_end_dt holds a value of type ' + typeof value + ', not string | null'); }
   public setDisplayEndDt(value: string | Date | null): this { this[CORE].setValue('display_end_dt', value); return this; }
   public addColumnDisplayEndDt(): this { this[CORE].addColumn('display_end_dt'); return this; }
   public removeColumnDisplayEndDt(): this { this[CORE].removeColumn('display_end_dt'); return this; }
@@ -262,7 +269,7 @@ export class Author extends Model {
   public keyNameDisplayEndDt(): this { this[CORE].keyName = 'display_end_dt'; return this; }
   public orderByDisplayEndDtAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('display_end_dt', false, fn); return this; }
   public orderByDisplayEndDtDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('display_end_dt', true, fn); return this; }
-  public getIsAllday(): boolean { return this[CORE].column('is_allday') as boolean; }
+  public getIsAllday(): boolean { const value = this[CORE].column('is_allday'); if (typeof value === 'boolean') return value; throw new TypeError('author.is_allday holds a value of type ' + typeof value + ', not boolean'); }
   public setIsAllday(value: boolean): this { this[CORE].setValue('is_allday', value); return this; }
   public addColumnIsAllday(): this { this[CORE].addColumn('is_allday'); return this; }
   public removeColumnIsAllday(): this { this[CORE].removeColumn('is_allday'); return this; }
@@ -270,7 +277,7 @@ export class Author extends Model {
   public keyNameIsAllday(): this { this[CORE].keyName = 'is_allday'; return this; }
   public orderByIsAlldayAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('is_allday', false, fn); return this; }
   public orderByIsAlldayDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('is_allday', true, fn); return this; }
-  public getTargetClubReaderCount(): number { return this[CORE].column('target_club_reader_count') as number; }
+  public getTargetClubReaderCount(): number { const value = this[CORE].column('target_club_reader_count'); if (typeof value === 'number') return value; throw new TypeError('author.target_club_reader_count holds a value of type ' + typeof value + ', not number'); }
   public setTargetClubReaderCount(value: number): this { this[CORE].setValue('target_club_reader_count', value); return this; }
   public addColumnTargetClubReaderCount(): this { this[CORE].addColumn('target_club_reader_count'); return this; }
   public removeColumnTargetClubReaderCount(): this { this[CORE].removeColumn('target_club_reader_count'); return this; }
@@ -282,7 +289,7 @@ export class Author extends Model {
   public minusTargetClubReaderCount(n: number): this { this[CORE].putSet({ column: 'target_club_reader_count', value: n, minus: true }); return this; }
   public sumTargetClubReaderCount(): this { this[CORE].aggregate('sum', 'target_club_reader_count'); return this; }
   public avgTargetClubReaderCount(): this { this[CORE].aggregate('avg', 'target_club_reader_count'); return this; }
-  public getSuccessCount(): number { return this[CORE].column('success_count') as number; }
+  public getSuccessCount(): number { const value = this[CORE].column('success_count'); if (typeof value === 'number') return value; throw new TypeError('author.success_count holds a value of type ' + typeof value + ', not number'); }
   public setSuccessCount(value: number): this { this[CORE].setValue('success_count', value); return this; }
   public addColumnSuccessCount(): this { this[CORE].addColumn('success_count'); return this; }
   public removeColumnSuccessCount(): this { this[CORE].removeColumn('success_count'); return this; }
@@ -294,7 +301,7 @@ export class Author extends Model {
   public minusSuccessCount(n: number): this { this[CORE].putSet({ column: 'success_count', value: n, minus: true }); return this; }
   public sumSuccessCount(): this { this[CORE].aggregate('sum', 'success_count'); return this; }
   public avgSuccessCount(): this { this[CORE].aggregate('avg', 'success_count'); return this; }
-  public getReaderCount(): number { return this[CORE].column('reader_count') as number; }
+  public getReaderCount(): number { const value = this[CORE].column('reader_count'); if (typeof value === 'number') return value; throw new TypeError('author.reader_count holds a value of type ' + typeof value + ', not number'); }
   public setReaderCount(value: number): this { this[CORE].setValue('reader_count', value); return this; }
   public addColumnReaderCount(): this { this[CORE].addColumn('reader_count'); return this; }
   public removeColumnReaderCount(): this { this[CORE].removeColumn('reader_count'); return this; }
@@ -306,7 +313,7 @@ export class Author extends Model {
   public minusReaderCount(n: number): this { this[CORE].putSet({ column: 'reader_count', value: n, minus: true }); return this; }
   public sumReaderCount(): this { this[CORE].aggregate('sum', 'reader_count'); return this; }
   public avgReaderCount(): this { this[CORE].aggregate('avg', 'reader_count'); return this; }
-  public getReadCount(): number { return this[CORE].column('read_count') as number; }
+  public getReadCount(): number { const value = this[CORE].column('read_count'); if (typeof value === 'number') return value; throw new TypeError('author.read_count holds a value of type ' + typeof value + ', not number'); }
   public setReadCount(value: number): this { this[CORE].setValue('read_count', value); return this; }
   public addColumnReadCount(): this { this[CORE].addColumn('read_count'); return this; }
   public removeColumnReadCount(): this { this[CORE].removeColumn('read_count'); return this; }
@@ -318,7 +325,7 @@ export class Author extends Model {
   public minusReadCount(n: number): this { this[CORE].putSet({ column: 'read_count', value: n, minus: true }); return this; }
   public sumReadCount(): this { this[CORE].aggregate('sum', 'read_count'); return this; }
   public avgReadCount(): this { this[CORE].aggregate('avg', 'read_count'); return this; }
-  public getPhotoUrl(): string | null { return this[CORE].column('photo_url') as string | null; }
+  public getPhotoUrl(): string | null { const value = this[CORE].column('photo_url'); if (value === null || typeof value === 'string') return value; throw new TypeError('author.photo_url holds a value of type ' + typeof value + ', not string | null'); }
   public setPhotoUrl(value: string | null): this { this[CORE].setValue('photo_url', value); return this; }
   public addColumnPhotoUrl(): this { this[CORE].addColumn('photo_url'); return this; }
   public removeColumnPhotoUrl(): this { this[CORE].removeColumn('photo_url'); return this; }
@@ -326,7 +333,7 @@ export class Author extends Model {
   public keyNamePhotoUrl(): this { this[CORE].keyName = 'photo_url'; return this; }
   public orderByPhotoUrlAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('photo_url', false, fn); return this; }
   public orderByPhotoUrlDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('photo_url', true, fn); return this; }
-  public getUserSeq(): number { return this[CORE].column('user_seq') as number; }
+  public getUserSeq(): number { const value = this[CORE].column('user_seq'); if (typeof value === 'number') return value; throw new TypeError('author.user_seq holds a value of type ' + typeof value + ', not number'); }
   public setUserSeq(value: number): this { this[CORE].setValue('user_seq', value); return this; }
   public addColumnUserSeq(): this { this[CORE].addColumn('user_seq'); return this; }
   public removeColumnUserSeq(): this { this[CORE].removeColumn('user_seq'); return this; }
@@ -338,7 +345,7 @@ export class Author extends Model {
   public minusUserSeq(n: number): this { this[CORE].putSet({ column: 'user_seq', value: n, minus: true }); return this; }
   public sumUserSeq(): this { this[CORE].aggregate('sum', 'user_seq'); return this; }
   public avgUserSeq(): this { this[CORE].aggregate('avg', 'user_seq'); return this; }
-  public getServiceSeq(): number { return this[CORE].column('service_seq') as number; }
+  public getServiceSeq(): number { const value = this[CORE].column('service_seq'); if (typeof value === 'number') return value; throw new TypeError('author.service_seq holds a value of type ' + typeof value + ', not number'); }
   public setServiceSeq(value: number): this { this[CORE].setValue('service_seq', value); return this; }
   public addColumnServiceSeq(): this { this[CORE].addColumn('service_seq'); return this; }
   public removeColumnServiceSeq(): this { this[CORE].removeColumn('service_seq'); return this; }
@@ -350,7 +357,7 @@ export class Author extends Model {
   public minusServiceSeq(n: number): this { this[CORE].putSet({ column: 'service_seq', value: n, minus: true }); return this; }
   public sumServiceSeq(): this { this[CORE].aggregate('sum', 'service_seq'); return this; }
   public avgServiceSeq(): this { this[CORE].aggregate('avg', 'service_seq'); return this; }
-  public getServiceRegionSeq(): number { return this[CORE].column('service_region_seq') as number; }
+  public getServiceRegionSeq(): number { const value = this[CORE].column('service_region_seq'); if (typeof value === 'number') return value; throw new TypeError('author.service_region_seq holds a value of type ' + typeof value + ', not number'); }
   public setServiceRegionSeq(value: number): this { this[CORE].setValue('service_region_seq', value); return this; }
   public addColumnServiceRegionSeq(): this { this[CORE].addColumn('service_region_seq'); return this; }
   public removeColumnServiceRegionSeq(): this { this[CORE].removeColumn('service_region_seq'); return this; }
@@ -362,7 +369,7 @@ export class Author extends Model {
   public minusServiceRegionSeq(n: number): this { this[CORE].putSet({ column: 'service_region_seq', value: n, minus: true }); return this; }
   public sumServiceRegionSeq(): this { this[CORE].aggregate('sum', 'service_region_seq'); return this; }
   public avgServiceRegionSeq(): this { this[CORE].aggregate('avg', 'service_region_seq'); return this; }
-  public getServiceMemberSeq(): number { return this[CORE].column('service_member_seq') as number; }
+  public getServiceMemberSeq(): number { const value = this[CORE].column('service_member_seq'); if (typeof value === 'number') return value; throw new TypeError('author.service_member_seq holds a value of type ' + typeof value + ', not number'); }
   public setServiceMemberSeq(value: number): this { this[CORE].setValue('service_member_seq', value); return this; }
   public addColumnServiceMemberSeq(): this { this[CORE].addColumn('service_member_seq'); return this; }
   public removeColumnServiceMemberSeq(): this { this[CORE].removeColumn('service_member_seq'); return this; }
@@ -374,7 +381,7 @@ export class Author extends Model {
   public minusServiceMemberSeq(n: number): this { this[CORE].putSet({ column: 'service_member_seq', value: n, minus: true }); return this; }
   public sumServiceMemberSeq(): this { this[CORE].aggregate('sum', 'service_member_seq'); return this; }
   public avgServiceMemberSeq(): this { this[CORE].aggregate('avg', 'service_member_seq'); return this; }
-  public getStartDt(): string { return this[CORE].column('start_dt') as string; }
+  public getStartDt(): string { const value = this[CORE].column('start_dt'); if (typeof value === 'string') return value; throw new TypeError('author.start_dt holds a value of type ' + typeof value + ', not string'); }
   public setStartDt(value: string | Date): this { this[CORE].setValue('start_dt', value); return this; }
   public addColumnStartDt(): this { this[CORE].addColumn('start_dt'); return this; }
   public removeColumnStartDt(): this { this[CORE].removeColumn('start_dt'); return this; }
@@ -382,7 +389,7 @@ export class Author extends Model {
   public keyNameStartDt(): this { this[CORE].keyName = 'start_dt'; return this; }
   public orderByStartDtAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('start_dt', false, fn); return this; }
   public orderByStartDtDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('start_dt', true, fn); return this; }
-  public getEndDt(): string { return this[CORE].column('end_dt') as string; }
+  public getEndDt(): string { const value = this[CORE].column('end_dt'); if (typeof value === 'string') return value; throw new TypeError('author.end_dt holds a value of type ' + typeof value + ', not string'); }
   public setEndDt(value: string | Date): this { this[CORE].setValue('end_dt', value); return this; }
   public addColumnEndDt(): this { this[CORE].addColumn('end_dt'); return this; }
   public removeColumnEndDt(): this { this[CORE].removeColumn('end_dt'); return this; }
@@ -390,7 +397,7 @@ export class Author extends Model {
   public keyNameEndDt(): this { this[CORE].keyName = 'end_dt'; return this; }
   public orderByEndDtAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('end_dt', false, fn); return this; }
   public orderByEndDtDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('end_dt', true, fn); return this; }
-  public getUuid(): string | null { return this[CORE].column('uuid') as string | null; }
+  public getUuid(): string | null { const value = this[CORE].column('uuid'); if (value === null || typeof value === 'string') return value; throw new TypeError('author.uuid holds a value of type ' + typeof value + ', not string | null'); }
   public setUuid(value: string | null): this { this[CORE].setValue('uuid', value); return this; }
   public addColumnUuid(): this { this[CORE].addColumn('uuid'); return this; }
   public removeColumnUuid(): this { this[CORE].removeColumn('uuid'); return this; }
@@ -398,7 +405,7 @@ export class Author extends Model {
   public keyNameUuid(): this { this[CORE].keyName = 'uuid'; return this; }
   public orderByUuidAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('uuid', false, fn); return this; }
   public orderByUuidDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('uuid', true, fn); return this; }
-  public getIsSingleWork(): boolean { return this[CORE].column('is_single_work') as boolean; }
+  public getIsSingleWork(): boolean { const value = this[CORE].column('is_single_work'); if (typeof value === 'boolean') return value; throw new TypeError('author.is_single_work holds a value of type ' + typeof value + ', not boolean'); }
   public setIsSingleWork(value: boolean): this { this[CORE].setValue('is_single_work', value); return this; }
   public addColumnIsSingleWork(): this { this[CORE].addColumn('is_single_work'); return this; }
   public removeColumnIsSingleWork(): this { this[CORE].removeColumn('is_single_work'); return this; }
@@ -406,7 +413,7 @@ export class Author extends Model {
   public keyNameIsSingleWork(): this { this[CORE].keyName = 'is_single_work'; return this; }
   public orderByIsSingleWorkAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('is_single_work', false, fn); return this; }
   public orderByIsSingleWorkDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('is_single_work', true, fn); return this; }
-  public getLikeCount(): number { return this[CORE].column('like_count') as number; }
+  public getLikeCount(): number { const value = this[CORE].column('like_count'); if (typeof value === 'number') return value; throw new TypeError('author.like_count holds a value of type ' + typeof value + ', not number'); }
   public setLikeCount(value: number): this { this[CORE].setValue('like_count', value); return this; }
   public addColumnLikeCount(): this { this[CORE].addColumn('like_count'); return this; }
   public removeColumnLikeCount(): this { this[CORE].removeColumn('like_count'); return this; }
@@ -418,7 +425,7 @@ export class Author extends Model {
   public minusLikeCount(n: number): this { this[CORE].putSet({ column: 'like_count', value: n, minus: true }); return this; }
   public sumLikeCount(): this { this[CORE].aggregate('sum', 'like_count'); return this; }
   public avgLikeCount(): this { this[CORE].aggregate('avg', 'like_count'); return this; }
-  public getAesKeyVersion(): number { return this[CORE].column('aes_key_version') as number; }
+  public getAesKeyVersion(): number { const value = this[CORE].column('aes_key_version'); if (typeof value === 'number') return value; throw new TypeError('author.aes_key_version holds a value of type ' + typeof value + ', not number'); }
   public setAesKeyVersion(value: number): this { this[CORE].setValue('aes_key_version', value); return this; }
   public addColumnAesKeyVersion(): this { this[CORE].addColumn('aes_key_version'); return this; }
   public removeColumnAesKeyVersion(): this { this[CORE].removeColumn('aes_key_version'); return this; }
@@ -430,7 +437,7 @@ export class Author extends Model {
   public minusAesKeyVersion(n: number): this { this[CORE].putSet({ column: 'aes_key_version', value: n, minus: true }); return this; }
   public sumAesKeyVersion(): this { this[CORE].aggregate('sum', 'aes_key_version'); return this; }
   public avgAesKeyVersion(): this { this[CORE].aggregate('avg', 'aes_key_version'); return this; }
-  public getAesHexEmail(): string | null { return this[CORE].column('aes_hex_email') as string | null; }
+  public getAesHexEmail(): string | null { const value = this[CORE].column('aes_hex_email'); if (value === null || typeof value === 'string') return value; throw new TypeError('author.aes_hex_email holds a value of type ' + typeof value + ', not string | null'); }
   public setAesHexEmail(value: string | null): this { this[CORE].setValue('aes_hex_email', value); return this; }
   public addColumnAesHexEmail(): this { this[CORE].addColumn('aes_hex_email'); return this; }
   public removeColumnAesHexEmail(): this { this[CORE].removeColumn('aes_hex_email'); return this; }
@@ -438,7 +445,7 @@ export class Author extends Model {
   public keyNameAesHexEmail(): this { this[CORE].keyName = 'aes_hex_email'; return this; }
   public orderByAesHexEmailAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('aes_hex_email', false, fn); return this; }
   public orderByAesHexEmailDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('aes_hex_email', true, fn); return this; }
-  public getEmailBlindIndex(): string | null { return this[CORE].column('email_blind_index') as string | null; }
+  public getEmailBlindIndex(): string | null { const value = this[CORE].column('email_blind_index'); if (value === null || typeof value === 'string') return value; throw new TypeError('author.email_blind_index holds a value of type ' + typeof value + ', not string | null'); }
   public setEmailBlindIndex(value: string | null): this { this[CORE].setValue('email_blind_index', value); return this; }
   public addColumnEmailBlindIndex(): this { this[CORE].addColumn('email_blind_index'); return this; }
   public removeColumnEmailBlindIndex(): this { this[CORE].removeColumn('email_blind_index'); return this; }
@@ -446,7 +453,7 @@ export class Author extends Model {
   public keyNameEmailBlindIndex(): this { this[CORE].keyName = 'email_blind_index'; return this; }
   public orderByEmailBlindIndexAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('email_blind_index', false, fn); return this; }
   public orderByEmailBlindIndexDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('email_blind_index', true, fn); return this; }
-  public getAesHexPhone(): string | null { return this[CORE].column('aes_hex_phone') as string | null; }
+  public getAesHexPhone(): string | null { const value = this[CORE].column('aes_hex_phone'); if (value === null || typeof value === 'string') return value; throw new TypeError('author.aes_hex_phone holds a value of type ' + typeof value + ', not string | null'); }
   public setAesHexPhone(value: string | null): this { this[CORE].setValue('aes_hex_phone', value); return this; }
   public addColumnAesHexPhone(): this { this[CORE].addColumn('aes_hex_phone'); return this; }
   public removeColumnAesHexPhone(): this { this[CORE].removeColumn('aes_hex_phone'); return this; }
@@ -454,7 +461,7 @@ export class Author extends Model {
   public keyNameAesHexPhone(): this { this[CORE].keyName = 'aes_hex_phone'; return this; }
   public orderByAesHexPhoneAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('aes_hex_phone', false, fn); return this; }
   public orderByAesHexPhoneDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('aes_hex_phone', true, fn); return this; }
-  public getPhoneBlindIndex(): string | null { return this[CORE].column('phone_blind_index') as string | null; }
+  public getPhoneBlindIndex(): string | null { const value = this[CORE].column('phone_blind_index'); if (value === null || typeof value === 'string') return value; throw new TypeError('author.phone_blind_index holds a value of type ' + typeof value + ', not string | null'); }
   public setPhoneBlindIndex(value: string | null): this { this[CORE].setValue('phone_blind_index', value); return this; }
   public addColumnPhoneBlindIndex(): this { this[CORE].addColumn('phone_blind_index'); return this; }
   public removeColumnPhoneBlindIndex(): this { this[CORE].removeColumn('phone_blind_index'); return this; }
@@ -462,7 +469,7 @@ export class Author extends Model {
   public keyNamePhoneBlindIndex(): this { this[CORE].keyName = 'phone_blind_index'; return this; }
   public orderByPhoneBlindIndexAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('phone_blind_index', false, fn); return this; }
   public orderByPhoneBlindIndexDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('phone_blind_index', true, fn); return this; }
-  public getPrice(): string | null { return this[CORE].column('price') as string | null; }
+  public getPrice(): string | null { const value = this[CORE].column('price'); if (value === null || typeof value === 'string') return value; throw new TypeError('author.price holds a value of type ' + typeof value + ', not string | null'); }
   public setPrice(value: string | null): this { this[CORE].setValue('price', value); return this; }
   public addColumnPrice(): this { this[CORE].addColumn('price'); return this; }
   public removeColumnPrice(): this { this[CORE].removeColumn('price'); return this; }
@@ -474,7 +481,7 @@ export class Author extends Model {
   public minusPrice(n: number): this { this[CORE].putSet({ column: 'price', value: n, minus: true }); return this; }
   public sumPrice(): this { this[CORE].aggregate('sum', 'price'); return this; }
   public avgPrice(): this { this[CORE].aggregate('avg', 'price'); return this; }
-  public getIp(): string | null { return this[CORE].column('ip') as string | null; }
+  public getIp(): string | null { const value = this[CORE].column('ip'); if (value === null || typeof value === 'string') return value; throw new TypeError('author.ip holds a value of type ' + typeof value + ', not string | null'); }
   public setIp(value: string | null): this { this[CORE].setValue('ip', value); return this; }
   public addColumnIp(): this { this[CORE].addColumn('ip'); return this; }
   public removeColumnIp(): this { this[CORE].removeColumn('ip'); return this; }
@@ -482,7 +489,7 @@ export class Author extends Model {
   public keyNameIp(): this { this[CORE].keyName = 'ip'; return this; }
   public orderByIpAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('ip', false, fn); return this; }
   public orderByIpDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('ip', true, fn); return this; }
-  public getGzExtend(): StyledValue<CodecValue> { return this[CORE].column('gz_extend') as StyledValue<CodecValue>; }
+  public getGzExtend(): StyledValue<CodecValue> { const value = this[CORE].column('gz_extend'); if (value instanceof StyledValue && codecStyled(value)) return value; throw new TypeError('author.gz_extend holds a value of type ' + typeof value + ', not StyledValue<CodecValue>'); }
   public setGzExtend(value: StyledValue<CodecValue>): this { this[CORE].setValue('gz_extend', value); return this; }
   public addColumnGzExtend(): this { this[CORE].addColumn('gz_extend'); return this; }
   public removeColumnGzExtend(): this { this[CORE].removeColumn('gz_extend'); return this; }
@@ -490,7 +497,7 @@ export class Author extends Model {
   public keyNameGzExtend(): this { this[CORE].keyName = 'gz_extend'; return this; }
   public orderByGzExtendAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('gz_extend', false, fn); return this; }
   public orderByGzExtendDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('gz_extend', true, fn); return this; }
-  public getJsonSetting(): StyledValue<JsonValue> { return this[CORE].column('json_setting') as StyledValue<JsonValue>; }
+  public getJsonSetting(): StyledValue<JsonValue> { return this[CORE].jsonColumn('json_setting'); }
   public setJsonSetting(value: StyledValue<JsonValue | CodecValue>): this { this[CORE].setValue('json_setting', value); return this; }
   public addColumnJsonSetting(): this { this[CORE].addColumn('json_setting'); return this; }
   public removeColumnJsonSetting(): this { this[CORE].removeColumn('json_setting'); return this; }
@@ -498,7 +505,7 @@ export class Author extends Model {
   public keyNameJsonSetting(): this { this[CORE].keyName = 'json_setting'; return this; }
   public orderByJsonSettingAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('json_setting', false, fn); return this; }
   public orderByJsonSettingDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('json_setting', true, fn); return this; }
-  public getJsonsTags(): StyledValue<JsonValue> { return this[CORE].column('jsons_tags') as StyledValue<JsonValue>; }
+  public getJsonsTags(): StyledValue<JsonValue> { return this[CORE].jsonColumn('jsons_tags'); }
   public setJsonsTags(value: StyledValue<JsonValue | CodecValue>): this { this[CORE].setValue('jsons_tags', value); return this; }
   public addColumnJsonsTags(): this { this[CORE].addColumn('jsons_tags'); return this; }
   public removeColumnJsonsTags(): this { this[CORE].removeColumn('jsons_tags'); return this; }
@@ -506,7 +513,7 @@ export class Author extends Model {
   public keyNameJsonsTags(): this { this[CORE].keyName = 'jsons_tags'; return this; }
   public orderByJsonsTagsAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('jsons_tags', false, fn); return this; }
   public orderByJsonsTagsDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('jsons_tags', true, fn); return this; }
-  public getBase64Extra(): StyledValue<CodecValue> { return this[CORE].column('base64_extra') as StyledValue<CodecValue>; }
+  public getBase64Extra(): StyledValue<CodecValue> { const value = this[CORE].column('base64_extra'); if (value instanceof StyledValue && codecStyled(value)) return value; throw new TypeError('author.base64_extra holds a value of type ' + typeof value + ', not StyledValue<CodecValue>'); }
   public setBase64Extra(value: StyledValue<CodecValue>): this { this[CORE].setValue('base64_extra', value); return this; }
   public addColumnBase64Extra(): this { this[CORE].addColumn('base64_extra'); return this; }
   public removeColumnBase64Extra(): this { this[CORE].removeColumn('base64_extra'); return this; }
@@ -514,7 +521,7 @@ export class Author extends Model {
   public keyNameBase64Extra(): this { this[CORE].keyName = 'base64_extra'; return this; }
   public orderByBase64ExtraAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('base64_extra', false, fn); return this; }
   public orderByBase64ExtraDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('base64_extra', true, fn); return this; }
-  public getSerializeData(): StyledValue<CodecValue> { return this[CORE].column('serialize_data') as StyledValue<CodecValue>; }
+  public getSerializeData(): StyledValue<CodecValue> { const value = this[CORE].column('serialize_data'); if (value instanceof StyledValue && codecStyled(value)) return value; throw new TypeError('author.serialize_data holds a value of type ' + typeof value + ', not StyledValue<CodecValue>'); }
   public setSerializeData(value: StyledValue<CodecValue>): this { this[CORE].setValue('serialize_data', value); return this; }
   public addColumnSerializeData(): this { this[CORE].addColumn('serialize_data'); return this; }
   public removeColumnSerializeData(): this { this[CORE].removeColumn('serialize_data'); return this; }
@@ -617,8 +624,8 @@ export class Author extends Model {
 
 /** A user model or row. */
 export class User extends Model {
-  public static readonly entity: EntityDef = { model, entity: model.entities.get('user')!, create: core => new User(core) };
-  public getSeq(): number { return this[CORE].column('seq') as number; }
+  public static readonly entity: EntityDef = { model, entity: modelEntity('user'), create: core => new User(core) };
+  public getSeq(): number { const value = this[CORE].column('seq'); if (typeof value === 'number') return value; throw new TypeError('user.seq holds a value of type ' + typeof value + ', not number'); }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
@@ -630,7 +637,7 @@ export class User extends Model {
   public minusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, minus: true }); return this; }
   public sumSeq(): this { this[CORE].aggregate('sum', 'seq'); return this; }
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
-  public getName(): string { return this[CORE].column('name') as string; }
+  public getName(): string { const value = this[CORE].column('name'); if (typeof value === 'string') return value; throw new TypeError('user.name holds a value of type ' + typeof value + ', not string'); }
   public setName(value: string): this { this[CORE].setValue('name', value); return this; }
   public addColumnName(): this { this[CORE].addColumn('name'); return this; }
   public removeColumnName(): this { this[CORE].removeColumn('name'); return this; }
@@ -673,8 +680,8 @@ export class User extends Model {
 
 /** A service model or row. */
 export class Service extends Model {
-  public static readonly entity: EntityDef = { model, entity: model.entities.get('service')!, create: core => new Service(core) };
-  public getSeq(): number { return this[CORE].column('seq') as number; }
+  public static readonly entity: EntityDef = { model, entity: modelEntity('service'), create: core => new Service(core) };
+  public getSeq(): number { const value = this[CORE].column('seq'); if (typeof value === 'number') return value; throw new TypeError('service.seq holds a value of type ' + typeof value + ', not number'); }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
@@ -686,7 +693,7 @@ export class Service extends Model {
   public minusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, minus: true }); return this; }
   public sumSeq(): this { this[CORE].aggregate('sum', 'seq'); return this; }
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
-  public getName(): string { return this[CORE].column('name') as string; }
+  public getName(): string { const value = this[CORE].column('name'); if (typeof value === 'string') return value; throw new TypeError('service.name holds a value of type ' + typeof value + ', not string'); }
   public setName(value: string): this { this[CORE].setValue('name', value); return this; }
   public addColumnName(): this { this[CORE].addColumn('name'); return this; }
   public removeColumnName(): this { this[CORE].removeColumn('name'); return this; }
@@ -726,8 +733,8 @@ export class Service extends Model {
 
 /** A service_region model or row. */
 export class ServiceRegion extends Model {
-  public static readonly entity: EntityDef = { model, entity: model.entities.get('service_region')!, create: core => new ServiceRegion(core) };
-  public getSeq(): number { return this[CORE].column('seq') as number; }
+  public static readonly entity: EntityDef = { model, entity: modelEntity('service_region'), create: core => new ServiceRegion(core) };
+  public getSeq(): number { const value = this[CORE].column('seq'); if (typeof value === 'number') return value; throw new TypeError('service_region.seq holds a value of type ' + typeof value + ', not number'); }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
@@ -739,7 +746,7 @@ export class ServiceRegion extends Model {
   public minusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, minus: true }); return this; }
   public sumSeq(): this { this[CORE].aggregate('sum', 'seq'); return this; }
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
-  public getServiceSeq(): number { return this[CORE].column('service_seq') as number; }
+  public getServiceSeq(): number { const value = this[CORE].column('service_seq'); if (typeof value === 'number') return value; throw new TypeError('service_region.service_seq holds a value of type ' + typeof value + ', not number'); }
   public setServiceSeq(value: number): this { this[CORE].setValue('service_seq', value); return this; }
   public addColumnServiceSeq(): this { this[CORE].addColumn('service_seq'); return this; }
   public removeColumnServiceSeq(): this { this[CORE].removeColumn('service_seq'); return this; }
@@ -751,7 +758,7 @@ export class ServiceRegion extends Model {
   public minusServiceSeq(n: number): this { this[CORE].putSet({ column: 'service_seq', value: n, minus: true }); return this; }
   public sumServiceSeq(): this { this[CORE].aggregate('sum', 'service_seq'); return this; }
   public avgServiceSeq(): this { this[CORE].aggregate('avg', 'service_seq'); return this; }
-  public getName(): string { return this[CORE].column('name') as string; }
+  public getName(): string { const value = this[CORE].column('name'); if (typeof value === 'string') return value; throw new TypeError('service_region.name holds a value of type ' + typeof value + ', not string'); }
   public setName(value: string): this { this[CORE].setValue('name', value); return this; }
   public addColumnName(): this { this[CORE].addColumn('name'); return this; }
   public removeColumnName(): this { this[CORE].removeColumn('name'); return this; }
@@ -792,8 +799,8 @@ export class ServiceRegion extends Model {
 
 /** A service_member model or row. */
 export class ServiceMember extends Model {
-  public static readonly entity: EntityDef = { model, entity: model.entities.get('service_member')!, create: core => new ServiceMember(core) };
-  public getSeq(): number { return this[CORE].column('seq') as number; }
+  public static readonly entity: EntityDef = { model, entity: modelEntity('service_member'), create: core => new ServiceMember(core) };
+  public getSeq(): number { const value = this[CORE].column('seq'); if (typeof value === 'number') return value; throw new TypeError('service_member.seq holds a value of type ' + typeof value + ', not number'); }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
@@ -805,7 +812,7 @@ export class ServiceMember extends Model {
   public minusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, minus: true }); return this; }
   public sumSeq(): this { this[CORE].aggregate('sum', 'seq'); return this; }
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
-  public getServiceSeq(): number { return this[CORE].column('service_seq') as number; }
+  public getServiceSeq(): number { const value = this[CORE].column('service_seq'); if (typeof value === 'number') return value; throw new TypeError('service_member.service_seq holds a value of type ' + typeof value + ', not number'); }
   public setServiceSeq(value: number): this { this[CORE].setValue('service_seq', value); return this; }
   public addColumnServiceSeq(): this { this[CORE].addColumn('service_seq'); return this; }
   public removeColumnServiceSeq(): this { this[CORE].removeColumn('service_seq'); return this; }
@@ -817,7 +824,7 @@ export class ServiceMember extends Model {
   public minusServiceSeq(n: number): this { this[CORE].putSet({ column: 'service_seq', value: n, minus: true }); return this; }
   public sumServiceSeq(): this { this[CORE].aggregate('sum', 'service_seq'); return this; }
   public avgServiceSeq(): this { this[CORE].aggregate('avg', 'service_seq'); return this; }
-  public getUserSeq(): number { return this[CORE].column('user_seq') as number; }
+  public getUserSeq(): number { const value = this[CORE].column('user_seq'); if (typeof value === 'number') return value; throw new TypeError('service_member.user_seq holds a value of type ' + typeof value + ', not number'); }
   public setUserSeq(value: number): this { this[CORE].setValue('user_seq', value); return this; }
   public addColumnUserSeq(): this { this[CORE].addColumn('user_seq'); return this; }
   public removeColumnUserSeq(): this { this[CORE].removeColumn('user_seq'); return this; }
@@ -868,8 +875,8 @@ export class ServiceMember extends Model {
 
 /** A composite_account model or row. */
 export class CompositeAccount extends Model {
-  public static readonly entity: EntityDef = { model, entity: model.entities.get('composite_account')!, create: core => new CompositeAccount(core) };
-  public getTenantId(): number { return this[CORE].column('tenant_id') as number; }
+  public static readonly entity: EntityDef = { model, entity: modelEntity('composite_account'), create: core => new CompositeAccount(core) };
+  public getTenantId(): number { const value = this[CORE].column('tenant_id'); if (typeof value === 'number') return value; throw new TypeError('composite_account.tenant_id holds a value of type ' + typeof value + ', not number'); }
   public setTenantId(value: number): this { this[CORE].setValue('tenant_id', value); return this; }
   public addColumnTenantId(): this { this[CORE].addColumn('tenant_id'); return this; }
   public removeColumnTenantId(): this { this[CORE].removeColumn('tenant_id'); return this; }
@@ -881,7 +888,7 @@ export class CompositeAccount extends Model {
   public minusTenantId(n: number): this { this[CORE].putSet({ column: 'tenant_id', value: n, minus: true }); return this; }
   public sumTenantId(): this { this[CORE].aggregate('sum', 'tenant_id'); return this; }
   public avgTenantId(): this { this[CORE].aggregate('avg', 'tenant_id'); return this; }
-  public getAccountId(): number { return this[CORE].column('account_id') as number; }
+  public getAccountId(): number { const value = this[CORE].column('account_id'); if (typeof value === 'number') return value; throw new TypeError('composite_account.account_id holds a value of type ' + typeof value + ', not number'); }
   public setAccountId(value: number): this { this[CORE].setValue('account_id', value); return this; }
   public addColumnAccountId(): this { this[CORE].addColumn('account_id'); return this; }
   public removeColumnAccountId(): this { this[CORE].removeColumn('account_id'); return this; }
@@ -893,7 +900,7 @@ export class CompositeAccount extends Model {
   public minusAccountId(n: number): this { this[CORE].putSet({ column: 'account_id', value: n, minus: true }); return this; }
   public sumAccountId(): this { this[CORE].aggregate('sum', 'account_id'); return this; }
   public avgAccountId(): this { this[CORE].aggregate('avg', 'account_id'); return this; }
-  public getName(): string { return this[CORE].column('name') as string; }
+  public getName(): string { const value = this[CORE].column('name'); if (typeof value === 'string') return value; throw new TypeError('composite_account.name holds a value of type ' + typeof value + ', not string'); }
   public setName(value: string): this { this[CORE].setValue('name', value); return this; }
   public addColumnName(): this { this[CORE].addColumn('name'); return this; }
   public removeColumnName(): this { this[CORE].removeColumn('name'); return this; }
@@ -932,8 +939,8 @@ export class CompositeAccount extends Model {
 
 /** A composite_membership model or row. */
 export class CompositeMembership extends Model {
-  public static readonly entity: EntityDef = { model, entity: model.entities.get('composite_membership')!, create: core => new CompositeMembership(core) };
-  public getTenantId(): number { return this[CORE].column('tenant_id') as number; }
+  public static readonly entity: EntityDef = { model, entity: modelEntity('composite_membership'), create: core => new CompositeMembership(core) };
+  public getTenantId(): number { const value = this[CORE].column('tenant_id'); if (typeof value === 'number') return value; throw new TypeError('composite_membership.tenant_id holds a value of type ' + typeof value + ', not number'); }
   public setTenantId(value: number): this { this[CORE].setValue('tenant_id', value); return this; }
   public addColumnTenantId(): this { this[CORE].addColumn('tenant_id'); return this; }
   public removeColumnTenantId(): this { this[CORE].removeColumn('tenant_id'); return this; }
@@ -945,7 +952,7 @@ export class CompositeMembership extends Model {
   public minusTenantId(n: number): this { this[CORE].putSet({ column: 'tenant_id', value: n, minus: true }); return this; }
   public sumTenantId(): this { this[CORE].aggregate('sum', 'tenant_id'); return this; }
   public avgTenantId(): this { this[CORE].aggregate('avg', 'tenant_id'); return this; }
-  public getAccountId(): number { return this[CORE].column('account_id') as number; }
+  public getAccountId(): number { const value = this[CORE].column('account_id'); if (typeof value === 'number') return value; throw new TypeError('composite_membership.account_id holds a value of type ' + typeof value + ', not number'); }
   public setAccountId(value: number): this { this[CORE].setValue('account_id', value); return this; }
   public addColumnAccountId(): this { this[CORE].addColumn('account_id'); return this; }
   public removeColumnAccountId(): this { this[CORE].removeColumn('account_id'); return this; }
@@ -957,7 +964,7 @@ export class CompositeMembership extends Model {
   public minusAccountId(n: number): this { this[CORE].putSet({ column: 'account_id', value: n, minus: true }); return this; }
   public sumAccountId(): this { this[CORE].aggregate('sum', 'account_id'); return this; }
   public avgAccountId(): this { this[CORE].aggregate('avg', 'account_id'); return this; }
-  public getRole(): string { return this[CORE].column('role') as string; }
+  public getRole(): string { const value = this[CORE].column('role'); if (typeof value === 'string') return value; throw new TypeError('composite_membership.role holds a value of type ' + typeof value + ', not string'); }
   public setRole(value: string): this { this[CORE].setValue('role', value); return this; }
   public addColumnRole(): this { this[CORE].addColumn('role'); return this; }
   public removeColumnRole(): this { this[CORE].removeColumn('role'); return this; }
@@ -999,8 +1006,8 @@ export class CompositeMembership extends Model {
 
 /** A soft_record model or row. */
 export class SoftRecord extends Model {
-  public static readonly entity: EntityDef = { model, entity: model.entities.get('soft_record')!, create: core => new SoftRecord(core) };
-  public getSeq(): number { return this[CORE].column('seq') as number; }
+  public static readonly entity: EntityDef = { model, entity: modelEntity('soft_record'), create: core => new SoftRecord(core) };
+  public getSeq(): number { const value = this[CORE].column('seq'); if (typeof value === 'number') return value; throw new TypeError('soft_record.seq holds a value of type ' + typeof value + ', not number'); }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
@@ -1012,7 +1019,7 @@ export class SoftRecord extends Model {
   public minusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, minus: true }); return this; }
   public sumSeq(): this { this[CORE].aggregate('sum', 'seq'); return this; }
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
-  public getName(): string { return this[CORE].column('name') as string; }
+  public getName(): string { const value = this[CORE].column('name'); if (typeof value === 'string') return value; throw new TypeError('soft_record.name holds a value of type ' + typeof value + ', not string'); }
   public setName(value: string): this { this[CORE].setValue('name', value); return this; }
   public addColumnName(): this { this[CORE].addColumn('name'); return this; }
   public removeColumnName(): this { this[CORE].removeColumn('name'); return this; }
@@ -1020,7 +1027,7 @@ export class SoftRecord extends Model {
   public keyNameName(): this { this[CORE].keyName = 'name'; return this; }
   public orderByNameAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', false, fn); return this; }
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
-  public getDeletedAt(): string | null { return this[CORE].column('deleted_at') as string | null; }
+  public getDeletedAt(): string | null { const value = this[CORE].column('deleted_at'); if (value === null || typeof value === 'string') return value; throw new TypeError('soft_record.deleted_at holds a value of type ' + typeof value + ', not string | null'); }
   public setDeletedAt(value: string | Date | null): this { this[CORE].setValue('deleted_at', value); return this; }
   public addColumnDeletedAt(): this { this[CORE].addColumn('deleted_at'); return this; }
   public removeColumnDeletedAt(): this { this[CORE].removeColumn('deleted_at'); return this; }
@@ -1058,8 +1065,8 @@ export class SoftRecord extends Model {
 
 /** A account model or row. */
 export class Account extends Model {
-  public static readonly entity: EntityDef = { model, entity: model.entities.get('account')!, create: core => new Account(core) };
-  public getSeq(): number { return this[CORE].column('seq') as number; }
+  public static readonly entity: EntityDef = { model, entity: modelEntity('account'), create: core => new Account(core) };
+  public getSeq(): number { const value = this[CORE].column('seq'); if (typeof value === 'number') return value; throw new TypeError('account.seq holds a value of type ' + typeof value + ', not number'); }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
@@ -1071,7 +1078,7 @@ export class Account extends Model {
   public minusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, minus: true }); return this; }
   public sumSeq(): this { this[CORE].aggregate('sum', 'seq'); return this; }
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
-  public getName(): string { return this[CORE].column('name') as string; }
+  public getName(): string { const value = this[CORE].column('name'); if (typeof value === 'string') return value; throw new TypeError('account.name holds a value of type ' + typeof value + ', not string'); }
   public setName(value: string): this { this[CORE].setValue('name', value); return this; }
   public addColumnName(): this { this[CORE].addColumn('name'); return this; }
   public removeColumnName(): this { this[CORE].removeColumn('name'); return this; }
@@ -1109,8 +1116,8 @@ export class Account extends Model {
 
 /** A project model or row. */
 export class Project extends Model {
-  public static readonly entity: EntityDef = { model, entity: model.entities.get('project')!, create: core => new Project(core) };
-  public getSeq(): number { return this[CORE].column('seq') as number; }
+  public static readonly entity: EntityDef = { model, entity: modelEntity('project'), create: core => new Project(core) };
+  public getSeq(): number { const value = this[CORE].column('seq'); if (typeof value === 'number') return value; throw new TypeError('project.seq holds a value of type ' + typeof value + ', not number'); }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
@@ -1122,7 +1129,7 @@ export class Project extends Model {
   public minusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, minus: true }); return this; }
   public sumSeq(): this { this[CORE].aggregate('sum', 'seq'); return this; }
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
-  public getName(): string { return this[CORE].column('name') as string; }
+  public getName(): string { const value = this[CORE].column('name'); if (typeof value === 'string') return value; throw new TypeError('project.name holds a value of type ' + typeof value + ', not string'); }
   public setName(value: string): this { this[CORE].setValue('name', value); return this; }
   public addColumnName(): this { this[CORE].addColumn('name'); return this; }
   public removeColumnName(): this { this[CORE].removeColumn('name'); return this; }
@@ -1158,8 +1165,8 @@ export class Project extends Model {
 
 /** A account_project model or row. */
 export class AccountProject extends Model {
-  public static readonly entity: EntityDef = { model, entity: model.entities.get('account_project')!, create: core => new AccountProject(core) };
-  public getAccountSeq(): number { return this[CORE].column('account_seq') as number; }
+  public static readonly entity: EntityDef = { model, entity: modelEntity('account_project'), create: core => new AccountProject(core) };
+  public getAccountSeq(): number { const value = this[CORE].column('account_seq'); if (typeof value === 'number') return value; throw new TypeError('account_project.account_seq holds a value of type ' + typeof value + ', not number'); }
   public setAccountSeq(value: number): this { this[CORE].setValue('account_seq', value); return this; }
   public addColumnAccountSeq(): this { this[CORE].addColumn('account_seq'); return this; }
   public removeColumnAccountSeq(): this { this[CORE].removeColumn('account_seq'); return this; }
@@ -1171,7 +1178,7 @@ export class AccountProject extends Model {
   public minusAccountSeq(n: number): this { this[CORE].putSet({ column: 'account_seq', value: n, minus: true }); return this; }
   public sumAccountSeq(): this { this[CORE].aggregate('sum', 'account_seq'); return this; }
   public avgAccountSeq(): this { this[CORE].aggregate('avg', 'account_seq'); return this; }
-  public getProjectSeq(): number { return this[CORE].column('project_seq') as number; }
+  public getProjectSeq(): number { const value = this[CORE].column('project_seq'); if (typeof value === 'number') return value; throw new TypeError('account_project.project_seq holds a value of type ' + typeof value + ', not number'); }
   public setProjectSeq(value: number): this { this[CORE].setValue('project_seq', value); return this; }
   public addColumnProjectSeq(): this { this[CORE].addColumn('project_seq'); return this; }
   public removeColumnProjectSeq(): this { this[CORE].removeColumn('project_seq'); return this; }
@@ -1216,8 +1223,8 @@ export class AccountProject extends Model {
 
 /** A task model or row. */
 export class Task extends Model {
-  public static readonly entity: EntityDef = { model, entity: model.entities.get('task')!, create: core => new Task(core) };
-  public getSeq(): number { return this[CORE].column('seq') as number; }
+  public static readonly entity: EntityDef = { model, entity: modelEntity('task'), create: core => new Task(core) };
+  public getSeq(): number { const value = this[CORE].column('seq'); if (typeof value === 'number') return value; throw new TypeError('task.seq holds a value of type ' + typeof value + ', not number'); }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
@@ -1229,7 +1236,7 @@ export class Task extends Model {
   public minusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, minus: true }); return this; }
   public sumSeq(): this { this[CORE].aggregate('sum', 'seq'); return this; }
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
-  public getTitle(): string { return this[CORE].column('title') as string; }
+  public getTitle(): string { const value = this[CORE].column('title'); if (typeof value === 'string') return value; throw new TypeError('task.title holds a value of type ' + typeof value + ', not string'); }
   public setTitle(value: string): this { this[CORE].setValue('title', value); return this; }
   public addColumnTitle(): this { this[CORE].addColumn('title'); return this; }
   public removeColumnTitle(): this { this[CORE].removeColumn('title'); return this; }
@@ -1237,7 +1244,7 @@ export class Task extends Model {
   public keyNameTitle(): this { this[CORE].keyName = 'title'; return this; }
   public orderByTitleAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('title', false, fn); return this; }
   public orderByTitleDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('title', true, fn); return this; }
-  public getState(): string { return this[CORE].column('state') as string; }
+  public getState(): string { const value = this[CORE].column('state'); if (typeof value === 'string') return value; throw new TypeError('task.state holds a value of type ' + typeof value + ', not string'); }
   public setState(value: string): this { this[CORE].setValue('state', value); return this; }
   public addColumnState(): this { this[CORE].addColumn('state'); return this; }
   public removeColumnState(): this { this[CORE].removeColumn('state'); return this; }
@@ -1275,8 +1282,8 @@ export class Task extends Model {
 
 /** A hex_cell model or row. */
 export class HexCell extends Model {
-  public static readonly entity: EntityDef = { model, entity: model.entities.get('hex_cell')!, create: core => new HexCell(core) };
-  public getSeq(): number { return this[CORE].column('seq') as number; }
+  public static readonly entity: EntityDef = { model, entity: modelEntity('hex_cell'), create: core => new HexCell(core) };
+  public getSeq(): number { const value = this[CORE].column('seq'); if (typeof value === 'number') return value; throw new TypeError('hex_cell.seq holds a value of type ' + typeof value + ', not number'); }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
@@ -1288,7 +1295,7 @@ export class HexCell extends Model {
   public minusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, minus: true }); return this; }
   public sumSeq(): this { this[CORE].aggregate('sum', 'seq'); return this; }
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
-  public getLabel(): string { return this[CORE].column('label') as string; }
+  public getLabel(): string { const value = this[CORE].column('label'); if (typeof value === 'string') return value; throw new TypeError('hex_cell.label holds a value of type ' + typeof value + ', not string'); }
   public setLabel(value: string): this { this[CORE].setValue('label', value); return this; }
   public addColumnLabel(): this { this[CORE].addColumn('label'); return this; }
   public removeColumnLabel(): this { this[CORE].removeColumn('label'); return this; }
@@ -1296,7 +1303,7 @@ export class HexCell extends Model {
   public keyNameLabel(): this { this[CORE].keyName = 'label'; return this; }
   public orderByLabelAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('label', false, fn); return this; }
   public orderByLabelDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('label', true, fn); return this; }
-  public getValue(): string | null { return this[CORE].column('value') as string | null; }
+  public getValue(): string | null { const value = this[CORE].column('value'); if (value === null || typeof value === 'string') return value; throw new TypeError('hex_cell.value holds a value of type ' + typeof value + ', not string | null'); }
   public setValue(value: string | null): this { this[CORE].setValue('value', value); return this; }
   public addColumnValue(): this { this[CORE].addColumn('value'); return this; }
   public removeColumnValue(): this { this[CORE].removeColumn('value'); return this; }
@@ -1331,4 +1338,16 @@ export class HexCell extends Model {
   declare getUserModel: <T = unknown>() => T;
   /** Returns the value or relation result named Writer. */
   declare getWriter: <T = unknown>() => T;
+}
+
+/** Whether a styled value holds the common value model. */
+function codecStyled(value: StyledValue): value is StyledValue<CodecValue> {
+  return value.kind === 'sql-null' || codecValue(value.payload());
+}
+
+/** Whether a value is of the common value model. */
+function codecValue(value: unknown): value is CodecValue {
+  if (value === null || typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string') return true;
+  if (Array.isArray(value)) return value.every(item => codecValue(item));
+  return typeof value === 'object' && Object.values(value).every(item => codecValue(item));
 }
