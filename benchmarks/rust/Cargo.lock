@@ -1329,7 +1329,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "aes-gcm",
  "base64",
@@ -1357,7 +1357,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-bench"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "mysql_async",
  "polyspec-orm",
@@ -1368,7 +1368,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-schema"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "regex",
  "same-file",
@@ -1379,7 +1379,7 @@ dependencies = [
 
 [[package]]
 name = "polyspec-orm-testcase"
-version = "0.0.17"
+version = "0.0.18"
 dependencies = [
  "libtest-mimic",
  "tokio",

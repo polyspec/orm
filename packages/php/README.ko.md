@@ -1,11 +1,11 @@
 <!-- doc-id: packages-orm-php-readme -->
-<!-- source-sha256: e634936cb6961d43402043c461c1167a92c6a6ae3e12f9acfb1b8622f2f33f2f -->
+<!-- source-sha256: 05810178674fba039ed80f2f3c2f9b5323504bedba297b9487be319da2ff195c -->
 # orm — PHP 클라이언트
 
 PHP 클라이언트: PDO(`pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`) 위의 생성 모델(`Polyspec\Orm\Tests\Model\Author`, …). 라이브러리가
 SQL을 직접 조립한다. 문장 모양마다 dbspec 문서 묶음의 runtime model(docs/dbspec.md)로 검증하고, 한 번 계획하며,
 크기가 제한된 process 내부 plan cache에 보관한다. 옆에서 실행되는 service나
-extension은 없다. PHP 8.4 이상. Version 0.0.17. DSN의 scheme이 PDO driver를 고르므로
+extension은 없다. PHP 8.4 이상. Version 0.0.18. DSN의 scheme이 PDO driver를 고르므로
 `composer.json`은 세 가지 중 어느 것도 require하지 않고 각각을 suggest한다. `scripts/php-without-mysql.sh`는
 `.github/runner`의 Linux runner에서 SQLite로 `php -n`에 필요한 extension만 두고 client를 실행해,
 공유 module인 `mysqlnd`, `pdo_mysql`, `mysqli`가 load되지 않게 한다.

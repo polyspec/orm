@@ -5,7 +5,7 @@
     "license": "MIT",
     "require": {
         "php": ">=8.5",
-        "polyspec/orm": "0.0.17"
+        "polyspec/orm": "0.0.18"
     },
     "autoload-dev": {
         "psr-4": {
