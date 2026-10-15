@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import copy
+import ipaddress
 import json
+import os
 import re
 import sqlite3
 import time
@@ -94,16 +96,58 @@ _ISOLATION_SQL = {
 
 
 class ParsedDsn:
-    __slots__ = ("driver", "zone", "url", "markdown")
+    __slots__ = ("driver", "zone", "url", "markdown", "ssl_ca")
 
     def __init__(
-        self, driver: str, zone: str, url, markdown: MarkdownDsn | None = None
+        self,
+        driver: str,
+        zone: str,
+        url,
+        markdown: MarkdownDsn | None = None,
+        ssl_ca: str | None = None,
     ):
         self.driver = driver
         self.zone = zone
         self.url = url
         # markdown:// DSN의 server 주소, corpus, token이다. 다른 scheme에서는 None이다.
         self.markdown = markdown
+        # ssl-mode=VERIFY_IDENTITY인 MySQL DSN의 CA file 절대 경로다. TLS가 없으면 None이다.
+        self.ssl_ca = ssl_ca
+
+
+def _mysql_tls(parameters: dict, host: str) -> str | None:
+    """MySQL TLS parameter를 검사한다(docs/config.md "DSN parameters and MySQL TLS"): `ssl-ca`에 CA file의 절대
+    경로를 둔 `ssl-mode=VERIFY_IDENTITY`로 host 이름에 TCP 연결하거나, 둘 다 없다. CA 경로나 None을 돌려준다."""
+    mode = parameters.get("ssl-mode")
+    ca = parameters.get("ssl-ca")
+    if mode is None and ca is None:
+        return None
+    if mode != "VERIFY_IDENTITY":
+        raise OrmError(
+            "CONFIG",
+            f"mysql DSN ssl-mode {json.dumps(mode)} is not supported; the TLS mode is "
+            f"ssl-mode=VERIFY_IDENTITY with ssl-ca",
+        )
+    if not ca:
+        raise OrmError(
+            "CONFIG",
+            "mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file",
+        )
+    if not ca.startswith("/"):
+        raise OrmError("CONFIG", f"mysql DSN ssl-ca {ca} is not an absolute path")
+    if "socket" in parameters:
+        raise OrmError(
+            "CONFIG", "mysql DSN ssl-mode connects over TCP and does not accept socket"
+        )
+    # identity 검사는 host 이름을 인증서와 비교한다.
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        return ca
+    raise OrmError(
+        "CONFIG",
+        f"mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address {host}",
+    )
 
 
 def _sqlite_path(url) -> str:
@@ -169,9 +213,11 @@ def parse_dsn(dsn: str) -> ParsedDsn:
             f"writes datetime values in UTC",
         )
     zone = "+00:00"
+    ssl_ca = None
     if scheme == "mysql":
         if not url.hostname or not (url.path or "").strip("/"):
             raise OrmError("CONFIG", "mysql DSN must include host and database")
+        ssl_ca = _mysql_tls(parameters, url.hostname)
     elif scheme == "postgres":
         if (not url.hostname and "host" not in parameters) or not (
             url.path or ""
@@ -189,7 +235,7 @@ def parse_dsn(dsn: str) -> ParsedDsn:
                 "transactions begin with BEGIN IMMEDIATE",
             )
         _sqlite_path(url)
-    return ParsedDsn(scheme, zone, url)
+    return ParsedDsn(scheme, zone, url, ssl_ca=ssl_ca)
 
 
 def _pad2(n: int) -> str:
@@ -661,10 +707,48 @@ class _SqliteConnection:
         self.connection.close()
 
 
+def _verify_identity_context(ca: str):
+    """The TLS context of ssl-mode=VERIFY_IDENTITY: it checks the server certificate against the CA file and the host
+    of the DSN against the certificate. The host is compared without the trailing dot of its fully qualified form
+    (localhost. names localhost), as the TLS stacks of the other clients compare it; Python's ssl module compares the
+    name as given."""
+    import ssl
+
+    class _VerifyIdentity(ssl.SSLContext):
+        def wrap_socket(self, sock, *args, server_hostname=None, **kwargs):
+            if server_hostname is not None:
+                server_hostname = server_hostname.rstrip(".")
+            return super().wrap_socket(
+                sock, *args, server_hostname=server_hostname, **kwargs
+            )
+
+    context = _VerifyIdentity(ssl.PROTOCOL_TLS_CLIENT)
+    try:
+        context.load_verify_locations(cafile=ca)
+    except (ssl.SSLError, OSError) as error:
+        raise OrmError(
+            "CONFIG", f"mysql DSN ssl-ca {ca} holds no CA certificate: SSL: {error}"
+        ) from error
+    return context
+
+
+def _tls_failure(error: BaseException) -> bool:
+    """Whether a connection error, or an error it was raised from, is a TLS failure: a certificate of another
+    authority or of another host."""
+    import ssl
+
+    seen = error
+    while seen is not None:
+        if isinstance(seen, ssl.SSLError | ssl.CertificateError):
+            return True
+        seen = seen.__cause__ or seen.__context__
+    return False
+
+
 class _MysqlConnection:
     """PyMySQL 연결 한 개. 필요할 때 import한다."""
 
-    def __init__(self, parsed: ParsedDsn):
+    def __init__(self, parsed: ParsedDsn, statement_timeout_ms: int = 0):
         try:
             import pymysql
             from pymysql.constants import CLIENT
@@ -673,10 +757,23 @@ class _MysqlConnection:
                 "CONFIG", f"the mysql driver needs PyMySQL: {error}"
             ) from None
         url = parsed.url
+        socket = dict(parse_qsl(url.query, keep_blank_values=True)).get("socket")
+        tls = {}
+        if parsed.ssl_ca is not None:
+            if not os.path.isfile(parsed.ssl_ca) or not os.access(
+                parsed.ssl_ca, os.R_OK
+            ):
+                raise OrmError(
+                    "CONFIG", f"mysql DSN ssl-ca {parsed.ssl_ca} is not a readable file"
+                )
+            # The server certificate is checked against the CA and the host name, and the password travels only
+            # inside TLS: the client keeps no server public key, so it makes no RSA password exchange.
+            tls = {"ssl": _verify_identity_context(parsed.ssl_ca)}
         try:
             self.connection = pymysql.connect(
                 host=url.hostname or "localhost",
                 port=int(url.port) if url.port else 3306,
+                unix_socket=socket,
                 user=_unquote(url.username or ""),
                 password=_unquote(url.password or ""),
                 database=_unquote(url.path.lstrip("/")),
@@ -685,10 +782,24 @@ class _MysqlConnection:
                 conv=mysql_conversions(),
                 # An update counts the rows it matched, as on PostgreSQL and SQLite, not only the rows it changed.
                 client_flag=CLIENT.FOUND_ROWS,
+                **tls,
             )
         except Exception as error:
+            if tls and _tls_failure(error):
+                raise OrmError(
+                    "CONFIG", f"mysql TLS connection failed: SSL: {error}"
+                ) from error
             _raise_driver_error("mysql", error)
-        self.execute(f"SET time_zone = '+00:00', sql_mode = '{MYSQL_SQL_MODE}'", [])
+        # The session settings are one statement: MySQL bounds SELECT statements with max_execution_time.
+        self.execute(
+            f"SET time_zone = '+00:00', sql_mode = '{MYSQL_SQL_MODE}'"
+            + (
+                f", SESSION max_execution_time = {statement_timeout_ms}"
+                if statement_timeout_ms > 0
+                else ""
+            ),
+            [],
+        )
 
     def execute(self, sql: str, values):
         cursor = self.connection.cursor()
@@ -713,7 +824,7 @@ class _MysqlConnection:
 class _PostgresConnection:
     """psycopg 연결 한 개. 필요할 때 import한다."""
 
-    def __init__(self, parsed: ParsedDsn):
+    def __init__(self, parsed: ParsedDsn, statement_timeout_ms: int = 0):
         try:
             import psycopg
         except ImportError as error:
@@ -729,7 +840,14 @@ class _PostgresConnection:
                 user=_unquote(url.username or ""),
                 password=_unquote(url.password or ""),
                 dbname=name,
-                options="-c TimeZone=UTC",
+                # Startup parameters belong to the client session, so a pooler in transaction mode sets them on
+                # every server connection it assigns to this connection and on no other.
+                options="-c TimeZone=UTC"
+                + (
+                    f" -c statement_timeout={statement_timeout_ms}"
+                    if statement_timeout_ms > 0
+                    else ""
+                ),
             )
         except Exception as error:
             _raise_driver_error("postgres", error)
@@ -860,6 +978,28 @@ class _Shared:
         self.last_affected = None
 
 
+def _connection_config(options: dict) -> int:
+    """Checks the pool options and the statement timeout of the connection configuration (docs/config.md "Runtime
+    connection") and returns the statement timeout in milliseconds. A Db holds one connection, as a PHP Db does, so
+    every pool option other than zero is CONFIG."""
+    values = {}
+    for name in ("poolSize", "poolIdleSize", "poolLifetimeMs", "statementTimeoutMs"):
+        value = options.get(name, 0)
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise OrmError("CONFIG", f"{name} must be an integer")
+        values[name] = value
+    if values["poolSize"] or values["poolIdleSize"] or values["poolLifetimeMs"]:
+        raise OrmError(
+            "CONFIG",
+            "poolSize, poolIdleSize and poolLifetimeMs configure a connection pool, and the Python client opens "
+            "one connection per Db and keeps no pool; pool Python connections with PgBouncer or ProxySQL "
+            '(docs/config.md "Connection poolers")',
+        )
+    if values["statementTimeoutMs"] < 0:
+        raise OrmError("CONFIG", "statement timeout must not be negative")
+    return values["statementTimeoutMs"]
+
+
 @dataclass(frozen=True)
 class DbStats:
     """The connection statistics of a Db (docs/interfaces.md "Utilities", stats())."""
@@ -891,6 +1031,9 @@ class Db:
         self.aes_version = options.get("aesVersion", 1)
         self.aes_keyring = options.get("aesKeyring")
         self.audit_source = options.get("auditSource")
+        self.statement_timeout_ms = _connection_config(options)
+        if self.driver == "markdown" and self.statement_timeout_ms > 0:
+            unsupported_on_markdown(self, "statement timeout")
         self.engines: dict[str, Engine] = {}
         # markdown 연결에 등록된 set의 runtime model이다. SQL 연결은 engines가 그 자리다.
         self.schemas: dict[str, RuntimeModel] = {}
@@ -931,11 +1074,11 @@ class Db:
         if self.driver == "sqlite":
             return _SqliteConnection(self.parsed)
         if self.driver == "mysql":
-            return _MysqlConnection(self.parsed)
+            return _MysqlConnection(self.parsed, self.statement_timeout_ms)
         if self.driver == "markdown":
             # session 하나를 연결해 server가 corpus와 token을 받아들이는지 확인한다.
             return dial_markdown(self.parsed.markdown)
-        return _PostgresConnection(self.parsed)
+        return _PostgresConnection(self.parsed, self.statement_timeout_ms)
 
     def register(self, schema: Schema) -> "Db":
         """생성된 model 집합을 이 연결에 등록한다."""

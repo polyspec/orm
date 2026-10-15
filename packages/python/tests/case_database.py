@@ -33,5 +33,5 @@ def case_database(dialect: str, directory: str, prefix: str):
             with admin.cursor() as cursor:
                 cursor.execute(f"DROP DATABASE `{name}`")
         else:
-            admin.execute(f'DROP DATABASE "{name}"')
+            admin.execute(f'DROP DATABASE "{name}" WITH (FORCE)')
         admin.close()

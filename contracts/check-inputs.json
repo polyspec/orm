@@ -40,7 +40,7 @@
     "bind-check": {"scope": "owner", "needs": ["go", "rust", "php", "composer", "python", "node-modules"], "inputs": ["tests/bind/**", "packages/php/tests/MarkdownTest.php", "packages/ts/tests/markdown.mjs", "packages/python/tests/test_markdown.py", "packages/rust/orm/tests/unit/bind_vectors.rs", "packages/rust/orm/tests/unit/bind_message.rs"]},
     "ir-answers-check": {"scope": "owner", "needs": ["go", "rust", "php", "composer", "python", "node-modules"], "inputs": ["contracts/fixtures/ir_answers.json", "packages/go/markdownmodel/ir_answers_test.go", "packages/php/tests/IrAnswersTest.php", "packages/python/tests/ir_answers.py", "packages/rust/tests/tests/markdown_conformance.rs", "packages/ts/tests/markdown_conformance.mjs"]},
     "fuzz-check": {"scope": "owner", "needs": ["go"], "inputs": ["packages/go/orm/fuzz_test.go", "packages/go/engine/ir/fuzz_test.go"]},
-    "client-pooler-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "databases"]},
+    "client-pooler-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "python", "databases"]},
     "case-database-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "databases"]},
     "dialect-facts-check": {"scope": "owner", "needs": ["go", "databases"], "inputs": ["tests/dialects/probe.go", "tests/dialects/probe_test.go", "tests/dialects/probes_*.go", "tests/dialects/facts_physical_test.go", "tests/dialects/sqlite_filename_physical_test.go", "tests/dialects/servers.go"]},
     "conformance-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "databases", "python"]},

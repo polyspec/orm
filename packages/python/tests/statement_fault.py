@@ -123,7 +123,7 @@ def fresh_db(dialect: str):
                 cursor.execute(f"DROP DATABASE `{name}`")
             admin.close()
         else:
-            admin.execute(f'DROP DATABASE "{name}"')
+            admin.execute(f'DROP DATABASE "{name}" WITH (FORCE)')
             admin.close()
 
 

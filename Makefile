@@ -266,9 +266,9 @@ testcase-check/rust: cargo-downloads-check
 
 # client-pooler-check runs the client database tests through the PgBouncer
 # pooler in transaction mode for PostgreSQL and the ProxySQL pooler for MySQL.
-client-pooler-check: lease-tool
+client-pooler-check: lease-tool python-venv-check
 	$(HOLD_TYPESCRIPT)
-	$(WITH_TEST_ENV) ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" node scripts/client-db-test.mts
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" node scripts/client-db-test.mts
 
 # runner-check는 check runner(scripts/check/run.mts)와 그 실행 기록(scripts/check/record.mts)을 임시 git checkout과 stub 단계로
 # 검사한다. 실제 target과 database는 실행하지 않는다.
@@ -921,9 +921,10 @@ php-min-check:
 php-without-mysql-check:
 	$(RUN_LONG) php-without-mysql -- node scripts/php-without-mysql.mts
 
-client-db-check: lease-tool python-mysql-session-check python-statement-fault-check python-identity-load-check python-schema-inspection-check python-statement-events-check python-install-changed-database-check
+client-db-check: lease-tool python-venv-check
 	$(HOLD_TYPESCRIPT)
-	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANES=parallel node scripts/client-db-test.mts
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_fault_entry
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_CLIENT_DB_LANES=parallel node scripts/client-db-test.mts
 
 # python-install-changed-database-check runs every case of contracts/fixtures/install/changed_database.json with the
 # Python client on SQLite, MySQL and PostgreSQL (packages/python/tests/install_changed_database.py).

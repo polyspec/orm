@@ -11,6 +11,7 @@ from . import testcase
 
 class _Parsed:
     url = urlparse("mysql://root@127.0.0.1:3306/orm")
+    ssl_ca = None
 
 
 class MysqlFoundRowsTest(unittest.TestCase):

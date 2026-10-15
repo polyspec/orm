@@ -2,7 +2,7 @@
 // the test servers (each case creates its own database there), ORM_TEST_MYSQL_SERVER_DSN and ORM_TEST_POSTGRES_SERVER_DSN
 // name the same servers without a pooler, and ORM_TOOLS_MYSQL_DSN and ORM_TOOLS_POSTGRES_DSN name dedicated databases for
 // the Rust catalog connection tests; a test fails when one it needs is unset. ORM_CLIENT_DB_LANGS selects clients (default:
-// all). The rollback fault cases run through each client's test entry point: the Go build tag ormtest, the Rust feature
+// all). ORM_PYTHON names the Python of the venv that make install-python builds. The rollback fault cases run through each client's test entry point: the Go build tag ormtest, the Rust feature
 // test-faults and the Node condition orm-test.
 //
 // With ORM_CLIENT_DB_LANES=parallel the clients run together, one lane each. Each case creates and uses its own database,
@@ -19,7 +19,7 @@ import { keepAll, render, run, runLanes, variable, type Command } from './check/
 import { COMMANDS as TYPESCRIPT_COMMANDS, sqliteTest } from './typescript/sqlite-test.mts';
 
 const root = resolve(import.meta.dirname, '..');
-const LANES = ['go', 'php', 'typescript', 'rust'] as const;
+const LANES = ['go', 'php', 'typescript', 'rust', 'python'] as const;
 type Lane = (typeof LANES)[number];
 const isLane = (name: string): name is Lane => LANES.some(lane => lane === name);
 const env = (name: string): string => process.env[name] ?? '';
@@ -29,6 +29,9 @@ const GO: Command[] = [go('./packages/go/...'), go('-tags', 'ormtest', '-run', '
 const PHP_TESTS = ['ModelTest', 'AesJsonTest', 'RuntimeDbTest', 'AuditExternalSetsTest', 'SqliteConcurrencyTest', 'SchemaSetTest', 'AddTablesAndColumnsTest',
   'ClockTest', 'DriverErrorTest', 'RollbackTest', 'StatementFaultTest', 'RequestHookTest', 'MysqlTlsTest'];
 const PHP: Command[] = PHP_TESTS.map(test => ({ program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', `packages/php/tests/${test}.php`], cwd: root }));
+// The Python database tests run as modules of packages.python.tests with the Python of the venv (ORM_PYTHON).
+const PYTHON_TESTS = ['mysql_session', 'statement_fault', 'identity_load', 'schema_inspection', 'statement_events', 'install_changed_database', 'mysql_tls', 'connection_config', 'replica'];
+const PYTHON: Command[] = PYTHON_TESTS.map(test => ({ program: variable('ORM_PYTHON'), args: ['-m', `packages.python.tests.${test}`], cwd: root }));
 // tests/cargo-test.mts builds the test binaries under the lease of the shared target directory as a long operation with no
 // deadline, copies them into the directory of one run and runs the copies.
 const RUST_TESTS: Command = { program: 'node', args: ['../../tests/cargo-test.mts', 'workspace-tests', '--', 'cargo', 'test', '--locked', '--workspace', '--features', variable('ORM_RUST_TEST_FEATURES')], cwd: join(root, 'packages/rust') };
@@ -42,12 +45,13 @@ const RUST_BUILD: Command = {
 };
 const RUST_INTEGRATION: Command = { program: join(RUN, 'debug/integration'), args: [join(root, 'contracts/fixtures/bench/bench.dbs')], cwd: root };
 /** The commands this script runs, for make repo-check. */
-export const COMMANDS = [...[...GO, ...PHP, RUST_TESTS, RUST_BUILD, RUST_INTEGRATION].map(step => render(step, root)), ...TYPESCRIPT_COMMANDS];
+export const COMMANDS = [...[...GO, ...PHP, ...PYTHON, RUST_TESTS, RUST_BUILD, RUST_INTEGRATION].map(step => render(step, root)), ...TYPESCRIPT_COMMANDS];
 
 const lanes: Record<Lane, (write: (line: string) => void) => Promise<string[]>> = {
   go: write => keepAll(GO, write),
   php: write => keepAll(PHP, write),
   typescript: write => sqliteTest(write),
+  python: write => keepAll(PYTHON, write),
   rust: async write => {
     const failed = await keepAll([RUST_TESTS], write);
     try {
@@ -73,12 +77,12 @@ if (import.meta.main) {
   const names = (process.env['ORM_CLIENT_DB_LANGS'] || LANES.join(',')).split(',').filter(name => name !== '');
   const unknown = names.find(name => !isLane(name));
   if (unknown !== undefined) {
-    console.error(`client-db-test: ORM_CLIENT_DB_LANGS names ${unknown}, which is no lane; the lanes are go, php, typescript and rust`);
+    console.error(`client-db-test: ORM_CLIENT_DB_LANGS names ${unknown}, which is no lane; the lanes are go, php, typescript, rust and python`);
     process.exit(2);
   }
   const selected = LANES.filter(lane => names.includes(lane));
   if (selected.length === 0) {
-    console.error(`client-db-test: ORM_CLIENT_DB_LANGS=${env('ORM_CLIENT_DB_LANGS')} selects no lane; the lanes are go, php, typescript and rust`);
+    console.error(`client-db-test: ORM_CLIENT_DB_LANGS=${env('ORM_CLIENT_DB_LANGS')} selects no lane; the lanes are go, php, typescript, rust and python`);
     process.exit(2);
   }
   const failed = await runLanes('client-db-test', Object.fromEntries(selected.map(lane => [lane, lanes[lane]])), process.env['ORM_CLIENT_DB_LANES'] === 'parallel');
