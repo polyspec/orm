@@ -123,6 +123,12 @@ func TestCoveragePlannerCount(t *testing.T) {
 	compilePlannerCase(t, "planner_count")
 }
 
+// TestCoveragePlannerContainsAsciiFold는 contains가 MySQL에서 ASCII 글자만 접는 26겹 REPLACE로 compile되는지 확인한다.
+func TestCoveragePlannerContainsAsciiFold(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_contains_ascii_fold")
+}
+
 // TestCoveragePlannerRejectsUnknownColumn는 없는 column 조건이 COLUMN_UNKNOWN인지 확인한다.
 func TestCoveragePlannerRejectsUnknownColumn(t *testing.T) {
 	testcase.Start(t, testcase.Compute)

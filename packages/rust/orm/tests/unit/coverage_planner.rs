@@ -98,6 +98,13 @@ fn coverage_planner_count() {
 
 #[test]
 #[ignore = "run by feature-check"]
+fn coverage_planner_contains_ascii_fold() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_contains_ascii_fold");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
 fn coverage_planner_rejects_unknown_column() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_rejects_unknown_column");

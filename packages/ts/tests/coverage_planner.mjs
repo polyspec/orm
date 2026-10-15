@@ -52,6 +52,7 @@ function compileCase(id) {
 await runCases('coverage_planner.mjs', {
   async planner_statement() { compileCase('planner_statement'); },
   async planner_count() { compileCase('planner_count'); },
+  async planner_contains_ascii_fold() { compileCase('planner_contains_ascii_fold'); },
   async planner_rejects_unknown_column() { compileCase('planner_rejects_unknown_column'); },
   async planner_restore() { compileCase('planner_restore'); },
   async planner_tables() { compileCase('planner_tables'); },

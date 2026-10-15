@@ -102,7 +102,7 @@ Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
 - A column comparison (`eq_col` and the others) is allowed when its base operator (`eq` for `eq_col`) is one of the left column's type and neither column has a codec, so `bool gt_col`, `bytes gt_col` and an `aes` column's `eq_col` fail with `OPERATOR_NOT_ALLOWED`; two columns whose only codec is `ip` take `eq_col` and `not_eq_col`, because both sides are the dialect's same stored form.
 - `not` negates a nested group, which renders `NOT (…)`; a top-level `where` or `on` group with `not` fails with `IR_INVALID`.
 - The request carries no SQL text: every condition, output, order, grouping and assignment is one of the forms above, and every bind slot of the plan has a dbspec type.
-- `contains` and `contains_binary` bind the value between wildcards; `contains_binary` compares case-sensitively.
+- `contains` and `contains_binary` bind the value between wildcards; `contains` compares the ASCII letters without regard to case and every other character by code point, and `contains_binary` compares by code point ([dialects](dialects.md)).
 
 ### 1.4 Order and assignments
 

@@ -78,6 +78,13 @@ final class CoveragePlannerTest extends TestCase
         plannerCase($root, $fixture, 'planner_count');
     }
 
+    public function test_planner_contains_ascii_fold(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_contains_ascii_fold');
+    }
+
     public function test_planner_rejects_unknown_column(): void
     {
         $root = dirname(__DIR__, 3);

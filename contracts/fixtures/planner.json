@@ -197,6 +197,78 @@
     },
     {
       "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT COUNT(*) FROM `user` AS `a` WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(`a`.`name`, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') LIKE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(?, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z')",
+            "tables": [
+              "user"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT COUNT(*) FROM \"user\" AS \"a\" WHERE \"a\".\"name\" ILIKE $1",
+            "tables": [
+              "user"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT COUNT(*) FROM \"user\" AS \"a\" WHERE \"a\".\"name\" LIKE ? ESCAPE '\\'",
+            "tables": [
+              "user"
+            ]
+          }
+        ]
+      },
+      "id": "planner_contains_ascii_fold",
+      "input": {
+        "entity": "user",
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "name",
+                "op": "contains",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
         "error": "COLUMN_UNKNOWN"
       },
       "id": "planner_rejects_unknown_column",
@@ -889,7 +961,7 @@
                 "type": "text"
               }
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`name` LIKE ? AND `a`.`read_count` BETWEEN ? AND ? AND `a`.`price` = ? AND `a`.`email_blind_index` = ? AND `a`.`start_dt` > DATE_SUB(NOW(6), INTERVAL ? DAY) AND YEAR(`a`.`created_ts`) = ? AND `a`.`ip` = INET6_ATON(?)",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(`a`.`name`, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') LIKE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(?, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') AND `a`.`read_count` BETWEEN ? AND ? AND `a`.`price` = ? AND `a`.`email_blind_index` = ? AND `a`.`start_dt` > DATE_SUB(NOW(6), INTERVAL ? DAY) AND YEAR(`a`.`created_ts`) = ? AND `a`.`ip` = INET6_ATON(?)",
             "tables": [
               "author"
             ]

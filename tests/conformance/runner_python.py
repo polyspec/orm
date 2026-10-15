@@ -323,6 +323,7 @@ def main():
         "required_columns",
         "creates_and_save",
         "delete_recursive",
+        "contains_ascii_fold",
     }
 
     def run(name, fn):
@@ -854,6 +855,30 @@ def main():
         return {"inserted": inserted, "pairs": pairs.to_array(), "left": left}
 
     run("creates_and_save", creates_and_save)
+
+    def contains_vector(cond, *patterns):
+        """tenant 902에 Apple, apple, Évian, évian, x_y 행을 만들고 각 pattern이 cond로 고르는 account_id를 모은 뒤 지운다."""
+        rows = [
+            CompositeAccount().set_tenant_id(902).set_account_id(i + 1).set_name(name)
+            for i, name in enumerate(["Apple", "apple", "Évian", "évian", "x_y"])
+        ]
+        CompositeAccount().connect(db).creates(rows)
+        matches = [
+            picks(
+                cond(CompositeAccount().connect(db).tenant_id(902), p)
+                .order_by_account_id_asc()
+                .gets(),
+                "account_id",
+            )
+            for p in patterns
+        ]
+        CompositeAccount().connect(db).tenant_id(902).gets().delete()
+        return matches
+
+    run(
+        "contains_ascii_fold",
+        lambda: contains_vector(lambda q, p: q.and_lk_name(p), "PPL", "ÉV", "_", ""),
+    )
 
     def delete_recursive():
         service = Service().connect(db).set_name("recursive").create()

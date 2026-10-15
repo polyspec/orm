@@ -433,6 +433,11 @@ func (x *CompositeAccountModel) OrderByNameDesc(fn ...orm.Func) *CompositeAccoun
 	return x
 }
 
+func (x *CompositeAccountModel) AndLkName[T0 argStringLike](v0 T0) *CompositeAccountModel {
+	x.m.Where("and", chainCompositeAccountAndLkName, v0)
+	return x
+}
+
 func (x *CompositeAccountModel) GetByTenantIdAndAccountId[T0 argIntEq, T1 argIntEq](v0 T0, v1 T1) (*CompositeAccountModel, error) {
 	return oneCompositeAccount(x.m.By(chainCompositeAccountGetByTenantIdAndAccountId, v0, v1))
 }
@@ -446,6 +451,8 @@ func (x *CompositeAccountModel) TupleTenantIdWithAccountId(v0 []CompositeAccount
 	x.m.Where("", chainCompositeAccountTupleTenantIdWithAccountId, v0)
 	return x
 }
+
+var chainCompositeAccountAndLkName = []orm.ChainKey{{Op: "lk", Column: "name"}}
 
 var chainCompositeAccountGetByTenantIdAndAccountId = []orm.ChainKey{{Column: "tenant_id"}, {Conn: "and", Column: "account_id"}}
 

@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 25a1487cf12ecaeb8232e2069705f4dacd7b46efb052de19aa462e0e18499f3a -->
+<!-- source-sha256: 644c67330e48888a3794571eebfa95674ea2c11813155a6a3f17d69b5d1f3c4c -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -103,7 +103,7 @@ Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
 - 열 비교(`eq_col` 등)는 기본 연산자(`eq_col`이면 `eq`)가 왼쪽 컬럼 type의 연산자이고 어느 컬럼도 codec이 없을 때 허용되므로, `bool gt_col`, `bytes gt_col`, `aes` 컬럼의 `eq_col`은 `OPERATOR_NOT_ALLOWED`로 실패한다. codec이 `ip` 하나뿐인 두 컬럼은 양쪽이 dialect의 같은 저장 형태이므로 `eq_col`과 `not_eq_col`을 받는다.
 - `not`은 하위 묶음을 부정하며 `NOT (…)`로 렌더링된다. `not`을 가진 top-level `where`나 `on` 묶음은 `IR_INVALID`다.
 - 요청은 SQL text를 싣지 않는다. 모든 조건, 출력, 정렬, 그룹, 할당은 위 형식 중 하나이며 plan의 모든 bind slot은 dbspec type을 가진다.
-- `contains`와 `contains_binary`는 값을 와일드카드 사이에 바인드한다. `contains_binary`는 대소문자를 구분한다.
+- `contains`와 `contains_binary`는 값을 와일드카드 사이에 바인드한다. `contains`는 ASCII 글자를 대소문자 구분 없이, 다른 모든 문자를 code point로 비교하고, `contains_binary`는 code point로 비교한다([dialects](dialects.md)).
 
 ### 1.4 정렬과 할당
 

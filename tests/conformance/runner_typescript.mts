@@ -132,7 +132,7 @@ async function main() {
     log.push({ sql: e.sql, binds: e.binds.map(norm), kind: e.kind, tables: [...e.tables], transaction, error: e.error === null ? null : code(e.error) });
   });
   const out: Record<string, { statements: Logged[]; result: unknown }> = {};
-  const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive']);
+  const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold']);
   const declared = new Set<string>();
   const run = async (name: string, fn: () => Promise<unknown>) => {
     declared.add(name);
@@ -375,6 +375,16 @@ async function main() {
     const left = await new CompositeAccount().connect(db).tenantId([900, 901]).getCount();
     return { inserted, pairs: pairs.toArray(), left };
   });
+  // tenant 902에 Apple, apple, Évian, évian, x_y 행을 만들고 각 pattern이 cond로 고르는 account_id를 모은 뒤 지운다.
+  const containsVector = async (cond: (q: CompositeAccount, p: string) => CompositeAccount, ...patterns: string[]) => {
+    const rows = ['Apple', 'apple', 'Évian', 'évian', 'x_y'].map((name, i) => new CompositeAccount().setTenantId(902).setAccountId(i + 1).setName(name));
+    await new CompositeAccount().connect(db).creates(rows);
+    const matches: unknown[] = [];
+    for (const p of patterns) matches.push(picks(await cond(new CompositeAccount().connect(db).tenantId(902), p).orderByAccountIdAsc().gets(), 'account_id'));
+    await (await new CompositeAccount().connect(db).tenantId(902).gets()).delete();
+    return matches;
+  };
+  await run('contains_ascii_fold', () => containsVector((q, p) => q.andLkName(p), 'PPL', 'ÉV', '_', ''));
   await run('delete_recursive', async () => {
     const service = await new Service().connect(db).setName('recursive').create();
     const seq = service.getSeq();

@@ -1,6 +1,9 @@
 package dialect
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // MySQL is the primary dialect. Style expressions are defined to preserve the
 // stored byte representation
@@ -41,7 +44,22 @@ func (MySQL) HandlesStyle(s string) bool { return s == "hex" || s == "ip" }
 
 func (MySQL) DecodesStyle(s string) bool { return s == "ip" }
 
-func (MySQL) Like(col, ph string) string { return col + " LIKE " + ph }
+// Like folds the ASCII letters of both operands to lower case and leaves every other character as it is, so
+// LIKE under the binary collation utf8mb4_0900_bin matches as PostgreSQL ILIKE under "C" and SQLite LIKE do
+// (the probes mysql.like.binary_collation_case_sensitive and mysql.like.ascii_fold_replace).
+func (MySQL) Like(col, ph string) string { return asciiLower(col) + " LIKE " + asciiLower(ph) }
+
+// asciiLower wraps x in 26 nested REPLACE calls, one for each of A to Z with its lower case. LOWER and every
+// _ci collation fold beyond ASCII, so they would not give the other databases' result.
+func asciiLower(x string) string {
+	var b strings.Builder
+	b.WriteString(strings.Repeat("REPLACE(", 26))
+	b.WriteString(x)
+	for c := 'A'; c <= 'Z'; c++ {
+		fmt.Fprintf(&b, ", '%c', '%c')", c, c+'a'-'A')
+	}
+	return b.String()
+}
 
 func (MySQL) RowNumber(partition, orderBy string) string {
 	s := "ROW_NUMBER() OVER (PARTITION BY " + partition

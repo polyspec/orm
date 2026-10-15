@@ -9,7 +9,7 @@ Executors still see the same plan shape: steps, bind slots, assemble.
 | identifiers | `` `x` `` | `"x"` | `"x"` |
 | placeholders | `?` | `$n` (the executor renumbers when it expands a `parent` slot to N values) | `?` |
 | LIMIT | `LIMIT off, n` | `LIMIT n OFFSET off` | `LIMIT n OFFSET off` |
-| `Lk` | `LIKE` (collation-driven case-insensitivity) | `ILIKE` | `LIKE … ESCAPE '\'` (ASCII case-insensitive) |
+| `Lk` | `F(col) LIKE F(?)`, F being 26 nested `REPLACE` of `A`–`Z` with its lower case: the column's `utf8mb4_0900_bin` compares code points, and `LOWER` or a `_ci` collation would fold beyond ASCII (probes `mysql.like.binary_collation_case_sensitive`, `mysql.like.ascii_fold_replace`) | `ILIKE` under `COLLATE "C"` (probe `postgres.ilike.c_collation_ascii_only`) | `LIKE … ESCAPE '\'` (ASCII case-insensitive, probe `sqlite.like.ascii_only`) |
 | `Lb` | `LIKE BINARY` | `LIKE` | `instr(col, ?) > 0` |
 | `Fulltext` / `FulltextBoolean` | `MATCH … AGAINST (… IN NATURAL LANGUAGE/BOOLEAN MODE)`, boolean value normalized (`+a +b*`) | `to_tsvector('simple', coalesce(a,'') || ' ' || …) @@ plainto_tsquery / websearch_to_tsquery('simple', ?)`, value trimmed only | **rejected** (FTS5 needs virtual tables) |
 | `forceIndex<Name>` | `FORCE INDEX (name)` | ignored (no hints) | `INDEXED BY "name"` |
@@ -57,6 +57,7 @@ same with sqlx features, PHP with the PDO extension that is installed.
 - aes/hex/ip host stages: `bind_slots[].host_styles` names the stages the executor applies to a bound value; `columns[].styles` carries them on read. AES uses the `ORM-AES2\0` authenticated ciphertext format, a random 12-byte nonce, AES-256-GCM, and the versioned key derivation defined in `docs/codec.md`.
 - An entity with AES columns declares its key version column with the `aes_version` setting. A read selects that column once: the selected column when the request selects it, otherwise a hidden column; the key comes from the configured key versions using the stored version. A missing key or invalid ciphertext fails with `CONFIG` or `CODEC_DECODE`; the current key is never tried for an older version.
 - Bench databases: `scripts/bench-db.mts` recreates the databases named by `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN` and `BENCH_SQLITE_DSN`, installs `contracts/fixtures/bench/bench.dbs` through the TypeScript bench model, runs `benchmarks/sql/seed.mysql.sql`, `benchmarks/sql/seed.pg.sql` or `benchmarks/sql/seed.sqlite.sql`, and fills the AES and blind-index columns with the host codecs of the TypeScript client in the authenticated host format.
+- `contains` matches a substring with the ASCII letters compared without regard to case and every other character by code point, on every database: MySQL folds A–Z of both operands with nested `REPLACE` (`Lk` above), PostgreSQL `ILIKE` under `COLLATE "C"` and SQLite `LIKE` fold ASCII letters only; the conformance vector `contains_ascii_fold` pins the result.
 - Conformance: `tests/conformance/vectors.postgres.json` / `vectors.sqlite.json` are recorded per dialect; every vector's **result** is identical to MySQL except `get_query`, whose result is the dialect's own SQL text.
 
 ## Schema definitions

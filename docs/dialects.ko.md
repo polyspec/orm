@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 2484a01ce9880d425dc24b88b17ee5a21be60063e6d5c4eec50772597de97e0e -->
+<!-- source-sha256: 68e745f6db96615128776079e3e8f5235e25d724ea542f599692fac558a0af9d -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -9,7 +9,7 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
 | identifiers | `` `x` `` | `"x"` | `"x"` |
 | placeholders | `?` | `$n` (the executor renumbers when it expands a `parent` slot to N values) | `?` |
 | LIMIT | `LIMIT off, n` | `LIMIT n OFFSET off` | `LIMIT n OFFSET off` |
-| `Lk` | `LIKE` (정렬 규칙에 따라 대소문자 구분 없음) | `ILIKE` | `LIKE … ESCAPE '\'` (ASCII 대소문자 구분 없음) |
+| `Lk` | `F(col) LIKE F(?)`, F는 `A`–`Z` 각각을 소문자로 바꾸는 `REPLACE` 26겹: column의 `utf8mb4_0900_bin`은 code point로 비교하고, `LOWER`나 `_ci` collation은 ASCII 밖까지 접는다(probe `mysql.like.binary_collation_case_sensitive`, `mysql.like.ascii_fold_replace`) | `COLLATE "C"` 아래의 `ILIKE`(probe `postgres.ilike.c_collation_ascii_only`) | `LIKE … ESCAPE '\'` (ASCII 대소문자 구분 없음, probe `sqlite.like.ascii_only`) |
 | `Lb` | `LIKE BINARY` | `LIKE` | `instr(col, ?) > 0` |
 | `Fulltext` / `FulltextBoolean` | `MATCH … AGAINST (… IN NATURAL LANGUAGE/BOOLEAN MODE)`, boolean value normalized (`+a +b*`) | `to_tsvector('simple', coalesce(a,'') || ' ' || …) @@ plainto_tsquery / websearch_to_tsquery('simple', ?)`, value trimmed only | **rejected** (FTS5 needs virtual tables) |
 | `forceIndex<Name>` | `FORCE INDEX (name)` | ignored (no hints) | `INDEXED BY "name"` |
@@ -52,6 +52,7 @@ import하지 않으면 `orm.Open`은 필요한 import를 포함한 `CONFIG`를 �
 - `bind_slots[].host_styles`와 `columns[].styles`는 실행기가 처리할 host stage를 기록한다. AES는 `docs/codec.md`에 정의한 `ORM-AES2\0` authenticated ciphertext format, 12바이트 random nonce, AES-256-GCM, version key derivation을 사용한다.
 - AES column이 있는 entity는 `aes_version` setting으로 key version column을 선언한다. 읽기는 그 column을 한 번만 고른다. request가 고른 column이면 그것을, 아니면 숨은 column을 쓰며, 저장된 version으로 설정된 key version에서 key를 선택한다. key가 없거나 ciphertext가 유효하지 않으면 `CONFIG` 또는 `CODEC_DECODE`를 반환하며 이전 version에 current key를 사용하지 않는다.
 - bench database는 `scripts/bench-db.mts`가 만든다. `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`의 database를 다시 만들고, TypeScript bench model로 `contracts/fixtures/bench/bench.dbs`를 설치하고, `benchmarks/sql/seed.mysql.sql`, `benchmarks/sql/seed.pg.sql`, `benchmarks/sql/seed.sqlite.sql`을 실행한 뒤 TypeScript client의 host codec으로 인증된 host 형식의 AES와 blind-index 값을 채운다.
+- `contains`는 모든 database에서 substring을 찾고, ASCII 글자는 대소문자 구분 없이, 다른 모든 문자는 code point로 비교한다: MySQL은 두 피연산자의 A–Z를 중첩 `REPLACE`로 접고(위 `Lk`), PostgreSQL `COLLATE "C"` 아래의 `ILIKE`와 SQLite `LIKE`는 ASCII 글자만 접는다. conformance vector `contains_ascii_fold`가 결과를 고정한다.
 - conformance vector의 결과는 세 database에서 같아야 한다. `get_query`는 방언 SQL을 반환한다.
 
 ## Schema definitions

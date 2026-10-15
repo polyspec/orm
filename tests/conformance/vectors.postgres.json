@@ -1692,6 +1692,265 @@
       }
     },
     {
+      "name": "contains_ascii_fold",
+      "chain": "creates(Apple, apple, Évian, évian, x_y), tenantId(902)-\u003eandLkName(p)-\u003eorderByAccountIdAsc()-\u003egets() for p in PPL, ÉV, _, '', delete",
+      "expect": {
+        "result": [
+          [
+            {
+              "account_id": 1
+            },
+            {
+              "account_id": 2
+            }
+          ],
+          [
+            {
+              "account_id": 3
+            }
+          ],
+          [
+            {
+              "account_id": 5
+            }
+          ],
+          [
+            {
+              "account_id": 1
+            },
+            {
+              "account_id": 2
+            },
+            {
+              "account_id": 3
+            },
+            {
+              "account_id": 4
+            },
+            {
+              "account_id": 5
+            }
+          ]
+        ],
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "BEGIN",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "savepoint",
+            "sql": "SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              1,
+              "Apple",
+              902,
+              2,
+              "apple",
+              902,
+              3,
+              "Évian",
+              902,
+              4,
+              "évian"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES ($1, $2, $3), ($4, $5, $6), ($7, $8, $9), ($10, $11, $12)",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              5,
+              "x_y"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES ($1, $2, $3)",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "release",
+            "sql": "RELEASE SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              "%PPL%"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\", \"a\".\"name\" AS \"a__name\" FROM \"composite_account\" AS \"a\" WHERE \"a\".\"tenant_id\" = $1 AND \"a\".\"name\" ILIKE $2 ORDER BY \"a\".\"account_id\" ASC",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              "%ÉV%"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\", \"a\".\"name\" AS \"a__name\" FROM \"composite_account\" AS \"a\" WHERE \"a\".\"tenant_id\" = $1 AND \"a\".\"name\" ILIKE $2 ORDER BY \"a\".\"account_id\" ASC",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              "%\\_%"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\", \"a\".\"name\" AS \"a__name\" FROM \"composite_account\" AS \"a\" WHERE \"a\".\"tenant_id\" = $1 AND \"a\".\"name\" ILIKE $2 ORDER BY \"a\".\"account_id\" ASC",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              "%%"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\", \"a\".\"name\" AS \"a__name\" FROM \"composite_account\" AS \"a\" WHERE \"a\".\"tenant_id\" = $1 AND \"a\".\"name\" ILIKE $2 ORDER BY \"a\".\"account_id\" ASC",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\", \"a\".\"name\" AS \"a__name\" FROM \"composite_account\" AS \"a\" WHERE \"a\".\"tenant_id\" = $1",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "savepoint",
+            "sql": "SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              1
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"composite_account\" WHERE \"composite_account\".\"tenant_id\" = $1 AND \"composite_account\".\"account_id\" = $2",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              2
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"composite_account\" WHERE \"composite_account\".\"tenant_id\" = $1 AND \"composite_account\".\"account_id\" = $2",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              3
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"composite_account\" WHERE \"composite_account\".\"tenant_id\" = $1 AND \"composite_account\".\"account_id\" = $2",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              4
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"composite_account\" WHERE \"composite_account\".\"tenant_id\" = $1 AND \"composite_account\".\"account_id\" = $2",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              5
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"composite_account\" WHERE \"composite_account\".\"tenant_id\" = $1 AND \"composite_account\".\"account_id\" = $2",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "release",
+            "sql": "RELEASE SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          }
+        ]
+      }
+    },
+    {
       "name": "delete_recursive",
       "chain": "relations(...)-\u003egetBySeq(seq)-\u003edelete(true)",
       "expect": {

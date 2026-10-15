@@ -149,6 +149,12 @@ func sqliteProbes() []Probe {
 			e.Exec("CREATE TABLE t (v TEXT COLLATE NOCASE UNIQUE)", "INSERT INTO t VALUES ('a'), ('á'), ('Á')")
 			e.Fails("INSERT INTO t VALUES ('A')", "UNIQUE constraint failed")
 		}),
+		// LIKE.
+		p("like.ascii_only", "LIKE folds ASCII letters only: '%PPL%' matches Apple and apple, '%ÉV%' Évian alone", func(e *Env) {
+			e.Exec("CREATE TABLE t (n int, v TEXT)", "INSERT INTO t VALUES (1, 'Apple'), (2, 'apple'), (3, 'Évian'), (4, 'évian'), (5, 'x_y')")
+			e.WantRows("SELECT n FROM t WHERE v LIKE '%PPL%' ESCAPE '\\' ORDER BY n", "1,2")
+			e.WantRows("SELECT n FROM t WHERE v LIKE '%ÉV%' ESCAPE '\\' ORDER BY n", "3")
+		}),
 		// Foreign keys.
 		p("fk.off_by_default", "foreign keys are not enforced until PRAGMA foreign_keys = ON on the connection", func(e *Env) {
 			e.Exec("CREATE TABLE p (id INTEGER PRIMARY KEY)", "CREATE TABLE c (pid int REFERENCES p (id))", "INSERT INTO c VALUES (1)", "PRAGMA foreign_keys = ON")

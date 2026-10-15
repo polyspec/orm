@@ -17,6 +17,7 @@ use Polyspec\Orm\Tests\Model\SoftRecord;
 use Polyspec\Orm\Tests\Model\Task;
 use Polyspec\Orm\Tests\Model\User;
 use Polyspec\Orm\AesKeyring;
+use Polyspec\Orm\Db;
 use Polyspec\Orm\Collection;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Model;
@@ -153,7 +154,7 @@ $db->subscribe(static function (StatementEvent $e): void {
 $out = [];
 /** @var array<string, callable> vector 이름별 chain, 선언 순서 */
 $vectors = [];
-$writeVectors = array_fill_keys(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive'], true);
+$writeVectors = array_fill_keys(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold'], true);
 
 /** vector를 선언한다. 선택된 vector는 모든 선언이 끝난 뒤 선언 순서대로 실행한다. */
 function vector(string $name, callable $fn): void
@@ -388,6 +389,24 @@ vector('creates_and_save', function () use ($db): array {
     $left = (new CompositeAccount)($db)->tenantId([900, 901])->getCount();
     return ['inserted' => $inserted, 'pairs' => $pairs->toArray(), 'left' => $left];
 });
+
+/** tenant 902에 Apple, apple, Évian, évian, x_y 행을 만들고 각 pattern이 $cond로 고르는 account_id를 모은 뒤 지운다. */
+function containsVector(Db $db, callable $cond, string ...$patterns): array
+{
+    $rows = [];
+    foreach (['Apple', 'apple', 'Évian', 'évian', 'x_y'] as $i => $name) {
+        $rows[] = (new CompositeAccount)->setTenantId(902)->setAccountId($i + 1)->setName($name);
+    }
+    (new CompositeAccount)($db)->creates($rows);
+    $matches = [];
+    foreach ($patterns as $p) {
+        $matches[] = picks($cond((new CompositeAccount)($db)->tenantId(902), $p)->orderByAccountIdAsc()->gets(), 'account_id');
+    }
+    (new CompositeAccount)($db)->tenantId(902)->gets()->delete();
+    return $matches;
+}
+
+vector('contains_ascii_fold', fn() => containsVector($db, fn(CompositeAccount $q, string $p) => $q->andLkName($p), 'PPL', 'ÉV', '_', ''));
 
 vector('delete_recursive', function () use ($db): array {
     $service = (new Service)($db)->setName('recursive')->create();

@@ -153,6 +153,23 @@ fn picks<M: Model>(c: &Collection<M>, names: &[&str]) -> Value {
     Value::Array(c.models().map(|m| pick(Some(m), names)).collect())
 }
 
+/// tenant 902에 Apple, apple, Évian, évian, x_y 행을 만들고 각 pattern이 cond로 고르는 account_id를 모은 뒤 지운다.
+async fn contains_vector(db: &Db, cond: impl Fn(CompositeAccount, &str) -> CompositeAccount, patterns: &[&str]) -> polyspec_orm::Result<Value> {
+    let rows = ["Apple", "apple", "Évian", "évian", "x_y"]
+        .iter()
+        .enumerate()
+        .map(|(i, name)| CompositeAccount::new().set_tenant_id(902).set_account_id(i as i64 + 1).set_name(*name))
+        .collect::<Vec<_>>();
+    CompositeAccount::new().connect(db).creates(rows).await?;
+    let mut matches = Vec::new();
+    for p in patterns {
+        let found = cond(CompositeAccount::new().connect(db).tenant_id(902), p).order_by_account_id_asc().gets().await?;
+        matches.push(picks(&found, &["account_id"]));
+    }
+    CompositeAccount::new().connect(db).tenant_id(902).gets().await?.delete(false).await?;
+    Ok(Value::Array(matches))
+}
+
 fn keys_of<M: Model>(c: &Collection<M>) -> Value {
     Value::Array(c.keys().iter().map(|k| k.to_json()).collect())
 }
@@ -608,6 +625,10 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             Ok::<Value, polyspec_orm::Error>(json!({"inserted": inserted, "pairs": pairs.to_array()?, "left": left}))
         })
         .retry(0)
+    );
+    run!(
+        "contains_ascii_fold",
+        db.transaction(async || contains_vector(db, |q, p| q.and_lk_name(p), &["PPL", "ÉV", "_", ""]).await).retry(0)
     );
     run!(
         "delete_recursive",
