@@ -9,25 +9,33 @@ from pathlib import Path
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
-PACKAGE = ROOT / 'packages/python'
+PACKAGE = ROOT / "packages/python"
 
 
 class RequiresPythonTest(unittest.TestCase):
     def test_requires_python_is_the_minor_release_of_mise_python(self):
-        with (PACKAGE / 'pyproject.toml').open('rb') as file:
-            declared = tomllib.load(file)['project']['requires-python']
-        with (ROOT / 'mise.toml').open('rb') as file:
-            release = tomllib.load(file)['tools']['python']
-        self.assertRegex(release, r'^\d+\.\d+\.\d+$', 'mise.toml pins the exact Python release, such as 3.14.8')
-        minor = '.'.join(release.split('.')[:2])
-        self.assertRegex(declared, r'^>=\d+\.\d+$', 'requires-python is ">=<major>.<minor>", such as ">=3.14"')
+        with (PACKAGE / "pyproject.toml").open("rb") as file:
+            declared = tomllib.load(file)["project"]["requires-python"]
+        with (ROOT / "mise.toml").open("rb") as file:
+            release = tomllib.load(file)["tools"]["python"]
+        self.assertRegex(
+            release,
+            r"^\d+\.\d+\.\d+$",
+            "mise.toml pins the exact Python release, such as 3.14.8",
+        )
+        minor = ".".join(release.split(".")[:2])
+        self.assertRegex(
+            declared,
+            r"^>=\d+\.\d+$",
+            'requires-python is ">=<major>.<minor>", such as ">=3.14"',
+        )
         self.assertEqual(
             declared,
-            f'>={minor}',
-            f'requires-python of packages/python/pyproject.toml must state the tested minor release of the Python of '
+            f">={minor}",
+            f"requires-python of packages/python/pyproject.toml must state the tested minor release of the Python of "
             f'mise.toml ({minor}), not an untested floor; set requires-python = ">={minor}"',
         )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     testcase.main()

@@ -6,10 +6,19 @@ from dataclasses import dataclass
 from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec_set
 from polyspec.orm.errors import OrmError
 
-__all__ = ['Entity', 'Field', 'RuntimeModel', 'entity_of', 'field_of', 'model_of_documents',
-           'model_of_manifest', 'parse_document_set', 'split_documents']
+__all__ = [
+    "Entity",
+    "Field",
+    "RuntimeModel",
+    "entity_of",
+    "field_of",
+    "model_of_documents",
+    "model_of_manifest",
+    "parse_document_set",
+    "split_documents",
+]
 
-PLAIN_STAGES = frozenset({'aes', 'hex', 'ip'})
+PLAIN_STAGES = frozenset({"aes", "hex", "ip"})
 
 
 @dataclass(frozen=True)
@@ -89,8 +98,10 @@ class RuntimeModel:
         text, then those of the external text marked external, as PHP's RuntimeModel::loadSet
         returns them. A text that does not start with a dbspec header, or a document with a
         diagnostic, is SCHEMA_INVALID."""
-        return parse_document_set(split_documents(manifest_text),
-                                  [] if external_text == '' else split_documents(external_text))
+        return parse_document_set(
+            split_documents(manifest_text),
+            [] if external_text == "" else split_documents(external_text),
+        )
 
 
 def field_of(e: Entity, name: str) -> Field | None:
@@ -104,61 +115,63 @@ def entity_of(m: RuntimeModel, name: str) -> Entity | None:
     return m.entities.get(name)
 
 
-_HEADER = 'dbspec 1 '
+_HEADER = "dbspec 1 "
 
 
 def split_documents(text: str) -> list:
     """manifest text를 이은 문서들을 header 줄에서 나눈다."""
     if not text.startswith(_HEADER):
-        raise OrmError('SCHEMA_INVALID', 'manifest text does not start with a dbspec header')
+        raise OrmError(
+            "SCHEMA_INVALID", "manifest text does not start with a dbspec header"
+        )
     out = []
     start = 0
-    at = text.find('\n' + _HEADER)
+    at = text.find("\n" + _HEADER)
     while at >= 0:
-        out.append(text[start:at + 1])
+        out.append(text[start : at + 1])
         start = at + 1
-        at = text.find('\n' + _HEADER, at + 1)
+        at = text.find("\n" + _HEADER, at + 1)
     out.append(text[start:])
     return out
 
 
 def _type_sizes(t) -> tuple:
-    if t.kind == 'decimal':
+    if t.kind == "decimal":
         return t.precision, t.scale, 0
-    if t.kind in ('time', 'datetime'):
+    if t.kind in ("time", "datetime"):
         return t.precision, 0, 0
-    if t.kind == 'varchar':
+    if t.kind == "varchar":
         return 0, 0, t.length
     return 0, 0, 0
 
 
 def _entity_of_table(t) -> Entity:
     name = t.name
-    updated = ''
-    soft_delete = ''
-    aes_version = ''
-    audit_column = ''
-    audit_record = ''
+    updated = ""
+    soft_delete = ""
+    aes_version = ""
+    audit_column = ""
+    audit_record = ""
     explicit = set()
     stages = {}
     blind = {}
     settings = t.settings.settings if t.settings is not None else ()
     for s in settings:
-        if s.kind == 'entity':
+        if s.kind == "entity":
             name = s.name
-        elif s.kind == 'updated':
+        elif s.kind == "updated":
             updated = s.column
-        elif s.kind == 'soft_delete':
+        elif s.kind == "soft_delete":
             soft_delete = s.column
-        elif s.kind == 'aes_version':
+        elif s.kind == "aes_version":
             aes_version = s.column
-        elif s.kind == 'select_explicit':
+        elif s.kind == "select_explicit":
             explicit.update(s.columns)
-        elif s.kind == 'codec':
+        elif s.kind == "codec":
             stages[s.column] = s.stages
-        elif s.kind == 'blind_index':
+        elif s.kind == "blind_index":
             blind[s.column] = s.index_column
-        elif s.kind == 'audit':
+        elif s.kind == "audit":
             audit_column = s.column
             audit_record = s.references
     primary = set(t.primary_key.columns)
@@ -166,32 +179,50 @@ def _entity_of_table(t) -> Entity:
     fields = []
     for c in t.columns:
         precision, scale, length = _type_sizes(c.type)
-        fields.append(Field(
-            name=c.name, type=c.type.kind, nullable=c.nullable, identity=c.identity,
-            has_default=c.default is not None, default_now=c.default is not None
-            and c.default.kind == 'now',
-            precision=precision, scale=scale, length=length,
-            stages=stages.get(c.name, ()), selected=c.name not in explicit,
-            primary=c.name in primary, foreign=c.name in foreign,
-            blind_index=blind.get(c.name, '')))
+        fields.append(
+            Field(
+                name=c.name,
+                type=c.type.kind,
+                nullable=c.nullable,
+                identity=c.identity,
+                has_default=c.default is not None,
+                default_now=c.default is not None and c.default.kind == "now",
+                precision=precision,
+                scale=scale,
+                length=length,
+                stages=stages.get(c.name, ()),
+                selected=c.name not in explicit,
+                primary=c.name in primary,
+                foreign=c.name in foreign,
+                blind_index=blind.get(c.name, ""),
+            )
+        )
     return Entity(
-        name=name, table=t.name, fields=tuple(fields),
+        name=name,
+        table=t.name,
+        fields=tuple(fields),
         primary_key=tuple(t.primary_key.columns),
-        identity=next((c.name for c in t.columns if c.identity), ''),
+        identity=next((c.name for c in t.columns if c.identity), ""),
         uniques=tuple(tuple(u.columns) for u in t.uniques),
         indexes=tuple([u.name for u in t.uniques] + [i.name for i in t.indexes]),
-        updated=updated, soft_delete=soft_delete, aes_version=aes_version,
-        audit_column=audit_column, audit_record=audit_record)
+        updated=updated,
+        soft_delete=soft_delete,
+        aes_version=aes_version,
+        audit_column=audit_column,
+        audit_record=audit_record,
+    )
 
 
 def model_of_documents(documents) -> RuntimeModel:
     """parse된 문서들의 runtime model. 집합은 manifest를 가져야 한다."""
-    import dataclasses
+
     manifest, diagnostics = dbspec_manifest(documents)
     if manifest is None:
         d = diagnostics[0]
-        raise OrmError('SCHEMA_INVALID',
-                       f'document set: {d.rule} at {d.line}:{d.column}: {d.message}')
+        raise OrmError(
+            "SCHEMA_INVALID",
+            f"document set: {d.rule} at {d.line}:{d.column}: {d.message}",
+        )
     entities = {}
     ordered = sorted(documents, key=lambda d: d.name)
     for document in ordered:
@@ -200,13 +231,18 @@ def model_of_documents(documents) -> RuntimeModel:
         for table in document.tables:
             entity = _entity_of_table(table)
             if entity.name in entities:
-                raise OrmError('SCHEMA_INVALID',
-                               f'entity {entity.name} is declared twice in the document set')
+                raise OrmError(
+                    "SCHEMA_INVALID",
+                    f"entity {entity.name} is declared twice in the document set",
+                )
             entities[entity.name] = entity
-    return RuntimeModel(manifest_text=manifest.manifest_text,
-                        manifest_hash=manifest.manifest_hash,
-                        external_text=manifest.external_text,
-                        documents=tuple(ordered), entities=entities)
+    return RuntimeModel(
+        manifest_text=manifest.manifest_text,
+        manifest_hash=manifest.manifest_hash,
+        external_text=manifest.external_text,
+        documents=tuple(ordered),
+        entities=entities,
+    )
 
 
 def parse_document_set(texts, external_texts=()) -> list:
@@ -215,32 +251,45 @@ def parse_document_set(texts, external_texts=()) -> list:
     external로 표시한다. 문서의 첫 진단은 SCHEMA_INVALID다."""
     for text in list(texts) + list(external_texts):
         if not isinstance(text, str):
-            raise OrmError('SCHEMA_INVALID', 'a dbspec text is not a string')
+            raise OrmError("SCHEMA_INVALID", "a dbspec text is not a string")
     documents = []
     for entry in parse_dbspec_set(texts, external_texts):
         if entry.document is None:
             d = entry.diagnostics[0]
-            raise OrmError('SCHEMA_INVALID',
-                           f'document {entry.name}: {d.rule} at {d.line}:{d.column}: '
-                           f'{d.message}')
+            raise OrmError(
+                "SCHEMA_INVALID",
+                f"document {entry.name}: {d.rule} at {d.line}:{d.column}: {d.message}",
+            )
         documents.append(entry.document)
     return documents
 
 
-def model_of_manifest(manifest_text: str, manifest_hash: str, external_text: str = '') \
-        -> RuntimeModel:
+def model_of_manifest(
+    manifest_text: str, manifest_hash: str, external_text: str = ""
+) -> RuntimeModel:
     """manifest text와 그 문서들이 외부 문서에서 쓰는 table의 text의 runtime model을
     만들고, 그 text들이 문서들의 manifest text와 external text가 맞는지(SCHEMA_INVALID
     아니면)와 manifestHash가 그 hash가 맞는지(SCHEMA_HASH_MISMATCH 아니면) 확인한다."""
-    model = model_of_documents(parse_document_set(
-        split_documents(manifest_text),
-        [] if external_text == '' else split_documents(external_text)))
+    model = model_of_documents(
+        parse_document_set(
+            split_documents(manifest_text),
+            [] if external_text == "" else split_documents(external_text),
+        )
+    )
     if model.manifest_text != manifest_text:
-        raise OrmError('SCHEMA_INVALID', 'the embedded text is not the manifest text of its documents')
+        raise OrmError(
+            "SCHEMA_INVALID",
+            "the embedded text is not the manifest text of its documents",
+        )
     if model.external_text != external_text:
-        raise OrmError('SCHEMA_INVALID', 'the embedded external text is not the external text of its documents')
+        raise OrmError(
+            "SCHEMA_INVALID",
+            "the embedded external text is not the external text of its documents",
+        )
     if model.manifest_hash != manifest_hash:
-        raise OrmError('SCHEMA_HASH_MISMATCH',
-                       f'generated code declares manifest {manifest_hash}, its manifest text '
-                       f'hashes to {model.manifest_hash}: generate the models again')
+        raise OrmError(
+            "SCHEMA_HASH_MISMATCH",
+            f"generated code declares manifest {manifest_hash}, its manifest text "
+            f"hashes to {model.manifest_hash}: generate the models again",
+        )
     return model

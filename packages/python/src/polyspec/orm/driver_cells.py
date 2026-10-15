@@ -6,7 +6,7 @@ decimal.Decimal, which the codec does not read. The conversions here return the 
 
 
 def _text(value):
-    return value.decode('ascii') if isinstance(value, (bytes, bytearray)) else value
+    return value.decode("ascii") if isinstance(value, (bytes, bytearray)) else value
 
 
 def mysql_conversions():
@@ -20,13 +20,10 @@ def mysql_conversions():
     return table
 
 
-NUMERIC_OID = 1700
-
-
 def postgres_loaders(adapters):
     """Registers the psycopg text loader for NUMERIC cells on the adapters of a connection."""
     from psycopg.postgres import types
     from psycopg.types.string import TextLoader
 
-    adapters.register_loader(types['numeric'].oid, TextLoader)
+    adapters.register_loader(types["numeric"].oid, TextLoader)
     return adapters

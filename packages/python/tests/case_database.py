@@ -14,24 +14,24 @@ from .statement_fault import admin_mysql, required_dsn, with_database
 def case_database(dialect: str, directory: str, prefix: str):
     """The DSN of a new empty database named by prefix and a random part: a SQLite file in directory, or a MySQL or
     PostgreSQL database on the test server."""
-    if dialect == 'sqlite':
-        yield f'sqlite://{os.path.join(directory, f"{prefix}_{uuid.uuid4().hex}.sqlite3")}'
+    if dialect == "sqlite":
+        yield f"sqlite://{os.path.join(directory, f'{prefix}_{uuid.uuid4().hex}.sqlite3')}"
         return
     dsn = required_dsn(dialect)
-    name = f'{prefix}_{uuid.uuid4().hex[:12]}'
-    if dialect == 'mysql':
+    name = f"{prefix}_{uuid.uuid4().hex[:12]}"
+    if dialect == "mysql":
         admin = admin_mysql(dsn)
         with admin.cursor() as cursor:
-            cursor.execute(f'CREATE DATABASE `{name}`')
+            cursor.execute(f"CREATE DATABASE `{name}`")
     else:
         admin = psycopg.connect(dsn, autocommit=True)
         admin.execute(f'CREATE DATABASE "{name}"')
     try:
         yield with_database(dsn, name)
     finally:
-        if dialect == 'mysql':
+        if dialect == "mysql":
             with admin.cursor() as cursor:
-                cursor.execute(f'DROP DATABASE `{name}`')
+                cursor.execute(f"DROP DATABASE `{name}`")
         else:
             admin.execute(f'DROP DATABASE "{name}"')
         admin.close()

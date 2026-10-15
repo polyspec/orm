@@ -2,7 +2,7 @@
 # 값 함수는 비교 값 자체이고, column 함수는 비교 대상 column을 감싸고 비교 값이 뒤따른다.
 from typing import Any, Callable
 
-__all__ = ['orm', 'ValueFunction', 'ColumnFunction']
+__all__ = ["orm", "ValueFunction", "ColumnFunction"]
 
 
 class _FunctionValue:
@@ -13,9 +13,9 @@ class _FunctionValue:
         self.args = args
 
     def ir(self, param: Callable[[Any], int]) -> dict:
-        out: dict = {'name': self.name}
+        out: dict = {"name": self.name}
         if self.args:
-            out['ps'] = [param(value) for value in self.args]
+            out["ps"] = [param(value) for value in self.args]
         return out
 
 
@@ -39,52 +39,52 @@ class _Orm:
     """query가 clock과 날짜 표현을 나타내는 함수들."""
 
     def now(self) -> ValueFunction:
-        return _value('now')
+        return _value("now")
 
     def today(self) -> ValueFunction:
-        return _value('today')
+        return _value("today")
 
     def seconds_ago(self, n: int) -> ValueFunction:
-        return _value('seconds_ago', n)
+        return _value("seconds_ago", n)
 
     def minutes_ago(self, n: int) -> ValueFunction:
-        return _value('minutes_ago', n)
+        return _value("minutes_ago", n)
 
     def hours_ago(self, n: int) -> ValueFunction:
-        return _value('hours_ago', n)
+        return _value("hours_ago", n)
 
     def days_ago(self, n: int) -> ValueFunction:
-        return _value('days_ago', n)
+        return _value("days_ago", n)
 
     def months_ago(self, n: int) -> ValueFunction:
-        return _value('months_ago', n)
+        return _value("months_ago", n)
 
     def seconds_later(self, n: int) -> ValueFunction:
-        return _value('seconds_later', n)
+        return _value("seconds_later", n)
 
     def minutes_later(self, n: int) -> ValueFunction:
-        return _value('minutes_later', n)
+        return _value("minutes_later", n)
 
     def hours_later(self, n: int) -> ValueFunction:
-        return _value('hours_later', n)
+        return _value("hours_later", n)
 
     def days_later(self, n: int) -> ValueFunction:
-        return _value('days_later', n)
+        return _value("days_later", n)
 
     def months_later(self, n: int) -> ValueFunction:
-        return _value('months_later', n)
+        return _value("months_later", n)
 
     def day_of_week(self) -> ColumnFunction:
-        return _column('day_of_week')
+        return _column("day_of_week")
 
     def year(self) -> ColumnFunction:
-        return _column('year')
+        return _column("year")
 
     def month(self) -> ColumnFunction:
-        return _column('month')
+        return _column("month")
 
     def date(self) -> ColumnFunction:
-        return _column('date')
+        return _column("date")
 
 
 orm = _Orm()

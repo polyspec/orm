@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .dbspec_vectors_reader import VectorError, check_vectors
 
-NAME = 'tests/dbspec/cases.json'
+NAME = "tests/dbspec/cases.json"
 
 
 class CasesError(VectorError):
@@ -18,17 +18,22 @@ class CasesError(VectorError):
 def check_cases(value, name=NAME):
     """Checks the parsed cases.json value and returns it; name names it in the errors."""
     try:
-        check_vectors(value, 'cases', name)
+        check_vectors(value, "cases", name)
     except VectorError as error:
         raise CasesError(str(error)) from None
-    for section in ('canonical', 'normalize', 'invalid', 'positions'):
+    for section in ("canonical", "normalize", "invalid", "positions"):
         for i, case in enumerate(value[section]):
-            if case['main'] not in case['documents']:
-                raise CasesError(f'{name}: {section}[{i}].documents.{case["main"]} is missing')
+            if case["main"] not in case["documents"]:
+                raise CasesError(
+                    f"{name}: {section}[{i}].documents.{case['main']} is missing"
+                )
     return value
 
 
 def read_cases():
     """Reads tests/dbspec/cases.json of the repository strictly."""
-    with open(Path(__file__).resolve().parents[3] / 'tests' / 'dbspec' / 'cases.json', encoding='utf-8') as handle:
+    with open(
+        Path(__file__).resolve().parents[3] / "tests" / "dbspec" / "cases.json",
+        encoding="utf-8",
+    ) as handle:
         return check_cases(json.load(handle))

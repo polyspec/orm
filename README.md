@@ -24,9 +24,17 @@ const authors = await new Author().connect(slave1).serviceSeq(7).andIsClose(fals
     .relation(new User().matchUserSeqWithSeq()).orderBySeqDesc().limit(0, 20).gets();
 ```
 ```python
-authors = Author().connect(slave1).service_seq(7).and_is_close(False) \
-    .and_(lambda q: q.is_display(True).or_().is_allday(True)) \
-    .relation(User().match_user_seq_with_seq()).order_by_seq_desc().limit(0, 20).gets()
+authors = (
+    Author()
+    .connect(slave1)
+    .service_seq(7)
+    .and_is_close(False)
+    .and_(lambda q: q.is_display(True).or_().is_allday(True))
+    .relation(User().match_user_seq_with_seq())
+    .order_by_seq_desc()
+    .limit(0, 20)
+    .gets()
+)
 ```
 The five chains produce the same SQL, binds, and results. `tests/conformance` checks the common vectors on MySQL, PostgreSQL, and SQLite.
 

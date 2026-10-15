@@ -12,54 +12,84 @@ from urllib.parse import urlsplit, parse_qsl
 
 from polyspec.orm.codec import blind_index, decode as codec_decode, host_encode
 from polyspec.orm.clock import wall_micros
-from polyspec.orm.core import Core, SetSpec
 from polyspec.orm.decimal import decimal_scaled, normalize_decimal
 from polyspec.orm.engine.dialect import dialect_of
-from polyspec.orm.engine.model import Entity, Field, RuntimeModel, entity_of, field_of
+from polyspec.orm.engine.model import Field, RuntimeModel, field_of
 from polyspec.orm.engine import Engine
-from polyspec.orm.engine.validate import IR_VERSION
 from polyspec.orm.errors import OrmError, rollback_failed
 from polyspec.orm.events import StatementEvent, Subscribers, statement_kind
-from polyspec.orm.markdown import (MarkdownDsn, begin_markdown, dial_markdown, end_markdown,
-                                   markdown_read, markdown_scalar, markdown_write,
-                                   parse_markdown_dsn, savepoint_markdown, unsupported_on_markdown)
+from polyspec.orm.markdown import (
+    MarkdownDsn,
+    begin_markdown,
+    dial_markdown,
+    end_markdown,
+    markdown_read,
+    markdown_scalar,
+    markdown_write,
+    parse_markdown_dsn,
+    savepoint_markdown,
+    unsupported_on_markdown,
+)
 from polyspec.orm.ir import IRRequest
 from polyspec.orm.keys import key_text, scalar_key
-from polyspec.orm.model import Model, register_model
+from polyspec.orm.model import Model
 from polyspec.orm.placeholders import for_mysql, for_postgres
 from polyspec.orm.driver_cells import mysql_conversions, postgres_loaders
 from polyspec.orm.schema import Schema
 from typing import Callable, TypeVar
-
-T = TypeVar('T')
 from polyspec.orm.styled_value import StyledValue
 from polyspec.orm.utils import Utils
 
-__all__ = ['Db', 'DbStats', 'RequestHook', 'connect', 'format_instant', 'key_of_values', 'key_text', 'key_value',
-           'parse_dsn', 'read_time', 'row_key', 'scalar_key', 'time_value']
+T = TypeVar("T")
+
+__all__ = [
+    "Db",
+    "DbStats",
+    "RequestHook",
+    "connect",
+    "format_instant",
+    "key_of_values",
+    "key_text",
+    "key_value",
+    "parse_dsn",
+    "read_time",
+    "row_key",
+    "scalar_key",
+    "time_value",
+]
 
 # scheme마다 DSN이 받는 parameter다(docs/config.md). 다른 parameter는 CONFIG다.
 DSN_PARAMETERS = {
-    'mysql': ('timezone', 'socket', 'ssl-mode', 'ssl-ca'),
-    'postgres': ('timezone', 'host', 'sslmode'),
-    'sqlite': ('timezone', '_pragma', '_txlock'),
+    "mysql": ("timezone", "socket", "ssl-mode", "ssl-ca"),
+    "postgres": ("timezone", "host", "sslmode"),
+    "sqlite": ("timezone", "_pragma", "_txlock"),
 }
 
 SQLITE_BUSY_TIMEOUT_MS = 5000
-ROW_LOCK_TABLES = ['orm__row_lock']
-ROW_LOCK_DDL = ('CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY '
-                'CHECK ("id" = 1))')
-ROW_LOCK_TAKE = ('INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO '
-                 'UPDATE SET "id"=excluded."id"')
+ROW_LOCK_TABLES = ["orm__row_lock"]
+ROW_LOCK_DDL = (
+    'CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY '
+    'CHECK ("id" = 1))'
+)
+ROW_LOCK_TAKE = (
+    'INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO '
+    'UPDATE SET "id"=excluded."id"'
+)
 
-_ISOLATION_SQL = {'read_committed': 'READ COMMITTED', 'repeatable_read': 'REPEATABLE READ',
-                  'serializable': 'SERIALIZABLE', 'read_uncommitted': 'READ UNCOMMITTED'}
+_ISOLATION_SQL = {
+    "read_committed": "READ COMMITTED",
+    "repeatable_read": "REPEATABLE READ",
+    "serializable": "SERIALIZABLE",
+    "read_uncommitted": "READ UNCOMMITTED",
+}
 
 
 class ParsedDsn:
-    __slots__ = ('driver', 'zone', 'url', 'markdown')
+    __slots__ = ("driver", "zone", "url", "markdown")
 
-    def __init__(self, driver: str, zone: str, url, markdown: MarkdownDsn | None = None):
+    def __init__(
+        self, driver: str, zone: str, url, markdown: MarkdownDsn | None = None
+    ):
         self.driver = driver
         self.zone = zone
         self.url = url
@@ -72,18 +102,25 @@ def _sqlite_path(url) -> str:
     NUL byte는 CONFIG 오류이다."""
     path = url.path
     # unquote keeps a % without two hexadecimal digits as text, so the escape is checked before it decodes.
-    if re.search(r'%(?![0-9A-Fa-f]{2})', path):
-        raise OrmError('CONFIG', 'sqlite DSN path has a % without two hexadecimal digits '
-                                 'or is not UTF-8 after percent-decoding')
+    if re.search(r"%(?![0-9A-Fa-f]{2})", path):
+        raise OrmError(
+            "CONFIG",
+            "sqlite DSN path has a % without two hexadecimal digits "
+            "or is not UTF-8 after percent-decoding",
+        )
     try:
         from urllib.parse import unquote
-        path = unquote(path, errors='strict')
+
+        path = unquote(path, errors="strict")
     except UnicodeDecodeError:
-        raise OrmError('CONFIG', 'sqlite DSN path has a % without two hexadecimal digits '
-                                 'or is not UTF-8 after percent-decoding') from None
+        raise OrmError(
+            "CONFIG",
+            "sqlite DSN path has a % without two hexadecimal digits "
+            "or is not UTF-8 after percent-decoding",
+        ) from None
     # NUL 뒤를 버리는 opener는 다른 file을 연다.
-    if '\0' in path:
-        raise OrmError('CONFIG', 'sqlite DSN path must not contain a NUL byte')
+    if "\0" in path:
+        raise OrmError("CONFIG", "sqlite DSN path must not contain a NUL byte")
     return path
 
 
@@ -94,70 +131,93 @@ def parse_dsn(dsn: str) -> ParsedDsn:
     try:
         url = urlsplit(dsn)
     except ValueError:
-        raise OrmError('CONFIG', 'dsn must be a URI using mysql://, postgres://, sqlite://, or '
-                                 'markdown://') from None
+        raise OrmError(
+            "CONFIG",
+            "dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://",
+        ) from None
     scheme = url.scheme
-    if scheme == 'markdown':
-        return ParsedDsn(scheme, '+00:00', url, parse_markdown_dsn(url))
+    if scheme == "markdown":
+        return ParsedDsn(scheme, "+00:00", url, parse_markdown_dsn(url))
     if scheme not in DSN_PARAMETERS:
-        raise OrmError('CONFIG', f'unsupported DSN scheme {scheme or "(none)"}; want '
-                                 f'mysql, postgres, sqlite, or markdown')
+        raise OrmError(
+            "CONFIG",
+            f"unsupported DSN scheme {scheme or '(none)'}; want "
+            f"mysql, postgres, sqlite, or markdown",
+        )
     parameters = dict(parse_qsl(url.query, keep_blank_values=True))
     for name in parameters:
         if name not in DSN_PARAMETERS[scheme]:
-            raise OrmError('CONFIG', f'{scheme} DSN has the unknown parameter {name}; it '
-                                     f'accepts {", ".join(DSN_PARAMETERS[scheme])}')
-    requested = parameters.get('timezone')
-    if requested is not None and requested not in ('UTC', '+00:00'):
-        raise OrmError('CONFIG', f'dsn timezone {requested}: every connection reads and '
-                                 f'writes datetime values in UTC')
-    zone = '+00:00'
-    if scheme == 'mysql':
-        if not url.hostname or not (url.path or '').strip('/'):
-            raise OrmError('CONFIG', 'mysql DSN must include host and database')
-    elif scheme == 'postgres':
-        if (not url.hostname and 'host' not in parameters) \
-                or not (url.path or '').strip('/'):
-            raise OrmError('CONFIG', 'postgres DSN must include host and database')
+            raise OrmError(
+                "CONFIG",
+                f"{scheme} DSN has the unknown parameter {name}; it "
+                f"accepts {', '.join(DSN_PARAMETERS[scheme])}",
+            )
+    requested = parameters.get("timezone")
+    if requested is not None and requested not in ("UTC", "+00:00"):
+        raise OrmError(
+            "CONFIG",
+            f"dsn timezone {requested}: every connection reads and "
+            f"writes datetime values in UTC",
+        )
+    zone = "+00:00"
+    if scheme == "mysql":
+        if not url.hostname or not (url.path or "").strip("/"):
+            raise OrmError("CONFIG", "mysql DSN must include host and database")
+    elif scheme == "postgres":
+        if (not url.hostname and "host" not in parameters) or not (
+            url.path or ""
+        ).strip("/"):
+            raise OrmError("CONFIG", "postgres DSN must include host and database")
     else:
-        if url.hostname or not url.path.startswith('/') or url.path == '/':
-            raise OrmError('CONFIG', 'sqlite DSN must include an absolute database path')
-        if '_txlock' in parameters:
-            raise OrmError('CONFIG', 'sqlite DSN does not accept _txlock; write '
-                                     'transactions begin with BEGIN IMMEDIATE')
+        if url.hostname or not url.path.startswith("/") or url.path == "/":
+            raise OrmError(
+                "CONFIG", "sqlite DSN must include an absolute database path"
+            )
+        if "_txlock" in parameters:
+            raise OrmError(
+                "CONFIG",
+                "sqlite DSN does not accept _txlock; write "
+                "transactions begin with BEGIN IMMEDIATE",
+            )
         _sqlite_path(url)
     return ParsedDsn(scheme, zone, url)
 
 
 def _pad2(n: int) -> str:
-    return f'{n:02d}'
+    return f"{n:02d}"
 
 
 def _zone_offset(zone: str) -> int:
-    fixed = re.fullmatch(r'([+-])(\d{2}):(\d{2})', zone)
+    fixed = re.fullmatch(r"([+-])(\d{2}):(\d{2})", zone)
     if fixed is None:
-        raise OrmError('INTERNAL', f'connection zone {zone} is not a fixed offset')
-    sign = -1 if fixed.group(1) == '-' else 1
+        raise OrmError("INTERNAL", f"connection zone {zone} is not a fixed offset")
+    sign = -1 if fixed.group(1) == "-" else 1
     return sign * (int(fixed.group(2)) * 60 + int(fixed.group(3)))
 
 
 def format_instant(instant, zone: str) -> str:
     """instant를 connection 시간대의 6자리 소수 date-time text로 쓴다."""
     import datetime
+
     shifted = instant + datetime.timedelta(minutes=_zone_offset(zone))
-    micro = f'{shifted.microsecond:06d}'
-    return (f'{shifted.year:04d}-{_pad2(shifted.month)}-{_pad2(shifted.day)} '
-            f'{_pad2(shifted.hour)}:{_pad2(shifted.minute)}:{_pad2(shifted.second)}.{micro}')
+    micro = f"{shifted.microsecond:06d}"
+    return (
+        f"{shifted.year:04d}-{_pad2(shifted.month)}-{_pad2(shifted.day)} "
+        f"{_pad2(shifted.hour)}:{_pad2(shifted.minute)}:{_pad2(shifted.second)}.{micro}"
+    )
 
 
-_DATE_TEXT = re.compile(r'(\d{4})-(\d{2})-(\d{2})\Z')
-_TIME_TEXT = re.compile(r'(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?\Z')
-_DATETIME_TEXT = re.compile(r'(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})'
-                            r'(?:\.(\d{1,9}))?\s*(Z|[+-]\d{2}(?::?\d{2})?)?\Z')
+_DATE_TEXT = re.compile(r"(\d{4})-(\d{2})-(\d{2})\Z")
+_TIME_TEXT = re.compile(r"(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?\Z")
+_DATETIME_TEXT = re.compile(
+    r"(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})"
+    r"(?:\.(\d{1,9}))?\s*(Z|[+-]\d{2}(?::?\d{2})?)?\Z"
+)
 
 
 def _valid_date(y, m, d, h=0, mi=0, sec=0) -> bool:
     import datetime
+
     try:
         datetime.datetime(int(y), int(m), int(d), int(h), int(mi), int(sec))
         return True
@@ -167,10 +227,10 @@ def _valid_date(y, m, d, h=0, mi=0, sec=0) -> bool:
 
 def _fraction(digits, precision: int):
     """p자리로 자른 소수 자리; 잘린 자리에 0이 아닌 숫자가 있으면 None이다."""
-    all_digits = (digits or '').ljust(precision, '0')
-    if re.search(r'[1-9]', all_digits[precision:]):
+    all_digits = (digits or "").ljust(precision, "0")
+    if re.search(r"[1-9]", all_digits[precision:]):
         return None
-    return '' if precision == 0 else '.' + all_digits[:precision]
+    return "" if precision == 0 else "." + all_digits[:precision]
 
 
 def _time_form(value, col_type: str, zone: str, precision: int):
@@ -178,64 +238,87 @@ def _time_form(value, col_type: str, zone: str, precision: int):
     `YYYY-MM-DD`, `HH:MM:SS`, p자리 소수의 `YYYY-MM-DD HH:MM:SS`. offset이 있는
     datetime은 connection 시간대로 바꾼다. 다른 값이면 None이다."""
     import datetime
+
     if isinstance(value, datetime.datetime):
         if value.tzinfo is None:
             # PyMySQL과 psycopg는 시간대 없는 datetime을 연결 시간대의 시각으로 준다. astimezone은 그 값을
             # process의 지역 시각(TZ)으로 읽으므로, 연결 시간대를 붙인 뒤에 바꾼다.
-            value = value.replace(tzinfo=datetime.timezone(datetime.timedelta(minutes=_zone_offset(zone))))
+            value = value.replace(
+                tzinfo=datetime.timezone(datetime.timedelta(minutes=_zone_offset(zone)))
+            )
         text = format_instant(value.astimezone(datetime.timezone.utc), zone)
-        return text[:10] if col_type == 'date' else _time_form(text, col_type, zone, precision)
+        return (
+            text[:10]
+            if col_type == "date"
+            else _time_form(text, col_type, zone, precision)
+        )
     if isinstance(value, datetime.date):
-        text = f'{value.year:04d}-{_pad2(value.month)}-{_pad2(value.day)}'
-        return text if col_type == 'date' else _time_form(text, col_type, zone, precision)
+        text = f"{value.year:04d}-{_pad2(value.month)}-{_pad2(value.day)}"
+        return (
+            text if col_type == "date" else _time_form(text, col_type, zone, precision)
+        )
     if not isinstance(value, str):
         return None
-    if col_type == 'date':
+    if col_type == "date":
         m = _DATE_TEXT.fullmatch(value)
         return value if m and _valid_date(m.group(1), m.group(2), m.group(3)) else None
-    if col_type == 'time':
+    if col_type == "time":
         m = _TIME_TEXT.fullmatch(value)
-        if not m or int(m.group(1)) > 23 or int(m.group(2)) > 59 or int(m.group(3)) > 59:
+        if (
+            not m
+            or int(m.group(1)) > 23
+            or int(m.group(2)) > 59
+            or int(m.group(3)) > 59
+        ):
             return None
         f = _fraction(m.group(4), precision)
-        return None if f is None else f'{m.group(1)}:{m.group(2)}:{m.group(3)}{f}'
+        return None if f is None else f"{m.group(1)}:{m.group(2)}:{m.group(3)}{f}"
     m = _DATETIME_TEXT.fullmatch(value)
-    if not m or not _valid_date(m.group(1), m.group(2), m.group(3), m.group(4),
-                                m.group(5), m.group(6)):
+    if not m or not _valid_date(
+        m.group(1), m.group(2), m.group(3), m.group(4), m.group(5), m.group(6)
+    ):
         return None
     f = _fraction(m.group(7), precision)
     if f is None:
         return None
     if m.group(8) is None:
-        return f'{m.group(1)}-{m.group(2)}-{m.group(3)} {m.group(4)}:{m.group(5)}:{m.group(6)}{f}'
-    digits = m.group(8)[1:].replace(':', '')
-    if m.group(8) == 'Z':
+        return f"{m.group(1)}-{m.group(2)}-{m.group(3)} {m.group(4)}:{m.group(5)}:{m.group(6)}{f}"
+    digits = m.group(8)[1:].replace(":", "")
+    if m.group(8) == "Z":
         offset = 0
     else:
-        sign = -1 if m.group(8).startswith('-') else 1
-        offset = sign * (int(digits[:2]) * 60 + int(digits[2:] or '0'))
-    instant = datetime.datetime(int(m.group(1)), int(m.group(2)), int(m.group(3)),
-                                int(m.group(4)), int(m.group(5)), int(m.group(6)),
-                                tzinfo=datetime.timezone.utc) \
-        - datetime.timedelta(minutes=offset)
-    return f'{format_instant(instant, zone)[:19]}{f}'
+        sign = -1 if m.group(8).startswith("-") else 1
+        offset = sign * (int(digits[:2]) * 60 + int(digits[2:] or "0"))
+    instant = datetime.datetime(
+        int(m.group(1)),
+        int(m.group(2)),
+        int(m.group(3)),
+        int(m.group(4)),
+        int(m.group(5)),
+        int(m.group(6)),
+        tzinfo=datetime.timezone.utc,
+    ) - datetime.timedelta(minutes=offset)
+    return f"{format_instant(instant, zone)[:19]}{f}"
 
 
 def _time_shape(col_type: str, precision: int) -> str:
-    f = '.' + 'f' * precision if precision > 0 else ''
-    if col_type == 'date':
-        return 'YYYY-MM-DD'
-    if col_type == 'time':
-        return f'HH:MM:SS{f}'
-    return 'YYYY-MM-DD HH:MM:SS' + f + '[Z|±HH:MM]'
+    f = "." + "f" * precision if precision > 0 else ""
+    if col_type == "date":
+        return "YYYY-MM-DD"
+    if col_type == "time":
+        return f"HH:MM:SS{f}"
+    return "YYYY-MM-DD HH:MM:SS" + f + "[Z|±HH:MM]"
 
 
 def time_value(value, col_type: str, zone: str, precision: int) -> str:
     """date, time, datetime bind를 저장 text 형태로 쓴다; 다른 값은 CODEC_ENCODE다."""
     text = _time_form(value, col_type, zone, precision)
     if text is None:
-        raise OrmError('CODEC_ENCODE', f'{col_type} value {json.dumps(value)} is not '
-                                       f'{_time_shape(col_type, precision)}')
+        raise OrmError(
+            "CODEC_ENCODE",
+            f"{col_type} value {json.dumps(value)} is not "
+            f"{_time_shape(col_type, precision)}",
+        )
     return text
 
 
@@ -244,15 +327,18 @@ def read_time(value, col_type: str, zone: str, precision: int) -> str:
     CODEC_DECODE다."""
     text = _time_form(value, col_type, zone, precision)
     if text is None:
-        raise OrmError('CODEC_DECODE', f'{col_type} cell {json.dumps(value)} is not '
-                                       f'{_time_shape(col_type, precision)}')
+        raise OrmError(
+            "CODEC_DECODE",
+            f"{col_type} cell {json.dumps(value)} is not "
+            f"{_time_shape(col_type, precision)}",
+        )
     return text
 
 
 def row_key(row, refs):
     values = []
     for ref in refs:
-        value = row[ref['index']]
+        value = row[ref["index"]]
         if value is None:
             return None
         values.append(value)
@@ -262,7 +348,7 @@ def row_key(row, refs):
 def key_of_values(values) -> str:
     if len(values) == 1:
         return key_text(values[0])
-    return ''.join(f'{len(part)}:{part}' for part in (scalar_key(v) for v in values))
+    return "".join(f"{len(part)}:{part}" for part in (scalar_key(v) for v in values))
 
 
 def key_value(value):
@@ -275,90 +361,107 @@ def key_value(value):
 
 def _canonical(value) -> str:
     if isinstance(value, (list, tuple)):
-        return '[' + ','.join(_canonical(item) for item in value) + ']'
+        return "[" + ",".join(_canonical(item) for item in value) + "]"
     if isinstance(value, dict):
-        return '{' + ','.join(f'{json.dumps(key)}:{_canonical(value[key])}'
-                              for key in sorted(value)) + '}'
+        return (
+            "{"
+            + ",".join(
+                f"{json.dumps(key)}:{_canonical(value[key])}" for key in sorted(value)
+            )
+            + "}"
+        )
     return json.dumps(value)
 
 
 def _plan_id(key: str) -> str:
-    h = 0xcbf29ce484222325
-    for byte in key.encode('utf-8'):
-        h = ((h ^ byte) * 0x100000001b3) & 0xFFFFFFFFFFFFFFFF
-    return f'{h:016x}'
+    h = 0xCBF29CE484222325
+    for byte in key.encode("utf-8"):
+        h = ((h ^ byte) * 0x100000001B3) & 0xFFFFFFFFFFFFFFFF
+    return f"{h:016x}"
 
 
-_INTEGER_RANGES = {'i16': (-32768, 32767), 'i32': (-2147483648, 2147483647),
-                   'i64': (-9007199254740991, 9007199254740991)}
+_INTEGER_RANGES = {
+    "i16": (-32768, 32767),
+    "i32": (-2147483648, 2147483647),
+    "i64": (-9007199254740991, 9007199254740991),
+}
 
 
 def convert(type_: str, value, zone: str, declared: Field | None = None):
     """cell을 그 column type의 값으로 바꾼다 (docs/dbspec.md "Runtime model")."""
-    from polyspec.orm.core import styled_field
+
     if value is None:
         return None
-    if type_ in ('i16', 'i32', 'i64'):
+    if type_ in ("i16", "i32", "i64"):
         low, high = _INTEGER_RANGES[type_]
-        if isinstance(value, bool) or not isinstance(value, int) or not low <= value <= high:
-            raise OrmError('CODEC_DECODE', f'{type_} cell is not an exact integer in its range')
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or not low <= value <= high
+        ):
+            raise OrmError(
+                "CODEC_DECODE", f"{type_} cell is not an exact integer in its range"
+            )
         return value
-    if type_ == 'f64':
-        return value if isinstance(value, (int, float)) and not isinstance(value, bool) \
+    if type_ == "f64":
+        return (
+            value
+            if isinstance(value, (int, float)) and not isinstance(value, bool)
             else float(value)
-    if type_ == 'decimal':
+        )
+    if type_ == "decimal":
         from polyspec.orm.decimal import decimal_from_scaled
+
         if declared is None:
-            raise OrmError('CODEC_DECODE', 'decimal column metadata is missing')
+            raise OrmError("CODEC_DECODE", "decimal column metadata is missing")
         if isinstance(value, int) and not isinstance(value, bool):
             return decimal_from_scaled(value, declared.precision, declared.scale)
         if not isinstance(value, str):
-            raise OrmError('CODEC_DECODE', f'decimal cell has type {type(value).__name__}')
+            raise OrmError(
+                "CODEC_DECODE", f"decimal cell has type {type(value).__name__}"
+            )
         try:
             return normalize_decimal(value, declared.precision, declared.scale)
         except OrmError as cause:
-            raise OrmError('CODEC_DECODE', f'invalid decimal cell: {cause}') from None
-    if type_ == 'bool':
-        return value in (True, 1, '1', 't', 'true')
-    if type_ in ('date', 'time', 'datetime'):
-        return read_time(value, type_, zone,
-                         declared.precision if declared is not None
-                         else (6 if type_ == 'datetime' else 0))
-    if type_ == 'bytes':
-        return value if isinstance(value, bytes) else str(value).encode('utf-8')
-    if type_ in ('varchar', 'text', 'uuid'):
+            raise OrmError("CODEC_DECODE", f"invalid decimal cell: {cause}") from None
+    if type_ == "bool":
+        return value in (True, 1, "1", "t", "true")
+    if type_ in ("date", "time", "datetime"):
+        return read_time(
+            value,
+            type_,
+            zone,
+            declared.precision
+            if declared is not None
+            else (6 if type_ == "datetime" else 0),
+        )
+    if type_ == "bytes":
+        return value if isinstance(value, bytes) else str(value).encode("utf-8")
+    if type_ in ("varchar", "text", "uuid"):
         if isinstance(value, bytes):
-            return value.decode('utf-8')
+            return value.decode("utf-8")
         if isinstance(value, StyledValue):
             return value
         return str(value)
-    if type_ == 'styled':
+    if type_ == "styled":
         return value
-    raise OrmError('INTERNAL', f'cell of unknown type {type_}')
+    raise OrmError("INTERNAL", f"cell of unknown type {type_}")
 
 
 def column_type(col: Field) -> str:
     """host stage(aes, hex, ip)만 가진 column의 model 값은 문자열이다. 저장 형식은
     executor가 bind할 때 만든다."""
     from polyspec.orm.core import styled_field
+
     if styled_field(col):
-        return 'styled'
-    if col.stages and all(s in ('aes', 'hex', 'ip') for s in col.stages):
-        return 'text'
+        return "styled"
+    if col.stages and all(s in ("aes", "hex", "ip") for s in col.stages):
+        return "text"
     return col.type
 
 
-def _statement_kind(sql: str) -> str:
-    head = sql.lstrip()[:12].upper()
-    for verb, kind in (('SELECT', 'select'), ('INSERT', 'insert'), ('UPDATE', 'update'),
-                       ('DELETE', 'delete')):
-        if head.startswith(verb):
-            return kind
-    return 'utility'
-
-
 def _driver_limit(driver: str) -> int:
-    return 999 if driver == 'sqlite' else 65535
+    return 999 if driver == "sqlite" else 65535
 
 
 # driver 오류의 code 표다(docs/protocol.md "Errors", docs/errors.yaml). TypeScript client의 driverError
@@ -367,88 +470,106 @@ def _driver_limit(driver: str) -> int:
 _MYSQL_CODES = {
     # 2006(server has gone away), 2013(lost connection during query)은 client가 연결을 잃은 것이고 4031은
     # server가 쉬던 연결을 끝낸 것이다.
-    2006: 'CONNECTION_LOST', 2013: 'CONNECTION_LOST', 4031: 'CONNECTION_LOST',
-    3572: 'LOCK_NOT_AVAILABLE',
-    1317: 'CANCELED', 3024: 'CANCELED',
-    1062: 'DUPLICATE_KEY',
-    1451: 'FOREIGN_KEY', 1452: 'FOREIGN_KEY',
-    1213: 'DEADLOCK',
-    1290: 'READ_ONLY', 1792: 'READ_ONLY',
-    3819: 'CONSTRAINT', 4025: 'CONSTRAINT',
+    2006: "CONNECTION_LOST",
+    2013: "CONNECTION_LOST",
+    4031: "CONNECTION_LOST",
+    3572: "LOCK_NOT_AVAILABLE",
+    1317: "CANCELED",
+    3024: "CANCELED",
+    1062: "DUPLICATE_KEY",
+    1451: "FOREIGN_KEY",
+    1452: "FOREIGN_KEY",
+    1213: "DEADLOCK",
+    1290: "READ_ONLY",
+    1792: "READ_ONLY",
+    3819: "CONSTRAINT",
+    4025: "CONSTRAINT",
 }
 _POSTGRES_CODES = {
     # 57P01(admin_shutdown), 57P02(crash_shutdown), 57P05(idle_session_timeout)는 server가 session을 끝낼 때
     # 보낸다. class 08(connection exception)은 _postgres_code가 고른다.
-    '57P01': 'CONNECTION_LOST', '57P02': 'CONNECTION_LOST', '57P05': 'CONNECTION_LOST',
-    '55P03': 'LOCK_NOT_AVAILABLE',
-    '57014': 'CANCELED',
-    '23505': 'DUPLICATE_KEY',
-    '23503': 'FOREIGN_KEY',
-    '40P01': 'DEADLOCK', '40001': 'DEADLOCK',
-    '25006': 'READ_ONLY',
-    '23514': 'CONSTRAINT',
+    "57P01": "CONNECTION_LOST",
+    "57P02": "CONNECTION_LOST",
+    "57P05": "CONNECTION_LOST",
+    "55P03": "LOCK_NOT_AVAILABLE",
+    "57014": "CANCELED",
+    "23505": "DUPLICATE_KEY",
+    "23503": "FOREIGN_KEY",
+    "40P01": "DEADLOCK",
+    "40001": "DEADLOCK",
+    "25006": "READ_ONLY",
+    "23514": "CONSTRAINT",
 }
 
 
 def _sqlite_code(error: sqlite3.Error) -> str:
     """SQLite extended result code의 ORM 오류 code다."""
-    number = getattr(error, 'sqlite_errorcode', None)
+    number = getattr(error, "sqlite_errorcode", None)
     if not isinstance(number, int):
-        return 'DRIVER'
+        return "DRIVER"
     # SQLITE_BUSY와 그 extended code는 busy_timeout이 끝날 때 다른 연결이 아직 잡은 lock이고,
     # SQLITE_INTERRUPT(9)는 끝나기 전에 멈춘 statement다.
-    if (number & 0xff) == 5 or number == 9:
-        return 'CANCELED'
+    if (number & 0xFF) == 5 or number == 9:
+        return "CANCELED"
     if number in (2067, 1555):
-        return 'DUPLICATE_KEY'
+        return "DUPLICATE_KEY"
     # RESTRICT action의 FK 위반은 CONSTRAINT_TRIGGER(1811)로 온다. trigger RAISE의 1811은 DRIVER다.
-    if number == 787 or (number == 1811 and 'FOREIGN KEY constraint failed' in str(error)):
-        return 'FOREIGN_KEY'
+    if number == 787 or (
+        number == 1811 and "FOREIGN KEY constraint failed" in str(error)
+    ):
+        return "FOREIGN_KEY"
     if number in (6, 262):
-        return 'DEADLOCK'
+        return "DEADLOCK"
     # SQLITE_READONLY(8)와 그 extended code는 읽기 전용 연결이나 query_only가 거부한 쓰기다.
-    if (number & 0xff) == 8:
-        return 'READ_ONLY'
+    if (number & 0xFF) == 8:
+        return "READ_ONLY"
     if number == 275:
-        return 'CONSTRAINT'
-    return 'DRIVER'
+        return "CONSTRAINT"
+    return "DRIVER"
 
 
 def _postgres_code(sqlstate, lost: bool) -> str:
     """psycopg 오류의 ORM 오류 code다. server의 SQLSTATE가 없는 오류는 연결이 닫혔을 때(lost)
     연결을 잃은 오류다."""
     if sqlstate is None:
-        return 'CONNECTION_LOST' if lost else 'DRIVER'
-    if sqlstate.startswith('08'):
-        return 'CONNECTION_LOST'
-    return _POSTGRES_CODES.get(sqlstate, 'DRIVER')
+        return "CONNECTION_LOST" if lost else "DRIVER"
+    if sqlstate.startswith("08"):
+        return "CONNECTION_LOST"
+    return _POSTGRES_CODES.get(sqlstate, "DRIVER")
 
 
-def _driver_error(driver: str, error: BaseException, lost: bool = False) -> BaseException:
+def _driver_error(
+    driver: str, error: BaseException, lost: bool = False
+) -> BaseException:
     """driver 오류를 catalog의 code를 가진 OrmError로 바꾼다. message는 `<driver>: <driver message>`이고
     cause는 driver 오류다. driver 오류가 아닌 오류는 그대로 돌려준다. lost는 PostgreSQL 연결이 오류 뒤에
     닫혔는지다."""
-    if driver == 'sqlite':
+    if driver == "sqlite":
         if not isinstance(error, sqlite3.Error):
             return error
-        return OrmError(_sqlite_code(error), f'sqlite: {error}', error)
-    if driver == 'mysql':
+        return OrmError(_sqlite_code(error), f"sqlite: {error}", error)
+    if driver == "mysql":
         import pymysql
+
         if not isinstance(error, pymysql.err.MySQLError):
             return error
         args = error.args
         number = args[0] if args and isinstance(args[0], int) else None
         message = str(args[1]) if len(args) >= 2 else str(error)
         # PyMySQL은 이미 닫힌 연결에 보낸 statement를 InterfaceError로 알린다.
-        code = 'CONNECTION_LOST' if isinstance(error, pymysql.err.InterfaceError) \
-            else _MYSQL_CODES.get(number, 'DRIVER')
-        return OrmError(code, f'mysql: {message}', error)
+        code = (
+            "CONNECTION_LOST"
+            if isinstance(error, pymysql.err.InterfaceError)
+            else _MYSQL_CODES.get(number, "DRIVER")
+        )
+        return OrmError(code, f"mysql: {message}", error)
     import psycopg
+
     if not isinstance(error, psycopg.Error):
         return error
-    diag = getattr(error, 'diag', None)
+    diag = getattr(error, "diag", None)
     message = (diag.message_primary if diag is not None else None) or str(error)
-    return OrmError(_postgres_code(error.sqlstate, lost), f'postgres: {message}', error)
+    return OrmError(_postgres_code(error.sqlstate, lost), f"postgres: {message}", error)
 
 
 def _raise_driver_error(driver: str, error: Exception, lost: bool = False):
@@ -466,41 +587,51 @@ class _SqliteConnection:
         path = _sqlite_path(parsed.url)
         pragmas = []
         for name, value in parse_qsl(parsed.url.query, keep_blank_values=True):
-            if name != '_pragma':
+            if name != "_pragma":
                 continue
-            match = re.fullmatch(r'([a-z_]+)\(([A-Za-z0-9_]+)\)', value)
-            if match is None or (match.group(1) == 'busy_timeout'
-                                 and not match.group(2).isdigit()):
-                raise OrmError('CONFIG', f'sqlite DSN _pragma {value} is invalid')
-            pragmas.append(f'PRAGMA {match.group(1)} = {match.group(2)}')
+            match = re.fullmatch(r"([a-z_]+)\(([A-Za-z0-9_]+)\)", value)
+            if match is None or (
+                match.group(1) == "busy_timeout" and not match.group(2).isdigit()
+            ):
+                raise OrmError("CONFIG", f"sqlite DSN _pragma {value} is invalid")
+            pragmas.append(f"PRAGMA {match.group(1)} = {match.group(2)}")
         # sqlite3가 link한 SQLite library의 version이다. 연결은 그것을 묻는 statement를 보내지 않는다.
         version = sqlite3.sqlite_version
-        if tuple(int(part) for part in version.split('.')[:2]) < (3, 46):
-            raise OrmError('CAPABILITY_UNSUPPORTED', f'SQLite {version} is older than 3.46')
+        if tuple(int(part) for part in version.split(".")[:2]) < (3, 46):
+            raise OrmError(
+                "CAPABILITY_UNSUPPORTED", f"SQLite {version} is older than 3.46"
+            )
         # 연결을 여는 driver 오류도 statement의 오류처럼 ORM 오류다.
         try:
-            self.connection = sqlite3.connect(path, timeout=SQLITE_BUSY_TIMEOUT_MS / 1000,
-                                              isolation_level=None, detect_types=0)
+            self.connection = sqlite3.connect(
+                path,
+                timeout=SQLITE_BUSY_TIMEOUT_MS / 1000,
+                isolation_level=None,
+                detect_types=0,
+            )
         except Exception as error:
-            _raise_driver_error('sqlite', error)
+            _raise_driver_error("sqlite", error)
         try:
-            for statement in ['PRAGMA foreign_keys = ON', *pragmas]:
+            for statement in ["PRAGMA foreign_keys = ON", *pragmas]:
                 self.connection.execute(statement)
         except Exception as error:
             self.connection.close()
-            _raise_driver_error('sqlite', error)
+            _raise_driver_error("sqlite", error)
 
     def execute(self, sql: str, values):
         try:
             cursor = self.connection.execute(sql, tuple(values))
             rows = cursor.fetchall()
         except Exception as error:
-            _raise_driver_error('sqlite', error)
+            _raise_driver_error("sqlite", error)
         insert_id = cursor.lastrowid if cursor.lastrowid is not None else None
         affected = cursor.rowcount if cursor.rowcount is not None else 0
         cursor.close()
-        return {'rows': [list(row) for row in rows], 'insert_id': insert_id,
-                'affected': affected}
+        return {
+            "rows": [list(row) for row in rows],
+            "insert_id": insert_id,
+            "affected": affected,
+        }
 
     def in_transaction(self) -> bool:
         return self.connection.in_transaction
@@ -517,20 +648,25 @@ class _MysqlConnection:
             import pymysql
             from pymysql.constants import CLIENT
         except ImportError as error:
-            raise OrmError('CONFIG', f'the mysql driver needs PyMySQL: {error}') from None
+            raise OrmError(
+                "CONFIG", f"the mysql driver needs PyMySQL: {error}"
+            ) from None
         url = parsed.url
         try:
             self.connection = pymysql.connect(
-                host=url.hostname or 'localhost',
+                host=url.hostname or "localhost",
                 port=int(url.port) if url.port else 3306,
-                user=_unquote(url.username or ''),
-                password=_unquote(url.password or ''),
-                database=_unquote(url.path.lstrip('/')),
-                charset='utf8mb4', autocommit=True, conv=mysql_conversions(),
+                user=_unquote(url.username or ""),
+                password=_unquote(url.password or ""),
+                database=_unquote(url.path.lstrip("/")),
+                charset="utf8mb4",
+                autocommit=True,
+                conv=mysql_conversions(),
                 # An update counts the rows it matched, as on PostgreSQL and SQLite, not only the rows it changed.
-                client_flag=CLIENT.FOUND_ROWS)
+                client_flag=CLIENT.FOUND_ROWS,
+            )
         except Exception as error:
-            _raise_driver_error('mysql', error)
+            _raise_driver_error("mysql", error)
         self.execute("SET time_zone = '+00:00'", [])
 
     def execute(self, sql: str, values):
@@ -540,11 +676,11 @@ class _MysqlConnection:
             cursor.execute(text, args)
             rows = [list(row) for row in cursor.fetchall()]
         except Exception as error:
-            _raise_driver_error('mysql', error)
+            _raise_driver_error("mysql", error)
         insert_id = cursor.lastrowid
         affected = cursor.rowcount
         cursor.close()
-        return {'rows': rows, 'insert_id': insert_id, 'affected': affected}
+        return {"rows": rows, "insert_id": insert_id, "affected": affected}
 
     def in_transaction(self) -> bool:
         return not self.connection.get_autocommit() and self.connection.open
@@ -560,18 +696,22 @@ class _PostgresConnection:
         try:
             import psycopg
         except ImportError as error:
-            raise OrmError('CONFIG', f'the postgres driver needs psycopg: {error}') from None
+            raise OrmError(
+                "CONFIG", f"the postgres driver needs psycopg: {error}"
+            ) from None
         url = parsed.url
-        name = _unquote(url.path.lstrip('/'))
+        name = _unquote(url.path.lstrip("/"))
         try:
-            self.connection = psycopg.connect(host=url.hostname or 'localhost',
-                                              port=int(url.port) if url.port else 5432,
-                                              user=_unquote(url.username or ''),
-                                              password=_unquote(url.password or ''),
-                                              dbname=name,
-                                              options='-c TimeZone=UTC')
+            self.connection = psycopg.connect(
+                host=url.hostname or "localhost",
+                port=int(url.port) if url.port else 5432,
+                user=_unquote(url.username or ""),
+                password=_unquote(url.password or ""),
+                dbname=name,
+                options="-c TimeZone=UTC",
+            )
         except Exception as error:
-            _raise_driver_error('postgres', error)
+            _raise_driver_error("postgres", error)
         postgres_loaders(self.connection.adapters)
         self.connection.autocommit = True
 
@@ -580,14 +720,16 @@ class _PostgresConnection:
         text, args = for_postgres(sql, values)
         try:
             cursor.execute(text, args)
-            rows = [list(row) for row in cursor.fetchall()] if cursor.description else []
+            rows = (
+                [list(row) for row in cursor.fetchall()] if cursor.description else []
+            )
         except Exception as error:
             # psycopg는 server가 끝냈거나 끊긴 연결을 닫힌 연결로 표시한다.
-            _raise_driver_error('postgres', error, bool(self.connection.closed))
+            _raise_driver_error("postgres", error, bool(self.connection.closed))
         insert_id = None
         affected = cursor.rowcount if cursor.rowcount is not None else 0
         cursor.close()
-        return {'rows': rows, 'insert_id': insert_id, 'affected': affected}
+        return {"rows": rows, "insert_id": insert_id, "affected": affected}
 
     def in_transaction(self) -> bool:
         return not self.connection.autocommit and not self.connection.closed
@@ -598,13 +740,14 @@ class _PostgresConnection:
 
 def _unquote(text: str) -> str:
     from urllib.parse import unquote
+
     return unquote(text)
 
 
 class TxFrame:
     """transaction 하나: 잡은 연결과 그 상태."""
 
-    def __init__(self, db: 'Db', number: int, options: dict):
+    def __init__(self, db: "Db", number: int, options: dict):
         self.db = db
         self.number = number
         self.options = options
@@ -616,29 +759,43 @@ class TxFrame:
         self.locals: dict = {}
         self.connection = None
 
-    def run(self, sql: str, values=None, kind: str = 'utility', binds=None, tables=(),
-            faultable: bool = True):
+    def run(
+        self,
+        sql: str,
+        values=None,
+        kind: str = "utility",
+        binds=None,
+        tables=(),
+        faultable: bool = True,
+    ):
         """statement를 실행하고 그 event를 남긴다; kind는 이 statement의
         종류다. faultable=False는 transaction control statement이며 statement fault를
         소비하지 않는다."""
         if self.connection is None:
-            raise OrmError('CONFIG', 'transaction already finished')
+            raise OrmError("CONFIG", "transaction already finished")
         values = values if values is not None else []
 
         def send():
             if faultable:
                 return self.db._sent(lambda: self.connection.execute(sql, values))
             return self.connection.execute(sql, values)
-        return self.db.events.send(kind, tables, self.number,
-                                   list(values) if binds is None else binds, sql, send)
+
+        return self.db.events.send(
+            kind,
+            tables,
+            self.number,
+            list(values) if binds is None else binds,
+            sql,
+            send,
+        )
 
 
 class Executor:
     """하나의 질의 실행 맥락: db와 transaction frame(있으면)."""
 
-    __slots__ = ('db', 'frame')
+    __slots__ = ("db", "frame")
 
-    def __init__(self, db: 'Db', frame: TxFrame | None = None):
+    def __init__(self, db: "Db", frame: TxFrame | None = None):
         self.db = db
         self.frame = frame
 
@@ -647,7 +804,7 @@ class Executor:
 _ACTIVE: dict = {}
 
 
-def _active_for(db: 'Db') -> TxFrame | None:
+def _active_for(db: "Db") -> TxFrame | None:
     return _ACTIVE.get(id(db.root()))
 
 
@@ -661,7 +818,7 @@ class _Shared:
     """한 연결의 모든 handle이 공유하는 바뀌는 상태다. rollback_fault와 statement_fault는 test entry point
     polyspec.orm.testing이 설정하는 test fault다."""
 
-    __slots__ = ('closed', 'row_lock_ready', 'rollback_fault', 'statement_fault')
+    __slots__ = ("closed", "row_lock_ready", "rollback_fault", "statement_fault")
 
     def __init__(self):
         self.closed = False
@@ -691,22 +848,22 @@ class Db:
         self.driver = self.parsed.driver
         # markdown 연결은 plan하지 않으므로(docs/protocol.md §5) dialect가 없다.
         self.dialect = None
-        if self.driver != 'markdown':
+        if self.driver != "markdown":
             dialect_class = dialect_of(self.driver)
             if dialect_class is None:
-                raise OrmError('CONFIG', f'unsupported DSN scheme {self.driver}')
+                raise OrmError("CONFIG", f"unsupported DSN scheme {self.driver}")
             self.dialect = dialect_class()
         self.zone = self.parsed.zone
-        self.aes_key = options.get('aesKey', '')
-        self.blind_index_key = options.get('blindIndexKey', '')
-        self.aes_version = options.get('aesVersion', 1)
-        self.aes_keyring = options.get('aesKeyring')
-        self.audit_source = options.get('auditSource')
+        self.aes_key = options.get("aesKey", "")
+        self.blind_index_key = options.get("blindIndexKey", "")
+        self.aes_version = options.get("aesVersion", 1)
+        self.aes_keyring = options.get("aesKeyring")
+        self.audit_source = options.get("auditSource")
         self.engines: dict[str, Engine] = {}
         # markdown 연결에 등록된 set의 runtime model이다. SQL 연결은 engines가 그 자리다.
         self.schemas: dict[str, RuntimeModel] = {}
         self.plans: dict[str, dict] = {}
-        self.plan_cache_size = options.get('planCacheSize', 1024)
+        self.plan_cache_size = options.get("planCacheSize", 1024)
         self.events = Subscribers()
         self._shared = _Shared()
         # handle의 root는 그 handle을 파생한 연결이고, 연결 자신은 None이다.
@@ -717,13 +874,16 @@ class Db:
     def utils(self) -> Utils:
         """The transaction tools of this connection (lock, transaction-local values, AES status)."""
         from polyspec.orm.utils import Utils
+
         return Utils(self)
 
     def stats(self) -> DbStats:
         """The connection statistics. A Db holds one connection, as the PHP client does, so the pool size and
         the open connections are 1, and the connection is in use while a transaction of it is active."""
         busy = 1 if _active_for(self) is not None else 0
-        return DbStats(max_open_connections=1, open_connections=1, in_use=busy, idle=1 - busy)
+        return DbStats(
+            max_open_connections=1, open_connections=1, in_use=busy, idle=1 - busy
+        )
 
     @staticmethod
     def connect(dsn: str, options: dict | None = None) -> Db:
@@ -736,27 +896,29 @@ class Db:
         return db
 
     def _open(self):
-        if self.driver == 'sqlite':
+        if self.driver == "sqlite":
             return _SqliteConnection(self.parsed)
-        if self.driver == 'mysql':
+        if self.driver == "mysql":
             return _MysqlConnection(self.parsed)
-        if self.driver == 'markdown':
+        if self.driver == "markdown":
             # session 하나를 연결해 server가 corpus와 token을 받아들이는지 확인한다.
             return dial_markdown(self.parsed.markdown)
         return _PostgresConnection(self.parsed)
 
-    def register(self, schema: Schema) -> 'Db':
+    def register(self, schema: Schema) -> "Db":
         """생성된 model 집합을 이 연결에 등록한다."""
         from polyspec.orm.engine.model import model_of_manifest
-        model = model_of_manifest(schema.manifest_text, schema.manifest_hash,
-                                  schema.external_text)
+
+        model = model_of_manifest(
+            schema.manifest_text, schema.manifest_hash, schema.external_text
+        )
         self._register_set(schema.manifest_hash, model)
         return self
 
     def _register_set(self, manifest_hash: str, model: RuntimeModel) -> None:
         """manifest의 runtime model을 등록한다. SQL 연결은 그 planner를 만들고, plan하지 않는 markdown 연결은
         model만 둔다. 이미 등록된 set은 바꾸지 않는다."""
-        if self.driver == 'markdown':
+        if self.driver == "markdown":
             self.schemas.setdefault(manifest_hash, model)
             return
         if manifest_hash not in self.engines:
@@ -772,7 +934,7 @@ class Db:
         the plan cache, the subscribers and the active transactions; withRequestHook on a hooked
         handle replaces its hook."""
         if not callable(hook):
-            raise OrmError('CONFIG', 'with_request_hook takes a callable')
+            raise OrmError("CONFIG", "with_request_hook takes a callable")
         handle = copy.copy(self)
         handle.request_hook = hook
         handle._root = self.root()
@@ -782,12 +944,14 @@ class Db:
         """The connection this handle was derived from; a connection returns itself."""
         return self._root if self._root is not None else self
 
-    def subscribe(self, subscriber: Callable[[StatementEvent], None]) -> Callable[[], None]:
+    def subscribe(
+        self, subscriber: Callable[[StatementEvent], None]
+    ) -> Callable[[], None]:
         """이 연결과 그 파생 handle이 보내는 모든 statement의 event를 받을
         subscriber를 등록한다 (docs/usage.md "Statement events"). subscriber는
         등록 순서로 statement가 끝난 뒤, 작업이 계속되기 전에 불리고, 던지면
         안 된다. markdown 연결은 statement를 보내지 않으므로 CAPABILITY_UNSUPPORTED다."""
-        unsupported_on_markdown(self, 'statement events')
+        unsupported_on_markdown(self, "statement events")
         return self.events.subscribe(subscriber)
 
     def close(self) -> None:
@@ -797,19 +961,21 @@ class Db:
 
     def plan(self, request: dict) -> dict:
         if self._shared.closed:
-            raise OrmError('CONFIG', 'database is closed')
+            raise OrmError("CONFIG", "database is closed")
         # 연결은 자기에게 등록된 set만 plan한다. plan cache를 보기 전에 확인한다.
-        engine = self.engines.get(request['manifest_hash'])
+        engine = self.engines.get(request["manifest_hash"])
         if engine is None:
-            raise OrmError('SCHEMA_HASH_MISMATCH',
-                           f'manifest {request["manifest_hash"]} is not registered on this '
-                           f'connection: connect through its generated models or install it')
+            raise OrmError(
+                "SCHEMA_HASH_MISMATCH",
+                f"manifest {request['manifest_hash']} is not registered on this "
+                f"connection: connect through its generated models or install it",
+            )
         key = _canonical(request)
         cached = self.plans.get(key)
         if cached is not None:
             return cached
         plan = engine.compile(request)
-        entry = {'plan': plan, 'id': _plan_id(key)}
+        entry = {"plan": plan, "id": _plan_id(key)}
         self.plans[key] = entry
         if len(self.plans) > self.plan_cache_size:
             self.plans.pop(next(iter(self.plans)))
@@ -819,9 +985,12 @@ class Db:
         """executor clock이다: wall clock의 microsecond를 connection zone(UTC)의
         text로 쓰고 6자리 소수를 precision 자리로 자른다."""
         import datetime
-        whole = datetime.datetime.fromtimestamp(micros // 1_000_000, datetime.timezone.utc)
-        text = format_instant(whole, self.zone)[:20] + f'{micros % 1_000_000:06d}'
-        return text[:19] if precision == 0 else text[:20 + precision]
+
+        whole = datetime.datetime.fromtimestamp(
+            micros // 1_000_000, datetime.timezone.utc
+        )
+        text = format_instant(whole, self.zone)[:20] + f"{micros % 1_000_000:06d}"
+        return text[:19] if precision == 0 else text[: 20 + precision]
 
     def args(self, step: dict, params, parents=None, audit=None):
         """step의 bind slot을 푼다; masked는 secret과 clock 자리를 가린다."""
@@ -833,53 +1002,65 @@ class Db:
             values.append(value)
             masked.append(mask if mask is not None else value)
 
-        for slot in step['bind_slots']:
-            source = slot['from']
-            if source == 'param':
-                value = params[slot['param']]
-                if slot['col_type'] in ('datetime', 'date', 'time') and value is not None:
-                    value = time_value(value, slot['col_type'], self.zone,
-                                       slot.get('precision') or 0)
-                if slot['col_type'] == 'decimal' and value is not None:
+        for slot in step["bind_slots"]:
+            source = slot["from"]
+            if source == "param":
+                value = params[slot["param"]]
+                if (
+                    slot["col_type"] in ("datetime", "date", "time")
+                    and value is not None
+                ):
+                    value = time_value(
+                        value, slot["col_type"], self.zone, slot.get("precision") or 0
+                    )
+                if slot["col_type"] == "decimal" and value is not None:
                     if not isinstance(value, str):
-                        raise OrmError('CODEC_ENCODE', 'decimal bind requires exact text')
-                    if self.driver == 'sqlite':
-                        value = decimal_scaled(value, slot.get('precision') or 0,
-                                               slot.get('scale') or 0)
+                        raise OrmError(
+                            "CODEC_ENCODE", "decimal bind requires exact text"
+                        )
+                    if self.driver == "sqlite":
+                        value = decimal_scaled(
+                            value, slot.get("precision") or 0, slot.get("scale") or 0
+                        )
                     else:
-                        value = normalize_decimal(value, slot.get('precision') or 0,
-                                                  slot.get('scale') or 0)
-                if slot.get('transform'):
+                        value = normalize_decimal(
+                            value, slot.get("precision") or 0, slot.get("scale") or 0
+                        )
+                if slot.get("transform"):
                     if not isinstance(value, str):
-                        raise OrmError('CONFIG', f'{slot["transform"]} requires a string value')
-                    value = _transform(slot['transform'], value)
-                if 'blind_index' in slot.get('host_styles', ()):
+                        raise OrmError(
+                            "CONFIG", f"{slot['transform']} requires a string value"
+                        )
+                    value = _transform(slot["transform"], value)
+                if "blind_index" in slot.get("host_styles", ()):
                     if value is not None:
                         value = blind_index(value, self.blind_index_key)
-                elif slot.get('host_styles'):
-                    value = host_encode(value, slot['host_styles'], self.aes_key)
+                elif slot.get("host_styles"):
+                    value = host_encode(value, slot["host_styles"], self.aes_key)
                 push(value)
-            elif source == 'audit':
+            elif source == "audit":
                 push(_audit_value(slot, audit))
-            elif source == 'secret':
-                if slot['name'] != 'aes' or self.aes_key == '':
-                    raise OrmError('CONFIG', f'secret {slot["name"]} is not configured')
-                push(self.aes_key, '$SECRET')
-            elif source == 'config':
-                if slot['name'] != 'aes_version':
-                    raise OrmError('CONFIG', f'config value {slot["name"]} is not configured')
+            elif source == "secret":
+                if slot["name"] != "aes" or self.aes_key == "":
+                    raise OrmError("CONFIG", f"secret {slot['name']} is not configured")
+                push(self.aes_key, "$SECRET")
+            elif source == "config":
+                if slot["name"] != "aes_version":
+                    raise OrmError(
+                        "CONFIG", f"config value {slot['name']} is not configured"
+                    )
                 push(self.aes_version)
-            elif source == 'parent':
-                for value in (parents or ()):
+            elif source == "parent":
+                for value in parents or ():
                     push(value)
-            elif source == 'now':
+            elif source == "now":
                 # 한 statement는 clock을 한 번만 읽으므로 그 clock column들은 같다.
                 if clock is None:
                     clock = wall_micros()
-                push(self.now(clock, slot.get('precision') or 6), '$NOW')
+                push(self.now(clock, slot.get("precision") or 6), "$NOW")
             else:
-                raise OrmError('INTERNAL', f'bind from {source}')
-        return {'values': values, 'masked': masked}
+                raise OrmError("INTERNAL", f"bind from {source}")
+        return {"values": values, "masked": masked}
 
     def execute(self, step: dict, params: list) -> None:
         """Runs one compiled statement step, a step of a plan of Engine.compile, with the request
@@ -889,30 +1070,42 @@ class Db:
         assemble) and a param slot past params fail with IR_INVALID before any statement runs
         (docs/usage.md "Execute a compiled statement")."""
         if self._shared.closed:
-            raise OrmError('CONFIG', 'database is closed')
+            raise OrmError("CONFIG", "database is closed")
         ex = Executor(self, self.active_frame())
 
         def work():
-            if step.get('assemble') is not None:
-                raise OrmError('IR_INVALID', 'execute runs a statement without rows; the statement is a read')
-            for i, slot in enumerate(step['bind_slots']):
-                if slot['from'] == 'param' and not 0 <= slot['param'] < len(params):
-                    raise OrmError('IR_INVALID', f'bind slot {i} reads parameter {slot["param"]}, '
-                                                 f'but execute has {len(params)} parameters')
-            self._send_step(ex, step['sql'], step, params)
+            if step.get("assemble") is not None:
+                raise OrmError(
+                    "IR_INVALID",
+                    "execute runs a statement without rows; the statement is a read",
+                )
+            for i, slot in enumerate(step["bind_slots"]):
+                if slot["from"] == "param" and not 0 <= slot["param"] < len(params):
+                    raise OrmError(
+                        "IR_INVALID",
+                        f"bind slot {i} reads parameter {slot['param']}, "
+                        f"but execute has {len(params)} parameters",
+                    )
+            self._send_step(ex, step["sql"], step, params)
 
         _guarded(ex, work)
 
     def _send_step(self, ex: Executor, sql: str, step: dict, params, parents=None):
         """plan step 하나를 executor의 연결(활성 transaction이면 그 연결)에서 실행하고 statement
         event를 publish한다."""
-        resolved = self.args(step, params, parents,
-                             ex.frame.audit if ex.frame is not None else None)
+        resolved = self.args(
+            step, params, parents, ex.frame.audit if ex.frame is not None else None
+        )
         connection = ex.frame.connection if ex.frame is not None else self._connection
         transaction = ex.frame.number if ex.frame is not None else None
-        return self.events.send(statement_kind(sql), step.get('tables', ()), transaction,
-                                resolved['masked'], sql,
-                                lambda: self._sent(lambda: connection.execute(sql, resolved['values'])))
+        return self.events.send(
+            statement_kind(sql),
+            step.get("tables", ()),
+            transaction,
+            resolved["masked"],
+            sql,
+            lambda: self._sent(lambda: connection.execute(sql, resolved["values"])),
+        )
 
     def _sent(self, run):
         """Runs one statement that the statement runner sends. An armed statement fault (test entry
@@ -932,40 +1125,60 @@ class Db:
         commit하고 callback 결과를 돌려준다. connect 없는 model은 이 transaction을
         쓴다. 활성 transaction의 같은 연결 transaction은 savepoint를 만든다."""
         options = dict(options or {})
-        retry = options.get('retry', 3)
+        retry = options.get("retry", 3)
         if isinstance(retry, bool) or not isinstance(retry, int) or retry < 0:
-            raise OrmError('CONFIG', 'transaction retry must be a non-negative integer')
-        timeout_ms = options.get('timeoutMs', 0)
-        if isinstance(timeout_ms, bool) or not isinstance(timeout_ms, int) or timeout_ms < 0:
-            raise OrmError('CONFIG', 'transaction timeoutMs must not be negative')
-        if 'audit' in options:
-            unsupported_on_markdown(self, 'a transaction with audit values')
+            raise OrmError("CONFIG", "transaction retry must be a non-negative integer")
+        timeout_ms = options.get("timeoutMs", 0)
+        if (
+            isinstance(timeout_ms, bool)
+            or not isinstance(timeout_ms, int)
+            or timeout_ms < 0
+        ):
+            raise OrmError("CONFIG", "transaction timeoutMs must not be negative")
+        if "audit" in options:
+            unsupported_on_markdown(self, "a transaction with audit values")
         outer = _active_for(self)
         # audit 기록은 transaction이 시작하기 전에 검사하고 시도마다 callback 앞에서
         # 삽입한다.
-        record = self._audit_record(options['audit']) if 'audit' in options \
-            and outer is None else None
+        record = (
+            self._audit_record(options["audit"])
+            if "audit" in options and outer is None
+            else None
+        )
         if outer is not None:
-            if 'isolation' in options or 'readOnly' in options or 'timeoutMs' in options \
-                    or 'audit' in options:
-                raise OrmError('CONFIG', 'a nested transaction of the same connection '
-                                         'accepts only the retry option')
+            if (
+                "isolation" in options
+                or "readOnly" in options
+                or "timeoutMs" in options
+                or "audit" in options
+            ):
+                raise OrmError(
+                    "CONFIG",
+                    "a nested transaction of the same connection "
+                    "accepts only the retry option",
+                )
             return self._savepoint(outer, callback)
         attempt = 0
         while True:
             try:
-                return self._run(callback, {'isolation': options.get('isolation'),
-                                            'readOnly': options.get('readOnly'),
-                                            'timeoutMs': timeout_ms}, record)
+                return self._run(
+                    callback,
+                    {
+                        "isolation": options.get("isolation"),
+                        "readOnly": options.get("readOnly"),
+                        "timeoutMs": timeout_ms,
+                    },
+                    record,
+                )
             except OrmError as error:
-                if error.code != 'DEADLOCK' or attempt >= retry:
+                if error.code != "DEADLOCK" or attempt >= retry:
                     raise
                 time.sleep((50 << attempt) / 1000)
                 attempt += 1
 
     def _run(self, callback, options: dict, record: dict | None = None):
         if self._shared.closed:
-            raise OrmError('CONFIG', 'database is closed')
+            raise OrmError("CONFIG", "database is closed")
         frame = self._begin(options)
         key = id(self.root())
         previous = _ACTIVE.get(key)
@@ -985,9 +1198,14 @@ class Db:
             # 설정된 test fault는 실행된 rollback을 실패로 보고하고 소비된다.
             if self._shared.rollback_fault:
                 self._shared.rollback_fault = False
-                raise rollback_failed(error, OrmError(
-                    'FAULT', 'test fault: the rollback of the transaction ran and is '
-                             'reported as failed')) from None
+                raise rollback_failed(
+                    error,
+                    OrmError(
+                        "FAULT",
+                        "test fault: the rollback of the transaction ran and is "
+                        "reported as failed",
+                    ),
+                ) from None
             raise
         del _ACTIVE[key]
         if previous is not None:
@@ -1001,21 +1219,35 @@ class Db:
         audit setting이 references로 이름하는 table 하나이며, 그 table을 entity로
         가진 set이 이 연결에 등록되어 있어야 한다."""
         if not isinstance(values, dict):
-            raise OrmError('CONFIG', 'transaction audit is an object of column values')
+            raise OrmError("CONFIG", "transaction audit is an object of column values")
         if self.audit_source is None:
-            raise OrmError('CONFIG', 'the transaction has audit values but the '
-                                     'connection has no audit source: set the '
-                                     'auditSource connect option')
-        tables = sorted({entity.audit_record for engine in self.engines.values()
-                         for entity in engine.model.entities.values()
-                         if entity.audit_record != ''})
+            raise OrmError(
+                "CONFIG",
+                "the transaction has audit values but the "
+                "connection has no audit source: set the "
+                "auditSource connect option",
+            )
+        tables = sorted(
+            {
+                entity.audit_record
+                for engine in self.engines.values()
+                for entity in engine.model.entities.values()
+                if entity.audit_record != ""
+            }
+        )
         if not tables:
-            raise OrmError('CONFIG', 'the transaction has audit values but no set of '
-                                     'the connection has an audited table')
+            raise OrmError(
+                "CONFIG",
+                "the transaction has audit values but no set of "
+                "the connection has an audited table",
+            )
         if len(tables) > 1:
-            raise OrmError('CONFIG', f'the audited tables of the connection record '
-                                     f'their audits in {", ".join(tables)}; one audit '
-                                     f'record table is required')
+            raise OrmError(
+                "CONFIG",
+                f"the audited tables of the connection record "
+                f"their audits in {', '.join(tables)}; one audit "
+                f"record table is required",
+            )
         table = tables[0]
         target = None
         for engine in self.engines.values():
@@ -1023,34 +1255,44 @@ class Db:
                 if entity.table == table:
                     target = (engine.model, entity)
         if target is None:
-            raise OrmError('CONFIG', f'the audit record table {table} is not a table of '
-                                     f'a set registered on the connection')
+            raise OrmError(
+                "CONFIG",
+                f"the audit record table {table} is not a table of "
+                f"a set registered on the connection",
+            )
         if len(target[1].primary_key) != 1:
-            raise OrmError('CONFIG', f'the audit record table {table} needs a primary '
-                                     f'key of one column')
+            raise OrmError(
+                "CONFIG",
+                f"the audit record table {table} needs a primary key of one column",
+            )
         source = self.audit_source()
         merged: dict = {}
         for item in (source, values):
             if not isinstance(item, dict):
-                raise OrmError('CONFIG', 'the audit source returns an object of column '
-                                         'values')
+                raise OrmError(
+                    "CONFIG", "the audit source returns an object of column values"
+                )
             for column in sorted(item):
                 if field_of(target[1], column) is None:
-                    raise OrmError('CONFIG', f'audit value {column} is not a column of '
-                                             f'{table}')
+                    raise OrmError(
+                        "CONFIG", f"audit value {column} is not a column of {table}"
+                    )
                 merged[column] = item[column]
         if not merged:
-            raise OrmError('CONFIG', f'the audit record of {table} has no value: the '
-                                     f'audit source and the transaction give none')
-        return {'runtime': target[0], 'entity': target[1], 'values': merged}
+            raise OrmError(
+                "CONFIG",
+                f"the audit record of {table} has no value: the "
+                f"audit source and the transaction give none",
+            )
+        return {"runtime": target[0], "entity": target[1], "values": merged}
 
     def _insert_audit(self, record: dict) -> dict:
         """transaction의 audit 기록을 삽입하고 그 table과 primary key 값을
         돌려준다. primary key가 identity이면 생성된 key, 아니면 기록의 값이다."""
-        from polyspec.orm.model import EntityDef, Model
+        from polyspec.orm.model import EntityDef
 
         class _RuntimeRef:
-            __slots__ = ('runtime',)
+            __slots__ = ("runtime",)
 
             def __init__(self, runtime):
                 self.runtime = runtime
@@ -1058,28 +1300,39 @@ class Db:
         class _AuditModel(Model):
             pass
 
-        entity = record['entity']
-        _AuditModel.entity_def = EntityDef(_RuntimeRef(record['runtime']), entity,
-                                           lambda core: _AuditModel(core))
+        entity = record["entity"]
+        _AuditModel.entity_def = EntityDef(
+            _RuntimeRef(record["runtime"]), entity, lambda core: _AuditModel(core)
+        )
         row = _AuditModel()
         row.core.connect(self)
-        for column in sorted(record['values']):
-            row.core.set_value(column, record['values'][column])
+        for column in sorted(record["values"]):
+            row.core.set_value(column, record["values"][column])
         from polyspec.orm.model_exec import create as create_row
+
         created = create_row(row.core)
         key = created.core.values.get(entity.primary_key[0])
         if key is None:
-            raise OrmError('CONFIG', f'the audit record {entity.table} has no '
-                                     f'{entity.primary_key[0]} after its insert')
-        return {'table': entity.table, 'key': key}
+            raise OrmError(
+                "CONFIG",
+                f"the audit record {entity.table} has no "
+                f"{entity.primary_key[0]} after its insert",
+            )
+        return {"table": entity.table, "key": key}
 
     def _row_lock_table(self) -> None:
         """SQLite row lock table을 첫 transaction 전에 transaction 밖에서 한 번
         만든다 (docs/usage.md "Statement events")."""
         if self._shared.row_lock_ready:
             return
-        self.events.send('utility', ROW_LOCK_TABLES, None, [], ROW_LOCK_DDL,
-                         lambda: self._connection.execute(ROW_LOCK_DDL, []))
+        self.events.send(
+            "utility",
+            ROW_LOCK_TABLES,
+            None,
+            [],
+            ROW_LOCK_DDL,
+            lambda: self._connection.execute(ROW_LOCK_DDL, []),
+        )
         self._shared.row_lock_ready = True
 
     def row_lock(self, frame: TxFrame, mode: str) -> None:
@@ -1087,78 +1340,91 @@ class Db:
         ORM의 lock 요청을 차례로 세운다. 쓰기는 busy_timeout까지 기다리고,
         NOWAIT 요청은 기다림을 0으로 둔다. 다른 database는 statement의 lock 절이
         잡는다."""
-        if self.driver != 'sqlite' or mode == '':
+        if self.driver != "sqlite" or mode == "":
             return
-        no_wait = mode.endswith('_nowait')
+        no_wait = mode.endswith("_nowait")
 
         def run(sql: str, values=None, tables=()):
-            return frame.run(sql, values, 'utility', tables=tables, faultable=False)
+            return frame.run(sql, values, "utility", tables=tables, faultable=False)
 
         previous = 0
         if no_wait:
-            previous = int((run('PRAGMA busy_timeout')['rows'] or [[0]])[0][0])
+            previous = int((run("PRAGMA busy_timeout")["rows"] or [[0]])[0][0])
         try:
             if no_wait:
-                run('PRAGMA busy_timeout=0')
+                run("PRAGMA busy_timeout=0")
             run(ROW_LOCK_TAKE, tables=ROW_LOCK_TABLES)
         except OrmError as error:
             # NOWAIT 요청의 SQLITE_BUSY는 CANCELED가 아니라 LOCK_NOT_AVAILABLE이다.
             if no_wait and _sqlite_busy(error.cause):
-                raise OrmError('LOCK_NOT_AVAILABLE', str(error), error.cause) from None
+                raise OrmError("LOCK_NOT_AVAILABLE", str(error), error.cause) from None
             raise
         finally:
             if no_wait:
-                run(f'PRAGMA busy_timeout={previous}')
+                run(f"PRAGMA busy_timeout={previous}")
 
     def _begin(self, options: dict) -> TxFrame:
         driver = self.driver
-        if options.get('timeoutMs', 0) > 0 and driver != 'postgres':
-            raise OrmError('CAPABILITY_UNSUPPORTED',
-                           'transaction timeoutMs is supported only by postgres')
-        if driver == 'markdown':
+        if options.get("timeoutMs", 0) > 0 and driver != "postgres":
+            raise OrmError(
+                "CAPABILITY_UNSUPPORTED",
+                "transaction timeoutMs is supported only by postgres",
+            )
+        if driver == "markdown":
             frame = TxFrame(self, self.events.next_transaction(), options)
             begin_markdown(self, frame, options)
             return frame
-        isolation = options.get('isolation')
-        level = _ISOLATION_SQL.get(isolation, '') if isolation is not None else ''
-        if isolation is not None and level == '':
-            raise OrmError('CONFIG', f'transaction isolation {isolation} is not one of '
-                                     f'read_committed, repeatable_read, serializable, '
-                                     f'read_uncommitted')
-        if driver == 'sqlite':
+        isolation = options.get("isolation")
+        level = _ISOLATION_SQL.get(isolation, "") if isolation is not None else ""
+        if isolation is not None and level == "":
+            raise OrmError(
+                "CONFIG",
+                f"transaction isolation {isolation} is not one of "
+                f"read_committed, repeatable_read, serializable, "
+                f"read_uncommitted",
+            )
+        if driver == "sqlite":
             self._row_lock_table()
         frame = TxFrame(self, self.events.next_transaction(), options)
         steps = []
-        if driver == 'mysql':
-            if level != '':
-                steps.append(('utility', f'SET TRANSACTION ISOLATION LEVEL {level}'))
-            steps.append(('begin', 'START TRANSACTION READ ONLY' if options.get('readOnly')
-                         else 'START TRANSACTION'))
-        elif driver == 'postgres':
-            sql = 'BEGIN'
-            if level != '':
-                sql += f' ISOLATION LEVEL {level}'
-            if options.get('readOnly'):
-                sql += ' READ ONLY'
-            steps.append(('begin', sql))
-            if options.get('timeoutMs', 0) > 0:
-                steps.append(('utility',
-                              f'SET LOCAL statement_timeout = {options["timeoutMs"]}'))
+        if driver == "mysql":
+            if level != "":
+                steps.append(("utility", f"SET TRANSACTION ISOLATION LEVEL {level}"))
+            steps.append(
+                (
+                    "begin",
+                    "START TRANSACTION READ ONLY"
+                    if options.get("readOnly")
+                    else "START TRANSACTION",
+                )
+            )
+        elif driver == "postgres":
+            sql = "BEGIN"
+            if level != "":
+                sql += f" ISOLATION LEVEL {level}"
+            if options.get("readOnly"):
+                sql += " READ ONLY"
+            steps.append(("begin", sql))
+            if options.get("timeoutMs", 0) > 0:
+                steps.append(
+                    ("utility", f"SET LOCAL statement_timeout = {options['timeoutMs']}")
+                )
         else:
             # 읽기 전용 transaction은 deferred BEGIN이고, 나머지는 시작할 때 쓰기
             # lock을 잡고 busy_timeout까지 기다린다.
-            steps.append(('begin', 'BEGIN' if options.get('readOnly')
-                         else 'BEGIN IMMEDIATE'))
-            if options.get('isolation') == 'read_uncommitted':
-                steps.append(('utility', 'PRAGMA read_uncommitted = 1'))
-            if options.get('readOnly'):
-                steps.append(('utility', 'PRAGMA query_only = 1'))
+            steps.append(
+                ("begin", "BEGIN" if options.get("readOnly") else "BEGIN IMMEDIATE")
+            )
+            if options.get("isolation") == "read_uncommitted":
+                steps.append(("utility", "PRAGMA read_uncommitted = 1"))
+            if options.get("readOnly"):
+                steps.append(("utility", "PRAGMA query_only = 1"))
         frame.connection = self._connection
         began = False
         try:
             for kind, sql in steps:
                 frame.run(sql, [], kind, faultable=False)
-                if kind == 'begin':
+                if kind == "begin":
                     began = True
         except BaseException as error:
             frame.finished = True
@@ -1175,39 +1441,40 @@ class Db:
         if frame.finished:
             return
         frame.finished = True
-        if self.driver == 'markdown':
-            end_markdown(frame, 'commit' if commit else 'rollback')
+        if self.driver == "markdown":
+            end_markdown(frame, "commit" if commit else "rollback")
             return
         errors: list = []
 
         def attempt(sql: str, values=None, faultable: bool = False):
             try:
-                return frame.run(sql, values, 'utility', faultable=faultable)
+                return frame.run(sql, values, "utility", faultable=faultable)
             except Exception as error:  # noqa: BLE001
                 errors.append(error)
                 return None
 
-        if self.driver == 'sqlite':
-            if frame.options.get('readOnly'):
-                attempt('PRAGMA query_only = 0')
-            if frame.options.get('isolation') == 'read_uncommitted':
-                attempt('PRAGMA read_uncommitted = 0')
+        if self.driver == "sqlite":
+            if frame.options.get("readOnly"):
+                attempt("PRAGMA query_only = 0")
+            if frame.options.get("isolation") == "read_uncommitted":
+                attempt("PRAGMA read_uncommitted = 0")
         locks, frame.locks = frame.locks, []
         for key in locks:
-            released = attempt('SELECT RELEASE_LOCK(?)', [key], faultable=True)
+            released = attempt("SELECT RELEASE_LOCK(?)", [key], faultable=True)
             # 1이 아니면 이 connection이 lock을 갖고 있지 않았다.
-            if released is not None and int((released['rows'] or [[0]])[0][0]) != 1:
-                errors.append(OrmError('CONFIG', f'lock {key} was not held at '
-                                                 'transaction end'))
-        if self.driver == 'mysql':
+            if released is not None and int((released["rows"] or [[0]])[0][0]) != 1:
+                errors.append(
+                    OrmError("CONFIG", f"lock {key} was not held at transaction end")
+                )
+        if self.driver == "mysql":
             # 값을 지우는 statement는 key 순서로 보낸다.
             for key in sorted(frame.locals):
-                attempt(f'SET @`orm.{key}` = NULL')
+                attempt(f"SET @`orm.{key}` = NULL")
         try:
             if commit and not errors:
-                frame.run('COMMIT', [], 'commit', faultable=False)
+                frame.run("COMMIT", [], "commit", faultable=False)
                 return
-            frame.run('ROLLBACK', [], 'rollback', faultable=False)
+            frame.run("ROLLBACK", [], "rollback", faultable=False)
         except BaseException as error:
             if commit:
                 raise rollback_failed(errors[0] if errors else error, error) from None
@@ -1221,22 +1488,25 @@ class Db:
 
     def _savepoint(self, frame: TxFrame, callback):
         frame.savepoints += 1
-        name = f'orm_sp_{frame.savepoints}'
+        name = f"orm_sp_{frame.savepoints}"
 
         def control(kind: str, sql: str) -> None:
             # SQL 연결은 그 statement를, markdown 연결은 같은 이름의 control message를 보낸다.
-            if self.driver == 'markdown':
+            if self.driver == "markdown":
                 savepoint_markdown(frame, kind, name)
             else:
                 frame.run(sql, [], kind, faultable=False)
+
         try:
-            control('savepoint', f'SAVEPOINT {name}')
+            control("savepoint", f"SAVEPOINT {name}")
             try:
                 result = callback()
             except BaseException as error:
                 rollback_errors = []
-                for kind, sql in (('rollback_to', f'ROLLBACK TO SAVEPOINT {name}'),
-                                  ('release', f'RELEASE SAVEPOINT {name}')):
+                for kind, sql in (
+                    ("rollback_to", f"ROLLBACK TO SAVEPOINT {name}"),
+                    ("release", f"RELEASE SAVEPOINT {name}"),
+                ):
                     try:
                         control(kind, sql)
                     except Exception as failure:  # noqa: BLE001
@@ -1244,7 +1514,7 @@ class Db:
                 if rollback_errors:
                     raise rollback_failed(error, rollback_errors[0]) from None
                 raise
-            control('release', f'RELEASE SAVEPOINT {name}')
+            control("release", f"RELEASE SAVEPOINT {name}")
             return result
         finally:
             frame.savepoints -= 1
@@ -1255,13 +1525,13 @@ class Db:
 
 
 def _transform(kind: str, value: str) -> str:
-    escaped = value.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
-    if kind == 'like_contains':
-        return f'%{escaped}%'
-    if kind == 'like_starts':
-        return f'{escaped}%'
-    if kind == 'like_ends':
-        return f'%{escaped}'
+    escaped = value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    if kind == "like_contains":
+        return f"%{escaped}%"
+    if kind == "like_starts":
+        return f"{escaped}%"
+    if kind == "like_ends":
+        return f"%{escaped}"
     return value
 
 
@@ -1270,13 +1540,19 @@ def _audit_value(slot: dict, audit):
     audit 없는 쓰기나, 그 table이 transaction의 audit record를 다른 table에 남기는
     쓰기는 CONFIG다."""
     if audit is None:
-        raise OrmError('CONFIG', 'a write of an audited table needs an audit: run it in a '
-                                 'transaction with audit values')
-    if audit['table'] != slot['name']:
-        raise OrmError('CONFIG', f'the audited table records its audits in {slot["name"]}, '
-                                 f'but the audit of the transaction is a row of '
-                                 f'{audit["table"]}')
-    return audit['key']
+        raise OrmError(
+            "CONFIG",
+            "a write of an audited table needs an audit: run it in a "
+            "transaction with audit values",
+        )
+    if audit["table"] != slot["name"]:
+        raise OrmError(
+            "CONFIG",
+            f"the audited table records its audits in {slot['name']}, "
+            f"but the audit of the transaction is a row of "
+            f"{audit['table']}",
+        )
+    return audit["key"]
 
 
 def _guarded(ex: Executor, work):
@@ -1285,9 +1561,9 @@ def _guarded(ex: Executor, work):
     if frame is None:
         return work()
     if frame.finished:
-        raise OrmError('CONFIG', 'transaction already finished')
+        raise OrmError("CONFIG", "transaction already finished")
     if frame.busy:
-        raise OrmError('CONFIG', 'the transaction connection is already in use')
+        raise OrmError("CONFIG", "the transaction connection is already in use")
     frame.busy = True
     try:
         return work()
@@ -1296,8 +1572,8 @@ def _guarded(ex: Executor, work):
 
 
 def _check_lock(ex: Executor, request: dict) -> None:
-    if request.get('lock') and ex.frame is None:
-        raise OrmError('CONFIG', 'row locks are allowed only inside a transaction')
+    if request.get("lock") and ex.frame is None:
+        raise OrmError("CONFIG", "row locks are allowed only inside a transaction")
 
 
 def _arm_rollback_fault(db: Db) -> None:
@@ -1313,12 +1589,12 @@ def _arm_statement_fault(db: Db, code: str, message: str) -> None:
 
 
 def _subscriber_error(error) -> bool:
-    return isinstance(error, OrmError) and error.code == 'SUBSCRIBER'
+    return isinstance(error, OrmError) and error.code == "SUBSCRIBER"
 
 
 def _sqlite_busy(error) -> bool:
-    code = getattr(error, 'sqlite_errorcode', None)
-    return code is not None and (code & 0xff) == 5
+    code = getattr(error, "sqlite_errorcode", None)
+    return code is not None and (code & 0xFF) == 5
 
 
 def _hooked(db: Db, request: dict, params):
@@ -1336,235 +1612,260 @@ def _hooked(db: Db, request: dict, params):
 
     out = hook(request, add_param, tuple(params))
     if not isinstance(out, dict):
-        raise OrmError('CONFIG', 'the request hook returns the request to plan')
-    out['n_params'] = len(values)
+        raise OrmError("CONFIG", "the request hook returns the request to plan")
+    out["n_params"] = len(values)
     return out, values
 
 
 def query(ex: Executor, request: dict, params):
     """select request를 실행해 main row들과 relation step들의 결과를 낸다."""
     request, params = _hooked(ex.db, request, params)
+
     def work():
         _check_lock(ex, request)
         db = ex.db
-        if db.driver == 'markdown':
+        if db.driver == "markdown":
             return markdown_read(ex, request, params)[0]
         cached = db.plan(request)
-        if request.get('lock'):
-            db.row_lock(ex.frame, request['lock'])
-        parts = _root_in_parts(request, cached['plan'], db.driver, params)
+        if request.get("lock"):
+            db.row_lock(ex.frame, request["lock"])
+        parts = _root_in_parts(request, cached["plan"], db.driver, params)
         if len(parts) > 1:
             main = []
             seen = set()
             for part in parts:
                 part_plan = db.plan(part)
-                step = part_plan['plan']['steps'][0]
+                step = part_plan["plan"]["steps"][0]
                 for row in _select(ex, part_plan, step, params):
-                    key = row_key(row, step['assemble']['key']) or ''
+                    key = row_key(row, step["assemble"]["key"]) or ""
                     if key not in seen:
                         seen.add(key)
                         main.append(row)
         else:
-            main = _select(ex, cached, cached['plan']['steps'][0], params)
+            main = _select(ex, cached, cached["plan"]["steps"][0], params)
         return _relations(ex, cached, params, main)
 
     return _guarded(ex, work)
 
 
 def _select(ex: Executor, cached: dict, step: dict, params, parents=None):
-    sql = step['sql']
+    sql = step["sql"]
     values: list = []
     if parents is not None:
         sql, values = _expand_parent(step, parents)
     result = ex.db._send_step(ex, sql, step, params, values)
-    for row in result['rows']:
-        _decode_assembly(row, step['assemble'], ex.db)
-    return result['rows']
+    for row in result["rows"]:
+        _decode_assembly(row, step["assemble"], ex.db)
+    return result["rows"]
 
 
 def _decode_assembly(row, assemble: dict, db: Db) -> None:
     version = db.aes_keyring.current_version if db.aes_keyring is not None else 1
-    if 'aes_version' in assemble:
-        at = row[assemble['columns'][assemble['aes_version']]['index']]
+    if "aes_version" in assemble:
+        at = row[assemble["columns"][assemble["aes_version"]]["index"]]
         if at is not None:
             version = int(at)
-    for column in assemble['columns']:
-        value = row[column['index']]
+    for column in assemble["columns"]:
+        value = row[column["index"]]
         # SQL NULL도 client codec 단계를 거쳐 StyledValue.sql_null()이 된다 (docs/codec.md
         # "Value model"). host 단계만 가진 column의 NULL은 None으로 남는다.
-        if not column['styles']:
+        if not column["styles"]:
             continue
-        host = [s for s in column['styles'] if s in ('aes', 'hex', 'ip')]
-        client = [s for s in column['styles'] if s not in ('aes', 'hex', 'ip')]
+        host = [s for s in column["styles"] if s in ("aes", "hex", "ip")]
+        client = [s for s in column["styles"] if s not in ("aes", "hex", "ip")]
         from polyspec.orm.codec import host_decode
-        key = db.aes_keyring.key(version) if host and 'aes' in host \
-            and db.aes_keyring is not None else db.aes_key
+
+        key = (
+            db.aes_keyring.key(version)
+            if host and "aes" in host and db.aes_keyring is not None
+            else db.aes_key
+        )
         if value is not None and host:
             value = host_decode(value, host, key)
         if client:
             value = codec_decode(client, value)
-        row[column['index']] = value
-    for child in assemble['children']:
-        if child['kind'] == 'join' and child.get('assemble'):
-            _decode_assembly(row, child['assemble'], db)
+        row[column["index"]] = value
+    for child in assemble["children"]:
+        if child["kind"] == "join" and child.get("assemble"):
+            _decode_assembly(row, child["assemble"], db)
 
 
 def _relations(ex: Executor, cached: dict, params, main):
-    out = {'plan': cached['plan'], 'main': main, 'steps': {}, 'params': params}
-    for step in cached['plan']['steps'][1:]:
-        if step['role'] != 'relation':
+    out = {"plan": cached["plan"], "main": main, "steps": {}, "params": params}
+    for step in cached["plan"]["steps"][1:]:
+        if step["role"] != "relation":
             continue
-        parent_step = out['steps'].get(step['parent']['step'])
-        parents = main if step['parent']['step'] == 0 else (parent_step or {}).get('data', [])
+        parent_step = out["steps"].get(step["parent"]["step"])
+        parents = (
+            main if step["parent"]["step"] == 0 else (parent_step or {}).get("data", [])
+        )
         values = _parent_values(step, parents, params)
         data: list = []
         if values:
             for chunk in _relation_chunks(step, values, ex.db.driver):
                 data.extend(_select(ex, cached, step, params, chunk))
-        keys = _child_keys(cached['plan'], step['id'])
+        keys = _child_keys(cached["plan"], step["id"])
         by_key: dict = {}
         for index, row in enumerate(data):
             key = row_key(row, keys)
             if key is None:
                 continue
             by_key.setdefault(key, []).append(index)
-        out['steps'][step['id']] = {'step': step, 'data': data, 'by_key': by_key}
+        out["steps"][step["id"]] = {"step": step, "data": data, "by_key": by_key}
     return out
 
 
 def _parent_values(step: dict, parents, params):
-    ref = step['parent']
+    ref = step["parent"]
     seen = set()
     out: list = []
     for row in parents:
-        if_parent = ref.get('if_parent')
-        if if_parent and scalar_key(row[if_parent['index']]) \
-                != scalar_key(params[if_parent['param']]):
+        if_parent = ref.get("if_parent")
+        if if_parent and scalar_key(row[if_parent["index"]]) != scalar_key(
+            params[if_parent["param"]]
+        ):
             continue
-        key = row_key(row, ref['keys'])
+        key = row_key(row, ref["keys"])
         if key is None or key in seen:
             continue
         seen.add(key)
-        for part in ref['keys']:
-            out.append(row[part['index']])
+        for part in ref["keys"]:
+            out.append(row[part["index"]])
     return out
 
 
 def _relation_chunks(step: dict, values, driver: str):
-    width = len(step['parent']['keys'])
-    non_parent = sum(1 for slot in step['bind_slots'] if slot['from'] != 'parent')
+    width = len(step["parent"]["keys"])
+    non_parent = sum(1 for slot in step["bind_slots"] if slot["from"] != "parent")
     limit = _driver_limit(driver)
     max_count = (limit - non_parent) // width
     if max_count < 1:
-        raise OrmError('IR_INVALID', f'relation {step["id"]} needs more bind parameters '
-                                     f'than {driver} permits')
+        raise OrmError(
+            "IR_INVALID",
+            f"relation {step['id']} needs more bind parameters than {driver} permits",
+        )
     size = 1
     while size * 2 <= max_count:
         size *= 2
     tuples = len(values) // width
     out = []
     for start in range(0, tuples, size):
-        out.append(values[start * width:min(start + size, tuples) * width])
+        out.append(values[start * width : min(start + size, tuples) * width])
     return out
 
 
 def _expand_parent(step: dict, source):
-    width = len(step['parent']['keys'])
+    width = len(step["parent"]["keys"])
     tuples = len(source) // width
     size = 1
     while size < tuples:
         size <<= 1
     values = list(source)
     while len(values) < size * width:
-        values.extend(source[(tuples - 1) * width:tuples * width])
+        values.extend(source[(tuples - 1) * width : tuples * width])
 
     def listing(placeholder) -> str:
-        out = ''
+        out = ""
         for m in range(size * width):
             if m > 0:
-                out += '), (' if width > 1 and m % width == 0 else ', '
+                out += "), (" if width > 1 and m % width == 0 else ", "
             out += placeholder(m)
         return out
 
-    parent_slot = next(i for i, slot in enumerate(step['bind_slots'])
-                       if slot['from'] == 'parent')
-    if '$1' in step['sql']:
+    parent_slot = next(
+        i for i, slot in enumerate(step["bind_slots"]) if slot["from"] == "parent"
+    )
+    if "$1" in step["sql"]:
         parent = parent_slot + 1
 
         def replace(match):
             n = int(match.group(1))
             if n == parent:
-                return listing(lambda m: f'${n + m}')
-            return f'${n + size * width - 1 if n > parent else n}'
+                return listing(lambda m: f"${n + m}")
+            return f"${n + size * width - 1 if n > parent else n}"
 
-        return re.sub(r'\$(\d+)', replace, step['sql']), values
+        return re.sub(r"\$(\d+)", replace, step["sql"]), values
     slot_index = 0
 
     def question(match):
         nonlocal slot_index
-        slot = step['bind_slots'][slot_index]
+        slot = step["bind_slots"][slot_index]
         slot_index += 1
-        return listing(lambda m: '?') if slot['from'] == 'parent' else '?'
+        return listing(lambda m: "?") if slot["from"] == "parent" else "?"
 
-    return re.sub(r'\?', question, step['sql']), values
+    return re.sub(r"\?", question, step["sql"]), values
 
 
 def _child_keys(plan: dict, step_id: int):
     def find(assemble):
-        for child in assemble['children']:
-            if child['kind'] != 'join' and child['step'] == step_id:
-                return child['child_keys']
-            if child['kind'] == 'join' and child.get('assemble'):
-                found = find(child['assemble'])
+        for child in assemble["children"]:
+            if child["kind"] != "join" and child["step"] == step_id:
+                return child["child_keys"]
+            if child["kind"] == "join" and child.get("assemble"):
+                found = find(child["assemble"])
                 if found is not None:
                     return found
         return None
 
-    for step in plan['steps']:
-        if step.get('assemble'):
-            found = find(step['assemble'])
+    for step in plan["steps"]:
+        if step.get("assemble"):
+            found = find(step["assemble"])
             if found is not None:
                 return found
-    raise OrmError('INTERNAL', f'relation step {step_id} has no child')
+    raise OrmError("INTERNAL", f"relation step {step_id} has no child")
 
 
 def _root_in_parts(request: dict, plan: dict, driver: str, params):
     """driver bind 한도를 넘는, AND로 이은 root IN 목록을 나눈다."""
-    main = plan['steps'][0]
+    main = plan["steps"][0]
     limit = _driver_limit(driver)
-    if len(main['bind_slots']) <= limit:
+    if len(main["bind_slots"]) <= limit:
         return [request]
 
     def too_large():
-        raise OrmError('IR_INVALID', f'the statement needs {len(main["bind_slots"])} bind '
-                                     f'parameters but {driver} permits {limit}')
+        raise OrmError(
+            "IR_INVALID",
+            f"the statement needs {len(main['bind_slots'])} bind "
+            f"parameters but {driver} permits {limit}",
+        )
 
-    if request.get('limit') or request.get('order') or request.get('group_by') \
-            or not request.get('where'):
+    if (
+        request.get("limit")
+        or request.get("order")
+        or request.get("group_by")
+        or not request.get("where")
+    ):
         raise too_large()
-    items = request['where']['items']
+    items = request["where"]["items"]
     target = -1
 
     def item_conn(item):
-        for key in ('pred', 'group', 'joined'):
+        for key in ("pred", "group", "joined"):
             if item.get(key) is not None:
-                return item[key].get('conn')
+                return item[key].get("conn")
         return None
 
     for i, item in enumerate(items):
-        if item.get('pred') is None:
+        if item.get("pred") is None:
             continue
-        if item['pred'].get('conn') == 'or' \
-                or (i + 1 < len(items) and item_conn(items[i + 1]) == 'or'):
+        if item["pred"].get("conn") == "or" or (
+            i + 1 < len(items) and item_conn(items[i + 1]) == "or"
+        ):
             raise too_large()
-        if item['pred'].get('op') == 'in' and not item['pred'].get('sub') \
-                and (target < 0 or len(item['pred'].get('ps') or [])
-                     > len(items[target]['pred'].get('ps') or [])):
+        if (
+            item["pred"].get("op") == "in"
+            and not item["pred"].get("sub")
+            and (
+                target < 0
+                or len(item["pred"].get("ps") or [])
+                > len(items[target]["pred"].get("ps") or [])
+            )
+        ):
             target = i
     if target < 0:
         raise too_large()
-    ps = items[target]['pred']['ps']
-    available = limit - (len(main['bind_slots']) - len(ps))
+    ps = items[target]["pred"]["ps"]
+    available = limit - (len(main["bind_slots"]) - len(ps))
     if available < 1:
         raise too_large()
     chunk = 1
@@ -1581,14 +1882,15 @@ def _root_in_parts(request: dict, plan: dict, driver: str, params):
     parts = []
     for start in range(0, len(unique), chunk):
         import copy
+
         part = copy.deepcopy(request)
-        slice_ps = unique[start:start + chunk]
+        slice_ps = unique[start : start + chunk]
         n = 1
         while n < len(slice_ps):
             n <<= 1
         while len(slice_ps) < n:
             slice_ps.append(slice_ps[-1])
-        part['where']['items'][target]['pred']['ps'] = slice_ps
+        part["where"]["items"][target]["pred"]["ps"] = slice_ps
         parts.append(part)
     return parts
 
@@ -1600,23 +1902,25 @@ def scalar(ex: Executor, request: dict, params):
     def work():
         _check_lock(ex, request)
         db = ex.db
-        if db.driver == 'markdown':
+        if db.driver == "markdown":
             return markdown_scalar(ex, request, params)
         cached = db.plan(request)
-        parts = _root_in_parts(request, cached['plan'], db.driver, params)
+        parts = _root_in_parts(request, cached["plan"], db.driver, params)
         if len(parts) > 1:
-            if request['kind'] != 'count':
-                raise OrmError('IR_INVALID', 'a split IN list can be merged only for a count')
+            if request["kind"] != "count":
+                raise OrmError(
+                    "IR_INVALID", "a split IN list can be merged only for a count"
+                )
             total = 0
             for part in parts:
                 part_plan = db.plan(part)
-                step = part_plan['plan']['steps'][0]
-                result = db._send_step(ex, step['sql'], step, params)
-                total += int((result['rows'][0] or [0])[0] if result['rows'] else 0)
+                step = part_plan["plan"]["steps"][0]
+                result = db._send_step(ex, step["sql"], step, params)
+                total += int((result["rows"][0] or [0])[0] if result["rows"] else 0)
             return total
-        step = cached['plan']['steps'][0]
-        result = db._send_step(ex, step['sql'], step, params)
-        return result['rows'][0][0] if result['rows'] else None
+        step = cached["plan"]["steps"][0]
+        result = db._send_step(ex, step["sql"], step, params)
+        return result["rows"][0][0] if result["rows"] else None
 
     return _guarded(ex, work)
 
@@ -1627,18 +1931,18 @@ def paginate(ex: Executor, request: dict, params):
     def work():
         _check_lock(ex, request)
         db = ex.db
-        if db.driver == 'markdown':
+        if db.driver == "markdown":
             result, total = markdown_read(ex, request, params)
-            return {'result': result, 'total': total}
+            return {"result": result, "total": total}
         cached = db.plan(request)
-        main = _select(ex, cached, cached['plan']['steps'][0], params)
+        main = _select(ex, cached, cached["plan"]["steps"][0], params)
         result = _relations(ex, cached, params, main)
-        step = next((s for s in cached['plan']['steps'] if s['role'] == 'count'), None)
+        step = next((s for s in cached["plan"]["steps"] if s["role"] == "count"), None)
         if step is None:
-            raise OrmError('INTERNAL', 'paginate plan has no count step')
-        counted = db._send_step(ex, step['sql'], step, params)
-        total = int(counted['rows'][0][0] if counted['rows'] else 0)
-        return {'result': result, 'total': total}
+            raise OrmError("INTERNAL", "paginate plan has no count step")
+        counted = db._send_step(ex, step["sql"], step, params)
+        total = int(counted["rows"][0][0] if counted["rows"] else 0)
+        return {"result": result, "total": total}
 
     return _guarded(ex, work)
 
@@ -1651,37 +1955,44 @@ def write(ex: Executor, request: dict, params):
 
     def work():
         db = ex.db
-        if db.driver == 'markdown':
+        if db.driver == "markdown":
             keys, affected = markdown_write(ex, request, params)
-            return {'id': keys[0] if keys else None, 'affected': affected}
+            return {"id": keys[0] if keys else None, "affected": affected}
         cached = db.plan(request)
-        step = cached['plan']['steps'][0]
-        result = db._send_step(ex, step['sql'], step, params)
-        if request['kind'] == 'insert' and ' RETURNING ' in step['sql']:
-            return {'id': int(result['rows'][0][0]), 'affected': 1}
-        if request['kind'] == 'update' and request.get('optimistic') \
-                and result['affected'] == 0:
-            raise OrmError('OPTIMISTIC_LOCK', 'the row changed after it was read')
-        insert_id = result['insert_id']
-        identity_id = int(insert_id) if request['kind'] == 'insert' \
-            and not request.get('rows') and insert_id is not None else None
+        step = cached["plan"]["steps"][0]
+        result = db._send_step(ex, step["sql"], step, params)
+        if request["kind"] == "insert" and " RETURNING " in step["sql"]:
+            return {"id": int(result["rows"][0][0]), "affected": 1}
+        if (
+            request["kind"] == "update"
+            and request.get("optimistic")
+            and result["affected"] == 0
+        ):
+            raise OrmError("OPTIMISTIC_LOCK", "the row changed after it was read")
+        insert_id = result["insert_id"]
+        identity_id = (
+            int(insert_id)
+            if request["kind"] == "insert"
+            and not request.get("rows")
+            and insert_id is not None
+            else None
+        )
         # An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
-        upsert = request['kind'] == 'insert' and bool(request.get('on_duplicate'))
-        return {'id': identity_id, 'affected': 1 if upsert else result['affected']}
+        upsert = request["kind"] == "insert" and bool(request.get("on_duplicate"))
+        return {"id": identity_id, "affected": 1 if upsert else result["affected"]}
 
-    return {**_guarded(ex, work), 'request': request, 'params': params}
+    return {**_guarded(ex, work), "request": request, "params": params}
 
 
 def statement(ex: Executor, request: dict, params):
     """select request의 statement를 실행 없이 돌려준다."""
-    unsupported_on_markdown(ex.db, 'getQuery')
+    unsupported_on_markdown(ex.db, "getQuery")
     request, params = _hooked(ex.db, request, params)
     cached = ex.db.plan(request)
-    step = cached['plan']['steps'][0]
-    return {'sql': step['sql'], 'binds': ex.db.args(step, params)['masked']}
+    step = cached["plan"]["steps"][0]
+    return {"sql": step["sql"], "binds": ex.db.args(step, params)["masked"]}
 
 
 def connect(dsn: str, options: dict | None = None) -> Db:
     """DSN URI가 고르는 database를 연다."""
     return Db.connect(dsn, options)
-

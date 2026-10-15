@@ -4,7 +4,7 @@
 # polyspec.orm은 이것을 export하지 않는다.
 from polyspec.orm.database import Db, _arm_rollback_fault, _arm_statement_fault
 
-__all__ = ['fail_next_rollback', 'fail_next_statement']
+__all__ = ["fail_next_rollback", "fail_next_statement"]
 
 
 def fail_next_rollback(db: Db) -> None:
@@ -20,7 +20,7 @@ def fail_next_statement(db: Db, code: str, message: str) -> None:
     보내지 않고 code와 message의 OrmError로 실패한다. transaction control statement는 소비하지 않는다.
     code나 message가 비어 있으면 ValueError이며 아무것도 설정하지 않는다."""
     if not isinstance(code, str) or not code:
-        raise ValueError('fail_next_statement needs a nonempty code')
+        raise ValueError("fail_next_statement needs a nonempty code")
     if not isinstance(message, str) or not message:
-        raise ValueError('fail_next_statement needs a nonempty message')
+        raise ValueError("fail_next_statement needs a nonempty message")
     _arm_statement_fault(db, code, message)

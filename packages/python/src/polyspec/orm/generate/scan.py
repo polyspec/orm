@@ -3,12 +3,13 @@
 import ast
 import os
 
-__all__ = ['scan_model_calls']
+__all__ = ["scan_model_calls"]
 
-_SKIPPED = frozenset({'node_modules', '__pycache__', '.venv'})
+_SKIPPED = frozenset({"node_modules", "__pycache__", ".venv"})
 # 첫 parameter가 같은 model을 받는 method다.
-_MODEL_CALLBACKS = frozenset({'and_', 'or_', 'not_', 'and_not', 'or_not', 'on',
-                              'fetch_key', 'fetch_value'})
+_MODEL_CALLBACKS = frozenset(
+    {"and_", "or_", "not_", "and_not", "or_not", "on", "fetch_key", "fetch_value"}
+)
 
 
 def _scan_tree(tree, classes: dict, out: dict) -> None:
@@ -23,7 +24,7 @@ def _scan_tree(tree, classes: dict, out: dict) -> None:
 
         def visit_Import(self, node):
             for alias in node.names:
-                name = alias.name.rsplit('.', 1)[-1]
+                name = alias.name.rsplit(".", 1)[-1]
                 if name in classes:
                     imported[alias.asname or name] = name
 
@@ -65,14 +66,17 @@ def _scan_tree(tree, classes: dict, out: dict) -> None:
                 receiver = model_of(func.value, names)
                 if receiver is not None:
                     out[receiver].add(func.attr)
-                    if func.attr in _MODEL_CALLBACKS and node.args \
-                            and isinstance(node.args[0], (ast.FunctionDef, ast.Lambda)):
+                    if (
+                        func.attr in _MODEL_CALLBACKS
+                        and node.args
+                        and isinstance(node.args[0], (ast.FunctionDef, ast.Lambda))
+                    ):
                         callback = node.args[0]
                         params = list(callback.args.args)
                         inner = dict(names)
                         if params:
                             inner[params[0].arg] = receiver
-                        for stmt in getattr(callback, 'body', []):
+                        for stmt in getattr(callback, "body", []):
                             visit(stmt, inner)
                         for default in callback.args.defaults:
                             visit(default, inner)
@@ -87,10 +91,10 @@ def _scan_tree(tree, classes: dict, out: dict) -> None:
 
 
 def _scan_file(path: str, classes: dict, out: dict) -> None:
-    if not path.endswith('.py'):
+    if not path.endswith(".py"):
         return
     try:
-        with open(path, encoding='utf-8') as handle:
+        with open(path, encoding="utf-8") as handle:
             tree = ast.parse(handle.read(), filename=path)
     except SyntaxError:
         return

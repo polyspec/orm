@@ -6,6 +6,8 @@ node = "26.12.0"
 go = "1.27.2"
 python = "3.14.8"
 uv = "0.12.24"
+ruff = "0.17.0"
+"pypi:vulture" = "2.16"
 "github:asamarts/alint" = "0.18.2"
 "go:golang.org/x/vuln/cmd/govulncheck" = "1.8.0"
 "github:rustsec/rustsec" = { version = "0.22.2", version_prefix = "cargo-audit/v" }

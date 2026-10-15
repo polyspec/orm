@@ -1,7 +1,7 @@
 # audit setting이 기록하는 column (docs/dbspec.md "Audit").
 from polyspec.orm.dbspec.model import DbspecSetting, DbspecTable
 
-__all__ = ['audit_excluded', 'audit_line', 'audit_records']
+__all__ = ["audit_excluded", "audit_line", "audit_records"]
 
 
 def audit_records(a: DbspecSetting, column: str) -> bool:
@@ -26,8 +26,10 @@ def audit_excluded(a: DbspecSetting, t: DbspecTable) -> list:
 def audit_line(a: DbspecSetting, list_kind: str, columns) -> str:
     """setting 줄이다. columns가 None이면 목록 없이, 아니면 list keyword와 그
     column을 쓴다."""
-    head = (f'audit into {a.into} column {a.column} references {a.references} '
-            f'action {a.action} previous {a.previous}')
+    head = (
+        f"audit into {a.into} column {a.column} references {a.references} "
+        f"action {a.action} previous {a.previous}"
+    )
     if not columns:
         return head
-    return f'{head} {list_kind} ({", ".join(columns)})'
+    return f"{head} {list_kind} ({', '.join(columns)})"
