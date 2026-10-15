@@ -1069,6 +1069,11 @@
                 "type": "varchar"
               },
               {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
                 "from": "param",
                 "param": 5,
                 "type": "i32"
@@ -1084,7 +1089,7 @@
                 "type": "bytes"
               }
             ],
-            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"name\" ILIKE $1 AND \"a\".\"read_count\" BETWEEN $2 AND $3 AND \"a\".\"price\" = $4 AND \"a\".\"email_blind_index\" = $5 AND \"a\".\"start_dt\" > (now() - make_interval(days => CAST($6 AS integer))) AND EXTRACT(YEAR FROM \"a\".\"created_ts\")::int = $7 AND \"a\".\"ip\" = $8",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"name\" ILIKE $1 AND \"a\".\"read_count\" BETWEEN $2 AND $3 AND \"a\".\"price\" = $4 AND \"a\".\"email_blind_index\" = $5 AND \"a\".\"start_dt\" > (CAST($6 AS timestamp(6)) - make_interval(days => CAST($7 AS integer))) AND EXTRACT(YEAR FROM \"a\".\"created_ts\")::int = $8 AND \"a\".\"ip\" = $9",
             "tables": [
               "author"
             ]
@@ -1319,6 +1324,11 @@
                 "type": "i32"
               },
               {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
                 "from": "param",
                 "param": 3,
                 "type": "i64"
@@ -1330,7 +1340,7 @@
                 "type": "datetime"
               }
             ],
-            "sql": "UPDATE \"author\" SET \"read_count\" = \"author\".\"read_count\" + $1, \"aes_hex_email\" = $2, \"aes_hex_phone\" = $3, \"email_blind_index\" = $4, \"phone_blind_index\" = $5, \"aes_key_version\" = $6, \"updated_ts\" = CURRENT_TIMESTAMP WHERE \"author\".\"seq\" = $7 AND \"author\".\"updated_ts\" = $8",
+            "sql": "UPDATE \"author\" SET \"read_count\" = \"author\".\"read_count\" + $1, \"aes_hex_email\" = $2, \"aes_hex_phone\" = $3, \"email_blind_index\" = $4, \"phone_blind_index\" = $5, \"aes_key_version\" = $6, \"updated_ts\" = $7 WHERE \"author\".\"seq\" = $8 AND \"author\".\"updated_ts\" = $9",
             "tables": [
               "author"
             ]
@@ -1550,9 +1560,19 @@
               {
                 "from": "config",
                 "type": "i32"
+              },
+              {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
               }
             ],
-            "sql": "INSERT INTO \"author\" (\"name\", \"aes_hex_email\", \"start_dt\", \"end_dt\", \"user_seq\", \"service_seq\", \"service_region_seq\", \"service_member_seq\", \"email_blind_index\", \"aes_key_version\") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING \"seq\"",
+            "sql": "INSERT INTO \"author\" (\"name\", \"aes_hex_email\", \"start_dt\", \"end_dt\", \"user_seq\", \"service_seq\", \"service_region_seq\", \"service_member_seq\", \"email_blind_index\", \"aes_key_version\", \"created_ts\", \"updated_ts\") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING \"seq\"",
             "tables": [
               "author"
             ]
@@ -1836,6 +1856,235 @@
           {
             "column": "clock",
             "p": 1
+          }
+        ]
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i32"
+              }
+            ],
+            "sql": "SELECT COUNT(*) FROM `clock_cell` AS `a` WHERE `a`.`at0` >= NOW(6) AND `a`.`at3` < DATE_SUB(NOW(6), INTERVAL ? DAY) AND `a`.`at6` < NOW(6)",
+            "tables": [
+              "clock_cell"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i32"
+              },
+              {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              }
+            ],
+            "sql": "SELECT COUNT(*) FROM \"clock_cell\" AS \"a\" WHERE \"a\".\"at0\" >= CAST($1 AS timestamp(6)) AND \"a\".\"at3\" < (CAST($2 AS timestamp(6)) - make_interval(days => CAST($3 AS integer))) AND \"a\".\"at6\" < CAST($4 AS timestamp(6))",
+            "tables": [
+              "clock_cell"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i32"
+              },
+              {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              }
+            ],
+            "sql": "SELECT COUNT(*) FROM \"clock_cell\" AS \"a\" WHERE (\"a\".\"at0\" || '.000000') >= ? AND (\"a\".\"at3\" || '000') < (datetime(?, '-' || CAST(? AS TEXT) || ' days') || substr(?, 20)) AND \"a\".\"at6\" < ?",
+            "tables": [
+              "clock_cell"
+            ]
+          }
+        ]
+      },
+      "id": "planner_clock_compare",
+      "input": {
+        "entity": "clock_cell",
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "at0",
+                "op": "gte",
+                "value": {
+                  "name": "now"
+                }
+              }
+            },
+            {
+              "pred": {
+                "column": "at3",
+                "conn": "and",
+                "op": "lt",
+                "value": {
+                  "name": "days_ago",
+                  "ps": [
+                    0
+                  ]
+                }
+              }
+            },
+            {
+              "pred": {
+                "column": "at6",
+                "conn": "and",
+                "op": "lt",
+                "value": {
+                  "name": "now"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "INSERT INTO `clock_cell` (`label`) VALUES (?)",
+            "tables": [
+              "clock_cell"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "now",
+                "precision": 0,
+                "type": "datetime"
+              },
+              {
+                "from": "now",
+                "precision": 3,
+                "type": "datetime"
+              },
+              {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              }
+            ],
+            "sql": "INSERT INTO \"clock_cell\" (\"label\", \"at0\", \"at3\", \"at6\") VALUES ($1, $2, $3, $4) RETURNING \"seq\"",
+            "tables": [
+              "clock_cell"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "now",
+                "precision": 0,
+                "type": "datetime"
+              },
+              {
+                "from": "now",
+                "precision": 3,
+                "type": "datetime"
+              },
+              {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              }
+            ],
+            "sql": "INSERT INTO \"clock_cell\" (\"label\", \"at0\", \"at3\", \"at6\") VALUES (?, ?, ?, ?) RETURNING \"seq\"",
+            "tables": [
+              "clock_cell"
+            ]
+          }
+        ]
+      },
+      "id": "planner_clock_insert",
+      "input": {
+        "entity": "clock_cell",
+        "ir_version": 1,
+        "kind": "insert",
+        "n_params": 1,
+        "set": [
+          {
+            "column": "label",
+            "p": 0
           }
         ]
       },
@@ -3390,12 +3639,22 @@
                 "type": "i32"
               },
               {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
                 "from": "param",
                 "param": 4,
                 "type": "i32"
               }
             ],
-            "sql": "INSERT INTO \"author\" (\"uuid\", \"name\", \"user_seq\", \"service_seq\", \"service_region_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_key_version\") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (\"uuid\") DO UPDATE SET \"read_count\" = \"author\".\"read_count\" + $10 RETURNING \"seq\"",
+            "sql": "INSERT INTO \"author\" (\"uuid\", \"name\", \"user_seq\", \"service_seq\", \"service_region_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_key_version\", \"created_ts\", \"updated_ts\") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) ON CONFLICT (\"uuid\") DO UPDATE SET \"read_count\" = \"author\".\"read_count\" + $12 RETURNING \"seq\"",
             "tables": [
               "author"
             ]

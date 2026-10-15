@@ -346,7 +346,7 @@ async fn markdown_call(ex: &Executor, req: &mut Req) -> Result<(Vec<u8>, Arc<Man
     for (i, value) in req.params.iter().enumerate() {
         params.push(markdown_param(i, value, uses[i].first(), &db.inner.cfg.aes_key, &db.inner.zone)?);
     }
-    let now = db.inner.zone.now().format("%Y-%m-%d %H:%M:%S%.6f").to_string();
+    let now = db.now_text();
     let msg = MdRequest { ir_version: req.ir.ir_version, manifest_hash: &req.ir.manifest_hash, request: &req.ir, params, now };
     let answer = match ex {
         Executor::Tx(t) => {

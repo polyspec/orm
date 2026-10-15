@@ -214,6 +214,20 @@ func TestCoveragePlannerTimeInsert(t *testing.T) {
 	compilePlannerCase(t, "planner_time_insert")
 }
 
+// TestCoveragePlannerClockCompare는 값 함수의 clock을 여섯 자리로 bind하고, SQLite에서 datetime(p < 6)
+// column을 여섯 자리로 늘려 비교한다.
+func TestCoveragePlannerClockCompare(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_clock_compare")
+}
+
+// TestCoveragePlannerClockInsert는 insert가 빼먹은 default now column에 PostgreSQL과 SQLite에서
+// column의 소수 자리로 자른 now slot을 bind한다.
+func TestCoveragePlannerClockInsert(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_clock_insert")
+}
+
 // TestCoveragePlannerParentKeyTypes는 composite key relation의 parent slot이 key type을 싣는지 확인한다.
 func TestCoveragePlannerParentKeyTypes(t *testing.T) {
 	testcase.Start(t, testcase.Compute)

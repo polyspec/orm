@@ -22,9 +22,10 @@ func (MySQL) Now(precision int) string {
 	}
 	return "CURRENT_TIMESTAMP"
 }
-func (MySQL) HostNow() bool                     { return false }
-func (MySQL) ReadTime(col string, _ int) string { return "CAST(" + col + " AS CHAR)" }
-func (MySQL) WriteTime(ph string) string        { return ph }
+func (MySQL) HostNow() bool                         { return false }
+func (MySQL) ClockOperand(col string, _ int) string { return col }
+func (MySQL) ReadTime(col string, _ int) string     { return "CAST(" + col + " AS CHAR)" }
+func (MySQL) WriteTime(ph string) string            { return ph }
 func (MySQL) RowLock(mode string) (string, bool) {
 	switch mode {
 	case "update":

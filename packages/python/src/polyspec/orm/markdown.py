@@ -204,8 +204,6 @@ def markdown_call(ex, request: dict, params) -> tuple[dict, RuntimeModel]:
     request["n_params"] = len(params)
     validate(m, request)
     uses = param_uses(m, request)
-    from polyspec.orm.clock import wall_micros
-
     msg = {
         "ir_version": request["ir_version"],
         "manifest_hash": request["manifest_hash"],
@@ -213,7 +211,7 @@ def markdown_call(ex, request: dict, params) -> tuple[dict, RuntimeModel]:
         "params": [
             markdown_param(db, i, value, uses[i]) for i, value in enumerate(params)
         ],
-        "now": db.now(wall_micros(), 6),
+        "now": db.now(db.clock_micros(), 6),
     }
     session = ex.frame.connection if ex.frame is not None else db._connection
     if session is None:

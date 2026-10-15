@@ -39,7 +39,7 @@ final class RuntimeModelTest extends TestCase
     public function test_entities_in_document_order(): void
     {
         $bench = self::bench();
-        $want = ['author', 'user', 'service', 'service_region', 'service_member', 'composite_account', 'composite_membership', 'soft_record', 'account', 'project', 'account_project', 'task', 'hex_cell', 'time_cell'];
+        $want = ['author', 'user', 'service', 'service_region', 'service_member', 'composite_account', 'composite_membership', 'soft_record', 'account', 'project', 'account_project', 'task', 'hex_cell', 'time_cell', 'clock_cell'];
         self::assertTrue(array_keys($bench->entities) === $want, 'entities ' . implode(',', array_keys($bench->entities)));
         $author = $bench->entities['author'];
         self::assertTrue($author['identity'] === 'seq' && $author['pk'] === ['seq'], 'author keys');
@@ -114,7 +114,7 @@ final class RuntimeModelTest extends TestCase
         self::assertTrue(str_contains($engine->compile($ir)['steps'][0]['sql'], '"a"."level" BETWEEN $1 AND $2'), 'i16 condition');
     }
 
-    public function test_insert_binds_the_clock_of_an_omitted_default_now_column_only_on_SQLite(): void
+    public function test_insert_binds_the_clock_of_an_omitted_default_now_column_except_on_MySQL(): void
     {
         $doc = "dbspec 1 clocked\n\ntable note {\n  id i64 identity\n  rank i16\n  body text\n  created_at datetime(6) default now\n  primary key (id)\n}\n";
         $model = RuntimeModel::build(RuntimeModel::parse(['clocked.dbs' => $doc]));
@@ -128,7 +128,7 @@ final class RuntimeModelTest extends TestCase
             foreach (['single' => [$single, 1], 'multi' => [$multi, 2]] as $kind => [$ir, $rows]) {
                 $step = $engine->compile($ir)['steps'][0];
                 $now = array_values(array_filter($step['bind_slots'], static fn(array $b): bool => $b['from'] === 'now'));
-                if ($dialect === 'sqlite') {
+                if ($dialect !== 'mysql') {
                     self::assertTrue(str_contains($step['sql'], '("rank", "body", "created_at")') && count($now) === $rows && count($step['bind_slots']) === 3 * $rows, "$dialect $kind insert binds created_at: {$step['sql']}");
                 } else {
                     self::assertTrue(!str_contains($step['sql'], 'created_at') && $now === [] && count($step['bind_slots']) === 2 * $rows, "$dialect $kind insert leaves created_at to the database: {$step['sql']}");

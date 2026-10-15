@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 
 polyspec_orm::models!();
 
-use model::{Author, CompositeAccount, HexCell, Service, ServiceMember, ServiceRegion, SoftRecord, Task, TimeCell, User};
+use model::{Author, ClockCell, CompositeAccount, HexCell, Service, ServiceMember, ServiceRegion, SoftRecord, Task, TimeCell, User};
 use polyspec_orm::{AesKeyring, Collection, Db, Model, Null, Param};
 use serde_json::{json, Map, Value};
 
@@ -626,14 +626,8 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         })
         .retry(0)
     );
-    run!(
-        "contains_ascii_fold",
-        db.transaction(async || contains_vector(db, |q, p| q.and_lk_name(p), &["PPL", "ÉV", "_", ""]).await).retry(0)
-    );
-    run!(
-        "contains_binary_code_point",
-        db.transaction(async || contains_vector(db, |q, p| q.and_lb_name(p), &["pp", "É", "PPL", "_"]).await).retry(0)
-    );
+    run!("contains_ascii_fold", db.transaction(async || contains_vector(db, |q, p| q.and_lk_name(p), &["PPL", "ÉV", "_", ""]).await).retry(0));
+    run!("contains_binary_code_point", db.transaction(async || contains_vector(db, |q, p| q.and_lb_name(p), &["pp", "É", "PPL", "_"]).await).retry(0));
     run!(
         "delete_recursive",
         db.transaction(async || {
@@ -757,6 +751,50 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             let rows = TimeCell::new().connect(db).clock("10:11:12.345").gets().await?;
             created.delete(false).await?;
             Ok::<Value, polyspec_orm::Error>(picks(&rows, &["clock"]))
+        })
+        .retry(0)
+    );
+    // One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now` hold
+    // that clock truncated to their digits, and a datetime(p) column compares with a clock at six digits. The executor
+    // clock is fixed at .999999 through the test entry point, so a rounding clock shows as the next second; MySQL writes
+    // its own clock, CURRENT_TIMESTAMP(p), which truncates. These vectors come last because the fixed clock stays on
+    // the connection.
+    run!(
+        "clock_truncate_write",
+        db.transaction(async || {
+            use chrono::SubsecRound;
+            polyspec_orm::testing::fix_clock(db, "2026-06-01 12:34:56.999999");
+            let created = ClockCell::new().connect(db).set_label("write").create().await?;
+            let seq = created.get_seq().unwrap();
+            mask(shared, &[seq], &[]);
+            let row = ClockCell::new().connect(db).get_by_seq(seq).await?;
+            row.delete(false).await?;
+            let at6 = row.get_at6()?;
+            Ok::<Value, polyspec_orm::Error>(json!({
+                "p0_truncated": row.get_at0()? == at6.trunc_subsecs(0),
+                "p3_truncated": row.get_at3()? == at6.trunc_subsecs(3),
+            }))
+        })
+        .retry(0)
+    );
+    run!(
+        "clock_compare_six_digits",
+        db.transaction(async || {
+            polyspec_orm::testing::fix_clock(db, "2026-06-01 12:34:56.999999");
+            let day = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap();
+            let created = ClockCell::new()
+                .connect(db)
+                .set_label("compare")
+                .set_at0(day.and_hms_opt(12, 34, 56).unwrap())
+                .set_at3(day.and_hms_milli_opt(12, 34, 56, 999).unwrap())
+                .set_at6(day.and_hms_opt(12, 34, 56).unwrap())
+                .create()
+                .await?;
+            mask(shared, &[created.get_seq().unwrap()], &[]);
+            let ge_now = ClockCell::new().connect(db).label("compare").and_ge_at0(polyspec_orm::now()).get_count().await?;
+            let lt_now = ClockCell::new().connect(db).label("compare").and_lt_at3(polyspec_orm::now()).get_count().await?;
+            created.delete(false).await?;
+            Ok::<Value, polyspec_orm::Error>(json!({"at0_ge_now": ge_now, "at3_lt_now": lt_now}))
         })
         .retry(0)
     );

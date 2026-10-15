@@ -812,8 +812,10 @@ class Planner:
             def arg():
                 return b.param(fn["ps"][0], _value_function_arg_type(fn["name"]))
 
+            # ORM이 비교하는 clock은 소수 여섯 자리이고, datetime(p < 6) column은 여섯 자리로 늘린 값으로
+            # 비교한다(docs/protocol.md "Clock").
             def now():
-                return b.now(col.precision if col.type == "datetime" else 6)
+                return b.now(6)
 
             value = self.d.value_function(fn["name"], arg, now)
             if value is None:
@@ -821,6 +823,8 @@ class Planner:
                     "CAPABILITY_UNSUPPORTED",
                     f"{fn['name']} is not available on {self.d.name}",
                 )
+            if col.type == "datetime" and fn["name"] != "today":
+                lhs = self.d.clock_operand(lhs, col.precision)
             return f"{lhs} {_cmp(op)} {value}"
         if pr.get("fn"):
             fn_text = self._column_function(b, s, pr["column"], pr["fn"])
@@ -1003,9 +1007,9 @@ class Planner:
         return self._render_value(b, col, a["p"])
 
     def _clock(self, b: _Builder, col: Field) -> str:
-        """update time과 soft deletion이 datetime column에 쓰는 clock이다. sub-second
-        clock이 없는 dialect는 executor의 microsecond `now` slot을 bind하고, 나머지는
-        column의 소수 자리로 dialect의 database clock을 쓴다."""
+        """update time과 soft deletion이 datetime column에 쓰는 clock이다. executor clock을
+        쓰는 dialect(host_now)는 column의 소수 자리로 자른 `now` slot을 bind하고, MySQL은
+        CURRENT_TIMESTAMP(p)로 database clock을 쓴다."""
         return b.now(col.precision) if self.d.host_now else self.d.now(col.precision)
 
     def _audit_assignment(self, b: _Builder, ent: Entity):
@@ -1015,9 +1019,9 @@ class Planner:
 
     def _managed_insert_columns(self, ent: Entity, assignments) -> list:
         """insert가 사용자 assignment 외에 쓰는 column이다: AES key version, audit
-        column, sub-second clock이 없는 dialect에서 assign되지 않은 `default now`
-        column(field 순서). 그런 dialect의 database clock은 millisecond만 가지므로
-        executor의 microsecond clock을 쓴다."""
+        column, executor clock을 쓰는 dialect(host_now)에서 assign되지 않은 `default now`
+        column(field 순서). 그 column에는 column의 소수 자리로 자른 executor clock을
+        쓴다(docs/protocol.md "Clock")."""
         out = []
         version = ent.aes_version
         if version != "" and not _assigned(assignments, version):

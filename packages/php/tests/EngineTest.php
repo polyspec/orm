@@ -115,7 +115,7 @@ final class EngineTest extends TestCase
             $read = $engine->plan($softRead)['steps'][0]['sql'];
             self::assertTrue(str_contains($read, $q('a') . '.' . $q('deleted_at') . ' IS NULL'), "$d soft-delete read filter: $read");
             $delete = $engine->plan($softDelete)['steps'][0]['sql'];
-            $mark = 'SET ' . $q('deleted_at') . ' = ' . ['mysql' => 'CURRENT_TIMESTAMP(6) ', 'postgres' => 'CURRENT_TIMESTAMP ', 'sqlite' => '? '][$d];
+            $mark = 'SET ' . $q('deleted_at') . ' = ' . ['mysql' => 'CURRENT_TIMESTAMP(6) ', 'postgres' => '$1 ', 'sqlite' => '? '][$d];
             self::assertTrue(str_starts_with($delete, 'UPDATE ') && str_contains($delete, $mark) && str_contains($delete, $q('soft_record') . '.' . $q('deleted_at') . ' IS NULL'), "$d soft-delete guarded update: $delete");
         }
 

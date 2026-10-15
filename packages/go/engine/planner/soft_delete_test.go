@@ -60,7 +60,7 @@ func TestSoftDeleteClockPrecision(t *testing.T) {
 	}{
 		{"datetime(6)", dialect.MySQL{}, "UPDATE `account` SET `deleted_at` = CURRENT_TIMESTAMP(6) WHERE"},
 		{"datetime(0)", dialect.MySQL{}, "UPDATE `account` SET `deleted_at` = CURRENT_TIMESTAMP WHERE"},
-		{"datetime(6)", dialect.Postgres{}, `UPDATE "account" SET "deleted_at" = CURRENT_TIMESTAMP WHERE`},
+		{"datetime(6)", dialect.Postgres{}, `UPDATE "account" SET "deleted_at" = $1 WHERE`},
 		{"datetime(6)", dialect.SQLite{}, `UPDATE "account" SET "deleted_at" = ? WHERE`},
 	} {
 		m := testModel(t, "dbspec 1 soft\n\ntable account {\n  id i64\n  deleted_at "+tc.column+" null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n")

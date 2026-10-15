@@ -88,10 +88,13 @@ func (Postgres) ColumnFunction(name, col string, arg func(int) string) (string, 
 	return "", false
 }
 
-func (Postgres) ValueFunction(name string, arg, _ func() string) (string, bool) {
+// ValueFunction binds the executor clock on PostgreSQL, so one statement has one
+// clock: now() is the transaction start and statement_timestamp() the statement
+// start (postgres.now.transaction_start).
+func (Postgres) ValueFunction(name string, arg, now func() string) (string, bool) {
 	switch name {
 	case "now":
-		return "now()", true
+		return "CAST(" + now() + " AS timestamp(6))", true
 	case "today":
 		return "CURRENT_DATE", true
 	}
@@ -108,8 +111,9 @@ func (Postgres) ValueFunction(name string, arg, _ func() string) (string, bool) 
 	if field == "secs" {
 		cast = "double precision"
 	}
+	clock := "CAST(" + now() + " AS timestamp(6))"
 	value := "CAST(" + arg() + " AS " + cast + ")"
-	return "(now()" + op + "make_interval(" + field + " => " + value + "))", true
+	return "(" + clock + op + "make_interval(" + field + " => " + value + "))", true
 }
 
 func (Postgres) TupleIn(cols []string, rows [][]string, negate bool) string {

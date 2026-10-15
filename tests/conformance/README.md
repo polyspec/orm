@@ -19,6 +19,11 @@ datetimes as `YYYY-MM-DD HH:MM:SS[.ffffff]`, nulls as null). Distinct integers
 beyond 2^53 remain distinct; equivalent decimal forms compare equal.
 Duplicate object keys at any depth and a missing database expectation file are errors.
 The base and database expectation files require nonempty, unique vector names and exactly the same vector set. A missing or extra expectation name fails comparison and recording.
+The vectors `clock_truncate_write` and `clock_compare_six_digits` fix the executor clock through the test entry
+point of each client ([protocol](../../docs/protocol.md) 3.3): `check run` builds the Go runner with the tag
+`ormtest`, whose file `runner_go/clock_ormtest.go` declares them, and the Rust runner's crate enables the feature
+`test-faults`; the TypeScript runner imports `dist/testing.js`, the PHP runner requires `testing/Faults.php`, and the
+Python runner imports `polyspec.orm.testing`.
 The `write_cycle` expectation uses tagged styled-column values for
 `json_setting` and `serialize_data` in both its created and updated rows.
 
@@ -60,7 +65,7 @@ state after declared sequence cleanup. It reads every table row and observes
 MySQL auto-increment values, PostgreSQL sequence values, and SQLite's
 `sqlite_sequence` table when it exists. SQLite databases without an
 `AUTOINCREMENT` table have no sequence counters; the checker still reads all
-rows and reports any other query error. Only counters of the six tables that the write vectors
+rows and reports any other query error. Only counters of the seven tables that the write vectors
 insert into may be restored. Each restoration is reported; a missing table,
 unreadable sequence, undeclared counter change, cleanup failure, or remaining
 state change fails. The bench database must have no external writer during the run.

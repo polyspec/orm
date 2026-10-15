@@ -818,7 +818,13 @@ class _Shared:
     """한 연결의 모든 handle이 공유하는 바뀌는 상태다. rollback_fault와 statement_fault는 test entry point
     polyspec.orm.testing이 설정하는 test fault다."""
 
-    __slots__ = ("closed", "row_lock_ready", "rollback_fault", "statement_fault")
+    __slots__ = (
+        "closed",
+        "row_lock_ready",
+        "rollback_fault",
+        "statement_fault",
+        "fixed_clock",
+    )
 
     def __init__(self):
         self.closed = False
@@ -826,6 +832,8 @@ class _Shared:
         self.rollback_fault = False
         # fail_next_statement이 설정하는 (code, message)다.
         self.statement_fault = None
+        # fix_clock이 고정한 executor clock(UTC epoch의 microsecond)이다.
+        self.fixed_clock = None
 
 
 @dataclass(frozen=True)
@@ -981,6 +989,11 @@ class Db:
             self.plans.pop(next(iter(self.plans)))
         return entry
 
+    def clock_micros(self) -> int:
+        """executor clock(UTC epoch의 microsecond)이다: test entry point가 고정한 시각, 아니면 wall clock이다."""
+        fixed = self._shared.fixed_clock
+        return wall_micros() if fixed is None else fixed
+
     def now(self, micros: int, precision: int) -> str:
         """executor clock이다: wall clock의 microsecond를 connection zone(UTC)의
         text로 쓰고 6자리 소수를 precision 자리로 자른다."""
@@ -1056,8 +1069,8 @@ class Db:
             elif source == "now":
                 # 한 statement는 clock을 한 번만 읽으므로 그 clock column들은 같다.
                 if clock is None:
-                    clock = wall_micros()
-                push(self.now(clock, slot.get("precision") or 6), "$NOW")
+                    clock = self.clock_micros()
+                push(self.now(clock, slot.get("precision", 6)), "$NOW")
             else:
                 raise OrmError("INTERNAL", f"bind from {source}")
         return {"values": values, "masked": masked}
@@ -1580,6 +1593,12 @@ def _arm_rollback_fault(db: Db) -> None:
     """connection의 rollback fault를 설정한다. test entry point polyspec.orm.testing만
     부르며 package entry point는 export하지 않는다."""
     db._shared.rollback_fault = True
+
+
+def _arm_fixed_clock(db: Db, micros: int) -> None:
+    """connection의 executor clock을 micros(UTC epoch의 microsecond)로 고정한다. test entry point
+    polyspec.orm.testing만 부르며 package entry point는 export하지 않는다."""
+    db._shared.fixed_clock = micros
 
 
 def _arm_statement_fault(db: Db, code: str, message: str) -> None:

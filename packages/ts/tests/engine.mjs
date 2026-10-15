@@ -25,7 +25,7 @@ await run.run('engine', COMPUTE, async () => {
   check(MANIFEST_TEXT === manifest.manifestText && MANIFEST_HASH === manifest.manifestHash, 'the generated models embed the manifest of bench.dbs');
   const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH);
   check(registerModel(MANIFEST_TEXT, MANIFEST_HASH) === model, 'registering the same manifest returns the registered model');
-  check([...model.entities.keys()].join(',') === 'author,user,service,service_region,service_member,composite_account,composite_membership,soft_record,account,project,account_project,task,hex_cell,time_cell', 'entities in document order');
+  check([...model.entities.keys()].join(',') === 'author,user,service,service_region,service_member,composite_account,composite_membership,soft_record,account,project,account_project,task,hex_cell,time_cell,clock_cell', 'entities in document order');
   // 선언한 hash로 가지 않는 text는 그 hash가 이미 등록되어 있어도 SCHEMA_HASH_MISMATCH다.
   const edited = MANIFEST_TEXT.replace('table author', 'table authors');
   check(edited !== MANIFEST_TEXT, 'the edited manifest text differs');
@@ -107,7 +107,7 @@ await run.run('engine', COMPUTE, async () => {
   check(softRead.steps[0].sql.includes('"a"."deleted_at" IS NULL'), `soft-delete read filter: ${softRead.steps[0].sql}`);
   const softDelete = engine.compile({ ...base, entity: 'soft_record', kind: 'delete', n_params: 1, where: { items: [{ pred: { column: 'seq', op: 'eq', p: 0 } }] } });
   check(
-    softDelete.steps[0].sql.startsWith('UPDATE "soft_record" SET "deleted_at" = CURRENT_TIMESTAMP') && softDelete.steps[0].sql.includes('"soft_record"."deleted_at" IS NULL'),
+    softDelete.steps[0].sql.startsWith('UPDATE "soft_record" SET "deleted_at" = $1') && softDelete.steps[0].sql.includes('"soft_record"."deleted_at" IS NULL'),
     `soft-delete guarded update: ${softDelete.steps[0].sql}`,
   );
 

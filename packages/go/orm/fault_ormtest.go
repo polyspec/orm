@@ -2,6 +2,8 @@
 
 package orm
 
+import "time"
+
 // FailNextRollback는 db의 connection과 그 connection의 모든 handle에 test fault를
 // 설정한다. callback이 실패한 다음 transaction의 rollback은 실행된 뒤 rollback
 // 오류로 FAULT 오류를 보고하므로, transaction은 callback 오류와 fault를 가진
@@ -22,4 +24,16 @@ func FailNextStatement(db *DB, code, message string) {
 		panic("orm: FailNextStatement needs a nonempty code and message")
 	}
 	db.m.statementFault.Store(&stmtFault{code: code, msg: message})
+}
+
+// FixClock는 db의 connection과 그 connection의 모든 handle의 executor clock을
+// clock 시각으로 고정한다. clock은 UTC의 `YYYY-MM-DD HH:MM:SS.ffffff` text다.
+// 형식이 다르면 panic하고 아무것도 설정하지 않는다(docs/protocol.md "Test clock").
+// 이 함수는 build tag ormtest가 있는 build에만 있다.
+func FixClock(db *DB, clock string) {
+	t, err := time.ParseInLocation("2006-01-02 15:04:05.000000", clock, time.UTC)
+	if err != nil {
+		panic("orm: FixClock needs a YYYY-MM-DD HH:MM:SS.ffffff clock: " + err.Error())
+	}
+	db.m.fixedClock.Store(&t)
 }

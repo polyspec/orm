@@ -97,10 +97,25 @@ final class Dialect
         return $this->name === 'mysql' && $style === 'ip';
     }
 
-    /** SQLite has no sub-second clock function; the executor binds the time. */
+    /**
+     * ORM이 쓰는 clock은 executor가 준다(column의 소수 자리로 자른 `now` slot): SQLite에는 sub-second clock 함수가
+     * 없고, PostgreSQL clock은 timestamp(p < 6)에 반올림된다(docs/protocol.md "Clock").
+     */
     public function hostNow(): bool
     {
-        return $this->name === 'sqlite';
+        return $this->name !== 'mysql';
+    }
+
+    /**
+     * 값 함수의 여섯 자리 clock과 비교하는 datetime(p) column이다. SQLite는 text로 비교하므로 p < 6인 column을 0으로
+     * 여섯 자리까지 늘린다. MySQL과 PostgreSQL은 값으로 비교한다.
+     */
+    public function clockOperand(string $col, int $precision): string
+    {
+        if ($this->name !== 'sqlite' || $precision >= 6) {
+            return $col;
+        }
+        return $precision === 0 ? "($col || '.000000')" : "($col || '" . str_repeat('0', 6 - $precision) . "')";
     }
 
     public function contains(string $col, string $ph): string
@@ -299,8 +314,10 @@ final class Dialect
                     default => ($later ? 'DATE_ADD' : 'DATE_SUB') . '(NOW(6), INTERVAL ' . $arg() . ' ' . strtoupper($unit) . ')',
                 };
             case 'postgres':
+                // executor clock을 bind하므로 한 statement의 clock은 하나다: now()는 transaction 시작,
+                // statement_timestamp()는 statement 시작이다(postgres.now.transaction_start).
                 if ($fn === 'now') {
-                    return 'now()';
+                    return 'CAST(' . $now() . ' AS timestamp(6))';
                 }
                 if ($fn === 'today') {
                     return 'CURRENT_DATE';
@@ -310,8 +327,9 @@ final class Dialect
                 }
                 $field = ['second' => 'secs', 'minute' => 'mins', 'hour' => 'hours', 'day' => 'days', 'month' => 'months'][$unit];
                 $cast = $field === 'secs' ? 'double precision' : 'integer';
+                $clock = 'CAST(' . $now() . ' AS timestamp(6))';
                 $value = 'CAST(' . $arg() . " AS $cast)";
-                return '(now()' . ($later ? ' + ' : ' - ') . "make_interval($field => $value))";
+                return '(' . $clock . ($later ? ' + ' : ' - ') . "make_interval($field => $value))";
             default:
                 if ($fn === 'now') {
                     return $now();

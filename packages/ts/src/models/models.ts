@@ -176,9 +176,18 @@ table time_cell {
   clock time(3)
   primary key (seq)
 }
+
+table clock_cell {
+  seq i64 identity
+  label varchar(8)
+  at0 datetime(0) default now
+  at3 datetime(3) default now
+  at6 datetime(6) default now
+  primary key (seq)
+}
 `;
 
-export const MANIFEST_HASH = 'sha256:6b97fb31e729ecb3a5032a1fc7c2cae93b59b7a7cedd718d7004ce31586fb875';
+export const MANIFEST_HASH = 'sha256:06318b2325cc8123b21339f72401aadbe5966c261f476dbe758062574a595ae5';
 
 /** The generated schema value: install takes it to create the tables and register the set. */
 export const SCHEMA: Schema = { manifestText: MANIFEST_TEXT, manifestHash: MANIFEST_HASH };
@@ -566,7 +575,7 @@ export class Author extends Model {
   declare andNeReadCount: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare andServiceSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare andStartDt: (...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) => this;
-  declare andSuccessCountLtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell) => this;
+  declare andSuccessCountLtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell) => this;
   declare andUuid: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare betweenReadCount: (v0: readonly [number, number]) => this;
   declare betweenStartDt: (v0: readonly [string | Date, string | Date]) => this;
@@ -582,11 +591,11 @@ export class Author extends Model {
   declare gtStartDt: (...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) => this;
   declare isClose: (v0: boolean | readonly (boolean)[] | ValueFunction | Model) => this;
   declare isDisplay: (v0: boolean | readonly (boolean)[] | ValueFunction | Model) => this;
-  declare joinServiceMemberSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell) => this;
-  declare joinServiceSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell) => this;
-  declare joinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell) => this;
-  declare leftJoinServiceRegionSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell) => this;
-  declare leftJoinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell) => this;
+  declare joinServiceMemberSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell) => this;
+  declare joinServiceSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell) => this;
+  declare joinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell) => this;
+  declare leftJoinServiceRegionSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell) => this;
+  declare leftJoinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell) => this;
   declare ltReadCount: (v0: number | ValueFunction) => this;
   declare matchSeqWithUserSeq: () => this;
   declare name: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
@@ -598,14 +607,14 @@ export class Author extends Model {
   declare phoneBlindIndex: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare photoUrl: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare readCount: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
-  declare readCountGtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell) => this;
+  declare readCountGtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell) => this;
   declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare serviceMemberSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare serviceRegionSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare serviceSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare startDt: (...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) => this;
   declare userSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
-  declare userSeqEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell) => this;
+  declare userSeqEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell) => this;
   declare uuid: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   /** Returns the author relation result; T is its model type. */
   declare getAuthorModels: <T = unknown>() => T;
@@ -1381,6 +1390,85 @@ export class TimeCell extends Model {
 
   declare at: (...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) => this;
   declare clock: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
+  declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  /** Returns the value or relation result named AesHexEmail. */
+  declare getAesHexEmail: <T = unknown>() => T;
+  /** Returns the author relation result; T is its model type. */
+  declare getAuthorModels: <T = unknown>() => T;
+  /** Returns the value or relation result named Members. */
+  declare getMembers: <T = unknown>() => T;
+  /** Returns the value or relation result named Module. */
+  declare getModule: <T = unknown>() => T;
+  /** Returns the value or relation result named Name. */
+  declare getName: <T = unknown>() => T;
+  /** Returns the value or relation result named Owner. */
+  declare getOwner: <T = unknown>() => T;
+  /** Returns the value or relation result named ReadTotal. */
+  declare getReadTotal: <T = unknown>() => T;
+  /** Returns the service_member relation result; T is its model type. */
+  declare getServiceMemberModels: <T = unknown>() => T;
+  /** Returns the service_region relation result; T is its model type. */
+  declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the value or relation result named StartMonth. */
+  declare getStartMonth: <T = unknown>() => T;
+  /** Returns the user relation result; T is its model type. */
+  declare getUserModel: <T = unknown>() => T;
+  /** Returns the value or relation result named Writer. */
+  declare getWriter: <T = unknown>() => T;
+}
+
+/** A clock_cell model or row. */
+export class ClockCell extends Model {
+  public static readonly entity: EntityDef = { model, entity: modelEntity('clock_cell'), create: core => new ClockCell(core) };
+  public getSeq(): number { const value = this[CORE].column('seq'); if (typeof value === 'number') return value; throw new TypeError('clock_cell.seq holds a value of type ' + typeof value + ', not number'); }
+  public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
+  public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
+  public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
+  public groupBySeq(): this { this[CORE].groupBy.push('seq'); return this; }
+  public keyNameSeq(): this { this[CORE].keyName = 'seq'; return this; }
+  public orderBySeqAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('seq', false, fn); return this; }
+  public orderBySeqDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('seq', true, fn); return this; }
+  public plusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, plus: true }); return this; }
+  public minusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, minus: true }); return this; }
+  public sumSeq(): this { this[CORE].aggregate('sum', 'seq'); return this; }
+  public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
+  public getLabel(): string { const value = this[CORE].column('label'); if (typeof value === 'string') return value; throw new TypeError('clock_cell.label holds a value of type ' + typeof value + ', not string'); }
+  public setLabel(value: string): this { this[CORE].setValue('label', value); return this; }
+  public addColumnLabel(): this { this[CORE].addColumn('label'); return this; }
+  public removeColumnLabel(): this { this[CORE].removeColumn('label'); return this; }
+  public groupByLabel(): this { this[CORE].groupBy.push('label'); return this; }
+  public keyNameLabel(): this { this[CORE].keyName = 'label'; return this; }
+  public orderByLabelAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('label', false, fn); return this; }
+  public orderByLabelDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('label', true, fn); return this; }
+  public getAt0(): string { const value = this[CORE].column('at0'); if (typeof value === 'string') return value; throw new TypeError('clock_cell.at0 holds a value of type ' + typeof value + ', not string'); }
+  public setAt0(value: string | Date): this { this[CORE].setValue('at0', value); return this; }
+  public addColumnAt0(): this { this[CORE].addColumn('at0'); return this; }
+  public removeColumnAt0(): this { this[CORE].removeColumn('at0'); return this; }
+  public groupByAt0(): this { this[CORE].groupBy.push('at0'); return this; }
+  public keyNameAt0(): this { this[CORE].keyName = 'at0'; return this; }
+  public orderByAt0Asc(...fn: ColumnFunction[]): this { this[CORE].orderBy('at0', false, fn); return this; }
+  public orderByAt0Desc(...fn: ColumnFunction[]): this { this[CORE].orderBy('at0', true, fn); return this; }
+  public getAt3(): string { const value = this[CORE].column('at3'); if (typeof value === 'string') return value; throw new TypeError('clock_cell.at3 holds a value of type ' + typeof value + ', not string'); }
+  public setAt3(value: string | Date): this { this[CORE].setValue('at3', value); return this; }
+  public addColumnAt3(): this { this[CORE].addColumn('at3'); return this; }
+  public removeColumnAt3(): this { this[CORE].removeColumn('at3'); return this; }
+  public groupByAt3(): this { this[CORE].groupBy.push('at3'); return this; }
+  public keyNameAt3(): this { this[CORE].keyName = 'at3'; return this; }
+  public orderByAt3Asc(...fn: ColumnFunction[]): this { this[CORE].orderBy('at3', false, fn); return this; }
+  public orderByAt3Desc(...fn: ColumnFunction[]): this { this[CORE].orderBy('at3', true, fn); return this; }
+  public getAt6(): string { const value = this[CORE].column('at6'); if (typeof value === 'string') return value; throw new TypeError('clock_cell.at6 holds a value of type ' + typeof value + ', not string'); }
+  public setAt6(value: string | Date): this { this[CORE].setValue('at6', value); return this; }
+  public addColumnAt6(): this { this[CORE].addColumn('at6'); return this; }
+  public removeColumnAt6(): this { this[CORE].removeColumn('at6'); return this; }
+  public groupByAt6(): this { this[CORE].groupBy.push('at6'); return this; }
+  public keyNameAt6(): this { this[CORE].keyName = 'at6'; return this; }
+  public orderByAt6Asc(...fn: ColumnFunction[]): this { this[CORE].orderBy('at6', false, fn); return this; }
+  public orderByAt6Desc(...fn: ColumnFunction[]): this { this[CORE].orderBy('at6', true, fn); return this; }
+
+  declare andGeAt0: (...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) => this;
+  declare andLtAt3: (...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) => this;
+  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
+  declare label: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
   declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   /** Returns the value or relation result named AesHexEmail. */
   declare getAesHexEmail: <T = unknown>() => T;

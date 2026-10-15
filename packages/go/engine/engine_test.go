@@ -301,7 +301,7 @@ func TestPostgresAndSQLite(t *testing.T) {
 	}
 	// upsert: RETURNING, ON CONFLICT on the unique key covered by the insert (uuid), no LAST_INSERT_ID idiom
 	p = compile(t, pg, `"kind":"insert","entity":"author","n_params":3,"set":[{"column":"uuid","p":0},{"column":"name","p":1},{"column":"user_seq","p":2},{"column":"service_seq","p":2},{"column":"service_region_seq","p":2},{"column":"service_member_seq","p":2},{"column":"start_dt","p":2},{"column":"end_dt","p":2}],"on_duplicate":[{"column":"name","p":1}]`)
-	if want := "INSERT INTO \"author\" (\"uuid\", \"name\", \"user_seq\", \"service_seq\", \"service_region_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_key_version\") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (\"uuid\") DO UPDATE SET \"name\" = $10 RETURNING \"seq\""; p.Steps[0].SQL != want {
+	if want := "INSERT INTO \"author\" (\"uuid\", \"name\", \"user_seq\", \"service_seq\", \"service_region_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_key_version\", \"created_ts\", \"updated_ts\") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) ON CONFLICT (\"uuid\") DO UPDATE SET \"name\" = $12 RETURNING \"seq\""; p.Steps[0].SQL != want {
 		t.Errorf("postgres upsert:\n got  %s\n want %s", p.Steps[0].SQL, want)
 	}
 

@@ -55,8 +55,16 @@ export interface Dialect {
    * hex exactly (docs/codec.md).
    */
   decodesStage(stage: string): boolean;
-  /** The database has no sub-second clock; the executor binds the time. */
+  /**
+   * The clock the ORM writes comes from the executor (a `now` slot truncated to the column's fraction digits): SQLite
+   * has no sub-second clock function, and a PostgreSQL clock rounds into timestamp(p < 6) (docs/protocol.md "Clock").
+   */
   hostNow: boolean;
+  /**
+   * A datetime(p) column as it compares with the six-digit clock of a value function: SQLite compares text, so a
+   * column with p < 6 is extended with zeros to six fraction digits; MySQL and PostgreSQL compare values.
+   */
+  clockOperand(col: string, precision: number): string;
   /** A row lock suffix; undefined when the mode is unknown. */
   rowLock(mode: string): string | undefined;
   columnFunction(name: string, col: string, arg: (i: number) => string): string | undefined;
@@ -140,6 +148,7 @@ const mysql: Dialect = {
   handlesStage: s => s === 'hex' || s === 'ip',
   decodesStage: s => s === 'ip',
   hostNow: false,
+  clockOperand: col => col,
   rowLock: lockSuffix,
   columnFunction(name, col) {
     switch (name) {
@@ -184,7 +193,8 @@ const postgres: Dialect = {
   now: () => 'CURRENT_TIMESTAMP',
   handlesStage: () => false,
   decodesStage: () => false,
-  hostNow: false,
+  hostNow: true,
+  clockOperand: col => col,
   rowLock: lockSuffix,
   columnFunction(name, col) {
     switch (name) {
@@ -195,8 +205,10 @@ const postgres: Dialect = {
     }
     return undefined;
   },
-  valueFunction(name, arg) {
-    if (name === 'now') return 'now()';
+  // The executor clock is bound, so one statement has one clock: now() is the transaction start and
+  // statement_timestamp() the statement start (postgres.now.transaction_start).
+  valueFunction(name, arg, now) {
+    if (name === 'now') return `CAST(${now()} AS timestamp(6))`;
     if (name === 'today') return 'CURRENT_DATE';
     const unit = valueFunctionUnits[name];
     if (unit === undefined) return undefined;
@@ -204,7 +216,8 @@ const postgres: Dialect = {
     const field = fields[unit];
     if (field === undefined) throw new Error(`the interval unit ${unit} has no make_interval field`);
     const cast = field === 'secs' ? 'double precision' : 'integer';
-    return `(now()${name.endsWith('_later') ? ' + ' : ' - '}make_interval(${field} => CAST(${arg()} AS ${cast})))`;
+    const clock = `CAST(${now()} AS timestamp(6))`;
+    return `(${clock}${name.endsWith('_later') ? ' + ' : ' - '}make_interval(${field} => CAST(${arg()} AS ${cast})))`;
   },
   containsBinary: (col, value) => `${col} LIKE ${value('like_contains')}`,
   tupleIn: (cols, rows, negate) => tupleIn(cols, rows, negate, false),
@@ -239,6 +252,7 @@ const sqlite: Dialect = {
   handlesStage: () => false,
   decodesStage: () => false,
   hostNow: true,
+  clockOperand: (col, precision) => (precision >= 6 ? col : precision === 0 ? `(${col} || '.000000')` : `(${col} || '${'0'.repeat(6 - precision)}')`),
   // The executor takes an ORM-owned lock row; the SQL suffix stays empty.
   rowLock: mode => lockSuffix(mode) === undefined ? undefined : '',
   columnFunction(name, col) {

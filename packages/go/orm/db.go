@@ -139,6 +139,10 @@ type dbMutable struct {
 	// statementFault는 FailNextStatement이 설정하는 test fault다. 다음 statement가
 	// 소비하면 nil로 바꾼다. build tag ormtest가 있는 build만 설정할 수 있다.
 	statementFault atomic.Pointer[stmtFault]
+
+	// fixedClock는 FixClock이 설정하는 test clock이다. 설정되면 executor clock은
+	// 이 시각이다. build tag ormtest가 있는 build만 설정할 수 있다.
+	fixedClock atomic.Pointer[time.Time]
 }
 
 // engineFor는 이 연결에 등록된 schema의 engine을 반환한다. 요청의 generated

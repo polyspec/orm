@@ -11,7 +11,7 @@ use Polyspec\Orm\Registry;
 use Polyspec\Orm\Schema;
 
 /** The manifestHash of the document set the models were generated from. */
-const MANIFEST_HASH = 'sha256:6b97fb31e729ecb3a5032a1fc7c2cae93b59b7a7cedd718d7004ce31586fb875';
+const MANIFEST_HASH = 'sha256:06318b2325cc8123b21339f72401aadbe5966c261f476dbe758062574a595ae5';
 
 /** The manifest text of the document set the models were generated from. */
 const MANIFEST_TEXT = 'dbspec 1 bench
@@ -188,6 +188,15 @@ table time_cell {
   clock time(3)
   primary key (seq)
 }
+
+table clock_cell {
+  seq i64 identity
+  label varchar(8)
+  at0 datetime(0) default now
+  at3 datetime(3) default now
+  at6 datetime(6) default now
+  primary key (seq)
+}
 ';
 
 /** The generated schema value: install takes it to create the tables and register the set. */
@@ -217,3 +226,4 @@ Registry::register(AccountProject::class);
 Registry::register(Task::class);
 Registry::register(HexCell::class);
 Registry::register(TimeCell::class);
+Registry::register(ClockCell::class);

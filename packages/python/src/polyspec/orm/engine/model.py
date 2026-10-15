@@ -32,7 +32,7 @@ class Field:
     identity: bool
     # column이 default를 가진다: 그것을 뺀 insert는 database의 default를 받는다.
     has_default: bool
-    # default가 `now`다. sub-second clock이 없는 dialect(SQLite)는 이 column을 뺀
+    # default가 `now`다. executor clock을 쓰는 dialect(PostgreSQL, SQLite)는 이 column을 뺀
     # insert에 executor clock을 bind한다.
     default_now: bool
     # decimal(p,s) p, time(p)와 datetime(p) p, 아니면 0.

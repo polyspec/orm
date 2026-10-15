@@ -17,7 +17,7 @@ export interface Field {
   /** The column has a default, which an insert that omits it takes from the database. */
   readonly hasDefault: boolean;
   /**
-   * default가 `now`다. sub-second clock이 없는 dialect(SQLite)는 이 column을 뺀 insert에
+   * default가 `now`다. executor clock을 쓰는 dialect(PostgreSQL, SQLite)는 이 column을 뺀 insert에
    * executor clock을 bind한다.
    */
   readonly defaultNow: boolean;

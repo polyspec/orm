@@ -172,3 +172,12 @@ table time_cell {
   clock time(3)
   primary key (seq)
 }
+
+table clock_cell {
+  seq i64 identity
+  label varchar(8)
+  at0 datetime(0) default now
+  at3 datetime(3) default now
+  at6 datetime(6) default now
+  primary key (seq)
+}

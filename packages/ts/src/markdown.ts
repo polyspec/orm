@@ -10,7 +10,6 @@ import { functionType, paramUses, type ParamUse } from './engine/params.js';
 import { entityOf, fieldOf, type Entity, type RuntimeModel } from './engine/model.js';
 import { validate } from './engine/validate.js';
 import type { Assemble, Child, OutputColumn, Request, RequestQuery, Subquery } from './ir.js';
-import { wallMicros } from './clock.js';
 import { present } from './present.js';
 import { OrmError } from './runtime_error.js';
 
@@ -301,7 +300,7 @@ async function markdownCall(ex: Executor, request: Request, params: readonly unk
   validate(model, request);
   const uses = paramUses(model, request);
   const values = params.map((value, i) => markdownParam(db, i, value, uses[i] ?? []));
-  const line = `{"ir_version":${JSON.stringify(request.ir_version)},"manifest_hash":${JSON.stringify(request.manifest_hash)},"request":${JSON.stringify(request)},"params":[${values.join(',')}],"now":${JSON.stringify(db.now(wallMicros(), 6))}}`;
+  const line = `{"ir_version":${JSON.stringify(request.ir_version)},"manifest_hash":${JSON.stringify(request.manifest_hash)},"request":${JSON.stringify(request)},"params":[${values.join(',')}],"now":${JSON.stringify(db.now(db.clockMicros(), 6))}}`;
   if (ex.frame !== undefined) return { answer: await present(ex.frame.md, 'the flowmark session of a markdown transaction').call(line, db.signal), model };
   const pool = present(db.md, 'the flowmark pool of a markdown database');
   const s = await pool.acquire(db.signal);

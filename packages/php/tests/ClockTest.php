@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
 // The clock of datetime(6) columns, on SQLite, MySQL and PostgreSQL. An
-// insert of clock_event omits created_ts, whose default is `now`: SQLite binds
-// the client clock of the `now` slot, MySQL and PostgreSQL apply the database
+// insert of clock_event omits created_ts, whose default is `now`: SQLite and
+// PostgreSQL bind the client clock of the `now` slot, MySQL applies the database
 // default. Either way the stored fraction holds the microseconds of the wall
 // clock; a clock with millisecond resolution stores every value as `.mmm000`.
 // The fixtures are contracts/fixtures/clock.dbs and clock_mark.dbs. Each case

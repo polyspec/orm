@@ -1103,6 +1103,16 @@ final class Db
         return ['sql' => $step['sql'], 'binds' => $args];
     }
 
+    /**
+     * executor clock이다: test entry point가 고정한 시각, 아니면 connection 시간대의 wall clock이다.
+     *
+     * @internal
+     */
+    public function clock(): \DateTimeImmutable
+    {
+        return $this->state->fixedClock?->setTimezone($this->zone) ?? new \DateTimeImmutable('now', $this->zone);
+    }
+
     /** 'Y-m-d H:i:s'에 precision 자리의 소수를 붙인 text다. */
     private static function timeText(\DateTimeImmutable $t, int $precision): string
     {
@@ -1242,7 +1252,7 @@ final class Db
                     break;
                 case 'now':
                     $this->masks[count($out)] = self::NOW;
-                    $clock ??= new \DateTimeImmutable('now', $this->zone);
+                    $clock ??= $this->clock();
                     // 한 statement는 clock을 한 번 읽고 slot의 소수 자리로 자른다.
                     $out[] = self::timeText($clock, $b['precision']);
                     break;

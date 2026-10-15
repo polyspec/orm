@@ -9,8 +9,9 @@
 // Each --vector selects one vector by name; without one every vector runs.
 // The models embed the manifest of contracts/fixtures/bench/bench.dbs.
 import {
-  AesKeyring, Author, type Collection, type Model, CompositeAccount, HexCell, Service, TimeCell, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, User, connect, orm,
+  AesKeyring, Author, ClockCell, type Collection, type Model, CompositeAccount, HexCell, Service, TimeCell, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, User, connect, orm,
 } from '../../packages/ts/dist/index.js';
+import { fixClock } from '../../packages/ts/dist/testing.js';
 import { parseArgs } from 'node:util';
 import { derivedInteger, executeVector, resultValue } from './result_typescript.mts';
 import { errorMessage } from '../errors.mts';
@@ -132,7 +133,7 @@ async function main() {
     log.push({ sql: e.sql, binds: e.binds.map(norm), kind: e.kind, tables: [...e.tables], transaction, error: e.error === null ? null : code(e.error) });
   });
   const out: Record<string, { statements: Logged[]; result: unknown }> = {};
-  const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip']);
+  const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'clock_truncate_write', 'clock_compare_six_digits']);
   const declared = new Set<string>();
   const run = async (name: string, fn: () => Promise<unknown>) => {
     declared.add(name);
@@ -485,6 +486,31 @@ async function main() {
     const rows = await new TimeCell().connect(db).clock('10:11:12.345').gets();
     await created.delete();
     return picks(rows, 'clock');
+  });
+
+  // One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now` hold that
+  // clock truncated to their digits, and a datetime(p) column compares with a clock at six digits. The executor clock is
+  // fixed at .999999 through the test entry point, so a rounding clock shows as the next second; MySQL writes its own
+  // clock, CURRENT_TIMESTAMP(p), which truncates. These vectors come last because the fixed clock stays on the connection.
+  await run('clock_truncate_write', async () => {
+    fixClock(db, '2026-06-01 12:34:56.999999');
+    const created = await new ClockCell().connect(db).setLabel('write').create();
+    mask([created.getSeq()]);
+    const row = await new ClockCell().connect(db).getBySeq(created.getSeq());
+    await row.delete();
+    const at6 = row.getAt6();
+    return { p0_truncated: row.getAt0() === at6.slice(0, 19), p3_truncated: row.getAt3() === at6.slice(0, 23) };
+  });
+  await run('clock_compare_six_digits', async () => {
+    fixClock(db, '2026-06-01 12:34:56.999999');
+    const created = await new ClockCell().connect(db).setLabel('compare')
+      .setAt0(new Date(Date.UTC(2026, 5, 1, 12, 34, 56))).setAt3(new Date(Date.UTC(2026, 5, 1, 12, 34, 56, 999)))
+      .setAt6(new Date(Date.UTC(2026, 5, 1, 12, 34, 56))).create();
+    mask([created.getSeq()]);
+    const geNow = await new ClockCell().connect(db).label('compare').andGeAt0(orm.now()).getCount();
+    const ltNow = await new ClockCell().connect(db).label('compare').andLtAt3(orm.now()).getCount();
+    await created.delete();
+    return { at0_ge_now: geNow, at3_lt_now: ltNow };
   });
 
   await db.close();

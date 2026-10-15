@@ -83,6 +83,10 @@ class _Dialect:
     def quote(self, ident: str) -> str:
         return quote_with('"', ident)
 
+    def clock_operand(self, col: str, precision: int) -> str:
+        """값 함수의 여섯 자리 clock과 비교하는 datetime(p) column이다. MySQL과 PostgreSQL은 값으로 비교한다."""
+        return col
+
     def placeholder(self, n: int) -> str:
         return "?"
 
@@ -249,6 +253,9 @@ class PostgresDialect(_Dialect):
 
     name = "postgres"
     insert_returning_id = True
+    # PostgreSQL clock은 timestamp(p < 6)에 반올림되므로 ORM이 쓰는 clock은 executor가 준다
+    # (postgres.now.precision_rounds).
+    host_now = True
 
     def read_time(self, col, precision):
         if precision == 0:
@@ -282,8 +289,10 @@ class PostgresDialect(_Dialect):
         }.get(name)
 
     def value_function(self, name, arg, now):
+        # executor clock을 bind하므로 한 statement의 clock은 하나다: now()는 transaction 시작,
+        # statement_timestamp()는 statement 시작이다(postgres.now.transaction_start).
         if name == "now":
-            return "now()"
+            return f"CAST({now()} AS timestamp(6))"
         if name == "today":
             return "CURRENT_DATE"
         unit = value_function_units.get(name)
@@ -298,7 +307,8 @@ class PostgresDialect(_Dialect):
         }[unit]
         cast = "double precision" if field == "secs" else "integer"
         sign = " + " if name.endswith("_later") else " - "
-        return f"(now(){sign}make_interval({field} => CAST({arg()} AS {cast})))"
+        clock = f"CAST({now()} AS timestamp(6))"
+        return f"({clock}{sign}make_interval({field} => CAST({arg()} AS {cast})))"
 
     def restart_identity(self, table, column):
         # identity sequence를 가장 큰 key에 1을 더한 값으로 정하고 is_called를 false로 두어 다음
@@ -317,6 +327,14 @@ class SqliteDialect(_Dialect):
     name = "sqlite"
     insert_returning_id = True
     host_now = True
+
+    def clock_operand(self, col, precision):
+        """SQLite는 text로 비교하므로 p < 6인 column을 0으로 여섯 자리까지 늘린다."""
+        if precision >= 6:
+            return col
+        if precision == 0:
+            return f"({col} || '.000000')"
+        return f"({col} || '{'0' * (6 - precision)}')"
 
     def quote(self, ident):
         parts = ident.split(".")

@@ -62,7 +62,7 @@ def parse_args(args):
 # Set by main() from the arguments; importing this module parses nothing.
 DSN, MODELS_DIR, SELECTED = None, None, []
 bench = Author = CompositeAccount = Service = ServiceMember = ServiceRegion = None
-User = SoftRecord = Task = HexCell = TimeCell = None
+User = SoftRecord = Task = HexCell = TimeCell = ClockCell = None
 
 log = []
 transactions = {}
@@ -280,7 +280,8 @@ def load_models():
         SoftRecord, \
         Task, \
         HexCell, \
-        TimeCell
+        TimeCell, \
+        ClockCell
     # The models generated from contracts/fixtures/bench/bench.dbs are compiled from their source and
     # registered as models; the client itself is the one installed into the interpreter.
     source = os.path.join(MODELS_DIR, "models.py")
@@ -305,6 +306,7 @@ def load_models():
         bench.HexCell,
     )
     TimeCell = bench.TimeCell
+    ClockCell = bench.ClockCell
 
 
 def main():
@@ -329,6 +331,8 @@ def main():
         "contains_binary_code_point",
         "datetime_p0_roundtrip",
         "time_p3_roundtrip",
+        "clock_truncate_write",
+        "clock_compare_six_digits",
     }
 
     def run(name, fn):
@@ -1036,6 +1040,51 @@ def main():
         return picks(rows, "clock")
 
     run("time_p3_roundtrip", time_p3_roundtrip)
+
+    # One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now`
+    # hold that clock truncated to their digits, and a datetime(p) column compares with a clock at six digits. The
+    # executor clock is fixed at .999999 through the test entry point, so a rounding clock shows as the next second;
+    # MySQL writes its own clock, CURRENT_TIMESTAMP(p), which truncates. These vectors come last because the fixed
+    # clock stays on the connection.
+    from polyspec.orm.testing import fix_clock
+
+    def clock_truncate_write():
+        fix_clock(db, "2026-06-01 12:34:56.999999")
+        created = ClockCell().connect(db).set_label("write").create()
+        mask([created.get_seq()])
+        row = ClockCell().connect(db).get_by_seq(created.get_seq())
+        row.delete()
+        at6 = row.get_at6()
+        return {
+            "p0_truncated": row.get_at0() == at6[:19],
+            "p3_truncated": row.get_at3() == at6[:23],
+        }
+
+    run("clock_truncate_write", clock_truncate_write)
+
+    def clock_compare_six_digits():
+        fix_clock(db, "2026-06-01 12:34:56.999999")
+        utc = datetime.timezone.utc
+        created = (
+            ClockCell()
+            .connect(db)
+            .set_label("compare")
+            .set_at0(datetime.datetime(2026, 6, 1, 12, 34, 56, tzinfo=utc))
+            .set_at3(datetime.datetime(2026, 6, 1, 12, 34, 56, 999000, tzinfo=utc))
+            .set_at6(datetime.datetime(2026, 6, 1, 12, 34, 56, tzinfo=utc))
+            .create()
+        )
+        mask([created.get_seq()])
+        ge_now = (
+            ClockCell().connect(db).label("compare").and_ge_at0(orm.now()).get_count()
+        )
+        lt_now = (
+            ClockCell().connect(db).label("compare").and_lt_at3(orm.now()).get_count()
+        )
+        created.delete()
+        return {"at0_ge_now": ge_now, "at3_lt_now": lt_now}
+
+    run("clock_compare_six_digits", clock_compare_six_digits)
 
     db.close()
     unknown = [name for name in SELECTED if name not in declared]

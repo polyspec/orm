@@ -505,10 +505,13 @@ final class Planner
         }
         if (isset($p['value'])) {
             $fn = $p['value']['name'];
-            // datetime column과 비교하는 clock은 그 column의 소수 자리를 쓴다.
-            $precision = ($col['type'] ?? '') === 'datetime' ? $col['precision'] : 6;
-            $value = $this->d->valueFunction($fn, static fn(): string => $b->param($p['value']['ps'][0], self::valueFunctionArgType($fn)), static fn(): string => $b->now($precision))
+            // ORM이 비교하는 clock은 소수 여섯 자리이고, datetime(p < 6) column은 여섯 자리로 늘린 값으로
+            // 비교한다(docs/protocol.md "Clock").
+            $value = $this->d->valueFunction($fn, static fn(): string => $b->param($p['value']['ps'][0], self::valueFunctionArgType($fn)), static fn(): string => $b->now(6))
                 ?? throw self::err(Code::CAPABILITY_UNSUPPORTED, "$fn is not available on {$this->d->name}");
+            if (($col['type'] ?? '') === 'datetime' && $fn !== 'today') {
+                $lhs = $this->d->clockOperand($lhs, $col['precision']);
+            }
             return $lhs . ' ' . self::cmp($op) . ' ' . $value;
         }
         if (isset($p['fn'])) {
@@ -779,8 +782,8 @@ final class Planner
         self::checkRequiredAssignments($ent, $set);
         $versioned = self::hasAes($ent);
         $audited = $ent['audit'] !== '';
-        // sub-second clock이 없는 dialect의 `default now`는 millisecond만 가지므로
-        // 사용자가 assign하지 않은 그 column에 executor의 microsecond clock을 쓴다.
+        // executor clock을 쓰는 dialect(hostNow)는 사용자가 assign하지 않은 `default now` column에
+        // column의 소수 자리로 자른 executor clock을 쓴다(docs/protocol.md "Clock").
         $clocked = [];
         if ($this->d->hostNow()) {
             foreach ($ent['columns'] as $c) {
@@ -905,8 +908,8 @@ final class Planner
 
     /**
      * updated와 soft delete가 datetime column에 쓰는 statement 시각이다.
-     * sub-second clock이 없는 dialect는 executor clock의 `now` slot을, 나머지는
-     * column의 소수 자리로 dialect의 database clock을 쓴다.
+     * executor clock을 쓰는 dialect(hostNow)는 column의 소수 자리로 자른 `now` slot을, MySQL은
+     * CURRENT_TIMESTAMP(p)로 database clock을 쓴다.
      */
     private function clock(PlanBinds $b, array $col): string
     {

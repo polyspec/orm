@@ -85,7 +85,7 @@ class Builder {
   public secret(name: string): string { return this.typed(slot({ from: 'secret', name, col_type: 'text' })); }
   /** A value of the executor configuration; type is the type of the column it is written to. */
   public config(name: string, type: string): string { return this.typed(slot({ from: 'config', name, col_type: type })); }
-  /** A timestamp the executor supplies (dialects without a sub-second clock) with p fraction digits. */
+  /** The executor clock with p fraction digits (docs/protocol.md "Clock"). */
   public now(precision: number): string { return this.typed(slot({ from: 'now', precision, col_type: 'datetime' })); }
   /**
    * The key of the transaction's audit record, written to the audit column of an audited table. name is the
@@ -592,8 +592,11 @@ export class Planner {
     if (pr.sub) return `${lhs}${op === 'not_in' ? ' NOT IN ' : ' IN '}(${this.subSelect(b, s, pr.sub)})`;
     if (pr.value) {
       const fn = pr.value;
-      const value = this.d.valueFunction(fn.name, () => b.param(present(fn.ps?.[0], `the argument of ${fn.name}`), valueFunctionArgType(fn.name)), () => b.now(col.type === 'datetime' ? col.precision : 6));
+      // A clock that the ORM compares keeps six fraction digits; a datetime(p < 6) column compares as its value
+      // extended to six digits (docs/protocol.md "Clock").
+      const value = this.d.valueFunction(fn.name, () => b.param(present(fn.ps?.[0], `the argument of ${fn.name}`), valueFunctionArgType(fn.name)), () => b.now(6));
       if (value === undefined) fail('CAPABILITY_UNSUPPORTED', `${fn.name} is not available on ${this.d.name}`);
+      if (col.type === 'datetime' && fn.name !== 'today') lhs = this.d.clockOperand(lhs, col.precision);
       return `${lhs} ${cmp(op)} ${value}`;
     }
     if (pr.fn) {
@@ -741,9 +744,8 @@ export class Planner {
   }
 
   /**
-   * update time과 soft deletion이 datetime column에 쓰는 clock이다. sub-second clock이 없는
-   * dialect는 executor의 microsecond `now` slot을 bind하고, 나머지는 column의 소수 자리로
-   * dialect의 database clock을 쓴다.
+   * update time과 soft deletion이 datetime column에 쓰는 clock이다. executor clock을 쓰는 dialect(hostNow)는
+   * column의 소수 자리로 자른 `now` slot을 bind하고, MySQL은 CURRENT_TIMESTAMP(p)로 database clock을 자른다.
    */
   private clock(b: Builder, col: Column): string {
     return this.d.hostNow ? b.now(col.precision) : this.d.now(col.precision);
@@ -757,8 +759,8 @@ export class Planner {
 
   /**
    * insert가 사용자 assignment 외에 쓰는 column이다: AES key version, audit column,
-   * sub-second clock이 없는 dialect에서 assign되지 않은 `default now` column(field 순서).
-   * 그런 dialect의 database clock은 millisecond만 가지므로 executor의 microsecond clock을 쓴다.
+   * executor clock을 쓰는 dialect(hostNow)에서 assign되지 않은 `default now` column(field 순서). 그 column에는
+   * column의 소수 자리로 자른 executor clock을 쓴다(SQLite에는 microsecond clock이 없고, PostgreSQL clock은 반올림된다).
    */
   private managedInsertColumns(ent: Entity, set: readonly Assignment[]): { column: string; value: (b: Builder) => string }[] {
     const out: { column: string; value: (b: Builder) => string }[] = [];

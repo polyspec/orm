@@ -42,9 +42,16 @@ type Dialect interface {
 	// hex는 어느 dialect도 SQL에서 풀지 않는다: UNHEX는 홀수 길이를 받고 공백이 있는 셀에 NULL을
 	// 내므로, executor가 HostDecode로 정확히 읽는다(docs/codec.md).
 	DecodesStyle(style string) bool
-	// HostNow reports that the database has no sub-second clock function, so
-	// timestamps written by the ORM (updated_ts) come from the executor (a `now` slot).
+	// HostNow reports that the clock the ORM writes comes from the executor (a `now`
+	// slot truncated to the column's fraction digits): SQLite has no sub-second clock
+	// function, and a PostgreSQL clock rounds into timestamp(p < 6)
+	// (postgres.now.precision_rounds). The update time, soft deletion and every omitted
+	// `default now` column of an insert bind the slot (docs/protocol.md "Clock").
 	HostNow() bool
+	// ClockOperand is a datetime(p) column as it compares with the six-digit clock of a
+	// value function: SQLite compares text, so a column with p < 6 is extended with
+	// zeros to six fraction digits; MySQL and PostgreSQL compare values.
+	ClockOperand(col string, precision int) string
 	// RowLock renders a row lock suffix. An empty suffix with true means the
 	// executor owns a portable adapter-level lock implementation.
 	RowLock(mode string) (string, bool)

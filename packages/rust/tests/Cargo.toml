@@ -42,7 +42,8 @@ harness = false
 [dependencies]
 # integration program이 case마다 시작, 결과, 경과 시간과 자기 기한을 보고한다.
 polyspec-orm-testcase = { path = "../testcase" }
-polyspec-orm = { path = "../orm" }
+# the conformance runner fixes the executor clock through the test entry point polyspec_orm::testing.
+polyspec-orm = { path = "../orm", features = ["test-faults"] }
 # integration program의 database case가 자기만의 database를 만들고 끝날 때 지운다.
 polyspec-orm-case-database = { path = "../case-database" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
