@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 68aecd00e37836565fdf85ac0460e1bf7e6ddf5f80b7dd6840947ba96daad8c4 -->
+<!-- source-sha256: b3a4e23a884204713382d775d3147792233f5ce006eb89910572279e3cd0c86e -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1210,6 +1210,8 @@
 - [!] T182 PHP extension에 protocol 전체를 구현한다. 원인: packages/php-ext는 dbspec parser와 emitter(parse.c, emit.c)만 구현한다. IR 검증기, message encoder, planner, 실행기가 없어 planner, bind, conformance vector를 하나도 실행하지 않고, 다른 구현은 모두 실행한다(T79, T81, T91, T92에서 발견). owner 판정(2026-10-15): extension은 구현이 중단된 것이며 명세 전체를 구현해야 한다. 지금 병렬로 진행하면 열린 항목의 완료가 늦어지므로 orm 안정 release 뒤에 시작한다. 완료 조건: extension이 다른 다섯 구현과 함께 모든 공유 vector(planner, bind, MySQL, PostgreSQL, SQLite의 conformance)를 통과하고, parity가 모든 query unit에 그것을 포함한다. Retry: orm 안정 release가 나오면 시작한다.
 - [o] T183 MySQL migration fixture의 setup이 실패하면 임시 root를 지운다. 원인: scripts/test-servers-mysql.test.mts의 `fixture()`는 /tmp/orm-mig-XXXX를 만들고, script를 복사하고, 그 text를 검사하고, `mysql-start`를 실행한 뒤에야 `close()`를 돌려주었다. 그래서 이 단계에서 실패하면 root와 시작한 mysqld가 남았고, /private/tmp에서 그런 folder 아홉 개(약 1.7 GB)가 발견되었다. 완료 조건: setup이 실패하면 fixture가 자기 `close()`를 실행하고(서버를 멈추고 socket directory와 root를 지움) 원래 error를 다시 throw한다.
   Evidence: case "the MySQL fixture removes its root when its setup fails"가 복사한 `mysql-start`를 exit 3으로 끝나게 한다. RED: 수정 전에는 `existsSync(root)`에서 `true !== false`로 실패했다. 수정 후 `make test-servers-check`가 15개 모두 통과하고 /tmp/orm-mig-* folder가 남지 않는다.
+- [o] T184 kit 0.0.53을 받는다. 원인: 다른 polyspec repository가 모두 kit 0.0.53으로 옮겼다(kit K131). 0.0.53은 K188(knip hint 없음), K189(review의 allow-remote), K190과 K195(sibling wheel), K191(owner-check가 import로 test를 고름), K192(추적하는 mise sidecar), K193(PHP를 쓰면 .php-version, orm은 이미 있음)을 가져온다. 완료 조건: package.json과 package-lock.json이 공개된 integrity로 0.0.53을 받고, make kit-sync가 copy를 쓰며, 검사가 통과한다.
+  Evidence: lock이 sha512-b5N/8uNp…EQ==로 v0.0.53을 받는다. kit-sync가 scripts/kit/kit-bootstrap.mk, .github/workflows/release.yml, config/layout.kit.yml을 썼다. dependency-review RECORD=1이 registry dependency 65개와 lock 10개를 기록했다. kit-check, dependency-policy-check, release-coverage, toolchain-check, layout-check, interface-check, go-model-check, go-vet-check, Go engine test, lint-python, lint-ts, client-unit-check, rust-fmt-check가 통과한다.
 - [o] T156 모든 생성기가 모든 key의 모든 prefix마다 유형 있는 메서드를 선언한다. 원인: scan한 소스가 호출하는 메서드만 생성되어, 어떤 소스도 호출하지 않는 key prefix에는 메서드가 없었다(hyper U-97). 완료 조건: Go, Rust, TypeScript model이 primary key, unique key, index의 모든 prefix마다 메서드를 선언하고, Python은 같은 이름을 실행 시점에 해석하며, symbol 기록과 docs/usage.md를 갱신한다.
   - [o] T156-1 T156 이후 orm main CI를 다시 green으로 만든다 (T156에 이어). 원인: run 38502539388이 실패했다. Python key-prefix 테스트가 PYTHONPATH를 바꾸고 지워진 packages/orm-python/bin/orm-gen을 실행했고, Go와 Rust key-prefix 테스트가 testcase를 시작하지 않았으며, generator/gen_go_key_prefix_test.go가 어떤 feature에도 속하지 않았고, src/models/markdown_fixture에 key-prefix 메서드가 없었다. 완료 조건: 각각을 고치고 그 소유 검사가 통과한다.
   - [o] T156-2 Go markdown model을 다시 생성한다 (T156에 이어). 원인: run 38504701356이 go-markdown-model-generated에서 실패했다. packages/orm-go/markdownmodel에 key-prefix 메서드가 없었다. 완료 조건: go generate가 폴더를 바꾸지 않는다.

@@ -43,8 +43,9 @@ jobs:
         with:
           node-version-file: mise.toml
           package-manager-cache: false
-      # shivammathur/setup-php 2.40.0: the PHP of .php-version runs the Composer proof of the release; a checkout that declares
-      # none keeps the PHP of the runner.
+      # shivammathur/setup-php 2.40.0: the PHP of .php-version runs the Composer proof of the release. A repository that needs
+      # PHP (a Composer package or consumer of config/release.json, or php of config/toolchain.json) declares .php-version,
+      # which make kit-check below requires (K193); a repository without PHP has none and sets up no PHP.
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
         if: ${{ hashFiles('.php-version') != '' }}
         with:
@@ -55,6 +56,10 @@ jobs:
         run: make install-tools TOOLS=npm
       - name: install packages
         run: make install-packages
+      # The configuration of the repository against the installed kit, before any release step: a repository that needs PHP
+      # and declares no .php-version stops here instead of releasing with the PHP of the runner (K193).
+      - name: check the configuration
+        run: make kit-check
       - name: prepare the release of the repository
         run: make release-prepare
       - name: make release-tools
