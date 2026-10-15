@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: 6e6f2189929a1509547715cc9fbeefa5de866f0a692dd58c3ead54dab7eb0232 -->
+<!-- source-sha256: f4b23987ef8e423c614bfb3e0147df4c64e49845f33c85676a03cc9518028604 -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -130,7 +130,7 @@ Key   = [Operator] Column
 - PHP, TypeScript, Python은 언어의 null 값을, Go는 `orm.Null`을, Rust는 `Null`을 사용한다.
 - Go 메서드는 컬럼별 허용 값 타입을 제네릭 타입 매개변수로 제한한다. 정수 컬럼은 `int`, `int32`, `int64`와 각 타입의 슬라이스를 허용한다.
 - 실행하지 않은 모델을 값으로 넘기면 `IN (SELECT …)`, `Ne`와 함께 쓰면 `NOT IN`을 출력한다. 모델은 `addColumn<Col>()`로 컬럼 하나만 추가해야 하며 아니면 `CONFIG`를 반환한다.
-- ORM 함수 값은 10절의 함수를 적용한다. 컬럼 함수는 컬럼을 감싸며 비교 값은 메서드의 두 번째 인자다. 예: `andLeLocation(Orm::distance(129.16, 35.16), 2000)`. 값 함수는 비교 값 자체다. 예: `andGtCreatedTs(Orm::daysAgo(7))`.
+- ORM 함수 값은 10절의 함수를 적용한다. 컬럼 함수는 컬럼을 감싸며 비교 값은 메서드의 두 번째 인자다. 예: `andEqCreatedTs(Orm::year(), 2026)`. 값 함수는 비교 값 자체다. 예: `andGtCreatedTs(Orm::daysAgo(7))`.
 - `Between`은 길이 2 고정 배열을 받는다. PHP `[1, 10]`, Go `[2]int{1, 10}`, Rust `[1, 10]`, TypeScript `[number, number]` 타입의 `[1, 10]`, Python `[1, 10]`이다. Go·Rust·TypeScript는 다른 길이를 컴파일 단계에서 거부하고 PHP와 Python은 `CONFIG`를 반환한다.
 
 ## 3. 조회
@@ -369,12 +369,12 @@ ORM 함수 값은 함수 종류와 인자를 가진다. 함수 값을 받은 모
 
 | 용도 | 형태 |
 |---|---|
-| 조건의 컬럼 함수 | `and<Op><Col>(Orm::distance(129.16, 35.16), 2000)` |
+| 조건의 컬럼 함수 | `and<Op><Col>(Orm::year(), 2026)` |
 | 조건의 값 함수 | `and<Op><Col>(Orm::daysAgo(7))` |
-| 컬럼으로 쓰는 컬럼 함수 | `addColumn<Col>Alias<Name>(Orm::distance(129.16, 35.16))` |
-| 정렬에 쓰는 컬럼 함수 | `orderBy<Col>Asc(Orm::distance(129.16, 35.16))` |
+| 컬럼으로 쓰는 컬럼 함수 | `addColumn<Col>Alias<Name>(Orm::year())` |
+| 정렬에 쓰는 컬럼 함수 | `orderBy<Col>Asc(Orm::year())` |
 
-Go는 `orm.Distance(…)`, Rust는 `polyspec_orm::distance(…)`, TypeScript는 `orm.distance(…)`를 사용한다.
+Go는 `orm.Year()`, Rust는 `polyspec_orm::year()`, TypeScript는 `orm.year()`, Python은 `orm.year()`를 사용한다.
 
 ### 10.1 값 함수
 
@@ -396,11 +396,7 @@ Go는 `orm.Distance(…)`, Rust는 `polyspec_orm::distance(…)`, TypeScript는 
 | `year()` | 날짜·시각 | `YEAR(c)` | `EXTRACT(YEAR FROM c)::int` | `CAST(strftime('%Y', c) AS INTEGER)` |
 | `month()` | 날짜·시각 | `MONTH(c)` | `EXTRACT(MONTH FROM c)::int` | `CAST(strftime('%m', c) AS INTEGER)` |
 | `date()` | 날짜·시각 | `DATE(c)` | `CAST(c AS date)` | `date(c)` |
-| `distance(longitude, latitude)` | point | `ST_Distance_Sphere(c, ST_GeomFromText(?))` | PostGIS가 있으면 `ST_DistanceSphere`, 없으면 `c[0]`, `c[1]`의 하버사인 식 | 저장한 `POINT(x y)` 텍스트 좌표의 하버사인 식 |
-| `pointX()`, `pointY()` | point | `c`의 경도와 위도 | `c[0]`, `c[1]` | 저장한 `POINT(x y)` 텍스트의 좌표 |
 
-- `distance`는 MySQL `ST_Distance_Sphere`와 같은 반지름 6,370,986 m 구면에서 미터를 반환한다. point 값은 `[경도, 위도]`다.
-- SQLite 하버사인 식은 SQLite 수학 함수가 필요하다. 연결이 이를 확인하며 사용할 수 없으면 `distance`는 `CAPABILITY_UNSUPPORTED`를 반환한다.
 - 목록에 없는 컬럼 타입에 컬럼 함수를 사용하면 `OPERATOR_NOT_ALLOWED`를 반환한다.
 - SQLite는 `decimal` 값을 부동소수점으로 저장하므로 SQLite의 십진 계산 결과는 MySQL, PostgreSQL과 다를 수 있다. ORM은 SQLite 저장 형식을 바꾸지 않는다.
 - SQLite 최소 버전은 3.46이다. 클라이언트는 driver가 link한 SQLite library의 version을 읽고(Go `modernc.org/sqlite`의 `RegisterSQLiteVersion`, PHP `PDO::ATTR_SERVER_VERSION`, TypeScript `process.versions.sqlite`, Rust `libsqlite3_sys::SQLITE_VERSION`, Python `sqlite3.sqlite_version`), 그것을 묻거나 연결을 확인하는 statement 없이 연결한다.

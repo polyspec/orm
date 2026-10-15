@@ -304,7 +304,7 @@ func isOrmFunc(info *types.Info, e ast.Expr) bool {
 		return false
 	}
 	switch sel.Sel.Name {
-	case "DayOfWeek", "Year", "Month", "Date", "Distance", "PointX", "PointY":
+	case "DayOfWeek", "Year", "Month", "Date":
 		return true
 	}
 	return false

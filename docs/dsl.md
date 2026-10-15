@@ -129,7 +129,7 @@ Key   = [Operator] Column
 - PHP, TypeScript and Python use the language null value, Go uses `orm.Null`, and Rust uses `Null`.
 - Go methods use generic type parameters with the allowed value types of each column. Integer columns accept `int`, `int32`, `int64`, and slices of those types.
 - An unexecuted model as the value renders `IN (SELECT …)`, or `NOT IN` with `Ne`. The model must add exactly one column with `addColumn<Col>()`; otherwise `CONFIG` is returned.
-- An ORM function value applies a function from section 10. A column function wraps the column, and the compared value is the second method argument, for example `andLeLocation(Orm::distance(129.16, 35.16), 2000)`. A value function is the compared value, for example `andGtCreatedTs(Orm::daysAgo(7))`.
+- An ORM function value applies a function from section 10. A column function wraps the column, and the compared value is the second method argument, for example `andEqCreatedTs(Orm::year(), 2026)`. A value function is the compared value, for example `andGtCreatedTs(Orm::daysAgo(7))`.
 - `Between` takes a fixed two-value array: PHP `[1, 10]`, Go `[2]int{1, 10}`, Rust `[1, 10]`, TypeScript `[1, 10]` typed as `[number, number]`, and Python `[1, 10]`. Go, Rust, and TypeScript reject another length at compile time; PHP and Python return `CONFIG`.
 
 ## 3. Reads
@@ -368,12 +368,12 @@ An ORM function value carries a function kind and its arguments. The model metho
 
 | Use | Form |
 |---|---|
-| column function in a condition | `and<Op><Col>(Orm::distance(129.16, 35.16), 2000)` |
+| column function in a condition | `and<Op><Col>(Orm::year(), 2026)` |
 | value function in a condition | `and<Op><Col>(Orm::daysAgo(7))` |
-| column function as a column | `addColumn<Col>Alias<Name>(Orm::distance(129.16, 35.16))` |
-| column function in ordering | `orderBy<Col>Asc(Orm::distance(129.16, 35.16))` |
+| column function as a column | `addColumn<Col>Alias<Name>(Orm::year())` |
+| column function in ordering | `orderBy<Col>Asc(Orm::year())` |
 
-Go uses `orm.Distance(…)`, Rust uses `polyspec_orm::distance(…)`, and TypeScript uses `orm.distance(…)`.
+Go uses `orm.Year()`, Rust uses `polyspec_orm::year()`, TypeScript uses `orm.year()`, and Python uses `orm.year()`.
 
 ### 10.1 Value functions
 
@@ -395,11 +395,7 @@ Go uses `orm.Distance(…)`, Rust uses `polyspec_orm::distance(…)`, and TypeSc
 | `year()` | date and time | `YEAR(c)` | `EXTRACT(YEAR FROM c)::int` | `CAST(strftime('%Y', c) AS INTEGER)` |
 | `month()` | date and time | `MONTH(c)` | `EXTRACT(MONTH FROM c)::int` | `CAST(strftime('%m', c) AS INTEGER)` |
 | `date()` | date and time | `DATE(c)` | `CAST(c AS date)` | `date(c)` |
-| `distance(longitude, latitude)` | point | `ST_Distance_Sphere(c, ST_GeomFromText(?))` | PostGIS `ST_DistanceSphere` when installed; otherwise the haversine formula on `c[0]` and `c[1]` | haversine formula on the coordinates of the stored `POINT(x y)` text |
-| `pointX()`, `pointY()` | point | longitude and latitude of `c` | `c[0]`, `c[1]` | coordinates of the stored `POINT(x y)` text |
 
-- `distance` returns meters on a sphere with radius 6,370,986 m, the radius used by MySQL `ST_Distance_Sphere`. Point values are `[longitude, latitude]`.
-- The SQLite haversine formula requires SQLite math functions. The connection checks them, and `distance` returns `CAPABILITY_UNSUPPORTED` when they are unavailable.
 - A column function on a column type that it does not list returns `OPERATOR_NOT_ALLOWED`.
 - SQLite stores `decimal` values as floating-point numbers, so decimal arithmetic in SQLite can differ from MySQL and PostgreSQL. The ORM does not change the SQLite storage.
 - The minimum SQLite version is 3.46. A client reads the version of the SQLite library its driver links (Go `RegisterSQLiteVersion` from `modernc.org/sqlite`, PHP `PDO::ATTR_SERVER_VERSION`, TypeScript `process.versions.sqlite`, Rust `libsqlite3_sys::SQLITE_VERSION`, Python `sqlite3.sqlite_version`) and connects without a statement that asks for it or checks the connection.
