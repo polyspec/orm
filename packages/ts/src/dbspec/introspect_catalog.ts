@@ -42,7 +42,7 @@ export interface IForeignKey {
   onUpdate: DbspecAction;
 }
 
-export interface ICheck {
+interface ICheck {
   name: string;
   predicate: string;
 }

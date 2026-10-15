@@ -95,7 +95,7 @@ export function entityOf(m: RuntimeModel, name: string): Entity | undefined {
 const HEADER = 'dbspec 1 ';
 
 /** Splits the concatenated documents of a manifest text at their header lines. */
-export function splitDocuments(text: string): string[] {
+function splitDocuments(text: string): string[] {
   if (!text.startsWith(HEADER)) throw new OrmError('SCHEMA_INVALID', 'manifest text does not start with a dbspec header');
   const out: string[] = [];
   let start = 0;

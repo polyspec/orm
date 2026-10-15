@@ -18,7 +18,7 @@ import { containsWordRune } from './unicode_word.js';
 import { rendererName } from './names.js';
 import { present } from '../present.js';
 
-export interface RawDiagnostic {
+interface RawDiagnostic {
   readonly rule: DbspecRule;
   readonly line: number;
   readonly column: number;
@@ -332,7 +332,7 @@ function utf8Length(text: string): number {
 }
 
 /** A declaration position as the parser reads it (index.ts maps it to DbspecPosition). */
-export interface RawPosition {
+interface RawPosition {
   readonly kind: string;
   readonly path: string[];
   readonly line: number;

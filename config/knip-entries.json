@@ -24,7 +24,8 @@
         "src/testing.ts": "the ./testing export of @polyspec/orm under the orm-test condition",
         "src/dbspec/entry.ts": "the ./dbspec export of @polyspec/orm",
         "src/tools/cli.ts": "the dbspec tool command that the dbspec checks run from packages/ts/dist",
-        "src/models/markdown_fixture/models.ts": "the generated models of the Markdown fixture, which the markdown tests load from dist"
+        "src/models/markdown_fixture/models.ts": "the generated models of the Markdown fixture, which the markdown tests load from dist",
+        "src/models/decimal_fixture/models.ts": "the generated models of the decimal fixture, which the decimal tests load from dist"
       }
     },
     "packages/dbspec-language": {

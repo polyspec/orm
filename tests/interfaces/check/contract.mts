@@ -20,12 +20,12 @@ export function differences(want: Symbols, got: Symbols): string[] {
 const SPACE = /[\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]/g;
 
 /** compact는 공백을 지운 signature다. rustfmt가 parameter 목록에 허용하는 끝 쉼표는 문법일 뿐 공통 signature를 바꾸지 않는다. */
-export function compact(value: string): string {
+function compact(value: string): string {
   return value.replace(SPACE, '').replaceAll(',)', ')');
 }
 
 /** pascal은 snake_case 이름의 PascalCase다. */
-export function pascal(value: string): string {
+function pascal(value: string): string {
   return value.split('_').filter(part => part !== '').map(part => part.slice(0, 1).toUpperCase() + part.slice(1)).join('');
 }
 

@@ -187,7 +187,7 @@ export function planTo(
 }
 
 /** The schema text of a plan's target: the canonical emission of a schema text document. */
-export function planSchemaText(schema: DbspecDocument): string {
+function planSchemaText(schema: DbspecDocument): string {
   return emitDbspec(schema);
 }
 

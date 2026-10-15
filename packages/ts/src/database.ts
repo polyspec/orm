@@ -236,8 +236,8 @@ export function resolve(conn: Db | undefined): Executor {
   throw new OrmError('CONFIG', 'the model has no connection; use connect or run it inside a transaction');
 }
 
-export const SECRET = '$SECRET';
-export const NOW = '$NOW';
+const SECRET = '$SECRET';
+const NOW = '$NOW';
 
 function pad2(n: number): string { return String(n).padStart(2, '0'); }
 
@@ -310,7 +310,7 @@ function timeShape(colType: string, precision: number): string {
 }
 
 /** Writes a date, time or datetime bind in its stored text form; any other value is CODEC_ENCODE. */
-export function timeValue(value: unknown, colType: string, zone: string, precision: number): string {
+function timeValue(value: unknown, colType: string, zone: string, precision: number): string {
   const text = timeForm(value, colType, zone, precision);
   if (text === undefined) throw new OrmError('CODEC_ENCODE', `${colType} value ${JSON.stringify(value)} is not ${timeShape(colType, precision)}`);
   return text;

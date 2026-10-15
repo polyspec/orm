@@ -13,7 +13,7 @@ const byteOrder = (a: Uint8Array, b: Uint8Array): number => Buffer.compare(a, b)
  * different type or value different bytes. Only the types that the connections return are taken: null, an integer
  * (bigint), a real (number), a boolean, bytes and text; any other type is an error.
  */
-export function stateValue(value: unknown): Buffer {
+function stateValue(value: unknown): Buffer {
   if (value === null) return Buffer.from('n');
   if (typeof value === 'bigint') return Buffer.from(`i${value};`);
   if (typeof value === 'number') return Buffer.from(`f${value};`);

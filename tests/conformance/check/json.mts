@@ -4,7 +4,7 @@
 // records stay byte for byte what the Go checker wrote, so the recorded files do not change with the port.
 
 /** A JSON number as its text; two numbers are equal when they are the same rational number. */
-export class JsonNumber {
+class JsonNumber {
   readonly text: string;
   constructor(text: string) {
     this.text = text;
@@ -193,7 +193,7 @@ const byteOrder = (a: string, b: string): number => Buffer.compare(Buffer.from(a
 
 // quote encodes a string as encoding/json does: the HTML characters <, > and & and the line separators U+2028 and U+2029
 // are escaped, control characters use \b, \f, \n, \r, \t or \u00XX.
-export function quote(text: string): string {
+function quote(text: string): string {
   let out = '"';
   for (const char of text) {
     const code = char.codePointAt(0) ?? 0;

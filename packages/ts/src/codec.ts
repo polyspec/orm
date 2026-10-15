@@ -281,7 +281,7 @@ function isCodecValue(value: unknown): value is CodecValue {
  * property order; nested ordered-json values are kept as they are. Non-finite
  * numbers and values outside the model return CODEC_ENCODE.
  */
-export function orderedJsonValue(value: unknown): JsonValue {
+function orderedJsonValue(value: unknown): JsonValue {
   try {
     return orderedJsonParse(jsonText(value, 0));
   } catch (error) {

@@ -1,19 +1,19 @@
 // Method names of generated models are parsed with the grammar of
 // docs/dsl.md. Generation rejects names whose operator does not fit the
 // column type.
-import { fieldOf as columnOf, type Entity, type Field as Column, type RuntimeModel as Manifest } from '../engine/model.js';
+import { type Entity, type Field as Column, type RuntimeModel as Manifest } from '../engine/model.js';
 import { opAllowed } from '../engine/validate.js';
 import { pascal, words } from '../names.js';
 
 /** An underscore-separated segment no column name may contain. */
-export const reservedSegments = ['and', 'or', 'with', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between', 'tuple'];
+const reservedSegments = ['and', 'or', 'with', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between', 'tuple'];
 /** A prefix no column name may start with. */
-export const reservedPrefixes = ['and', 'or', 'get', 'set', 'new', 'plus', 'minus', 'order_by', 'group_by', 'tuple', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between'];
+const reservedPrefixes = ['and', 'or', 'get', 'set', 'new', 'plus', 'minus', 'order_by', 'group_by', 'tuple', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between'];
 /** Names no column may have. */
-export const reservedColumns = ['and', 'or', 'not', 'get', 'gets', 'gets_page', 'get_query', 'limit', 'alias', 'connect', 'create', 'creates', 'update', 'delete', 'restore', 'save', 'on', 'random'];
+const reservedColumns = ['and', 'or', 'not', 'get', 'gets', 'gets_page', 'get_query', 'limit', 'alias', 'connect', 'create', 'creates', 'update', 'delete', 'restore', 'save', 'on', 'random'];
 
 /** Applies the column naming rules. */
-export function checkColumnName(n: string): string | undefined {
+function checkColumnName(n: string): string | undefined {
   if (!/^[a-z][a-z0-9_]*$/.test(n)) return `column name must be snake_case: ${n}`;
   if (n.includes('__')) return `column name may not contain '__': ${n}`;
   for (const segment of n.split('_')) if (reservedSegments.includes(segment)) return `column name may not contain the segment "${segment}": ${n}`;
@@ -32,7 +32,7 @@ export function checkColumnNames(m: Manifest): void {
 }
 
 /** The codec stages that make the column a styled value (aes, hex, and ip keep a string). */
-export function clientStyles(c: Column): string[] {
+function clientStyles(c: Column): string[] {
   return c.stages.filter(s => s !== 'aes' && s !== 'hex' && s !== 'ip');
 }
 
@@ -227,4 +227,4 @@ export function splitPair(m: Manifest, left: Entity | undefined, right: Entity |
   return found.length === 1 ? found[0] : undefined;
 }
 
-export { columnOf, pascal };
+export { pascal };
