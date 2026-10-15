@@ -13,6 +13,7 @@
     {"name": "datetime-p3-t", "type": "datetime", "precision": 3, "value": "2024-01-02T03:04:05.5", "json": "2024-01-02 03:04:05.500000"},
     {"name": "datetime-offset", "type": "datetime", "precision": 6, "value": "2024-01-02 03:04:05+09:00", "json": "2024-01-01 18:04:05.000000"},
     {"name": "date", "type": "date", "precision": 0, "value": "2024-01-02", "json": "2024-01-02"},
+    {"name": "datetime-dst-gap", "type": "datetime", "precision": 6, "value": "2026-03-08 02:30:00", "json": "2026-03-08 02:30:00.000000"},
     {"name": "time-not-clock", "type": "time", "precision": 0, "value": "10:00", "code": "CODEC_ENCODE"},
     {"name": "datetime-not-date", "type": "datetime", "precision": 0, "value": "2024-13-01 00:00:00", "code": "CODEC_ENCODE"}
   ],

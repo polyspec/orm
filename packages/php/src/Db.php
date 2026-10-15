@@ -1174,7 +1174,7 @@ final class Db
             return $v;
         }
         if ($colType === 'date') {
-            $d = preg_match('/^\d{4}-\d{2}-\d{2}$/D', $v) === 1 ? \DateTimeImmutable::createFromFormat('!Y-m-d', $v) : false;
+            $d = preg_match('/^\d{4}-\d{2}-\d{2}$/D', $v) === 1 ? \DateTimeImmutable::createFromFormat('!Y-m-d', $v, $zone) : false;
             if ($d === false || $d->format('Y-m-d') !== $v) {
                 throw self::invalidTimeText($v, $colType);
             }
@@ -1187,7 +1187,7 @@ final class Db
         $text = $m[1] . ' ' . $m[2] . '.' . str_pad($fraction, 6, '0');
         $offset = $m[4] ?? '';
         if ($offset === '') {
-            $t = \DateTimeImmutable::createFromFormat('!Y-m-d H:i:s.u', $text);
+            $t = \DateTimeImmutable::createFromFormat('!Y-m-d H:i:s.u', $text, $zone);
             if ($t === false || $t->format('Y-m-d H:i:s.u') !== $text) {
                 throw self::invalidTimeText($v, $colType);
             }

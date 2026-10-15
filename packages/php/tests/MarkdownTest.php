@@ -328,4 +328,21 @@ final class MarkdownTest extends TestCase
         }
     }
 
+    public function test_bind_offsetless_datetime_uses_the_connection_zone_under_dst(): void
+    {
+        // An offset-less datetime is a wall clock in the connection zone (docs/protocol.md §5). The process
+        // date.timezone has daylight saving, and 2026-03-08 02:30 does not exist in America/New_York: the
+        // connection zone is UTC, so the value must bind unchanged whatever the process zone is.
+        $default = date_default_timezone_get();
+        date_default_timezone_set('America/New_York');
+        try {
+            $utc = new \DateTimeZone('UTC');
+            self::assertSame('2026-03-08 02:30:00.000000', Db::timeValue('2026-03-08 02:30:00', 'datetime', 6, $utc));
+            self::assertSame('2026-03-08 02:30:00.500000', Db::timeValue('2026-03-08T02:30:00.5', 'datetime', 6, $utc));
+            self::assertSame('2026-03-08', Db::timeValue('2026-03-08', 'date', 0, $utc));
+        } finally {
+            date_default_timezone_set($default);
+        }
+    }
+
 }
