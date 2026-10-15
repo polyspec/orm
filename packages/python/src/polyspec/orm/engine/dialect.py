@@ -143,6 +143,16 @@ class _Dialect:
     # 다음 값에서 다시 시작하는 statement이며, 빈 table이면 다음 key는 1이다.
 
 
+def _ascii_lower(x: str) -> str:
+    """26 nested REPLACE calls, one for each of A to Z with its lower case: MySQL LIKE under utf8mb4_0900_bin
+    then folds the ASCII letters only, as PostgreSQL ILIKE under "C" and SQLite LIKE do."""
+    return (
+        "REPLACE(" * 26
+        + x
+        + "".join(f", '{chr(c)}', '{chr(c + 32)}')" for c in range(65, 91))
+    )
+
+
 class MysqlDialect(_Dialect):
     """AES는 host 쪽이라 row의 key version이 key를 고르고, hex와 ip는 SQL 쪽이다."""
 
@@ -152,7 +162,7 @@ class MysqlDialect(_Dialect):
         return quote_with("`", ident)
 
     def like(self, col, ph):
-        return f"{col} LIKE {ph}"
+        return f"{_ascii_lower(col)} LIKE {_ascii_lower(ph)}"
 
     def limit(self, offset, count):
         return f" LIMIT {offset}, {count}"

@@ -106,10 +106,23 @@ final class Dialect
     public function contains(string $col, string $ph): string
     {
         return match ($this->name) {
-            'mysql' => "$col LIKE $ph",
+            'mysql' => self::asciiLower($col) . ' LIKE ' . self::asciiLower($ph),
             'postgres' => "$col ILIKE $ph",
             default => "$col LIKE $ph ESCAPE '\\'",
         };
+    }
+
+    /**
+     * 26 nested REPLACE calls, one for each of A to Z with its lower case: MySQL LIKE under utf8mb4_0900_bin then
+     * folds the ASCII letters only, as PostgreSQL ILIKE under "C" and SQLite LIKE do.
+     */
+    private static function asciiLower(string $x): string
+    {
+        $s = str_repeat('REPLACE(', 26) . $x;
+        foreach (range('A', 'Z') as $c) {
+            $s .= ", '$c', '" . strtolower($c) . "')";
+        }
+        return $s;
     }
 
     /** @param \Closure(string): string $value a placeholder whose value gets the transform */

@@ -189,6 +189,31 @@ func executeVector(name string, fn func() (any, error), transaction func(func() 
 	return result, nil
 }
 
+// containsVector는 tenant 902에 이름 Apple, apple, Évian, évian, x_y의 행을 만들고, 각 pattern이 cond로
+// 고르는 account_id를 차례로 모은 뒤 행을 지운다.
+func containsVector(db *orm.DB, cond func(*model.CompositeAccountModel, string) *model.CompositeAccountModel, patterns ...string) (any, error) {
+	var rows []*model.CompositeAccountModel
+	for i, name := range []string{"Apple", "apple", "Évian", "évian", "x_y"} {
+		rows = append(rows, model.CompositeAccount().SetTenantId(902).SetAccountId(int64(i+1)).SetName(name))
+	}
+	if _, err := model.CompositeAccount().Connect(db).Creates(rows); err != nil {
+		return nil, err
+	}
+	matches := []any{}
+	for _, p := range patterns {
+		found, err := cond(model.CompositeAccount().Connect(db).TenantId(902), p).OrderByAccountIdAsc().Gets()
+		if err != nil {
+			return nil, err
+		}
+		matches = append(matches, picks(found, "account_id"))
+	}
+	all, err := model.CompositeAccount().Connect(db).TenantId(902).Gets()
+	if err != nil {
+		return nil, err
+	}
+	return matches, all.Delete()
+}
+
 // main은 run의 종료 코드로 끝난다. os.Exit는 defer를 실행하지 않으므로 run 안에서는 부르지 않는다: 실패한
 // check는 exit panic으로 run까지 올라오고, 그 사이의 defer(연결 닫기)가 실행된다.
 func main() {
@@ -248,7 +273,7 @@ func run() (status int) {
 	out := map[string]vector{}
 	writeVectors := map[string]bool{
 		"write_cycle": true, "now_defaults": true, "required_columns": true,
-		"creates_and_save": true, "delete_recursive": true,
+		"creates_and_save": true, "delete_recursive": true, "contains_ascii_fold": true,
 	}
 	// vector는 선언 순서대로 모은 뒤, 선택을 검사하고 그 순서로 실행한다.
 	var declared []declaredVector
@@ -691,6 +716,9 @@ func run() (status int) {
 		}
 		left, err := model.CompositeAccount().Connect(db).TenantId([]int64{900, 901}).GetCount()
 		return map[string]any{"inserted": inserted, "pairs": pairs.ToArray(), "left": left}, err
+	})
+	run("contains_ascii_fold", func() (any, error) {
+		return containsVector(db, func(q *model.CompositeAccountModel, p string) *model.CompositeAccountModel { return q.AndLkName(p) }, "PPL", "ÉV", "_", "")
 	})
 	run("delete_recursive", func() (any, error) {
 		service, err := model.Service().Connect(db).SetName("recursive").Create()

@@ -92,12 +92,22 @@ function conflictUpsert(conflict: readonly string[], assigns: string): string {
   return ` ON CONFLICT (${conflict.map(c => quoteWith('"', c)).join(', ')}) DO UPDATE SET ${assigns}`;
 }
 
+/**
+ * 26 nested REPLACE calls, one for each of A to Z with its lower case: MySQL LIKE under utf8mb4_0900_bin then
+ * folds the ASCII letters only, as PostgreSQL ILIKE under "C" and SQLite LIKE do.
+ */
+const asciiLower = (x: string): string => {
+  let s = 'REPLACE('.repeat(26) + x;
+  for (let c = 65; c <= 90; c++) s += `, '${String.fromCharCode(c)}', '${String.fromCharCode(c + 32)}')`;
+  return s;
+};
+
 /** AES is host-side so the row key version selects the key; hex and ip are SQL-side. */
 const mysql: Dialect = {
   name: 'mysql',
   quote: ident => quoteWith('`', ident),
   placeholder: () => '?',
-  like: (col, ph) => `${col} LIKE ${ph}`,
+  like: (col, ph) => `${asciiLower(col)} LIKE ${asciiLower(ph)}`,
   limit: (offset, count) => ` LIMIT ${offset}, ${count}`,
   forceIndex: name => ` FORCE INDEX (${quoteWith('`', name)})`,
   insertReturningId: false,

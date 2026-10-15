@@ -1873,6 +1873,7 @@
   "packages/php/src/Dialect.php::Polyspec\\Orm\\Dialect": "final class Polyspec\\Orm\\Dialect extends  implements  uses ",
   "packages/php/src/Dialect.php::Polyspec\\Orm\\Dialect::$name": "public readonly string",
   "packages/php/src/Dialect.php::Polyspec\\Orm\\Dialect::__construct": "public function __construct(string $name): ",
+  "packages/php/src/Dialect.php::Polyspec\\Orm\\Dialect::asciiLower": "private static function asciiLower(string $x): string",
   "packages/php/src/Dialect.php::Polyspec\\Orm\\Dialect::columnFunction": "public function columnFunction(string $fn, string $col): ?string",
   "packages/php/src/Dialect.php::Polyspec\\Orm\\Dialect::contains": "public function contains(string $col, string $ph): string",
   "packages/php/src/Dialect.php::Polyspec\\Orm\\Dialect::containsBinary": "public function containsBinary(string $col, Closure $value): string",

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/polyspec/orm/packages/go/engine/dialect"
 	"github.com/polyspec/orm/packages/go/engine/plan"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/testcase"
@@ -105,9 +106,9 @@ func TestExplicitKeyJoinPlacesChildConditionsInGroup(t *testing.T) {
 	sql := p.Steps[0].SQL
 	requireSQL(t, sql,
 		"LEFT JOIN `owner` AS `owner` ON `a`.`owner_seq` = `owner`.`seq` AND `owner`.`min_price` > ?",
-		"WHERE `a`.`price` >= ? AND (`a`.`name` LIKE ? OR (`owner`.`name` LIKE ?))",
+		"WHERE `a`.`price` >= ? AND ("+dialect.MySQL{}.Like("`a`.`name`", "?")+" OR ("+dialect.MySQL{}.Like("`owner`.`name`", "?")+"))",
 	)
-	if strings.Count(sql, "`owner`.`name` LIKE") != 1 {
+	if strings.Count(sql, dialect.MySQL{}.Like("`owner`.`name`", "?")) != 1 {
 		t.Errorf("placed join condition must appear once: %s", sql)
 	}
 }

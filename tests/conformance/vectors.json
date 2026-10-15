@@ -250,7 +250,7 @@
             ],
             "error": null,
             "kind": "select",
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`name` LIKE ?",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(`a`.`name`, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') LIKE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(?, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z')",
             "tables": [
               "author"
             ],
@@ -1138,7 +1138,7 @@
             "%x%",
             "10c36b6f723022c32febbe6c40428e4e18c900f5d4602e43ea5d2ab06d934e71"
           ],
-          "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`name` LIKE ? AND `a`.`email_blind_index` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 5"
+          "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(`a`.`name`, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') LIKE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(?, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') AND `a`.`email_blind_index` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 5"
         },
         "statements": []
       }
@@ -1678,6 +1678,265 @@
             "tables": [
               "composite_account"
             ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "contains_ascii_fold",
+      "chain": "creates(Apple, apple, Évian, évian, x_y), tenantId(902)-\u003eandLkName(p)-\u003eorderByAccountIdAsc()-\u003egets() for p in PPL, ÉV, _, '', delete",
+      "expect": {
+        "result": [
+          [
+            {
+              "account_id": 1
+            },
+            {
+              "account_id": 2
+            }
+          ],
+          [
+            {
+              "account_id": 3
+            }
+          ],
+          [
+            {
+              "account_id": 5
+            }
+          ],
+          [
+            {
+              "account_id": 1
+            },
+            {
+              "account_id": 2
+            },
+            {
+              "account_id": 3
+            },
+            {
+              "account_id": 4
+            },
+            {
+              "account_id": 5
+            }
+          ]
+        ],
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "START TRANSACTION",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "savepoint",
+            "sql": "SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              1,
+              "Apple",
+              902,
+              2,
+              "apple",
+              902,
+              3,
+              "Évian",
+              902,
+              4,
+              "évian"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `composite_account` (`tenant_id`, `account_id`, `name`) VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?), (?, ?, ?)",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              5,
+              "x_y"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `composite_account` (`tenant_id`, `account_id`, `name`) VALUES (?, ?, ?)",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "release",
+            "sql": "RELEASE SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              "%PPL%"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`tenant_id` AS `a__tenant_id`, `a`.`account_id` AS `a__account_id`, `a`.`name` AS `a__name` FROM `composite_account` AS `a` WHERE `a`.`tenant_id` = ? AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(`a`.`name`, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') LIKE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(?, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') ORDER BY `a`.`account_id` ASC",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              "%ÉV%"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`tenant_id` AS `a__tenant_id`, `a`.`account_id` AS `a__account_id`, `a`.`name` AS `a__name` FROM `composite_account` AS `a` WHERE `a`.`tenant_id` = ? AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(`a`.`name`, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') LIKE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(?, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') ORDER BY `a`.`account_id` ASC",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              "%\\_%"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`tenant_id` AS `a__tenant_id`, `a`.`account_id` AS `a__account_id`, `a`.`name` AS `a__name` FROM `composite_account` AS `a` WHERE `a`.`tenant_id` = ? AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(`a`.`name`, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') LIKE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(?, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') ORDER BY `a`.`account_id` ASC",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              "%%"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`tenant_id` AS `a__tenant_id`, `a`.`account_id` AS `a__account_id`, `a`.`name` AS `a__name` FROM `composite_account` AS `a` WHERE `a`.`tenant_id` = ? AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(`a`.`name`, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') LIKE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(?, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') ORDER BY `a`.`account_id` ASC",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`tenant_id` AS `a__tenant_id`, `a`.`account_id` AS `a__account_id`, `a`.`name` AS `a__name` FROM `composite_account` AS `a` WHERE `a`.`tenant_id` = ?",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "savepoint",
+            "sql": "SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              1
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM `composite_account` WHERE `composite_account`.`tenant_id` = ? AND `composite_account`.`account_id` = ?",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              2
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM `composite_account` WHERE `composite_account`.`tenant_id` = ? AND `composite_account`.`account_id` = ?",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              3
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM `composite_account` WHERE `composite_account`.`tenant_id` = ? AND `composite_account`.`account_id` = ?",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              4
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM `composite_account` WHERE `composite_account`.`tenant_id` = ? AND `composite_account`.`account_id` = ?",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              902,
+              5
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM `composite_account` WHERE `composite_account`.`tenant_id` = ? AND `composite_account`.`account_id` = ?",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "release",
+            "sql": "RELEASE SAVEPOINT orm_sp_1",
+            "tables": [],
             "transaction": 1
           },
           {

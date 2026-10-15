@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/polyspec/orm/packages/go/engine/dialect"
 	"github.com/polyspec/orm/packages/go/engine/plan"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/testcase"
@@ -66,7 +67,7 @@ func TestSelectAll(t *testing.T) {
 		"SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, ",
 		// MySQL도 hex를 SQL에서 풀지 않는다: executor가 HostDecode로 정확히 읽는다(docs/codec.md).
 		"`a`.`aes_hex_email` AS `a__aes_hex_email`",
-		" FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`a`.`is_display` = ? AND `a`.`display_start_dt` < ?)) AND `a`.`seq` IN (?, ?, ?) AND `a`.`email_blind_index` = ? AND `a`.`name` LIKE ? ORDER BY `a`.`seq` DESC LIMIT 0, 100",
+		" FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`a`.`is_display` = ? AND `a`.`display_start_dt` < ?)) AND `a`.`seq` IN (?, ?, ?) AND `a`.`email_blind_index` = ? AND " + dialect.MySQL{}.Like("`a`.`name`", "?") + " ORDER BY `a`.`seq` DESC LIMIT 0, 100",
 	}
 	for _, w := range wantParts {
 		if !strings.Contains(sql, w) {
@@ -440,7 +441,7 @@ func TestRelations(t *testing.T) {
 	}
 	// step 1: user rows for the authors (parent index 1 = user_seq), only for closed authors
 	u := p.Steps[1]
-	if want := "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`seq` IN (?) AND (`a`.`name` LIKE ?)"; u.SQL != want || u.Role != "relation" {
+	if want := "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`seq` IN (?) AND (" + (dialect.MySQL{}).Like("`a`.`name`", "?") + ")"; u.SQL != want || u.Role != "relation" {
 		t.Errorf("user step:\n got  %s (%s)\n want %s", u.SQL, u.Role, want)
 	}
 	if u.Parent == nil || u.Parent.Step != 0 || len(u.Parent.Keys) != 1 || u.Parent.Keys[0].Index != 1 || u.Parent.Keys[0].Column != "user_seq" || u.Parent.IfParent == nil || u.Parent.IfParent.Index != 5 || u.Parent.IfParent.Param != 1 {

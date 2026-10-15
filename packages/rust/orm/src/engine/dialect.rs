@@ -159,7 +159,7 @@ impl Dialect {
 
     pub fn like(self, col: &str, ph: &str) -> String {
         match self {
-            Dialect::MySql => format!("{col} LIKE {ph}"),
+            Dialect::MySql => format!("{} LIKE {}", ascii_lower(col), ascii_lower(ph)),
             Dialect::Postgres => format!("{col} ILIKE {ph}"),
             Dialect::Sqlite => format!("{col} LIKE {ph} ESCAPE '\\'"),
         }
@@ -346,4 +346,14 @@ impl Dialect {
             _ => "random()",
         }
     }
+}
+
+/// 26 nested REPLACE calls, one for each of A to Z with its lower case: MySQL LIKE under utf8mb4_0900_bin then
+/// folds the ASCII letters only, as PostgreSQL ILIKE under "C" and SQLite LIKE do.
+fn ascii_lower(x: &str) -> String {
+    let mut s = "REPLACE(".repeat(26) + x;
+    for c in b'A'..=b'Z' {
+        s.push_str(&format!(", '{}', '{}')", c as char, c.to_ascii_lowercase() as char));
+    }
+    s
 }

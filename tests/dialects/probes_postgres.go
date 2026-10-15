@@ -230,6 +230,12 @@ func postgresProbes() []Probe {
 			e.Exec(`CREATE TABLE u (v text COLLATE "C", w text)`)
 			e.WantRows("SELECT a.attname || ' ' || coalesce(c.collname, 'NULL') FROM pg_attribute a LEFT JOIN pg_collation c ON c.oid = a.attcollation WHERE a.attrelid = 'u'::regclass AND a.attnum > 0 ORDER BY a.attnum", "v C,w default")
 		}),
+		// LIKE.
+		p("ilike.c_collation_ascii_only", "ILIKE under collation C folds ASCII letters only: '%PPL%' matches Apple and apple, '%ÉV%' Évian alone", func(e *Env) {
+			e.Exec(`CREATE TABLE t (n int, v varchar(10) COLLATE "C")`, "INSERT INTO t VALUES (1, 'Apple'), (2, 'apple'), (3, 'Évian'), (4, 'évian'), (5, 'x_y')")
+			e.WantRows("SELECT n FROM t WHERE v ILIKE '%PPL%' ORDER BY n", "1,2")
+			e.WantRows("SELECT n FROM t WHERE v ILIKE '%ÉV%' ORDER BY n", "3")
+		}),
 		// Foreign keys.
 		p("fk.no_child_index", "a foreign key creates no index on the child columns", func(e *Env) {
 			e.Exec("CREATE TABLE p (id int PRIMARY KEY)", "CREATE TABLE c (pid int REFERENCES p (id))")
