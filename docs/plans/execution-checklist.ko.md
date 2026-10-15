@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 56cb68ed77788631a46d45fcced69d19b08ee56d590c25190ebc675d5c00209a -->
+<!-- source-sha256: 20ea8b43f7627b0ee39130420f39d661fb3afc6008803796f8e312ec1062b109 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1127,7 +1127,8 @@
         Evidence: 91개 codec case id와 304개 syntax case id가 두 generator와 모든 runner에서 부분을 "."로 잇고, Go codec과 dbspec-syntax unit이 symbol/id subtest로 묶이며, parity R2가 2에서 0이 되고 make codec-check와 dbspec-compare-check가 통과한다.
     - [o] T148-3-4 여러 suite를 실행하는 binding file을 나눈다 (T148-3에 이어). 원인: R3 63줄이 suite에 없는 case를 보고한다. 모든 언어의 dbspec cases, mermaid, plans, codec file이 한 file에서 다른 suite의 case나 추가 test를 실행한다. 완료 조건: 각 binding file이 suite 하나를 그 case id로 실행한다.
       Evidence: suite마다 Go function, Rust trial module, PHP data-provider method, node file, Python module이 하나이고, 다른 test는 그 옆으로 옮겨 make target에서 계속 실행된다. 공유 file의 R3 줄이 모두 사라졌다(다음 항목 전 R3 161에서 38).
-    - [ ] T148-3-5 feature-coverage binding의 case에 이름을 준다 (T148-3에 이어). 원인: Go, TypeScript, Rust의 coverage_* binding이 case 이름을 보고하지 않고(R3 not executed), Rust codec과 styled-state case는 id를 가질 수 없는 lib test다. 완료 조건: 각 case가 id로 실행된다.
+    - [o] T148-3-5 feature-coverage binding의 case에 이름을 준다 (T148-3에 이어). 원인: Go, TypeScript, Rust의 coverage_* binding이 case 이름을 보고하지 않고(R3 not executed), Rust codec과 styled-state case는 id를 가질 수 없는 lib test다. 완료 조건: 각 case가 id로 실행된다.
+      Evidence: Go, TypeScript, Rust, Python schema-definition binding이 모든 fixture case를 id로 실행하고, conformance는 dialect마다 binding 하나가 각 vector를 기록된 기대값과 비교하며, Go 구현 인자에 featurecoverage tag가 붙는다. 건너뛰던 Go styled-state fixture의 unselected와 nonnull_sql_null case도 이제 실행된다.
     - [ ] T148-3-6 Python conformance runner를 test로 실행한다 (T148-3에 이어). 원인: tests/conformance/runner_python.py가 parity에서 5(실행한 test 없음)로 끝나고 Python root 밖에 있다(R6). 완료 조건: Python conformance case가 Python package 안에서 id로 실행된다.
     - [ ] T148-3-7 parity R4, R5, R6, R7, R9, R10을 통과한다 (T148-3에 이어). 원인: parity 검사가 R5 396건(bind되지 않은 test file), R10 120건(client를 넷으로 세는 문서), R6 78건(root 밖 test), R4 4건(선언되지 않은 suite), R9 4건(오래된 client 목록), R7 2건(오류 code를 선언하지 않는 TypeScript와 Python)을 보고한다. 완료 조건: 각 규칙이 통과하고, 큰 묶음은 더 나눈다.
     - [ ] T148-3-8 PHP와 PHP extension parity binding을 통과시킨다 (T148-3-1에 이어). 원인: kit 0.0.50에서 PHP binding 62개가 시작하고 php R3 finding 36건이 남는다(database가 필요한 identity-load와 SchemaSet case, CodecVectors go_output, case id와 맞지 않는 data set 이름). config/parity.json은 어느 make target도 build하지 않는 .runtime/parity/php-extension/orm_dbspec.so를 읽는다. 완료 조건: make target이 parity 전에 그 extension을 build하고, 모든 PHP와 PHP extension binding이 case를 id로 통과한다.

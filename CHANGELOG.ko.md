@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 55f9f8f605dd41ca010b8cc16018831cee4498db6533db9cd866fe4574faf684 -->
+<!-- source-sha256: acbf930cf7cc17fa7adc9e7416726ddbc9186515bc8a1128642256b57e389e7e -->
 # 변경 이력
 
 ## Unreleased
 
+- feature-coverage binding이 모든 case를 id로 실행한다. (#T148-3-5)
 - 각 parity binding이 suite 하나를 실행한다. (#T148-3-4)
 - parity가 모든 구현의 모든 feature unit을 묶는다. (#T148-3-3)
 - 공유 vector case id에 slash가 없어 parity가 모든 case를 묶는다. (#T148-3-3-1)
