@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: b10260944c4718d8f65305ab0a55c6a7de18b0fb8fd49cf8ffcef55656ad8d14 -->
+<!-- source-sha256: 87edf3c5ee7f84d34b519cd42e55ff8950f9faa93365ffe2132b0d3ac7b98999 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -997,6 +997,8 @@
     Evidence: make layout-check가 finding 없이 통과한다. 옮긴 경로로 python-unit-check, PHP engine, runtime-model, orm-gen-scan unit, TypeScript engine, generate, generate-scan test, Rust dbspec_runtime과 ir_validate test, benchmarks/rust의 cargo check, engine과 generator의 go test, model generation coverage test가 통과한다. scripts/repo와 scripts/check 143건이 통과하고, smol-toml 1.9.1을 review해 dependency-policy-check가 통과한다.
   - [o] T137-1-8 layout 이동 뒤 CI를 통과시킨다 (T137-1-5와 T137-1-7에 이어). 원인: e7d8b309의 CI가 job 여섯에서 실패했다. TypeScript, PHP, PHP extension, Rust의 introspection test가 지운 schema/ folder를 훑었고, Python native rule test가 contracts/validate.go를 옛 위치에서 읽었으며, rust-fmt-check가 format하지 않은 test 둘을 찾았고, T137-1-4-6에서 옮긴 conformance unit test가 임시 folder 17개를 남겼다. 완료 조건: test가 contracts/fixtures/bench와 tests/interfaces/contracts를 읽고, cargo fmt --check가 통과하며, conformance unit test가 임시 folder를 남기지 않는다.
     Evidence: CI record가 각 실패를 적는다. 변경 뒤 python-interface-unit-check가 통과하고, packages/rust와 benchmarks/rust에서 cargo fmt --all --check가 통과하며, tests/conformance/check의 main, state, state-run, lock test가 7개 넘게 남기던 folder를 0개 남기고 통과한다. scripts/repo와 scripts/check 143건이 통과하고 make layout-check가 통과한다.
+  - [o] T137-1-9 Go analyzer의 owner를 선언한다 (T137-1-4-2에 이어). 원인: d14cb25c의 CI가 feature-unit-check/owners에서 실패했다. T137-1-4-2가 더한 tests/analyzers의 file이 behaviour test를 고르지 않고 scope도 선언하지 않았으며, merge가 owners 검사를 실행하지 않았다. 완료 조건: contracts/check-inputs.json이 analyzer를 build하고 실행하는 go-vet-check의 input으로 tests/analyzers/**를 적고, feature-unit-check/owners가 통과한다.
+    Evidence: CI record가 analyzer file 8개와 testdata file 11개를 적는다. 변경 뒤 make feature-unit-check/owners가 통과하고 repository와 feature 검사가 통과한다.
   - [o] T137-1-3-1 Rust model을 allow attribute 없이 생성한다 (T137-1-3에 이어). 원인: orm-build가 모든 model에 #[allow(unused_mut)]와 #[allow(clippy::new_without_default)]를 써서, allow attribute를 거부하는 consumer(kit workspace lint를 쓰는 fsm)가 실패했다. Evidence: build test generated_code_carries_no_allow_attribute가 수정 전 실패하고 수정 후 통과한다. rust-check, rust-fmt-check, interface-check가 통과한다.
   Evidence: make layout-check가 lint-cargo-lints finding을 보고하지 않는다(이전 11건). rust-check, rust-fmt-check, dbspec-rust-check, interface-check, dependency-policy-check가 통과한다.
   - [ ] T137-1-4 언어를 넘는 infrastructure를 TypeScript로 쓴다 (T137-1에 이어). 원인: S9(layout-infrastructure-typescript, layout-infrastructure-shebang)가 scripts/와 tests/ 아래 다른 interpreter의 script 198개를 거부한다. 완료 조건: 각각을 TypeScript로 옮기거나 config/layout.yml에 이유와 함께 S9 예외로 선언한다.

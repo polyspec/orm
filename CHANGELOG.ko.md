@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a4d4d556aac2b838dcbad933c96d51e028a15060f895b8c8008b56cd328a761e -->
+<!-- source-sha256: 874d455561469285d9769bc76d51edc903ef396520a90086f7b758fe5d01e939 -->
 # 변경 이력
 
 ## Unreleased
 
+- go-vet-check가 tests/analyzers의 Go analyzer를 맡는다. (#T137-1-9)
 - 모든 dbspec compare runner가 자기 생태계의 validator로 tests/dbspec/schema의 공유 JSON Schema에 vector를 검증하고, runner 자신의 field 검사는 지웠다. (#T137-1-4-3)
 - repository 검사는 workflow를 YAML document로, shell 명령을 unbash parser로, Go source를 go vet이 실행하는 go/analysis analyzer로 읽는다(make go-vet-check). (#T137-1-4-2)
 - introspection과 native rule test가 옮긴 schema와 contracts를 읽고, tests/testcase.mts가 case에 그 case가 끝나면 지우는 임시 folder를 준다. (#T137-1-8)
