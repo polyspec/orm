@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: fb16f4d985ac63b6d27c99191041a0d8fba962b87336931ca8ca194e5d1e6af3 -->
+<!-- source-sha256: f1a333b24187216102621f61f9edfbb079913582f66b7e25a7815c2753c37538 -->
 # 변경 이력
 
 ## Unreleased
 
+- 모든 client가 statement 전에 각 parameter를 slot type에 대해 검사하고, 공유 bind vector가 그것을 증명한다. (#T89)
 - feature coverage process가 가장 긴 test 등급까지 실행되어, test는 자기 기한으로 멈춘다. (#T185)
 - repository가 kit 0.0.53을 받는다. (#T184)
 - 모든 planner가 PostgreSQL uuid를 한 형태로 읽고 bind한다. (#T92-1)
