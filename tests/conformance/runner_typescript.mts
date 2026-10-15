@@ -377,16 +377,16 @@ async function main() {
     return { inserted, pairs: pairs.toArray(), left };
   });
   // tenant 902에 Apple, apple, Évian, évian, x_y 행을 만들고 각 pattern이 cond로 고르는 account_id를 모은 뒤 지운다.
-  const containsVector = async (cond: (q: CompositeAccount, p: string) => CompositeAccount, ...patterns: string[]) => {
+  const containsVector = async (cond: (p: string) => CompositeAccount, ...patterns: string[]) => {
     const rows = ['Apple', 'apple', 'Évian', 'évian', 'x_y'].map((name, i) => new CompositeAccount().setTenantId(902).setAccountId(i + 1).setName(name));
     await new CompositeAccount().connect(db).creates(rows);
     const matches: unknown[] = [];
-    for (const p of patterns) matches.push(picks(await cond(new CompositeAccount().connect(db).tenantId(902), p).orderByAccountIdAsc().gets(), 'account_id'));
+    for (const p of patterns) matches.push(picks(await cond(p).orderByAccountIdAsc().gets(), 'account_id'));
     await (await new CompositeAccount().connect(db).tenantId(902).orderByAccountIdAsc().gets()).delete();
     return matches;
   };
-  await run('contains_ascii_fold', () => containsVector((q, p) => q.andLkName(p), 'PPL', 'ÉV', '_', ''));
-  await run('contains_binary_code_point', () => containsVector((q, p) => q.andLbName(p), 'pp', 'É', 'PPL', '_'));
+  await run('contains_ascii_fold', () => containsVector(p => new CompositeAccount().connect(db).tenantId(902).andLkName(p), 'PPL', 'ÉV', '_', ''));
+  await run('contains_binary_code_point', () => containsVector(p => new CompositeAccount().connect(db).tenantId(902).andLbName(p), 'pp', 'É', 'PPL', '_'));
   await run('delete_recursive', async () => {
     const service = await new Service().connect(db).setName('recursive').create();
     const seq = service.getSeq();
