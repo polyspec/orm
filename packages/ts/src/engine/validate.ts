@@ -1,6 +1,7 @@
 // Request validation against the manifest. Every client renders the same
 // request; the rules below are the shared statement rules.
 import type { Assignment, Group, Item, Join, Predicate, Request, RequestQuery, Subquery, OrmFunction } from '../ir.js';
+import { parse as parseJson, type Value as JsonValue } from '@polyspec/ordered-json';
 import { OrmError } from '../runtime_error.js';
 import { meetKind } from '../meet.js';
 import { columnFunctionArity, columnFunctionTypes, isValueFunction, valueFunctionUnits } from './dialect.js';
@@ -508,6 +509,42 @@ function typed(type: string, value: unknown, path: string): void {
     return;
   }
   if (!ok) fail('IR_INVALID', `${path}: ${type} required`);
+}
+
+/**
+ * The plain value of a request member read through ordered-json, which keeps each number's literal. Every number of a
+ * request is an integer (a parameter index, a count or a version), so a number whose literal is not an integer, such as
+ * `0.0` or `1e1`, is IR_INVALID, as a strict decoder into an integer refuses it in Go, PHP and Python.
+ */
+function plainMember(value: JsonValue, path: string): unknown {
+  switch (value.kind) {
+    case 'object': return Object.fromEntries([...value.members].map(([key, member]) => [key, plainMember(member, path === '' ? key : `${path}.${key}`)]));
+    case 'array': return value.items.map(item => plainMember(item, path));
+    case 'string': return value.stringValue();
+    case 'boolean': return value.booleanValue();
+    case 'null': return null;
+    case 'number':
+      if (!/^-?(0|[1-9][0-9]*)$/.test(value.numberLiteral())) fail('IR_INVALID', `${path}: int required, got ${value.numberLiteral()}`);
+      return Number(value.numberLiteral());
+  }
+}
+
+/** Decodes a request from its JSON text, refusing what Go's strict decoder refuses, then the shape (validate). */
+export function decodeRequest(text: string): Request {
+  let parsed: JsonValue;
+  try {
+    parsed = parseJson(text);
+  } catch (error) {
+    fail('IR_INVALID', `request is not JSON: ${String(error)}`);
+  }
+  const request = plainMember(parsed, '');
+  requestShape(request);
+  return request;
+}
+
+/** A value that passes the shape check of the Request record is a request. */
+function requestShape(value: unknown): asserts value is Request {
+  shape('Request', value, '');
 }
 
 /** Checks a request against the manifest. */

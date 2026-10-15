@@ -2,7 +2,8 @@
 // Usage: node packages/ts/tests/engine.mjs (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
 import { Db, Engine, MANIFEST_HASH, MANIFEST_TEXT, dbspecManifest, loadSet, parseDbspec, registerModel } from '../dist/index.js';
-import { validate } from '../dist/engine/validate.js';
+import { decodeRequest, validate } from '../dist/engine/validate.js';
+import { parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { caseTest, cases, COMPUTE } from '../../../tests/testcase.mts';
 
 const text = await readFile(new URL('../../../contracts/fixtures/bench/bench.dbs', import.meta.url), 'utf8');
@@ -248,12 +249,15 @@ table plain {
 });
 // 공유 검증 case(tests/ir/validate.json): 각 request에 schema의 manifest_hash를 더해 검증기에만 주고,
 // 받아들이는지나 기대한 오류 code로 실패하는지 본다.
-const file = JSON.parse(await readFile(new URL('../../../tests/ir/validate.json', import.meta.url), 'utf8'));
+const validateText = await readFile(new URL('../../../tests/ir/validate.json', import.meta.url), 'utf8');
+const file = JSON.parse(validateText);
+// Each request is read again as its JSON text through ordered-json, so a number keeps its literal (0.0 is not 0).
+const requestTexts = parseJson(validateText).get('cases').items.map(c => stringifyJson(c.get('request')));
 if (file.schema !== 'contracts/fixtures/bench/bench.dbs' || file.cases.length === 0) throw new Error('validate.json names contracts/fixtures/bench/bench.dbs and has cases');
 const validated = dbspecManifest([parseDbspec(await readFile(new URL(`../../../${file.schema}`, import.meta.url), 'utf8'), {}).document]).manifest;
 const validateModel = registerModel(validated.manifestText, validated.manifestHash);
-for (const c of file.cases) caseTest(c.name, COMPUTE, () => {
-  const got = code(() => validate(validateModel, { ...c.request, manifest_hash: validated.manifestHash }));
+for (const [index, c] of file.cases.entries()) caseTest(c.name, COMPUTE, () => {
+  const got = code(() => validate(validateModel, { ...decodeRequest(requestTexts[index]), manifest_hash: validated.manifestHash }));
   if (c.valid ? got !== null : got !== c.error) throw new Error(`got ${got ?? 'valid'}, want ${c.error ?? 'valid'}`);
 });
 // loadSet returns the parsed documents of a generated schema value, as PHP's RuntimeModel::loadSet does (T163).

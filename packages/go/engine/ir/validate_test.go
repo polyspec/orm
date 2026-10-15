@@ -25,7 +25,8 @@ func TestValidateVectors(t *testing.T) {
 		Schema string `json:"schema"`
 		Cases  []struct {
 			Name    string         `json:"name"`
-			Request map[string]any `json:"request"`
+			// Each member stays as its JSON text, so a number keeps its literal (0.0 is not 0).
+			Request map[string]json.RawMessage `json:"request"`
 			Valid   bool           `json:"valid"`
 			Error   string         `json:"error"`
 		} `json:"cases"`
@@ -48,7 +49,11 @@ func TestValidateVectors(t *testing.T) {
 			if _, ok := c.Request["manifest_hash"]; ok {
 				t.Fatal("request already holds manifest_hash")
 			}
-			c.Request["manifest_hash"] = m.ManifestHash
+			hash, err := json.Marshal(m.ManifestHash)
+			if err != nil {
+				t.Fatal(err)
+			}
+			c.Request["manifest_hash"] = hash
 			body, err := json.Marshal(c.Request)
 			if err != nil {
 				t.Fatal(err)

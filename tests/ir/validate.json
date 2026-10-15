@@ -115,6 +115,9 @@
     {"name": "shape-set-unknown-member", "request": {"ir_version": 1, "n_params": 3, "kind": "update", "entity": "service_region", "set": [{"column": "name", "p": 0, "extra": 1}], "where": {"items": [{"pred": {"column": "seq", "op": "eq", "p": 1}}]}}, "error": "IR_INVALID"},
     {"name": "shape-set-column-not-string", "request": {"ir_version": 1, "n_params": 3, "kind": "update", "entity": "service_region", "set": [{"column": 5, "p": 0}], "where": {"items": [{"pred": {"column": "seq", "op": "eq", "p": 1}}]}}, "error": "IR_INVALID"},
     {"name": "shape-columns-unknown-member", "request": {"ir_version": 1, "n_params": 1, "kind": "all", "entity": "author", "columns": {"pick": ["seq"]}}, "error": "IR_INVALID"},
-    {"name": "shape-request-not-object-member", "request": {"ir_version": 1, "n_params": 1, "kind": "all", "entity": "author", "where": [1]}, "error": "IR_INVALID"}
+    {"name": "shape-request-not-object-member", "request": {"ir_version": 1, "n_params": 1, "kind": "all", "entity": "author", "where": [1]}, "error": "IR_INVALID"},
+    {"name": "shape-pred-p-float-literal", "request": {"ir_version": 1, "n_params": 1, "kind": "all", "entity": "author", "where": {"items": [{"pred": {"column": "seq", "op": "eq", "p": 0.0}}]}}, "error": "IR_INVALID"},
+    {"name": "shape-top-n-params-float-literal", "request": {"ir_version": 1, "n_params": 1.0, "kind": "all", "entity": "author"}, "error": "IR_INVALID"},
+    {"name": "shape-limit-count-exponent-literal", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "author", "limit": {"offset": 0, "count": 1e1}}, "error": "IR_INVALID"}
   ]
 }
