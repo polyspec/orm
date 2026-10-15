@@ -59,6 +59,35 @@ function tsField(c: Column): string {
   return c.nullable ? `${t} | null` : t;
 }
 
+/**
+ * The check of a getter that the column holds a value of its declared type, which reads `value` without a type assertion;
+ * undefined for a column of the ordered_json stage, whose ordered-json class no runtime name of the client reaches.
+ */
+function fieldCheck(c: Column): string | undefined {
+  if (jsonStage(c)) return undefined;
+  // A styled value carries SQL NULL itself, so its getter admits no null.
+  if (styledStage(c)) return 'value instanceof StyledValue && codecStyled(value)';
+  const t = category(c) === 'time' ? 'string' : tsScalar(c);
+  const check = t === 'Uint8Array' ? 'value instanceof Uint8Array' : `typeof value === ${tsString(t)}`;
+  return c.nullable ? `value === null || ${check}` : check;
+}
+
+/** The module-local functions that the getters of a generated file call, each emitted when a getter calls it. */
+const LOCAL_FUNCTIONS: readonly (readonly [string, string])[] = [
+  ['codecStyled', `/** Whether a styled value holds the common value model. */
+function codecStyled(value: StyledValue): value is StyledValue<CodecValue> {
+  return value.kind === 'sql-null' || codecValue(value.payload());
+}
+`],
+  ['codecValue', `/** Whether a value is of the common value model. */
+function codecValue(value: unknown): value is CodecValue {
+  if (value === null || typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string') return true;
+  if (Array.isArray(value)) return value.every(item => codecValue(item));
+  return typeof value === 'object' && Object.values(value).every(item => codecValue(item));
+}
+`],
+];
+
 const baseMethods = ['connect', 'and', 'or', 'not', 'andNot', 'orNot', 'on', 'relation', 'relations', 'limit', 'orderByRandom',
   'removeAllColumns', 'addAllColumns', 'parentNode', 'groupLimit', 'deleteLock', 'fetchKey', 'fetchValue', 'forUpdate', 'forShare', 'forUpdateNoWait',
   'forShareNoWait', 'duplication', 'get', 'gets', 'getsCount', 'getCount', 'getSum', 'getAvg', 'getsPage', 'getQuery', 'create', 'creates', 'update',
@@ -77,7 +106,10 @@ function staticNames(e: Entity): Set<string> {
   return out;
 }
 
-function isUpperAt(s: string, i: number): boolean { return s[i]! >= 'A' && s[i]! <= 'Z'; }
+function isUpperAt(s: string, i: number): boolean {
+  const c = s[i];
+  return c !== undefined && c >= 'A' && c <= 'Z';
+}
 
 class Generator {
   public readonly methods = new Map<string, Map<string, string>>();
@@ -90,7 +122,11 @@ class Generator {
     return [...this.m.entities.values()].filter(e => e.fields.some(c => c.name === column)).map(e => pascal(e.name)).join(' | ');
   }
 
-  private column(e: Entity, name: string): Column { return e.fields.find(c => c.name === name)!; }
+  private column(e: Entity, name: string): Column {
+    const found = e.fields.find(c => c.name === name);
+    if (found === undefined) throw new Error(`entity ${e.name} has no column ${name}`);
+    return found;
+  }
 
   private keyType(e: Entity, k: ChainKey): string {
     switch (k.op) {
@@ -123,8 +159,8 @@ class Generator {
 
   private chainParams(e: Entity, keys: readonly ChainKey[]): string {
     const params = keys.map((k, i) => `v${i}: ${this.keyType(e, k)}`);
-    const k = keys[0]!;
-    if (keys.length === 1 && k.compare === '' && k.column !== '' && ['', 'ne', 'gt', 'lt', 'ge', 'le'].includes(k.op) && functionColumn(this.column(e, k.column))) {
+    const [k] = keys;
+    if (k !== undefined && keys.length === 1 && k.compare === '' && k.column !== '' && ['', 'ne', 'gt', 'lt', 'ge', 'le'].includes(k.op) && functionColumn(this.column(e, k.column))) {
       return `...args: [${params[0]}] | [v0: ColumnFunction, compared: unknown]`;
     }
     return params.join(', ');
@@ -132,7 +168,7 @@ class Generator {
 
   /** The declaration of a method named by the chain grammar. */
   public declare(e: Entity, name: string): string | undefined {
-    const P = name[0]!.toUpperCase() + name.slice(1);
+    const P = name.charAt(0).toUpperCase() + name.slice(1);
     for (const [prefix, result] of [['GetsBy', 'Promise<Collection<this>>'], ['GetBy', 'Promise<this>'], ['GetCountBy', 'Promise<number>']] as const) {
       if (!P.startsWith(prefix)) continue;
       const keys = parseChain(this.m, e, P.slice(prefix.length));
@@ -177,17 +213,23 @@ class Generator {
     }
     b += '/** Opens the database selected by the DSN URI and registers the set of these models on the connection. */\nexport function connect(dsn: string, options: ConnectOptions = {}): Promise<Db> {\n  return Db.connectSchema(dsn, SCHEMA, options);\n}\n\n';
     b += m.externalText === '' ? 'const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH);\n' : 'const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH, EXTERNAL_TEXT);\n';
+    b += '\n/** The entity `name` of the model set, which registerModel built from the manifest. */\nfunction modelEntity(name: string): EntityDef[\'entity\'] {\n  const found = model.entities.get(name);\n  if (found === undefined) throw new Error(`the model set has no entity ${name}`);\n  return found;\n}\n';
 
     const getters = [...this.getters.keys()].sort(byteOrder);
     for (const e of m.entities.values()) {
       const entity = e.name;
       const t = pascal(entity);
       b += `\n/** A ${entity} model or row. */\nexport class ${t} extends Model {\n`;
-      b += `  public static readonly entity: EntityDef = { model, entity: model.entities.get(${tsString(entity)})!, create: core => new ${t}(core) };\n`;
+      b += `  public static readonly entity: EntityDef = { model, entity: modelEntity(${tsString(entity)}), create: core => new ${t}(core) };\n`;
       for (const c of e.fields) {
         const p = pascal(c.name);
         const n = tsString(c.name);
-        b += `  public get${p}(): ${tsField(c)} { return this[CORE].column(${n}) as ${tsField(c)}; }\n`;
+        const check = fieldCheck(c);
+        if (check === undefined) b += `  public get${p}(): ${tsField(c)} { return this[CORE].jsonColumn(${n}); }\n`;
+        else {
+          const wrong = tsString(`${entity}.${c.name} holds a value of type `);
+          b += `  public get${p}(): ${tsField(c)} { const value = this[CORE].column(${n}); if (${check}) return value; throw new TypeError(${wrong} + typeof value + ${tsString(`, not ${tsField(c)}`)}); }\n`;
+        }
         b += `  public set${p}(value: ${tsSet(c)}): this { this[CORE].setValue(${n}, value); return this; }\n`;
         b += `  public addColumn${p}(): this { this[CORE].addColumn(${n}); return this; }\n`;
         b += `  public removeColumn${p}(): this { this[CORE].removeColumn(${n}); return this; }\n`;
@@ -207,7 +249,8 @@ class Generator {
       }
       b += '}\n';
       const statics = staticNames(e);
-      const declared = this.methods.get(entity)!;
+      const declared = this.methods.get(entity);
+      if (declared === undefined) throw new Error(`the methods of entity ${entity} were not declared`);
       const members = [...declared.keys()].sort(byteOrder).map(name => `  ${declared.get(name)}`);
       for (const name of getters) {
         if (statics.has(name)) continue;
@@ -217,6 +260,8 @@ class Generator {
       // their types as fields, so each model type is declared once.
       if (members.length > 0) b = b.slice(0, -2) + '\n' + members.map(declareMember).join('\n') + '\n}\n';
     }
+    // The getters' module-local functions follow the classes, each once when the code calls it.
+    for (const [name, code] of LOCAL_FUNCTIONS) if (new RegExp(`\\b${name}\\(`).test(b)) b += `\n${code}`;
     // The file imports exactly the runtime names its code refers to.
     const used = RUNTIME_IMPORTS.filter(([name]) => new RegExp(`\\b${name}\\b`).test(b));
     const names = used.map(([name, type]) => (type ? `type ${name}` : name)).join(', ');
@@ -269,7 +314,8 @@ export function renderTypeScript(m: Manifest, outDir: string, scan: readonly str
     for (const columns of [e.primaryKey, ...e.uniques, ...e.indexColumns]) {
       for (let k = 1; k <= columns.length; k++) {
         const prefix = columns.slice(0, k);
-        const name = prefix.length === 1 ? pascal(prefix[0]!).replace(/^./, c => c.toLowerCase()) : `tuple${prefix.map(pascal).join('With')}`;
+        const [only] = prefix;
+        const name = prefix.length === 1 && only !== undefined ? pascal(only).replace(/^./, c => c.toLowerCase()) : `tuple${prefix.map(pascal).join('With')}`;
         if (statics.has(name) || declared.has(name)) continue;
         const decl = g.declare(e, name);
         if (decl !== undefined) declared.set(name, decl);

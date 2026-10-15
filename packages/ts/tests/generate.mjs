@@ -15,6 +15,10 @@ let failures = 0;
 function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL: ${message}`); }
 }
+/** The non-null assertions and the type assertions of a call's result in generated code, one line each. */
+function uncheckedReads(text) {
+  return text.split('\n').filter(line => /\)!|\]!|\)\s+as\s+[A-Za-z]/.test(line)).map(line => line.trim());
+}
 function run(...args) { return spawnSync(process.execPath, [bin, ...args], { encoding: 'utf8' }); }
 /**
  * Writes the documents, each a name and its text, and a set file that owns them into a new directory under the work
@@ -42,6 +46,9 @@ await suite.run('generate', PROCESS, async () => {
     check(result.status === 0, `orm-gen exit ${result.status}: ${result.stderr}`);
     const text = await readFile(join(out, 'models.ts'), 'utf8');
     for (const invalid of ['NotAColumn', 'gtIsClose', 'lkReadCount', 'notCalled']) check(!text.includes(invalid), `declared invalid name ${invalid}`);
+    // The generated code passes the lint of its consumers (kit 0.0.47, T179): it reads an entity and a column value with
+    // a check that throws, never with a non-null assertion or a type assertion of the read.
+    for (const read of uncheckedReads(text)) check(false, `unchecked read in the generated models: ${read}`);
     check(text.includes('declare getsByServiceSeqAndLtStartDt: (v0: number | readonly (number)[] | ValueFunction | Model, v1: string | Date | ValueFunction) => Promise<Collection<this>>;'), 'chain declaration');
     check(text.includes('declare andNeUuid: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;'), 'nullable condition declaration');
     check(text.includes('declare joinServiceSeqWithSeq: (child: '), 'join declaration');
@@ -63,6 +70,7 @@ await suite.run('generate', PROCESS, async () => {
     const typed = join(work, 'typed');
     check(run('gen', '--set', types, '--out', typed).status === 0, 'generation of the type document');
     const typedText = await readFile(join(typed, 'models.ts'), 'utf8');
+    for (const read of uncheckedReads(typedText)) check(false, `unchecked read in the generated type models: ${read}`);
     for (const declaration of [
       'getSmall(): number', 'setSmall(value: number): this', 'getDay(): string | null', 'setDay(value: string | Date | null): this',
       'getClock(): string', 'setClock(value: string): this', 'getStamp(): string', 'getId(): string', 'getBody(): string',

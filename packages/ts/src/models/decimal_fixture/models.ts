@@ -24,10 +24,17 @@ export function connect(dsn: string, options: ConnectOptions = {}): Promise<Db> 
 
 const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH);
 
+/** The entity `name` of the model set, which registerModel built from the manifest. */
+function modelEntity(name: string): EntityDef['entity'] {
+  const found = model.entities.get(name);
+  if (found === undefined) throw new Error(`the model set has no entity ${name}`);
+  return found;
+}
+
 /** A decimal_case model or row. */
 export class DecimalCase extends Model {
-  public static readonly entity: EntityDef = { model, entity: model.entities.get('decimal_case')!, create: core => new DecimalCase(core) };
-  public getSeq(): number { return this[CORE].column('seq') as number; }
+  public static readonly entity: EntityDef = { model, entity: modelEntity('decimal_case'), create: core => new DecimalCase(core) };
+  public getSeq(): number { const value = this[CORE].column('seq'); if (typeof value === 'number') return value; throw new TypeError('decimal_case.seq holds a value of type ' + typeof value + ', not number'); }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
@@ -39,7 +46,7 @@ export class DecimalCase extends Model {
   public minusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, minus: true }); return this; }
   public sumSeq(): this { this[CORE].aggregate('sum', 'seq'); return this; }
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
-  public getAmount(): string { return this[CORE].column('amount') as string; }
+  public getAmount(): string { const value = this[CORE].column('amount'); if (typeof value === 'string') return value; throw new TypeError('decimal_case.amount holds a value of type ' + typeof value + ', not string'); }
   public setAmount(value: string): this { this[CORE].setValue('amount', value); return this; }
   public addColumnAmount(): this { this[CORE].addColumn('amount'); return this; }
   public removeColumnAmount(): this { this[CORE].removeColumn('amount'); return this; }
@@ -51,7 +58,7 @@ export class DecimalCase extends Model {
   public minusAmount(n: number): this { this[CORE].putSet({ column: 'amount', value: n, minus: true }); return this; }
   public sumAmount(): this { this[CORE].aggregate('sum', 'amount'); return this; }
   public avgAmount(): this { this[CORE].aggregate('avg', 'amount'); return this; }
-  public getLargeValue(): string | null { return this[CORE].column('large_value') as string | null; }
+  public getLargeValue(): string | null { const value = this[CORE].column('large_value'); if (value === null || typeof value === 'string') return value; throw new TypeError('decimal_case.large_value holds a value of type ' + typeof value + ', not string | null'); }
   public setLargeValue(value: string | null): this { this[CORE].setValue('large_value', value); return this; }
   public addColumnLargeValue(): this { this[CORE].addColumn('large_value'); return this; }
   public removeColumnLargeValue(): this { this[CORE].removeColumn('large_value'); return this; }

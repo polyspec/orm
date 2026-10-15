@@ -67,10 +67,17 @@ export function connect(dsn: string, options: ConnectOptions = {}): Promise<Db> 
 
 const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH);
 
+/** The entity `name` of the model set, which registerModel built from the manifest. */
+function modelEntity(name: string): EntityDef['entity'] {
+  const found = model.entities.get(name);
+  if (found === undefined) throw new Error(`the model set has no entity ${name}`);
+  return found;
+}
+
 /** A people model or row. */
 export class People extends Model {
-  public static readonly entity: EntityDef = { model, entity: model.entities.get('people')!, create: core => new People(core) };
-  public getId(): string { return this[CORE].column('id') as string; }
+  public static readonly entity: EntityDef = { model, entity: modelEntity('people'), create: core => new People(core) };
+  public getId(): string { const value = this[CORE].column('id'); if (typeof value === 'string') return value; throw new TypeError('people.id holds a value of type ' + typeof value + ', not string'); }
   public setId(value: string): this { this[CORE].setValue('id', value); return this; }
   public addColumnId(): this { this[CORE].addColumn('id'); return this; }
   public removeColumnId(): this { this[CORE].removeColumn('id'); return this; }
@@ -78,7 +85,7 @@ export class People extends Model {
   public keyNameId(): this { this[CORE].keyName = 'id'; return this; }
   public orderByIdAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('id', false, fn); return this; }
   public orderByIdDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('id', true, fn); return this; }
-  public getName(): string { return this[CORE].column('name') as string; }
+  public getName(): string { const value = this[CORE].column('name'); if (typeof value === 'string') return value; throw new TypeError('people.name holds a value of type ' + typeof value + ', not string'); }
   public setName(value: string): this { this[CORE].setValue('name', value); return this; }
   public addColumnName(): this { this[CORE].addColumn('name'); return this; }
   public removeColumnName(): this { this[CORE].removeColumn('name'); return this; }
@@ -86,7 +93,7 @@ export class People extends Model {
   public keyNameName(): this { this[CORE].keyName = 'name'; return this; }
   public orderByNameAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', false, fn); return this; }
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
-  public getEmail(): string | null { return this[CORE].column('email') as string | null; }
+  public getEmail(): string | null { const value = this[CORE].column('email'); if (value === null || typeof value === 'string') return value; throw new TypeError('people.email holds a value of type ' + typeof value + ', not string | null'); }
   public setEmail(value: string | null): this { this[CORE].setValue('email', value); return this; }
   public addColumnEmail(): this { this[CORE].addColumn('email'); return this; }
   public removeColumnEmail(): this { this[CORE].removeColumn('email'); return this; }
@@ -94,7 +101,7 @@ export class People extends Model {
   public keyNameEmail(): this { this[CORE].keyName = 'email'; return this; }
   public orderByEmailAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('email', false, fn); return this; }
   public orderByEmailDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('email', true, fn); return this; }
-  public getAge(): number | null { return this[CORE].column('age') as number | null; }
+  public getAge(): number | null { const value = this[CORE].column('age'); if (value === null || typeof value === 'number') return value; throw new TypeError('people.age holds a value of type ' + typeof value + ', not number | null'); }
   public setAge(value: number | null): this { this[CORE].setValue('age', value); return this; }
   public addColumnAge(): this { this[CORE].addColumn('age'); return this; }
   public removeColumnAge(): this { this[CORE].removeColumn('age'); return this; }
@@ -106,7 +113,7 @@ export class People extends Model {
   public minusAge(n: number): this { this[CORE].putSet({ column: 'age', value: n, minus: true }); return this; }
   public sumAge(): this { this[CORE].aggregate('sum', 'age'); return this; }
   public avgAge(): this { this[CORE].aggregate('avg', 'age'); return this; }
-  public getActive(): boolean { return this[CORE].column('active') as boolean; }
+  public getActive(): boolean { const value = this[CORE].column('active'); if (typeof value === 'boolean') return value; throw new TypeError('people.active holds a value of type ' + typeof value + ', not boolean'); }
   public setActive(value: boolean): this { this[CORE].setValue('active', value); return this; }
   public addColumnActive(): this { this[CORE].addColumn('active'); return this; }
   public removeColumnActive(): this { this[CORE].removeColumn('active'); return this; }
@@ -114,7 +121,7 @@ export class People extends Model {
   public keyNameActive(): this { this[CORE].keyName = 'active'; return this; }
   public orderByActiveAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('active', false, fn); return this; }
   public orderByActiveDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('active', true, fn); return this; }
-  public getScore(): string { return this[CORE].column('score') as string; }
+  public getScore(): string { const value = this[CORE].column('score'); if (typeof value === 'string') return value; throw new TypeError('people.score holds a value of type ' + typeof value + ', not string'); }
   public setScore(value: string): this { this[CORE].setValue('score', value); return this; }
   public addColumnScore(): this { this[CORE].addColumn('score'); return this; }
   public removeColumnScore(): this { this[CORE].removeColumn('score'); return this; }
@@ -126,7 +133,7 @@ export class People extends Model {
   public minusScore(n: number): this { this[CORE].putSet({ column: 'score', value: n, minus: true }); return this; }
   public sumScore(): this { this[CORE].aggregate('sum', 'score'); return this; }
   public avgScore(): this { this[CORE].aggregate('avg', 'score'); return this; }
-  public getJoined(): string { return this[CORE].column('joined') as string; }
+  public getJoined(): string { const value = this[CORE].column('joined'); if (typeof value === 'string') return value; throw new TypeError('people.joined holds a value of type ' + typeof value + ', not string'); }
   public setJoined(value: string | Date): this { this[CORE].setValue('joined', value); return this; }
   public addColumnJoined(): this { this[CORE].addColumn('joined'); return this; }
   public removeColumnJoined(): this { this[CORE].removeColumn('joined'); return this; }
@@ -134,7 +141,7 @@ export class People extends Model {
   public keyNameJoined(): this { this[CORE].keyName = 'joined'; return this; }
   public orderByJoinedAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('joined', false, fn); return this; }
   public orderByJoinedDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('joined', true, fn); return this; }
-  public getDeletedAt(): string | null { return this[CORE].column('deleted_at') as string | null; }
+  public getDeletedAt(): string | null { const value = this[CORE].column('deleted_at'); if (value === null || typeof value === 'string') return value; throw new TypeError('people.deleted_at holds a value of type ' + typeof value + ', not string | null'); }
   public setDeletedAt(value: string | Date | null): this { this[CORE].setValue('deleted_at', value); return this; }
   public addColumnDeletedAt(): this { this[CORE].addColumn('deleted_at'); return this; }
   public removeColumnDeletedAt(): this { this[CORE].removeColumn('deleted_at'); return this; }
@@ -142,7 +149,7 @@ export class People extends Model {
   public keyNameDeletedAt(): this { this[CORE].keyName = 'deleted_at'; return this; }
   public orderByDeletedAtAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('deleted_at', false, fn); return this; }
   public orderByDeletedAtDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('deleted_at', true, fn); return this; }
-  public getUpdatedAt(): string | null { return this[CORE].column('updated_at') as string | null; }
+  public getUpdatedAt(): string | null { const value = this[CORE].column('updated_at'); if (value === null || typeof value === 'string') return value; throw new TypeError('people.updated_at holds a value of type ' + typeof value + ', not string | null'); }
   public setUpdatedAt(value: string | Date | null): this { this[CORE].setValue('updated_at', value); return this; }
   public addColumnUpdatedAt(): this { this[CORE].addColumn('updated_at'); return this; }
   public removeColumnUpdatedAt(): this { this[CORE].removeColumn('updated_at'); return this; }
@@ -159,8 +166,8 @@ export class People extends Model {
 
 /** A tasks model or row. */
 export class Tasks extends Model {
-  public static readonly entity: EntityDef = { model, entity: model.entities.get('tasks')!, create: core => new Tasks(core) };
-  public getId(): string { return this[CORE].column('id') as string; }
+  public static readonly entity: EntityDef = { model, entity: modelEntity('tasks'), create: core => new Tasks(core) };
+  public getId(): string { const value = this[CORE].column('id'); if (typeof value === 'string') return value; throw new TypeError('tasks.id holds a value of type ' + typeof value + ', not string'); }
   public setId(value: string): this { this[CORE].setValue('id', value); return this; }
   public addColumnId(): this { this[CORE].addColumn('id'); return this; }
   public removeColumnId(): this { this[CORE].removeColumn('id'); return this; }
@@ -168,7 +175,7 @@ export class Tasks extends Model {
   public keyNameId(): this { this[CORE].keyName = 'id'; return this; }
   public orderByIdAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('id', false, fn); return this; }
   public orderByIdDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('id', true, fn); return this; }
-  public getOwner(): string { return this[CORE].column('owner') as string; }
+  public getOwner(): string { const value = this[CORE].column('owner'); if (typeof value === 'string') return value; throw new TypeError('tasks.owner holds a value of type ' + typeof value + ', not string'); }
   public setOwner(value: string): this { this[CORE].setValue('owner', value); return this; }
   public addColumnOwner(): this { this[CORE].addColumn('owner'); return this; }
   public removeColumnOwner(): this { this[CORE].removeColumn('owner'); return this; }
@@ -176,7 +183,7 @@ export class Tasks extends Model {
   public keyNameOwner(): this { this[CORE].keyName = 'owner'; return this; }
   public orderByOwnerAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('owner', false, fn); return this; }
   public orderByOwnerDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('owner', true, fn); return this; }
-  public getTitle(): string { return this[CORE].column('title') as string; }
+  public getTitle(): string { const value = this[CORE].column('title'); if (typeof value === 'string') return value; throw new TypeError('tasks.title holds a value of type ' + typeof value + ', not string'); }
   public setTitle(value: string): this { this[CORE].setValue('title', value); return this; }
   public addColumnTitle(): this { this[CORE].addColumn('title'); return this; }
   public removeColumnTitle(): this { this[CORE].removeColumn('title'); return this; }
@@ -184,7 +191,7 @@ export class Tasks extends Model {
   public keyNameTitle(): this { this[CORE].keyName = 'title'; return this; }
   public orderByTitleAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('title', false, fn); return this; }
   public orderByTitleDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('title', true, fn); return this; }
-  public getPoints(): number { return this[CORE].column('points') as number; }
+  public getPoints(): number { const value = this[CORE].column('points'); if (typeof value === 'number') return value; throw new TypeError('tasks.points holds a value of type ' + typeof value + ', not number'); }
   public setPoints(value: number): this { this[CORE].setValue('points', value); return this; }
   public addColumnPoints(): this { this[CORE].addColumn('points'); return this; }
   public removeColumnPoints(): this { this[CORE].removeColumn('points'); return this; }
@@ -196,7 +203,7 @@ export class Tasks extends Model {
   public minusPoints(n: number): this { this[CORE].putSet({ column: 'points', value: n, minus: true }); return this; }
   public sumPoints(): this { this[CORE].aggregate('sum', 'points'); return this; }
   public avgPoints(): this { this[CORE].aggregate('avg', 'points'); return this; }
-  public getDue(): string | null { return this[CORE].column('due') as string | null; }
+  public getDue(): string | null { const value = this[CORE].column('due'); if (value === null || typeof value === 'string') return value; throw new TypeError('tasks.due holds a value of type ' + typeof value + ', not string | null'); }
   public setDue(value: string | Date | null): this { this[CORE].setValue('due', value); return this; }
   public addColumnDue(): this { this[CORE].addColumn('due'); return this; }
   public removeColumnDue(): this { this[CORE].removeColumn('due'); return this; }
@@ -204,7 +211,7 @@ export class Tasks extends Model {
   public keyNameDue(): this { this[CORE].keyName = 'due'; return this; }
   public orderByDueAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('due', false, fn); return this; }
   public orderByDueDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('due', true, fn); return this; }
-  public getDone(): boolean { return this[CORE].column('done') as boolean; }
+  public getDone(): boolean { const value = this[CORE].column('done'); if (typeof value === 'boolean') return value; throw new TypeError('tasks.done holds a value of type ' + typeof value + ', not boolean'); }
   public setDone(value: boolean): this { this[CORE].setValue('done', value); return this; }
   public addColumnDone(): this { this[CORE].addColumn('done'); return this; }
   public removeColumnDone(): this { this[CORE].removeColumn('done'); return this; }
@@ -224,8 +231,8 @@ export class Tasks extends Model {
 
 /** A logs model or row. */
 export class Logs extends Model {
-  public static readonly entity: EntityDef = { model, entity: model.entities.get('logs')!, create: core => new Logs(core) };
-  public getId(): number { return this[CORE].column('id') as number; }
+  public static readonly entity: EntityDef = { model, entity: modelEntity('logs'), create: core => new Logs(core) };
+  public getId(): number { const value = this[CORE].column('id'); if (typeof value === 'number') return value; throw new TypeError('logs.id holds a value of type ' + typeof value + ', not number'); }
   public setId(value: number): this { this[CORE].setValue('id', value); return this; }
   public addColumnId(): this { this[CORE].addColumn('id'); return this; }
   public removeColumnId(): this { this[CORE].removeColumn('id'); return this; }
@@ -237,7 +244,7 @@ export class Logs extends Model {
   public minusId(n: number): this { this[CORE].putSet({ column: 'id', value: n, minus: true }); return this; }
   public sumId(): this { this[CORE].aggregate('sum', 'id'); return this; }
   public avgId(): this { this[CORE].aggregate('avg', 'id'); return this; }
-  public getTask(): string { return this[CORE].column('task') as string; }
+  public getTask(): string { const value = this[CORE].column('task'); if (typeof value === 'string') return value; throw new TypeError('logs.task holds a value of type ' + typeof value + ', not string'); }
   public setTask(value: string): this { this[CORE].setValue('task', value); return this; }
   public addColumnTask(): this { this[CORE].addColumn('task'); return this; }
   public removeColumnTask(): this { this[CORE].removeColumn('task'); return this; }
@@ -245,7 +252,7 @@ export class Logs extends Model {
   public keyNameTask(): this { this[CORE].keyName = 'task'; return this; }
   public orderByTaskAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('task', false, fn); return this; }
   public orderByTaskDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('task', true, fn); return this; }
-  public getNote(): string { return this[CORE].column('note') as string; }
+  public getNote(): string { const value = this[CORE].column('note'); if (typeof value === 'string') return value; throw new TypeError('logs.note holds a value of type ' + typeof value + ', not string'); }
   public setNote(value: string): this { this[CORE].setValue('note', value); return this; }
   public addColumnNote(): this { this[CORE].addColumn('note'); return this; }
   public removeColumnNote(): this { this[CORE].removeColumn('note'); return this; }

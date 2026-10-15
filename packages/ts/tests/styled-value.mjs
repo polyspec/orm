@@ -79,4 +79,20 @@ await suite.run('styled-value/lost-output', COMPUTE, () => {
   rejectsLostOutput('model JSON value', () => author.toJSON());
   rejectsLostOutput('model JSON text', () => author.toJSONText());
 });
+// Core.jsonColumn, which the getter of an ordered_json column calls: it takes a styled SQL NULL or ordered-json value and
+// refuses any other value with a TypeError that names the column.
+await suite.run('styled-value/json-column', COMPUTE, () => {
+  const stored = decode(['ordered_json'], '{"b":1,"a":[true,null]}');
+  const got = new orm.Author().setJsonSetting(stored).getJsonSetting();
+  if (!(got instanceof orm.StyledValue) || got.kind !== 'value' || JSON.stringify(got) !== JSON.stringify(stored)) {
+    throw new Error(`the getter changed an ordered-json value: ${JSON.stringify(got)}`);
+  }
+  const none = new orm.Author().setJsonSetting(orm.StyledValue.sqlNull()).getJsonSetting();
+  if (!(none instanceof orm.StyledValue) || none.kind !== 'sql-null') throw new Error('the getter changed a styled SQL NULL');
+  const plain = new orm.Author().setJsonSetting(orm.StyledValue.value({ plain: 1 }));
+  try { plain.getJsonSetting(); throw new Error('the getter returned a value that is no ordered-json value'); }
+  catch (error) {
+    if (!(error instanceof TypeError) || !error.message.includes('author.json_setting')) throw error;
+  }
+});
 suite.finish();

@@ -7,6 +7,7 @@ import { OrmError } from './runtime_error.js';
 import { normalizeDecimal } from './decimal.js';
 import { ColumnFunction, ValueFunction } from './values.js';
 import { StyledValue } from './styled_value.js';
+import { Value as JsonValue } from '@polyspec/ordered-json';
 
 export const CORE: unique symbol = Symbol('orm.core');
 
@@ -349,6 +350,20 @@ export class Core {
     if (this.values.has(name)) return this.values.get(name);
     if (fieldOf(this.ent.entity, name) === undefined) throw new OrmError('COLUMN_UNKNOWN', `${this.ent.entity.name}.${name}`);
     throw new OrmError('COLUMN_UNSELECTED', `${this.ent.entity.name}.${name} was neither selected nor assigned`);
+  }
+  /**
+   * Returns the value of an ordered_json column, as column does, checked to be a styled value that holds SQL NULL or an
+   * ordered-json value; any other value is a TypeError that names the column. The getters that orm-gen emits for an
+   * ordered_json column call it, so they read the value without a type assertion.
+   */
+  public jsonColumn(name: string): StyledValue<JsonValue> {
+    const value = this.column(name);
+    if (value instanceof StyledValue) {
+      if (value.kind === 'sql-null') return StyledValue.sqlNull<JsonValue>();
+      const payload: unknown = value.payload();
+      if (payload instanceof JsonValue) return StyledValue.value(payload);
+    }
+    throw new TypeError(`${this.ent.entity.name}.${name} holds no styled ordered-json value`);
   }
   /** Stores a column value and records it for the next write; null stores NULL. */
   public setValue(column: string, value: unknown): void {
