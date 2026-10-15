@@ -4719,6 +4719,9 @@
           "planner_rejects_scalar_column_subquery_without_limit",
           "planner_rejects_scalar_column_subquery_without_key_order",
           "planner_rejects_in_subquery_limit",
+          "planner_join_inner_soft_delete",
+          "planner_join_left_soft_delete",
+          "planner_join_on_soft_delete",
           "param_uses_column_function",
           "param_uses_interval",
           "param_uses_contains",
@@ -4806,6 +4809,9 @@
                     "planner_rejects_scalar_column_subquery_without_limit",
                     "planner_rejects_scalar_column_subquery_without_key_order",
                     "planner_rejects_in_subquery_limit",
+                    "planner_join_inner_soft_delete",
+                    "planner_join_left_soft_delete",
+                    "planner_join_on_soft_delete",
                     "param_uses_column_function",
                     "param_uses_interval",
                     "param_uses_contains",
@@ -4882,7 +4888,10 @@
                     "param_uses_interval": "TestCoveragePlannerParamUsesInterval",
                     "param_uses_contains": "TestCoveragePlannerParamUsesContains",
                     "param_uses_if_parent": "TestCoveragePlannerParamUsesIfParent",
-                    "param_uses_optimistic": "TestCoveragePlannerParamUsesOptimistic"
+                    "param_uses_optimistic": "TestCoveragePlannerParamUsesOptimistic",
+                    "planner_join_inner_soft_delete": "TestCoveragePlannerJoinInnerSoftDelete",
+                    "planner_join_left_soft_delete": "TestCoveragePlannerJoinLeftSoftDelete",
+                    "planner_join_on_soft_delete": "TestCoveragePlannerJoinOnSoftDelete"
                   }
                 }
               ]
@@ -4968,6 +4977,9 @@
                     "planner_rejects_scalar_column_subquery_without_limit",
                     "planner_rejects_scalar_column_subquery_without_key_order",
                     "planner_rejects_in_subquery_limit",
+                    "planner_join_inner_soft_delete",
+                    "planner_join_left_soft_delete",
+                    "planner_join_on_soft_delete",
                     "param_uses_column_function",
                     "param_uses_interval",
                     "param_uses_contains",
@@ -5058,6 +5070,9 @@
                     "planner_rejects_scalar_column_subquery_without_limit",
                     "planner_rejects_scalar_column_subquery_without_key_order",
                     "planner_rejects_in_subquery_limit",
+                    "planner_join_inner_soft_delete",
+                    "planner_join_left_soft_delete",
+                    "planner_join_on_soft_delete",
                     "param_uses_column_function",
                     "param_uses_interval",
                     "param_uses_contains",
@@ -5134,7 +5149,10 @@
                     "param_uses_interval": "engine::coverage_planner::planner::param_uses_interval",
                     "param_uses_contains": "engine::coverage_planner::planner::param_uses_contains",
                     "param_uses_if_parent": "engine::coverage_planner::planner::param_uses_if_parent",
-                    "param_uses_optimistic": "engine::coverage_planner::planner::param_uses_optimistic"
+                    "param_uses_optimistic": "engine::coverage_planner::planner::param_uses_optimistic",
+                    "planner_join_inner_soft_delete": "engine::coverage_planner::planner::planner_join_inner_soft_delete",
+                    "planner_join_left_soft_delete": "engine::coverage_planner::planner::planner_join_left_soft_delete",
+                    "planner_join_on_soft_delete": "engine::coverage_planner::planner::planner_join_on_soft_delete"
                   }
                 }
               ]
@@ -5220,6 +5238,9 @@
                     "planner_rejects_scalar_column_subquery_without_limit",
                     "planner_rejects_scalar_column_subquery_without_key_order",
                     "planner_rejects_in_subquery_limit",
+                    "planner_join_inner_soft_delete",
+                    "planner_join_left_soft_delete",
+                    "planner_join_on_soft_delete",
                     "param_uses_column_function",
                     "param_uses_interval",
                     "param_uses_contains",
@@ -5310,6 +5331,9 @@
                     "planner_rejects_scalar_column_subquery_without_limit",
                     "planner_rejects_scalar_column_subquery_without_key_order",
                     "planner_rejects_in_subquery_limit",
+                    "planner_join_inner_soft_delete",
+                    "planner_join_left_soft_delete",
+                    "planner_join_on_soft_delete",
                     "param_uses_column_function",
                     "param_uses_interval",
                     "param_uses_contains",

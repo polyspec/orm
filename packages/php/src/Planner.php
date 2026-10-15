@@ -408,6 +408,10 @@ final class Planner
             $js = $s->joins[$j['rel']];
             $kw = ($j['kind'] ?? '') === 'left' ? ' LEFT JOIN ' : ' INNER JOIN ';
             $conditions = [$this->qcol($s, $j['left']) . ' = ' . $this->qcol($js, $j['right'])];
+            // A joined entity's soft-deleted rows never meet the parent: the condition sits in ON, so a left join gives null.
+            if ($js->ent['soft_delete'] !== '') {
+                $conditions[] = $this->qcol($js, $js->ent['soft_delete']) . ' IS NULL';
+            }
             $sql .= $kw . $b->table($js->ent) . ' AS ' . $this->d->quote($js->alias) . ' ON ' . implode(' AND ', $conditions);
             if (($j['query']['on']['items'] ?? []) !== []) {
                 $sql .= ' AND ' . $this->renderGroup($b, $js, $j['query']['on'], true);

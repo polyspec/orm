@@ -270,6 +270,12 @@ type argTimeEq interface {
 	time.Time | ~string | []time.Time | ~[]string | orm.Func | ormModel
 }
 
+// hasName is a model with the column name.
+type hasName interface {
+	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *CompositeAccountModel | *SoftRecordModel | *AccountModel | *ProjectModel
+	Orm_() *orm.Core
+}
+
 // hasSeq is a model with the column seq.
 type hasSeq interface {
 	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *SoftRecordModel | *AccountModel | *ProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel

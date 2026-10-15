@@ -493,6 +493,40 @@ vector('restore', function () use ($db): array {
     return $result;
 });
 
+vector('joins_soft_deleted', function () use ($db): array {
+    // A joined soft_record row that is soft deleted meets no parent: the inner join drops the parent and the left join
+    // gives it a null child. The transaction rolls back at the end, so the database is as it was.
+    $boom = new RuntimeException('boom');
+    $names = ['soft-join-live', 'soft-join-deleted'];
+    $result = [];
+    try {
+        $db->transaction(function () use ($boom, $names, &$result): void {
+            foreach ($names as $name) {
+                $service = (new Service)->setName($name)->create();
+                $record = (new SoftRecord)->setName($name)->create();
+                mask([$service->getSeq(), $record->getSeq()]);
+                if ($name === 'soft-join-deleted') {
+                    $record->setDeletedAt(new DateTimeImmutable('2026-01-02 03:04:05', new DateTimeZone('UTC')))->update();
+                }
+            }
+            $inner = (new Service)->joinNameWithName((new SoftRecord)->aliasRecord())->name($names)->orderByNameAsc()->gets();
+            $result['inner'] = picks($inner, 'name');
+            $left = (new Service)->leftJoinNameWithName((new SoftRecord)->aliasRecord())->name($names)->orderByNameAsc()->gets();
+            $result['left'] = [];
+            foreach ($left->all() as $row) {
+                $result['left'][] = ['name' => $row->getName(), 'record' => pick($row->getRecord(), 'name')];
+            }
+            throw $boom;
+        }, retry: 0);
+        throw new RuntimeException('the joins_soft_deleted transaction committed');
+    } catch (RuntimeException $e) {
+        if ($e !== $boom) {
+            throw $e;
+        }
+    }
+    return $result;
+});
+
 vector('aes_status', function () use ($db): array {
     $status = $db->utils()->aes()->status(new Author, new AesKeyring([1 => 'bench-salt'], 1));
     $versions = [];

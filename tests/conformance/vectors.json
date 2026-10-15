@@ -2679,6 +2679,138 @@
       }
     },
     {
+      "name": "joins_soft_deleted",
+      "chain": "transaction: create a live and a soft-deleted soft_record beside two services, joinNameWithName(soft_record) and leftJoinNameWithName(soft_record), rollback",
+      "expect": {
+        "result": {
+          "inner": [
+            {
+              "name": "soft-join-live"
+            }
+          ],
+          "left": [
+            {
+              "name": "soft-join-deleted",
+              "record": null
+            },
+            {
+              "name": "soft-join-live",
+              "record": {
+                "name": "soft-join-live"
+              }
+            }
+          ]
+        },
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "START TRANSACTION",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "soft-join-live"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `service` (`name`) VALUES (?)",
+            "tables": [
+              "service"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "soft-join-live"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `soft_record` (`name`) VALUES (?)",
+            "tables": [
+              "soft_record"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "soft-join-deleted"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `service` (`name`) VALUES (?)",
+            "tables": [
+              "service"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "soft-join-deleted"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `soft_record` (`name`) VALUES (?)",
+            "tables": [
+              "soft_record"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "2026-01-02 03:04:05.000000",
+              "$SEQ"
+            ],
+            "error": null,
+            "kind": "update",
+            "sql": "UPDATE `soft_record` SET `deleted_at` = ? WHERE `soft_record`.`seq` = ? AND `soft_record`.`deleted_at` IS NULL",
+            "tables": [
+              "soft_record"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "soft-join-live",
+              "soft-join-deleted"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `record`.`seq` AS `record__seq`, `record`.`name` AS `record__name`, `record`.`deleted_at` AS `record__deleted_at` FROM `service` AS `a` INNER JOIN `soft_record` AS `record` ON `a`.`name` = `record`.`name` AND `record`.`deleted_at` IS NULL WHERE `a`.`name` IN (?, ?) ORDER BY `a`.`name` ASC",
+            "tables": [
+              "service",
+              "soft_record"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "soft-join-live",
+              "soft-join-deleted"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `record`.`seq` AS `record__seq`, `record`.`name` AS `record__name`, `record`.`deleted_at` AS `record__deleted_at` FROM `service` AS `a` LEFT JOIN `soft_record` AS `record` ON `a`.`name` = `record`.`name` AND `record`.`deleted_at` IS NULL WHERE `a`.`name` IN (?, ?) ORDER BY `a`.`name` ASC",
+            "tables": [
+              "service",
+              "soft_record"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "rollback",
+            "sql": "ROLLBACK",
+            "tables": [],
+            "transaction": 1
+          }
+        ]
+      }
+    },
+    {
       "name": "aes_status",
       "chain": "utils()-\u003eaes()-\u003estatus(model, keyring)",
       "expect": {

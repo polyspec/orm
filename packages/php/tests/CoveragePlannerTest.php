@@ -601,4 +601,25 @@ final class CoveragePlannerTest extends TestCase
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         paramUsesCase($root, $fixture, 'param_uses_optimistic');
     }
+
+    public function test_planner_join_inner_soft_delete(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_join_inner_soft_delete');
+    }
+
+    public function test_planner_join_left_soft_delete(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_join_left_soft_delete');
+    }
+
+    public function test_planner_join_on_soft_delete(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_join_on_soft_delete');
+    }
 }

@@ -5037,6 +5037,227 @@
       },
       "operation": "param_uses",
       "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `record`.`seq` AS `record__seq`, `record`.`name` AS `record__name`, `record`.`deleted_at` AS `record__deleted_at` FROM `user` AS `a` INNER JOIN `soft_record` AS `record` ON `a`.`seq` = `record`.`seq` AND `record`.`deleted_at` IS NULL",
+            "tables": [
+              "soft_record",
+              "user"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"record\".\"seq\" AS \"record__seq\", \"record\".\"name\" AS \"record__name\", \"record\".\"deleted_at\" AS \"record__deleted_at\" FROM \"user\" AS \"a\" INNER JOIN \"soft_record\" AS \"record\" ON \"a\".\"seq\" = \"record\".\"seq\" AND \"record\".\"deleted_at\" IS NULL",
+            "tables": [
+              "soft_record",
+              "user"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"record\".\"seq\" AS \"record__seq\", \"record\".\"name\" AS \"record__name\", \"record\".\"deleted_at\" AS \"record__deleted_at\" FROM \"user\" AS \"a\" INNER JOIN \"soft_record\" AS \"record\" ON \"a\".\"seq\" = \"record\".\"seq\" AND \"record\".\"deleted_at\" IS NULL",
+            "tables": [
+              "soft_record",
+              "user"
+            ]
+          }
+        ]
+      },
+      "id": "planner_join_inner_soft_delete",
+      "input": {
+        "columns": {
+          "add": [
+            "name"
+          ],
+          "mode": "none"
+        },
+        "entity": "user",
+        "ir_version": 1,
+        "kind": "all",
+        "joins": [
+          {
+            "kind": "inner",
+            "left": "seq",
+            "query": {
+              "entity": "soft_record"
+            },
+            "rel": "record",
+            "right": "seq"
+          }
+        ],
+        "n_params": 0
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `record`.`seq` AS `record__seq`, `record`.`name` AS `record__name`, `record`.`deleted_at` AS `record__deleted_at` FROM `user` AS `a` LEFT JOIN `soft_record` AS `record` ON `a`.`seq` = `record`.`seq` AND `record`.`deleted_at` IS NULL",
+            "tables": [
+              "soft_record",
+              "user"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"record\".\"seq\" AS \"record__seq\", \"record\".\"name\" AS \"record__name\", \"record\".\"deleted_at\" AS \"record__deleted_at\" FROM \"user\" AS \"a\" LEFT JOIN \"soft_record\" AS \"record\" ON \"a\".\"seq\" = \"record\".\"seq\" AND \"record\".\"deleted_at\" IS NULL",
+            "tables": [
+              "soft_record",
+              "user"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"record\".\"seq\" AS \"record__seq\", \"record\".\"name\" AS \"record__name\", \"record\".\"deleted_at\" AS \"record__deleted_at\" FROM \"user\" AS \"a\" LEFT JOIN \"soft_record\" AS \"record\" ON \"a\".\"seq\" = \"record\".\"seq\" AND \"record\".\"deleted_at\" IS NULL",
+            "tables": [
+              "soft_record",
+              "user"
+            ]
+          }
+        ]
+      },
+      "id": "planner_join_left_soft_delete",
+      "input": {
+        "columns": {
+          "add": [
+            "name"
+          ],
+          "mode": "none"
+        },
+        "entity": "user",
+        "ir_version": 1,
+        "kind": "all",
+        "joins": [
+          {
+            "kind": "left",
+            "left": "seq",
+            "query": {
+              "entity": "soft_record"
+            },
+            "rel": "record",
+            "right": "seq"
+          }
+        ],
+        "n_params": 0
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 191,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `record`.`seq` AS `record__seq`, `record`.`name` AS `record__name`, `record`.`deleted_at` AS `record__deleted_at` FROM `user` AS `a` INNER JOIN `soft_record` AS `record` ON `a`.`seq` = `record`.`seq` AND `record`.`deleted_at` IS NULL AND `record`.`name` = ?",
+            "tables": [
+              "soft_record",
+              "user"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 191,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"record\".\"seq\" AS \"record__seq\", \"record\".\"name\" AS \"record__name\", \"record\".\"deleted_at\" AS \"record__deleted_at\" FROM \"user\" AS \"a\" INNER JOIN \"soft_record\" AS \"record\" ON \"a\".\"seq\" = \"record\".\"seq\" AND \"record\".\"deleted_at\" IS NULL AND \"record\".\"name\" = $1",
+            "tables": [
+              "soft_record",
+              "user"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "length": 191,
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"record\".\"seq\" AS \"record__seq\", \"record\".\"name\" AS \"record__name\", \"record\".\"deleted_at\" AS \"record__deleted_at\" FROM \"user\" AS \"a\" INNER JOIN \"soft_record\" AS \"record\" ON \"a\".\"seq\" = \"record\".\"seq\" AND \"record\".\"deleted_at\" IS NULL AND \"record\".\"name\" = ?",
+            "tables": [
+              "soft_record",
+              "user"
+            ]
+          }
+        ]
+      },
+      "id": "planner_join_on_soft_delete",
+      "input": {
+        "columns": {
+          "add": [
+            "name"
+          ],
+          "mode": "none"
+        },
+        "entity": "user",
+        "ir_version": 1,
+        "kind": "all",
+        "joins": [
+          {
+            "kind": "inner",
+            "left": "seq",
+            "query": {
+              "entity": "soft_record",
+              "on": {
+                "items": [
+                  {
+                    "pred": {
+                      "column": "name",
+                      "op": "eq",
+                      "p": 0
+                    }
+                  }
+                ]
+              }
+            },
+            "rel": "record",
+            "right": "seq"
+          }
+        ],
+        "n_params": 1
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
     }
   ],
   "feature": "planner"

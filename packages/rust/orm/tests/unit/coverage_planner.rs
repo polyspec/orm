@@ -501,6 +501,24 @@ mod planner {
     }
 
     #[test]
+    fn planner_join_inner_soft_delete() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_join_inner_soft_delete");
+    }
+
+    #[test]
+    fn planner_join_left_soft_delete() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_join_left_soft_delete");
+    }
+
+    #[test]
+    fn planner_join_on_soft_delete() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_join_on_soft_delete");
+    }
+
+    #[test]
     fn param_uses_column_function() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         super::run_param_uses("param_uses_column_function");

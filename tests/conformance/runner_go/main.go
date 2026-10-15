@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -145,7 +146,8 @@ var dsn = ""
 
 // pick keeps the named values of a row.
 func pick(m orm.Model, names ...string) map[string]any {
-	if m == nil || m.Orm_() == nil {
+	// A getter's nil model reaches pick as an interface that holds a typed nil, so the interface is not nil.
+	if m == nil || reflect.ValueOf(m).IsNil() || m.Orm_() == nil {
 		return nil
 	}
 	all := m.Orm_().ToArray()
@@ -852,6 +854,58 @@ func run() (status int) {
 		left, err := model.SoftRecord().Connect(db).Name("restore").GetCount()
 		result["left"] = left
 		return result, err
+	})
+	run("joins_soft_deleted", func() (any, error) {
+		// A joined soft_record row that is soft deleted meets no parent: the inner join drops the
+		// parent and the left join gives it a null child. The transaction rolls back at the end, so
+		// the database is as it was.
+		boom := errors.New("boom")
+		names := []string{"soft-join-live", "soft-join-deleted"}
+		result := map[string]any{}
+		err := db.Transaction(func() error {
+			for _, name := range names {
+				service, err := model.Service().SetName(name).Create()
+				if err != nil {
+					return err
+				}
+				record, err := model.SoftRecord().SetName(name).Create()
+				if err != nil {
+					return err
+				}
+				mask([]int64{service.GetSeq(), record.GetSeq()})
+				if name == "soft-join-deleted" {
+					deletedAt := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+					if _, err := record.SetDeletedAt(&deletedAt).Update(); err != nil {
+						return err
+					}
+				}
+			}
+			inner, err := model.Service().JoinNameWithName(model.SoftRecord().AliasRecord()).
+				Name(names).OrderByNameAsc().Gets()
+			if err != nil {
+				return err
+			}
+			result["inner"] = picks(inner, "name")
+			left, err := model.Service().LeftJoinNameWithName(model.SoftRecord().AliasRecord()).
+				Name(names).OrderByNameAsc().Gets()
+			if err != nil {
+				return err
+			}
+			rows := []any{}
+			for _, row := range left.Slice() {
+				record, err := row.GetRecord()
+				if err != nil {
+					return err
+				}
+				rows = append(rows, map[string]any{"name": row.GetName(), "record": pick(record, "name")})
+			}
+			result["left"] = rows
+			return boom
+		}, orm.Retry(0))
+		if !errors.Is(err, boom) {
+			return nil, err
+		}
+		return result, nil
 	})
 	run("aes_status", func() (any, error) {
 		keyring, err := orm.NewAESKeyring(map[int32]string{1: "bench-salt"}, 1)

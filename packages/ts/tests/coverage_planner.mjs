@@ -143,4 +143,7 @@ await runCases('coverage_planner.mjs', {
   async param_uses_contains() { paramUsesCase('param_uses_contains'); },
   async param_uses_if_parent() { paramUsesCase('param_uses_if_parent'); },
   async param_uses_optimistic() { paramUsesCase('param_uses_optimistic'); },
+  async planner_join_inner_soft_delete() { compileCase('planner_join_inner_soft_delete'); },
+  async planner_join_left_soft_delete() { compileCase('planner_join_left_soft_delete'); },
+  async planner_join_on_soft_delete() { compileCase('planner_join_on_soft_delete'); },
 }, 60_000);

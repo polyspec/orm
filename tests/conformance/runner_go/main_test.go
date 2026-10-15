@@ -19,6 +19,16 @@ func TestPickRejectsUnselectedField(t *testing.T) {
 	_ = pick(row, "name", "read_count")
 }
 
+// TestPickTypedNilIsNone covers the child of a left join without a child row: a getter returns a nil model, and pick
+// takes it through an interface, which holds a typed nil.
+func TestPickTypedNilIsNone(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	var none *model.SoftRecordModel
+	if got := pick(none, "name"); got != nil {
+		t.Fatalf("pick of a nil model = %v, want nil", got)
+	}
+}
+
 func TestUnexpectedVectorErrorAndWriteTransaction(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	cause := errors.New("invalid row")

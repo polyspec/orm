@@ -529,6 +529,8 @@ export class Planner {
     for (const j of s.q.joins ?? []) {
       const js = this.joinScope(s, j.rel);
       const conditions = [`${this.qcol(s, present(j.left, `the left column of join ${j.rel}`))} = ${this.qcol(js, present(j.right, `the right column of join ${j.rel}`))}`];
+      // A joined entity's soft-deleted rows never meet the parent: the condition sits in ON, so a left join gives null.
+      if (js.ent.softDelete) conditions.push(`${this.qcol(js, js.ent.softDelete)} IS NULL`);
       sql += `${j.kind === 'left' ? ' LEFT JOIN ' : ' INNER JOIN '}${b.table(js.ent)} AS ${this.d.quote(js.alias)} ON ${conditions.join(' AND ')}`;
       if (j.query.on && j.query.on.items.length > 0) sql += ` AND ${this.renderGroup(b, js, j.query.on, true)}`;
       sql += this.renderJoins(b, js);

@@ -527,6 +527,24 @@ func TestCoveragePlannerRejectsInSubqueryLimit(t *testing.T) {
 	compilePlannerCase(t, "planner_rejects_in_subquery_limit")
 }
 
+// TestCoveragePlannerJoinInnerSoftDelete는 join inner soft delete case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerJoinInnerSoftDelete(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_join_inner_soft_delete")
+}
+
+// TestCoveragePlannerJoinLeftSoftDelete는 join left soft delete case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerJoinLeftSoftDelete(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_join_left_soft_delete")
+}
+
+// TestCoveragePlannerJoinOnSoftDelete는 join on soft delete case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerJoinOnSoftDelete(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_join_on_soft_delete")
+}
+
 // paramUseOut is one use of a parameter as planner.json writes it: the slot's logical type and, for a
 // column slot, the column with its length, precision, scale and nullability.
 type paramUseOut struct {
@@ -678,6 +696,9 @@ func TestCoveragePlanner(t *testing.T) {
 		"planner_rejects_scalar_column_subquery_without_limit":     TestCoveragePlannerRejectsScalarColumnSubqueryWithoutLimit,
 		"planner_rejects_scalar_column_subquery_without_key_order": TestCoveragePlannerRejectsScalarColumnSubqueryWithoutKeyOrder,
 		"planner_rejects_in_subquery_limit":                        TestCoveragePlannerRejectsInSubqueryLimit,
+		"planner_join_inner_soft_delete":                           TestCoveragePlannerJoinInnerSoftDelete,
+		"planner_join_left_soft_delete":                            TestCoveragePlannerJoinLeftSoftDelete,
+		"planner_join_on_soft_delete":                              TestCoveragePlannerJoinOnSoftDelete,
 		"planner_uuid_select":                                      TestCoveragePlannerUuidSelect,
 		"planner_uuid_insert":                                      TestCoveragePlannerUuidInsert,
 		"param_uses_column_function":                               TestCoveragePlannerParamUsesColumnFunction,

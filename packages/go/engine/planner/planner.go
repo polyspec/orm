@@ -726,6 +726,10 @@ func (p *Planner) renderJoins(b *builder, sb *strings.Builder, s *scope) error {
 			kw = " LEFT JOIN "
 		}
 		sb.WriteString(kw + b.table(js.ent) + " AS " + p.D.Quote(js.alias) + " ON " + p.qcol(s, j.Left) + " = " + p.qcol(js, j.Right))
+		// A joined entity's soft-deleted rows never meet the parent: the condition sits in ON, so a left join gives null.
+		if js.ent.SoftDelete != "" {
+			sb.WriteString(" AND " + p.qcol(js, js.ent.SoftDelete) + " IS NULL")
+		}
 		if j.Query.On != nil && len(j.Query.On.Items) > 0 {
 			on, err := p.renderGroup(b, js, j.Query.On, true)
 			if err != nil {

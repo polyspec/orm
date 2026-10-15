@@ -368,6 +368,8 @@ func (x *SoftRecordModel) OrderByDeletedAtDesc(fn ...orm.Func) *SoftRecordModel 
 	return x
 }
 
+func (x *SoftRecordModel) AliasRecord() *SoftRecordModel { x.m.Alias("Record"); return x }
+
 func (x *SoftRecordModel) GetBySeq[T0 argIntEq](v0 T0) (*SoftRecordModel, error) {
 	return oneSoftRecord(x.m.By(chainSoftRecordGetBySeq, v0))
 }

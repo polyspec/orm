@@ -717,6 +717,40 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         result.insert("left".into(), json!(left));
         Ok::<Value, polyspec_orm::Error>(Value::Object(result))
     });
+    run!("joins_soft_deleted", async {
+        // A joined soft_record row that is soft deleted meets no parent: the inner join drops the parent and the
+        // left join gives it a null child. The transaction rolls back at the end, so the database is as it was.
+        let names = vec!["soft-join-live", "soft-join-deleted"];
+        let result = Mutex::new(Map::new());
+        let ended: polyspec_orm::Result<()> = db
+            .transaction(async || {
+                for name in &names {
+                    let service = Service::new().set_name(*name).create().await?;
+                    let mut record = SoftRecord::new().set_name(*name).create().await?;
+                    mask(shared, &[service.get_seq().unwrap(), record.get_seq().unwrap()], &[]);
+                    if *name == "soft-join-deleted" {
+                        let deleted_at = chrono::NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(3, 4, 5).unwrap();
+                        record = record.set_deleted_at(deleted_at);
+                        record.update(false).await?;
+                    }
+                }
+                let inner = Service::new().join_name_with_name(SoftRecord::new().alias_record()).name(names.clone()).order_by_name_asc().gets().await?;
+                result.lock().unwrap().insert("inner".into(), picks(&inner, &["name"]));
+                let left = Service::new().left_join_name_with_name(SoftRecord::new().alias_record()).name(names.clone()).order_by_name_asc().gets().await?;
+                let mut rows = Vec::new();
+                for row in left.models() {
+                    rows.push(json!({"name": row.get_name()?, "record": pick(row.get_record()?, &["name"])}));
+                }
+                result.lock().unwrap().insert("left".into(), Value::Array(rows));
+                Err(polyspec_orm::Error::Config("boom".into()))
+            })
+            .retry(0)
+            .await;
+        if !matches!(&ended, Err(polyspec_orm::Error::Config(m)) if m == "boom") {
+            ended?;
+        }
+        Ok::<Value, polyspec_orm::Error>(Value::Object(result.into_inner().unwrap()))
+    });
     run!("aes_status", async {
         let keyring = AesKeyring::new([(1, "bench-salt".to_owned())].into_iter().collect(), 1)?;
         let status = db.utils().aes().status(&Author::new(), &keyring).await?;

@@ -648,6 +648,8 @@ export class Author extends Model {
   declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
   declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
@@ -704,6 +706,8 @@ export class User extends Model {
   declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
   declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
@@ -742,6 +746,8 @@ export class Service extends Model {
 
   declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
   declare gtSeq: (v0: number | ValueFunction) => this;
+  declare joinNameWithName: (child: Author | User | Service | ServiceRegion | CompositeAccount | SoftRecord | Account | Project) => this;
+  declare leftJoinNameWithName: (child: Author | User | Service | ServiceRegion | CompositeAccount | SoftRecord | Account | Project) => this;
   declare matchServiceSeqWithSeq: () => this;
   declare name: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
   declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
@@ -757,6 +763,8 @@ export class Service extends Model {
   declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
   declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
@@ -823,6 +831,8 @@ export class ServiceRegion extends Model {
   declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
   declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
@@ -899,6 +909,8 @@ export class ServiceMember extends Model {
   declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
   declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
@@ -965,6 +977,8 @@ export class CompositeAccount extends Model {
   declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
   declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
@@ -1032,6 +1046,8 @@ export class CompositeMembership extends Model {
   declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
   declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
@@ -1076,6 +1092,7 @@ export class SoftRecord extends Model {
   public orderByDeletedAtAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('deleted_at', false, fn); return this; }
   public orderByDeletedAtDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('deleted_at', true, fn); return this; }
 
+  declare aliasRecord: () => this;
   declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
   declare name: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
   declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
@@ -1091,6 +1108,8 @@ export class SoftRecord extends Model {
   declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
   declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
@@ -1142,6 +1161,8 @@ export class Account extends Model {
   declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
   declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
@@ -1191,6 +1212,8 @@ export class Project extends Model {
   declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
   declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
@@ -1249,6 +1272,8 @@ export class AccountProject extends Model {
   declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
   declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
@@ -1308,6 +1333,8 @@ export class Task extends Model {
   declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
   declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
@@ -1368,6 +1395,8 @@ export class HexCell extends Model {
   declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
   declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
@@ -1429,6 +1458,8 @@ export class TimeCell extends Model {
   declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
   declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
@@ -1508,6 +1539,8 @@ export class ClockCell extends Model {
   declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
   declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
@@ -1570,6 +1603,8 @@ export class UpsertCell extends Model {
   declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
   declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
@@ -1622,6 +1657,8 @@ export class UuidCell extends Model {
   declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
   declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
@@ -1689,6 +1726,8 @@ export class BindCell extends Model {
   declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */
   declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
   /** Returns the service_member relation result; T is its model type. */
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */

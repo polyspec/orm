@@ -306,6 +306,16 @@ func (x *ServiceModel) GtSeq[T0 argIntCmp](v0 T0) *ServiceModel {
 	return x
 }
 
+func (x *ServiceModel) JoinNameWithName[C hasName](child C) *ServiceModel {
+	x.m.Join("inner", "name", "name", child)
+	return x
+}
+
+func (x *ServiceModel) LeftJoinNameWithName[C hasName](child C) *ServiceModel {
+	x.m.Join("left", "name", "name", child)
+	return x
+}
+
 func (x *ServiceModel) MatchServiceSeqWithSeq() *ServiceModel {
 	x.m.Match("service_seq", "seq")
 	return x
@@ -328,6 +338,11 @@ var chainServiceGtSeq = []orm.ChainKey{{Op: "gt", Column: "seq"}}
 var chainServiceName = []orm.ChainKey{{Column: "name"}}
 
 var chainServiceSeq = []orm.ChainKey{{Column: "seq"}}
+
+// GetRecord returns the soft_record relation result.
+func (x *ServiceModel) GetRecord() (*SoftRecordModel, error) {
+	return orm.RelatedAs[*SoftRecordModel](x.m, "record")
+}
 
 // GetServiceMemberModels returns the service_member relation result.
 func (x *ServiceModel) GetServiceMemberModels() (*orm.Collection[*ServiceMemberModel], error) {

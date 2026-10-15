@@ -458,6 +458,31 @@ async function main() {
     result.left = await new SoftRecord().connect(db).name('restore').getCount();
     return result;
   });
+  await run('joins_soft_deleted', async () => {
+    // A joined soft_record row that is soft deleted meets no parent: the inner join drops the parent and the left join
+    // gives it a null child. The transaction rolls back at the end, so the database is as it was.
+    const boom = new Error('boom');
+    const names = ['soft-join-live', 'soft-join-deleted'];
+    const result: Record<string, unknown> = {};
+    let failed: unknown;
+    try {
+      await db.transaction(async () => {
+        for (const name of names) {
+          const service = await new Service().setName(name).create();
+          const record = await new SoftRecord().setName(name).create();
+          mask([service.getSeq(), record.getSeq()]);
+          if (name === 'soft-join-deleted') await record.setDeletedAt(new Date(Date.UTC(2026, 0, 2, 3, 4, 5))).update();
+        }
+        const inner = await new Service().joinNameWithName(new SoftRecord().aliasRecord()).name(names).orderByNameAsc().gets();
+        result.inner = picks(inner, 'name');
+        const left = await new Service().leftJoinNameWithName(new SoftRecord().aliasRecord()).name(names).orderByNameAsc().gets();
+        result.left = left.values().map(row => ({ name: row.getName(), record: pick(row.getRecord(), 'name') }));
+        throw boom;
+      }, { retry: 0 });
+    } catch (error) { failed = error; }
+    if (failed !== boom) throw failed;
+    return result;
+  });
   await run('aes_status', async () => {
     const keyring = new AesKeyring(new Map([[1, 'bench-salt']]), 1);
     const status = await db.utils().aes().status(new Author(), keyring);

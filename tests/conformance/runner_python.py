@@ -1006,6 +1006,58 @@ def main():
 
     run("restore", restore)
 
+    def joins_soft_deleted():
+        # A joined soft_record row that is soft deleted meets no parent: the inner join drops the parent and the left
+        # join gives it a null child. The transaction rolls back at the end, so the database is as it was.
+        class Boom(Exception):
+            pass
+
+        names = ["soft-join-live", "soft-join-deleted"]
+        result = {}
+        failed = None
+        try:
+
+            def body():
+                for name in names:
+                    service = Service().set_name(name).create()
+                    record = SoftRecord().set_name(name).create()
+                    mask([service.get_seq(), record.get_seq()])
+                    if name == "soft-join-deleted":
+                        record.set_deleted_at(
+                            datetime.datetime(
+                                2026, 1, 2, 3, 4, 5, tzinfo=datetime.timezone.utc
+                            )
+                        ).update()
+                inner = (
+                    Service()
+                    .join_name_with_name(SoftRecord().alias_record())
+                    .name(names)
+                    .order_by_name_asc()
+                    .gets()
+                )
+                result["inner"] = picks(inner, "name")
+                left = (
+                    Service()
+                    .left_join_name_with_name(SoftRecord().alias_record())
+                    .name(names)
+                    .order_by_name_asc()
+                    .gets()
+                )
+                result["left"] = [
+                    {"name": row.get_name(), "record": pick(row.get_record(), "name")}
+                    for row in left.values()
+                ]
+                raise Boom()
+
+            db.transaction(body, {"retry": 0})
+        except Boom as error:
+            failed = error
+        if failed is None:
+            raise RuntimeError("joins_soft_deleted transaction did not roll back")
+        return result
+
+    run("joins_soft_deleted", joins_soft_deleted)
+
     def aes_status():
         keyring = AesKeyring({1: "bench-salt"}, 1)
         status = db.utils().aes().status(Author(), keyring)

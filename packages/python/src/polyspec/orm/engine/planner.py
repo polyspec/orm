@@ -752,6 +752,11 @@ class Planner:
         for join in s.q.get("joins") or []:
             join_scope = s.joins[join["rel"]]
             condition = f"{self._qcol(s, join['left'])} = {self._qcol(join_scope, join['right'])}"
+            # A joined entity's soft-deleted rows never meet the parent: the condition sits in ON, so a left join gives null.
+            if join_scope.ent.soft_delete:
+                condition += (
+                    f" AND {self._qcol(join_scope, join_scope.ent.soft_delete)} IS NULL"
+                )
             keyword = " LEFT JOIN " if join["kind"] == "left" else " INNER JOIN "
             sql += f"{keyword}{b.table(join_scope.ent)} AS {self.d.quote(join_scope.alias)} ON {condition}"
             if (join["query"].get("on") or {}).get("items"):

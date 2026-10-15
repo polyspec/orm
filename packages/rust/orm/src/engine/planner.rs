@@ -773,7 +773,11 @@ impl<'m> Planner<'m> {
         for j in &s.q.joins {
             let js = s.join(&j.rel).expect("scoped join");
             let kw = if j.kind == "left" { " LEFT JOIN " } else { " INNER JOIN " };
-            let condition = format!("{} = {}", self.qcol(s, &j.left), self.qcol(js, &j.right));
+            let mut condition = format!("{} = {}", self.qcol(s, &j.left), self.qcol(js, &j.right));
+            // A joined entity's soft-deleted rows never meet the parent: the condition sits in ON, so a left join gives null.
+            if let Some(soft_delete) = &js.ent.soft_delete {
+                condition.push_str(&format!(" AND {} IS NULL", self.qcol(js, soft_delete)));
+            }
             sb.push_str(&format!("{kw}{} AS {} ON {condition}", b.table(&js.ent.table), self.d.quote(&js.alias)));
             if let Some(on) = j.query.on.as_ref().filter(|g| !g.items.is_empty()) {
                 let on = self.render_group(b, root, js, on, true)?;
