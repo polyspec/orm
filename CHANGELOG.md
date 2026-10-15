@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The dbspec check and the IR validator read one meet table per client. (#T96-1)
 - A joined child excludes soft-deleted rows on every database. (#T95)
 - A fixture of IR read answers proves one decoding in every client. (#T105)
 - Every client sets one declared MySQL session sql_mode. (#T104)

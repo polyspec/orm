@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 47e8b4db0e805ba4726827e985943a18f076a997cd82404ddbd554e3e6fff0d6 -->
+<!-- source-sha256: 5b867e2bf2b0dd707935288acfb7ea6682b942e06647e7548f0464b98d9ef3cb -->
 # 변경 이력
 
 ## Unreleased
 
+- dbspec 검사와 IR validator가 client마다 meet table 하나를 읽는다. (#T96-1)
 - joined child가 모든 database에서 soft delete된 행을 제외한다. (#T95)
 - IR read 답 fixture가 모든 client의 decoding이 같음을 증명한다. (#T105)
 - 모든 client가 선언된 MySQL session sql_mode 하나를 쓴다. (#T104)
