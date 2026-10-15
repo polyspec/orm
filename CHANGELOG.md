@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A conformance vector pins the scalar column subquery on every database. (#T84-1)
 - A conformance vector pins the NULL order of ascending and descending reads on every database. (#T82-1)
 - The Go bind vector test reports as a case with its deadline. (#T91-1)
 - The TypeScript symbol record holds the contains methods of CompositeAccount. (#T79-1-1)
