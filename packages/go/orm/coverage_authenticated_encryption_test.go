@@ -108,3 +108,16 @@ func TestCoverageBlindIndexVector(t *testing.T) {
 		t.Fatalf("blind index = %s, %v; want %s", index, err, expected.Index)
 	}
 }
+
+// TestCoverageAuthenticatedEncryption runs every case of contracts/fixtures/authenticated_encryption.json as a subtest named by its id,
+// with the test of that case, so the parity check runs the suite under its case ids.
+func TestCoverageAuthenticatedEncryption(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	runFixtureCases(t, "authenticated_encryption", map[string]func(*testing.T){
+		"aes_envelope_decrypt":   TestCoverageAesEnvelopeDecrypt,
+		"aes_round_trip":         TestCoverageAesRoundTrip,
+		"aes_tamper_rejected":    TestCoverageAesTamperRejected,
+		"aes_wrong_key_rejected": TestCoverageAesWrongKeyRejected,
+		"blind_index_vector":     TestCoverageBlindIndexVector,
+	})
+}

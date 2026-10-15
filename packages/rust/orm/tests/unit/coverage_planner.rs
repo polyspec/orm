@@ -95,473 +95,440 @@ fn run(id: &str) {
     polyspec_orm_testcase::step(format_args!("{id} cpu={cpu:?} wall={:?}", clock.wall()));
 }
 
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_statement() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_statement");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_count() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_count");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_contains_binary_collation() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_contains_binary_collation");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_contains_ascii_fold() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_contains_ascii_fold");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_unknown_column() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_unknown_column");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_restore() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_restore");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_restore_rejects_non_key() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_restore_rejects_non_key");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_restore_key_from_set() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_restore_key_from_set");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_restore_extra_condition() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_restore_extra_condition");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_restore_primary_key_first() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_restore_primary_key_first");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_restore_first_unique_by_name() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_restore_first_unique_by_name");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_tables() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_tables");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_bind_types_select() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_bind_types_select");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_bind_types_update() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_bind_types_update");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_bind_types_insert() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_bind_types_insert");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_time_select() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_time_select");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_time_insert() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_time_insert");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_uuid_select() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_uuid_select");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_uuid_insert() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_uuid_insert");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_clock_compare() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_clock_compare");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_clock_insert() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_clock_insert");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_parent_key_types() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_parent_key_types");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_not_group() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_not_group");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_top_not() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_top_not");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_top_group_conn() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_top_group_conn");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_first_item_conn() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_first_item_conn");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_column_refs() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_column_refs");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_ref_unknown_column() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_ref_unknown_column");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_outer_ref_outside_subquery() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_outer_ref_outside_subquery");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_ref_path_absent() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_ref_path_absent");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_unjoined_ref() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_unjoined_ref");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_group_by_count() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_group_by_count");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_group_count_order_column() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_group_count_order_column");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_group_count_order_column_function() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_group_count_order_column_function");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_group_count_order_random() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_group_count_order_random");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_group_by_all() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_group_by_all");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_group_by_sum() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_group_by_sum");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_group_by_join() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_group_by_join");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_group_by_subquery() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_group_by_subquery");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_group_order_non_group_column() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_group_order_non_group_column");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_nullable_key_by() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_nullable_key_by");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_key_by_empty_is_absent() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_key_by_empty_is_absent");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_insert_by_value() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_insert_by_value");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_insert_on_duplicate_plus() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_insert_on_duplicate_plus");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_insert_set_plus() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_insert_set_plus");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_insert_set_minus() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_insert_set_minus");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_ip_eq_col_ip() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_ip_eq_col_ip");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_bool_gt_col() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_bool_gt_col");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_ip_gt_col() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_ip_gt_col");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_aes_eq_col() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_aes_eq_col");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_col_pair_integers() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_col_pair_integers");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_col_pair_integer_varchar() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_col_pair_integer_varchar");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_in_subquery_integer_varchar() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_in_subquery_integer_varchar");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_join_integer_varchar() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_join_integer_varchar");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_relation_integer_varchar() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_relation_integer_varchar");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_upsert_primary_and_unique_key() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_upsert_primary_and_unique_key");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_upsert_unique_key_not_assigned() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_upsert_unique_key_not_assigned");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_upsert_without_a_key() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_upsert_without_a_key");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_order_nullable_column() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_order_nullable_column");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_order_not_null_column() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_order_not_null_column");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_order_nullable_column_function() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_order_nullable_column_function");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_order_nullable_group_count() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_order_nullable_group_count");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_order_nullable_limit_per_parent() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_order_nullable_limit_per_parent");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_scalar_column_subquery() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_scalar_column_subquery");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_scalar_column_subquery_without_limit() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_scalar_column_subquery_without_limit");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_scalar_column_subquery_without_key_order() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_scalar_column_subquery_without_key_order");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_planner_rejects_in_subquery_limit() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("planner_rejects_in_subquery_limit");
+/// The cases of the suite, one test `planner::<case id>` per case.
+mod planner {
+    use super::*;
+
+    #[test]
+    fn planner_statement() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_statement");
+    }
+
+    #[test]
+    fn planner_count() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_count");
+    }
+
+    #[test]
+    fn planner_contains_binary_collation() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_contains_binary_collation");
+    }
+
+    #[test]
+    fn planner_contains_ascii_fold() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_contains_ascii_fold");
+    }
+
+    #[test]
+    fn planner_rejects_unknown_column() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_unknown_column");
+    }
+
+    #[test]
+    fn planner_restore() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_restore");
+    }
+
+    #[test]
+    fn planner_restore_rejects_non_key() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_restore_rejects_non_key");
+    }
+
+    #[test]
+    fn planner_restore_key_from_set() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_restore_key_from_set");
+    }
+
+    #[test]
+    fn planner_restore_extra_condition() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_restore_extra_condition");
+    }
+
+    #[test]
+    fn planner_restore_primary_key_first() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_restore_primary_key_first");
+    }
+
+    #[test]
+    fn planner_restore_first_unique_by_name() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_restore_first_unique_by_name");
+    }
+
+    #[test]
+    fn planner_tables() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_tables");
+    }
+
+    #[test]
+    fn planner_bind_types_select() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_bind_types_select");
+    }
+
+    #[test]
+    fn planner_bind_types_update() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_bind_types_update");
+    }
+
+    #[test]
+    fn planner_bind_types_insert() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_bind_types_insert");
+    }
+
+    #[test]
+    fn planner_time_select() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_time_select");
+    }
+
+    #[test]
+    fn planner_time_insert() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_time_insert");
+    }
+    #[test]
+    fn planner_uuid_select() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_uuid_select");
+    }
+
+    #[test]
+    fn planner_uuid_insert() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_uuid_insert");
+    }
+
+    #[test]
+    fn planner_clock_compare() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_clock_compare");
+    }
+
+    #[test]
+    fn planner_clock_insert() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_clock_insert");
+    }
+
+    #[test]
+    fn planner_parent_key_types() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_parent_key_types");
+    }
+
+    #[test]
+    fn planner_not_group() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_not_group");
+    }
+
+    #[test]
+    fn planner_rejects_top_not() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_top_not");
+    }
+
+    #[test]
+    fn planner_rejects_top_group_conn() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_top_group_conn");
+    }
+
+    #[test]
+    fn planner_rejects_first_item_conn() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_first_item_conn");
+    }
+
+    #[test]
+    fn planner_column_refs() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_column_refs");
+    }
+
+    #[test]
+    fn planner_rejects_ref_unknown_column() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_ref_unknown_column");
+    }
+
+    #[test]
+    fn planner_rejects_outer_ref_outside_subquery() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_outer_ref_outside_subquery");
+    }
+
+    #[test]
+    fn planner_ref_path_absent() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_ref_path_absent");
+    }
+
+    #[test]
+    fn planner_rejects_unjoined_ref() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_unjoined_ref");
+    }
+
+    #[test]
+    fn planner_group_by_count() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_group_by_count");
+    }
+
+    #[test]
+    fn planner_group_count_order_column() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_group_count_order_column");
+    }
+
+    #[test]
+    fn planner_group_count_order_column_function() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_group_count_order_column_function");
+    }
+
+    #[test]
+    fn planner_group_count_order_random() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_group_count_order_random");
+    }
+
+    #[test]
+    fn planner_rejects_group_by_all() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_group_by_all");
+    }
+
+    #[test]
+    fn planner_rejects_group_by_sum() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_group_by_sum");
+    }
+
+    #[test]
+    fn planner_rejects_group_by_join() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_group_by_join");
+    }
+
+    #[test]
+    fn planner_rejects_group_by_subquery() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_group_by_subquery");
+    }
+
+    #[test]
+    fn planner_rejects_group_order_non_group_column() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_group_order_non_group_column");
+    }
+
+    #[test]
+    fn planner_rejects_nullable_key_by() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_nullable_key_by");
+    }
+
+    #[test]
+    fn planner_key_by_empty_is_absent() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_key_by_empty_is_absent");
+    }
+
+    #[test]
+    fn planner_insert_by_value() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_insert_by_value");
+    }
+
+    #[test]
+    fn planner_insert_on_duplicate_plus() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_insert_on_duplicate_plus");
+    }
+
+    #[test]
+    fn planner_rejects_insert_set_plus() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_insert_set_plus");
+    }
+
+    #[test]
+    fn planner_rejects_insert_set_minus() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_insert_set_minus");
+    }
+
+    #[test]
+    fn planner_ip_eq_col_ip() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_ip_eq_col_ip");
+    }
+
+    #[test]
+    fn planner_rejects_bool_gt_col() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_bool_gt_col");
+    }
+
+    #[test]
+    fn planner_rejects_ip_gt_col() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_ip_gt_col");
+    }
+
+    #[test]
+    fn planner_rejects_aes_eq_col() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_aes_eq_col");
+    }
+
+    #[test]
+    fn planner_col_pair_integers() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_col_pair_integers");
+    }
+
+    #[test]
+    fn planner_rejects_col_pair_integer_varchar() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_col_pair_integer_varchar");
+    }
+
+    #[test]
+    fn planner_rejects_in_subquery_integer_varchar() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_in_subquery_integer_varchar");
+    }
+
+    #[test]
+    fn planner_rejects_join_integer_varchar() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_join_integer_varchar");
+    }
+
+    #[test]
+    fn planner_rejects_relation_integer_varchar() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_relation_integer_varchar");
+    }
+
+    #[test]
+    fn planner_rejects_upsert_primary_and_unique_key() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_upsert_primary_and_unique_key");
+    }
+
+    #[test]
+    fn planner_rejects_upsert_unique_key_not_assigned() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_upsert_unique_key_not_assigned");
+    }
+
+    #[test]
+    fn planner_rejects_upsert_without_a_key() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_upsert_without_a_key");
+    }
+
+    #[test]
+    fn planner_order_nullable_column() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_order_nullable_column");
+    }
+
+    #[test]
+    fn planner_order_not_null_column() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_order_not_null_column");
+    }
+
+    #[test]
+    fn planner_order_nullable_column_function() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_order_nullable_column_function");
+    }
+
+    #[test]
+    fn planner_order_nullable_group_count() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_order_nullable_group_count");
+    }
+
+    #[test]
+    fn planner_order_nullable_limit_per_parent() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_order_nullable_limit_per_parent");
+    }
+
+    #[test]
+    fn planner_scalar_column_subquery() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_scalar_column_subquery");
+    }
+
+    #[test]
+    fn planner_rejects_scalar_column_subquery_without_limit() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_scalar_column_subquery_without_limit");
+    }
+
+    #[test]
+    fn planner_rejects_scalar_column_subquery_without_key_order() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_scalar_column_subquery_without_key_order");
+    }
+
+    #[test]
+    fn planner_rejects_in_subquery_limit() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_in_subquery_limit");
+    }
+
+    #[test]
+    fn param_uses_column_function() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        super::run_param_uses("param_uses_column_function");
+    }
+
+    #[test]
+    fn param_uses_interval() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        super::run_param_uses("param_uses_interval");
+    }
+
+    #[test]
+    fn param_uses_contains() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        super::run_param_uses("param_uses_contains");
+    }
+
+    #[test]
+    fn param_uses_if_parent() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        super::run_param_uses("param_uses_if_parent");
+    }
+
+    #[test]
+    fn param_uses_optimistic() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        super::run_param_uses("param_uses_optimistic");
+    }
 }
 
 /// param_uses case: validates the request and compares the uses of each parameter.
@@ -594,39 +561,4 @@ fn run_param_uses(id: &str) {
         })
         .collect();
     assert_eq!(json!(got), expected["uses"], "{id}: param uses");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_param_uses_column_function() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run_param_uses("param_uses_column_function");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_param_uses_interval() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run_param_uses("param_uses_interval");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_param_uses_contains() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run_param_uses("param_uses_contains");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_param_uses_if_parent() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run_param_uses("param_uses_if_parent");
-}
-
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_param_uses_optimistic() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run_param_uses("param_uses_optimistic");
 }

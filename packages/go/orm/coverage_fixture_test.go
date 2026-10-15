@@ -62,3 +62,35 @@ func decodeFixture(t *testing.T, raw json.RawMessage, out any) {
 		t.Fatalf("fixture value %s: %v", raw, err)
 	}
 }
+
+// runFixtureCases runs every case of the feature fixture, in file order, as a subtest named by its
+// id with the test of that id in tests. A case without a test, or a test whose id is no case of
+// the fixture, fails the run, so the suite and the tests stay the same set.
+func runFixtureCases(t *testing.T, feature string, tests map[string]func(*testing.T)) {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", feature+".json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixture struct {
+		Cases []fixtureCase `json:"cases"`
+	}
+	if err := json.Unmarshal(raw, &fixture); err != nil {
+		t.Fatalf("%s fixture: %v", feature, err)
+	}
+	seen := map[string]bool{}
+	for _, c := range fixture.Cases {
+		seen[c.ID] = true
+		test, ok := tests[c.ID]
+		if !ok {
+			t.Errorf("%s case %s has no test", feature, c.ID)
+			continue
+		}
+		t.Run(c.ID, test)
+	}
+	for id := range tests {
+		if !seen[id] {
+			t.Errorf("%s has no case %s for its test", feature, id)
+		}
+	}
+}

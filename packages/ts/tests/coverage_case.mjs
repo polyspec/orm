@@ -1,7 +1,10 @@
 // feature coverage test 의 공용 실행부. checker 는 `node <file> <case id>...` 로 실행하고
 // 출력 전체가 `CASE <id> PASS` 줄뿐이어야 하므로, 요청한 case 만 순서대로 실행하고 통과한
 // case 마다 그 한 줄만 쓴다. 실패는 throw 해서 process 가 0 아닌 code 로 끝난다.
+// case ID 없이 실행하면(parity check 의 `node --test <file>`) suite 의 case 마다 그 ID 의
+// top-level node:test test 를 등록한다.
 import { createRequire } from 'node:module';
+import { caseTest } from '../../../tests/testcase.mts';
 
 const require = createRequire(new URL('../package.json', import.meta.url));
 
@@ -9,13 +12,19 @@ const require = createRequire(new URL('../package.json', import.meta.url));
 export const repositoryRoot = new URL('../../..', import.meta.url).pathname;
 
 /**
- * Runs exactly the case IDs of the command line in their order; an unknown,
- * repeated or missing ID is an error. Each case is stopped after timeoutMs of
- * wall-clock time, because it waits on a database or another process.
+ * Runs exactly the case IDs of the command line in their order; an unknown or
+ * repeated ID is an error. Each case is stopped after timeoutMs of wall-clock
+ * time, because it waits on a database or another process. Without an ID, each
+ * case of suite (the cases of the shared vector suite the file is bound to,
+ * cases by default) is a top-level node:test test named by its ID, in order.
  */
-export async function runCases(file, cases, timeoutMs) {
+export async function runCases(file, cases, timeoutMs, suite = cases) {
   const requested = process.argv.slice(2);
-  if (requested.length === 0 || new Set(requested).size !== requested.length ||
+  if (requested.length === 0) {
+    for (const [id, body] of Object.entries(suite)) caseTest(id, timeoutMs, () => body());
+    return;
+  }
+  if (new Set(requested).size !== requested.length ||
       requested.some(id => !Object.hasOwn(cases, id))) {
     throw new Error(`usage: ${file} ${Object.keys(cases).join('|')}...; got ${JSON.stringify(requested)}`);
   }

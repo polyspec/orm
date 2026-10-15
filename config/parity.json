@@ -7,7 +7,7 @@
       "runner": "go",
       "roots": ["packages/go", "tests/interfaces/contracts"],
       "tests": ["packages/go/**/coverage_*_test.go"],
-      "args": ["-tags", "physical,ormtest,markdown"],
+      "args": ["-tags", "physical,ormtest,markdown,featurecoverage"],
       "errors": { "file": "packages/go/orm/codes.go", "pattern": "^\\tCode\\w+\\s+= \"(\\w+)\"" }
     },
     {
@@ -90,11 +90,11 @@
       "id": "authenticated-encryption", "kind": "suite", "profile": "client",
       "file": "contracts/fixtures/authenticated_encryption.json", "cases": "$.cases[*].id",
       "bindings": [
-        { "implementation": "go", "test": "packages/go/orm/coverage_authenticated_encryption_test.go", "symbol": "TestCoverageAesEnvelopeDecrypt" },
+        { "implementation": "go", "test": "packages/go/orm/coverage_authenticated_encryption_test.go", "symbol": "TestCoverageAuthenticatedEncryption" },
         { "implementation": "php", "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/coverage_authenticated_encryption.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_authenticated_encryption.py" },
-        { "implementation": "rust", "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs", "symbol": "coverage_aes_envelope_decrypt" }
+        { "implementation": "rust", "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs", "symbol": "authenticated_encryption" }
       ]
     },
     {
@@ -123,11 +123,11 @@
       "id": "planner", "kind": "suite", "profile": "client",
       "file": "contracts/fixtures/planner.json", "cases": "$.cases[*].id",
       "bindings": [
-        { "implementation": "go", "test": "packages/go/orm/coverage_planner_test.go", "symbol": "TestCoveragePlannerStatement" },
+        { "implementation": "go", "test": "packages/go/orm/coverage_planner_test.go", "symbol": "TestCoveragePlanner" },
         { "implementation": "php", "test": "packages/php/tests/CoveragePlannerTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/coverage_planner.mjs" },
         { "implementation": "python", "test": "packages/python/tests/coverage_planner.py" },
-        { "implementation": "rust", "test": "packages/rust/orm/tests/unit/coverage_planner.rs", "symbol": "engine::coverage_planner::coverage_planner_statement" }
+        { "implementation": "rust", "test": "packages/rust/orm/tests/unit/coverage_planner.rs", "symbol": "engine::coverage_planner::planner" }
       ]
     },
     {
@@ -135,11 +135,11 @@
       "file": "contracts/fixtures/schema_definition.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "php-extension", "test": "packages/php-ext/tests/CoverageSchemaDefinitionTest.php" },
-        { "implementation": "go", "test": "packages/go/orm/coverage_schema_definition_test.go", "symbol": "TestCoverageDbspecEmitRoundTrip" },
+        { "implementation": "go", "test": "packages/go/orm/coverage_schema_definition_test.go", "symbol": "TestCoverageSchemaDefinition" },
         { "implementation": "php", "test": "packages/php/tests/CoverageSchemaDefinitionTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/coverage_schema_definition.mjs" },
         { "implementation": "python", "test": "packages/python/tests/coverage_schema_definition.py" },
-        { "implementation": "rust", "test": "packages/rust/schema/tests/coverage_schema_definition.rs", "symbol": "coverage_dbspec_emit_round_trip" }
+        { "implementation": "rust", "test": "packages/rust/schema/tests/coverage_schema_definition.rs", "symbol": "schema_definition" }
       ]
     },
     {
@@ -150,7 +150,7 @@
         { "implementation": "php", "test": "packages/php/tests/StyledValueTest.php", "symbol": "StyledValueTest::test_styled_value" },
         { "implementation": "typescript", "test": "packages/ts/tests/styled-value.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_styled_column_states.py" },
-        { "implementation": "rust", "test": "packages/rust/orm/src/codec.rs", "symbol": "codec::tests::styled_column_state_fixture_preserves_stored_values" }
+        { "implementation": "rust", "test": "packages/rust/orm/tests/codec_vectors.rs", "symbol": "styled_column_state_fixture" }
       ]
     },
     {
@@ -172,7 +172,7 @@
         { "implementation": "php", "test": "packages/php/tests/CodecVectorsTest.php", "symbol": "CodecVectorsTest::test_php_vector" },
         { "implementation": "typescript", "test": "packages/ts/tests/codec-vector.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_codec_vectors.py" },
-        { "implementation": "rust", "test": "packages/rust/orm/src/codec.rs", "symbol": "codec::tests::vectors" }
+        { "implementation": "rust", "test": "packages/rust/orm/tests/codec_vectors.rs", "symbol": "vectors" }
       ]
     },
     {
@@ -194,7 +194,7 @@
         { "implementation": "php", "test": "packages/php/tests/HostcodecTest.php", "symbol": "HostcodecTest::test_decode_vector" },
         { "implementation": "typescript", "test": "packages/ts/tests/codec-decode-vector.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_codec_decode_vectors.py" },
-        { "implementation": "rust", "test": "packages/rust/orm/src/codec.rs", "symbol": "codec::tests::decode_vectors" }
+        { "implementation": "rust", "test": "packages/rust/orm/tests/codec_vectors.rs", "symbol": "decode_vectors" }
       ]
     },
     {
@@ -212,33 +212,33 @@
       "id": "conformance-mysql", "kind": "suite", "profile": "client",
       "file": "tests/conformance/vectors.json", "cases": "$.vectors[*].name",
       "bindings": [
-        { "implementation": "go", "test": "packages/go/model/coverage_conformance_verification_test.go", "symbol": "TestCoverageConformanceVector" },
+        { "implementation": "go", "test": "packages/go/model/coverage_conformance_verification_test.go", "symbol": "TestCoverageConformanceMySQL" },
         { "implementation": "php", "test": "packages/php/tests/CoverageConformanceVerificationTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/coverage_conformance_verification.mjs" },
+        { "implementation": "typescript", "test": "packages/ts/tests/coverage_conformance_mysql.mjs" },
         { "implementation": "python", "test": "tests/conformance/runner_python.py" },
-        { "implementation": "rust", "test": "packages/rust/tests/tests/coverage_conformance_verification.rs", "symbol": "coverage_conformance_vector" }
+        { "implementation": "rust", "test": "packages/rust/tests/tests/coverage_conformance_verification.rs", "symbol": "conformance_mysql" }
       ]
     },
     {
       "id": "conformance-postgres", "kind": "suite", "profile": "client",
       "file": "tests/conformance/vectors.postgres.json", "cases": "$.vectors[*].name",
       "bindings": [
-        { "implementation": "go", "test": "packages/go/model/coverage_conformance_verification_test.go", "symbol": "TestCoverageConformanceVector" },
+        { "implementation": "go", "test": "packages/go/model/coverage_conformance_verification_test.go", "symbol": "TestCoverageConformancePostgres" },
         { "implementation": "php", "test": "packages/php/tests/CoverageConformanceVerificationTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/coverage_conformance_verification.mjs" },
+        { "implementation": "typescript", "test": "packages/ts/tests/coverage_conformance_postgres.mjs" },
         { "implementation": "python", "test": "tests/conformance/runner_python.py" },
-        { "implementation": "rust", "test": "packages/rust/tests/tests/coverage_conformance_verification.rs", "symbol": "coverage_conformance_vector" }
+        { "implementation": "rust", "test": "packages/rust/tests/tests/coverage_conformance_verification.rs", "symbol": "conformance_postgres" }
       ]
     },
     {
       "id": "conformance-sqlite", "kind": "suite", "profile": "client",
       "file": "tests/conformance/vectors.sqlite.json", "cases": "$.vectors[*].name",
       "bindings": [
-        { "implementation": "go", "test": "packages/go/model/coverage_conformance_verification_test.go", "symbol": "TestCoverageConformanceVector" },
+        { "implementation": "go", "test": "packages/go/model/coverage_conformance_verification_test.go", "symbol": "TestCoverageConformanceSQLite" },
         { "implementation": "php", "test": "packages/php/tests/CoverageConformanceVerificationTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/coverage_conformance_verification.mjs" },
+        { "implementation": "typescript", "test": "packages/ts/tests/coverage_conformance_sqlite.mjs" },
         { "implementation": "python", "test": "tests/conformance/runner_python.py" },
-        { "implementation": "rust", "test": "packages/rust/tests/tests/coverage_conformance_verification.rs", "symbol": "coverage_conformance_vector" }
+        { "implementation": "rust", "test": "packages/rust/tests/tests/coverage_conformance_verification.rs", "symbol": "conformance_sqlite" }
       ]
     },
     {
@@ -508,11 +508,11 @@
       "id": "statement-events", "kind": "suite", "profile": "client",
       "file": "tests/events/vectors.json", "cases": "$.cases[*].id",
       "bindings": [
-        { "implementation": "go", "test": "packages/go/orm/coverage_statement_events_test.go", "symbol": "TestCoverageStatementEvents" },
+        { "implementation": "go", "test": "packages/go/orm/statement_events_test.go", "symbol": "TestStatementEvents" },
         { "implementation": "php", "test": "packages/php/tests/CoverageStatementEventsTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/coverage_statement_events.mjs" },
         { "implementation": "python", "test": "packages/python/tests/statement_events.py" },
-        { "implementation": "rust", "test": "packages/rust/orm/tests/statement_events.rs", "symbol": "coverage_statement_events" }
+        { "implementation": "rust", "test": "packages/rust/orm/tests/statement_events.rs", "symbol": "statement_events" }
       ]
     },
     {

@@ -42,61 +42,61 @@ fn decrypt(input: &Value) -> polyspec_orm::Result<Vec<u8>> {
     aes_decrypt(&envelope, text(input, "key"))
 }
 
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_aes_envelope_decrypt() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("aes_envelope_decrypt", || {
-        let (input, expected) = case("aes_envelope_decrypt", "aes_decrypt");
-        let plain = decrypt(&input).unwrap_or_else(|e| panic!("decrypt: {e}"));
-        assert_eq!(String::from_utf8(plain).expect("UTF-8 plain text"), text(&expected, "plain"));
-    });
-}
+/// The cases of the suite, one test `authenticated_encryption::<case id>` per case.
+mod authenticated_encryption {
+    use super::*;
 
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_aes_round_trip() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("aes_round_trip", || {
-        let (input, expected) = case("aes_round_trip", "aes_encrypt_decrypt");
-        let key = text(&input, "key");
-        let envelope = aes_encrypt(text(&input, "plain").as_bytes(), key);
-        assert!(hex_upper(&envelope).starts_with(text(&expected, "prefix_hex")), "envelope prefix: {}", hex_upper(&envelope));
-        assert_eq!(Some(envelope.len() as u64), expected["envelope_bytes"].as_u64(), "envelope length");
-        let plain = aes_decrypt(&envelope, key).unwrap_or_else(|e| panic!("decrypt: {e}"));
-        assert_eq!(String::from_utf8(plain).expect("UTF-8 plain text"), text(&expected, "plain"));
-    });
-}
+    #[test]
+    fn aes_envelope_decrypt() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("aes_envelope_decrypt", || {
+            let (input, expected) = case("aes_envelope_decrypt", "aes_decrypt");
+            let plain = decrypt(&input).unwrap_or_else(|e| panic!("decrypt: {e}"));
+            assert_eq!(String::from_utf8(plain).expect("UTF-8 plain text"), text(&expected, "plain"));
+        });
+    }
 
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_aes_tamper_rejected() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("aes_tamper_rejected", || {
-        let (input, expected) = case("aes_tamper_rejected", "aes_decrypt");
-        let error = decrypt(&input).expect_err("a tampered envelope must not decrypt");
-        assert_eq!(error.code(), text(&expected, "error"));
-    });
-}
+    #[test]
+    fn aes_round_trip() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("aes_round_trip", || {
+            let (input, expected) = case("aes_round_trip", "aes_encrypt_decrypt");
+            let key = text(&input, "key");
+            let envelope = aes_encrypt(text(&input, "plain").as_bytes(), key);
+            assert!(hex_upper(&envelope).starts_with(text(&expected, "prefix_hex")), "envelope prefix: {}", hex_upper(&envelope));
+            assert_eq!(Some(envelope.len() as u64), expected["envelope_bytes"].as_u64(), "envelope length");
+            let plain = aes_decrypt(&envelope, key).unwrap_or_else(|e| panic!("decrypt: {e}"));
+            assert_eq!(String::from_utf8(plain).expect("UTF-8 plain text"), text(&expected, "plain"));
+        });
+    }
 
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_aes_wrong_key_rejected() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("aes_wrong_key_rejected", || {
-        let (input, expected) = case("aes_wrong_key_rejected", "aes_decrypt");
-        let error = decrypt(&input).expect_err("another key must not decrypt");
-        assert_eq!(error.code(), text(&expected, "error"));
-    });
-}
+    #[test]
+    fn aes_tamper_rejected() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("aes_tamper_rejected", || {
+            let (input, expected) = case("aes_tamper_rejected", "aes_decrypt");
+            let error = decrypt(&input).expect_err("a tampered envelope must not decrypt");
+            assert_eq!(error.code(), text(&expected, "error"));
+        });
+    }
 
-#[test]
-#[ignore = "run by feature-check"]
-fn coverage_blind_index_vector() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    run("blind_index_vector", || {
-        let (input, expected) = case("blind_index_vector", "blind_index");
-        let index = blind_index(&Param::Str(text(&input, "plain").to_owned()), text(&input, "key")).unwrap_or_else(|e| panic!("blind index: {e}"));
-        assert_eq!(index, text(&expected, "index"));
-    });
+    #[test]
+    fn aes_wrong_key_rejected() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("aes_wrong_key_rejected", || {
+            let (input, expected) = case("aes_wrong_key_rejected", "aes_decrypt");
+            let error = decrypt(&input).expect_err("another key must not decrypt");
+            assert_eq!(error.code(), text(&expected, "error"));
+        });
+    }
+
+    #[test]
+    fn blind_index_vector() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("blind_index_vector", || {
+            let (input, expected) = case("blind_index_vector", "blind_index");
+            let index = blind_index(&Param::Str(text(&input, "plain").to_owned()), text(&input, "key")).unwrap_or_else(|e| panic!("blind index: {e}"));
+            assert_eq!(index, text(&expected, "index"));
+        });
+    }
 }

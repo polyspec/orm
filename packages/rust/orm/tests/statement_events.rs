@@ -261,30 +261,31 @@ async fn run_cases(driver: &'static str) {
     }
 }
 
-#[tokio::test]
-async fn statement_events_mysql() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    run_cases("mysql").await;
-}
-
-#[tokio::test]
-async fn statement_events_postgres() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    run_cases("postgres").await;
-}
-
-#[tokio::test]
-async fn statement_events_sqlite() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    run_cases("sqlite").await;
+/// The cases of tests/events/vectors.json, one trial `statement_events::<case id>` per case, each run on MySQL,
+/// PostgreSQL and SQLite in a case database of its own.
+fn statement_events() -> Vec<polyspec_orm_testcase::Trial> {
+    let vector: Value = serde_json::from_str(VECTOR).expect("tests/events/vectors.json");
+    vector["cases"]
+        .as_array()
+        .expect("vector cases")
+        .iter()
+        .map(|case| {
+            let case = case.clone();
+            let id = case["id"].as_str().expect("case id").to_owned();
+            polyspec_orm_testcase::async_trial(format!("statement_events::{id}"), polyspec_orm_testcase::DATABASE, move || async move {
+                for driver in ["mysql", "postgres", "sqlite"] {
+                    polyspec_orm_testcase::step(format_args!("{driver}: case {id}"));
+                    run_case(driver, &case).await;
+                }
+            })
+        })
+        .collect()
 }
 
 /// statement_events coverage: feature-check가 고른 database(ORM_FEATURE_DATABASE)에서
 /// vector의 모든 case를 case마다 새 case database로 실행한다. bench database는 읽거나 쓰지 않는다.
-#[tokio::test]
-#[ignore = "run by feature-check"]
+/// It is an ignored trial, which feature-check runs with --include-ignored.
 async fn coverage_statement_events() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let driver = match std::env::var("ORM_FEATURE_DATABASE").as_deref() {
         Ok("mysql") => "mysql",
         Ok("postgres") => "postgres",
@@ -299,9 +300,7 @@ async fn coverage_statement_events() {
 /// 1이므로 모든 statement가 한 backend에서 실행된다. probe는 같은 pool에서 sqlx로 보내므로 event가
 /// 없다. sqlx는 연결에서 처음 보내는 statement text를 실행 전에 자기 round trip으로 prepare하므로,
 /// rust가 first_run_prepare_clients에 있으면 첫 실행은 event 수에 statement text 수를 더한다.
-#[tokio::test]
 async fn statement_events_server_transactions() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let vector: Value = serde_json::from_str(VECTOR).expect("tests/events/vectors.json");
     let spec = &vector["server_transactions"];
     let listed = |key: &str| spec[key].as_array().unwrap_or_else(|| panic!("{key}")).iter().any(|c| c == "rust");
@@ -363,4 +362,17 @@ async fn statement_events_server_transactions() {
     };
     tokio::time::timeout(CASE_DEADLINE, run).await.unwrap_or_else(|_| panic!("server_transactions: timeout after {CASE_DEADLINE:?}"));
     database.drop().await;
+}
+
+fn main() {
+    let mut trials = statement_events();
+    trials.push(
+        polyspec_orm_testcase::async_trial("coverage_statement_events", polyspec_orm_testcase::DATABASE, coverage_statement_events).with_ignored_flag(true),
+    );
+    trials.push(polyspec_orm_testcase::async_trial(
+        "statement_events_server_transactions",
+        polyspec_orm_testcase::DATABASE,
+        statement_events_server_transactions,
+    ));
+    polyspec_orm_testcase::run_in_order(trials);
 }

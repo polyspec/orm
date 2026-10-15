@@ -86,6 +86,11 @@ path = "tests/decimal_model.rs"
 harness = false
 
 [[test]]
+name = "statement_events"
+path = "tests/statement_events.rs"
+harness = false
+
+[[test]]
 name = "identity_load"
 path = "tests/identity_load.rs"
 harness = false
