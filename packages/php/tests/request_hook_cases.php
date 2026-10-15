@@ -42,10 +42,10 @@ function requestHookModels(): void
     Generator::generate(RuntimeModel::build(RuntimeModel::parse(['request_hook.dbs' => $schemaText])), "$work/models", 'Polyspec\\Orm\\Tests\\RequestHookCase');
     spl_autoload_register(static function (string $class) use ($work): void {
         if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\RequestHookCase\\')) {
-            require "$work/models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\RequestHookCase\\')) . '.php';
+            require_once "$work/models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\RequestHookCase\\')) . '.php';
         }
     });
-    require "$work/models/bootstrap.php";
+    require_once "$work/models/bootstrap.php";
 }
 
 const READ_KINDS = ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate'];

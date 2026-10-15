@@ -80,7 +80,9 @@ final class SchemaSetTest extends TestCase
             exec('rm -rf ' . escapeshellarg(self::$work));
         });
 
-        self::$decimalDocuments = [(string) file_get_contents(self::$root . "/contracts/fixtures/decimal_schema.dbs")];
+        // The schema set has its own manifest header: the decimal fixture of DecimalModelDbTest is generated in this process too,
+        // and the registry refuses one manifest under two namespaces.
+        self::$decimalDocuments = [str_replace("dbspec 1 decimal_schema\n", "dbspec 1 schema_set_decimal\n", (string) file_get_contents(self::$root . "/contracts/fixtures/decimal_schema.dbs"))];
         self::$decimalModel = RuntimeModel::build(RuntimeModel::parse(['decimal_schema.dbs' => self::$decimalDocuments[0]]));
         Generator::generate(self::$decimalModel, self::$work . "/decimal", 'Polyspec\\Orm\\Tests\\SchemaSetDecimal');
         self::autoload(self::$work . "/decimal", 'Polyspec\\Orm\\Tests\\SchemaSetDecimal');

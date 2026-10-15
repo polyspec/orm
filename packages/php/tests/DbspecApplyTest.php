@@ -1,5 +1,7 @@
 <?php
 declare(strict_types=1);
+
+require_once __DIR__ . '/coverage_cases.php';
 // Applies the plans.json chains through Polyspec\Orm\Dbspec\Dbspec::apply, ::recover,
 // ::rollback and ::finalize on MySQL, PostgreSQL and SQLite (docs/plans.md
 // "Apply"): the chain of create-from-empty and rename-table-and-column with
@@ -33,7 +35,7 @@ const APPLY_CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgr
 /** The server DSNs: the scenarios check locks and session settings on the server, not through the pooler. */
 function apply_dsns(): array
 {
-    $dsns = ['mysql' => getenv('ORM_TEST_MYSQL_SERVER_DSN'), 'postgres' => getenv('ORM_TEST_POSTGRES_SERVER_DSN')];
+    $dsns = ['mysql' => requiredDsn('ORM_TEST_MYSQL_SERVER_DSN'), 'postgres' => requiredDsn('ORM_TEST_POSTGRES_SERVER_DSN')];
     foreach ($dsns as $dsn) {
         if (!is_string($dsn) || $dsn === '') {
             throw new RuntimeException('ORM_TEST_MYSQL_SERVER_DSN and ORM_TEST_POSTGRES_SERVER_DSN are required; pass TEST_ENV');
@@ -527,8 +529,8 @@ final class DbspecApplyTest extends TestCase
     public function test_pooler(string $name): void
     {
         $scenario = apply_scenarios()['pooler'][$name];
-        $serverDsn = getenv('ORM_TEST_POSTGRES_SERVER_DSN');
-        $poolerDsn = getenv('ORM_TEST_PGBOUNCER_DSN');
+        $serverDsn = requiredDsn('ORM_TEST_POSTGRES_SERVER_DSN');
+        $poolerDsn = requiredDsn('ORM_TEST_PGBOUNCER_DSN');
         if (!is_string($serverDsn) || $serverDsn === '' || !is_string($poolerDsn) || $poolerDsn === '') {
             throw new RuntimeException('ORM_TEST_POSTGRES_SERVER_DSN and ORM_TEST_PGBOUNCER_DSN are required; pass TEST_ENV');
         }

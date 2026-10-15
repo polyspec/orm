@@ -1,5 +1,7 @@
 <?php
 declare(strict_types=1);
+
+require_once __DIR__ . '/coverage_cases.php';
 // Model integration test on SQLite, MySQL and PostgreSQL. A case that installs
 // the schema runs in a case database of its own (case_database.php) created
 // through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the cases that only
@@ -94,7 +96,7 @@ final class ModelTest extends TestCase
         // 만들지 않는다. schema를 설치하는 case는 caseDsn()으로 자기 case database를 받는다.
         self::$targets = ['sqlite' => "sqlite://" . self::$work . "/model.sqlite"];
         foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $env) {
-            $v = getenv($env);
+            $v = requiredDsn($env);
             if ($v === false || $v === '') {
                 throw new RuntimeException("$env is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers");
             }
@@ -210,7 +212,7 @@ final class ModelTest extends TestCase
         self::check((new Author)($db)->photoUrl(null)->getCount() === 2, 'null');
         self::check((new Author)($db)->nePhotoUrl(null)->andLkName('lph')->getCount() === 1, 'not null and like');
         self::check((new Author)($db)->betweenReadCount([10, 20])->getCount() === 2, 'between');
-        self::check((new Author)($db)->gtStartDt(self::$start->modify('+90 minutes'))->getCount() === 2, 'time compare');
+        self::check((new Author)($db)->gtStartDt(self::$start->modify('+90 minutes')->format('Y-m-d H:i:s'))->getCount() === 2, 'time compare');
         $one = (new Author)($db)->getByName('gamma');
         self::check($one !== null && $one->getReadCount() === 20, 'getBy');
         self::check(self::code(static fn() => (new Author)($db)->getByName('missing')) === 'NO_ROWS', 'get without a row');
@@ -580,7 +582,7 @@ final class ModelTest extends TestCase
         $created = (new Author)($db)
             ->setName('zone')->setUserSeq($f['users'][0]->getSeq())->setServiceSeq($f['service']->getSeq())
             ->setServiceRegionSeq($f['module']->getSeq())->setServiceMemberSeq($f['member']->getSeq())
-            ->setStartDt($midnight->format('Y-m-d H:i:s'))->setEndDt($midnight->modify('+1 day')->format('Y-m-d H:i:s'))->create();
+            ->setStartDt($midnight->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'))->setEndDt($midnight->modify('+1 day')->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'))->create();
         $row = (new Author)($db)->getBySeq($created->getSeq());
         self::check($row !== null, 'row');
         $start = $row->getStartDt();
@@ -588,7 +590,7 @@ final class ModelTest extends TestCase
         $ts = $row->getCreatedTs();
         self::check(abs($ts->getTimestamp() - $before->getTimestamp()) < 60, 'created_ts ' . $ts->format(DATE_ATOM) . ' at ' . $before->format(DATE_ATOM));
         self::check($ts->getOffset() === 0, 'created_ts zone ' . $ts->format(DATE_ATOM));
-        self::check((new Author)($db)->startDt($midnight)->getCount() === 1, 'equality filter');
+        self::check((new Author)($db)->startDt($midnight->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'))->getCount() === 1, 'equality filter');
         self::check((new Author)($db)->startDt('2026-01-02 00:00:00')->getCount() === 1, 'equality filter by text');
         self::check((new Author)($db)->startDt('2026-01-02T00:00:00.0')->getCount() === 1, 'equality filter by text with fraction');
         self::check((new Author)($db)->startDt(['2026-01-02 00:00:00', '2026-01-03 00:00:00'])->getCount() === 1, 'in filter by text');
@@ -800,7 +802,7 @@ final class ModelTest extends TestCase
         $probeSetup = null;
         $probeTable = null;
         try {
-            $single = getenv('ORM_TEST_PGBOUNCER_SINGLE_DSN');
+            $single = requiredDsn('ORM_TEST_PGBOUNCER_SINGLE_DSN');
             if ($single === false || $single === '') {
                 throw new RuntimeException('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers');
             }
@@ -887,7 +889,7 @@ final class ModelTest extends TestCase
     public function test_primary_and_replica(string $driver): void
     {
         $env = strtoupper($driver);
-        $replica = getenv("ORM_TEST_{$env}_REPLICA_DSN");
+        $replica = requiredDsn("ORM_TEST_{$env}_REPLICA_DSN");
         if ($replica === false || $replica === '') {
             throw new RuntimeException("ORM_TEST_{$env}_REPLICA_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers");
         }

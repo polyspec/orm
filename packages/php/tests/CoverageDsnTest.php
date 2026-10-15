@@ -16,14 +16,17 @@ final class CoverageDsnTest extends TestCase
 {
     public function test_dsn_connection(): void
     {
-        [$driver, $dsn] = coverageDatabase();
-        $this->assertSame(Code::CONFIG, coverageCode(static fn() => Orm::parseDsn('invalid://database')), 'unsupported DSN scheme');
-        $db = Orm::connect($dsn, new Config());
-        try {
-            $this->assertSame($driver, $db->driver(), 'DSN selected the wrong database');
-            $this->assertSame(1, (int) $db->pdo()->query('SELECT 1')->fetchColumn(), 'DSN selected the wrong connection');
-        } finally {
-            $db->close();
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            [$driver, $dsn] = coverageItem();
+            $this->assertSame(Code::CONFIG, coverageCode(static fn() => Orm::parseDsn('invalid://database')), 'unsupported DSN scheme');
+            $db = Orm::connect($dsn, new Config());
+            try {
+                $this->assertSame($driver, $db->driver(), 'DSN selected the wrong database');
+                $this->assertSame(1, (int) $db->pdo()->query('SELECT 1')->fetchColumn(), 'DSN selected the wrong connection');
+            } finally {
+                $db->close();
+            }
         }
     }
 }

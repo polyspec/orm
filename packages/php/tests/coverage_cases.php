@@ -8,18 +8,59 @@ use Polyspec\Orm\Db;
 use Polyspec\Orm\OrmException;
 
 /**
- * checker가 고른 database와 DSN이다. 둘 중 하나라도 없으면 실패한다.
+ * The coverage items of a test file from the feature resolver (scripts/features/coverage.mts --items, the form the Python
+ * readers use): one [database, dsn] for each database the manifest lists for the file. A DSN variable that is unset fails
+ * with its name, from the resolver.
  *
- * @return array{string, string}
+ * @return list<array{string, ?string}>
  */
-function coverageDatabase(): array
+function coverageItemsOf(string $testFile): array
 {
-    $driver = getenv('ORM_FEATURE_DATABASE');
-    $dsn = getenv('ORM_FEATURE_DSN');
-    if (!is_string($driver) || !in_array($driver, ['mysql', 'postgres', 'sqlite'], true) || !is_string($dsn) || $dsn === '') {
-        throw new RuntimeException('ORM_FEATURE_DATABASE and ORM_FEATURE_DSN are required');
+    $root = realpath(dirname(__DIR__, 3));
+    $relative = substr((string) realpath($testFile), strlen((string) $root) + 1);
+    $process = proc_open(['node', "$root/scripts/features/coverage.mts", '--items', $relative], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $root);
+    if (!is_resource($process)) {
+        throw new RuntimeException("cannot run the coverage resolver for $relative");
     }
-    return [$driver, $dsn];
+    $text = stream_get_contents($pipes[1]);
+    $errors = stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    $status = proc_close($process);
+    if ($status !== 0) {
+        throw new RuntimeException("coverage items of $relative: " . trim((string) $errors));
+    }
+    $items = [];
+    foreach (json_decode((string) $text, true, 512, JSON_THROW_ON_ERROR) as $item) {
+        $items[] = [$item['database'], $item['dsn'] ?? null];
+    }
+    return $items;
+}
+
+/** The item that the running test method selected; a test method selects each item of the resolver in turn. */
+function selectCoverageItem(array $item): void
+{
+    $GLOBALS['orm_coverage_item'] = $item;
+}
+
+/** @return array{string, ?string} the item the running test method selected */
+function coverageItem(): array
+{
+    $item = $GLOBALS['orm_coverage_item'] ?? null;
+    if (!is_array($item)) {
+        throw new RuntimeException('no coverage item is selected; a test method runs each item of coverageItemsOf(__FILE__)');
+    }
+    return $item;
+}
+
+/** A DSN variable of the test servers' environment; unset fails with its name, and a database test never skips. */
+function requiredDsn(string $name): string
+{
+    $value = getenv($name);
+    if (!is_string($value) || $value === '') {
+        throw new RuntimeException("$name is not set; run the test through make test-servers or its make target");
+    }
+    return $value;
 }
 
 /** seed된 bench database의 AES와 blind index key로 연결한다(scripts/bench-db.sh). */

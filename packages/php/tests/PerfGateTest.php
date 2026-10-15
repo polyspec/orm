@@ -9,6 +9,8 @@
 // ORM_PERF_CPU_LOAD=1 runs the gate beside one busy process per CPU.
 declare(strict_types=1);
 
+require_once __DIR__ . '/coverage_cases.php';
+
 require_once __DIR__ . '/perf_extensions.php';
 
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -34,7 +36,7 @@ final class PerfGateTest extends TestCase
         if ($refused !== []) {
             throw new RuntimeException('perf_gate: this PHP loads ' . implode(', ', $refused) . '; the gate measures PHP without a debugger or coverage driver (shivammathur/setup-php coverage: none)');
         }
-        $benchDsn = getenv('ORM_BENCH_MYSQL_DSN');
+        $benchDsn = requiredDsn('ORM_BENCH_MYSQL_DSN');
         if ($benchDsn === false || $benchDsn === '') {
             throw new RuntimeException('ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database, and the gate never skips; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run');
         }

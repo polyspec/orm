@@ -31,23 +31,16 @@ final class CoverageCasesTest extends TestCase
 
     public function test_requires_the_selected_database(): void
     {
-        $saved = [getenv('ORM_FEATURE_DATABASE'), getenv('ORM_FEATURE_DSN')];
+        $GLOBALS['orm_coverage_item'] = null;
         try {
-            putenv('ORM_FEATURE_DATABASE');
-            putenv('ORM_FEATURE_DSN');
-            try {
-                coverageDatabase();
-                $this->fail('coverageDatabase accepted no database');
-            } catch (RuntimeException $e) {
-                $this->assertSame('ORM_FEATURE_DATABASE and ORM_FEATURE_DSN are required', $e->getMessage(), 'missing');
-            }
-            putenv('ORM_FEATURE_DATABASE=sqlite');
-            putenv('ORM_FEATURE_DSN=sqlite:///tmp/x.sqlite');
-            $this->assertSame(['sqlite', 'sqlite:///tmp/x.sqlite'], coverageDatabase(), 'selected');
-        } finally {
-            putenv($saved[0] === false ? 'ORM_FEATURE_DATABASE' : "ORM_FEATURE_DATABASE={$saved[0]}");
-            putenv($saved[1] === false ? 'ORM_FEATURE_DSN' : "ORM_FEATURE_DSN={$saved[1]}");
+            coverageItem();
+            $this->fail('coverageItem accepted no selected item');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('no coverage item is selected', $e->getMessage(), 'missing');
         }
+        selectCoverageItem(['sqlite', 'sqlite:///tmp/x.sqlite']);
+        $this->assertSame(['sqlite', 'sqlite:///tmp/x.sqlite'], coverageItem(), 'selected');
+        $GLOBALS['orm_coverage_item'] = null;
     }
 
     public function test_runs_a_child_process(): void

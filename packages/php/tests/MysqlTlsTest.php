@@ -7,6 +7,8 @@
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/MysqlTlsTest.php
 declare(strict_types=1);
 
+require_once __DIR__ . '/coverage_cases.php';
+
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Code;
@@ -73,7 +75,7 @@ final class MysqlTlsTest extends TestCase
         };
         $dsns = [];
         foreach (['ORM_TEST_MYSQL_TLS_DSN', 'ORM_TEST_MYSQL_TLS_OTHER_CA_DSN', 'ORM_TEST_MYSQL_TLS_MISMATCH_DSN'] as $name) {
-            $value = getenv($name);
+            $value = requiredDsn($name);
             if (!is_string($value) || $value === '') {
                 throw new RuntimeException("$name is not set; run make test-servers");
             }
@@ -97,7 +99,7 @@ final class MysqlTlsTest extends TestCase
      */
     public function test_session_sql_mode(): void
     {
-        $dsn = getenv('ORM_TEST_MYSQL_DSN');
+        $dsn = requiredDsn('ORM_TEST_MYSQL_DSN');
         if (!is_string($dsn) || $dsn === '') {
             throw new RuntimeException('ORM_TEST_MYSQL_DSN is not set; run make test-servers');
         }

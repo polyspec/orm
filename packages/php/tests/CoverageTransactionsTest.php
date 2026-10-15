@@ -17,7 +17,7 @@ const TRANSACTION_TENANT = 990003;
 /** tenant 990003의 행이 없을 때 $body를 실행하고, 끝나면 그 tenant의 행을 지운다. */
 function transactionCase(Closure $body): void
 {
-    [, $dsn] = coverageDatabase();
+    [, $dsn] = coverageItem();
     $db = coverageConnect($dsn);
     try {
         $existing = (new CompositeAccount)($db)->tenantId(TRANSACTION_TENANT)->getCount();
@@ -38,43 +38,49 @@ final class CoverageTransactionsTest extends TestCase
 {
     public function test_transaction_rollback(): void
     {
-        transactionCase(function (Db $db): void {
-            $boom = new RuntimeException('rollback requested');
-            $caught = null;
-            try {
-                $db->transaction(function () use ($boom): void {
-                    (new CompositeAccount)->setTenantId(TRANSACTION_TENANT)->setAccountId(1)->setName('rolled')->create();
-                    throw $boom;
-                }, retry: 0);
-            } catch (RuntimeException $e) {
-                $caught = $e;
-            }
-            Assert::assertTrue($caught === $boom, 'the callback error did not reach the caller: ' . ($caught?->getMessage() ?? 'no error'));
-            Assert::assertTrue(!accountExists($db, 1), 'the rolled back row exists');
-        });
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            transactionCase(function (Db $db): void {
+                $boom = new RuntimeException('rollback requested');
+                $caught = null;
+                try {
+                    $db->transaction(function () use ($boom): void {
+                        (new CompositeAccount)->setTenantId(TRANSACTION_TENANT)->setAccountId(1)->setName('rolled')->create();
+                        throw $boom;
+                    }, retry: 0);
+                } catch (RuntimeException $e) {
+                    $caught = $e;
+                }
+                Assert::assertTrue($caught === $boom, 'the callback error did not reach the caller: ' . ($caught?->getMessage() ?? 'no error'));
+                Assert::assertTrue(!accountExists($db, 1), 'the rolled back row exists');
+            });
+        }
     }
 
     public function test_transaction_savepoint(): void
     {
-        transactionCase(function (Db $db): void {
-            $boom = new RuntimeException('inner failure');
-            $inner = null;
-            $db->transaction(function () use ($db, $boom, &$inner): void {
-                (new CompositeAccount)->setTenantId(TRANSACTION_TENANT)->setAccountId(2)->setName('outer')->create();
-                try {
-                    $db->transaction(function () use ($boom): void {
-                        (new CompositeAccount)->setTenantId(TRANSACTION_TENANT)->setAccountId(3)->setName('inner')->create();
-                        throw $boom;
-                    });
-                } catch (RuntimeException $e) {
-                    $inner = $e;
-                }
-            }, retry: 0);
-            Assert::assertTrue($inner === $boom, 'the nested transaction error did not reach the outer callback');
-            Assert::assertTrue(accountExists($db, 2), 'the outer row was not committed');
-            Assert::assertTrue(!accountExists($db, 3), 'the savepoint row exists');
-            (new CompositeAccount)($db)->getByTenantIdAndAccountId(TRANSACTION_TENANT, 2)->delete();
-            Assert::assertTrue(!accountExists($db, 2), 'the outer row was not deleted');
-        });
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            transactionCase(function (Db $db): void {
+                $boom = new RuntimeException('inner failure');
+                $inner = null;
+                $db->transaction(function () use ($db, $boom, &$inner): void {
+                    (new CompositeAccount)->setTenantId(TRANSACTION_TENANT)->setAccountId(2)->setName('outer')->create();
+                    try {
+                        $db->transaction(function () use ($boom): void {
+                            (new CompositeAccount)->setTenantId(TRANSACTION_TENANT)->setAccountId(3)->setName('inner')->create();
+                            throw $boom;
+                        });
+                    } catch (RuntimeException $e) {
+                        $inner = $e;
+                    }
+                }, retry: 0);
+                Assert::assertTrue($inner === $boom, 'the nested transaction error did not reach the outer callback');
+                Assert::assertTrue(accountExists($db, 2), 'the outer row was not committed');
+                Assert::assertTrue(!accountExists($db, 3), 'the savepoint row exists');
+                (new CompositeAccount)($db)->getByTenantIdAndAccountId(TRANSACTION_TENANT, 2)->delete();
+                Assert::assertTrue(!accountExists($db, 2), 'the outer row was not deleted');
+            });
+        }
     }
 }

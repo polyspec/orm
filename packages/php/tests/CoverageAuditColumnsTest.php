@@ -73,10 +73,10 @@ function auditColumnsCase(string $dsn, string $document, string $work): void
     Generator::generate(RuntimeModel::build(RuntimeModel::parse(['audit_columns.dbs' => $document])), "$work/gen", 'Polyspec\\Orm\\Tests\\CoverageAuditColumns');
     spl_autoload_register(static function (string $class) use ($work): void {
         if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\CoverageAuditColumns\\')) {
-            require "$work/gen/" . substr($class, strlen('Polyspec\\Orm\\Tests\\CoverageAuditColumns\\')) . '.php';
+            require_once "$work/gen/" . substr($class, strlen('Polyspec\\Orm\\Tests\\CoverageAuditColumns\\')) . '.php';
         }
     });
-    require "$work/gen/bootstrap.php";
+    require_once "$work/gen/bootstrap.php";
     $db = Orm::connect($dsn, new Config(auditSource: static fn(): array => ['actor' => 'default']));
     try {
         coverageRestoring(function () use ($db): void {
@@ -123,22 +123,25 @@ final class CoverageAuditColumnsTest extends TestCase
 {
     public function test_audit_selected_columns(): void
     {
-        [, $dsn] = coverageDatabase();
-        $root = dirname(__DIR__, 3);
-        $document = file_get_contents("$root/contracts/fixtures/audit_columns.dbs");
-        if ($document === false) {
-            throw new RuntimeException('cannot read contracts/fixtures/audit_columns.dbs');
-        }
-        $work = sys_get_temp_dir() . '/orm-php-coverage-audit-columns-' . getmypid();
-        if (!mkdir($work, 0o700, true)) {
-            throw new RuntimeException("cannot create $work");
-        }
-        try {
-            auditColumnsCase($dsn, $document, $work);
-        } finally {
-            exec('rm -rf ' . escapeshellarg($work), $output, $status);
-            if ($status !== 0) {
-                throw new RuntimeException("cannot remove $work");
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            [, $dsn] = coverageItem();
+            $root = dirname(__DIR__, 3);
+            $document = file_get_contents("$root/contracts/fixtures/audit_columns.dbs");
+            if ($document === false) {
+                throw new RuntimeException('cannot read contracts/fixtures/audit_columns.dbs');
+            }
+            $work = sys_get_temp_dir() . '/orm-php-coverage-audit-columns-' . getmypid();
+            if (!mkdir($work, 0o700, true)) {
+                throw new RuntimeException("cannot create $work");
+            }
+            try {
+                auditColumnsCase($dsn, $document, $work);
+            } finally {
+                exec('rm -rf ' . escapeshellarg($work), $output, $status);
+                if ($status !== 0) {
+                    throw new RuntimeException("cannot remove $work");
+                }
             }
         }
     }

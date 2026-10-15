@@ -2,9 +2,11 @@
 // The generated decimal model of contracts/fixtures/decimal_schema.dbs on one database of each dialect: the generated
 // getter and setter take exact strings and refuse other values, and a row written and read in a transaction keeps its
 // exact values in the model, its row output and the database, and is gone after the rollback. Each dialect is a data
-// set; its database is DECIMAL_<DIALECT>_DSN (make decimal-physical-check), which the test requires.
+// set; each dialect takes its DSN from the test servers' environment or databases-create (BENCH_SQLITE_DSN).
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter '@<dialect>$' packages/php/tests/DecimalModelDbTest.php
 declare(strict_types=1);
+
+require_once __DIR__ . '/coverage_cases.php';
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
@@ -79,12 +81,10 @@ final class DecimalModelDbTest extends TestCase
 
     private static function dsn(string $dialect): string
     {
-        $env = 'DECIMAL_' . strtoupper($dialect) . '_DSN';
-        $dsn = getenv($env);
-        if (!is_string($dsn) || $dsn === '') {
-            throw new RuntimeException("$env is required; run the test through its make target, which reads the environment of make test-servers");
-        }
-        return $dsn;
+        // Each dialect takes its database from the same helper as the other database tests: sqlite the bench file of
+        // databases-create (BENCH_SQLITE_DSN), mysql and postgres their test server.
+        $variable = $dialect === 'sqlite' ? 'BENCH_SQLITE_DSN' : 'ORM_TEST_' . strtoupper($dialect) . '_DSN';
+        return requiredDsn($variable);
     }
 
     /** The generator writes the model of the fixture; the generated files are removed again. */
@@ -141,6 +141,7 @@ final class DecimalModelDbTest extends TestCase
         self::load();
         $class = DecimalFixture\DecimalCase::class;
         $db = DecimalFixture\connect($dsn, new Config());
+        $db->utils()->schema()->install(DecimalFixture\schema());
         try {
             self::assertSame(0, (new $class)->connect($db)->seq(1)->getCount(), 'decimal fixture row 1 exists before the test');
             $rollback = new RuntimeException('decimal fixture rollback');

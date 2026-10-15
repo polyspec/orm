@@ -48,10 +48,10 @@ function statementEventsModels(): void
     Generator::generate(RuntimeModel::build(RuntimeModel::parse(['statement_events.dbs' => $fixture])), "$work/models", 'Polyspec\\Orm\\Tests\\StatementEventsCase');
     spl_autoload_register(static function (string $class) use ($work): void {
         if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\StatementEventsCase\\')) {
-            require "$work/models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\StatementEventsCase\\')) . '.php';
+            require_once "$work/models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\StatementEventsCase\\')) . '.php';
         }
     });
-    require "$work/models/bootstrap.php";
+    require_once "$work/models/bootstrap.php";
 }
 
 /** @return array<string, mixed> tests/events/vectors.json */

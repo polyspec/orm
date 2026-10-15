@@ -19,6 +19,8 @@ final class DbspecIntrospectStressTest extends TestCase
     public function test_introspect_stress(): void
     {
         // case는 2000 table 문서를 만들어(node process 하나) SQLite file에 적용하고 introspect한다.
+        // The introspection of 2000 tables needs more than the default 128M; kit's runner runs php without a memory flag.
+        ini_set('memory_limit', '512M');
         fwrite(STDERR, 'memoryLimit=' . ini_get('memory_limit') . "\n");
         $root = dirname(__DIR__, 3);
         $process = proc_open(['node', "$root/tests/dbspec/stress.mts"], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);

@@ -15,10 +15,13 @@ final class CoverageStatementEventsTest extends TestCase
 {
     public function test_statement_events(): void
     {
-        [$driver] = coverageDatabase();
-        statementEventsModels();
-        foreach (statementEventsVector()['cases'] as $case) {
-            with_case_database($driver, static function (string $text): void {}, static fn(string $dsn) => runCase($case, $driver, $dsn));
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            [$driver] = coverageItem();
+            statementEventsModels();
+            foreach (statementEventsVector()['cases'] as $case) {
+                with_case_database($driver, static function (string $text): void {}, static fn(string $dsn) => runCase($case, $driver, $dsn));
+            }
         }
     }
 }

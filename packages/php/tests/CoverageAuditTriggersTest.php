@@ -86,10 +86,10 @@ function fixtureModels(string $fixture, string $namespace): void
     Generator::generate(RuntimeModel::build(RuntimeModel::parse(["$fixture.dbs" => $document])), "$work/gen", $namespace);
     spl_autoload_register(static function (string $class) use ($work, $namespace): void {
         if (str_starts_with($class, "$namespace\\")) {
-            require "$work/gen/" . substr($class, strlen("$namespace\\")) . '.php';
+            require_once "$work/gen/" . substr($class, strlen("$namespace\\")) . '.php';
         }
     });
-    require "$work/gen/bootstrap.php";
+    require_once "$work/gen/bootstrap.php";
 }
 
 /** audit document의 model을 CoverageAudit\Orm에 생성한다. */
@@ -109,7 +109,7 @@ const AUDIT_TABLES = ['audit', 'item', 'item_history'];
  */
 function withAudit(Closure $body): void
 {
-    [, $dsn] = coverageDatabase();
+    [, $dsn] = coverageItem();
     auditModels();
     $db = Orm::connect($dsn, auditConfig('default'));
     try {
@@ -134,7 +134,10 @@ final class CoverageAuditTriggersTest extends TestCase
     // audit transaction은 audit 기록 하나를 삽입하고 audit table의 write가 그 key를 쓴다(audit_case.php).
     public function test_audit_history(): void
     {
-        withAudit(fn(Db $db, string $dsn) => auditCase($db, $dsn, 'Polyspec\\Orm\\Tests\\CoverageAudit'));
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            withAudit(fn(Db $db, string $dsn) => auditCase($db, $dsn, 'Polyspec\\Orm\\Tests\\CoverageAudit'));
+        }
     }
 
     // 모든 transaction 진입점이 audit 값을 받는다: PHP의 진입점은 audit source를 가진 연결의 Db::transaction
@@ -142,45 +145,51 @@ final class CoverageAuditTriggersTest extends TestCase
     // transaction은 audit을 받지 않는다.
     public function test_audit_transaction_entry_points(): void
     {
-        withAudit(function (Db $db): void {
-            $adb = $db;
-            $seq = $adb->transaction(fn(): int => (new Item)->setTitle('first')->create()->getSeq(), audit: ['actor' => 'transaction'], retry: 0);
-            $adb->transaction(fn() => (new Item)($adb)->setSeq($seq)->setTitle('second')->update(), audit: ['actor' => 'connected'], retry: 0);
-            $nested = auditErrorCode(fn() => $adb->transaction(fn() => $adb->transaction(fn() => null, audit: ['actor' => 'nested']), audit: [], retry: 0));
-            Assert::assertTrue($nested === Code::CONFIG, "a nested transaction with an audit is $nested, want CONFIG");
-            $s = (string) $seq;
-            $history = auditItemHistory($db);
-            $want = [
-                ['insert', 'NULL', $s, 'first', '1', 'live'],
-                ['update', '1', $s, 'second', '2', 'live'],
-            ];
-            Assert::assertTrue($history === $want, 'history ' . json_encode($history) . ', want ' . json_encode($want));
-            $records = auditTextRows($db, 'SELECT seq, actor FROM audit ORDER BY seq');
-            Assert::assertTrue($records === [['1', 'transaction'], ['2', 'connected']], 'audit records ' . json_encode($records));
-        });
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            withAudit(function (Db $db): void {
+                $adb = $db;
+                $seq = $adb->transaction(fn(): int => (new Item)->setTitle('first')->create()->getSeq(), audit: ['actor' => 'transaction'], retry: 0);
+                $adb->transaction(fn() => (new Item)($adb)->setSeq($seq)->setTitle('second')->update(), audit: ['actor' => 'connected'], retry: 0);
+                $nested = auditErrorCode(fn() => $adb->transaction(fn() => $adb->transaction(fn() => null, audit: ['actor' => 'nested']), audit: [], retry: 0));
+                Assert::assertTrue($nested === Code::CONFIG, "a nested transaction with an audit is $nested, want CONFIG");
+                $s = (string) $seq;
+                $history = auditItemHistory($db);
+                $want = [
+                    ['insert', 'NULL', $s, 'first', '1', 'live'],
+                    ['update', '1', $s, 'second', '2', 'live'],
+                ];
+                Assert::assertTrue($history === $want, 'history ' . json_encode($history) . ', want ' . json_encode($want));
+                $records = auditTextRows($db, 'SELECT seq, actor FROM audit ORDER BY seq');
+                Assert::assertTrue($records === [['1', 'transaction'], ['2', 'connected']], 'audit records ' . json_encode($records));
+            });
+        }
     }
 
     // soft delete한 행을 restore로 되돌린다(restore_case.php): unique key와 exclude 목록을 가진 audit table과
     // audit 없는 table이다. 끝나면 설치한 table과 PostgreSQL trigger function을 지운다.
     public function test_soft_delete_restore(): void
     {
-        [, $dsn] = coverageDatabase();
-        fixtureModels('restore', 'Polyspec\\Orm\\Tests\\CoverageRestore');
-        $tables = ['audit', 'label', 'membership', 'membership_history'];
-        $db = Orm::connect($dsn, auditConfig('default'));
-        try {
-            foreach ($tables as $table) {
-                Assert::assertTrue(!auditTable($db, $table), "$table exists before the case");
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            [, $dsn] = coverageItem();
+            fixtureModels('restore', 'Polyspec\\Orm\\Tests\\CoverageRestore');
+            $tables = ['audit', 'label', 'membership', 'membership_history'];
+            $db = Orm::connect($dsn, auditConfig('default'));
+            try {
+                foreach ($tables as $table) {
+                    Assert::assertTrue(!auditTable($db, $table), "$table exists before the case");
+                }
+                coverageRestoring(function () use ($db): void {
+                    $db->utils()->schema()->install(\Polyspec\Orm\Tests\CoverageRestore\schema());
+                    restoreCase($db, 'Polyspec\\Orm\\Tests\\CoverageRestore');
+                }, fn() => dropFixture($db, ['membership_history', 'membership', 'label', 'audit'], ['membership']));
+                foreach ($tables as $table) {
+                    Assert::assertTrue(!auditTable($db, $table), "$table remains after the case");
+                }
+            } finally {
+                $db->close();
             }
-            coverageRestoring(function () use ($db): void {
-                $db->utils()->schema()->install(\Polyspec\Orm\Tests\CoverageRestore\schema());
-                restoreCase($db, 'Polyspec\\Orm\\Tests\\CoverageRestore');
-            }, fn() => dropFixture($db, ['membership_history', 'membership', 'label', 'audit'], ['membership']));
-            foreach ($tables as $table) {
-                Assert::assertTrue(!auditTable($db, $table), "$table remains after the case");
-            }
-        } finally {
-            $db->close();
         }
     }
 }

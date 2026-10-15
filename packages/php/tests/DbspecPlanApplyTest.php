@@ -1,5 +1,7 @@
 <?php
 declare(strict_types=1);
+
+require_once __DIR__ . '/coverage_cases.php';
 // Applies every case of tests/dbspec/plans.json to MySQL, PostgreSQL and
 // SQLite through Polyspec\Orm\Dbspec\Dbspec (docs/plans.md "Verification"): a fresh
 // database, schema or file per run renders and applies the source, runs the
@@ -27,7 +29,7 @@ const PLAN_CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgre
 /** The DSNs of the servers; the test fails when either is unset. */
 function plan_dsns(): array
 {
-    $dsns = ['mysql' => getenv('ORM_TEST_MYSQL_DSN'), 'postgres' => getenv('ORM_TEST_POSTGRES_DSN')];
+    $dsns = ['mysql' => requiredDsn('ORM_TEST_MYSQL_DSN'), 'postgres' => requiredDsn('ORM_TEST_POSTGRES_DSN')];
     foreach ($dsns as $dsn) {
         if (!is_string($dsn) || $dsn === '') {
             throw new RuntimeException('ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV');

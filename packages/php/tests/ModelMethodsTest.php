@@ -13,7 +13,7 @@ const SCHEMA = "dbspec 1 methods\n\ntable item {\n  seq i64\n  account_seq i64\n
     . "  amount decimal(10,2)\n  primary key (seq)\n  unique uq_item_name (name)\n  index ix_item_account (account_seq, project_seq)\n}\n";
 
 // Every call names a method that the schema enumerates.
-const CALLS = <<<'PHP'
+const MODEL_METHODS_CALLS = <<<'PHP'
 <?php
 declare(strict_types=1);
 
@@ -46,7 +46,7 @@ final class ModelMethodsTest extends TestCase
         $generated = OrmGen::run(['gen', '--set', "$work/dbspec-set.json", '--out', "$work/model", '--namespace', 'Polyspec\\Orm\\Tests\\Methods'], STDERR);
         ob_end_clean();
         self::assertSame(0, $generated, 'orm-gen exit code');
-        file_put_contents("$work/calls.php", CALLS);
+        file_put_contents("$work/calls.php", MODEL_METHODS_CALLS);
         // The autoloader of the generated models. PHPStan loads the autoloader of the repository root (vendor-php) and
         // then autoload.php, which adds the models to autoload.php of the tests, that root's autoloader; this process
         // runs on the package's autoloader (bootstrap.php) and loads the models' autoloader only.

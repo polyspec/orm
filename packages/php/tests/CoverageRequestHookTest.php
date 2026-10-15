@@ -17,57 +17,87 @@ final class CoverageRequestHookTest extends TestCase
 {
     public function test_without_hook(): void
     {
-        self::run_case('without_hook');
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            self::run_case('without_hook');
+        }
     }
 
     public function test_read_filter(): void
     {
-        self::run_case('read_filter');
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            self::run_case('read_filter');
+        }
     }
 
     public function test_insert_assign(): void
     {
-        self::run_case('insert_assign');
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            self::run_case('insert_assign');
+        }
     }
 
     public function test_loaded_row_writes(): void
     {
-        self::run_case('loaded_row_writes');
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            self::run_case('loaded_row_writes');
+        }
     }
 
     public function test_invalid_param(): void
     {
-        self::run_case('invalid_param');
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            self::run_case('invalid_param');
+        }
     }
 
     public function test_restore_key(): void
     {
-        self::run_case('restore_key');
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            self::run_case('restore_key');
+        }
     }
 
     public function test_restore_condition(): void
     {
-        self::run_case('restore_condition');
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            self::run_case('restore_condition');
+        }
     }
 
     public function test_restore_no_key(): void
     {
-        self::run_case('restore_no_key');
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            self::run_case('restore_no_key');
+        }
     }
 
     public function test_restore_rewritten_key(): void
     {
-        self::run_case('restore_rewritten_key');
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            self::run_case('restore_rewritten_key');
+        }
     }
 
     public function test_restore_hook_set_key(): void
     {
-        self::run_case('restore_hook_set_key');
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            self::run_case('restore_hook_set_key');
+        }
     }
 
     private static function run_case(string $id): void
     {
-        [$driver] = coverageDatabase();
+        [$driver] = coverageItem();
         with_case_database($driver, static function (): void {}, static fn(string $dsn) => runRequestHookCase($id, $dsn));
     }
 }

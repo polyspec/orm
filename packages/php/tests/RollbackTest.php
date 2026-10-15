@@ -1,5 +1,7 @@
 <?php
 declare(strict_types=1);
+
+require_once __DIR__ . '/coverage_cases.php';
 // A transaction or savepoint whose callback fails and whose rollback fails
 // too, on SQLite, MySQL and PostgreSQL. The client reports one
 // OrmException with the code ROLLBACK that keeps the callback error as its
@@ -114,7 +116,7 @@ final class RollbackTest extends TestCase
             return;
         }
         $env = 'ORM_TEST_' . strtoupper($driver) . '_SERVER_DSN';
-        $server = getenv($env);
+        $server = requiredDsn($env);
         if ($server === false || $server === '') {
             throw new RuntimeException("$env is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers");
         }
@@ -243,7 +245,7 @@ final class RollbackTest extends TestCase
         [$driver] = Orm::parseDsn($dsn);
         self::connect($dsn)->close();
         $env = 'ORM_TEST_' . strtoupper($driver) . '_SERVER_DSN';
-        $server = getenv($env);
+        $server = requiredDsn($env);
         if ($server === false || $server === '') {
             throw new RuntimeException("$env is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers");
         }

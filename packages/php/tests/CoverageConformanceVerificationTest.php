@@ -132,30 +132,33 @@ final class CoverageConformanceVerificationTest extends TestCase
 
     public function test_conformance_vector(): void
     {
-        [$driver, $dsn] = coverageDatabase();
-        $root = dirname(__DIR__, 3);
-        $file = $driver === 'mysql' ? 'vectors.json' : "vectors.$driver.json";
-        $recorded = coverageJson("$root/tests/conformance/$file", false);
-        $expect = [];
-        foreach ($recorded->vectors as $vector) {
-            if (in_array($vector->name, CONFORMANCE_VECTORS, true)) {
-                $expect[$vector->name] = $vector->expect;
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            [$driver, $dsn] = coverageItem();
+            $root = dirname(__DIR__, 3);
+            $file = $driver === 'mysql' ? 'vectors.json' : "vectors.$driver.json";
+            $recorded = coverageJson("$root/tests/conformance/$file", false);
+            $expect = [];
+            foreach ($recorded->vectors as $vector) {
+                if (in_array($vector->name, CONFORMANCE_VECTORS, true)) {
+                    $expect[$vector->name] = $vector->expect;
+                }
             }
-        }
-        Assert::assertTrue(count($expect) === count(CONFORMANCE_VECTORS), "$file lacks a selected vector");
-        $command = [PHP_BINARY, "$root/tests/conformance/runner.php", '--dsn', $dsn];
-        foreach (CONFORMANCE_VECTORS as $name) {
-            array_push($command, '--vector', $name);
-        }
-        [$status, $stdout, $stderr] = coverageProcess($command, $root);
-        if ($status !== 0) {
-            throw new RuntimeException(str_replace($dsn, '[dsn]', "conformance runner exited $status: $stderr$stdout"));
-        }
-        $output = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
-        $names = array_keys(get_object_vars($output));
-        Assert::assertTrue($names === CONFORMANCE_VECTORS, 'runner output vectors ' . json_encode($names));
-        foreach (CONFORMANCE_VECTORS as $name) {
-            Assert::assertTrue(sameJson($output->$name, $expect[$name]), "vector $name differs from $file: " . json_encode($output->$name));
+            Assert::assertTrue(count($expect) === count(CONFORMANCE_VECTORS), "$file lacks a selected vector");
+            $command = [PHP_BINARY, "$root/tests/conformance/runner.php", '--dsn', $dsn];
+            foreach (CONFORMANCE_VECTORS as $name) {
+                array_push($command, '--vector', $name);
+            }
+            [$status, $stdout, $stderr] = coverageProcess($command, $root);
+            if ($status !== 0) {
+                throw new RuntimeException(str_replace($dsn, '[dsn]', "conformance runner exited $status: $stderr$stdout"));
+            }
+            $output = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
+            $names = array_keys(get_object_vars($output));
+            Assert::assertTrue($names === CONFORMANCE_VECTORS, 'runner output vectors ' . json_encode($names));
+            foreach (CONFORMANCE_VECTORS as $name) {
+                Assert::assertTrue(sameJson($output->$name, $expect[$name]), "vector $name differs from $file: " . json_encode($output->$name));
+            }
         }
     }
 }

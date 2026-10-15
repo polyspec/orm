@@ -48,7 +48,9 @@ final class RuntimeDbTest extends TestCase
         // audit.dbs와 restore.dbs는 둘 다 audit table을 선언하므로 따로 생성하고 case마다 하나만 설치한다.
         $sets = [
             'Polyspec\\Orm\\Tests\\RuntimeDb' => ['audit.dbs' => (string) file_get_contents("$root/contracts/fixtures/audit.dbs"), 'values.dbs' => $values],
-            'Polyspec\\Orm\\Tests\\RuntimeRestore' => ['restore.dbs' => (string) file_get_contents("$root/contracts/fixtures/restore.dbs")],
+            // The runtime restore is its own manifest: the coverage restore of the same fixture is generated in this process too, and
+            // the registry refuses one manifest under two namespaces, so the header names this manifest apart.
+            'Polyspec\\Orm\\Tests\\RuntimeRestore' => ['restore.dbs' => str_replace("dbspec 1 restore\n", "dbspec 1 runtime_restore\n", (string) file_get_contents("$root/contracts/fixtures/restore.dbs"))],
         ];
         foreach ($sets as $namespace => $texts) {
             $dir = "$work/" . str_replace('\\', '_', $namespace);
