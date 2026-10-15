@@ -127,7 +127,7 @@ vendors; this file states only the rules of orm.
   asks the registries and the advisory databases and writes `config/dependency-review.json`;
   `make dependency-policy-check` and `make dependency-policy-mutation-check` read that record and
   the manifests and locks and query no registry.
-- Every toolchain the checks use is pinned in one declaration and checked: `.node-version`, the
+- Every toolchain the checks use is pinned in one declaration and checked: the node of `mise.toml`, the
   `go` line of `packages/go/go.mod`, the Composer of `mise.toml` and `rust-toolchain.toml` hold exact releases,
   `.php-version` and the PostgreSQL major release are as exact as their installers allow, CI
   installs what they declare, and `make toolchain-check` and `make repo-check` fail when a running

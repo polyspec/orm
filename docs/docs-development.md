@@ -5,7 +5,7 @@ The online documentation is at [polyspec.github.io/orm](https://polyspec.github.
 
 ## Local execution
 
-Use the Node.js release of `.node-version` (26.11.1) and npm. The local checks and every GitHub Actions workflow run that one release, and `make repo-check` fails on another. `package-lock.json` fixes tool versions. The TypeScript client supports the lowest release of `engines.node` in `package.json` (26.11.1), on which `make ts-min-check` runs its tests.
+Use the Node.js release of `mise.toml` (26.12.0), which `make install-tools TOOLS=npm` installs into `var/tools`, and npm. The local checks and every GitHub Actions workflow run that one release, and `make repo-check` fails on another. `package-lock.json` fixes tool versions. The TypeScript client supports the lowest release of `engines.node` in `package.json` (26.12.0), on which `make ts-min-check` runs its tests.
 
 ```sh
 make install

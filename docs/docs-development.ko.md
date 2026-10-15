@@ -1,12 +1,12 @@
 <!-- doc-id: docs-development -->
-<!-- source-sha256: 28cc34c7d9e930968b348dc683171bffe92bbeb3e26958e85930b6817c4f1323 -->
+<!-- source-sha256: f1e449d9dd3e45158829de25221a90cf6132ef7f128dcca568b0a933cba11452 -->
 # 문서 빌드와 배포
 
 온라인 문서는 [polyspec.github.io/orm](https://polyspec.github.io/orm/)에서 제공한다. VitePress는 `docs/*.md`와 하위 Markdown 파일을 직접 읽는다. 별도의 문서 복사본은 사용하지 않는다. 구성요소 도표는 `contracts/interfaces.json`에서 생성한다.
 
 ## 로컬 실행
 
-`.node-version`의 Node.js release(26.11.1)와 npm을 사용한다. 로컬 검사와 모든 GitHub Actions workflow가 이 release 하나로 실행하며, 다른 release에서는 `make repo-check`가 실패한다. 도구 버전은 `package-lock.json`으로 고정한다. TypeScript client는 `package.json` `engines.node`의 최저 release(26.11.1)를 지원하고, `make ts-min-check`가 그 release에서 test를 실행한다.
+`mise.toml`의 Node.js release(26.12.0)와 npm을 사용한다. `make install-tools TOOLS=npm`이 그 release를 `var/tools`에 설치한다. 로컬 검사와 모든 GitHub Actions workflow가 이 release 하나로 실행하며, 다른 release에서는 `make repo-check`가 실패한다. 도구 버전은 `package-lock.json`으로 고정한다. TypeScript client는 `package.json` `engines.node`의 최저 release(26.12.0)를 지원하고, `make ts-min-check`가 그 release에서 test를 실행한다.
 
 ```sh
 make install

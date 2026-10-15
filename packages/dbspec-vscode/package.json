@@ -13,7 +13,7 @@
   },
   "engines": {
     "vscode": "^1.140.0",
-    "node": ">=26.11.1"
+    "node": ">=26.12.0"
   },
   "categories": [
     "Programming Languages",

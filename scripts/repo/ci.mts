@@ -722,11 +722,11 @@ export function concurrencyErrors(workflows: Record<string, string>): string[] {
 // CI_PASSED_STEPS는 ci.yml의 마지막 job ci-passed의 step이다. release의 verify 단계가 요구하는 ci.yml의 check는 이 job 하나다: `if: always()`로
 // 다른 job이 실패하거나 취소되어도 실행되고, needs가 다른 모든 job이므로 그 모든 job이 success일 때만 make ci-passed가
 // 통과한다. make ci-passed runs the Makefile of the repository and the ci-passed tool of @polyspec/kit with node, so the
-// checkout, the node of .node-version and the install of the package come before it.
+// checkout, the node of mise.toml and the install of the package come before it.
 export const CI_PASSED_STEP: Record<string, unknown> = { name: 'every job passed', if: NOT_CANCELLED, env: { RESULTS: '${{ toJSON(needs) }}' }, run: 'make ci-passed' };
 export const CI_PASSED_STEPS: Record<string, unknown>[] = [
   { uses: 'actions/checkout@v5' },
-  { uses: 'actions/setup-node@v7', with: { 'node-version-file': '.node-version' } },
+  { uses: 'actions/setup-node@v7', with: { 'node-version-file': 'mise.toml' } },
   // make reads the kit.mk of @polyspec/kit, which these two steps install before make ci-passed runs.
   { name: 'npm of packageManager', id: 'npm', if: NOT_CANCELLED, run: 'make install-tools TOOLS=npm' },
   { name: 'install Node dependencies', id: 'node-modules', if: NOT_CANCELLED, run: 'make install-packages' },

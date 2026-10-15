@@ -61,14 +61,14 @@ jobs:
         id: checkout
         with:
           fetch-depth: 0
-      # .node-version declares the one Node release of the checks, locally and
+      # mise.toml declares the one Node release of the checks, locally and
       # here; make repo-check requires it. make ts-min-check runs the
       # TypeScript client on the lowest release of package.json engines.node.
       - uses: actions/setup-node@v7
         id: node
         if: ${{ !cancelled() }}
         with:
-          node-version-file: .node-version
+          node-version-file: mise.toml
           cache: npm
       # make reads the kit.mk of @polyspec/kit, so the package is installed
       # before any other make target runs: the npm of packageManager into
@@ -236,7 +236,7 @@ jobs:
         id: node
         if: ${{ !cancelled() }}
         with:
-          node-version-file: .node-version
+          node-version-file: mise.toml
           cache: npm
       # make reads the kit.mk of @polyspec/kit, so the package is installed
       # before any other make target runs: the npm of packageManager into
@@ -282,7 +282,7 @@ jobs:
         id: node
         if: ${{ !cancelled() }}
         with:
-          node-version-file: .node-version
+          node-version-file: mise.toml
           cache: npm
       - name: npm of packageManager
         id: npm
@@ -324,7 +324,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v7
         with:
-          node-version-file: .node-version
+          node-version-file: mise.toml
       - name: npm of packageManager
         id: npm
         if: ${{ !cancelled() }}
