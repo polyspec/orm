@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: eefe9ed5b8f8f68f2293e098ed291ebdc489dee48f852a3510605c8f04b1c22d -->
+<!-- source-sha256: 5dbf64da65296be2a3c6ae7956e983320629ff2fcac1ea6b1463d426d2506510 -->
 # 변경 이력
 
 ## Unreleased
 
+- 모든 구현이 빈 key_by를 없는 것으로 읽고, protocol.md가 그것을 적는다. (#T77-7)
 - Python이 모든 공유 suite를 실행한다. aggregate는 범위 밖 값에 CODEC_DECODE를 답하고, percent escape가 깨진 SQLite DSN은 CONFIG이며, MySQL install은 statement event를 발행한다. (#T77-3)
 - Python codec과 apply runner가 공유 검사에서 실행되고, Python PostgreSQL apply는 lock_timeout을 $1 marker로 복원한다. (#T77-2)
 - Python test가 다른 구현처럼 공유 harness로 보고한다: deadline과 함께 RUN, STEP, PASS, FAIL, SKIP. (#T77-1)
