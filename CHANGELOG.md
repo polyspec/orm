@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Python bind vectors run through the case harness. (#T89-4)
 - Every client refuses NULL for a non-null column before any statement. (#T90)
 - A contains value binds as text or NULL in every client. (#T80)
 - Every client checks each parameter against its slot type before a statement, proven by shared bind vectors. (#T89)

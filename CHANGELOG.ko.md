@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: fd92752b18a1729691969cdcdaee68f12b8d292fdd15c48369429b9c84505270 -->
+<!-- source-sha256: 654b4ee4d54a3d954909ffa17a1df9275d435a06fd9829ebe7dd3c1effa58626 -->
 # 변경 이력
 
 ## Unreleased
 
+- Python bind vector가 case harness로 실행된다. (#T89-4)
 - 모든 client가 statement 전에 non-null column의 NULL을 거부한다. (#T90)
 - 모든 client에서 contains 값이 text 또는 NULL로 bind된다. (#T80)
 - 모든 client가 statement 전에 각 parameter를 slot type에 대해 검사하고, 공유 bind vector가 그것을 증명한다. (#T89)
