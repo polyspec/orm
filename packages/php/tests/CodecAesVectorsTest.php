@@ -1,5 +1,5 @@
 <?php
-// The AES v2 vectors of tests/codec/aes-vectors.json, each a data set named by its key: the aes hex host stages
+// The AES v2 vectors of tests/codec/aes-vectors.json, each a data set named by its name: the aes hex host stages
 // round-trip the plain text with the key, and the fixed envelope decodes to the plain text.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecAesVectorsTest.php
 declare(strict_types=1);
@@ -16,7 +16,7 @@ final class CodecAesVectorsTest extends TestCase
     {
         $file = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/tests/codec/aes-vectors.json'), true, 512, JSON_THROW_ON_ERROR);
         foreach ($file['vectors'] as $vector) {
-            yield $vector['key'] => [$vector];
+            yield $vector['name'] => [$vector];
         }
     }
 

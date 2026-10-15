@@ -212,6 +212,7 @@ func TestCodecVectors(t *testing.T) {
 // aesVector is one case of tests/codec/aes-vectors.json: a key, a plain text,
 // and the AES v2 envelope (hex) that the key gives the text with a fixed nonce.
 type aesVector struct {
+	Name        string `json:"name"`
 	Key         string `json:"key"`
 	Plain       string `json:"plain"`
 	NonceHex    string `json:"nonce_hex"`
@@ -219,7 +220,7 @@ type aesVector struct {
 }
 
 // TestCodecAESVectors: for every vector of tests/codec/aes-vectors.json, a
-// subtest named by its key, the aes hex host stages round-trip the plain text
+// subtest named by its name, the aes hex host stages round-trip the plain text
 // with the key, and the fixed envelope decodes to the plain text.
 func TestCodecAESVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
@@ -236,7 +237,11 @@ func TestCodecAESVectors(t *testing.T) {
 	}
 	styles := []string{"aes", "hex"}
 	for _, v := range f.Vectors {
-		t.Run(v.Key, func(t *testing.T) {
+		if v.Name == "" || strings.ContainsAny(v.Name, "/ \t\n") {
+			t.Errorf("vector name %q is empty or holds a slash or white space", v.Name)
+			continue
+		}
+		t.Run(v.Name, func(t *testing.T) {
 			encoded, err := HostEncode(v.Plain, styles, v.Key)
 			if err != nil {
 				t.Fatalf("encode: %v", err)

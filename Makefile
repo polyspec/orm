@@ -882,7 +882,7 @@ client-unit-check/code-catalog: php-vendor-check
 	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodeCatalogTest.php
 client-unit-check/hostcodec: php-vendor-check
 	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/HostcodecTest.php
-# client-unit-check/codec-aes runs the AES v2 vectors of tests/codec/aes-vectors.json, one data set per key.
+# client-unit-check/codec-aes runs the AES v2 vectors of tests/codec/aes-vectors.json, one data set per name.
 client-unit-check/codec-aes: php-vendor-check
 	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecAesVectorsTest.php
 # client-unit-check/insert-parts runs the cases of contracts/fixtures/insert_parts.json in PHP and TypeScript.

@@ -1,5 +1,5 @@
 //! The AES v2 vectors of tests/codec/aes-vectors.json through the public codec API (`polyspec_orm::codec`), one
-//! libtest-mimic trial `aes_vectors::<key>` per vector: the aes hex host stages round-trip the plain text with the
+//! libtest-mimic trial `aes_vectors::<name>` per vector: the aes hex host stages round-trip the plain text with the
 //! key, and the fixed envelope decodes to the plain text.
 
 use polyspec_orm::codec::{host_decode, host_encode};
@@ -13,6 +13,7 @@ struct File {
 
 #[derive(serde::Deserialize)]
 struct Vector {
+    name: String,
     key: String,
     plain: String,
     envelope_hex: String,
@@ -32,7 +33,7 @@ fn main() {
     let trials: Vec<Trial> = file
         .vectors
         .into_iter()
-        .map(|v| polyspec_orm_testcase::trial(format!("aes_vectors::{}", v.key), polyspec_orm_testcase::COMPUTE, move || vector_case(&v)))
+        .map(|v| polyspec_orm_testcase::trial(format!("aes_vectors::{}", v.name), polyspec_orm_testcase::COMPUTE, move || vector_case(&v)))
         .collect();
     polyspec_orm_testcase::run(trials);
 }

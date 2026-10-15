@@ -177,7 +177,7 @@
     },
     {
       "id": "codec-aes", "kind": "suite", "profile": "client",
-      "file": "tests/codec/aes-vectors.json", "cases": "$.vectors[*].key",
+      "file": "tests/codec/aes-vectors.json", "cases": "$.vectors[*].name",
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/codec_test.go", "symbol": "TestCodecAESVectors" },
         { "implementation": "php", "test": "packages/php/tests/CodecAesVectorsTest.php", "symbol": "CodecAesVectorsTest::test_vector" },
