@@ -1,5 +1,6 @@
 // plan diff의 객체, trigger, 변경 목록 (docs/plans.md "Diff").
 // 기준은 Go 엔진(engine/dbspec/plan_objects.go)이다.
+import { present } from '../present.js';
 import { readCheck, type CheckExpr, type CheckOperand } from './check.js';
 import type { DbspecCheck, DbspecForeignKey, DbspecIndex, DbspecTable, DbspecUnique } from './model.js';
 import { sortedBy } from './plan.js';
@@ -33,8 +34,8 @@ export function diffObjects(d: PlanDiff, renamedFrom: ReadonlyMap<string, string
   for (const [t, cols] of d.altered) for (const c of cols) alteredColumn.add(`${t}.${c}`);
   for (const [t, m] of renamedColumn) for (const c of m.values()) renamedCol.add(`${t}.${c}`);
   for (const name of d.matched) {
-    const src = d.source.get(d.tableOf.get(name)!)!;
-    const tgt = d.target.get(name)!;
+    const src = present(d.source.get(present(d.tableOf.get(name), 'd.tableOf.get(name)')), 'd.source.get(d.tableOf.get(name))');
+    const tgt = present(d.target.get(name), 'd.target.get(name)');
     const col: Rename = c => column(name, c);
     // 지우는 index나 unique 위의 foreign key는 MySQL이 그 index를 지우지 못하게
     // 하므로 함께 다시 만든다.
@@ -110,7 +111,7 @@ export function diffObjects(d: PlanDiff, renamedFrom: ReadonlyMap<string, string
   // 지우는 table을 참조하는 남은 table의 foreign key는 target이 이미 뺐으므로
   // 위에서 지운다. 지우는 table 자신의 foreign key는 table과 함께 지운다.
   for (const name of d.dropped) {
-    for (const f of d.source.get(name)!.foreignKeys) append(d.dropObjects, name, { kind: 'foreign_key', name: f.name });
+    for (const f of present(d.source.get(name), 'd.source.get(name)').foreignKeys) append(d.dropObjects, name, { kind: 'foreign_key', name: f.name });
   }
   for (const list of d.dropObjects.values()) list.sort(compareRef);
   for (const list of d.addObjects.values()) list.sort(compareRef);
@@ -122,8 +123,8 @@ export function diffObjects(d: PlanDiff, renamedFrom: ReadonlyMap<string, string
  */
 export function diffTriggers(d: PlanDiff): void {
   for (const name of d.matched) {
-    const src = d.source.get(d.tableOf.get(name)!)!;
-    const tgt = d.target.get(name)!;
+    const src = present(d.source.get(present(d.tableOf.get(name), 'd.tableOf.get(name)')), 'd.source.get(d.tableOf.get(name))');
+    const tgt = present(d.target.get(name), 'd.target.get(name)');
     for (const dialect of ['mysql', 'postgres', 'sqlite'] as const) {
       const r = new Renderer(dialect);
       const before = r.triggers(src);
@@ -141,21 +142,21 @@ export function collectChanges(d: PlanDiff): void {
     d.changes.push({ kind, table, name });
   };
   for (const name of d.matched) {
-    if (d.triggers.has(name) && hasTriggers(d.source.get(d.tableOf.get(name)!)!)) add('drop_triggers', d.tableOf.get(name)!, '');
+    if (d.triggers.has(name) && hasTriggers(present(d.source.get(present(d.tableOf.get(name), 'd.tableOf.get(name)')), 'd.source.get(d.tableOf.get(name))'))) add('drop_triggers', present(d.tableOf.get(name), 'd.tableOf.get(name)'), '');
   }
-  for (const s of sortedKeys(d.dropObjects)) for (const o of d.dropObjects.get(s)!) add(`drop_${o.kind}`, s, o.name);
+  for (const s of sortedKeys(d.dropObjects)) for (const o of present(d.dropObjects.get(s), 'd.dropObjects.get(s)')) add(`drop_${o.kind}`, s, o.name);
   for (const r of sortedBy(d.renamedTables, r => r.old)) add('rename_table', r.old, r.new);
   for (const r of sortedBy(d.renamedColumns, r => `${r.table}.${r.old}`)) add('rename_column', r.table, `${r.old} ${r.new}`);
-  for (const name of d.matched) for (const c of d.removed.get(name) ?? []) add('drop_column', d.tableOf.get(name)!, c);
+  for (const name of d.matched) for (const c of d.removed.get(name) ?? []) add('drop_column', present(d.tableOf.get(name), 'd.tableOf.get(name)'), c);
   for (const name of d.dropped) add('drop_table', name, '');
   for (const name of d.created) add('create_table', name, '');
   for (const name of d.matched) {
     for (const c of d.added.get(name) ?? []) add('add_column', name, c);
     for (const c of d.altered.get(name) ?? []) add('alter_column', name, c);
   }
-  for (const t of sortedKeys(d.addObjects)) for (const o of d.addObjects.get(t)!) add(`add_${o.kind}`, t, o.name);
+  for (const t of sortedKeys(d.addObjects)) for (const o of present(d.addObjects.get(t), 'd.addObjects.get(t)')) add(`add_${o.kind}`, t, o.name);
   for (const name of d.matched) {
-    if (d.triggers.has(name) && hasTriggers(d.target.get(name)!)) add('create_triggers', name, '');
+    if (d.triggers.has(name) && hasTriggers(present(d.target.get(name), 'd.target.get(name)'))) add('create_triggers', name, '');
   }
 }
 

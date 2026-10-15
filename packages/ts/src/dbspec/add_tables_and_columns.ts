@@ -1,4 +1,5 @@
 // 연결의 addTablesAndColumns가 실행할 step을 쓴다(docs/schema.md "Adding tables and columns").
+import { present } from '../present.js';
 import { compareSchemas } from './compare.js';
 import { emitDocument } from './emit.js';
 import type { DbspecUnsupported } from './introspect_catalog.js';
@@ -81,7 +82,7 @@ export function addTablesAndColumnsSteps(live: DbspecDocument, unsupported: read
       continue;
     }
     if (d.kind === 'add_column') {
-      const column = declared.get(d.table)!.columns.find(c => c.name === d.name);
+      const column = present(declared.get(d.table), 'declared.get(d.table)').columns.find(c => c.name === d.name);
       if (column === undefined || column.identity || (!column.nullable && column.default === null)) {
         differences.push(`add_column ${qualified(d.table, d.name)} without null or default`);
         continue;

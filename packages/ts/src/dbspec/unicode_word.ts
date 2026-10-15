@@ -1,3 +1,4 @@
+import { present } from '../present.js';
 // 생성 파일이다. Unicode 17.0.0의 word rune 표다.
 // unicode.IsLetter 또는 unicode.IsDigit이 참인 code point의 닫힌 구간이며 오름차순이고 서로 겹치지 않는다.
 // `go run ./tests/dbspec/unicode -write`가 쓴다. 직접 고치지 않는다.
@@ -748,7 +749,7 @@ export function containsWordRune(cp: number): boolean {
   let hi = WORD_RANGES.length;
   while (lo < hi) {
     const mid = (lo + hi) >>> 1;
-    const [first, last] = WORD_RANGES[mid]!;
+    const [first, last] = present(WORD_RANGES[mid], 'WORD_RANGES[mid]');
     if (cp < first) hi = mid;
     else if (cp > last) lo = mid + 1;
     else return true;

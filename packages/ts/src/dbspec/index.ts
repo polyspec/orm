@@ -11,6 +11,7 @@
 // finalizePlans apply, continue, undo and finalize them on a database, and compareSchemas lists every difference of two schemas
 // (docs/plans.md). exportMermaid and importMermaid write and read
 // standard Mermaid erDiagrams (docs/mermaid.md).
+import { present } from '../present.js';
 import { createHash } from 'node:crypto';
 import type { DbspecColumn, DbspecDiagnostic, DbspecDocument, DbspecTable, DbspecUse } from './model.js';
 import { emitDocument, typeText } from './emit.js';
@@ -131,7 +132,7 @@ export function dbspecManifest(documents: readonly DbspecDocument[]): DbspecMani
       const trimmed = externalDocument(document, used.get(document.name) ?? []);
       if (trimmed !== null) {
         externalText += emitDocument(trimmed, 'manifest');
-        uses.push({ comments: [], document: document.name, tables: [...used.get(document.name)!].sort(compareText) });
+        uses.push({ comments: [], document: document.name, tables: [...present(used.get(document.name), 'used.get(document.name)')].sort(compareText) });
       }
       continue;
     }
@@ -145,7 +146,8 @@ export function dbspecManifest(documents: readonly DbspecDocument[]): DbspecMani
   const manifest = Object.freeze({
     manifestText, externalText, schemaText, manifestHash: textHash(manifestText + externalText), schemaHash: textHash(schemaText),
   });
-  return Object.freeze({ manifest, diagnostics: Object.freeze([]) as readonly [] });
+  const noDiagnostics: readonly [] = Object.freeze([]);
+  return Object.freeze({ manifest, diagnostics: noDiagnostics });
 }
 
 function compareText(a: string, b: string): number {

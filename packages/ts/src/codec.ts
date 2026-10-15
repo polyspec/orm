@@ -3,6 +3,7 @@ import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes }
 import { isIP } from 'node:net';
 import { Value as JsonValue, parse as orderedJsonParse, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
 import { isScalar, parseAllDocuments, stringify as stringifyYaml, visit } from 'yaml';
+import { present } from './present.js';
 import { StyledValue } from './styled_value.js';
 
 export type CodecValue = null | boolean | number | string | CodecValue[] | { [key: string]: CodecValue };
@@ -10,17 +11,24 @@ export type EncodedValue = string | Uint8Array | null;
 /** The value of a column with an ordered_json stage: an ordered-json value. */
 export type { JsonValue };
 
+/** The bytes of a plaintext: bytes as given, a scalar as the UTF-8 of its text; any other value is a CODEC_ENCODE error. */
+function plainBytes(value: unknown): Buffer {
+  if (Buffer.isBuffer(value) || value instanceof Uint8Array) return Buffer.from(value);
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'bigint' || typeof value === 'boolean') return Buffer.from(String(value));
+  throw new CodecError('CODEC_ENCODE', `a ${typeof value} value has no plaintext`);
+}
+
 /** Returns the stable lowercase HMAC-SHA256 index for plaintext. */
 export function blindIndex(value: unknown, key: string): string | null {
   if (value === null) return null;
   if (key === '') throw new CodecError('CODEC_ENCODE', 'secret blind_index not configured');
-  const input = Buffer.isBuffer(value) || value instanceof Uint8Array ? Buffer.from(value) : Buffer.from(String(value));
+  const input = plainBytes(value);
   return createHmac('sha256', key).update(input).digest('hex');
 }
 
 export function hostEncode(value: unknown, styles: readonly string[], aesKey: string): string | Uint8Array | null {
   if (value === null) return null;
-  let current: Buffer<ArrayBufferLike> = Buffer.isBuffer(value) || value instanceof Uint8Array ? Buffer.from(value) : Buffer.from(String(value));
+  let current: Buffer<ArrayBufferLike> = plainBytes(value);
   let textResult = false;
   for (const style of styles) {
     switch (style) {
@@ -88,11 +96,15 @@ function packIp(value: string): Buffer {
   const halves = source.split('::');
   if (halves.length > 2) throw new CodecError('CODEC_ENCODE', `ip: ${JSON.stringify(source)} is not an address`);
   const parse = (part: string): number[] => part === '' ? [] : part.split(':').flatMap(token => {
-    if (token.includes('.')) { const bytes=token.split('.').map(Number); return [(bytes[0]!<<8)|bytes[1]!, (bytes[2]!<<8)|bytes[3]!]; }
+    if (token.includes('.')) {
+      const [a, b, c, d] = token.split('.').map(Number);
+      if (a === undefined || b === undefined || c === undefined || d === undefined) throw new CodecError('CODEC_ENCODE', `ip: ${JSON.stringify(source)} is not an address`);
+      return [(a<<8)|b, (c<<8)|d];
+    }
     return [Number.parseInt(token,16)];
   });
-  const left=parse(halves[0]!), right=parse(halves[1]??'');
-  const groups=halves.length===2?[...left,...Array(8-left.length-right.length).fill(0),...right]:left;
+  const left=parse(present(halves[0], 'the first half of an IPv6 address')), right=parse(halves[1]??'');
+  const groups=halves.length===2?[...left,...Array.from({ length: 8-left.length-right.length }, () => 0),...right]:left;
   if(groups.length!==8)throw new CodecError('CODEC_ENCODE',`ip: ${JSON.stringify(source)} is not an address`);
   const out=Buffer.alloc(16);groups.forEach((group,index)=>out.writeUInt16BE(group,index*2));
   if(out.subarray(0,12).equals(Buffer.from([0,0,0,0,0,0,0,0,0,0,255,255])))return out.subarray(12);
@@ -156,7 +168,7 @@ export function decode(styles: readonly string[], raw: string | Uint8Array | nul
   let current = bytes(raw);
   let value: CodecValue | JsonValue | undefined;
   for (let index = styles.length - 1; index >= 0; index--) {
-    const style = styles[index]!;
+    const style = present(styles[index], `encoding style ${index}`);
     if (value !== undefined) throw new CodecError('CODEC_DECODE', `style ${style} after a decoded value`);
     switch (style) {
       case 'gz':
@@ -196,6 +208,16 @@ export function decode(styles: readonly string[], raw: string | Uint8Array | nul
  * first gz or base64 stage takes the value as text.
  */
 export function encode(styles: readonly string[], state: StyledValue<CodecValue | JsonValue>): EncodedValue {
+  return encodeStyled(styles, state);
+}
+
+/**
+ * encode for a value whose payload is not yet typed: each stage checks the payload it takes, so a model's column value
+ * (StyledValue of any payload) is encoded without asserting its type.
+ *
+ * @internal
+ */
+export function encodeStyled(styles: readonly string[], state: StyledValue<unknown>): EncodedValue {
   if (state.kind === 'sql-null') return null;
   let current = new Uint8Array();
   const transformed = state.payload();
@@ -203,8 +225,7 @@ export function encode(styles: readonly string[], state: StyledValue<CodecValue 
     if (typeof transformed !== 'string') throw new CodecError('CODEC_ENCODE', `a first ${styles[0]} stage takes a string value`);
     current = utf8.encode(transformed);
   }
-  for (let index = 0; index < styles.length; index++) {
-    const style = styles[index]!;
+  for (const [index, style] of styles.entries()) {
     switch (style) {
       case 'serialize':
         if (index !== 0) throw new CodecError('CODEC_UNSUPPORTED', 'serialize must be the first encoding style');
@@ -240,9 +261,19 @@ export function encode(styles: readonly string[], state: StyledValue<CodecValue 
 }
 
 /** Rejects an ordered-json value for a stage that takes the common value model. */
-function commonValue(value: CodecValue | JsonValue, style: string): CodecValue {
+function commonValue(value: unknown, style: string): CodecValue {
   if (value instanceof JsonValue) throw new CodecError('CODEC_ENCODE', `${style}: an ordered-json value is written only by the ordered_json stage`);
+  if (!isCodecValue(value)) throw new CodecError('CODEC_ENCODE', `${style}: the value is not a codec value (null, boolean, number, string, array or plain object of them)`);
   return value;
+}
+
+/** Whether `value` has the shape of a CodecValue: null, a boolean, number or string, or an array or plain object of them. */
+function isCodecValue(value: unknown): value is CodecValue {
+  if (value === null || typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string') return true;
+  if (Array.isArray(value)) return value.every(isCodecValue);
+  if (typeof value !== 'object') return false;
+  const proto: unknown = Object.getPrototypeOf(value);
+  return (proto === Object.prototype || proto === null) && Object.values(value).every(isCodecValue);
 }
 
 /**
@@ -275,10 +306,13 @@ function jsonText(value: unknown, depth: number): string {
   }
   if (Array.isArray(value)) return `[${value.map(item => jsonText(item, depth + 1)).join(',')}]`;
   if (value instanceof Uint8Array) throw new CodecError('CODEC_ENCODE', 'json: bytes are not a JSON value');
-  const proto = Object.getPrototypeOf(value);
+  const proto: unknown = Object.getPrototypeOf(value);
   if (proto !== Object.prototype && proto !== null) {
     const toJSON = (value as { toJSON?: unknown }).toJSON;
-    if (typeof toJSON !== 'function') throw new CodecError('CODEC_ENCODE', `json: ${proto?.constructor?.name ?? 'object'} is not a JSON value`);
+    if (typeof toJSON !== 'function') {
+      const constructor: unknown = typeof proto === 'object' ? Reflect.get(proto, 'constructor') : undefined;
+      throw new CodecError('CODEC_ENCODE', `json: ${typeof constructor === 'function' ? constructor.name : 'object'} is not a JSON value`);
+    }
     return jsonText(toJSON.call(value), depth + 1);
   }
   const members: string[] = [];
@@ -295,7 +329,7 @@ function decodeYaml(current: Uint8Array): CodecValue {
     // A stream without a document (empty, or comments only) is not a YAML value.
     if (documents.length === 0) throw new Error('no document');
     if (documents.length > 1) throw new Error('multiple documents are not supported');
-    const document = documents[0]!;
+    const document = present(documents[0], 'the one YAML document');
     if (document.errors.length > 0) throw document.errors[0];
     if (document.warnings.length > 0) throw document.warnings[0];
     const schema = document.schema;
@@ -333,7 +367,7 @@ function validateCodecValue(value: unknown, operation: string): CodecValue {
   }
   if (Array.isArray(value)) return value.map(item => validateCodecValue(item, operation));
   if (typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
-    return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, validateCodecValue(item, operation)]));
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, validateCodecValue(item, operation)]));
   }
   throw new Error(`${operation}: value type is not supported`);
 }
@@ -349,8 +383,8 @@ function phpSerialize(value: CodecValue): string {
   if (Array.isArray(value)) {
     return `a:${value.length}:{${value.map((item, index) => `i:${index};${phpSerialize(item)}`).join('')}}`;
   }
-  const keys = Object.keys(value).sort();
-  return `a:${keys.length}:{${keys.map(key => `${phpKey(key)}${phpSerialize(value[key]!)}`).join('')}}`;
+  const entries = Object.entries(value).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0));
+  return `a:${entries.length}:{${entries.map(([key, item]) => `${phpKey(key)}${phpSerialize(item)}`).join('')}}`;
 }
 
 function phpKey(key: string): string {
@@ -365,8 +399,9 @@ function phpFloat(value: number): string {
   const source = value.toString();
   const match = /^(.+?)e([+-]?)([0-9]+)$/i.exec(source);
   if (!match) return source;
-  const mantissa = match[1]!.includes('.') ? match[1]! : `${match[1]}.0`;
-  const exponent = Number(`${match[2] || '+'}${match[3]}`);
+  const significand = present(match[1], 'the significand of an exponent float');
+  const mantissa = significand.includes('.') ? significand : `${significand}.0`;
+  const exponent = Number(`${match[2] || '+'}${present(match[3], 'the exponent of an exponent float')}`);
   return `${mantissa}E${exponent < 0 ? '-' : '+'}${Math.abs(exponent)}`;
 }
 
@@ -386,8 +421,10 @@ class PhpParser {
   }
 
   private byte(): number {
-    if (this.index >= this.input.length) this.fail('unexpected end');
-    return this.input[this.index++]!;
+    const byte = this.input[this.index];
+    if (byte === undefined) this.fail('unexpected end');
+    this.index++;
+    return byte;
   }
 
   private expect(expected: number): void {

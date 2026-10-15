@@ -1,5 +1,6 @@
 // renderer가 쓴 trigger 집합을 immutable이나 audit setting으로 알아본다
 // (docs/dialects.md "Introspection", "Triggers").
+import { present } from '../present.js';
 import { byteOrder, type Catalog, type ITable } from './introspect_catalog.js';
 import type { DbspecSetting, DbspecTable } from './model.js';
 import { auditLine } from './audit.js';
@@ -23,7 +24,7 @@ const AUDIT_UPDATE_PATTERN = /VALUES \('update', OLD\.[`"]([a-z0-9_]+)[`"],/;
  */
 export function recognizeTriggers(c: Catalog, dialect: DbspecDialect, triggers: ReadonlyMap<string, readonly ITrigger[]>): void {
   for (const table of [...triggers.keys()].sort(byteOrder)) {
-    const list = triggers.get(table)!;
+    const list = present(triggers.get(table), 'triggers.get(table)');
     const t = c.table(table);
     if (t === undefined) {
       for (const tr of list) c.report('trigger', table, tr.name, 'the table is not read');
@@ -54,7 +55,7 @@ function triggerSetting(dialect: DbspecDialect, t: ITable, list: readonly ITrigg
     const update = names.get(rendererName(t.name, 'audit_update'));
     const m = AUDIT_INSERT_PATTERN.exec(statementBody(insert.statements));
     const u = AUDIT_UPDATE_PATTERN.exec(statementBody(update?.statements ?? []));
-    const audit = m !== null && u !== null ? auditOf(t, m[1]!, m[2]!.split(', '), u[1]!) : null;
+    const audit = m !== null && u !== null ? auditOf(t, present(m[1], 'm[1]'), present(m[2], 'm[2]').split(', '), present(u[1], 'u[1]')) : null;
     if (audit !== null) settings.push(audit);
   }
   if (settings.length === 0) return null;
@@ -83,7 +84,7 @@ function auditOf(t: ITable, into: string, quoted: readonly string[], column: str
   for (const q of quoted) {
     const m = AUDIT_COLUMN_PATTERN.exec(q);
     if (m === null) return null;
-    names.push(m[1]!);
+    names.push(present(m[1], 'm[1]'));
   }
   const recorded = names.slice(2);
   if (recorded.length === 0 || !recorded.includes(column)) return null;
@@ -91,7 +92,7 @@ function auditOf(t: ITable, into: string, quoted: readonly string[], column: str
   if (references.length !== 1) return null;
   const excluded = t.columns.filter(c => !recorded.includes(c.name)).map(c => c.name);
   return {
-    comments: [], kind: 'audit', into, column, references: references[0]!, action: names[0]!, previous: names[1]!,
+    comments: [], kind: 'audit', into, column, references: present(references[0], 'references[0]'), action: present(names[0], 'names[0]'), previous: present(names[1], 'names[1]'),
     exclude: excluded.length === 0 ? null : excluded, include: null,
   };
 }
@@ -118,7 +119,7 @@ function triggerOrder(statements: readonly string[]): string[] {
   for (const s of statements) {
     if (!s.startsWith('CREATE TRIGGER ')) continue;
     const rest = s.slice('CREATE TRIGGER '.length);
-    const end = rest.indexOf(rest[0]!, 1);
+    const end = rest.indexOf(present(rest[0], 'rest[0]'), 1);
     names.push(rest.slice(1, end));
   }
   return names;

@@ -24,7 +24,8 @@ export interface DbspecSetDocument {
  * document is marked external.
  */
 export function parseDbspecSet(owned: readonly string[], external: readonly string[]): readonly DbspecSetDocument[] {
-  if (!Array.isArray(owned) || !Array.isArray(external)) throw new TypeError('dbspec set texts must be arrays of strings');
+  const lists: readonly unknown[] = [owned, external];
+  if (!lists.every(list => Array.isArray(list))) throw new TypeError('dbspec set texts must be arrays of strings');
   const texts = [...owned.map(text => ({ text, external: false })), ...external.map(text => ({ text, external: true }))];
   for (const { text } of texts) if (typeof text !== 'string') throw new TypeError('dbspec set texts must be strings');
   const named = new Map<string, string>();

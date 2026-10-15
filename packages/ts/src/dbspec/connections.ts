@@ -29,3 +29,50 @@ export interface DbspecSqliteConnection {
   exec(sql: string): void;
   prepare(sql: string): DbspecSqliteStatement;
 }
+
+/** Whether `value` is an object with a function property `method`. */
+function hasMethod(value: unknown, method: string): boolean {
+  return typeof value === 'object' && value !== null && typeof Reflect.get(value, method) === 'function';
+}
+
+/**
+ * Whether `value` has the query method of a mysql2 connection.
+ *
+ * @internal
+ */
+export function isMySqlConnection(value: unknown): value is DbspecMySqlConnection {
+  return hasMethod(value, 'query');
+}
+
+/**
+ * Whether `value` has the query method of a node-postgres client.
+ *
+ * @internal
+ */
+export function isPostgresConnection(value: unknown): value is DbspecPostgresConnection {
+  return hasMethod(value, 'query');
+}
+
+/**
+ * Whether `value` has the prepare method of a node:sqlite database.
+ *
+ * @internal
+ */
+export function isSqliteConnection(value: unknown): value is DbspecSqliteConnection {
+  return hasMethod(value, 'prepare');
+}
+
+/**
+ * The rows that a driver returned as arrays of values; throws an Error that names `source` when they are not.
+ *
+ * @internal
+ */
+export function rowArrays(value: unknown, source: string): unknown[][] {
+  if (!Array.isArray(value)) throw new Error(`${source} returned no array of rows`);
+  const rows: readonly unknown[] = value;
+  return rows.map(row => {
+    if (!Array.isArray(row)) throw new Error(`${source} returned a row that is not an array of values`);
+    const values: unknown[] = row;
+    return values;
+  });
+}

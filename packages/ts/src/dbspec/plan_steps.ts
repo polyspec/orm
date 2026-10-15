@@ -1,5 +1,6 @@
 // plan의 step을 한 dialect로 쓴다 (docs/plans.md "Steps"). 기준은 Go 엔진
 // (engine/dbspec/plan_steps.go)이며 statement, rollback, 효과는 Go와 같은 바이트다.
+import { present as known } from '../present.js';
 import { readCheck } from './check.js';
 import type { DbspecColumn, DbspecDiagnostic, DbspecDocument, DbspecForeignKey, DbspecIndex, DbspecTable, DbspecType, DbspecUnique } from './model.js';
 import { sortedBy, type DbspecPlan } from './plan.js';
@@ -77,7 +78,8 @@ export function planSteps(source: DbspecDocument | null, plan: DbspecPlan, diale
   if (diff === null) return Object.freeze({ steps: null, diagnostics: Object.freeze(diagnostics) });
   const holdPrefix = `dbspec$hold$${plan.to.slice('sha256:'.length, 'sha256:'.length + 12)}$`;
   const steps = new PlanWriter(diff, new Renderer(dialect), holdPrefix).steps();
-  return Object.freeze({ steps: Object.freeze(steps.map(s => Object.freeze(s))), diagnostics: Object.freeze([]) as readonly [] });
+  const noDiagnostics: readonly [] = Object.freeze([]);
+  return Object.freeze({ steps: Object.freeze(steps.map(s => Object.freeze(s))), diagnostics: noDiagnostics });
 }
 
 const present = (kind: string, table: string, name: string): DbspecEffect => Object.freeze({ kind, table, name, present: true });
@@ -131,7 +133,7 @@ class PlanWriter {
       this.holds.set(key, this.holdPrefix + n);
       this.holdOrder.push(key);
     };
-    for (const name of d.matched) for (const c of d.removed.get(name) ?? []) next(`${d.tableOf.get(name)!}.${c}`);
+    for (const name of d.matched) for (const c of d.removed.get(name) ?? []) next(`${known(d.tableOf.get(name), 'd.tableOf.get(name)')}.${c}`);
     for (const name of d.dropped) next(name);
     for (const name of d.matched) for (const c of d.added.get(name) ?? []) next(`+${name}.${c}`);
   }
@@ -143,17 +145,17 @@ class PlanWriter {
     if (sqlite) for (const name of d.matched) if (this.sqliteRebuilds(name)) this.rebuilt.add(name);
     // 1. trigger
     for (const name of d.matched) {
-      const src = d.source.get(d.tableOf.get(name)!)!;
+      const src = known(d.source.get(known(d.tableOf.get(name), 'd.tableOf.get(name)')), 'd.source.get(d.tableOf.get(name))');
       if (hasTriggers(src) && (d.triggers.has(name) || this.rebuilt.has(name))) this.dropTriggers(src);
     }
     for (const name of d.dropped) {
-      const src = d.source.get(name)!;
+      const src = known(d.source.get(name), 'd.source.get(name)');
       if (hasTriggers(src)) this.dropTriggers(src);
     }
     // 2. foreign key
     if (!sqlite) {
       for (const s of sortedKeys(d.dropObjects)) {
-        for (const o of d.dropObjects.get(s)!) if (o.kind === 'foreign_key') this.dropObject(d.source.get(s)!, o);
+        for (const o of known(d.dropObjects.get(s), 'd.dropObjects.get(s)')) if (o.kind === 'foreign_key') this.dropObject(known(d.source.get(s), 'd.source.get(s)'), o);
       }
     }
     // 3. check, unique, index와 지우는 table의 객체
@@ -168,28 +170,28 @@ class PlanWriter {
       for (const o of objects) if (o.kind !== 'foreign_key' && !(sqlite && o.kind === 'check')) push(s, o);
     }
     for (const s of d.dropped) {
-      const t = d.source.get(s)!;
+      const t = known(d.source.get(s), 'd.source.get(s)');
       for (const u of t.uniques) push(s, { kind: 'unique', name: u.name });
       for (const x of t.indexes) push(s, { kind: 'index', name: x.name });
       if (!sqlite) for (const k of t.checks) push(s, { kind: 'check', name: k.name });
     }
     const refKey = (o: ObjectRef): string => `${o.kind}\0${o.name}`;
     for (const s of sortedKeys(dropTables)) {
-      const objects = [...dropTables.get(s)!].sort((a, b) => (refKey(a) < refKey(b) ? -1 : refKey(a) > refKey(b) ? 1 : 0));
-      for (const o of objects) this.dropObject(d.source.get(s)!, o);
+      const objects = [...known(dropTables.get(s), 'dropTables.get(s)')].sort((a, b) => (refKey(a) < refKey(b) ? -1 : refKey(a) > refKey(b) ? 1 : 0));
+      for (const o of objects) this.dropObject(known(d.source.get(s), 'd.source.get(s)'), o);
     }
     const rendererChecks = new Map<string, [Map<string, string>, Map<string, string>]>();
     if (!sqlite) {
       for (const name of d.matched) {
-        const src = d.source.get(d.tableOf.get(name)!)!;
+        const src = known(d.source.get(known(d.tableOf.get(name), 'd.tableOf.get(name)')), 'd.source.get(d.tableOf.get(name))');
         const before = this.rendererChecks(src);
-        const after = this.rendererChecks(d.target.get(name)!);
+        const after = this.rendererChecks(known(d.target.get(name), 'd.target.get(name)'));
         rendererChecks.set(name, [before, after]);
-        for (const n of sortedKeys(before)) if (after.get(n) !== before.get(n)) this.dropRendererCheck(src.name, n, before.get(n)!);
+        for (const n of sortedKeys(before)) if (after.get(n) !== before.get(n)) this.dropRendererCheck(src.name, n, known(before.get(n), 'before.get(n)'));
       }
       for (const s of d.dropped) {
-        const before = this.rendererChecks(d.source.get(s)!);
-        for (const n of sortedKeys(before)) this.dropRendererCheck(s, n, before.get(n)!);
+        const before = this.rendererChecks(known(d.source.get(s), 'd.source.get(s)'));
+        for (const n of sortedKeys(before)) this.dropRendererCheck(s, n, known(before.get(n), 'before.get(n)'));
       }
     }
     // 4. rename
@@ -202,8 +204,8 @@ class PlanWriter {
     // 5. 지우는 column과 table을 숨긴다
     if (!sqlite) {
       for (const name of d.matched) {
-        const src = d.source.get(d.tableOf.get(name)!)!;
-        for (const c of d.removed.get(name) ?? []) this.hideColumn(name, columnOf(src, c)!, this.hold(`${src.name}.${c}`));
+        const src = known(d.source.get(known(d.tableOf.get(name), 'd.tableOf.get(name)')), 'd.source.get(d.tableOf.get(name))');
+        for (const c of d.removed.get(name) ?? []) this.hideColumn(name, known(columnOf(src, c), 'columnOf(src, c)'), this.hold(`${src.name}.${c}`));
       }
     }
     for (const name of d.dropped) {
@@ -212,8 +214,8 @@ class PlanWriter {
     }
     // 6. create table
     for (const name of d.created) {
-      const t = d.target.get(name)!;
-      this.add(step(this.r.table(t)[0]!, `DROP TABLE ${this.q(name)}`, present('table', name, '')));
+      const t = known(d.target.get(name), 'd.target.get(name)');
+      this.add(step(known(this.r.table(t)[0], 'this.r.table(t)[0]'), `DROP TABLE ${this.q(name)}`, present('table', name, '')));
       this.createIndexes(t, name);
     }
     // 7. add, alter column; SQLite 다시 만들기
@@ -222,30 +224,30 @@ class PlanWriter {
         if (this.rebuilt.has(name)) this.rebuild(name);
         continue;
       }
-      const t = d.target.get(name)!;
-      const src = d.source.get(d.tableOf.get(name)!)!;
+      const t = known(d.target.get(name), 'd.target.get(name)');
+      const src = known(d.source.get(known(d.tableOf.get(name), 'd.tableOf.get(name)')), 'd.source.get(d.tableOf.get(name))');
       for (const c of d.added.get(name) ?? []) {
         const h = this.hold(`+${name}.${c}`);
         this.add(
-          step(`ALTER TABLE ${this.q(name)} ADD COLUMN ${this.r.column(columnOf(t, c)!)}`, this.renameColumn(name, c, h), present('column', name, c), {
+          step(`ALTER TABLE ${this.q(name)} ADD COLUMN ${this.r.column(known(columnOf(t, c), 'columnOf(t, c)'))}`, this.renameColumn(name, c, h), present('column', name, c), {
             restore: this.renameColumn(name, h, c),
             restoreIf: present('column', name, h),
           }),
         );
       }
-      for (const c of d.altered.get(name) ?? []) this.alterColumn(name, columnOf(src, d.columnOf.get(name)!.get(c)!)!, columnOf(t, c)!);
+      for (const c of d.altered.get(name) ?? []) this.alterColumn(name, known(columnOf(src, known(known(d.columnOf.get(name), 'd.columnOf.get(name)').get(c), 'd.columnOf.get(name).get(c)')), 'columnOf(src, known(d.columnOf.get(name).get(c), \'known(d.columnOf.get(name), \\\'d.columnOf.get(name)\\\').get(c)\'))'), known(columnOf(t, c), 'columnOf(t, c)'));
     }
     // 8. unique, index, check
     for (const t of sortedKeys(d.addObjects)) {
       if (this.rebuilt.has(t)) continue;
-      for (const o of d.addObjects.get(t)!) if (o.kind !== 'foreign_key' && !(sqlite && o.kind === 'check')) this.addObject(t, o);
+      for (const o of known(d.addObjects.get(t), 'd.addObjects.get(t)')) if (o.kind !== 'foreign_key' && !(sqlite && o.kind === 'check')) this.addObject(t, o);
     }
     if (!sqlite) {
       for (const name of d.matched) {
-        const [before, after] = rendererChecks.get(name)!;
+        const [before, after] = known(rendererChecks.get(name), 'rendererChecks.get(name)');
         for (const n of sortedKeys(after)) {
           if (after.get(n) !== before.get(n)) {
-            this.add(step(`ALTER TABLE ${this.q(name)} ADD CONSTRAINT ${this.q(n)} CHECK (${after.get(n)!})`, this.dropCheck(name, n), present('constraint', name, n)));
+            this.add(step(`ALTER TABLE ${this.q(name)} ADD CONSTRAINT ${this.q(n)} CHECK (${known(after.get(n), 'after.get(n)')})`, this.dropCheck(name, n), present('constraint', name, n)));
           }
         }
       }
@@ -253,21 +255,21 @@ class PlanWriter {
     // 9. foreign key
     if (!sqlite) {
       for (const name of d.created) {
-        for (const f of sortedBy(d.target.get(name)!.foreignKeys, f => f.name)) this.addObject(name, { kind: 'foreign_key', name: f.name });
+        for (const f of sortedBy(known(d.target.get(name), 'd.target.get(name)').foreignKeys, f => f.name)) this.addObject(name, { kind: 'foreign_key', name: f.name });
       }
       for (const t of sortedKeys(d.addObjects)) {
-        for (const o of d.addObjects.get(t)!) if (o.kind === 'foreign_key') this.addObject(t, o);
+        for (const o of known(d.addObjects.get(t), 'd.addObjects.get(t)')) if (o.kind === 'foreign_key') this.addObject(t, o);
       }
     }
     // 10. trigger
-    for (const name of d.created) this.createTriggers(d.target.get(name)!);
+    for (const name of d.created) this.createTriggers(known(d.target.get(name), 'd.target.get(name)'));
     for (const name of d.matched) {
-      const t = d.target.get(name)!;
+      const t = known(d.target.get(name), 'd.target.get(name)');
       if (hasTriggers(t) && (d.triggers.has(name) || this.rebuilt.has(name))) this.createTriggers(t);
     }
     // 11. finalize
     for (const key of this.holdOrder) {
-      const h = this.holds.get(key)!;
+      const h = known(this.holds.get(key), 'this.holds.get(key)');
       if (key.startsWith('+')) continue;
       const dot = key.indexOf('.');
       if (dot >= 0) {
@@ -300,7 +302,7 @@ class PlanWriter {
     if (d.tableOf.get(name) !== name || d.added.has(name) || d.removed.has(name) || d.altered.has(name)) return true;
     if (d.renamedColumns.some(r => r.table === name)) return true;
     const structural = (o: ObjectRef): boolean => o.kind === 'foreign_key' || o.kind === 'check';
-    if ((d.dropObjects.get(d.tableOf.get(name)!) ?? []).some(structural)) return true;
+    if ((d.dropObjects.get(known(d.tableOf.get(name), 'd.tableOf.get(name)')) ?? []).some(structural)) return true;
     return (d.addObjects.get(name) ?? []).some(structural);
   }
 
@@ -330,18 +332,18 @@ class PlanWriter {
   /** SQLite table을 작업 table을 거쳐 다시 만든다(docs/plans.md "Steps"). */
   private rebuild(name: string): void {
     const d = this.d;
-    const t = d.target.get(name)!;
-    const src = d.source.get(d.tableOf.get(name)!)!;
+    const t = known(d.target.get(name), 'd.target.get(name)');
+    const src = known(d.source.get(known(d.tableOf.get(name), 'd.tableOf.get(name)')), 'd.source.get(d.tableOf.get(name))');
     const q = (n: string): string => this.q(n);
     const work = q(REBUILD_TABLE);
     const removed = d.removed.get(name) ?? [];
     const added = d.added.get(name) ?? [];
-    const columns = d.columnOf.get(name)!;
+    const columns = known(d.columnOf.get(name), 'd.columnOf.get(name)');
     // 새 정의: target table과 보관 이름의 지우는 column
-    const hiddenDropped = removed.map(c => ({ ...columnOf(src, c)!, name: this.hold(`${src.name}.${c}`) }));
+    const hiddenDropped = removed.map(c => ({ ...known(columnOf(src, c), 'columnOf(src, c)'), name: this.hold(`${src.name}.${c}`) }));
     // 옛 정의: 이름 바꾸기를 적용한 source table과 보관 이름의 더하는 column
     const old = this.renamedSource(name);
-    const hiddenAdded = added.map(c => ({ ...columnOf(t, c)!, name: this.hold(`+${name}.${c}`) }));
+    const hiddenAdded = added.map(c => ({ ...known(columnOf(t, c), 'columnOf(t, c)'), name: this.hold(`+${name}.${c}`) }));
     const newCreate = (as: string): string => this.r.createTable(t, as, c => rendererName(t.name, c), hiddenDropped);
     // sourceColumn은 옛 정의 column의 source 이름이다. 지우는 column은 이름이 그대로다.
     const sourceColumn = (c: string): string => columns.get(c) ?? c;
@@ -355,7 +357,7 @@ class PlanWriter {
     for (const c of t.columns) {
       const oldName = columns.get(c.name);
       if (oldName !== undefined) {
-        const e = this.copyValue(columnOf(src, oldName)!, c);
+        const e = this.copyValue(known(columnOf(src, oldName), 'columnOf(src, oldName)'), c);
         into.push(q(c.name));
         from.push(e);
         intoRestore.push(q(c.name));
@@ -366,9 +368,9 @@ class PlanWriter {
       }
     }
     removed.forEach((c, i) => {
-      into.push(q(hiddenDropped[i]!.name));
+      into.push(q(known(hiddenDropped[i], 'hiddenDropped[i]').name));
       from.push(q(c));
-      intoRestore.push(q(hiddenDropped[i]!.name));
+      intoRestore.push(q(known(hiddenDropped[i], 'hiddenDropped[i]').name));
       fromRestore.push(q(c));
     });
     // 새 정의에서 옛 정의로 되돌리는 식
@@ -406,7 +408,7 @@ class PlanWriter {
       this.add(
         step(copyIn, `DELETE FROM ${work}`, present('rows', REBUILD_TABLE, ''), {
           restore: `INSERT INTO ${work} (${intoRestore.join(', ')}) SELECT ${fromRestore.join(', ')} FROM ${qn}`,
-          restoreIf: present('column', name, hiddenAdded[0]!.name),
+          restoreIf: present('column', name, known(hiddenAdded[0], 'hiddenAdded[0]').name),
         }),
       );
     } else {
@@ -419,7 +421,7 @@ class PlanWriter {
       this.add(
         step(`DELETE FROM ${qn}`, `INSERT INTO ${qn} (${backInto.join(', ')}) SELECT ${backFrom.join(', ')} FROM ${work}`, absent('rows', name, ''), {
           rollbackRestore: `INSERT INTO ${qn} (${backIntoRestore.join(', ')}) SELECT ${backFromRestore.join(', ')} FROM ${work}`,
-          restoreIf: present('column', name, hiddenAdded[0]!.name),
+          restoreIf: present('column', name, known(hiddenAdded[0], 'hiddenAdded[0]').name),
           nullChecks: checks,
         }),
       );
@@ -440,7 +442,7 @@ class PlanWriter {
   /** target table name의 source table에 이름 바꾸기를 적용한 정의다. 지우는 table을 참조하는 foreign key는 source 이름을 유지한다. */
   private renamedSource(name: string): DbspecTable {
     const d = this.d;
-    const src = d.source.get(d.tableOf.get(name)!)!;
+    const src = known(d.source.get(known(d.tableOf.get(name), 'd.tableOf.get(name)')), 'd.source.get(d.tableOf.get(name))');
     const targetOfTable = new Map<string, string>();
     for (const [t, s] of d.tableOf) targetOfTable.set(s, t);
     const column = (table: string, c: string): string => {
@@ -578,20 +580,20 @@ class PlanWriter {
     const mysql = this.r.d === 'mysql';
     switch (o.kind) {
       case 'unique': {
-        const u = uniqueOf(t, o.name)!;
+        const u = known(uniqueOf(t, o.name), 'uniqueOf(t, o.name)');
         if (this.r.d === 'sqlite') return [`CREATE UNIQUE INDEX ${this.q(u.name)} ON ${this.q(name)} (${this.r.list(u.columns)})`, this.dropIndex(name, u.name), 'index'];
         const create = `ALTER TABLE ${this.q(name)} ADD CONSTRAINT ${this.q(u.name)} UNIQUE (${this.r.list(u.columns)})`;
         if (mysql) return [create, `ALTER TABLE ${this.q(name)} DROP INDEX ${this.q(u.name)}`, 'index'];
         return [create, `ALTER TABLE ${this.q(name)} DROP CONSTRAINT ${this.q(u.name)}`, 'constraint'];
       }
       case 'index':
-        return [this.createIndex(indexOf(t, o.name)!, name), this.dropIndex(name, o.name), 'index'];
+        return [this.createIndex(known(indexOf(t, o.name), 'indexOf(t, o.name)'), name), this.dropIndex(name, o.name), 'index'];
       case 'check': {
-        const k = checkOf(t, o.name)!;
+        const k = known(checkOf(t, o.name), 'checkOf(t, o.name)');
         return [`ALTER TABLE ${this.q(name)} ADD CONSTRAINT ${this.q(k.name)} CHECK (${this.r.predicate(t, readCheck(k.expression, k.name))})`, this.dropCheck(name, k.name), 'constraint'];
       }
       case 'foreign_key': {
-        const f = foreignKeyOf(t, o.name)!;
+        const f = known(foreignKeyOf(t, o.name), 'foreignKeyOf(t, o.name)');
         const drop = mysql ? `ALTER TABLE ${this.q(name)} DROP FOREIGN KEY ${this.q(f.name)}` : `ALTER TABLE ${this.q(name)} DROP CONSTRAINT ${this.q(f.name)}`;
         return [`ALTER TABLE ${this.q(name)} ADD ${this.r.foreignKey(f)}`, drop, 'constraint'];
       }
@@ -606,7 +608,7 @@ class PlanWriter {
   }
 
   private addObject(table: string, o: ObjectRef): void {
-    const [create, drop, kind] = this.objectStatements(this.d.target.get(table)!, table, o);
+    const [create, drop, kind] = this.objectStatements(known(this.d.target.get(table), 'this.d.target.get(table)'), table, o);
     this.add(step(create, drop, present(kind, table, o.name)));
   }
 

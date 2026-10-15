@@ -1,3 +1,4 @@
+import { present } from '../present.js';
 // 검증된 check의 정규 텍스트(DbspecCheck.expression)를 술어 트리로 읽는다.
 // 모델은 정규 텍스트만 보관하므로, 렌더러는 이 트리에서 피연산자와 열을 찾는다.
 // 정규 텍스트가 아닌 입력은 위치를 담은 Error로 거부한다.
@@ -27,7 +28,7 @@ function tokens(text: string, name: string): Token[] {
   const out: Token[] = [];
   let i = 0;
   while (i < text.length) {
-    const c = text[i]!;
+    const c = present(text[i], 'text[i]');
     if (c === ' ') {
       i++;
     } else if (c === "'") {
@@ -51,7 +52,7 @@ function tokens(text: string, name: string): Token[] {
       i += op.length;
     } else {
       let j = i;
-      while (j < text.length && !" '(),<>=".includes(text[j]!)) j++;
+      while (j < text.length && !" '(),<>=".includes(present(text[j], 'text[j]'))) j++;
       out.push({ kind: 'word', text: text.slice(i, j), at: i });
       i = j;
     }

@@ -176,7 +176,8 @@ function entityOfTable(t: DbspecTable): Entity {
 export function modelOfDocuments(documents: readonly DbspecDocument[]): RuntimeModel {
   const result = dbspecManifest(documents);
   if (result.manifest === null) {
-    const d = result.diagnostics[0]!;
+    const [d] = result.diagnostics;
+    if (d === undefined) throw new OrmError('SCHEMA_INVALID', 'document set: no manifest and no diagnostic');
     throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
   }
   const entities = new Map<string, Entity>();
@@ -209,7 +210,8 @@ export function parseDocumentSet(texts: readonly string[], externalTexts: readon
   }
   return parseDbspecSet(texts, externalTexts).map(d => {
     if (d.document !== null) return d.document;
-    const first = d.diagnostics[0]!;
+    const [first] = d.diagnostics;
+    if (first === undefined) throw new OrmError('SCHEMA_INVALID', `document ${d.name}: no document and no diagnostic`);
     throw new OrmError('SCHEMA_INVALID', `document ${d.name}: ${first.rule} at ${first.line}:${first.column}: ${first.message}`);
   });
 }

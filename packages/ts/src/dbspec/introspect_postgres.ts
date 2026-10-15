@@ -1,5 +1,6 @@
 // PostgreSQL의 현재 schema를 catalog으로 읽는다 (docs/dialects.md "Introspection").
 // 모든 query는 현재 schema 전체를 한 번에 읽는다.
+import { present } from '../present.js';
 import { Catalog, quote, tableTypes, type CatalogQuery } from './introspect_catalog.js';
 import { renderedColumn } from './names.js';
 import { CheckDecodeError, decodeCheck } from './introspect_check.js';
@@ -97,10 +98,10 @@ export async function readPostgres(query: CatalogQuery): Promise<Catalog> {
     }
     t.columns.push(col);
     if (!quoted.has(table)) quoted.set(table, new Map());
-    quoted.get(table)!.set(name, quotedName);
+    present(quoted.get(table), 'quoted.get(table)').set(name, quotedName);
     if (type.kind === 'time') {
       if (!pending.has(table)) pending.set(table, new Set());
-      pending.get(table)!.add(name);
+      present(pending.get(table), 'pending.get(table)').add(name);
     }
   }
   const checked = new Map<string, Set<string>>();
@@ -140,7 +141,7 @@ export async function readPostgres(query: CatalogQuery): Promise<Catalog> {
           continue;
         }
         if (!checked.has(table)) checked.set(table, new Set());
-        checked.get(table)!.add(column);
+        present(checked.get(table), 'checked.get(table)').add(column);
         continue;
       }
       let predicate: string;
@@ -181,15 +182,15 @@ export async function readPostgres(query: CatalogQuery): Promise<Catalog> {
     functions.add(fn);
     if (!triggers.has(table)) triggers.set(table, []);
     const m = TRIGGER_PATTERN.exec(definition);
-    if (m === null || language !== 'plpgsql' || trimQuotes(m[1]!) !== name || trimQuotes(m[5]!) !== fn) {
-      triggers.get(table)!.push({ name, statements: [definition] });
+    if (m === null || language !== 'plpgsql' || trimQuotes(present(m[1], 'm[1]')) !== name || trimQuotes(present(m[5], 'm[5]')) !== fn) {
+      present(triggers.get(table), 'triggers.get(table)').push({ name, statements: [definition] });
       continue;
     }
-    triggers.get(table)!.push({
+    present(triggers.get(table), 'triggers.get(table)').push({
       name,
       statements: [
         `CREATE FUNCTION "${fn}"() RETURNS trigger LANGUAGE plpgsql AS $$${source}$$`,
-        `CREATE TRIGGER "${name}" ${m[2]} ${m[3]} ON "${trimQuotes(m[4]!)}" FOR EACH ROW EXECUTE FUNCTION "${fn}"()`,
+        `CREATE TRIGGER "${name}" ${m[2]} ${m[3]} ON "${trimQuotes(present(m[4], 'm[4]'))}" FOR EACH ROW EXECUTE FUNCTION "${fn}"()`,
       ],
     });
   }
@@ -236,7 +237,7 @@ function postgresDefault(text: string, type: DbspecType): string | null {
   if (text === 'statement_timestamp()') return type.kind === 'datetime' ? 'now' : null;
   const m = LITERAL_PATTERN.exec(text);
   if (m !== null) {
-    const value = m[1]!.replaceAll("''", "'");
+    const value = present(m[1], 'm[1]').replaceAll("''", "'");
     switch (type.kind) {
       case 'i16':
       case 'i32':

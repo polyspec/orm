@@ -1,5 +1,6 @@
 // dbspec 문서 집합 검사 (docs/dbspec.md "Manifest and hashes"). manifest와
 // 렌더링이 같은 검사를 쓴다. 기준은 Go 엔진(engine/dbspec/dbspec.go checkSet)이다.
+import { present } from '../present.js';
 import type { DbspecDiagnostic, DbspecDocument } from './model.js';
 
 /** The column of the document name in the header line `dbspec 1 <name>`. */
@@ -25,7 +26,7 @@ export function checkSet(documents: readonly DbspecDocument[]): {
   const byName = new Map(ordered.map(d => [d.name, d]));
   const diagnostics: DbspecDiagnostic[] = [];
   ordered.forEach((document, i) => {
-    if (i > 0 && ordered[i - 1]!.name === document.name) {
+    if (i > 0 && present(ordered[i - 1], 'ordered[i - 1]').name === document.name) {
       diagnostics.push(Object.freeze({
         rule: 'name.duplicate' as const,
         line: 1,

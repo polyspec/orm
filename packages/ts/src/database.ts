@@ -1,8 +1,9 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { blindIndex, decode, hostDecode, hostEncode } from './codec.js';
 import type { Assemble, BindSlot, Group, KeyReference, Plan, PlanStep, Request } from './ir.js';
-import { isolationSql, openDriver, parseDsn, sqliteBusy, zoneOffset, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue, type Isolation, type PoolStats, type StatementDone } from './driver.js';
-import { Subscribers, statementKind, type StatementEvent, type StatementKind, type StatementSubscriber } from './events.js';
+import { driverValue, isolationSql, openDriver, parseDsn, sqliteBusy, zoneOffset, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue, type Isolation, type PoolStats, type StatementDone } from './driver.js';
+import { Subscribers, statementKind, type StatementEvent, type StatementKind } from './events.js';
+import { present } from './present.js';
 import { OrmError, joinedErrors, rollbackFailed } from './runtime_error.js';
 import { Utils } from './utils.js';
 import { wallMicros } from './clock.js';
@@ -211,7 +212,10 @@ function frames(): readonly TxFrame[] { return flow.getStore() ?? []; }
 export function activeFor(db: Db): TxFrame | undefined {
   const stack = frames();
   // A signal handle is the same connection, so frames are matched by connection.
-  for (let i = stack.length - 1; i >= 0; i--) if (stack[i]!.db.root() === db.root() && !stack[i]!.finished) return stack[i];
+  for (let i = stack.length - 1; i >= 0; i--) {
+    const frame = stack[i];
+    if (frame !== undefined && frame.db.root() === db.root() && !frame.finished) return frame;
+  }
   return undefined;
 }
 
@@ -276,8 +280,8 @@ function timeForm(value: unknown, colType: string, zone: string, precision: numb
   }
   if (typeof value !== 'string') return undefined;
   if (colType === 'date') {
-    const m = dateText.exec(value);
-    return m && validDate(m[1]!, m[2]!, m[3]!) ? value : undefined;
+    const [, year, month, day] = dateText.exec(value) ?? [];
+    return year !== undefined && month !== undefined && day !== undefined && validDate(year, month, day) ? value : undefined;
   }
   if (colType === 'time') {
     const m = timeText.exec(value);
@@ -286,7 +290,9 @@ function timeForm(value: unknown, colType: string, zone: string, precision: numb
     return f === undefined ? undefined : `${m[1]}:${m[2]}:${m[3]}${f}`;
   }
   const m = dateTimeText.exec(value);
-  if (!m || !validDate(m[1]!, m[2]!, m[3]!, m[4]!, m[5]!, m[6]!)) return undefined;
+  if (!m) return undefined;
+  const [, year, month, day, hour, minute, second] = m;
+  if (year === undefined || month === undefined || day === undefined || !validDate(year, month, day, hour, minute, second)) return undefined;
   const f = fraction(m[7], precision);
   if (f === undefined) return undefined;
   if (m[8] === undefined) return `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}:${m[6]}${f}`;
@@ -321,7 +327,7 @@ interface Cached { plan: Plan; id: string; }
 
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
-  if (value !== null && typeof value === 'object') return `{${Object.keys(value).sort().filter(key => (value as Record<string, unknown>)[key] !== undefined).map(key => `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`).join(',')}}`;
+  if (value !== null && typeof value === 'object') return `{${Object.entries(value).filter(([, item]) => item !== undefined).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)).map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(',')}}`;
   return JSON.stringify(value);
 }
 
@@ -345,7 +351,9 @@ export function scalarKey(value: unknown): string {
   if (value === null || value === undefined) return '\u0000';
   if (typeof value === 'boolean') return value ? '1' : '0';
   if (value instanceof Uint8Array) return Buffer.from(value).toString();
-  return String(value);
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'bigint') return String(value);
+  return JSON.stringify(value) ?? typeof value;
 }
 
 export function rowKey(row: readonly unknown[], refs: readonly KeyReference[]): string | undefined {
@@ -572,7 +580,8 @@ export class Db {
 
   /** 같은 연결의 handle 이다: 상태를 공유하고 property 하나만 value 로 바꾼다. */
   private derive(property: 'signal' | 'requestHook', value: unknown): Db {
-    const handle: Db = Object.create(Db.prototype) as Db;
+    const handle: unknown = Object.create(Db.prototype);
+    if (!(handle instanceof Db)) throw new OrmError('INTERNAL', 'a derived handle is no Db');
     Object.assign(handle, this);
     Object.defineProperty(handle, property, { value, enumerable: true, writable: false });
     Object.defineProperty(handle, 'rootDb', { value: this.root(), enumerable: false, writable: false });
@@ -581,7 +590,8 @@ export class Db {
 
   /** The connection this handle was derived from; a connection returns itself. */
   public root(): Db {
-    return (this as { rootDb?: Db }).rootDb ?? this;
+    const root: unknown = Reflect.get(this, 'rootDb');
+    return root instanceof Db ? root : this;
   }
 
   public async close(): Promise<void> {
@@ -605,7 +615,7 @@ export class Db {
    */
   public subscribe(subscriber: (event: StatementEvent) => void): () => void {
     this.unsupportedOnMarkdown('statement events');
-    return this.shared.events.subscribe(subscriber as StatementSubscriber);
+    return this.shared.events.subscribe(subscriber);
   }
 
   /**
@@ -715,7 +725,7 @@ export class Db {
     const tables = [...new Set(engines.flatMap(e => [...e.model.entities.values()].map(x => x.auditRecord).filter(t => t !== '')))].sort();
     if (tables.length === 0) throw new OrmError('CONFIG', 'the transaction has audit values but no set of the connection has an audited table');
     if (tables.length > 1) throw new OrmError('CONFIG', `the audited tables of the connection record their audits in ${tables.join(', ')}; one audit record table is required`);
-    const table = tables[0]!;
+    const table = present(tables[0], 'the audited table');
     let target: { model: RuntimeModel; entity: Entity } | undefined;
     for (const engine of engines) {
       for (const entity of engine.model.entities.values()) if (entity.table === table) target = { model: engine.model, entity };
@@ -746,7 +756,7 @@ export class Db {
     const row = new cls();
     for (const column of Object.keys(record.values).sort()) row[CORE].setValue(column, record.values[column]);
     const created = (await row.create())[CORE];
-    const key = created.values.get(entity.primaryKey[0]!);
+    const key = created.values.get(present(entity.primaryKey[0], `the primary key of ${entity.table}`));
     if (key === undefined || key === null) throw new OrmError('CONFIG', `the audit record ${entity.table} has no ${entity.primaryKey[0]} after its insert`);
     return { table: entity.table, key };
   }
@@ -937,7 +947,7 @@ export class Db {
       }
       await session.call(endLine(op), frame.db.signal);
     } finally {
-      this.md!.release(session);
+      present(this.md, 'the flowmark pool of a markdown connection').release(session);
     }
   }
 
@@ -1013,7 +1023,8 @@ export class Db {
     const plan = engine.compile(request);
     const entry = { plan, id: planId(key) };
     this.plans.set(key, entry);
-    if (this.plans.size > this.planCacheSize) this.plans.delete(this.plans.keys().next().value as string);
+    const [oldest] = this.plans.keys();
+    if (this.plans.size > this.planCacheSize && oldest !== undefined) this.plans.delete(oldest);
     return entry;
   }
 
@@ -1115,7 +1126,7 @@ export class Db {
     // kind는 plan step이 쓰는 SQL의 동사이고 tables는 plan step의 table이다.
     const done = this.statementDone(statementKind(step.sql), step.tables, ex.frame?.number ?? null, masked);
     this.checkStatementFault(sql, done);
-    return connection.execute(sql, values as DriverValue[], this.signal, done);
+    return connection.execute(sql, values.map((value, i) => driverValue(value, `bind ${i + 1}`)), this.signal, done);
   }
 }
 
@@ -1186,7 +1197,7 @@ export async function query(ex: Executor, given: Request, givenParams: readonly 
     const db = ex.db;
     if (db.md !== undefined) return (await markdownRead(ex, request, params)).result;
     const cached = await db.plan(request);
-    if ((request.lock ?? '') !== '') await db.rowLock(ex.frame!, request.lock!);
+    if (request.lock !== undefined && request.lock !== '') await db.rowLock(present(ex.frame, 'the transaction of a locking read'), request.lock);
     const parts = rootInParts(request, cached.plan, db.driver, params);
     let main: unknown[][];
     if (parts.length > 1) {
@@ -1194,13 +1205,13 @@ export async function query(ex: Executor, given: Request, givenParams: readonly 
       const seen = new Set<string>();
       for (const part of parts) {
         const partPlan = await db.plan(part);
-        const step = partPlan.plan.steps[0]!;
+        const step = mainStep(partPlan.plan);
         for (const row of await select(ex, partPlan, step, params)) {
-          const key = rowKey(row, step.assemble!.key) ?? '';
+          const key = rowKey(row, assembleOf(step).key) ?? '';
           if (!seen.has(key)) { seen.add(key); main.push(row); }
         }
       }
-    } else main = await select(ex, cached, cached.plan.steps[0]!, params);
+    } else main = await select(ex, cached, mainStep(cached.plan), params);
     return relations(ex, cached, params, main);
   });
 }
@@ -1209,7 +1220,7 @@ async function relations(ex: Executor, cached: Cached, params: readonly unknown[
   const out: Result = { plan: cached.plan, main, steps: new Map(), params, markdown: false };
   for (const step of cached.plan.steps.slice(1)) {
     if (step.role !== 'relation') continue;
-    const parents = step.parent!.step === 0 ? main : out.steps.get(step.parent!.step)?.data ?? [];
+    const parents = parentOf(step).step === 0 ? main : out.steps.get(parentOf(step).step)?.data ?? [];
     const values = parentValues(step, parents, params);
     const data: unknown[][] = [];
     if (values.length > 0) {
@@ -1234,7 +1245,7 @@ async function select(ex: Executor, cached: Cached, step: PlanStep, params: read
   let values: readonly unknown[] = [];
   if (parents !== undefined) ({ sql, values } = expandParent(step, parents));
   const result = await ex.db.runStep(ex, sql, step, params, values);
-  for (const row of result.rows) decodeAssembly(row, step.assemble!, ex.db);
+  for (const row of result.rows) decodeAssembly(row, assembleOf(step), ex.db);
   return result.rows;
 }
 
@@ -1247,7 +1258,7 @@ async function select(ex: Executor, cached: Cached, step: PlanStep, params: read
 export function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void {
   let version = db.aesKeyring?.currentVersion ?? 1;
   if (assemble.aes_version !== undefined) {
-    const at = row[assemble.columns[assemble.aes_version]!.index];
+    const at = row[present(assemble.columns[assemble.aes_version], 'the AES version column of an assembly').index];
     if (at !== null) version = Number(at);
   }
   for (const column of assemble.columns) {
@@ -1256,8 +1267,8 @@ export function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void
     const host = column.styles.filter(style => style === 'aes' || style === 'hex' || style === 'ip');
     const client = column.styles.filter(style => style !== 'aes' && style !== 'hex' && style !== 'ip');
     const key = host.includes('aes') ? db.aesKeyring?.key(version) ?? db.aesKey : db.aesKey;
-    if (value !== null && host.length > 0) value = hostDecode(value as string | Uint8Array, host, key);
-    if (client.length > 0) value = decode(client, value as string | Uint8Array | null);
+    if (value !== null && host.length > 0) value = hostDecode(cellBytes(value, column.index), host, key);
+    if (client.length > 0) value = decode(client, value === null ? null : cellBytes(value, column.index));
     row[column.index] = value;
   }
   for (const child of assemble.children) if (child.kind === 'join' && child.assemble) decodeAssembly(row, child.assemble, db);
@@ -1276,11 +1287,11 @@ export async function scalar(ex: Executor, given: Request, givenParams: readonly
       let total = 0;
       for (const part of parts) {
         const partPlan = await db.plan(part);
-        total += Number((await db.runStep(ex, partPlan.plan.steps[0]!.sql, partPlan.plan.steps[0]!, params)).rows[0]?.[0] ?? 0);
+        total += Number((await db.runStep(ex, mainStep(partPlan.plan).sql, mainStep(partPlan.plan), params)).rows[0]?.[0] ?? 0);
       }
       return total;
     }
-    const step = cached.plan.steps[0]!;
+    const step = mainStep(cached.plan);
     return (await db.runStep(ex, step.sql, step, params)).rows[0]?.[0] ?? null;
   });
 }
@@ -1292,7 +1303,7 @@ export async function paginate(ex: Executor, given: Request, givenParams: readon
     const db = ex.db;
     if (db.md !== undefined) return markdownRead(ex, request, params);
     const cached = await db.plan(request);
-    const main = await select(ex, cached, cached.plan.steps[0]!, params);
+    const main = await select(ex, cached, mainStep(cached.plan), params);
     const result = await relations(ex, cached, params, main);
     const step = cached.plan.steps.find(s => s.role === 'count');
     if (!step) throw new OrmError('INTERNAL', 'paginate plan has no count step');
@@ -1318,7 +1329,7 @@ export async function write(ex: Executor, given: Request, givenParams: readonly 
       return { key: keys[0] ?? null, affected };
     }
     const cached = await db.plan(request);
-    const step = cached.plan.steps[0]!;
+    const step = mainStep(cached.plan);
     const result = await db.runStep(ex, step.sql, step, params);
     if (request.kind === 'insert' && / RETURNING /.test(step.sql)) return { key: Number(result.rows[0]?.[0]), affected: 1 };
     if (request.kind === 'update' && request.optimistic && result.affected === 0) throw new OrmError('OPTIMISTIC_LOCK', 'the row changed after it was read');
@@ -1335,12 +1346,12 @@ export async function statement(ex: Executor, given: Request, givenParams: reado
   ex.db.unsupportedOnMarkdown('getQuery');
   const { request, params } = hooked(ex, given, givenParams);
   const cached = await ex.db.plan(request);
-  const step = cached.plan.steps[0]!;
+  const step = mainStep(cached.plan);
   return { sql: step.sql, binds: ex.db.args(step, params).masked };
 }
 
 function parentValues(step: PlanStep, parents: readonly unknown[][], params: readonly unknown[]): unknown[] {
-  const ref = step.parent!;
+  const ref = parentOf(step);
   const seen = new Set<string>();
   const out: unknown[] = [];
   for (const row of parents) {
@@ -1354,7 +1365,7 @@ function parentValues(step: PlanStep, parents: readonly unknown[][], params: rea
 }
 
 function relationChunks(step: PlanStep, values: readonly unknown[], driver: string): unknown[][] {
-  const width = step.parent!.keys.length;
+  const width = parentOf(step).keys.length;
   const nonParent = step.bind_slots.filter(slot => slot.from !== 'parent').length;
   const max = Math.floor((driverLimit(driver) - nonParent) / width);
   if (max < 1) throw new OrmError('IR_INVALID', `relation ${step.id} needs more bind parameters than ${driver} permits`);
@@ -1367,7 +1378,7 @@ function relationChunks(step: PlanStep, values: readonly unknown[], driver: stri
 }
 
 function expandParent(step: PlanStep, source: readonly unknown[]): { sql: string; values: unknown[] } {
-  const width = step.parent!.keys.length;
+  const width = parentOf(step).keys.length;
   const tuples = source.length / width;
   let size = 1;
   while (size < tuples) size <<= 1;
@@ -1412,13 +1423,34 @@ function childKeys(plan: Plan, id: number): KeyReference[] {
   throw new OrmError('INTERNAL', `relation step ${id} has no child`);
 }
 
+/** The main step of `plan`, which every plan has first. */
+function mainStep(plan: Plan): PlanStep {
+  return present(plan.steps[0], 'the main step of a plan');
+}
+
+/** The parent reference of the relation step `step`. */
+function parentOf(step: PlanStep): NonNullable<PlanStep['parent']> {
+  return present(step.parent, `the parent of relation step ${step.id}`);
+}
+
+/** The assembly of the select step `step`. */
+function assembleOf(step: PlanStep): Assemble {
+  return present(step.assemble, `the assembly of step ${step.id}`);
+}
+
+/** A codec cell as the driver reads it: text or bytes; another value is a CODEC_DECODE error. */
+function cellBytes(value: unknown, index: number): string | Uint8Array {
+  if (typeof value === 'string' || value instanceof Uint8Array) return value;
+  throw new OrmError('CODEC_DECODE', `the codec column at ${index} reads a ${typeof value}`);
+}
+
 function itemConn(item: Group['items'][number]): string | undefined {
   return item.pred?.conn ?? item.group?.conn ?? item.joined?.conn;
 }
 
 /** Splits a root IN list joined with AND that exceeds the driver bind limit. */
 function rootInParts(request: Request, plan: Plan, driver: string, params: readonly unknown[]): Request[] {
-  const main = plan.steps[0]!;
+  const main = mainStep(plan);
   const limit = driverLimit(driver);
   if (main.bind_slots.length <= limit) return [request];
   const tooLarge = new OrmError('IR_INVALID', `the statement needs ${main.bind_slots.length} bind parameters but ${driver} permits ${limit}`);
@@ -1427,11 +1459,12 @@ function rootInParts(request: Request, plan: Plan, driver: string, params: reado
   let target = -1;
   items.forEach((item, i) => {
     if (!item.pred) return;
-    if (item.pred.conn === 'or' || (i + 1 < items.length && itemConn(items[i + 1]!) === 'or')) throw tooLarge;
-    if (item.pred.op === 'in' && !item.pred.sub && (target < 0 || (item.pred.ps?.length ?? 0) > (items[target]!.pred!.ps?.length ?? 0))) target = i;
+    const following = items[i + 1];
+    if (item.pred.conn === 'or' || (following !== undefined && itemConn(following) === 'or')) throw tooLarge;
+    if (item.pred.op === 'in' && !item.pred.sub && (target < 0 || (item.pred.ps?.length ?? 0) > (items[target]?.pred?.ps?.length ?? 0))) target = i;
   });
   if (target < 0) throw tooLarge;
-  const ps = items[target]!.pred!.ps!;
+  const ps = present(items[target]?.pred?.ps, 'the IN list that is split');
   const available = limit - (main.bind_slots.length - ps.length);
   if (available < 1) throw tooLarge;
   let chunk = 1;
@@ -1444,8 +1477,9 @@ function rootInParts(request: Request, plan: Plan, driver: string, params: reado
     const slice = unique.slice(start, start + chunk);
     let n = 1;
     while (n < slice.length) n <<= 1;
-    while (slice.length < n) slice.push(slice[slice.length - 1]!);
-    part.where!.items[target]!.pred!.ps = slice;
+    const last = present(slice.at(-1), 'the last parameter of a part');
+    while (slice.length < n) slice.push(last);
+    present(part.where?.items[target]?.pred, 'the split IN condition of a part').ps = slice;
     parts.push(part);
   }
   return parts;

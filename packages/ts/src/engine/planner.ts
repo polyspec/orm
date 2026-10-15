@@ -93,11 +93,11 @@ class Builder {
    * column's type.
    */
   public audit(ent: Entity): string {
-    return this.typed(slot({ from: 'audit', name: ent.auditRecord, col_type: columnOf(ent, ent.auditColumn)!.type }));
+    return this.typed(slot({ from: 'audit', name: ent.auditRecord, col_type: columnIn(ent, ent.auditColumn).type }));
   }
   /** The one placeholder an executor expands to the parent values; keyTypes are the compared key columns' types. */
   public parentList(step: number, keyTypes: string[]): string { return this.push(slot({ from: 'parent', step, key_types: keyTypes })); }
-  public last(): BindSlot { return this.binds[this.binds.length - 1]!; }
+  public last(): BindSlot { return present(this.binds.at(-1), 'the last bind slot'); }
 }
 
 function cmp(op: string): string {
@@ -126,8 +126,9 @@ function sameList(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((v, i) => v === b[i]);
 }
 
-function sortedKeys(record: Readonly<Record<string, unknown>> | undefined): string[] {
-  return Object.keys(record ?? {}).sort((x, y) => (x < y ? -1 : x > y ? 1 : 0));
+/** The column `name` of `ent`, which the validator has checked. */
+function columnIn(ent: Entity, name: string): Column {
+  return present(columnOf(ent, name), `column ${ent.name}.${name}`);
 }
 
 /** The entries of `record` in the order of their sorted keys. */
@@ -174,7 +175,7 @@ function validateRequiredAssignments(ent: Entity, set: readonly Assignment[]): v
 }
 
 function addBlindIndexAssignments(ent: Entity, set: Assignment[]): Assignment[] {
-  for (const a of [...set]) {
+  for (const a of set.slice()) {
     const col = columnOf(ent, a.column);
     if (!col || col.blindIndex === '' || assigned(set, col.blindIndex)) continue;
     const derived: Assignment = { column: col.blindIndex };
@@ -222,12 +223,22 @@ function placedJoins(g: Group, out: Set<string>): void {
 export class Planner {
   public constructor(public readonly m: RuntimeModel, public readonly d: Dialect) {}
 
-  private entity(name: string): Entity { return entityOf(this.m, name)!; }
+  /** The scope of the join `rel` of s, which buildScopes made. */
+  private joinScope(s: Scope, rel: string): Scope { return present(s.joins.get(rel), `the scope of join ${rel}`); }
+
+  /** The two values of a between predicate, which the validator has counted. */
+  private between(pr: Predicate): [number, number] {
+    const [low, high] = pr.ps ?? [];
+    if (low === undefined || high === undefined) fail('IR_INVALID', 'between needs 2 params (ps)');
+    return [low, high];
+  }
+
+  private entity(name: string): Entity { return present(entityOf(this.m, name), `entity ${name}`); }
 
   public compile(r: Request): Plan {
     const steps: PlanStep[] = [];
     const add = (st: Omit<PlanStep, 'id'>): PlanStep => {
-      const step = { id: steps.length, ...st } as PlanStep;
+      const step: PlanStep = { id: steps.length, ...st };
       steps.push(step);
       return step;
     };
@@ -275,7 +286,7 @@ export class Planner {
     const root = this.buildScopes(q, 'a', undefined);
     if (rc) {
       root.extra.push(...rc.childKeys);
-      if ((q.key_by ?? '') !== '') root.extra.push(q.key_by!);
+      if (q.key_by !== undefined && q.key_by !== '') root.extra.push(q.key_by);
     }
     let sql = 'SELECT ';
     const asm: Assemble = { entity: root.ent.name, alias: root.alias, columns: [], children: [], key: [] };
@@ -308,18 +319,19 @@ export class Planner {
       perParent = q.limit_per_parent ?? 0;
       if (perParent === 0 && rc.kind === 'one' && (q.order ?? []).length > 0) perParent = 1;
     }
-    if (perParent > 0) {
+    if (rc !== undefined && perParent > 0) {
       let order = this.renderOrder(b, root, q);
-      if (order === '') order = ` ORDER BY ${this.qcol(root, root.ent.primaryKey[0]!)} ASC`;
-      sql += `, ROW_NUMBER() OVER (PARTITION BY ${this.qualified(root, rc!.childKeys).join(', ')}${order}) AS ${this.d.quote('orm_rn')}`;
+      if (order === '') order = ` ORDER BY ${this.qcol(root, present(root.ent.primaryKey[0], `the primary key of ${root.ent.name}`))} ASC`;
+      sql += `, ROW_NUMBER() OVER (PARTITION BY ${this.qualified(root, rc.childKeys).join(', ')}${order}) AS ${this.d.quote('orm_rn')}`;
     }
     sql += ` FROM ${b.table(root.ent)} AS ${this.d.quote(root.alias)}`;
-    if ((q.force_index ?? '') !== '') sql += this.d.forceIndex(q.force_index!);
+    if (q.force_index !== undefined && q.force_index !== '') sql += this.d.forceIndex(q.force_index);
     sql += this.renderJoins(b, root);
     const where: string[] = [];
     if (rc) {
-      const keyTypes = rc.childKeys.map(key => columnOf(root.ent, key)!.type);
-      if (rc.childKeys.length === 1) where.push(`${this.qcol(root, rc.childKeys[0]!)} IN (${b.parentList(rc.parentStep, keyTypes)})`);
+      const keyTypes = rc.childKeys.map(key => columnIn(root.ent, key).type);
+      const [only] = rc.childKeys;
+      if (rc.childKeys.length === 1 && only !== undefined) where.push(`${this.qcol(root, only)} IN (${b.parentList(rc.parentStep, keyTypes)})`);
       else where.push(`(${this.qualified(root, rc.childKeys).join(', ')}) IN ((${b.parentList(rc.parentStep, keyTypes)}))`);
     }
     if (root.ent.softDelete) where.push(`${this.qcol(root, root.ent.softDelete)} IS NULL`);
@@ -332,12 +344,12 @@ export class Planner {
     }
     if (groupCount) sql = `SELECT COUNT(*) FROM (${sql}) AS ${this.d.quote('orm_g')}`;
     if (kind === 'one' || kind === 'all' || kind === 'group_count') {
-      if (perParent > 0) {
+      if (rc !== undefined && perParent > 0) {
         // keep the output columns in order, drop orm_rn, cut at n per parent
         const w = this.d.quote('orm_w');
         let outer = `SELECT ${outNames.map(n => `${w}.${this.d.quote(n)}`).join(', ')}`;
         outer += ` FROM (${sql}) AS ${w} WHERE ${w}.${this.d.quote('orm_rn')} <= ${perParent}`;
-        outer += ` ORDER BY ${rc!.childKeys.map(key => `${w}.${this.d.quote(`${root.alias}__${key}`)}`).join(', ')}`;
+        outer += ` ORDER BY ${rc.childKeys.map(key => `${w}.${this.d.quote(`${root.alias}__${key}`)}`).join(', ')}`;
         outer += `, ${w}.${this.d.quote('orm_rn')}`;
         sql = outer;
       } else {
@@ -369,25 +381,27 @@ export class Planner {
   /** A step per relation of s (and of its joins); records how rows attach. */
   private relationSteps(add: (st: Omit<PlanStep, 'id'>) => PlanStep, steps: readonly PlanStep[], s: Scope, asm: Assemble, stepId: number): void {
     for (const r of s.q.relations ?? []) {
-      const rc: RelationContext = { parentStep: stepId, parentAsm: asm, parentKeys: r.keys!.map(k => k.left), childKeys: r.keys!.map(k => k.right), kind: r.kind! };
+      const keys = present(r.keys, `the keys of relation ${r.rel}`);
+      const rc: RelationContext = { parentStep: stepId, parentAsm: asm, parentKeys: keys.map(k => k.left), childKeys: keys.map(k => k.right), kind: present(r.kind, `the kind of relation ${r.rel}`) };
       const target = this.entity(r.query.entity);
       const st = this.selectStep(add, steps, r.query, 'all', '', rc);
+      const assembled = present(st.assemble, `the assemble of relation ${r.rel}`);
       const child: Child = {
         rel: r.rel, kind: rc.kind, step: st.id,
         parent_keys: keyRefs(asm, rc.parentKeys),
-        child_keys: keyRefs(st.assemble!, rc.childKeys),
+        child_keys: keyRefs(assembled, rc.childKeys),
         key: [],
         flatten: r.query.flatten ?? false,
         // owned when the child holds the foreign key to this row's primary key
         cascade: !(r.query.no_cascade_delete ?? false) && sameList(rc.parentKeys, s.ent.primaryKey) && !sameList(rc.childKeys, target.primaryKey),
       };
-      child.key = keyRefs(st.assemble!, (r.query.key_by ?? '') !== '' ? [r.query.key_by!] : this.entity(st.assemble!.entity).primaryKey);
+      child.key = keyRefs(assembled, r.query.key_by !== undefined && r.query.key_by !== '' ? [r.query.key_by] : this.entity(assembled.entity).primaryKey);
       asm.children.push(child);
     }
     for (const j of s.q.joins ?? []) {
-      const js = s.joins.get(j.rel)!;
+      const js = this.joinScope(s, j.rel);
       for (const ch of asm.children) {
-        if (ch.kind === 'join' && ch.rel === j.rel) this.relationSteps(add, steps, js, ch.assemble!, stepId);
+        if (ch.kind === 'join' && ch.rel === j.rel) this.relationSteps(add, steps, js, present(ch.assemble, `the assemble of join ${j.rel}`), stepId);
       }
     }
   }
@@ -397,9 +411,10 @@ export class Planner {
     if (order.length === 0) return '';
     const parts = order.map(o => {
       if (o.random) return this.d.random();
-      const target = o.fn ? this.columnFunction(b, root, o.column!, o.fn) : this.qcol(root, o.column!);
+      const column = present(o.column, 'the column of an order item');
+      const target = o.fn ? this.columnFunction(b, root, column, o.fn) : this.qcol(root, column);
       // A NOT NULL column keeps its btree order; one that can be NULL sorts NULL first ascending and last descending.
-      const nulls = columnOf(root.ent!, o.column!)!.nullable ? this.d.nullsOrder(o.desc === true) : '';
+      const nulls = columnIn(root.ent, column).nullable ? this.d.nullsOrder(o.desc === true) : '';
       return target + (o.desc ? ' DESC' : ' ASC') + nulls;
     });
     return ` ORDER BY ${parts.join(', ')}`;
@@ -444,8 +459,9 @@ export class Planner {
         expr = `(${this.subSelect(b, s, c.sub)})`;
         type = this.subType(c.sub);
       } else {
-        expr = this.d.readExpr(this.qcol(s, c.column), this.readSqlStyles(styles(col!)));
-        colStyles = this.clientStyles(styles(col!));
+        const own = present(col, `column ${s.ent.name}.${c.column}`);
+        expr = this.d.readExpr(this.qcol(s, c.column), this.readSqlStyles(styles(own)));
+        colStyles = this.clientStyles(styles(own));
       }
       const out = `${s.alias}__${c.name}`;
       parts.push(`${expr} AS ${this.d.quote(out)}`);
@@ -468,9 +484,9 @@ export class Planner {
     }
     let sql = parts.join(', ');
     for (const j of s.q.joins ?? []) {
-      const js = s.joins.get(j.rel)!;
+      const js = this.joinScope(s, j.rel);
       const child: Child = { rel: j.rel, kind: 'join', step: 0, parent_keys: [], child_keys: [], key: [], flatten: false, cascade: false, assemble: { entity: js.ent.name, alias: js.alias, columns: [], children: [], key: [] } };
-      const joined = this.selectList(b, js, child.assemble!, idx, outNames);
+      const joined = this.selectList(b, js, present(child.assemble, `the assemble of join ${j.rel}`), idx, outNames);
       if (joined !== '') sql += (sql === '' ? '' : ', ') + joined;
       asm.children.push(child);
     }
@@ -491,12 +507,13 @@ export class Planner {
     const push = (name: string) => { if (!base.includes(name)) base.push(name); };
     if (c) {
       for (const a of c.add ?? []) push(a);
-      if ((c.remove ?? []).length > 0) base = base.filter(x => !c.remove!.includes(x) || columnOf(s.ent, x)!.primary);
+      const remove = c.remove ?? [];
+      if (remove.length > 0) base = base.filter(x => !remove.includes(x) || columnIn(s.ent, x).primary);
     }
     // Columns relation steps bind or key on are always selected.
     for (const x of s.extra) push(x);
     for (const r of s.q.relations ?? []) {
-      for (const k of r.keys!) push(k.left);
+      for (const k of r.keys ?? []) push(k.left);
       if (r.query.if_parent) push(r.query.if_parent.column);
     }
     // The primary key is always selected.
@@ -512,8 +529,8 @@ export class Planner {
   private renderJoins(b: Builder, s: Scope): string {
     let sql = '';
     for (const j of s.q.joins ?? []) {
-      const js = s.joins.get(j.rel)!;
-      const conditions = [`${this.qcol(s, j.left!)} = ${this.qcol(js, j.right!)}`];
+      const js = this.joinScope(s, j.rel);
+      const conditions = [`${this.qcol(s, present(j.left, `the left column of join ${j.rel}`))} = ${this.qcol(js, present(j.right, `the right column of join ${j.rel}`))}`];
       sql += `${j.kind === 'left' ? ' LEFT JOIN ' : ' INNER JOIN '}${b.table(js.ent)} AS ${this.d.quote(js.alias)} ON ${conditions.join(' AND ')}`;
       if (j.query.on && j.query.on.items.length > 0) sql += ` AND ${this.renderGroup(b, js, j.query.on, true)}`;
       sql += this.renderJoins(b, js);
@@ -526,7 +543,7 @@ export class Planner {
     const placed = new Set<string>();
     if (s.q.where) placedJoins(s.q.where, placed);
     for (const j of s.q.joins ?? []) {
-      const js = s.joins.get(j.rel)!;
+      const js = this.joinScope(s, j.rel);
       if (j.query.where && j.query.where.items.length > 0 && !placed.has(j.rel)) where.push(this.renderGroup(b, js, j.query.where, false));
       this.collectJoinWhere(b, js, where);
     }
@@ -545,9 +562,10 @@ export class Planner {
         conn = it.group.conn;
         text = this.renderGroup(b, s, it.group, false);
       } else {
-        conn = it.joined!.conn;
-        const js = s.joins.get(it.joined!.join)!;
-        text = this.renderGroup(b, js, js.q.where!, false);
+        const joined = present(it.joined, 'a where item of pred, group or joined');
+        conn = joined.conn;
+        const js = this.joinScope(s, joined.join);
+        text = this.renderGroup(b, js, present(js.q.where, `the where of joined ${joined.join}`), false);
       }
       if (i > 0) parts.push(conn === 'or' ? 'OR' : 'AND');
       parts.push(text);
@@ -560,33 +578,34 @@ export class Planner {
   private renderPred(b: Builder, s: Scope, pr: Predicate): string {
     const op = pr.op ?? '';
     if (op === 'tuple_in' || op === 'tuple_not_in') {
-      const cols = pr.cols!;
-      const ps = pr.ps!;
+      const cols = present(pr.cols, `the columns of ${op}`);
+      const ps = present(pr.ps, `the values of ${op}`);
       const rows: string[][] = [];
       for (let i = 0; i < ps.length; i += cols.length) {
-        rows.push(cols.map((name, k) => this.renderValue(b, columnOf(s.ent, name)!, ps[i + k]!)));
+        rows.push(cols.map((name, k) => this.renderValue(b, columnIn(s.ent, name), present(ps[i + k], `value ${i + k + 1} of ${op}`))));
       }
       return this.d.tupleIn(this.qualified(s, cols), rows, op === 'tuple_not_in');
     }
-    const col = columnOf(s.ent, pr.column!)!;
-    let lhs = this.qcol(s, pr.column!);
+    const column = present(pr.column, `the column of ${op}`);
+    const col = columnIn(s.ent, column);
+    let lhs = this.qcol(s, column);
     if (pr.sub) return `${lhs}${op === 'not_in' ? ' NOT IN ' : ' IN '}(${this.subSelect(b, s, pr.sub)})`;
     if (pr.value) {
       const fn = pr.value;
-      const value = this.d.valueFunction(fn.name, () => b.param(fn.ps![0]!, valueFunctionArgType(fn.name)), () => b.now(col.type === 'datetime' ? col.precision : 6));
+      const value = this.d.valueFunction(fn.name, () => b.param(present(fn.ps?.[0], `the argument of ${fn.name}`), valueFunctionArgType(fn.name)), () => b.now(col.type === 'datetime' ? col.precision : 6));
       if (value === undefined) fail('CAPABILITY_UNSUPPORTED', `${fn.name} is not available on ${this.d.name}`);
       return `${lhs} ${cmp(op)} ${value}`;
     }
     if (pr.fn) {
-      const fn = this.columnFunction(b, s, pr.column!, pr.fn);
+      const fn = this.columnFunction(b, s, column, pr.fn);
       const type = functionType(pr.fn.name, col);
       switch (op) {
         case 'in': case 'not_in':
-          return `${fn}${op === 'not_in' ? ' NOT IN ' : ' IN '}(${pr.ps!.map(i => b.param(i, type)).join(', ')})`;
+          return `${fn}${op === 'not_in' ? ' NOT IN ' : ' IN '}(${(pr.ps ?? []).map(i => b.param(i, type)).join(', ')})`;
         case 'between':
-          return `${fn} BETWEEN ${b.param(pr.ps![0]!, type)} AND ${b.param(pr.ps![1]!, type)}`;
+          return `${fn} BETWEEN ${b.param(this.between(pr)[0], type)} AND ${b.param(this.between(pr)[1], type)}`;
       }
-      return `${fn} ${cmp(op)} ${b.param(pr.p!, type)}`;
+      return `${fn} ${cmp(op)} ${b.param(present(pr.p, `the value of ${op}`), type)}`;
     }
     const aes = styles(col).includes('aes');
     switch (op) {
@@ -595,37 +614,38 @@ export class Planner {
           if (op !== 'eq' && op !== 'not_eq') fail('OPERATOR_NOT_ALLOWED', 'AES columns support only equality through a declared blind index');
           if (col.blindIndex === '') fail('IR_INVALID', `${s.ent.name}.${col.name} requires a declared blind index for equality search`);
           lhs = this.qcol(s, col.blindIndex);
-          return `${lhs} ${cmp(op)} ${this.renderBlindIndexValue(b, columnOf(s.ent, col.blindIndex)!, pr.p!)}`;
+          return `${lhs} ${cmp(op)} ${this.renderBlindIndexValue(b, columnIn(s.ent, col.blindIndex), present(pr.p, `the value of ${op}`))}`;
         }
-        return `${lhs} ${cmp(op)} ${this.renderValue(b, col, pr.p!)}`;
+        return `${lhs} ${cmp(op)} ${this.renderValue(b, col, present(pr.p, `the value of ${op}`))}`;
       }
       case 'eq_col': case 'not_eq_col': case 'gt_col': case 'gte_col': case 'lt_col': case 'lte_col': {
         // 없거나 null인 path는 statement의 root다(검증기와 같다).
-        const rs = this.resolvePath(s, pr.ref!.path ?? '');
-        if (!columnOf(rs.ent, pr.ref!.column)) fail('COLUMN_UNKNOWN', `${rs.ent.name}.${pr.ref!.column}`);
-        return `${lhs} ${cmp(op.slice(0, -4))} ${this.qcol(rs, pr.ref!.column)}`;
+        const ref = present(pr.ref, `the reference of ${op}`);
+        const rs = this.resolvePath(s, ref.path ?? '');
+        if (!columnOf(rs.ent, ref.column)) fail('COLUMN_UNKNOWN', `${rs.ent.name}.${ref.column}`);
+        return `${lhs} ${cmp(op.slice(0, -4))} ${this.qcol(rs, ref.column)}`;
       }
       case 'in': case 'not_in': {
         let values: string[];
         if (aes) {
           if (col.blindIndex === '') fail('IR_INVALID', `${s.ent.name}.${col.name} requires a declared blind index for equality search`);
           lhs = this.qcol(s, col.blindIndex);
-          values = pr.ps!.map(i => this.renderBlindIndexValue(b, columnOf(s.ent, col.blindIndex)!, i));
+          values = (pr.ps ?? []).map(i => this.renderBlindIndexValue(b, columnIn(s.ent, col.blindIndex), i));
         } else {
-          values = pr.ps!.map(i => this.renderValue(b, col, i));
+          values = (pr.ps ?? []).map(i => this.renderValue(b, col, i));
         }
         return `${lhs} ${op === 'not_in' ? 'NOT IN' : 'IN'} (${values.join(', ')})`;
       }
       case 'between':
-        return `${lhs} BETWEEN ${this.renderValue(b, col, pr.ps![0]!)} AND ${this.renderValue(b, col, pr.ps![1]!)}`;
+        return `${lhs} BETWEEN ${this.renderValue(b, col, this.between(pr)[0])} AND ${this.renderValue(b, col, this.between(pr)[1])}`;
       case 'is_null':
         return `${lhs} IS NULL`;
       case 'is_not_null':
         return `${lhs} IS NOT NULL`;
       case 'contains':
-        return this.d.like(lhs, b.colParam(pr.p!, col, 'like_contains'));
+        return this.d.like(lhs, b.colParam(present(pr.p, `the value of ${op}`), col, 'like_contains'));
       case 'contains_binary':
-        return this.d.containsBinary(lhs, transform => b.colParam(pr.p!, col, transform));
+        return this.d.containsBinary(lhs, transform => b.colParam(present(pr.p, `the value of ${op}`), col, transform));
     }
     return fail('OPERATOR_UNKNOWN', op);
   }
@@ -635,7 +655,8 @@ export class Planner {
     const host = styles(col).filter(st => (st === 'aes' || st === 'hex' || st === 'ip') && !this.d.handlesStage(st));
     const sql = this.sqlStyles(styles(col));
     // SQL 쪽 style 함수가 감싸는 값의 type은 그 함수 입력의 type이다.
-    const ph = sql.length === 0 ? b.colParam(i, col) : b.param(i, styleInputType(sql[0]!));
+    const [first] = sql;
+    const ph = first === undefined ? b.colParam(i, col) : b.param(i, styleInputType(first));
     b.last().host_styles = host;
     return this.d.writeExpr(ph, sql);
   }
@@ -659,7 +680,7 @@ export class Planner {
   private columnFunction(b: Builder, s: Scope, column: string, f: OrmFunction): string {
     // column 함수의 인자는 아직 없다(arity는 모두 0). 인자의 type을 선언하지 않은 함수가 인자를 받으면
     // type 없는 slot으로 planner 오류다.
-    return this.d.columnFunction(f.name, this.qcol(s, column), i => b.param(f.ps![i]!, '')) ?? fail('CAPABILITY_UNSUPPORTED', `${f.name} is not available on ${this.d.name}`);
+    return this.d.columnFunction(f.name, this.qcol(s, column), i => b.param(present(f.ps?.[i], `argument ${i + 1} of ${f.name}`), '')) ?? fail('CAPABILITY_UNSUPPORTED', `${f.name} is not available on ${this.d.name}`);
   }
 
   /** A subquery for an IN list or a scalar column; "^" refers to outer. */
@@ -668,11 +689,12 @@ export class Planner {
     const root = this.buildScopes(sub.query, `s${b.subs}`, undefined);
     root.outer = outer;
     let sql = 'SELECT ';
+    const column = (): string => present(sub.column, `the column of a subquery of ${sub.query.entity}`);
     switch (sub.agg ?? '') {
-      case 'sum': sql += `COALESCE(SUM(${this.qcol(root, sub.column!)}), 0)`; break;
-      case 'avg': sql += `AVG(${this.qcol(root, sub.column!)})`; break;
+      case 'sum': sql += `COALESCE(SUM(${this.qcol(root, column())}), 0)`; break;
+      case 'avg': sql += `AVG(${this.qcol(root, column())})`; break;
       case 'count': sql += 'COUNT(*)'; break;
-      default: sql += this.qcol(root, sub.column!);
+      default: sql += this.qcol(root, column());
     }
     sql += ` FROM ${b.table(root.ent)} AS ${this.d.quote(root.alias)}`;
     sql += this.renderJoins(b, root);
@@ -698,7 +720,7 @@ export class Planner {
     if (blindIndexSource(ent, col.name)) {
       if (a.plus_p !== undefined || a.minus_p !== undefined) fail('IR_INVALID', 'blind index assignment must use its AES source value');
       if (a.null) return 'NULL';
-      return this.renderBlindIndexValue(b, col, a.p!);
+      return this.renderBlindIndexValue(b, col, present(a.p, `the value of ${a.column}`));
     }
     // table-qualified: a bare name is ambiguous inside ON CONFLICT DO UPDATE
     const q = `${this.d.quote(ent.table)}.${this.d.quote(col.name)}`;
@@ -708,7 +730,7 @@ export class Planner {
       return `CASE WHEN ${q} > ${ph} THEN ${q} - ${b.colParam(a.minus_p, col)} ELSE 0 END`;
     }
     if (a.null) return 'NULL';
-    return this.renderValue(b, col, a.p!);
+    return this.renderValue(b, col, present(a.p, `the value of ${a.column}`));
   }
 
   /**
@@ -734,7 +756,7 @@ export class Planner {
   private managedInsertColumns(ent: Entity, set: readonly Assignment[]): { column: string; value: (b: Builder) => string }[] {
     const out: { column: string; value: (b: Builder) => string }[] = [];
     const version = aesVersionColumn(ent);
-    if (version !== '' && !assigned(set, version)) out.push({ column: version, value: b => b.config('aes_version', columnOf(ent, version)!.type) });
+    if (version !== '' && !assigned(set, version)) out.push({ column: version, value: b => b.config('aes_version', columnIn(ent, version).type) });
     if (ent.auditColumn !== '') {
       out.push({ column: ent.auditColumn, value: b => b.audit(ent) });
     }
@@ -762,7 +784,7 @@ export class Planner {
     const cols: string[] = [];
     const vals: string[] = [];
     for (const a of set) {
-      const col = columnOf(ent, a.column)!;
+      const col = columnIn(ent, a.column);
       if (col.identity && !load) fail('IR_INVALID', `cannot set identity column ${a.column}`);
       cols.push(this.d.quote(a.column));
       vals.push(this.renderAssign(b, ent, col, a));
@@ -787,10 +809,10 @@ export class Planner {
       return { role: 'main', sql, tables: b.tables(), bind_slots: b.binds };
     }
     if ((r.on_duplicate ?? []).length > 0) {
-      const duplicate = addBlindIndexAssignments(ent, [...r.on_duplicate!]);
+      const duplicate = addBlindIndexAssignments(ent, (r.on_duplicate ?? []).slice());
       validateAESAssignments(ent, duplicate, true);
-      const sets = duplicate.map(a => `${this.d.quote(a.column)} = ${this.renderAssign(b, ent, columnOf(ent, a.column)!, a)}`);
-      if (version !== '' && assignsAES(ent, duplicate) && !assigned(duplicate, version)) sets.push(`${this.d.quote(version)} = ${b.config('aes_version', columnOf(ent, version)!.type)}`);
+      const sets = duplicate.map(a => `${this.d.quote(a.column)} = ${this.renderAssign(b, ent, columnIn(ent, a.column), a)}`);
+      if (version !== '' && assignsAES(ent, duplicate) && !assigned(duplicate, version)) sets.push(`${this.d.quote(version)} = ${b.config('aes_version', columnIn(ent, version).type)}`);
       const op = this.auditAssignment(b, ent);
       if (op !== undefined) sets.push(op);
       if (ent.identity !== '' && !this.d.insertReturningId) {
@@ -811,17 +833,17 @@ export class Planner {
     const root = this.buildScopes(r, ent.table, undefined);
     const sets: string[] = [];
     for (const a of set) {
-      const col = columnOf(ent, a.column)!;
+      const col = columnIn(ent, a.column);
       sets.push(`${this.d.quote(a.column)} = ${this.renderAssign(b, ent, col, a)}`);
     }
     const version = aesVersionColumn(ent);
-    if (version !== '' && assignsAES(ent, set) && !assigned(set, version)) sets.push(`${this.d.quote(version)} = ${b.config('aes_version', columnOf(ent, version)!.type)}`);
+    if (version !== '' && assignsAES(ent, set) && !assigned(set, version)) sets.push(`${this.d.quote(version)} = ${b.config('aes_version', columnIn(ent, version).type)}`);
     // The update time is always assigned: optimistic locking needs the same behavior on every dialect.
-    if (ent.updated !== '' && !assigned(r.set ?? [], ent.updated)) sets.push(`${this.d.quote(ent.updated)} = ${this.clock(b, columnOf(ent, ent.updated)!)}`);
+    if (ent.updated !== '' && !assigned(r.set ?? [], ent.updated)) sets.push(`${this.d.quote(ent.updated)} = ${this.clock(b, columnIn(ent, ent.updated))}`);
     const op = this.auditAssignment(b, ent);
     if (op !== undefined) sets.push(op);
-    let where = this.renderGroup(b, root, r.where!, true);
-    if (r.optimistic) where += ` AND ${this.qcol(root, r.optimistic.column)} = ${b.colParam(r.optimistic.p, columnOf(root.ent, r.optimistic.column)!)}`;
+    let where = this.renderGroup(b, root, present(r.where, `the where of ${r.kind}`), true);
+    if (r.optimistic) where += ` AND ${this.qcol(root, r.optimistic.column)} = ${b.colParam(r.optimistic.p, columnIn(root.ent, r.optimistic.column))}`;
     if (ent.softDelete !== '') where += ` AND ${this.qcol(root, ent.softDelete)} IS NULL`;
     return { role: 'main', sql: `UPDATE ${b.table(ent)} SET ${sets.join(', ')} WHERE ${where}`, tables: b.tables(), bind_slots: b.binds };
   }
@@ -831,13 +853,13 @@ export class Planner {
     const ent = this.entity(r.entity);
     const root = this.buildScopes(r, ent.table, undefined);
     if (ent.softDelete === '') {
-      return { role: 'main', sql: `DELETE FROM ${b.table(ent)} WHERE ${this.renderGroup(b, root, r.where!, true)}`, tables: b.tables(), bind_slots: b.binds };
+      return { role: 'main', sql: `DELETE FROM ${b.table(ent)} WHERE ${this.renderGroup(b, root, present(r.where, `the where of ${r.kind}`), true)}`, tables: b.tables(), bind_slots: b.binds };
     }
     // A soft delete is an update: it stamps the column and, on an audited table, the audit column.
-    const sets = [`${this.d.quote(ent.softDelete)} = ${this.clock(b, columnOf(ent, ent.softDelete)!)}`];
+    const sets = [`${this.d.quote(ent.softDelete)} = ${this.clock(b, columnIn(ent, ent.softDelete))}`];
     const op = this.auditAssignment(b, ent);
     if (op !== undefined) sets.push(op);
-    const where = `${this.renderGroup(b, root, r.where!, true)} AND ${this.qcol(root, ent.softDelete)} IS NULL`;
+    const where = `${this.renderGroup(b, root, present(r.where, `the where of ${r.kind}`), true)} AND ${this.qcol(root, ent.softDelete)} IS NULL`;
     return { role: 'main', sql: `UPDATE ${b.table(ent)} SET ${sets.join(', ')} WHERE ${where}`, tables: b.tables(), bind_slots: b.binds };
   }
 
@@ -856,9 +878,9 @@ export class Planner {
     const b = new Builder(this.d);
     const root = this.buildScopes(r, ent.table, undefined);
     const sets: string[] = [];
-    for (const a of set) sets.push(`${this.d.quote(a.column)} = ${this.renderAssign(b, ent, columnOf(ent, a.column)!, a)}`);
+    for (const a of set) sets.push(`${this.d.quote(a.column)} = ${this.renderAssign(b, ent, columnIn(ent, a.column), a)}`);
     const version = aesVersionColumn(ent);
-    if (version !== '' && assignsAES(ent, set)) sets.push(`${this.d.quote(version)} = ${b.config('aes_version', columnOf(ent, version)!.type)}`);
+    if (version !== '' && assignsAES(ent, set)) sets.push(`${this.d.quote(version)} = ${b.config('aes_version', columnIn(ent, version).type)}`);
     sets.push(`${this.d.quote(ent.softDelete)} = NULL`);
     const op = this.auditAssignment(b, ent);
     if (op !== undefined) sets.push(op);

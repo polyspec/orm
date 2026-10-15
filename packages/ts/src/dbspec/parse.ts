@@ -16,6 +16,7 @@ import type {
 import { typeText } from './emit.js';
 import { containsWordRune } from './unicode_word.js';
 import { rendererName } from './names.js';
+import { present } from '../present.js';
 
 export interface RawDiagnostic {
   readonly rule: DbspecRule;
@@ -45,14 +46,31 @@ const UUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a
 const DATE = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/;
 const TIME = /^([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]+))?$/;
 const DATETIME = /^([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]+))?$/;
-const PLAIN_TYPES = new Set(['i16', 'i32', 'i64', 'bool', 'f64', 'text', 'bytes', 'uuid', 'date']);
+/** The kinds of the types that take no parameters. */
+type PlainKind = 'i16' | 'i32' | 'i64' | 'bool' | 'f64' | 'text' | 'bytes' | 'uuid' | 'date';
+const PLAIN_KINDS: readonly PlainKind[] = ['i16', 'i32', 'i64', 'bool', 'f64', 'text', 'bytes', 'uuid', 'date'];
 const INTEGER_RANGES: Record<string, readonly [bigint, bigint]> = {
   i16: [-32768n, 32767n],
   i32: [-2147483648n, 2147483647n],
   i64: [-9223372036854775808n, 9223372036854775807n],
 };
-const STAGES = new Set<string>(['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip']);
-const ACTIONS = new Set<string>(['restrict', 'cascade', 'set_null']);
+const STAGE_LIST: readonly DbspecCodecStage[] = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];
+const STAGES = new Set<string>(STAGE_LIST);
+const ACTION_LIST: readonly DbspecAction[] = ['restrict', 'cascade', 'set_null'];
+const ACTIONS = new Set<string>(ACTION_LIST);
+const STORAGES: readonly ('files' | 'document' | 'block')[] = ['files', 'document', 'block'];
+const SHAPES: readonly ('list' | 'table')[] = ['list', 'table'];
+const PERIODS: readonly ('year' | 'month' | 'day')[] = ['year', 'month', 'day'];
+
+/** The member of `values` that is `value`, or undefined when `value` is none of them. */
+function member<T extends string>(values: readonly T[], value: string): T | undefined {
+  return values.find(v => v === value);
+}
+
+/** The member of `values` that is `value`, which the parser has checked; throws naming `what` when it is none of them. */
+function oneOf<T extends string>(values: readonly T[], value: string, what: string): T {
+  return present(member(values, value), `${what} ${value}`);
+}
 const CONSTRAINT_WORDS = new Set(['primary', 'unique', 'index', 'foreign', 'check']);
 const EXPRESSION_WORDS = new Set(['and', 'or', 'not', 'in', 'between', 'is', 'null', 'true', 'false']);
 /** The words that are keywords in a value position: a default, a check literal, a coordinate and a limit count (R6, R18). */
@@ -106,8 +124,8 @@ interface IForeignKey {
   readonly cols: Tk[];
   readonly table: Tk;
   readonly refs: Tk[];
-  readonly onDelete: DbspecAction;
-  readonly onUpdate: DbspecAction;
+  readonly onDelete: string;
+  readonly onUpdate: string;
   readonly comments: string[];
 }
 
@@ -373,19 +391,7 @@ function codePoints(text: string): number {
   return n;
 }
 
-function isDelimiter(c: number): boolean {
-  return (
-    c === 32 || c === 9 || c === 40 || c === 41 || c === 123 || c === 125 || c === 44 || c === 39 ||
-    c === 61 || c === 60 || c === 62 || c === 43 || c === 45 || c === 42 || c === 47
-  );
-}
 
-interface Tokens {
-  readonly toks: Tk[];
-  /** The index of the first tab or of an unterminated string, or -1. */
-  readonly bad: number;
-  readonly why: string;
-}
 
 /** One line split as Go's lexLine splits it: the tokens before the first error, and that error. */
 interface Lexed {
@@ -415,7 +421,7 @@ function lexLine(text: string, line: number): Lexed {
     if (c === 32) {
       i++;
     } else if (c === 40 || c === 41 || c === 123 || c === 125 || c === 44) {
-      toks.push({ k: K.Punct, t: text[i]!, s: i, e: i + 1, line });
+      toks.push({ k: K.Punct, t: present(text[i], 'text[i]'), s: i, e: i + 1, line });
       i++;
     } else if (c === 60 || c === 62) {
       const d = text.charCodeAt(i + 1);
@@ -424,7 +430,7 @@ function lexLine(text: string, line: number): Lexed {
       toks.push({ k: K.Op, t: text.slice(i, e), s: i, e, line });
       i = e;
     } else if (c === 61 || c === 43 || c === 45 || c === 42 || c === 47) {
-      toks.push({ k: K.Op, t: text[i]!, s: i, e: i + 1, line });
+      toks.push({ k: K.Op, t: present(text[i], 'text[i]'), s: i, e: i + 1, line });
       i++;
     } else if (c === 39) {
       let j = i + 1;
@@ -445,11 +451,11 @@ function lexLine(text: string, line: number): Lexed {
       toks.push({ k: K.Str, t: text.slice(i, j), s: i, e: j, line });
       i = j;
     } else {
-      const cp = text.codePointAt(i)!;
+      const cp = present(text.codePointAt(i), 'text.codePointAt(i)');
       if (!isWordRune(cp)) return { toks, error: { index: i, message: `character ${goRune(cp)} is not allowed here` } };
       let j = i + (cp > 0xffff ? 2 : 1);
       while (j < n) {
-        const d = text.codePointAt(j)!;
+        const d = present(text.codePointAt(j), 'text.codePointAt(j)');
         if (!isWordRune(d)) break;
         j += d > 0xffff ? 2 : 1;
       }
@@ -520,7 +526,7 @@ function validDate(y: string, m: string, d: string): boolean {
   const month = Number(m);
   const day = Number(d);
   if (year < 1 || month < 1 || month > 12 || day < 1) return false;
-  const days = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]!;
+  const days = present([31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1], `the days of month ${month}`);
   return day <= days;
 }
 
@@ -578,7 +584,7 @@ function defaultOf(type: DbspecType, tok: Tk): DbspecDefault | string {
     case 'i64': {
       if (word === null || !INTEGER.test(word)) return `default of ${type.kind} must be an integer`;
       const value = BigInt(word);
-      const [min, max] = INTEGER_RANGES[type.kind]!;
+      const [min, max] = present(INTEGER_RANGES[type.kind], 'INTEGER_RANGES[type.kind]');
       if (value < min || value > max) return `default ${word} is out of the ${type.kind} range`;
       return literal(value.toString());
     }
@@ -615,12 +621,12 @@ function defaultOf(type: DbspecType, tok: Tk): DbspecDefault | string {
       return literal(quote(text.toLowerCase()));
     case 'date': {
       const m = text === null ? null : DATE.exec(text);
-      if (m === null || !validDate(m[1]!, m[2]!, m[3]!)) return "default of date must be 'YYYY-MM-DD'";
-      return literal(quote(text!));
+      if (m === null || !validDate(present(m[1], 'm[1]'), present(m[2], 'm[2]'), present(m[3], 'm[3]'))) return "default of date must be 'YYYY-MM-DD'";
+      return literal(quote(present(text, 'text')));
     }
     case 'time': {
       const m = text === null ? null : TIME.exec(text);
-      if (m === null || !validTime(m[1]!, m[2]!, m[3]!)) return `default of ${typeText(type)} must be 'HH:MM:SS'`;
+      if (m === null || !validTime(present(m[1], 'm[1]'), present(m[2], 'm[2]'), present(m[3], 'm[3]'))) return `default of ${typeText(type)} must be 'HH:MM:SS'`;
       const f = fraction(m[4], type.precision);
       if (f === null) return `default has more than ${type.precision} fraction digits`;
       return literal(quote(`${m[1]}:${m[2]}:${m[3]}${f}`));
@@ -628,7 +634,7 @@ function defaultOf(type: DbspecType, tok: Tk): DbspecDefault | string {
     case 'datetime': {
       if (word === 'now') return { kind: 'now' };
       const m = text === null ? null : DATETIME.exec(text);
-      if (m === null || !validDate(m[1]!, m[2]!, m[3]!) || !validTime(m[4]!, m[5]!, m[6]!)) {
+      if (m === null || !validDate(present(m[1], 'm[1]'), present(m[2], 'm[2]'), present(m[3], 'm[3]')) || !validTime(present(m[4], 'm[4]'), present(m[5], 'm[5]'), present(m[6], 'm[6]'))) {
         return `default of ${typeText(type)} must be now or 'YYYY-MM-DD HH:MM:SS'`;
       }
       const f = fraction(m[7], type.precision);
@@ -681,7 +687,7 @@ function predicateText(p: Predicate): string {
   }
   let text = '';
   for (let n = 0; n < p.parts.length; n++) {
-    const part = p.parts[n]!;
+    const part = present(p.parts[n], 'p.parts[n]');
     if (n > 0 && part !== ')' && part !== ',' && p.parts[n - 1] !== '(') text += ' ';
     text += part;
   }
@@ -822,7 +828,7 @@ class DocumentParser {
     let settingsLexical = false;
     let diagramLexical = false;
     for (let n = 1; n < lines.length && !this.stopped; n++) {
-      const text = lines[n]!;
+      const text = present(lines[n], 'lines[n]');
       const line = n + 1;
       if ((state === 'table' && tableLexical) || (state === 'settings' && (tableLexical || settingsLexical)) || (state === 'diagram' && diagramLexical)) {
         this.lexical.add(line);
@@ -868,7 +874,7 @@ class DocumentParser {
           this.at('syntax', first, 'expected use, table or diagram');
         }
       } else if (state === 'table') {
-        const t = table!;
+        const t = present(table, 'table');
         if (isPunct(first, '}')) {
           if (toks.length > 1) this.syntax(toks, 1, line, 'expected the end of the line');
           t.closing = own;
@@ -882,7 +888,7 @@ class DocumentParser {
           this.mark(first, 'keyword');
           // Go는 반복된 block의 키워드에 order를 줄이 올바른 형식(`settings {`만)일 때만 보고한다.
           if (t.settings !== null && isPunct(toks[1], '{') && toks.length === 2) this.at('order', first, 'a table has at most one settings block');
-          this.openSettingsBlock(t, { open: isPunct(toks[1], '{') ? toks[1]! : first, entries: [], comments: own, closing: [] });
+          this.openSettingsBlock(t, { open: isPunct(toks[1], '{') ? present(toks[1], 'toks[1]') : first, entries: [], comments: own, closing: [] });
           t.phase = 2;
           if (!isPunct(toks[1], '{')) this.syntax(toks, 1, line, 'expected {');
           else if (toks.length > 2) this.syntax(toks, 2, line, 'expected the end of the line');
@@ -905,17 +911,16 @@ class DocumentParser {
           else if (t.phase > 0 && !this.stopped) this.at('order', first, 'columns come before keys, indexes, foreign keys, checks and settings');
         }
       } else if (state === 'settings') {
-        const t = table!;
         if (isPunct(first, '}')) {
           if (toks.length > 1) this.syntax(toks, 1, line, 'expected the end of the line');
-          this.settingsBlock!.closing = own;
+          present(this.settingsBlock, 'this.settingsBlock').closing = own;
           settingsLexical = false;
           state = 'table';
         } else {
           this.setting(toks, line, own, lexed.error !== null);
         }
       } else {
-        const d = diagram!;
+        const d = present(diagram, 'diagram');
         if (isPunct(first, '}')) {
           if (toks.length > 1) this.syntax(toks, 1, line, 'expected the end of the line');
           d.closing = own;
@@ -935,9 +940,9 @@ class DocumentParser {
       return;
     }
     // 가장 안쪽의 열린 block만 보고한다(Go처럼): 열린 settings block은 표의 `{`를 보고하지 않는다.
-    if (state === 'settings') this.unclosed(this.settingsBlock!.open, 'the settings block is not closed');
-    else if (state === 'table') this.unclosed(table!.open, 'the table block is not closed');
-    if (state === 'diagram') this.unclosed(diagram!.open, 'the diagram block is not closed');
+    if (state === 'settings') this.unclosed(present(this.settingsBlock, 'this.settingsBlock').open, 'the settings block is not closed');
+    else if (state === 'table') this.unclosed(present(table, 'table').open, 'the table block is not closed');
+    if (state === 'diagram') this.unclosed(present(diagram, 'diagram').open, 'the diagram block is not closed');
     this.document.closing = comments;
   }
 
@@ -946,7 +951,7 @@ class DocumentParser {
    * `dbspec 1 <name>`, or one past the line end when a part is missing.
    */
   private header(): boolean {
-    const text = this.lines[0]!;
+    const text = present(this.lines[0], 'this.lines[0]');
     const fail = (offset: number): boolean => {
       this.report('header', 1, offset, 'the first line is exactly dbspec 1 <document>');
       this.stopped = true;
@@ -955,10 +960,10 @@ class DocumentParser {
     const prefix = 'dbspec 1 ';
     for (let i = 0; i < prefix.length; i++) if (text[i] !== prefix[i]) return fail(i);
     let end = prefix.length;
-    while (end < text.length && /[A-Za-z0-9_]/.test(text[end]!)) end++;
+    while (end < text.length && /[A-Za-z0-9_]/.test(present(text[end], 'text[end]'))) end++;
     if (end === prefix.length || end < text.length) return fail(end);
     const toks = lexLine(text, 1).toks;
-    const name = toks[2]!;
+    const name = present(toks[2], 'toks[2]');
     this.name(name);
     this.mark(toks[0], 'keyword');
     this.mark(name, 'name');
@@ -1011,7 +1016,7 @@ class DocumentParser {
   }
 
   private tableHeader(toks: Tk[], line: number, comments: string[]): ITable {
-    const kw = toks[0]!;
+    const kw = present(toks[0], 'toks[0]');
     const name = toks[1];
     const named = name !== undefined && name.k === K.Word;
     const table: ITable = {
@@ -1030,7 +1035,7 @@ class DocumentParser {
       closing: [],
       phase: 0,
       identity: false,
-      open: named && isPunct(toks[2], '{') ? toks[2]! : kw,
+      open: named && isPunct(toks[2], '{') ? present(toks[2], 'toks[2]') : kw,
       failed: new Set(),
       failedPrimary: false,
       failedKey: false,
@@ -1055,8 +1060,8 @@ class DocumentParser {
   private diagramHeader(toks: Tk[], line: number, comments: string[]): IDiagram {
     const name = toks[1];
     const named = name !== undefined && name.k === K.Word;
-    const open = named && isPunct(toks[2], '{') ? toks[2]! : toks[0]!;
-    const diagram: IDiagram = { open, name: named ? name : toks[0]!, named, entries: [], comments, closing: [] };
+    const open = named && isPunct(toks[2], '{') ? present(toks[2], 'toks[2]') : present(toks[0], 'toks[0]');
+    const diagram: IDiagram = { open, name: named ? name : present(toks[0], 'toks[0]'), named, entries: [], comments, closing: [] };
     this.document.diagrams.push(diagram);
     if (!named) this.syntax(toks, 1, line, 'expected a diagram name');
     else {
@@ -1072,40 +1077,41 @@ class DocumentParser {
 
   private type(tok: Tk, params: Tk[] | null): DbspecType | null {
     const kind = tok.t;
-    if (PLAIN_TYPES.has(kind)) {
+    const plain = member(PLAIN_KINDS, kind);
+    if (plain !== undefined) {
       if (params !== null) {
         this.at('type', tok, `${kind} takes no parameters`);
         return null;
       }
-      return { kind } as DbspecType;
+      return { kind: plain };
     }
     const values = (params ?? []).map(p => (/^[0-9]{1,9}$/.test(p.t) ? Number(p.t) : NaN));
     const count = values.length;
     switch (kind) {
       case 'decimal': {
         const [p, s] = values;
-        if (count !== 2 || !(p! >= 1 && p! <= 18) || !(s! >= 0 && s! <= p!)) {
+        if (count !== 2 || !(present(p, 'p') >= 1 && present(p, 'p') <= 18) || !(present(s, 's') >= 0 && present(s, 's') <= present(p, 'p'))) {
           this.at('type', tok, 'decimal(p,s) needs 1 <= p <= 18 and 0 <= s <= p');
           return null;
         }
-        return { kind, precision: p!, scale: s! };
+        return { kind, precision: present(p, 'p'), scale: present(s, 's') };
       }
       case 'varchar': {
         const [n] = values;
-        if (count !== 1 || !(n! >= 1 && n! <= 16383)) {
+        if (count !== 1 || !(present(n, 'n') >= 1 && present(n, 'n') <= 16383)) {
           this.at('type', tok, 'varchar(n) needs 1 <= n <= 16383');
           return null;
         }
-        return { kind, length: n! };
+        return { kind, length: present(n, 'n') };
       }
       case 'time':
       case 'datetime': {
         const [p] = values;
-        if (count !== 1 || !(p! >= 0 && p! <= 6)) {
+        if (count !== 1 || !(present(p, 'p') >= 0 && present(p, 'p') <= 6)) {
           this.at('type', tok, `${kind}(p) needs 0 <= p <= 6`);
           return null;
         }
-        return { kind, precision: p! };
+        return { kind, precision: present(p, 'p') };
       }
       default:
         this.at('type', tok, `${kind} is not a dbspec type`);
@@ -1114,7 +1120,7 @@ class DocumentParser {
   }
 
   private column(table: ITable, toks: Tk[], line: number, comments: string[]): void {
-    const name = toks[0]!;
+    const name = present(toks[0], 'toks[0]');
     if (name.k !== K.Word) return this.syntax(toks, 0, line, 'expected a column name');
     const typeTok = toks[1];
     if (typeTok === undefined || typeTok.k !== K.Word) {
@@ -1144,17 +1150,17 @@ class DocumentParser {
     let valueTok: Tk | null = null;
     let complete = true;
     if (isWord(toks[i], 'null')) {
-      nullTok = toks[i]!;
+      nullTok = present(toks[i], 'toks[i]');
       this.mark(nullTok, 'keyword');
       i++;
     }
     if (isWord(toks[i], 'identity')) {
-      identity = toks[i]!;
+      identity = present(toks[i], 'toks[i]');
       this.mark(identity, 'keyword');
       i++;
     }
     if (isWord(toks[i], 'default')) {
-      defaultTok = toks[i]!;
+      defaultTok = present(toks[i], 'toks[i]');
       this.mark(defaultTok, 'keyword');
       i++;
       const v = toks[i];
@@ -1212,7 +1218,7 @@ class DocumentParser {
       let descending = false;
       if (directions && (isWord(toks[i], 'asc') || isWord(toks[i], 'desc'))) {
         this.mark(toks[i], 'keyword');
-        descending = toks[i++]!.t === 'desc';
+        descending = present(toks[i++], 'toks[i++]').t === 'desc';
       }
       this.mark(w, 'name');
       cols.push({ tok: w, descending });
@@ -1231,9 +1237,9 @@ class DocumentParser {
    * its key or name, and a column line fails its name. Returns the next state.
    */
   private lexedTableLine(table: ITable, toks: Tk[], line: number, comments: string[]): 'table' | 'settings' {
-    const first = toks[0]!;
+    const first = present(toks[0], 'toks[0]');
     if (isWord(first, 'settings')) {
-      this.openSettingsBlock(table, { open: isPunct(toks[1], '{') ? toks[1]! : first, entries: [], comments, closing: [] });
+      this.openSettingsBlock(table, { open: isPunct(toks[1], '{') ? present(toks[1], 'toks[1]') : first, entries: [], comments, closing: [] });
       table.phase = 2;
       return 'settings';
     }
@@ -1254,7 +1260,7 @@ class DocumentParser {
   }
 
   private constraint(table: ITable, toks: Tk[], line: number, comments: string[]): void {
-    const kw = toks[0]!;
+    const kw = present(toks[0], 'toks[0]');
     this.mark(kw, 'keyword');
     switch (kw.t) {
       case 'primary': {
@@ -1302,7 +1308,7 @@ class DocumentParser {
         const name = toks[1];
         if (name === undefined || name.k !== K.Word) return this.syntax(toks, 1, line, 'expected a name');
         if (!isPunct(toks[2], '(')) return this.syntax(toks, 2, line, 'expected (');
-        const close = toks[toks.length - 1]!;
+        const close = present(toks[toks.length - 1], 'toks[toks.length - 1]');
         // Go: the rest after `(` must end with `)`; an empty expression `()` is an expression error at the `)`.
         if (toks.length < 4 || !isPunct(close, ')')) return this.syntax(toks, toks.length, line, "expected ')' at the end of the check");
         this.mark(name, 'name');
@@ -1314,7 +1320,7 @@ class DocumentParser {
   }
 
   private foreignKeyLine(table: ITable, toks: Tk[], line: number, comments: string[]): void {
-    const kw = toks[0]!;
+    const kw = present(toks[0], 'toks[0]');
     if (!isWord(toks[1], 'key')) return this.syntax(toks, 1, line, 'expected key');
     this.mark(toks[1], 'keyword');
     const name = toks[2];
@@ -1331,7 +1337,7 @@ class DocumentParser {
     const refs = this.keyColumns(toks, i + 2, line, false);
     if (refs === null) return;
     i = refs[1];
-    const actions: Record<'delete' | 'update', DbspecAction> = { delete: 'restrict', update: 'restrict' };
+    const actions: Record<'delete' | 'update', string> = { delete: 'restrict', update: 'restrict' };
     const actionToks: Tk[] = [];
     for (const event of ['delete', 'update'] as const) {
       if (!isWord(toks[i], 'on') || !isWord(toks[i + 1], event)) continue;
@@ -1339,7 +1345,7 @@ class DocumentParser {
       this.mark(toks[i + 1], 'keyword');
       const action = toks[i + 2];
       if (action === undefined || action.k !== K.Word) return this.syntax(toks, i + 2, line, 'expected an action');
-      actions[event] = action.t as DbspecAction;
+      actions[event] = action.t;
       actionToks.push(action);
       // R3: an action that is not restrict, cascade or set_null is a word, with a semantic diagnostic.
       if (ACTIONS.has(action.t)) this.mark(action, 'keyword');
@@ -1378,18 +1384,18 @@ class DocumentParser {
   private setting(toks: Tk[], line: number, comments: string[], lexed = false): void {
     // 줄의 lex 오류는 이미 보고했다. Go의 cursor는 그 뒤로 이 줄을 검사하지 않는다.
     if (lexed) return;
-    const kw = toks[0]!;
+    const kw = present(toks[0], 'toks[0]');
     if (kw.k !== K.Word) return this.syntax(toks, 0, line, 'expected a setting');
     // R4: the first word of a settings line is a setting, known or not.
     this.mark(kw, 'setting');
     const words = (from: number, count: number | null): Tk[] | null => {
       const out: Tk[] = [];
       for (let i = from; i < toks.length; i++) {
-        if (toks[i]!.k !== K.Word) {
+        if (present(toks[i], 'toks[i]').k !== K.Word) {
           this.syntax(toks, i, line, 'expected a name');
           return null;
         }
-        out.push(toks[i]!);
+        out.push(present(toks[i], 'toks[i]'));
       }
       if (count === null ? out.length === 0 : out.length < count) {
         this.syntax(toks, toks.length, line, 'expected a name');
@@ -1406,9 +1412,9 @@ class DocumentParser {
       case 'entity': {
         const w = words(1, 1);
         if (w === null) return;
-        this.name(w[0]!);
+        this.name(present(w[0], 'w[0]'));
         this.mark(w[0], 'name');
-        entry = { kw, comments, kind: 'entity', name: w[0]! };
+        entry = { kw, comments, kind: 'entity', name: present(w[0], 'w[0]') };
         break;
       }
       case 'updated':
@@ -1416,9 +1422,9 @@ class DocumentParser {
       case 'aes_version': {
         const w = words(1, 1);
         if (w === null) return;
-        this.name(w[0]!);
+        this.name(present(w[0], 'w[0]'));
         this.mark(w[0], 'name');
-        entry = { kw, comments, kind: kw.t, column: w[0]! };
+        entry = { kw, comments, kind: kw.t, column: present(w[0], 'w[0]') };
         break;
       }
       case 'select': {
@@ -1438,12 +1444,12 @@ class DocumentParser {
         if (w === null) return;
         if (w.length < 2) return this.syntax(toks, toks.length, line, 'expected a codec stage');
         this.mark(w[0], 'name');
-        this.name(w[0]!);
+        this.name(present(w[0], 'w[0]'));
         const stages = w.slice(1);
         // R3: a codec stage of the known set is a keyword; another word is a word, with a semantic diagnostic.
         for (const s of stages) if (STAGES.has(s.t)) this.mark(s, 'keyword');
         if (!this.detachedBlock) for (const s of stages) if (!STAGES.has(s.t)) this.at('setting', s, `${s.t} is not a codec stage`);
-        entry = { kw, comments, kind: 'codec', column: w[0]!, stages };
+        entry = { kw, comments, kind: 'codec', column: present(w[0], 'w[0]'), stages };
         break;
       }
       case 'blind_index': {
@@ -1453,7 +1459,7 @@ class DocumentParser {
           this.mark(c, 'name');
           this.name(c);
         }
-        entry = { kw, comments, kind: 'blind_index', column: w[0]!, indexColumn: w[1]! };
+        entry = { kw, comments, kind: 'blind_index', column: present(w[0], 'w[0]'), indexColumn: present(w[1], 'w[1]') };
         break;
       }
       case 'navigation': {
@@ -1463,7 +1469,7 @@ class DocumentParser {
           this.mark(c, 'name');
           this.name(c);
         }
-        entry = { kw, comments, kind: 'navigation', foreignKey: w[0]!, childName: w[1]!, parentName: w[2]! };
+        entry = { kw, comments, kind: 'navigation', foreignKey: present(w[0], 'w[0]'), childName: present(w[1], 'w[1]'), parentName: present(w[2], 'w[2]') };
         break;
       }
       case 'immutable':
@@ -1474,7 +1480,7 @@ class DocumentParser {
         const w = words(1, 1);
         if (w === null) return;
         this.mark(w[0], 'name');
-        entry = { kw, comments, kind: 'markdown', column: w[0]! };
+        entry = { kw, comments, kind: 'markdown', column: present(w[0], 'w[0]') };
         break;
       }
       case 'store': {
@@ -1496,7 +1502,7 @@ class DocumentParser {
         const w = words(1, 1);
         if (w === null) return;
         this.mark(w[0], 'name');
-        entry = { kw, comments, kind: kw.t === 'title' ? 'title' : kw.t === 'body' ? 'body' : 'order', column: w[0]! };
+        entry = { kw, comments, kind: kw.t === 'title' ? 'title' : kw.t === 'body' ? 'body' : 'order', column: present(w[0], 'w[0]') };
         break;
       }
       case 'checkbox': {
@@ -1536,17 +1542,17 @@ class DocumentParser {
           if (listed === null) return;
           this.mark(toks[i], 'keyword');
           for (const c of listed[0]) this.mark(c, 'name');
-          lists.push({ kw: toks[i]!, columns: listed[0] });
+          lists.push({ kw: present(toks[i], 'toks[i]'), columns: listed[0] });
           i = listed[1];
         }
         if (i < toks.length) return this.syntax(toks, i, line, 'expected exclude, include or the end of the line');
-        entry = { kw, comments, kind: 'audit', into: parts[0]!, column: parts[1]!, references: parts[2]!, action: parts[3]!, previous: parts[4]!, lists };
+        entry = { kw, comments, kind: 'audit', into: present(parts[0], 'parts[0]'), column: present(parts[1], 'parts[1]'), references: present(parts[2], 'parts[2]'), action: present(parts[3], 'parts[3]'), previous: present(parts[4], 'parts[4]'), lists };
         break;
       }
       default:
         return this.at('setting', kw, `${kw.t} is not a setting`);
     }
-    this.settingsBlock!.entries.push(entry);
+    present(this.settingsBlock, 'this.settingsBlock').entries.push(entry);
   }
 
   /** Reads a name-like word at i, or reports a syntax error there (or after the line) and returns null. */
@@ -1655,7 +1661,7 @@ class DocumentParser {
       return { kw, comments, kind: 'state_machine', column, line: form };
     };
     if (formAhead('initial') || formAhead('terminal')) {
-      const terminal = toks[i]!.t === 'terminal';
+      const terminal = present(toks[i], 'toks[i]').t === 'terminal';
       this.mark(toks[i], 'keyword');
       i++;
       const state = take('a state name');
@@ -1693,7 +1699,7 @@ class DocumentParser {
           this.syntax(toks, i + 1, line, "expected a number after '-'");
           return null;
         }
-        count = { k: K.Word, t: '-' + n.t, s: t!.s, e: n.e, line };
+        count = { k: K.Word, t: '-' + n.t, s: present(t, 't').s, e: n.e, line };
         i += 2;
       } else if (t !== undefined && t.k === K.Word) {
         this.markValue(t);
@@ -1720,7 +1726,7 @@ class DocumentParser {
   }
 
   private placement(diagram: IDiagram, toks: Tk[], line: number, comments: string[]): void {
-    const table = toks[0]!;
+    const table = present(toks[0], 'toks[0]');
     if (table.k !== K.Word) return this.syntax(toks, 0, line, 'expected a table name');
     if (!isWord(toks[1], 'at')) return this.syntax(toks, 1, line, 'expected at');
     this.mark(toks[1], 'keyword');
@@ -1749,7 +1755,7 @@ class DocumentParser {
       }
       values.push(value + 0);
     }
-    diagram.entries.push({ table, x: values[0]!, y: values[1]!, comments });
+    diagram.entries.push({ table, x: present(values[0], 'values[0]'), y: present(values[1], 'values[1]'), comments });
   }
 
   // Validation of the whole document.
@@ -1842,7 +1848,7 @@ class DocumentParser {
     }
     let parsed = this.context.cache.get(name);
     if (parsed === undefined) {
-      parsed = parseText(this.context.documents[name]!, this.context, [...this.chain, name]);
+      parsed = parseText(present(this.context.documents[name], 'this.context.documents[name]'), this.context, [...this.chain, name]);
       this.context.cache.set(name, parsed);
     }
     const first = parsed.diagnostics[0];
@@ -1903,10 +1909,10 @@ class DocumentParser {
     const identity = table.columns.find(c => c.identity !== null);
     if (identity !== undefined) {
       if (pk === undefined) {
-        if (!table.failedPrimary) this.at('column', identity.identity!, 'an identity column is the only primary key column');
+        if (!table.failedPrimary) this.at('column', present(identity.identity, 'identity.identity'), 'an identity column is the only primary key column');
       } else if (pk.cols.every(c => wellFormed(c.tok.t) && !table.failed.has(c.tok.t))) {
-        const only = pk.cols.length === 1 && pk.cols[0]!.tok.t === identity.name.t;
-        if (!only) this.at('column', identity.identity!, 'an identity column is the only primary key column');
+        const only = pk.cols.length === 1 && present(pk.cols[0], 'pk.cols[0]').tok.t === identity.name.t;
+        if (!only) this.at('column', present(identity.identity, 'identity.identity'), 'an identity column is the only primary key column');
       }
     }
     const banned = new Set<string>();
@@ -1991,7 +1997,7 @@ class DocumentParser {
         const child = children[i]?.type ?? null;
         const parent = parents[i]?.type ?? null;
         if (child !== null && parent !== null && !sameType(child, parent)) {
-          this.at('foreign_key', fk.name, `column ${fk.cols[i]!.t} is ${typeText(child)} but references ${typeText(parent)}`);
+          this.at('foreign_key', fk.name, `column ${present(fk.cols[i], 'fk.cols[i]').t} is ${typeText(child)} but references ${typeText(parent)}`);
           break;
         }
       }
@@ -2006,7 +2012,7 @@ class DocumentParser {
   private foreignKeyKeyChecks(table: ITable, fk: IForeignKey, children: (IColumn | null)[], known: boolean): void {
     const lead = fk.cols.map(c => c.t);
     const indexed = [...table.pks, ...table.uniques, ...table.indexes].some(
-      k => k.cols.length >= lead.length && lead.every((name, i) => k.cols[i]!.tok.t === name),
+      k => k.cols.length >= lead.length && lead.every((name, i) => present(k.cols[i], 'k.cols[i]').tok.t === name),
     );
     if (known && !indexed && !table.failedKey && !table.failedPrimary) this.at('foreign_key', fk.name, 'no index or key of the table leads with the foreign key columns');
     if ((fk.onDelete === 'set_null' || fk.onUpdate === 'set_null') && children.some(c => c !== null && !c.nullable)) {
@@ -2187,7 +2193,7 @@ class DocumentParser {
       if (isPunct(peek(), '(')) {
         take();
         const inner = or();
-        if (!isPunct(take(), ')')) throw new ExpressionSyntax(toks[i - 1]!);
+        if (!isPunct(take(), ')')) throw new ExpressionSyntax(present(toks[i - 1], 'toks[i - 1]'));
         return inner;
       }
       out = [];
@@ -2209,7 +2215,7 @@ class DocumentParser {
       }
       const u = peek();
       if (isWord(u, 'in')) {
-        const column = subject(left, u!);
+        const column = subject(left, present(u, 'u'));
         mark(u, 'keyword');
         out.push(take().t);
         expectPunct('(');
@@ -2223,7 +2229,7 @@ class DocumentParser {
         return { kind: 'leaf', parts: out };
       }
       if (isWord(u, 'is')) {
-        subject(left, u!);
+        subject(left, present(u, 'u'));
         mark(u, 'keyword');
         out.push(take().t);
         if (isWord(peek(), 'not')) {
@@ -2233,7 +2239,7 @@ class DocumentParser {
         expectWord('null');
         return { kind: 'leaf', parts: out };
       }
-      return alone(start!);
+      return alone(present(start, 'start'));
     };
     const and = (): Predicate => {
       let left = predicate();
@@ -2256,7 +2262,7 @@ class DocumentParser {
     let tree: Predicate;
     try {
       tree = or();
-      if (i < toks.length) throw new ExpressionSyntax(toks[i]!);
+      if (i < toks.length) throw new ExpressionSyntax(present(toks[i], 'toks[i]'));
     } catch (error) {
       if (!(error instanceof ExpressionSyntax)) throw error;
       flag('check', error.at ?? check.close, error.at === null ? 'the check expression ends early' : `${error.at.t} is not allowed here in a check expression`);
@@ -2401,11 +2407,11 @@ class DocumentParser {
   private checkKeyPrefix(table: ITable, s: Extract<ISetting, { kind: 'key_prefix' }>): void {
     if (table.failedPrimary) return;
     const pk = table.pks;
-    if (pk.length !== 1 || pk[0]!.cols.length !== 1) {
+    if (pk.length !== 1 || present(pk[0], 'pk[0]').cols.length !== 1) {
       this.at('setting', s.kw, 'key_prefix needs a single-column primary key');
       return;
     }
-    const c = table.colMap.get(pk[0]!.cols[0]!.tok.t);
+    const c = table.colMap.get(present(present(pk[0], 'pk[0]').cols[0], 'pk[0].cols[0]').tok.t);
     if (c !== undefined && c.type !== null && c.type.kind !== 'varchar') {
       this.at('setting', s.kw, `key_prefix needs a varchar primary key, not ${typeText(c.type)}`);
     }
@@ -2583,7 +2589,7 @@ class DocumentParser {
     if (state === undefined || state.type === null) return;
     const stateType = state.type;
     const row = line.row;
-    if (!h.fks.some(f => f.cols.length === 1 && f.cols[0]!.t === row.t && f.table.t === table.name.t)) {
+    if (!h.fks.some(f => f.cols.length === 1 && present(f.cols[0], 'f.cols[0]').t === row.t && f.table.t === table.name.t)) {
       this.at('setting', name, `history table ${name.t} has no foreign key of ${row.t} to table ${table.name.t}`);
     }
     const named = new Set<string>([row.t]);
@@ -2630,7 +2636,7 @@ class DocumentParser {
    */
   private checkCheckboxes(table: ITable, column: string, states: Set<string>, boxes: ICheckbox[]): void {
     if (boxes.length === 0) return;
-    const first = boxes[0]!;
+    const first = present(boxes[0], 'boxes[0]');
     if (column === '') {
       this.at('setting', first.column, `checkbox needs a state_machine on column ${first.column.t}`);
       return;
@@ -2647,7 +2653,7 @@ class DocumentParser {
       else if (covered.has(b.state.t)) this.at('setting', b.state, `checkbox repeats for state ${b.state.t}`);
       covered.add(b.state.t);
       const glyph = stringValue(b.glyph);
-      if ([...glyph].length !== 1) this.at('setting', b.glyph, 'a checkbox glyph is one character');
+      if (Array.from(glyph).length !== 1) this.at('setting', b.glyph, 'a checkbox glyph is one character');
       else if (glyphs.has(glyph)) this.at('setting', b.glyph, `checkbox glyph ${glyph} repeats`);
       glyphs.add(glyph);
     }
@@ -2662,9 +2668,9 @@ class DocumentParser {
     const stages = s.stages.map(stage => stage.t);
     if (stages.includes('aes') && !hasAesVersion) this.at('setting', s.kw, 'a column with the aes stage requires aes_version');
     const json = stages.indexOf('ordered_json');
-    if (json > 0) this.at('setting', s.stages[json]!, 'ordered_json is the first codec stage');
+    if (json > 0) this.at('setting', present(s.stages[json], 's.stages[json]'), 'ordered_json is the first codec stage');
     if (!column || column.type === null || !stages.every(stage => STAGES.has(stage))) return;
-    const last = stages[stages.length - 1]!;
+    const last = present(stages[stages.length - 1], 'stages[stages.length - 1]');
     const bytes = last === 'aes' || last === 'gz' || last === 'ip';
     const kind = column.type.kind;
     if (bytes && kind !== 'bytes') this.at('setting', s.column, `the ${last} stage stores bytes and needs a bytes column`);
@@ -2679,7 +2685,7 @@ class DocumentParser {
     const target = this.lookup(table, s.indexColumn, 'setting');
     if (!target) return;
     const type = target.type;
-    const indexed = [...table.uniques, ...table.indexes].some(k => k.cols.length === 1 && k.cols[0]!.tok.t === s.indexColumn.t);
+    const indexed = [...table.uniques, ...table.indexes].some(k => k.cols.length === 1 && present(k.cols[0], 'k.cols[0]').tok.t === s.indexColumn.t);
     if (aesColumns.has(s.indexColumn.t)) this.at('setting', s.indexColumn, 'the blind index column is not aes-encoded');
     else if (type !== null && !(type.kind === 'varchar' && type.length >= 64)) this.at('setting', s.indexColumn, 'the blind index column is varchar(n) with n >= 64');
     else if (source && source.nullable !== target.nullable) this.at('setting', s.indexColumn, 'the blind index column has the nullability of the aes column');
@@ -2759,7 +2765,7 @@ class DocumentParser {
    */
   private auditLists(table: ITable, s: Extract<ISetting, { kind: 'audit' }>): ((column: string) => boolean) | null {
     if (s.lists.length > 1) {
-      this.at('setting', s.lists[1]!.kw, 'audit names its recorded columns by exclude or by include, not both');
+      this.at('setting', present(s.lists[1], 's.lists[1]').kw, 'audit names its recorded columns by exclude or by include, not both');
       return null;
     }
     const listed = new Set<string>();
@@ -2775,7 +2781,7 @@ class DocumentParser {
       }
     }
     const audited = s.column.t;
-    if (s.lists.length === 1 && s.lists[0]!.kw.t === 'include') return column => column === audited || listed.has(column);
+    if (s.lists.length === 1 && present(s.lists[0], 's.lists[0]').kw.t === 'include') return column => column === audited || listed.has(column);
     return column => column === audited || !listed.has(column);
   }
 
@@ -2805,19 +2811,19 @@ class DocumentParser {
       return;
     }
     if (record.settings?.entries.some(e => e.kind === 'audit')) this.at('setting', ref, `audit record table ${ref.t} is audited itself`);
-    if (record.pks.length !== 1 || record.pks[0]!.cols.length !== 1) {
+    if (record.pks.length !== 1 || present(record.pks[0], 'record.pks[0]').cols.length !== 1) {
       if (!record.failedPrimary) this.at('setting', ref, `audit record table ${ref.t} needs a primary key of one column`);
       return;
     }
-    const key = record.pks[0]!.cols[0]!.tok.t;
+    const key = present(present(record.pks[0], 'record.pks[0]').cols[0], 'record.pks[0].cols[0]').tok.t;
     const pk = record.colMap.get(key);
     if (column === undefined || pk === undefined) return;
     if (pk.type !== null && column.type !== null && !sameType(pk.type, column.type)) {
       this.at('setting', s.column, `the audit column has type ${typeText(column.type)}, not the type ${typeText(pk.type)} of the primary key of ${ref.t}`);
       return;
     }
-    const declared = table.fks.some(fk => fk.cols.length === 1 && fk.cols[0]!.t === s.column.t && fk.table.t === ref.t
-      && fk.refs.length === 1 && fk.refs[0]!.t === key && fk.onDelete === 'restrict' && fk.onUpdate === 'restrict');
+    const declared = table.fks.some(fk => fk.cols.length === 1 && present(fk.cols[0], 'fk.cols[0]').t === s.column.t && fk.table.t === ref.t
+      && fk.refs.length === 1 && present(fk.refs[0], 'fk.refs[0]').t === key && fk.onDelete === 'restrict' && fk.onUpdate === 'restrict');
     if (!declared && !table.failedKey) {
       this.at('setting', s.column, `the audit column needs the foreign key (${s.column.t}) references ${ref.t} (${key}) on delete restrict on update restrict`);
     }
@@ -2832,7 +2838,7 @@ class DocumentParser {
     const doc = this.document;
     const out: RawPosition[] = [];
     const add = (kind: string, at: Tk, path: string[]): void => {
-      out.push({ kind, path, line: at.line, column: columnOf(this.lines[at.line - 1]!, at.s) });
+      out.push({ kind, path, line: at.line, column: columnOf(present(this.lines[at.line - 1], 'this.lines[at.line - 1]'), at.s) });
     };
     const keyName = (k: IKey): Tk => {
       if (k.name === null) throw new Error('a unique or index of a successful parse has no name');
@@ -2865,7 +2871,7 @@ class DocumentParser {
     const doc = this.document;
     const freeze = Object.freeze;
     const tables = doc.tables.map((t): DbspecTable => {
-      const pk = t.pks[0]!;
+      const pk = present(t.pks[0], 't.pks[0]');
       const settings = t.settings;
       return freeze({
         comments: freeze(t.comments),
@@ -2875,7 +2881,7 @@ class DocumentParser {
             freeze({
               comments: freeze(c.comments),
               name: c.name.t,
-              type: freeze(c.type!),
+              type: freeze(present(c.type, 'c.type')),
               nullable: c.nullable,
               identity: c.identity !== null,
               default: c.value === null ? null : freeze(c.value),
@@ -2884,13 +2890,13 @@ class DocumentParser {
         ),
         primaryKey: freeze({ comments: freeze(pk.comments), columns: freeze(pk.cols.map(c => c.tok.t)) }),
         uniques: freeze(
-          t.uniques.map(u => freeze({ comments: freeze(u.comments), name: u.name!.t, columns: freeze(u.cols.map(c => c.tok.t)) })),
+          t.uniques.map(u => freeze({ comments: freeze(u.comments), name: present(u.name, 'u.name').t, columns: freeze(u.cols.map(c => c.tok.t)) })),
         ),
         indexes: freeze(
           t.indexes.map(i =>
             freeze({
               comments: freeze(i.comments),
-              name: i.name!.t,
+              name: present(i.name, 'i.name').t,
               columns: freeze(i.cols.map(c => freeze({ name: c.tok.t, descending: c.descending }))),
             }),
           ),
@@ -2903,8 +2909,8 @@ class DocumentParser {
               columns: freeze(fk.cols.map(c => c.t)),
               table: fk.table.t,
               references: freeze(fk.refs.map(c => c.t)),
-              onDelete: fk.onDelete,
-              onUpdate: fk.onUpdate,
+              onDelete: oneOf(ACTION_LIST, fk.onDelete, 'the foreign key action'),
+              onUpdate: oneOf(ACTION_LIST, fk.onUpdate, 'the foreign key action'),
             }),
           ),
         ),
@@ -2987,7 +2993,7 @@ function settingOf(s: ISetting): DbspecSetting {
       setting = { comments, kind: s.kind, columns: Object.freeze(s.columns.map(c => c.t)) };
       break;
     case 'codec':
-      setting = { comments, kind: s.kind, column: s.column.t, stages: Object.freeze(s.stages.map(c => c.t as DbspecCodecStage)) };
+      setting = { comments, kind: s.kind, column: s.column.t, stages: Object.freeze(s.stages.map(c => oneOf(STAGE_LIST, c.t, 'the codec stage'))) };
       break;
     case 'blind_index':
       setting = { comments, kind: s.kind, column: s.column.t, indexColumn: s.indexColumn.t };
@@ -3005,10 +3011,10 @@ function settingOf(s: ISetting): DbspecSetting {
       setting = {
         comments,
         kind: s.kind,
-        storage: s.storage.t as 'files' | 'document' | 'block',
+        storage: oneOf(STORAGES, s.storage.t, 'the store storage'),
         foreignKey: s.foreignKey?.t ?? null,
-        shape: (s.shape?.t ?? null) as 'list' | 'table' | null,
-        shard: s.shard === null ? null : { column: s.shard.column.t, period: s.shard.period.t as 'year' | 'month' | 'day' },
+        shape: s.shape === null ? null : oneOf(SHAPES, s.shape.t, 'the store shape'),
+        shard: s.shard === null ? null : { column: s.shard.column.t, period: oneOf(PERIODS, s.shard.period.t, 'the shard period') },
       };
       break;
     case 'key_prefix':
@@ -3051,7 +3057,7 @@ function listOf(s: Extract<ISetting, { kind: 'audit' }>, kind: 'exclude' | 'incl
 /** The first encoding error of the lines: a byte order mark, a bare CR or an unpaired surrogate. */
 function encodingError(lines: string[]): RawDiagnostic | null {
   for (let n = 0; n < lines.length; n++) {
-    const text = lines[n]!;
+    const text = present(lines[n], 'lines[n]');
     const last = n === lines.length - 1;
     for (let i = 0; i < text.length; i++) {
       const c = text.charCodeAt(i);
@@ -3140,7 +3146,7 @@ function classOf(tok: Tk, line: number, parser: DocumentParser | null, read: boo
   if (tok.k === K.Punct) return 'punctuation';
   if (tok.k === K.Op) return 'operator';
   if (read && !abandoned) {
-    const marked = parser!.classes.get(`${line}:${tok.s}`);
+    const marked = present(parser, 'parser').classes.get(`${line}:${tok.s}`);
     if (marked !== undefined) return marked;
   }
   return UNSIGNED_NUMBER.test(tok.t) ? 'number' : 'word';
@@ -3163,7 +3169,7 @@ function tokensOf(text: string, parsed: Parsed): RawToken[] {
   for (let n = 0; n < raw.length; n++) {
     const line = n + 1;
     // A CR before an LF is part of the line end; a bare CR is an offending character (R22).
-    const content = n < raw.length - 1 && raw[n]!.endsWith('\r') ? raw[n]!.slice(0, -1) : raw[n]!;
+    const content = n < raw.length - 1 && present(raw[n], 'raw[n]').endsWith('\r') ? present(raw[n], 'raw[n]').slice(0, -1) : present(raw[n], 'raw[n]');
     let i = 0;
     while (i < content.length && content.charCodeAt(i) === 32) i++;
     if (i === content.length) continue;
@@ -3174,7 +3180,7 @@ function tokensOf(text: string, parsed: Parsed): RawToken[] {
     const read = line < readBefore;
     const lexed = lexLine(content, line);
     const recovered = lexed.error === null ? { toks: lexed.toks, text: content } : recoverLine(content, line);
-    const abandoned = read && parser!.abandoned.has(line);
+    const abandoned = read && present(parser, 'parser').abandoned.has(line);
     for (const tok of recovered.toks) {
       tokens.push({
         line,

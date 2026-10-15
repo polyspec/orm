@@ -1,5 +1,6 @@
 // dialect catalog의 check 식을 dbspec predicate text로 읽는다
 // (docs/dialects.md "Introspection", "Checks").
+import { present } from '../present.js';
 import { quote } from './introspect_catalog.js';
 import type { DbspecType } from './model.js';
 import type { DbspecDialect } from './render.js';
@@ -21,7 +22,7 @@ export function decodeCheck(dialect: DbspecDialect, text: string, columns: Reado
   }
   const d = new CheckDecoder(checkTokens(dialect, text), columns, dialect);
   const node = d.expression();
-  if (d.i !== d.tokens.length) throw new CheckDecodeError(`unexpected ${JSON.stringify(d.tokens[d.i]!.text)}`);
+  if (d.i !== d.tokens.length) throw new CheckDecodeError(`unexpected ${JSON.stringify(present(d.tokens[d.i], 'd.tokens[d.i]').text)}`);
   if (node.kind === 'operand') throw new CheckDecodeError('an operand alone is not a predicate');
   return d.write(node);
 }
@@ -55,7 +56,7 @@ const isLetter = (ch: string): boolean => (ch >= 'a' && ch <= 'z') || (ch >= 'A'
 function checkTokens(dialect: DbspecDialect, text: string): Token[] {
   const out: Token[] = [];
   for (let i = 0; i < text.length; ) {
-    const ch = text[i]!;
+    const ch = present(text[i], 'text[i]');
     if (ch === ' ') {
       i++;
     } else if (ch === '`' || ch === '"') {
@@ -69,12 +70,12 @@ function checkTokens(dialect: DbspecDialect, text: string): Token[] {
       i += n;
     } else if (isDigit(ch)) {
       let j = i;
-      while (j < text.length && (isDigit(text[j]!) || text[j] === '.')) j++;
+      while (j < text.length && (isDigit(present(text[j], 'text[j]')) || text[j] === '.')) j++;
       out.push({ kind: 'number', text: text.slice(i, j) });
       i = j;
     } else if (ch === '_' || isLetter(ch)) {
       let j = i;
-      while (j < text.length && (text[j] === '_' || isLetter(text[j]!) || isDigit(text[j]!))) j++;
+      while (j < text.length && (text[j] === '_' || isLetter(present(text[j], 'text[j]')) || isDigit(present(text[j], 'text[j]')))) j++;
       const word = text.slice(i, j);
       // MySQL 문자열 앞의 character set introducer는 값이 아니다.
       if (dialect === 'mysql' && word.startsWith('_') && text[j] === "'") {
@@ -109,7 +110,7 @@ function checkTokens(dialect: DbspecDialect, text: string): Token[] {
 function readSQLString(dialect: DbspecDialect, text: string): [string, number] {
   let out = '';
   for (let i = 1; i < text.length; i++) {
-    const ch = text[i]!;
+    const ch = present(text[i], 'text[i]');
     if (ch === "'" && i + 1 < text.length && text[i + 1] === "'") {
       out += "'";
       i++;
@@ -117,7 +118,7 @@ function readSQLString(dialect: DbspecDialect, text: string): [string, number] {
       return [out, i + 1];
     } else if (ch === '\\' && dialect === 'mysql' && i + 1 < text.length) {
       i++;
-      out += MYSQL_ESCAPES[text[i]!] ?? text[i];
+      out += MYSQL_ESCAPES[present(text[i], 'text[i]')] ?? text[i];
     } else {
       out += ch;
     }

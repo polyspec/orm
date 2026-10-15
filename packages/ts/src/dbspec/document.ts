@@ -37,7 +37,8 @@ function documentSet(text: string, documents: Readonly<Record<string, string>>):
   if (documents === null || typeof documents !== 'object' || Array.isArray(documents)) {
     throw new TypeError('dbspec documents must be an object of document names to texts');
   }
-  const set: Record<string, string> = Object.create(null);
+  const set: Record<string, string> = {};
+  Object.setPrototypeOf(set, null);
   for (const [name, source] of Object.entries(documents)) {
     if (typeof source !== 'string') throw new TypeError(`dbspec document ${name} must be a string`);
     set[name] = source;
@@ -50,7 +51,8 @@ function frozenParse(parsed: ParsedDocument): DbspecParseResult {
     const positions = parsed.positions.map(p =>
       Object.freeze({ kind: p.kind, path: Object.freeze([...p.path]), line: p.line, column: p.column }),
     );
-    return Object.freeze({ document: parsed.document, positions: Object.freeze(positions), diagnostics: Object.freeze([]) as readonly [] });
+    const noDiagnostics: readonly [] = Object.freeze([]);
+    return Object.freeze({ document: parsed.document, positions: Object.freeze(positions), diagnostics: noDiagnostics });
   }
   const diagnostics = parsed.diagnostics.map(d =>
     Object.freeze({ rule: d.rule, line: d.line, column: d.column, message: d.message }),
@@ -93,7 +95,8 @@ export type DbspecFormatResult =
 export function formatDbspec(text: string, documents: Readonly<Record<string, string>>): DbspecFormatResult {
   const result = parseDbspec(text, documents);
   if (result.document === null) return Object.freeze({ text: null, diagnostics: result.diagnostics });
-  return Object.freeze({ text: emitDbspec(result.document), diagnostics: Object.freeze([]) as readonly [] });
+  const noDiagnostics: readonly [] = Object.freeze([]);
+  return Object.freeze({ text: emitDbspec(result.document), diagnostics: noDiagnostics });
 }
 
 /** Writes a document in canonical form: emitting a parsed canonical text returns the same text. */

@@ -1,6 +1,7 @@
 // The byte check of a dbspec document file (docs/dbspec.md "Files"). Every tool that reads a document file checks its
 // bytes with readDbspecBytes before the parse, so a file without the signature is refused before it is parsed. This
 // module reads no Node global and loads no driver: the bytes come from the caller, as a Uint8Array.
+import { present } from '../present.js';
 import type { DbspecDiagnostic } from './model.js';
 
 /** The first bytes of every dbspec document file; the header `dbspec 1 <document>` starts with it. */
@@ -38,7 +39,8 @@ export function readDbspecBytes(name: string, bytes: Uint8Array): DbspecReadResu
     const [line, column] = invalidUtf8Position(bytes);
     return invalid({ rule: 'encoding', line, column, message: `${name} is not valid UTF-8` });
   }
-  return Object.freeze({ text, diagnostics: Object.freeze([]) as readonly [] });
+  const noDiagnostics: readonly [] = Object.freeze([]);
+  return Object.freeze({ text, diagnostics: noDiagnostics });
 }
 
 function invalid(diagnostic: DbspecDiagnostic): DbspecReadResult {
@@ -65,7 +67,7 @@ function invalidUtf8Position(bytes: Uint8Array): [number, number] {
 
 /** The byte count of the well-formed UTF-8 character that starts at `i`, or 0 when the byte there is invalid. */
 function utf8Size(bytes: Uint8Array, i: number): number {
-  const b = bytes[i]!;
+  const b = present(bytes[i], 'bytes[i]');
   let size: number;
   let low = 0x80;
   let high = 0xbf;
@@ -79,10 +81,10 @@ function utf8Size(bytes: Uint8Array, i: number): number {
   else if (b === 0xf4) { size = 4; high = 0x8f; }
   else return 0;
   if (i + size > bytes.length) return 0;
-  const second = bytes[i + 1]!;
+  const second = present(bytes[i + 1], 'bytes[i + 1]');
   if (second < low || second > high) return 0;
   for (let k = 2; k < size; k++) {
-    const next = bytes[i + k]!;
+    const next = present(bytes[i + k], 'bytes[i + k]');
     if (next < 0x80 || next > 0xbf) return 0;
   }
   return size;

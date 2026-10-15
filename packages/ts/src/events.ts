@@ -1,6 +1,7 @@
 // statement event다(docs/usage.md "Statement events"). 연결은 자기가 보내는 모든 statement마다
 // event 하나를 등록한 subscriber에게 publish한다.
 import type { SentOrigin, StatementDone } from './driver.js';
+import { present } from './present.js';
 import { OrmError } from './runtime_error.js';
 
 /**
@@ -79,7 +80,7 @@ export class Subscribers {
 
 /** planner가 쓴 statement의 kind다: SQL의 첫 단어다. */
 export function statementKind(sql: string): StatementKind {
-  const verb = sql.trimStart().split(' ', 1)[0]!.toUpperCase();
+  const verb = present(sql.trimStart().split(' ', 1)[0], 'the first word of a statement').toUpperCase();
   switch (verb) {
     // ALTER는 MySQL identity restart의 schema statement다.
     case 'ALTER': return 'schema';

@@ -98,9 +98,57 @@ async function observed<T>(name: DriverName, sql: string, done: StatementDone, o
 /** Milliseconds a SQLite connection waits for a lock when the DSN sets no _pragma=busy_timeout(ms). */
 const SQLITE_BUSY_TIMEOUT_MS = 5000;
 
+/**
+ * `value` as a parameter of a statement; a value that no driver binds is a CODEC_ENCODE error that names `what`.
+ *
+ * @internal
+ */
+export function driverValue(value: unknown, what: string): DriverValue {
+  if (value === null || typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string'
+    || typeof value === 'bigint' || value instanceof Uint8Array) return value;
+  throw new OrmError('CODEC_ENCODE', `${what} is a ${typeof value}, which no driver binds`);
+}
+
+/** The property `name` of `value`, or undefined when value is no object: the drivers keep the fields read here untyped. */
+function property(value: unknown, name: string): unknown {
+  return typeof value === 'object' && value !== null ? Reflect.get(value, name) : undefined;
+}
+
+/** The number property `name` of a driver object; another value is an INTERNAL error that names `what`. */
+function numberProperty(value: unknown, name: string, what: string): number {
+  const found = property(value, name);
+  if (typeof found !== 'number') throw new OrmError('INTERNAL', `${what} has no number ${name}`);
+  return found;
+}
+
+/** The message of a thrown value. */
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/** The rows of a driver result in array mode; a row that is no array is an INTERNAL error. */
+function arrayRows(value: unknown): unknown[][] {
+  if (!Array.isArray(value)) throw new OrmError('INTERNAL', 'a driver answered rows that are no list');
+  return value.map((row: unknown): unknown[] => {
+    if (!Array.isArray(row)) throw new OrmError('INTERNAL', 'a driver answered a row that is no list');
+    return row;
+  });
+}
+
+/**
+ * The first column of the first row as an insert id. PostgreSQL answers every statement with rows, and only an insert's
+ * RETURNING row holds an id, so a first cell that no id takes (none, NULL, or another type) is no insert id: null.
+ */
+function insertIdOf(rows: readonly (readonly unknown[])[]): DriverResult['insertId'] {
+  const [row] = rows;
+  const value = row === undefined ? null : row[0];
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'bigint') return value;
+  return null;
+}
+
 /** Reports SQLITE_BUSY or one of its extended codes. */
 export function sqliteBusy(name: DriverName, error: unknown): boolean {
-  return name === 'sqlite' && (Number((error as { errcode?: number }).errcode) & 0xff) === 5;
+  return name === 'sqlite' && (Number(property(error, 'errcode')) & 0xff) === 5;
 }
 
 /**
@@ -110,7 +158,7 @@ export function sqliteBusy(name: DriverName, error: unknown): boolean {
  * 끝낸 것이다. PostgreSQL은 class 08(connection exception)과 server가 session을 끝낼 때 보내는
  * 57P01(admin_shutdown), 57P02(crash_shutdown), 57P05(idle_session_timeout)다.
  */
-function connectionLost(name: DriverName, source: { code?: string; errno?: number; fatal?: boolean }): boolean {
+function connectionLost(name: DriverName, source: { code: string | undefined; errno: number | undefined; fatal: boolean }): boolean {
   if (name === 'mysql') {
     return source.errno === 4031 || (source.fatal === true && (source.code === undefined || source.code === 'PROTOCOL_CONNECTION_LOST' || source.code === 'ECONNRESET' || source.code === 'EPIPE'));
   }
@@ -119,8 +167,17 @@ function connectionLost(name: DriverName, source: { code?: string; errno?: numbe
 
 function driverError(name: DriverName, error: unknown): OrmError {
   if (error instanceof OrmError) return error;
-  const source = error as { code?: string; errcode?: number; errno?: number; fatal?: boolean; message?: string };
-  const message = source.message ?? String(error);
+  const driverCode = property(error, 'code');
+  const errcode = property(error, 'errcode');
+  const errno = property(error, 'errno');
+  const source = {
+    code: typeof driverCode === 'string' ? driverCode : undefined,
+    errcode: typeof errcode === 'number' ? errcode : undefined,
+    errno: typeof errno === 'number' ? errno : undefined,
+    fatal: property(error, 'fatal') === true,
+  };
+  const text = property(error, 'message');
+  const message = typeof text === 'string' ? text : errorText(error);
   if (connectionLost(name, source)) return new OrmError('CONNECTION_LOST', `${name}: ${message}`, error);
   const lockNotAvailable = source.code === 'ER_LOCK_NOWAIT' || source.errcode === 3572 || source.code === '55P03';
   // MySQL 1317/3024, PostgreSQL 57014, and SQLite 9 all report a statement
@@ -191,20 +248,20 @@ export function isolationSql(isolation: Isolation): string {
 
 async function mysqlExecute(connection: MySqlPool | MySqlConnection, sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
   const [value] = await connection.execute({ sql, rowsAsArray: true }, [...params]);
-  if (Array.isArray(value)) return { rows: value as unknown[][], affected: 0, insertId: null };
+  if (Array.isArray(value)) return { rows: arrayRows(value), affected: 0, insertId: null };
   const result = value as { affectedRows: number; insertId: number };
   return { rows: [], affected: result.affectedRows, insertId: result.insertId || null };
 }
 
 async function mysqlControl(connection: MySqlConnection, sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
   const [value] = await connection.query({ sql, rowsAsArray: true }, [...params]);
-  if (Array.isArray(value)) return { rows: value as unknown[][], affected: 0, insertId: null };
+  if (Array.isArray(value)) return { rows: arrayRows(value), affected: 0, insertId: null };
   return { rows: [], affected: (value as { affectedRows: number }).affectedRows, insertId: null };
 }
 
 /** Stops the statement running on connection from another connection of the pool. */
 async function mysqlKill(pool: MySqlPool, connection: MySqlConnection, done: StatementDone): Promise<void> {
-  const id = (connection as unknown as { threadId: number }).threadId;
+  const id = connection.threadId;
   const sql = `KILL QUERY ${Number(id)}`;
   await observed('mysql', sql, done, 'kill', () => pool.query(sql));
 }
@@ -213,9 +270,8 @@ async function mysqlKill(pool: MySqlPool, connection: MySqlConnection, done: Sta
 interface SessionSetup { error?: unknown; }
 
 function sessionError(setup: SessionSetup): OrmError | undefined {
-  const error = setup.error as { errno?: number; sqlMessage?: string; message?: string } | undefined;
-  if (error === undefined) return undefined;
-  return driverError('mysql', error);
+  if (setup.error === undefined) return undefined;
+  return driverError('mysql', setup.error);
 }
 
 class MySqlPoolDriver implements DriverPool {
@@ -248,9 +304,8 @@ class MySqlPoolDriver implements DriverPool {
     return new MySqlSession(connection, this.pool);
   }
   public stats(): PoolStats {
-    const inner = (this.pool as unknown as { pool: { _allConnections: { length: number }; _freeConnections: { length: number } } }).pool;
-    const open = inner._allConnections.length;
-    const idle = inner._freeConnections.length;
+    const open = numberProperty(property(this.pool.pool, '_allConnections'), 'length', 'the connections of a mysql2 pool');
+    const idle = numberProperty(property(this.pool.pool, '_freeConnections'), 'length', 'the free connections of a mysql2 pool');
     return { maxOpenConnections: this.maxOpen, openConnections: open, inUse: open - idle, idle };
   }
   public async close(): Promise<void> { await this.pool.end(); }
@@ -286,9 +341,11 @@ class StatementNames {
     const name = `orm_${createHash('sha256').update(sql).digest('hex').slice(0, 59)}`;
     this.names.set(sql, name);
     if (this.names.size <= this.limit) return { name };
-    const oldest = this.names.entries().next().value as [string, string];
-    this.names.delete(oldest[0]);
-    return { name, evicted: oldest[1] };
+    const [oldest] = this.names;
+    if (oldest === undefined) return { name };
+    const [oldestSql, oldestName] = oldest;
+    this.names.delete(oldestSql);
+    return { name, evicted: oldestName };
   }
 }
 
@@ -310,7 +367,8 @@ async function pgExecute(client: pg.PoolClient, sql: string, params: readonly Dr
     const deallocate = `DEALLOCATE "${evicted}"`;
     await observed('postgres', deallocate, done, 'deallocate', () => afterFailure(client.query(deallocate), failure));
   }
-  return { rows: result.rows as unknown[][], affected: result.rowCount ?? 0, insertId: (result.rows[0] as unknown[] | undefined)?.[0] as DriverResult['insertId'] ?? null };
+  const rows = arrayRows(result.rows);
+  return { rows, affected: result.rowCount ?? 0, insertId: insertIdOf(rows) };
 }
 
 /**
@@ -324,7 +382,7 @@ async function afterFailure<T>(work: Promise<T>, failure: () => unknown): Promis
   } catch (error) {
     const lost = failure();
     if (lost === undefined || error instanceof OrmError) throw error;
-    throw new OrmError('CONNECTION_LOST', `postgres: ${(error as Error).message} (${(lost as Error).message})`, error);
+    throw new OrmError('CONNECTION_LOST', `postgres: ${errorText(error)} (${errorText(lost)})`, error);
   }
 }
 
@@ -335,14 +393,15 @@ async function afterFailure<T>(work: Promise<T>, failure: () => unknown): Promis
  * to the server connection that runs the statement.
  */
 function pgCancel(config: pg.PoolConfig, client: pg.PoolClient): Promise<void> {
-  const key = client as unknown as { processID: number | null; secretKey: number | null };
-  if (key.processID === null || key.secretKey === null) return Promise.resolve();
-  const target = new pg.Client(config as pg.ClientConfig) as unknown as { host: string; port: number };
+  const processID = property(client, 'processID');
+  const secretKey = property(client, 'secretKey');
+  if (typeof processID !== 'number' || typeof secretKey !== 'number') return Promise.resolve();
+  const target = new pg.Client(config);
   const request = Buffer.alloc(16);
   request.writeInt32BE(16, 0);
   request.writeInt32BE(80877102, 4);
-  request.writeInt32BE(key.processID, 8);
-  request.writeInt32BE(key.secretKey, 12);
+  request.writeInt32BE(processID, 8);
+  request.writeInt32BE(secretKey, 12);
   return new Promise((resolve, reject) => {
     const socket = target.host.startsWith('/') ? netConnect(`${target.host}/.s.PGSQL.${target.port}`) : netConnect(target.port, target.host);
     socket.once('error', reject);
@@ -419,7 +478,8 @@ class SqliteState {
     const statement = this.db.prepare(sql);
     statement.setReadBigInts(true);
     this.statements.set(sql, statement);
-    if (this.statements.size > this.cacheSize) this.statements.delete(this.statements.keys().next().value as string);
+    const [oldest] = this.statements.keys();
+    if (this.statements.size > this.cacheSize && oldest !== undefined) this.statements.delete(oldest);
     return statement;
   }
 }
@@ -429,8 +489,8 @@ function sqliteExecute(state: SqliteState, sql: string, params: readonly DriverV
   const values = params.map(value => typeof value === 'boolean' ? Number(value) : value) as Array<null | number | string | bigint | Uint8Array>;
   if (/^\s*(?:SELECT|WITH|PRAGMA)\b/i.test(sql) || /\bRETURNING\b/i.test(sql)) {
     statement.setReturnArrays(true);
-    const rows = statement.all(...values) as unknown as unknown[][];
-    return { rows, affected: rows.length, insertId: rows[0]?.[0] as DriverResult['insertId'] ?? null };
+    const rows = arrayRows(statement.all(...values));
+    return { rows, affected: rows.length, insertId: insertIdOf(rows) };
   }
   const result = statement.run(...values);
   return { rows: [], affected: Number(result.changes), insertId: result.lastInsertRowid };
@@ -526,7 +586,7 @@ function mysqlTls(url: URL): string | undefined {
 export function mysqlSsl(parsed: SqlDsn): { ca: string; rejectUnauthorized: true; verifyIdentity: true } | undefined {
   if (parsed.sslCa === undefined) return undefined;
   try { return { ca: readFileSync(parsed.sslCa, 'utf8'), rejectUnauthorized: true, verifyIdentity: true }; } catch (error) {
-    throw new OrmError('CONFIG', `mysql DSN ssl-ca ${parsed.sslCa} cannot be read: ${(error as Error).message}`, error);
+    throw new OrmError('CONFIG', `mysql DSN ssl-ca ${parsed.sslCa} cannot be read: ${errorText(error)}`, error);
   }
 }
 
@@ -599,9 +659,33 @@ export interface PoolBounds { size: number; idleSize: number; lifetimeMs: number
 
 /** The callback pool of mysql2 under its promise wrapper. */
 interface MySqlCorePool {
-  _closed: boolean;
-  _freeConnections: { length: number; get(index: number): unknown };
+  closed(): boolean;
+  freeConnections(): number;
+  idle(connection: MySqlCoreConnection): boolean;
   on(event: 'connection' | 'release', listener: (connection: MySqlCoreConnection) => void): void;
+}
+
+/** The callback pool under the promise pool `pool`, through the fields of mysql2 that its typings leave out. */
+function mysqlCorePool(pool: MySqlPool): MySqlCorePool {
+  const core = pool.pool;
+  const free = (): { length: number; get: unknown; queue: unknown } => {
+    const queue = property(core, '_freeConnections');
+    return { length: numberProperty(queue, 'length', 'the free connections of a mysql2 pool'), get: property(queue, 'get'), queue };
+  };
+  return {
+    closed: () => property(core, '_closed') === true,
+    freeConnections: () => free().length,
+    idle: connection => {
+      const { length, get, queue } = free();
+      if (typeof get !== 'function') throw new OrmError('INTERNAL', 'the free connections of a mysql2 pool have no get');
+      for (let i = 0; i < length; i++) if (Reflect.apply(get, queue, [i]) === connection) return true;
+      return false;
+    },
+    on: (event, listener) => {
+      if (event === 'connection') core.on('connection', listener);
+      else core.on('release', listener);
+    },
+  };
 }
 
 interface MySqlCoreConnection {
@@ -609,10 +693,6 @@ interface MySqlCoreConnection {
   destroy(): void;
 }
 
-function mysqlIdle(pool: MySqlCorePool, connection: MySqlCoreConnection): boolean {
-  for (let i = 0; i < pool._freeConnections.length; i++) if (pool._freeConnections.get(i) === connection) return true;
-  return false;
-}
 
 /**
  * Applies the idle size and lifetime of bounds to a mysql2 pool: a released
@@ -626,14 +706,14 @@ function boundMySqlPool(pool: MySqlCorePool, bounds: PoolBounds): void {
     pool.on('connection', connection => {
       setTimeout(() => {
         expired.add(connection);
-        if (!pool._closed && mysqlIdle(pool, connection)) connection.destroy();
+        if (!pool.closed() && pool.idle(connection)) connection.destroy();
       }, bounds.lifetimeMs).unref();
     });
   }
   if (bounds.lifetimeMs > 0 || bounds.idleSize < bounds.size) {
     // mysql2 emits release after the connection joined the idle connections.
     pool.on('release', connection => {
-      if (expired.has(connection) || pool._freeConnections.length > bounds.idleSize) connection.destroy();
+      if (expired.has(connection) || pool.freeConnections() > bounds.idleSize) connection.destroy();
     });
   }
 }
@@ -662,7 +742,7 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
         maxPreparedStatements: statementCacheSize,
       });
       const setup: SessionSetup = {};
-      const core = (created as unknown as { pool: MySqlCorePool }).pool;
+      const core = mysqlCorePool(created);
       core.on('connection', connection => {
         // MySQL bounds SELECT statements with max_execution_time.
         const session = statementTimeoutMs > 0 ? `SET time_zone = '+00:00', SESSION max_execution_time = ${statementTimeoutMs}` : `SET time_zone = '+00:00'`;
@@ -682,16 +762,17 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
     case 'sqlite': {
       const pragmas = url.searchParams.getAll('_pragma').map(pragma => {
         const match = /^([a-z_]+)\(([A-Za-z0-9_]+)\)$/.exec(pragma);
-        if (!match || (match[1] === 'busy_timeout' && !/^\d+$/.test(match[2]!))) throw new OrmError('CONFIG', `sqlite DSN _pragma ${pragma} is invalid`);
-        return [match[1]!, match[2]!] as const;
+        const [, name, value] = match ?? [];
+        if (name === undefined || value === undefined || (name === 'busy_timeout' && !/^\d+$/.test(value))) throw new OrmError('CONFIG', `sqlite DSN _pragma ${pragma} is invalid`);
+        return [name, value] as const;
       });
       // The connection waits for a lock up to busy_timeout from its first statement.
       const busyTimeout = pragmas.find(([name]) => name === 'busy_timeout');
       const db = new DatabaseSync(sqlitePath(url), { timeout: busyTimeout ? Number(busyTimeout[1]) : SQLITE_BUSY_TIMEOUT_MS });
       // node:sqlite가 link한 SQLite library의 version이다. 연결은 그것을 묻는 statement를 보내지 않는다.
       const version = process.versions.sqlite ?? '';
-      const [major, minor] = version.split('.').map(Number);
-      if (major! < 3 || (major === 3 && minor! < 46)) {
+      const [major = 0, minor = 0] = version.split('.').map(Number);
+      if (major < 3 || (major === 3 && minor < 46)) {
         db.close();
         throw new OrmError('CAPABILITY_UNSUPPORTED', `SQLite ${version} is older than 3.46`);
       }

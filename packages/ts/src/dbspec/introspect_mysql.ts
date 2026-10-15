@@ -1,5 +1,6 @@
 // MySQL의 현재 database를 catalog으로 읽는다 (docs/dialects.md "Introspection").
 // 모든 query는 현재 database 전체를 한 번에 읽는다.
+import { present } from '../present.js';
 import { actionName, Catalog, quote, tableTypes, type CatalogQuery, type IColumn, type IForeignKey, type IKey, type ITable } from './introspect_catalog.js';
 import { CheckDecodeError, decodeCheck } from './introspect_check.js';
 import { recognizeTriggers, type ITrigger } from './introspect_trigger.js';
@@ -82,10 +83,10 @@ export async function readMySQL(query: CatalogQuery): Promise<Catalog> {
     }
     t.columns.push(col);
     if (!columns.has(table)) columns.set(table, new Map());
-    columns.get(table)!.set(name, col);
+    present(columns.get(table), 'columns.get(table)').set(name, col);
     if (read.needsCheck !== '') {
       if (!pending.has(table)) pending.set(table, new Map());
-      pending.get(table)!.set(name, read.needsCheck);
+      present(pending.get(table), 'pending.get(table)').set(name, read.needsCheck);
     }
   }
   await readIndexes(query, c);
@@ -113,7 +114,7 @@ export async function readMySQL(query: CatalogQuery): Promise<Catalog> {
         continue;
       }
       if (!checked.has(table)) checked.set(table, new Set());
-      checked.get(table)!.add(column);
+      present(checked.get(table), 'checked.get(table)').add(column);
       continue;
     }
     let predicate: string;
@@ -201,7 +202,8 @@ function withoutIntroducers(clause: string): string {
 
 /** CHECK_CLAUSE가 0x80 이상의 byte를 가지면 true다. MySQL 8.4는 non-ASCII literal을 두 번 인코딩해 보여 준다. */
 function hasNonAscii(clause: string): boolean {
-  return /[^\x00-\x7f]/.test(clause);
+  for (let i = 0; i < clause.length; i++) if (clause.charCodeAt(i) > 0x7f) return true;
+  return false;
 }
 
 /**
@@ -304,10 +306,10 @@ async function readIndexes(query: CatalogQuery, c: Catalog): Promise<void> {
   }));
   for (let i = 0; i < rows.length; ) {
     let j = i;
-    while (j < rows.length && rows[j]!.table === rows[i]!.table && rows[j]!.name === rows[i]!.name) j++;
+    while (j < rows.length && present(rows[j], 'rows[j]').table === present(rows[i], 'rows[i]').table && present(rows[j], 'rows[j]').name === present(rows[i], 'rows[i]').name) j++;
     const group = rows.slice(i, j);
     i = j;
-    const first = group[0]!;
+    const first = present(group[0], 'group[0]');
     const t = c.table(first.table);
     if (t === undefined) continue;
     const key: IKey = { name: first.name, columns: [], desc: [] };
@@ -336,9 +338,7 @@ async function readForeignKeys(query: CatalogQuery, c: Catalog): Promise<void> {
   // 보고한 key의 나머지 column row는 건너뛴다.
   let skipped = '';
   for (const r of await query(FOREIGN_KEYS_QUERY)) {
-    const [table, name, refTable, onDelete, onUpdate, match, column, refColumn] = [0, 1, 2, 3, 4, 5, 6, 7].map(i => r.text(i)) as [
-      string, string, string, string, string, string, string, string,
-    ];
+    const [table, name, refTable, onDelete, onUpdate, match, column, refColumn] = [r.text(0), r.text(1), r.text(2), r.text(3), r.text(4), r.text(5), r.text(6), r.text(7)];
     if (current !== null && (current.fk.name !== name || current.table.name !== table)) {
       current.table.fks.push(current.fk);
       current = null;
@@ -369,7 +369,7 @@ async function readTriggers(query: CatalogQuery, c: Catalog): Promise<void> {
   for (const r of await query(TRIGGERS_QUERY)) {
     const [table, name, timing, event, statement] = [r.text(0), r.text(1), r.text(2), r.text(3), r.text(4)];
     if (!triggers.has(table)) triggers.set(table, []);
-    triggers.get(table)!.push({ name, statements: [`CREATE TRIGGER \`${name}\` ${timing} ${event} ON \`${table}\` FOR EACH ROW ${statement}`] });
+    present(triggers.get(table), 'triggers.get(table)').push({ name, statements: [`CREATE TRIGGER \`${name}\` ${timing} ${event} ON \`${table}\` FOR EACH ROW ${statement}`] });
   }
   recognizeTriggers(c, 'mysql', triggers);
 }

@@ -1,5 +1,6 @@
 // plan의 source와 target schema를 비교한다 (docs/plans.md "Diff").
 // 기준은 Go 엔진(engine/dbspec/plan_diff.go)이며 diagnostic message는 Go와 같은 바이트다.
+import { present } from '../present.js';
 import { typeText } from './emit.js';
 import { dbspecManifest } from './index.js';
 import type { DbspecColumn, DbspecDefault, DbspecDiagnostic, DbspecDocument, DbspecTable, DbspecType } from './model.js';
@@ -175,15 +176,15 @@ export function planDiff(source: DbspecDocument | null, p: DbspecPlan): { diff: 
   for (const r of sortedBy(p.renameColumns, r => `${r.table}.${r.old}`)) {
     const src = d.tableOf.get(r.table);
     if (src === undefined) out.push(planError(`rename column ${r.table}.${r.old}: ${r.table} is not a table of both schemas`));
-    else if (columnOf(d.source.get(src)!, r.old) === undefined) {
+    else if (columnOf(present(d.source.get(src), 'd.source.get(src)'), r.old) === undefined) {
       out.push(planError(`rename column ${r.table}.${r.old}: the source table has no column ${r.old}`));
-    } else if (columnOf(d.source.get(src)!, r.new) !== undefined) {
+    } else if (columnOf(present(d.source.get(src), 'd.source.get(src)'), r.new) !== undefined) {
       out.push(planError(`rename column ${r.table}.${r.old}: the source table already has a column ${r.new}`));
-    } else if (columnOf(d.target.get(r.table)!, r.new) === undefined) {
+    } else if (columnOf(present(d.target.get(r.table), 'd.target.get(r.table)'), r.new) === undefined) {
       out.push(planError(`rename column ${r.table}.${r.old}: the target table has no column ${r.new}`));
     } else {
       let m = renamedColumn.get(r.table);
-      if (m === undefined) renamedColumn.set(r.table, (m = new Map()));
+      if (m === undefined) renamedColumn.set(r.table, (m = new Map<string, string>()));
       m.set(r.old, r.new);
       d.renamedColumns.push(r);
     }
@@ -193,8 +194,8 @@ export function planDiff(source: DbspecDocument | null, p: DbspecPlan): { diff: 
   const usedColumnPermissions = new Set<string>();
   // matched table의 column
   for (const name of d.matched) {
-    const src = d.source.get(d.tableOf.get(name)!)!;
-    const tgt = d.target.get(name)!;
+    const src = present(d.source.get(present(d.tableOf.get(name), 'd.tableOf.get(name)')), 'd.source.get(d.tableOf.get(name))');
+    const tgt = present(d.target.get(name), 'd.target.get(name)');
     const renames = renamedColumn.get(name);
     const columns = new Map<string, string>();
     d.columnOf.set(name, columns);
@@ -221,7 +222,7 @@ export function planDiff(source: DbspecDocument | null, p: DbspecPlan): { diff: 
         append(d.added, name, c.name);
         continue;
       }
-      const sc = columnOf(src, old)!;
+      const sc = present(columnOf(src, old), 'columnOf(src, old)');
       if (sc.identity !== c.identity) {
         out.push(planError(`column ${name}.${c.name} changes identity; it needs a new table`));
         continue;
@@ -270,5 +271,6 @@ export function planDiff(source: DbspecDocument | null, p: DbspecPlan): { diff: 
 export function diffPlan(source: DbspecDocument | null, plan: DbspecPlan): DbspecDiffResult {
   const { diff, diagnostics } = planDiff(source, plan);
   if (diff === null) return Object.freeze({ changes: null, diagnostics: Object.freeze(diagnostics) });
-  return Object.freeze({ changes: Object.freeze(diff.changes.map(c => Object.freeze(c))), diagnostics: Object.freeze([]) as readonly [] });
+  const noDiagnostics: readonly [] = Object.freeze([]);
+  return Object.freeze({ changes: Object.freeze(diff.changes.map(c => Object.freeze(c))), diagnostics: noDiagnostics });
 }

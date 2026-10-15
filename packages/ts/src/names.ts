@@ -2,6 +2,7 @@
 // split into PascalCase words; column names never contain connector or
 // operator segments, so the split is unambiguous.
 import type { Entity, RuntimeModel } from './engine/model.js';
+import { present } from './present.js';
 import { OrmError } from './runtime_error.js';
 
 export interface ChainKey {
@@ -13,20 +14,20 @@ export interface ChainKey {
 }
 
 export function pascal(name: string): string {
-  return name.split('_').map(part => part === '' ? '' : part[0]!.toUpperCase() + part.slice(1)).join('');
+  return name.split('_').map(part => part === '' ? '' : part.charAt(0).toUpperCase() + part.slice(1)).join('');
 }
 
 export function snake(name: string): string {
   return name.replace(/[A-Z]/g, (letter, index: number) => (index > 0 ? '_' : '') + letter.toLowerCase());
 }
 
-export function upperFirst(name: string): string { return name === '' ? name : name[0]!.toUpperCase() + name.slice(1); }
+export function upperFirst(name: string): string { return name === '' ? name : name.charAt(0).toUpperCase() + name.slice(1); }
 
 export function words(name: string): string[] {
   const out: string[] = [];
   let start = 0;
   for (let i = 1; i < name.length; i++) {
-    const c = name[i]!;
+    const c = name.charAt(i);
     if (c >= 'A' && c <= 'Z') {
       out.push(name.slice(start, i));
       start = i;
@@ -84,7 +85,7 @@ function parseKey(model: RuntimeModel, e: Entity, ws: readonly string[]): ChainK
   const errors: string[] = [];
   const whole = columnIndex(e).get(text);
   if (whole !== undefined) candidates.push(key({ column: whole }));
-  const op = leadingOps[ws[0]!];
+  const op = leadingOps[present(ws[0], 'the first word of a condition key')];
   if (op !== undefined && ws.length > 1) {
     if (ws[0] === 'Ne' && ws[1] === 'Tuple') {
       const cols = splitWith(e, ws.slice(2));
@@ -101,7 +102,7 @@ function parseKey(model: RuntimeModel, e: Entity, ws: readonly string[]): ChainK
     else errors.push(`a tuple needs two or more columns of ${e.name} joined by With`);
   }
   for (let i = 1; i < ws.length - 1; i++) {
-    const cmp = compareOps[ws[i]!];
+    const cmp = compareOps[present(ws[i], `word ${i} of a condition key`)];
     if (cmp === undefined) continue;
     const left = columnIndex(e).get(ws.slice(0, i).join(''));
     if (left === undefined) continue;
@@ -112,7 +113,7 @@ function parseKey(model: RuntimeModel, e: Entity, ws: readonly string[]): ChainK
     }
     candidates.push(key({ op: cmp, column: left, compare: right }));
   }
-  if (candidates.length === 1) return candidates[0]!;
+  if (candidates.length === 1) return present(candidates[0], 'the one meaning of a condition key');
   if (candidates.length > 1) throw new OrmError('CONFIG', `${text} has more than one meaning`);
   throw new OrmError('CONFIG', errors.length > 0 ? `${text}: ${errors.join('; ')}` : `${text} is not a column of ${e.name}`);
 }
@@ -169,6 +170,6 @@ export function splitPair(model: RuntimeModel, left: Entity | undefined, right: 
     const r = columnName(model, right, ws.slice(i + 1).join(''));
     if (l !== '' && r !== '') found.push([l, r]);
   });
-  if (found.length === 1) return found[0]!;
+  if (found.length === 1) return present(found[0], 'the one pair of columns');
   throw new OrmError('CONFIG', found.length === 0 ? `${name} is not <column>With<column>` : `${name} has more than one meaning`);
 }
