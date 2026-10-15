@@ -71,8 +71,6 @@ PHP arrays are ordered maps. An array with exactly the keys `0..n-1` is read as 
 
 `yaml` stores one YAML 1.2 document. Output values use the common value model. Mapping keys are strings; integral YAML keys are converted to decimal strings for compatibility with PHP arrays. Duplicate keys, multiple documents, aliases, anchors (with or without an alias), explicit tags (the core tags such as `!!str` and `!!int` included), non-finite numbers, collection keys, and plain boolean, null, or floating-point keys return `CODEC_DECODE`. A text without a document, empty or holding only comments, is not a YAML value and returns `CODEC_DECODE`; SQL NULL is a separate state, and a null value is stored as a null document such as `null` or `---`. YAML output text can differ by client, so verification compares decoded values across clients.
 
-`point` is a column type, not a style. Its public value is `[x, y]`: Go `orm.Point`, PHP `array{float,float}`, Rust `polyspec_orm::Point`, and TypeScript `Point`. `parsePoint`/`parse_point`/`Codec::point` accept `POINT(x y)` and PostgreSQL `(x,y)` output. The write conversion emits `POINT(x y)`. Values with a coordinate count other than two return `CODEC_DECODE`; non-finite output coordinates return `CODEC_ENCODE`.
-
 ## Cases
 - Ordered-json distinguishes an empty object from an empty list. `{}` remains an object and `[]` remains an array through parse, encode, and repeated round trips in every client.
 - Rust reads SQL NULL as `Val::Null` and empty text as `Val::Str("")`. Decoding empty text with a `json` or `jsons` style returns `CODEC_DECODE`.
@@ -80,7 +78,6 @@ PHP arrays are ordered maps. An array with exactly the keys `0..n-1` is read as 
 - `json` and `jsons` preserve `[]`, `{}`, `0`, and `""`. A parse failure returns `CODEC_DECODE`.
 - A serialize-family format failure returns `CODEC_DECODE`. `O:`, `C:`, `R:`, and `r:` return `CODEC_UNSUPPORTED`.
 - A YAML parse or value-model failure returns `CODEC_DECODE`. A YAML encode failure returns `CODEC_ENCODE`. A `yaml` stage outside the first position returns `CODEC_UNSUPPORTED`.
-- Invalid point input returns `CODEC_DECODE`. Point output containing NaN or infinity returns `CODEC_ENCODE`.
 - String lengths use byte length. Compressed bytes can vary by implementation, so `gz` guarantees equal round-trip values.
 
 ## Decoding is exact {#decoding-is-exact}

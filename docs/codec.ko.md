@@ -1,5 +1,5 @@
 <!-- doc-id: codec -->
-<!-- source-sha256: 98c4909c57aa35151745ed18124feb3d02e93ae639c1a655761321afd4a2c9e0 -->
+<!-- source-sha256: 508857e5371e24b587b41fc1198f7d8940a63510777d89b92bf8c74d9761e76b -->
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유한하지 않은 값, 지원하지 않는 값에 `CODEC_DECODE`를 반환한다. Host 인코딩은 단계가 없거나 텍스트·바이트가 아닌 값에 `CODEC_ENCODE`를 반환한다. 생성 모델 대입은 컬럼 이름을 붙여 변환 오류를 보고한다. 행 조립은 오류를 호출자에게 반환하고 insert는 쓰기 전에 대입 필드를 검증한다. 빈 바이트 배열은 SQL NULL과 구분한다. scalar 집계 변환은 유효한 십진수를 가장 가까운 유한 binary64 값으로 받는다.
@@ -75,8 +75,6 @@ PHP 배열은 순서 있는 맵이다. 키가 정확히 `0..n-1`인 배열은 �
 
 `yaml`은 YAML 1.2 문서 하나를 저장한다. 출력 값은 공통 값 모델을 사용한다. 매핑 키는 문자열이며 정수 YAML 키는 PHP 배열과의 호환을 위해 십진 문자열로 변환한다. 중복 키, 다중 문서, alias, anchor(alias가 없어도), 명시적 tag(`!!str`, `!!int` 같은 core tag 포함), 유한하지 않은 실수, collection 키, 따옴표 없는 boolean·null·실수 키는 `CODEC_DECODE`를 반환한다. 문서가 없는 text, 즉 비었거나 comment만 담은 text는 YAML 값이 아니므로 `CODEC_DECODE`를 반환한다; SQL NULL은 별개의 상태이고, null 값은 `null`이나 `---` 같은 null 문서로 저장한다. YAML 출력 텍스트는 클라이언트마다 다를 수 있으므로 클라이언트 간 검사는 디코딩 값을 비교한다.
 
-`point`는 스타일이 아닌 컬럼 타입이다. 공개 값은 `[x, y]`이며 Go는 `orm.Point`, PHP는 `array{float,float}`, Rust는 `polyspec_orm::Point`, TypeScript는 `Point`를 사용한다. `parsePoint`·`parse_point`·`Codec::point`는 `POINT(x y)`와 PostgreSQL 출력 `(x,y)`를 입력받는다. 쓰기 변환은 `POINT(x y)`를 생성한다. 좌표가 두 개가 아니면 `CODEC_DECODE`, 출력 좌표가 유한하지 않으면 `CODEC_ENCODE`를 반환한다.
-
 ## 사례
 - ordered-json은 빈 객체와 빈 리스트를 구분한다. `{}`는 모든 client에서 파싱·인코딩·반복 왕복 후에도 객체로 유지되고, `[]`는 배열로 유지된다.
 - Rust는 SQL NULL을 `Val::Null`로, 빈 텍스트를 `Val::Str("")`로 읽는다. 빈 텍스트를 `json`이나 `jsons` 스타일로 디코딩하면 `CODEC_DECODE`를 반환한다.
@@ -84,7 +82,6 @@ PHP 배열은 순서 있는 맵이다. 키가 정확히 `0..n-1`인 배열은 �
 - `json`과 `jsons`는 `[]`, `{}`, `0`, `""`를 보존한다. 파싱 실패는 `CODEC_DECODE`를 반환한다.
 - serialize 계열의 형식 오류는 `CODEC_DECODE`를 반환한다. `O:`, `C:`, `R:`, `r:`는 `CODEC_UNSUPPORTED`를 반환한다.
 - YAML 파싱·값 모델 오류는 `CODEC_DECODE`, YAML 인코딩 오류는 `CODEC_ENCODE`를 반환한다. 첫 위치가 아닌 `yaml` 단계는 `CODEC_UNSUPPORTED`를 반환한다.
-- 잘못된 point 입력은 `CODEC_DECODE`를 반환한다. NaN 또는 무한 값이 포함된 point 출력은 `CODEC_ENCODE`를 반환한다.
 - 문자열 길이는 바이트 길이를 쓴다. 압축 바이트는 구현마다 다를 수 있으므로 `gz`는 왕복한 값이 같음을 보장한다.
 
 ## 디코딩은 정확하다 {#decoding-is-exact}
