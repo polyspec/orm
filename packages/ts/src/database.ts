@@ -310,7 +310,7 @@ function timeShape(colType: string, precision: number): string {
 }
 
 /** Writes a date, time or datetime bind in its stored text form; any other value is CODEC_ENCODE. */
-function timeValue(value: unknown, colType: string, zone: string, precision: number): string {
+export function timeValue(value: unknown, colType: string, zone: string, precision: number): string {
   const text = timeForm(value, colType, zone, precision);
   if (text === undefined) throw new OrmError('CODEC_ENCODE', `${colType} value ${JSON.stringify(value)} is not ${timeShape(colType, precision)}`);
   return text;

@@ -160,5 +160,33 @@ class MarkdownTest(unittest.TestCase):
             self.assertEqual(error.code, "CAPABILITY_UNSUPPORTED", f"{name}: {error}")
 
 
+class BindMessageVectors(unittest.TestCase):
+    """tests/bind/vectors.json의 message case: IR executor message parameter의 runtime value model JSON이다
+    (docs/protocol.md §5 "Parameters"). Go의 TestBindMessageVectors와 같은 case다."""
+
+    def test_message_cases(self):
+        import json
+        import pathlib
+        import types
+
+        from polyspec.orm.engine.params import ParamUse
+        from polyspec.orm.markdown import markdown_param
+
+        root = pathlib.Path(__file__).resolve().parents[3]
+        vectors = json.loads((root / "tests/bind/vectors.json").read_text())
+        db = types.SimpleNamespace(zone=vectors["zone"], aes_key="")
+        for case in vectors["message"]:
+            with self.subTest(case["name"]):
+                uses = [ParamUse(case["type"])]
+                if "code" in case:
+                    with self.assertRaises(OrmError) as caught:
+                        markdown_param(db, 0, case["value"], uses)
+                    self.assertEqual(caught.exception.code, case["code"])
+                else:
+                    self.assertEqual(
+                        markdown_param(db, 0, case["value"], uses), case["json"]
+                    )
+
+
 if __name__ == "__main__":
     testcase.main()

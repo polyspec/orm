@@ -8,6 +8,7 @@ setUpModule
 load_tests
 _.shortDescription
 SetParseVectors
+BindMessageVectors
 MysqlCells
 PostgresCells
 MysqlPlaceholders

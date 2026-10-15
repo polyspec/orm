@@ -1064,6 +1064,38 @@ fn sqlite_datetime_text(text: &str, zone: &Zone) -> Option<String> {
     }
 }
 
+/// IR executor message의 date, time, datetime text다(docs/protocol.md §5 "Parameters"): date는 `YYYY-MM-DD`,
+/// time은 `HH:MM:SS.ffffff`, datetime은 연결 시간대의 `YYYY-MM-DD HH:MM:SS.ffffff`로, 값에 없는 소수 자리는 0이다.
+/// 다른 form의 text는 CODEC_ENCODE다.
+pub(crate) fn message_time_text(text: &str, col_type: &str, zone: &Zone) -> Result<String> {
+    match col_type {
+        "date" if sqlite_date_text(text) => Ok(text.to_owned()),
+        "date" => Err(invalid_time_text(text, col_type)),
+        "time" => {
+            let b = text.as_bytes();
+            let clock = b.len() >= 8
+                && digits(&b[0..2])
+                && b[2] == b':'
+                && digits(&b[3..5])
+                && b[5] == b':'
+                && digits(&b[6..8])
+                && &text[0..2] < "24"
+                && &text[3..5] < "60"
+                && &text[6..8] < "60";
+            let fraction = match b.get(8..) {
+                Some([]) => Some(""),
+                Some([b'.', rest @ ..]) if (1..=6).contains(&rest.len()) && digits(rest) => Some(&text[9..]),
+                _ => None,
+            };
+            match (clock, fraction) {
+                (true, Some(f)) => Ok(format!("{}.{f:0<6}", &text[..8])),
+                _ => Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("time value {text:?} is not HH:MM:SS[.ffffff]") }),
+            }
+        }
+        _ => sqlite_datetime_text(text, zone).ok_or_else(|| invalid_time_text(text, col_type)),
+    }
+}
+
 /// 소수 6자리 `YYYY-MM-DD HH:MM:SS.ffffff` text를 소수 p자리로 줄인다. 버리는 자리에
 /// 0이 아닌 숫자가 있으면 값이 바뀌므로 CODEC_ENCODE다.
 fn datetime_digits(text: &str, precision: i64) -> Result<String> {

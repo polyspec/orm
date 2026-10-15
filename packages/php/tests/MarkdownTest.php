@@ -183,6 +183,30 @@ final class MarkdownTest extends TestCase
             || preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6}$/D', (string) $message['now']) !== 1, 'request message = ' . ($received[1] ?? 'none'));
     }
 
+    public function test_bind_message_vectors(): void
+    {
+        // tests/bind/vectors.json의 message case: IR executor message parameter의 runtime value model JSON이다
+        // (docs/protocol.md §5 "Parameters"). Go의 TestBindMessageVectors와 같은 case다.
+        $vectors = json_decode((string) file_get_contents(__DIR__ . '/../../../tests/bind/vectors.json'), true, flags: JSON_THROW_ON_ERROR);
+        $server = markdown_fake_server(['{"ok":true}']);
+        $db = Orm::connect($server[2], new Config());
+        self::assertFalse((new DateTimeImmutable("2000-01-01", $db->zone()))->format("P") !== $vectors["zone"], "zone {$db->zone()->getName()}; want {$vectors['zone']}");
+        $param = new \ReflectionMethod(\Polyspec\Orm\Markdown::class, 'param');
+        foreach ($vectors['message'] as $c) {
+            $got = null;
+            $e = markdown_error(static function () use ($param, $db, $c, &$got): void {
+                $got = $param->invoke(null, $db, 0, $c['value'], [['type' => $c['type'], 'column' => null]]);
+            });
+            if (isset($c['code'])) {
+                self::assertFalse($e?->code_ !== $c['code'], "{$c['name']}: " . json_encode($got) . ' ' . ($e?->getMessage() ?? '') . "; want {$c['code']}");
+            } else {
+                self::assertFalse($e !== null || $got !== $c['json'], "{$c['name']}: " . json_encode($got) . ' ' . ($e?->getMessage() ?? '') . "; want {$c['json']}");
+            }
+        }
+        $db->close();
+        markdown_received($server);
+    }
+
     public function test_param_uses(): void
     {
         $model = RuntimeModel::build(RuntimeModel::parse(['params.dbs' => 'dbspec 1 params

@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 644c67330e48888a3794571eebfa95674ea2c11813155a6a3f17d69b5d1f3c4c -->
+<!-- source-sha256: 53db77ec92003083951191000f7410392ba080691f5c3374655d20470fd4bd74 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -243,7 +243,7 @@ DSN scheme은 SQL dialect 대신 IR executor를 고를 수 있다. `markdown://`
 - **전송.** 메시지는 한 줄에 JSON object 하나이고, server는 연결의 메시지마다 차례대로 한 줄의 답을 쓴다. `op`가 있는 메시지는 제어 메시지이고 나머지는 요청 메시지다. 연결의 첫 메시지는 DSN의 corpus와 token을 담은 `{"op": "connect", "corpus": <corpus>, "token": <token>}`이며 `{"ok": true}`로 답을 받는다. server는 다른 corpus나 token, 또는 다른 첫 메시지에 `CONFIG`로 답하고 연결을 닫으므로, 연결은 그 `CONFIG`로 실패한다.
 - **검증.** 클라이언트는 요청마다 `ir.Validate`로 요청을 검증하고 계획하지 않는다. SQL을 보내지 않고 plan을 읽지도 않는다. 요청을 계획하고 실행하는 것은 executor다.
 - **메시지.** 요청마다 메시지 하나 `{ir_version, manifest_hash, request, params, now}`를 executor에 전한다. `request`는 1절의 요청이며 필드와 값(매개변수 index)이 같다. `manifest_hash`는 1절대로 확인하고, `now`는 2절의 요청 시각을 `datetime` text 형식으로 적는다.
-- **매개변수.** `params`는 runtime value model JSON을 쓴다. decimal은 문자열, bytes는 base64, datetime은 UTC의 `YYYY-MM-DD HH:MM:SS.ffffff`, date는 `YYYY-MM-DD`, time은 `HH:MM:SS.ffffff`다. 매개변수가 채우는 slot이 형식을 정한다. `ir.ParamUses`가 매개변수마다 그 slot과 논리 type(비교하거나 대입하는 column, column 함수의 결과, 상대 시각 함수의 간격, `contains`의 text)을 나열하고, 클라이언트의 시각 값은 그 type의 형식으로 적는다. `hex`나 `ip` column의 slot은 SQL 데이터베이스에서처럼 인코딩한 값을 받는다.
+- **매개변수.** `params`는 runtime value model JSON을 쓴다. decimal은 문자열, bytes는 base64, datetime은 UTC의 `YYYY-MM-DD HH:MM:SS.ffffff`, date는 `YYYY-MM-DD`, time은 `HH:MM:SS.ffffff`다. `datetime(p)`나 `time(p)`의 값은 p 뒤 자리가 0이고, 클라이언트의 시각 text(`10:00:00`, `2024-01-02T03:04:05.5`, offset이 있는 datetime은 UTC로 바꿔서)도 이 소수 6자리 형식으로 적으며, 다른 형식의 text는 `CODEC_ENCODE`다. 공유 case는 `tests/bind/vectors.json`의 `message` case다. 매개변수가 채우는 slot이 형식을 정한다. `ir.ParamUses`가 매개변수마다 그 slot과 논리 type(비교하거나 대입하는 column, column 함수의 결과, 상대 시각 함수의 간격, `contains`의 text)을 나열하고, 클라이언트의 시각 값은 그 type의 형식으로 적는다. `hex`나 `ip` column의 slot은 SQL 데이터베이스에서처럼 인코딩한 값을 받는다.
 - **Codec.** 클라이언트가 SQL과 같이 codec 단계를 직접 적용한다. 쓰기의 값은 보내기 전에 인코딩하고, 읽기의 값은 받은 뒤에 디코딩한다.
 - **읽기.** 읽기는 요청 형태에 맞게 조립된 row를 돌려준다. 조인, 관계, `key_by`, `flatten`은 1.2절이 정의한 대로다.
 - **쓰기.** 쓰기는 `{affected, keys}`를 돌려준다. `keys`는 삽입한 row마다 그 primary key를 삽입 순서대로 담는다. `affected`는 쓴 row를 하나씩 계산한다. `on_duplicate`가 있는 insert는 삽입이든 갱신이든 모든 database에서 1이고(MySQL만 갱신을 2로 계산한다), `update`는 바꾼 row만이 아니라 일치한 row를 계산한다(MySQL client는 found rows를 요청한다).

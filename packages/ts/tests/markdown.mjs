@@ -9,6 +9,8 @@ import { isDeepStrictEqual } from 'node:util';
 import { COMPUTE, cases } from '../../../tests/testcase.mts';
 import { Db, OrmError } from '../dist/index.js';
 import { parseDsn } from '../dist/driver.js';
+import { markdownParam } from '../dist/markdown.js';
+import { readFileSync } from 'node:fs';
 
 const run = cases();
 const token = '0123456789abcdef0123456789abcdef';
@@ -146,4 +148,22 @@ await run.run('markdown/rejected-surfaces', COMPUTE, async () => {
     await s.close();
   }
 });
+// tests/bind/vectors.json의 message case: IR executor message parameter의 runtime value model JSON이다
+// (docs/protocol.md §5 "Parameters"). Go의 TestBindMessageVectors와 같은 case다.
+const bind = JSON.parse(readFileSync(new URL('../../../tests/bind/vectors.json', import.meta.url), 'utf8'));
+for (const c of bind.message) {
+  await run.run(`markdown/bind-message/${c.name}`, COMPUTE, () => {
+    const db = { zone: bind.zone, aesKey: '' };
+    let got, code = '';
+    try { got = markdownParam(db, 0, c.value, [{ type: c.type }]); } catch (error) {
+      if (!(error instanceof OrmError)) throw error;
+      code = error.code;
+    }
+    if (c.code !== undefined) {
+      if (code !== c.code) throw new Error(`markdownParam(${JSON.stringify(c.value)}) = ${got} ${code}; want ${c.code}`);
+    } else if (code !== '' || got !== JSON.stringify(c.json)) {
+      throw new Error(`markdownParam(${JSON.stringify(c.value)}) = ${got} ${code}; want ${JSON.stringify(c.json)}`);
+    }
+  });
+}
 run.finish();
