@@ -10,6 +10,7 @@
 import json
 import unittest
 from pathlib import Path
+from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 # The client and ordered-json come from the packages installed into the venv.
@@ -17,7 +18,6 @@ ROOT = Path(__file__).resolve().parents[3]
 from polyspec.orm.dbspec import emit_dbspec, parse_dbspec, read_dbspec_file  # noqa: E402
 from polyspec.orm.dbspec.mermaid import export_mermaid, import_mermaid  # noqa: E402
 from .vector_case import VectorCase, vector_tests  # noqa: E402
-from . import testcase
 
 
 class CheckFailed(Exception):
@@ -31,15 +31,15 @@ def check(condition: bool, what: str) -> None:
 
 def equal(actual, expected, what: str) -> None:
     if actual != expected:
-        raise CheckFailed(f'{what}: expected {expected!r}, got {actual!r}')
+        raise CheckFailed(f"{what}: expected {expected!r}, got {actual!r}")
 
 
 def text(lines) -> str:
-    return '\n'.join(lines) + '\n'
+    return "\n".join(lines) + "\n"
 
 
 def drops(dropped) -> list:
-    return [[u['kind'], u['table'], u['name']] for u in dropped]
+    return [[u["kind"], u["table"], u["name"]] for u in dropped]
 
 
 def diagnostic_triples(diagnostics) -> list:
@@ -51,73 +51,99 @@ def diagnostic_triples(diagnostics) -> list:
 def skeleton(document) -> list:
     out = []
     for t in sorted(document.tables, key=lambda t: t.name):
-        out.append(f'table {t.name}')
+        out.append(f"table {t.name}")
         for c in t.columns:
             kind = (c.type.kind, c.type.precision, c.type.scale, c.type.length)
-            dflt = '-' if c.default is None else \
-                'now' if c.default.kind == 'now' else c.default.text
-            out.append(f'column {c.name} {kind} null={c.nullable} '
-                       f'identity={c.identity} default={dflt}')
-        out.append(f'primary key {", ".join(t.primary_key.columns)}')
+            dflt = (
+                "-"
+                if c.default is None
+                else "now"
+                if c.default.kind == "now"
+                else c.default.text
+            )
+            out.append(
+                f"column {c.name} {kind} null={c.nullable} "
+                f"identity={c.identity} default={dflt}"
+            )
+        out.append(f"primary key {', '.join(t.primary_key.columns)}")
         for f in sorted(t.foreign_keys, key=lambda f: f.name):
-            out.append(f'foreign key {f.name} ({", ".join(f.columns)}) '
-                       f'references {f.table} ({", ".join(f.references)})')
+            out.append(
+                f"foreign key {f.name} ({', '.join(f.columns)}) "
+                f"references {f.table} ({', '.join(f.references)})"
+            )
     return out
 
 
 def run_export(c) -> None:
-    documents = {name: text(lines) for name, lines in c['documents'].items()}
-    document, _positions, diagnostics = parse_dbspec(text(c['document']), documents)
-    equal(diagnostic_triples(diagnostics), [], 'document diagnostics')
+    documents = {name: text(lines) for name, lines in c["documents"].items()}
+    document, _positions, diagnostics = parse_dbspec(text(c["document"]), documents)
+    equal(diagnostic_triples(diagnostics), [], "document diagnostics")
     result = export_mermaid(document)
-    equal(result['mermaid'], text(c['mermaid']), 'mermaid text')
-    equal(drops(result['dropped']), c['dropped'], 'dropped')
+    equal(result["mermaid"], text(c["mermaid"]), "mermaid text")
+    equal(drops(result["dropped"]), c["dropped"], "dropped")
 
 
 def run_import(c) -> None:
-    result = import_mermaid(text(c['mermaid']), 'imported')
-    equal(diagnostic_triples(result['diagnostics']), [], 'diagnostics')
-    equal(emit_dbspec(result['document']), text(c['document']), 'document')
-    equal(drops(result['dropped']), c['dropped'], 'dropped')
+    result = import_mermaid(text(c["mermaid"]), "imported")
+    equal(diagnostic_triples(result["diagnostics"]), [], "diagnostics")
+    equal(emit_dbspec(result["document"]), text(c["document"]), "document")
+    equal(drops(result["dropped"]), c["dropped"], "dropped")
 
 
 def run_invalid(c) -> None:
-    result = import_mermaid(text(c['mermaid']), 'imported')
-    equal(result['document'], None, 'document of an invalid diagram')
-    equal(diagnostic_triples(result['diagnostics']), c['errors'], 'diagnostics')
+    result = import_mermaid(text(c["mermaid"]), "imported")
+    equal(result["document"], None, "document of an invalid diagram")
+    equal(diagnostic_triples(result["diagnostics"]), c["errors"], "diagnostics")
 
 
 def run_round_trip(c) -> None:
-    text_read, diagnostics = read_dbspec_file(str(ROOT / c['path']))
-    equal(diagnostic_triples(diagnostics), [], 'file diagnostics')
+    text_read, diagnostics = read_dbspec_file(str(ROOT / c["path"]))
+    equal(diagnostic_triples(diagnostics), [], "file diagnostics")
     document, _positions, diagnostics = parse_dbspec(text_read, {})
-    equal(diagnostic_triples(diagnostics), [], 'document diagnostics')
+    equal(diagnostic_triples(diagnostics), [], "document diagnostics")
     exported = export_mermaid(document)
-    equal(drops(exported['dropped']), c['dropped'], 'export dropped')
-    imported = import_mermaid(exported['mermaid'], document.name)
-    equal(diagnostic_triples(imported['diagnostics']), [], 'import diagnostics')
-    equal(drops(imported['dropped']), c['imported'], 'import dropped')
-    equal(skeleton(imported['document']), skeleton(document),
-          'tables, columns, primary keys and foreign keys')
-    print(f'round_trip {c["id"]}: exported={len(exported["dropped"])} '
-          f'imported={len(imported["dropped"])}')
+    equal(drops(exported["dropped"]), c["dropped"], "export dropped")
+    imported = import_mermaid(exported["mermaid"], document.name)
+    equal(diagnostic_triples(imported["diagnostics"]), [], "import diagnostics")
+    equal(drops(imported["dropped"]), c["imported"], "import dropped")
+    equal(
+        skeleton(imported["document"]),
+        skeleton(document),
+        "tables, columns, primary keys and foreign keys",
+    )
+    print(
+        f"round_trip {c['id']}: exported={len(exported['dropped'])} "
+        f"imported={len(imported['dropped'])}"
+    )
 
 
 class Case(VectorCase):
     """A case of the vector file of this module."""
 
 
-def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
+def load_tests(
+    loader: unittest.TestLoader, tests: unittest.TestSuite, _pattern: object
+) -> unittest.TestSuite:
     """One test for each case of every kind, named by the case id."""
-    vectors = json.loads((ROOT / 'tests' / 'dbspec' / 'mermaid.json').read_text(encoding='utf-8'))
-    equal(vectors['version'], 1, 'mermaid vectors version')
-    check(all(vectors[kind] for kind in ('export', 'import', 'invalid', 'round_trip')),
-          'mermaid vectors have export, import, invalid and round trip cases')
-    for kind, run in (('export', run_export), ('import', run_import), ('invalid', run_invalid),
-                      ('round_trip', run_round_trip)):
-        tests.addTests(vector_tests(Case, vectors[kind], lambda _test, c, run=run: run(c)))
+    vectors = json.loads(
+        (ROOT / "tests" / "dbspec" / "mermaid.json").read_text(encoding="utf-8")
+    )
+    equal(vectors["version"], 1, "mermaid vectors version")
+    check(
+        all(vectors[kind] for kind in ("export", "import", "invalid", "round_trip")),
+        "mermaid vectors have export, import, invalid and round trip cases",
+    )
+    for kind, run in (
+        ("export", run_export),
+        ("import", run_import),
+        ("invalid", run_invalid),
+        ("round_trip", run_round_trip),
+    ):
+        tests.addTests(
+            vector_tests(Case, vectors[kind], lambda _test, c, run=run: run(c))
+        )
     return tests
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     testcase.main()

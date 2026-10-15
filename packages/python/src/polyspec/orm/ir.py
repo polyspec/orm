@@ -65,7 +65,11 @@ class IRKeyPair(TypedDict):
     left: str
     right: str
 
-IRGroup = TypedDict('IRGroup', {'conn': NotRequired[str], 'not': NotRequired[bool], 'items': list['IRItem']})
+
+IRGroup = TypedDict(
+    "IRGroup",
+    {"conn": NotRequired[str], "not": NotRequired[bool], "items": list["IRItem"]},
+)
 
 
 class IRItem(TypedDict):

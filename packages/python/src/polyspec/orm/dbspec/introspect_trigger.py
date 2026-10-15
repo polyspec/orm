@@ -5,17 +5,23 @@ import re
 from polyspec.orm.dbspec.audit import audit_line
 from polyspec.orm.dbspec.introspect_catalog import Catalog
 from polyspec.orm.dbspec.names import renderer_name
-from polyspec.orm.dbspec.model import DbspecColumn, DbspecPrimaryKey, \
-    DbspecSetting, DbspecSettings, DbspecTable
+from polyspec.orm.dbspec.model import (
+    DbspecColumn,
+    DbspecPrimaryKey,
+    DbspecSetting,
+    DbspecSettings,
+    DbspecTable,
+)
 from polyspec.orm.dbspec.render import Renderer
 
-__all__ = ['recognize_triggers']
+__all__ = ["recognize_triggers"]
 
 # catalog trigger 하나를 renderer가 쓰는 statement 형식으로 다시 쓴 것이다.
 # PostgreSQL은 function과 trigger statement 두 개다.
 
 _AUDIT_INSERT_PATTERN = re.compile(
-    r'^INSERT INTO [`"]([a-z0-9_]+)[`"] \(([^)]*)\) VALUES ')
+    r'^INSERT INTO [`"]([a-z0-9_]+)[`"] \(([^)]*)\) VALUES '
+)
 _AUDIT_COLUMN_PATTERN = re.compile(r'^[`"]([a-z0-9_]+)[`"]$')
 _AUDIT_UPDATE_PATTERN = re.compile(r"VALUES \('update', OLD\.[`\"]([a-z0-9_]+)[`\"],")
 
@@ -24,21 +30,24 @@ def recognize_triggers(c: Catalog, dialect: str, triggers: dict) -> None:
     """table마다 trigger 집합이 immutable이나 audit의 renderer 출력과 같으면 그
     setting을 더하고, 아니면 모든 trigger를 미지원으로 보고한다. triggers는
     table 이름마다 catalog 순서의 trigger다."""
-    for table in sorted(triggers, key=lambda t: t.encode('utf-8')):
+    for table in sorted(triggers, key=lambda t: t.encode("utf-8")):
         listed = triggers[table]
         t = c.table(table)
         if t is None:
             for tr in listed:
-                c.report('trigger', table, tr['name'], 'the table is not read')
+                c.report("trigger", table, tr["name"], "the table is not read")
             continue
         lines = _trigger_setting(dialect, t, listed)
         if lines is None:
             for tr in listed:
-                c.report('trigger', table, tr['name'],
-                         'the trigger is not the renderer output of immutable or '
-                         'audit')
+                c.report(
+                    "trigger",
+                    table,
+                    tr["name"],
+                    "the trigger is not the renderer output of immutable or audit",
+                )
             continue
-        t['settings'].extend(lines)
+        t["settings"].extend(lines)
 
 
 def _trigger_setting(dialect: str, t: dict, listed: list):
@@ -46,19 +55,25 @@ def _trigger_setting(dialect: str, t: dict, listed: list):
     setting들의 renderer 출력과 이름과 내용이 모두 같을 때만 그 setting 줄들을 돌려준다. 아니면 None
     이다 (docs/dialects.md "Triggers"). 두 setting을 함께 쓴 table은 두 출력의 합이며 개수로 판단하지
     않는다."""
-    names = {tr['name']: tr for tr in listed}
+    names = {tr["name"]: tr for tr in listed}
     settings: list = []
-    if any(renderer_name(t["name"], event) in names
-           for event in ('immutable_update', 'immutable_delete')):
-        settings.append(DbspecSetting('immutable'))
-    insert = names.get(renderer_name(t["name"], 'audit_insert'))
+    if any(
+        renderer_name(t["name"], event) in names
+        for event in ("immutable_update", "immutable_delete")
+    ):
+        settings.append(DbspecSetting("immutable"))
+    insert = names.get(renderer_name(t["name"], "audit_insert"))
     if insert is not None:
-        update = names.get(renderer_name(t["name"], 'audit_update'))
-        m = _AUDIT_INSERT_PATTERN.match(_statement_body(insert['statements']))
-        u = _AUDIT_UPDATE_PATTERN.search(_statement_body(update['statements']
-                                                        if update else []))
-        audit = _audit_of(t, m.group(1), m.group(2).split(', '), u.group(1)) \
-            if m is not None and u is not None else None
+        update = names.get(renderer_name(t["name"], "audit_update"))
+        m = _AUDIT_INSERT_PATTERN.match(_statement_body(insert["statements"]))
+        u = _AUDIT_UPDATE_PATTERN.search(
+            _statement_body(update["statements"] if update else [])
+        )
+        audit = (
+            _audit_of(t, m.group(1), m.group(2).split(", "), u.group(1))
+            if m is not None and u is not None
+            else None
+        )
         if audit is not None:
             settings.append(audit)
     if not settings:
@@ -72,12 +87,15 @@ def _trigger_setting(dialect: str, t: dict, listed: list):
         tr = names.get(name)
         if tr is None:
             return None
-        got.extend(tr['statements'])
+        got.extend(tr["statements"])
     if len(got) != len(want) or any(s != want[i] for i, s in enumerate(got)):
         return None
-    return ['immutable' if setting.kind == 'immutable'
-            else audit_line(setting, 'exclude', setting.exclude)
-            for setting in settings]
+    return [
+        "immutable"
+        if setting.kind == "immutable"
+        else audit_line(setting, "exclude", setting.exclude)
+        for setting in settings
+    ]
 
 
 def _audit_of(t: dict, into: str, quoted: list, column: str):
@@ -96,34 +114,53 @@ def _audit_of(t: dict, into: str, quoted: list, column: str):
     recorded = names[2:]
     if not recorded or column not in recorded:
         return None
-    references = [f['table'] for f in t['fks']
-                  if len(f['columns']) == 1 and f['columns'][0] == column]
+    references = [
+        f["table"]
+        for f in t["fks"]
+        if len(f["columns"]) == 1 and f["columns"][0] == column
+    ]
     if len(references) != 1:
         return None
-    excluded = [c['name'] for c in t['columns'] if c['name'] not in recorded]
-    return DbspecSetting('audit', into=into, column=column,
-                         references=references[0], action=names[0],
-                         previous=names[1],
-                         exclude=tuple(excluded) if excluded else None,
-                         include=None)
+    excluded = [c["name"] for c in t["columns"] if c["name"] not in recorded]
+    return DbspecSetting(
+        "audit",
+        into=into,
+        column=column,
+        references=references[0],
+        action=names[0],
+        previous=names[1],
+        exclude=tuple(excluded) if excluded else None,
+        include=None,
+    )
 
 
 def _trigger_model(t: dict, settings: list) -> DbspecTable:
     """renderer가 trigger를 쓰는 데 필요한 table: 이름, column 이름과 type,
     알아본 setting들이다."""
-    columns = tuple(DbspecColumn((), c['name'], c['type'], False, False, None)
-                    for c in t['columns'])
-    return DbspecTable((), t['name'], columns, DbspecPrimaryKey((), ()), (), (), (),
-                       (), DbspecSettings((), tuple(settings), ()), ())
+    columns = tuple(
+        DbspecColumn((), c["name"], c["type"], False, False, None) for c in t["columns"]
+    )
+    return DbspecTable(
+        (),
+        t["name"],
+        columns,
+        DbspecPrimaryKey((), ()),
+        (),
+        (),
+        (),
+        (),
+        DbspecSettings((), tuple(settings), ()),
+        (),
+    )
 
 
 def _trigger_order(statements: list) -> list:
     """renderer statement 목록에서 trigger 이름을 순서대로 꺼낸다."""
     names: list = []
     for s in statements:
-        if not s.startswith('CREATE TRIGGER '):
+        if not s.startswith("CREATE TRIGGER "):
             continue
-        rest = s[len('CREATE TRIGGER '):]
+        rest = s[len("CREATE TRIGGER ") :]
         end = rest.find(rest[0], 1)
         names.append(rest[1:end])
     return names
@@ -133,8 +170,8 @@ def _statement_body(statements: list) -> str:
     """trigger statement에서 본문을 꺼낸다: MySQL은 FOR EACH ROW 뒤,
     PostgreSQL은 function의 BEGIN 뒤, SQLite는 BEGIN 뒤다."""
     for s in statements:
-        for marker in ('$$BEGIN ', 'FOR EACH ROW BEGIN ', 'FOR EACH ROW '):
+        for marker in ("$$BEGIN ", "FOR EACH ROW BEGIN ", "FOR EACH ROW "):
             i = s.find(marker)
             if i >= 0:
-                return s[i + len(marker):]
-    return ''
+                return s[i + len(marker) :]
+    return ""

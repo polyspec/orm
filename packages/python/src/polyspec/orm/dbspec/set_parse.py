@@ -6,9 +6,14 @@ import dataclasses
 from dataclasses import dataclass
 
 from polyspec.orm.dbspec.model import DbspecDiagnostic, DbspecDocument, DbspecPosition
-from polyspec.orm.dbspec.parse import _ParseContext, _check_arguments, _parse_text, parse_dbspec
+from polyspec.orm.dbspec.parse import (
+    _ParseContext,
+    _check_arguments,
+    _parse_text,
+    parse_dbspec,
+)
 
-__all__ = ['DbspecSetDocument', 'parse_dbspec_set']
+__all__ = ["DbspecSetDocument", "parse_dbspec_set"]
 
 
 @dataclass(frozen=True)
@@ -17,6 +22,7 @@ class DbspecSetDocument:
     header fails; whether the text is external; and what one parse of the text returns, its
     document and positions or its diagnostics. A text whose name an earlier text has is not parsed
     and carries the one diagnostic name.duplicate."""
+
     name: str
     external: bool
     document: DbspecDocument | None
@@ -43,10 +49,20 @@ def parse_dbspec_set(owned, external) -> tuple[DbspecSetDocument, ...]:
         _check_arguments(text, {})
         name = _header_name(text)
         names.append(name)
-        if name != '':
+        if name != "":
             if name in named:
-                results[index] = (None, None, [DbspecDiagnostic(
-                    'name.duplicate', 1, 10, f'document {name} appears twice in the document set')])
+                results[index] = (
+                    None,
+                    None,
+                    [
+                        DbspecDiagnostic(
+                            "name.duplicate",
+                            1,
+                            10,
+                            f"document {name} appears twice in the document set",
+                        )
+                    ],
+                )
                 continue
             named[name] = text
         parse.append(index)
@@ -57,5 +73,7 @@ def parse_dbspec_set(owned, external) -> tuple[DbspecSetDocument, ...]:
         if document is not None:
             document = dataclasses.replace(document, external=is_external)
         results[index] = (document, positions, found)
-    return tuple(DbspecSetDocument(names[i], is_external, *results[i])
-                 for i, (_text, is_external) in enumerate(entries))
+    return tuple(
+        DbspecSetDocument(names[i], is_external, *results[i])
+        for i, (_text, is_external) in enumerate(entries)
+    )

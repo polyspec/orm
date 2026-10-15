@@ -15,15 +15,20 @@ from urllib.parse import unquote, urlsplit
 import psycopg
 import pymysql
 
-from polyspec.orm.dbspec.apply import DbspecApplyError, apply_plans, recover_plans, rollback_plans
+from polyspec.orm.dbspec.apply import (
+    DbspecApplyError,
+    apply_plans,
+    recover_plans,
+    rollback_plans,
+)
 from polyspec.orm.dbspec.plan import parse_plan
 from polyspec.orm.placeholders import for_mysql, for_postgres
 
 # The statements every client runs on a new connection (tests/dialects connectionRules).
 CONNECTION_RULES = {
-    'mysql': ["SET time_zone = '+00:00'"],
-    'postgres': ["SET TimeZone = 'UTC'"],
-    'sqlite': ['PRAGMA foreign_keys = ON'],
+    "mysql": ["SET time_zone = '+00:00'"],
+    "postgres": ["SET TimeZone = 'UTC'"],
+    "sqlite": ["PRAGMA foreign_keys = ON"],
 }
 # The tool clock: 2026-10-01T00:00:00.123456789Z cut to microseconds since the epoch.
 NOW = 1_790_812_800_000_000 + 123_456
@@ -39,47 +44,57 @@ class Adapter:
 
     def execute(self, sql: str, values=()):
         values = list(values)
-        if self.dialect == 'sqlite':
+        if self.dialect == "sqlite":
             cursor = self.connection.execute(sql, tuple(values))
             rows = cursor.fetchall()
             cursor.close()
-            return {'rows': [list(row) for row in rows]}
-        text, args = (for_mysql if self.dialect == 'mysql' else for_postgres)(sql, values)
+            return {"rows": [list(row) for row in rows]}
+        text, args = (for_mysql if self.dialect == "mysql" else for_postgres)(
+            sql, values
+        )
         cursor = self.connection.cursor()
         try:
             cursor.execute(text, args)
             rows = cursor.fetchall() if cursor.description else []
         finally:
             cursor.close()
-        return {'rows': [list(row) for row in rows]}
+        return {"rows": [list(row) for row in rows]}
 
 
 def connect(dialect: str, uri: str):
     """Opens the URI as the driver connection of its dialect, in the compare URI form of tests/dialects."""
     url = urlsplit(uri)
-    if dialect == 'mysql' and url.scheme == 'mysql' and not url.query:
-        return pymysql.connect(host=url.hostname, port=url.port, user=unquote(url.username or ''),
-                               password=unquote(url.password or ''), database=url.path[1:], autocommit=True)
-    if dialect == 'postgres' and url.scheme == 'postgres':
+    if dialect == "mysql" and url.scheme == "mysql" and not url.query:
+        return pymysql.connect(
+            host=url.hostname,
+            port=url.port,
+            user=unquote(url.username or ""),
+            password=unquote(url.password or ""),
+            database=url.path[1:],
+            autocommit=True,
+        )
+    if dialect == "postgres" and url.scheme == "postgres":
         return psycopg.connect(uri, autocommit=True)
-    if dialect == 'sqlite' and url.scheme == 'sqlite' and not url.query:
-        return sqlite3.connect(unquote(uri[len('sqlite://'):]), isolation_level=None)
-    raise ValueError(f'{dialect}: unsupported URI {uri}')
+    if dialect == "sqlite" and url.scheme == "sqlite" and not url.query:
+        return sqlite3.connect(unquote(uri[len("sqlite://") :]), isolation_level=None)
+    raise ValueError(f"{dialect}: unsupported URI {uri}")
 
 
 def chain(vectors: str) -> list:
     """The plans create-from-empty and rename-table-and-column of plans.json, parsed."""
-    with open(vectors, encoding='utf-8') as handle:
-        cases = json.load(handle)['cases']
+    with open(vectors, encoding="utf-8") as handle:
+        cases = json.load(handle)["cases"]
     plans = []
     for case in cases:
-        if case['id'] in ('create-from-empty', 'rename-table-and-column'):
-            parsed = parse_plan('\n'.join(case['plan']) + '\n')
-            if parsed['plan'] is None:
-                raise ValueError(f'{case["id"]}: {parsed["diagnostics"]}')
-            plans.append(parsed['plan'])
-    if len(plans) != 2 or plans[1]['from'] != plans[0]['to']:
-        raise ValueError('plans.json does not chain create-from-empty and rename-table-and-column')
+        if case["id"] in ("create-from-empty", "rename-table-and-column"):
+            parsed = parse_plan("\n".join(case["plan"]) + "\n")
+            if parsed["plan"] is None:
+                raise ValueError(f"{case['id']}: {parsed['diagnostics']}")
+            plans.append(parsed["plan"])
+    if len(plans) != 2 or plans[1]["from"] != plans[0]["to"]:
+        raise ValueError(
+            "plans.json does not chain create-from-empty and rename-table-and-column"
+        )
     return plans
 
 
@@ -94,34 +109,40 @@ def run(action: str, dialect: str, connection, plans: list) -> str:
     second = plans[1]
 
     def stop(event: dict) -> None:
-        if event['kind'] == 'applied' and event['plan'] == second['name'] and event['step'] == 1:
+        if (
+            event["kind"] == "applied"
+            and event["plan"] == second["name"]
+            and event["step"] == 1
+        ):
             raise Stop()
 
     try:
-        if action == 'apply-first':
+        if action == "apply-first":
             apply_plans(adapter, dialect, plans[:1], lambda: NOW)
-        elif action == 'apply':
+        elif action == "apply":
             apply_plans(adapter, dialect, plans, lambda: NOW)
-        elif action == 'recover':
+        elif action == "recover":
             recover_plans(adapter, dialect, plans, lambda: NOW)
-        elif action == 'rollback':
+        elif action == "rollback":
             rollback_plans(adapter, dialect, plans, lambda: NOW)
-        elif action == 'stop':
+        elif action == "stop":
             apply_plans(adapter, dialect, plans, lambda: NOW, stop)
-            raise RuntimeError('stop: apply did not stop')
+            raise RuntimeError("stop: apply did not stop")
         else:
-            raise ValueError(f'unknown action {action}')
+            raise ValueError(f"unknown action {action}")
     except Stop:
-        return 'stopped'
+        return "stopped"
     except DbspecApplyError as error:
-        return f'error {error.code}'
-    return 'ok'
+        return f"error {error.code}"
+    return "ok"
 
 
 def main() -> None:
     if len(sys.argv) != 5:
-        sys.stderr.write('usage: python packages/python/tests/dbspec_apply_runner.py '
-                         '<apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>\n')
+        sys.stderr.write(
+            "usage: python packages/python/tests/dbspec_apply_runner.py "
+            "<apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>\n"
+        )
         raise SystemExit(2)
     action, dialect, uri, vectors = sys.argv[1:]
     plans = chain(vectors)
@@ -133,5 +154,5 @@ def main() -> None:
     print(result)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

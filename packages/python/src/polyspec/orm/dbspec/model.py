@@ -3,17 +3,54 @@
 # 닫는 brace나 문서 끝에 붙는다.
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TypedDict
 
-__all__ = ['DbspecColumn', 'DbspecCheck', 'DbspecDefault', 'DbspecDiagnostic', 'DbspecDiagram',
-           'DbspecDocument', 'DbspecPosition', 'DbspecForeignKey', 'DbspecIndex', 'DbspecIndexColumn',
-           'DbspecPlacement', 'DbspecPrimaryKey', 'DbspecSetting', 'DbspecStoreShard', 'DbspecTable', 'DbspecType',
-           'DbspecUnique', 'DbspecUse', 'RULES']
+__all__ = [
+    "DbspecColumn",
+    "DbspecCheck",
+    "DbspecDefault",
+    "DbspecDiagnostic",
+    "DbspecDiagram",
+    "DbspecDocument",
+    "DbspecPosition",
+    "DbspecForeignKey",
+    "DbspecIndex",
+    "DbspecIndexColumn",
+    "DbspecPlacement",
+    "DbspecPrimaryKey",
+    "DbspecSetting",
+    "DbspecStoreShard",
+    "DbspecTable",
+    "DbspecType",
+    "DbspecUnique",
+    "DbspecUse",
+    "RULES",
+]
 
-RULES = ('signature', 'header', 'syntax', 'order', 'name.format', 'name.length',
-         'name.duplicate', 'type', 'column', 'key', 'foreign_key', 'check', 'setting',
-         'use', 'diagram', 'limit', 'encoding', 'plan', 'chain', 'compare', 'mermaid')
+RULES = (
+    "signature",
+    "header",
+    "syntax",
+    "order",
+    "name.format",
+    "name.length",
+    "name.duplicate",
+    "type",
+    "column",
+    "key",
+    "foreign_key",
+    "check",
+    "setting",
+    "use",
+    "diagram",
+    "limit",
+    "encoding",
+    "plan",
+    "chain",
+    "compare",
+    "mermaid",
+)
 
 
 @dataclass(frozen=True)
@@ -76,7 +113,7 @@ class DbspecDefault:
     """기본값: `now`, 또는 정규 텍스트의 literal(`'pending'`, `1.00`, `true`)."""
 
     kind: str  # 'now' | 'literal'
-    text: str = ''
+    text: str = ""
 
 
 @dataclass(frozen=True)
@@ -137,6 +174,7 @@ class DbspecCheck:
 @dataclass(frozen=True)
 class DbspecStoreShard:
     """store setting의 시간 shard: non-null date 또는 datetime column과 기간(year, month, day). SQL backend는 읽지 않는다."""
+
     column: str
     period: str
 
@@ -147,39 +185,39 @@ class DbspecSetting:
 
     kind: str
     comments: tuple = ()
-    name: str = ''
-    column: str = ''
+    name: str = ""
+    column: str = ""
     columns: tuple = ()
     stages: tuple = ()
-    index_column: str = ''
-    foreign_key: str = ''
-    child_name: str = ''
-    parent_name: str = ''
+    index_column: str = ""
+    foreign_key: str = ""
+    child_name: str = ""
+    parent_name: str = ""
     # audit 전용.
-    into: str = ''
-    references: str = ''
-    action: str = ''
-    previous: str = ''
+    into: str = ""
+    references: str = ""
+    action: str = ""
+    previous: str = ""
     exclude: tuple | None = None
     include: tuple | None = None
     # markdown, store, key_prefix, title, body, order, checkbox, state_machine 전용. store의 kind는 form,
     # state_machine의 form은 initial, terminal, transition, history, limit이다.
-    form: str = ''
-    shape: str = ''
+    form: str = ""
+    shape: str = ""
     # store 전용: shard 절이 없으면 None이다.
     shard: DbspecStoreShard | None = None
-    prefix: str = ''
-    glyph: str = ''
-    state: str = ''
-    from_state: str = ''
-    to_state: str = ''
+    prefix: str = ""
+    glyph: str = ""
+    state: str = ""
+    from_state: str = ""
+    to_state: str = ""
     requires: tuple = ()
-    history: str = ''
-    row: str = ''
-    from_column: str = ''
-    to_column: str = ''
-    at_column: str = ''
-    count: str = ''
+    history: str = ""
+    row: str = ""
+    from_column: str = ""
+    to_column: str = ""
+    at_column: str = ""
+    count: str = ""
 
 
 @dataclass(frozen=True)
@@ -240,9 +278,19 @@ class DbspecDocument:
 
 # A plan is the header and the steps of a dict, and an unsupported object is the dict of its kind, table,
 # name and reason, as the introspection writes it. `from` is a keyword, so the plan uses the functional form.
-DbspecPlan = TypedDict('DbspecPlan', {'name': str, 'from': str, 'to': str, 'schema': DbspecDocument,
-                                      'rename_tables': list, 'rename_columns': list,
-                                      'drop_tables': list, 'drop_columns': list})
+DbspecPlan = TypedDict(
+    "DbspecPlan",
+    {
+        "name": str,
+        "from": str,
+        "to": str,
+        "schema": DbspecDocument,
+        "rename_tables": list,
+        "rename_columns": list,
+        "drop_tables": list,
+        "drop_columns": list,
+    },
+)
 
 
 class DbspecEffect(TypedDict):
@@ -274,6 +322,7 @@ class DbspecPlanStep(TypedDict):
     restore_if: DbspecEffect | None
     null_checks: list[DbspecNullCheck]
     finalize: bool
+
 
 class DbspecUnsupported(TypedDict):
     kind: str

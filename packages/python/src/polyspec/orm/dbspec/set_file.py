@@ -9,23 +9,35 @@ import os
 import stat
 from dataclasses import dataclass
 
-__all__ = ['DBSPEC_SET_NAME', 'DbspecSet', 'DbspecSetError', 'DbspecSetFile', 'read_dbspec_set']
+__all__ = [
+    "DBSPEC_SET_NAME",
+    "DbspecSet",
+    "DbspecSetError",
+    "DbspecSetFile",
+    "read_dbspec_set",
+]
 
 # The name of every set file.
-DBSPEC_SET_NAME = 'dbspec-set.json'
+DBSPEC_SET_NAME = "dbspec-set.json"
 
-_WINDOWS = os.name == 'nt'
-_KEYS = ('schema', 'documents', 'external')
+_WINDOWS = os.name == "nt"
+_KEYS = ("schema", "documents", "external")
 _MAX_DEPTH = 64
-_BOM = b'\xef\xbb\xbf'
+_BOM = b"\xef\xbb\xbf"
 # The characters that no segment of a normal path holds: the separators, the characters Windows
 # reserves, NUL and U+0001 to U+001F.
 _FORBIDDEN = frozenset('/\\:<>"|?*') | frozenset(chr(c) for c in range(0x20))
 # The device names of Windows, compared ignoring ASCII case with the part of a segment before its
 # first `.`, its trailing spaces removed.
-_DEVICES = frozenset(['con', 'prn', 'aux', 'nul']
-                     + [f'{name}{digit}' for name in ('com', 'lpt') for digit in '0123456789\u00b9\u00b2\u00b3'])
-_ASCII_LOWER = str.maketrans('ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')
+_DEVICES = frozenset(
+    ["con", "prn", "aux", "nul"]
+    + [
+        f"{name}{digit}"
+        for name in ("com", "lpt")
+        for digit in "0123456789\u00b9\u00b2\u00b3"
+    ]
+)
+_ASCII_LOWER = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
 # FILE_ATTRIBUTE_REPARSE_POINT, and the name surrogate bit of a reparse tag (IsReparseTagNameSurrogate).
 _REPARSE_POINT = 0x400
 _NAME_SURROGATE = 0x20000000
@@ -36,6 +48,7 @@ _LOW_64 = (1 << 64) - 1
 class DbspecSetFile:
     """A listed file: its joined path (the set file's prefix followed by the written path) and its
     bytes, which the byte check reads with that path."""
+
     path: str
     data: bytes
 
@@ -44,6 +57,7 @@ class DbspecSetFile:
 class DbspecSet:
     """The files of a set file in written order: the documents the set owns and its external
     documents."""
+
     documents: tuple[DbspecSetFile, ...]
     external: tuple[DbspecSetFile, ...]
 
@@ -51,6 +65,7 @@ class DbspecSet:
 @dataclass(frozen=True)
 class DbspecSetError:
     """One error of a set file: its `set.*` rule, the path it concerns and a message that names it."""
+
     rule: str
     path: str
     message: str
@@ -70,19 +85,23 @@ def read_dbspec_set(path: str) -> tuple[DbspecSet | None, tuple[DbspecSetError, 
     It never follows a symbolic link in a tree that does not change while it runs and does not check
     the bytes of a listed file."""
     if not isinstance(path, str):
-        raise TypeError('dbspec set path must be a string')
+        raise TypeError("dbspec set path must be a string")
     prefix, name = _split(path)
     try:
         data = _read_set_file(path, prefix, name)
         documents, external = _parse(path, data)
     except _Failure as failure:
         return None, (failure.error,)
-    entries = [(written, False) for written in documents] + [(written, True) for written in external]
+    entries = [(written, False) for written in documents] + [
+        (written, True) for written in external
+    ]
     errors = []
     passed = []
     for written, is_external in entries:
         try:
-            passed.append((_check_path(path, prefix, written, is_external), is_external))
+            passed.append(
+                (_check_path(path, prefix, written, is_external), is_external)
+            )
         except _Failure as failure:
             errors.append(failure.error)
     seen = {}
@@ -94,8 +113,13 @@ def read_dbspec_set(path: str) -> tuple[DbspecSet | None, tuple[DbspecSetError, 
             errors.append(failure.error)
             continue
         if identity in seen:
-            errors.append(DbspecSetError('set.duplicate', joined,
-                                         f'{joined} names the file that {seen[identity]} names'))
+            errors.append(
+                DbspecSetError(
+                    "set.duplicate",
+                    joined,
+                    f"{joined} names the file that {seen[identity]} names",
+                )
+            )
             continue
         seen[identity] = joined
         read[1 if is_external else 0].append(DbspecSetFile(joined, data))
@@ -107,24 +131,24 @@ def read_dbspec_set(path: str) -> tuple[DbspecSet | None, tuple[DbspecSetError, 
 def _split(path: str) -> tuple[str, str]:
     """The prefix (the path with its last segment removed) and the last segment. A segment ends at
     `/`, and on Windows also at `\\` or after the drive."""
-    drive = ''
+    drive = ""
     rest = path
     if _WINDOWS:
         drive, rest = ntpath.splitdrive(path)
-        end = max(rest.rfind('/'), rest.rfind('\\'))
+        end = max(rest.rfind("/"), rest.rfind("\\"))
     else:
-        end = rest.rfind('/')
-    return drive + rest[:end + 1], rest[end + 1:]
+        end = rest.rfind("/")
+    return drive + rest[: end + 1], rest[end + 1 :]
 
 
 def _root(prefix: str) -> str:
     """The root as it is examined: the prefix, or `.` when it is empty, without trailing separators,
     which would make lstat follow a symbolic link, unless they are all that names it (`/`, `C:\\`)."""
-    if prefix == '':
-        return '.'
-    separators = '/\\' if _WINDOWS else '/'
+    if prefix == "":
+        return "."
+    separators = "/\\" if _WINDOWS else "/"
     stripped = prefix.rstrip(separators)
-    if stripped == '' or (_WINDOWS and stripped == ntpath.splitdrive(prefix)[0]):
+    if stripped == "" or (_WINDOWS and stripped == ntpath.splitdrive(prefix)[0]):
         return prefix
     return stripped
 
@@ -141,18 +165,25 @@ def _listed(directory: str, segment: str, subject: str, report: str) -> None:
     try:
         names = os.listdir(_os_path(directory))
     except OSError as error:
-        raise _Failure('set.file', report, f'{report}: {directory} cannot be listed: {error}') from None
-    want = segment if _WINDOWS else segment.encode('utf-8')
+        raise _Failure(
+            "set.file", report, f"{report}: {directory} cannot be listed: {error}"
+        ) from None
+    want = segment if _WINDOWS else segment.encode("utf-8")
     if want not in names:
-        raise _Failure('set.file', report, f'{report}: {subject} is not a name that {directory} lists')
+        raise _Failure(
+            "set.file",
+            report,
+            f"{report}: {subject} is not a name that {directory} lists",
+        )
 
 
 def _is_link(status: os.stat_result) -> bool:
     """A symbolic link; on Windows any reparse point whose tag is a name surrogate, a symbolic link
     or a junction."""
     if _WINDOWS:
-        return bool(getattr(status, 'st_file_attributes', 0) & _REPARSE_POINT) \
-            and bool(getattr(status, 'st_reparse_tag', 0) & _NAME_SURROGATE)
+        return bool(getattr(status, "st_file_attributes", 0) & _REPARSE_POINT) and bool(
+            getattr(status, "st_reparse_tag", 0) & _NAME_SURROGATE
+        )
     return stat.S_ISLNK(status.st_mode)
 
 
@@ -160,45 +191,50 @@ def _lstat(path: str, report: str) -> os.stat_result:
     try:
         return os.lstat(_os_path(path))
     except FileNotFoundError:
-        raise _Failure('set.file', report, f'{report}: {path} is missing') from None
+        raise _Failure("set.file", report, f"{report}: {path} is missing") from None
     except OSError as error:
-        raise _Failure('set.file', report, f'{report}: {path} cannot be examined: {error}') from None
+        raise _Failure(
+            "set.file", report, f"{report}: {path} cannot be examined: {error}"
+        ) from None
 
 
 def _read_set_file(path: str, prefix: str, name: str) -> bytes:
     """Step 1: the set file and its root."""
     if name != DBSPEC_SET_NAME:
-        raise _Failure('set.file', path, f'{path} is not named {DBSPEC_SET_NAME}')
+        raise _Failure("set.file", path, f"{path} is not named {DBSPEC_SET_NAME}")
     root = _root(prefix)
     status = _lstat(root, path)
     if _is_link(status):
-        raise _Failure('set.symlink', path, f'{path}: its root {root} is a symbolic link')
+        raise _Failure(
+            "set.symlink", path, f"{path}: its root {root} is a symbolic link"
+        )
     if not stat.S_ISDIR(status.st_mode):
-        raise _Failure('set.file', path, f'{path}: its root {root} is not a directory')
+        raise _Failure("set.file", path, f"{path}: its root {root} is not a directory")
     _listed(root, name, name, path)
     status = _lstat(path, path)
     if _is_link(status):
-        raise _Failure('set.symlink', path, f'{path} is a symbolic link')
+        raise _Failure("set.symlink", path, f"{path} is a symbolic link")
     if not stat.S_ISREG(status.st_mode):
-        raise _Failure('set.file', path, f'{path} is not a regular file')
+        raise _Failure("set.file", path, f"{path} is not a regular file")
     try:
-        with open(_os_path(path), 'rb') as handle:
+        with open(_os_path(path), "rb") as handle:
             return handle.read()
     except OSError as error:
-        raise _Failure('set.file', path, f'{path} cannot be read: {error}') from None
+        raise _Failure("set.file", path, f"{path} cannot be read: {error}") from None
 
 
 def _parse(path: str, data: bytes) -> tuple[list[str], list[str]]:
     """Step 2: the JSON of the set file."""
+
     def invalid(reason):
-        return _Failure('set.json', path, f'{path} {reason}')
+        return _Failure("set.json", path, f"{path} {reason}")
 
     if data.startswith(_BOM):
-        raise invalid('starts with a byte order mark')
+        raise invalid("starts with a byte order mark")
     try:
-        text = data.decode('utf-8')
+        text = data.decode("utf-8")
     except UnicodeDecodeError:
-        raise invalid('is not valid UTF-8') from None
+        raise invalid("is not valid UTF-8") from None
     repeated = []
 
     def pairs(items):
@@ -207,52 +243,67 @@ def _parse(path: str, data: bytes) -> tuple[list[str], list[str]]:
             if key in keys:
                 repeated.append(key)
             keys.add(key)
-        return {key: value for key, value in items} | {_KeyList: [key for key, _ in items]}
+        return {key: value for key, value in items} | {
+            _KeyList: [key for key, _ in items]
+        }
 
     def constant(name):
-        raise ValueError(f'{name} is not a JSON number')
+        raise ValueError(f"{name} is not a JSON number")
 
     try:
-        value = json.loads(text, object_pairs_hook=pairs, parse_constant=constant,
-                           parse_int=float, parse_float=float)
+        value = json.loads(
+            text,
+            object_pairs_hook=pairs,
+            parse_constant=constant,
+            parse_int=float,
+            parse_float=float,
+        )
     except RecursionError:
-        raise invalid(f'is nested more than {_MAX_DEPTH} levels deep') from None
+        raise invalid(f"is nested more than {_MAX_DEPTH} levels deep") from None
     except ValueError as error:
-        raise invalid(f'is not JSON: {error}') from None
+        raise invalid(f"is not JSON: {error}") from None
     if not isinstance(value, dict):
-        raise invalid('is not a JSON object')
+        raise invalid("is not a JSON object")
     depth, surrogate = _walk(value)
     if depth > _MAX_DEPTH:
-        raise invalid(f'is nested more than {_MAX_DEPTH} levels deep')
+        raise invalid(f"is nested more than {_MAX_DEPTH} levels deep")
     if surrogate:
-        raise invalid('escapes a lone surrogate')
+        raise invalid("escapes a lone surrogate")
 
     def key_error(message):
-        return _Failure('set.key', path, f'{path} {message}')
+        return _Failure("set.key", path, f"{path} {message}")
 
     if repeated:
-        raise key_error('repeats the key ' + ', '.join(json.dumps(key, ensure_ascii=False)
-                                                      for key in sorted(set(repeated))))
+        raise key_error(
+            "repeats the key "
+            + ", ".join(
+                json.dumps(key, ensure_ascii=False) for key in sorted(set(repeated))
+            )
+        )
     del value[_KeyList]
     unknown = sorted(key for key in value if key not in _KEYS)
     if unknown:
-        raise key_error('has the unknown key ' + ', '.join(json.dumps(key, ensure_ascii=False)
-                                                           for key in unknown))
-    schema = value.get('schema')
+        raise key_error(
+            "has the unknown key "
+            + ", ".join(json.dumps(key, ensure_ascii=False) for key in unknown)
+        )
+    schema = value.get("schema")
     if not isinstance(schema, float) or schema != 1:
-        raise _Failure('set.schema', path,
-                       f'{path} has no schema 1' if 'schema' in value
-                       else f'{path} has no schema')
-    if 'documents' not in value:
-        raise key_error('has no documents')
-    documents = value['documents']
+        raise _Failure(
+            "set.schema",
+            path,
+            f"{path} has no schema 1" if "schema" in value else f"{path} has no schema",
+        )
+    if "documents" not in value:
+        raise key_error("has no documents")
+    documents = value["documents"]
     if not _strings(documents):
-        raise key_error('has documents that are not an array of strings')
+        raise key_error("has documents that are not an array of strings")
     if not documents:
-        raise _Failure('set.empty', path, f'{path} has no documents')
-    external = value.get('external', [])
+        raise _Failure("set.empty", path, f"{path} has no documents")
+    external = value.get("external", [])
     if not _strings(external):
-        raise key_error('has external that is not an array of strings')
+        raise key_error("has external that is not an array of strings")
     return documents, external
 
 
@@ -277,7 +328,9 @@ def _walk(value) -> tuple[int, bool]:
         if isinstance(item, dict):
             depth = max(depth, level)
             surrogate = surrogate or any(_has_surrogate(key) for key in item[_KeyList])
-            stack.extend((child, level + 1) for key, child in item.items() if key is not _KeyList)
+            stack.extend(
+                (child, level + 1) for key, child in item.items() if key is not _KeyList
+            )
         elif isinstance(item, list):
             depth = max(depth, level)
             stack.extend((child, level + 1) for child in item)
@@ -287,26 +340,26 @@ def _walk(value) -> tuple[int, bool]:
 
 
 def _has_surrogate(text: str) -> bool:
-    return any('\ud800' <= c <= '\udfff' for c in text)
+    return any("\ud800" <= c <= "\udfff" for c in text)
 
 
 def _normal(written: str, is_external: bool) -> bool:
     """Whether `written` is in the normal form of a set path."""
-    segments = written.split('/')
-    if not segments[-1].endswith('.dbs'):
+    segments = written.split("/")
+    if not segments[-1].endswith(".dbs"):
         return False
     leading = is_external
     for segment in segments:
-        if segment == '..':
+        if segment == "..":
             if not leading:
                 return False
             continue
         leading = False
-        if segment == '' or segment == '.' or segment[-1] in '. ':
+        if segment == "" or segment == "." or segment[-1] in ". ":
             return False
         if any(c in _FORBIDDEN for c in segment):
             return False
-        if segment.split('.', 1)[0].rstrip(' ').translate(_ASCII_LOWER) in _DEVICES:
+        if segment.split(".", 1)[0].rstrip(" ").translate(_ASCII_LOWER) in _DEVICES:
             return False
     return True
 
@@ -315,25 +368,32 @@ def _check_path(path: str, prefix: str, written: str, is_external: bool) -> str:
     """Step 3 for one written path: its normal form, then every component of its joined path. It
     gives the joined path."""
     if not _normal(written, is_external):
-        kind = 'external' if is_external else 'documents'
-        raise _Failure('set.path', path,
-                       f'{path}: the {kind} path {json.dumps(written, ensure_ascii=False)} '
-                       f'has no normal form')
+        kind = "external" if is_external else "documents"
+        raise _Failure(
+            "set.path",
+            path,
+            f"{path}: the {kind} path {json.dumps(written, ensure_ascii=False)} "
+            f"has no normal form",
+        )
     joined = prefix + written
-    segments = written.split('/')
+    segments = written.split("/")
     directory = _root(prefix)
     for index, segment in enumerate(segments):
-        component = prefix + '/'.join(segments[:index + 1])
+        component = prefix + "/".join(segments[: index + 1])
         last = index == len(segments) - 1
-        if segment != '..':
+        if segment != "..":
             _listed(directory, segment, component, joined)
         status = _lstat(component, joined)
         if _is_link(status):
-            raise _Failure('set.symlink', joined, f'{joined}: {component} is a symbolic link')
+            raise _Failure(
+                "set.symlink", joined, f"{joined}: {component} is a symbolic link"
+            )
         if last and not stat.S_ISREG(status.st_mode):
-            raise _Failure('set.file', joined, f'{joined} is not a regular file')
+            raise _Failure("set.file", joined, f"{joined} is not a regular file")
         if not last and not stat.S_ISDIR(status.st_mode):
-            raise _Failure('set.file', joined, f'{joined}: {component} is not a directory')
+            raise _Failure(
+                "set.file", joined, f"{joined}: {component} is not a directory"
+            )
         directory = component
     return joined
 
@@ -341,9 +401,11 @@ def _check_path(path: str, prefix: str, written: str, is_external: bool) -> str:
 def _read_listed(joined: str) -> tuple[bytes, tuple[int, int]]:
     """Step 4 for one path: its bytes and its identity, both from one handle."""
     try:
-        with open(_os_path(joined), 'rb') as handle:
+        with open(_os_path(joined), "rb") as handle:
             status = os.fstat(handle.fileno())
             data = handle.read()
     except OSError as error:
-        raise _Failure('set.file', joined, f'{joined} cannot be read: {error}') from None
+        raise _Failure(
+            "set.file", joined, f"{joined} cannot be read: {error}"
+        ) from None
     return data, (status.st_dev, status.st_ino & _LOW_64)

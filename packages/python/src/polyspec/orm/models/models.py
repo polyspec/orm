@@ -6,7 +6,9 @@ from polyspec.orm import Model, Schema, register_model
 # The manifest text of the dbspec document set the models were generated from.
 MANIFEST_TEXT = "dbspec 1 bench\n\ntable author {\n  seq i64 identity\n  name varchar(191)\n  description text null\n  created_ts datetime(6) default now\n  updated_ts datetime(6) default now\n  is_close bool default false\n  is_display bool default false\n  display_start_dt datetime(6) null\n  display_end_dt datetime(6) null\n  is_allday bool default false\n  target_club_reader_count i32 default 0\n  success_count i32 default 0\n  reader_count i32 default 0\n  read_count i32 default 0\n  photo_url varchar(191) null\n  user_seq i64\n  service_seq i64\n  service_region_seq i64\n  service_member_seq i64\n  start_dt datetime(6)\n  end_dt datetime(6)\n  uuid varchar(36) null\n  is_single_work bool default false\n  like_count i32 default 0\n  aes_key_version i32 default 1\n  aes_hex_email varchar(255) null\n  email_blind_index varchar(64) null\n  aes_hex_phone varchar(255) null\n  phone_blind_index varchar(64) null\n  price decimal(13,3) null\n  ip bytes null\n  gz_extend bytes null\n  json_setting text null\n  jsons_tags text null\n  base64_extra text null\n  serialize_data text null\n  primary key (seq)\n  unique uq_author_uuid (uuid)\n  index ik (service_region_seq, is_close, is_display, is_allday)\n  index ix_author_service_member (service_member_seq)\n  index ix_email_blind_index (email_blind_index)\n  index ix_phone_blind_index (phone_blind_index)\n  index ix_service (service_seq, is_close)\n  index ix_user (user_seq, is_close)\n  foreign key fk_author_service (service_seq) references service (seq) on delete restrict on update restrict\n  foreign key fk_author_service_member (service_member_seq) references service_member (seq) on delete restrict on update restrict\n  foreign key fk_author_service_region (service_region_seq) references service_region (seq) on delete restrict on update restrict\n  foreign key fk_author_user (user_seq) references user (seq) on delete restrict on update restrict\n  check ck_author_counts (target_club_reader_count >= 0 and success_count >= 0 and reader_count >= 0 and read_count >= 0 and like_count >= 0)\n  settings {\n    updated updated_ts\n    select explicit description email_blind_index phone_blind_index ip gz_extend json_setting jsons_tags base64_extra serialize_data aes_key_version\n    codec aes_hex_email aes hex\n    codec aes_hex_phone aes hex\n    codec base64_extra base64\n    codec gz_extend gz\n    codec ip ip\n    codec json_setting ordered_json\n    codec jsons_tags ordered_json\n    codec serialize_data serialize\n    aes_version aes_key_version\n    blind_index aes_hex_email email_blind_index\n    blind_index aes_hex_phone phone_blind_index\n  }\n}\n\ntable user {\n  seq i64 identity\n  name varchar(191)\n  primary key (seq)\n}\n\ntable service {\n  seq i64 identity\n  name varchar(191)\n  primary key (seq)\n}\n\ntable service_region {\n  seq i64 identity\n  service_seq i64\n  name varchar(191)\n  primary key (seq)\n  index ix_service_region_service (service_seq)\n  foreign key fk_service_region_service (service_seq) references service (seq) on delete restrict on update restrict\n}\n\ntable service_member {\n  seq i64 identity\n  service_seq i64\n  user_seq i64\n  primary key (seq)\n  index ix_service_member_service (service_seq)\n  index ix_service_member_user (user_seq)\n  foreign key fk_service_member_service (service_seq) references service (seq) on delete restrict on update restrict\n  foreign key fk_service_member_user (user_seq) references user (seq) on delete restrict on update restrict\n}\n\ntable composite_account {\n  tenant_id i64\n  account_id i64\n  name varchar(191)\n  primary key (tenant_id, account_id)\n}\n\ntable composite_membership {\n  tenant_id i64\n  account_id i64\n  role varchar(191)\n  primary key (tenant_id, account_id)\n  foreign key fk_composite_membership_account (tenant_id, account_id) references composite_account (tenant_id, account_id) on delete cascade on update restrict\n  settings {\n    navigation fk_composite_membership_account account memberships\n  }\n}\n\ntable soft_record {\n  seq i64 identity\n  name varchar(191)\n  deleted_at datetime(6) null\n  primary key (seq)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable account {\n  seq i64 identity\n  name varchar(191)\n  primary key (seq)\n}\n\ntable project {\n  seq i64 identity\n  name varchar(191)\n  primary key (seq)\n}\n\ntable account_project {\n  account_seq i64\n  project_seq i64\n  primary key (account_seq, project_seq)\n  index ix_account_project_project (project_seq)\n  foreign key fk_account_project_account (account_seq) references account (seq) on delete restrict on update restrict\n  foreign key fk_account_project_project (project_seq) references project (seq) on delete restrict on update restrict\n}\n\ntable task {\n  seq i64 identity\n  title varchar(191)\n  state varchar(8)\n  primary key (seq)\n  check ck_task_state (state in ('open', 'done'))\n}\n\ntable hex_cell {\n  seq i64 identity\n  label varchar(32)\n  value varchar(64) null\n  primary key (seq)\n  settings {\n    codec value hex\n  }\n}\n"
 
-MANIFEST_HASH = 'sha256:27675b7fddd99bfdcb47f88bd4050552b25c1c345d84908a29b1b6d339d91322'
+MANIFEST_HASH = (
+    "sha256:27675b7fddd99bfdcb47f88bd4050552b25c1c345d84908a29b1b6d339d91322"
+)
 
 # The generated schema value: install takes it to create the tables and register the set.
 SCHEMA = Schema(MANIFEST_TEXT, MANIFEST_HASH)
@@ -16,7 +18,9 @@ def connect(dsn: str, **options):
     """Opens the database selected by the DSN URI and registers the set of these
     models on the connection."""
     from polyspec.orm import Db
+
     return Db.connect_schema(dsn, SCHEMA, options)
+
 
 model = register_model(MANIFEST_TEXT, MANIFEST_HASH)
 
@@ -26,1502 +30,1509 @@ class Author(Model):
 
     @property
     def entity_def(self):
-        return model.entity_of('author', Author)
+        return model.entity_of("author", Author)
 
     def get_seq(self):
         """seq: int."""
-        return self.core.column('seq')
+        return self.core.column("seq")
 
     def set_seq(self, value) -> Self:
-        self.core.set_value('seq', value)
+        self.core.set_value("seq", value)
         return self
 
     def add_column_seq(self) -> Self:
-        self.core.add_column('seq')
+        self.core.add_column("seq")
         return self
 
     def remove_column_seq(self) -> Self:
-        self.core.remove_column('seq')
+        self.core.remove_column("seq")
         return self
 
     def group_by_seq(self) -> Self:
-        self.core.group_by.append('seq')
+        self.core.group_by.append("seq")
         return self
 
     def key_name_seq(self) -> Self:
-        self.core.key_name = 'seq'
+        self.core.key_name = "seq"
         return self
 
     def order_by_seq_asc(self, *fn) -> Self:
-        self.core.order_by('seq', False, fn)
+        self.core.order_by("seq", False, fn)
         return self
 
     def order_by_seq_desc(self, *fn) -> Self:
-        self.core.order_by('seq', True, fn)
+        self.core.order_by("seq", True, fn)
         return self
 
     def plus_seq(self, n) -> Self:
-        self.core.put_plus('seq', n)
+        self.core.put_plus("seq", n)
         return self
 
     def minus_seq(self, n) -> Self:
-        self.core.put_minus('seq', n)
+        self.core.put_minus("seq", n)
         return self
 
     def sum_seq(self) -> Self:
-        self.core.aggregate('sum', 'seq')
+        self.core.aggregate("sum", "seq")
         return self
 
     def avg_seq(self) -> Self:
-        self.core.aggregate('avg', 'seq')
+        self.core.aggregate("avg", "seq")
         return self
 
     def get_name(self):
         """name: str."""
-        return self.core.column('name')
+        return self.core.column("name")
 
     def set_name(self, value) -> Self:
-        self.core.set_value('name', value)
+        self.core.set_value("name", value)
         return self
 
     def add_column_name(self) -> Self:
-        self.core.add_column('name')
+        self.core.add_column("name")
         return self
 
     def remove_column_name(self) -> Self:
-        self.core.remove_column('name')
+        self.core.remove_column("name")
         return self
 
     def group_by_name(self) -> Self:
-        self.core.group_by.append('name')
+        self.core.group_by.append("name")
         return self
 
     def key_name_name(self) -> Self:
-        self.core.key_name = 'name'
+        self.core.key_name = "name"
         return self
 
     def order_by_name_asc(self, *fn) -> Self:
-        self.core.order_by('name', False, fn)
+        self.core.order_by("name", False, fn)
         return self
 
     def order_by_name_desc(self, *fn) -> Self:
-        self.core.order_by('name', True, fn)
+        self.core.order_by("name", True, fn)
         return self
 
     def get_description(self):
         """description: str."""
-        return self.core.column('description')
+        return self.core.column("description")
 
     def set_description(self, value) -> Self:
-        self.core.set_value('description', value)
+        self.core.set_value("description", value)
         return self
 
     def add_column_description(self) -> Self:
-        self.core.add_column('description')
+        self.core.add_column("description")
         return self
 
     def remove_column_description(self) -> Self:
-        self.core.remove_column('description')
+        self.core.remove_column("description")
         return self
 
     def group_by_description(self) -> Self:
-        self.core.group_by.append('description')
+        self.core.group_by.append("description")
         return self
 
     def key_name_description(self) -> Self:
-        self.core.key_name = 'description'
+        self.core.key_name = "description"
         return self
 
     def order_by_description_asc(self, *fn) -> Self:
-        self.core.order_by('description', False, fn)
+        self.core.order_by("description", False, fn)
         return self
 
     def order_by_description_desc(self, *fn) -> Self:
-        self.core.order_by('description', True, fn)
+        self.core.order_by("description", True, fn)
         return self
 
     def get_created_ts(self):
         """created_ts: str."""
-        return self.core.column('created_ts')
+        return self.core.column("created_ts")
 
     def set_created_ts(self, value) -> Self:
-        self.core.set_value('created_ts', value)
+        self.core.set_value("created_ts", value)
         return self
 
     def add_column_created_ts(self) -> Self:
-        self.core.add_column('created_ts')
+        self.core.add_column("created_ts")
         return self
 
     def remove_column_created_ts(self) -> Self:
-        self.core.remove_column('created_ts')
+        self.core.remove_column("created_ts")
         return self
 
     def group_by_created_ts(self) -> Self:
-        self.core.group_by.append('created_ts')
+        self.core.group_by.append("created_ts")
         return self
 
     def key_name_created_ts(self) -> Self:
-        self.core.key_name = 'created_ts'
+        self.core.key_name = "created_ts"
         return self
 
     def order_by_created_ts_asc(self, *fn) -> Self:
-        self.core.order_by('created_ts', False, fn)
+        self.core.order_by("created_ts", False, fn)
         return self
 
     def order_by_created_ts_desc(self, *fn) -> Self:
-        self.core.order_by('created_ts', True, fn)
+        self.core.order_by("created_ts", True, fn)
         return self
 
     def get_updated_ts(self):
         """updated_ts: str."""
-        return self.core.column('updated_ts')
+        return self.core.column("updated_ts")
 
     def set_updated_ts(self, value) -> Self:
-        self.core.set_value('updated_ts', value)
+        self.core.set_value("updated_ts", value)
         return self
 
     def add_column_updated_ts(self) -> Self:
-        self.core.add_column('updated_ts')
+        self.core.add_column("updated_ts")
         return self
 
     def remove_column_updated_ts(self) -> Self:
-        self.core.remove_column('updated_ts')
+        self.core.remove_column("updated_ts")
         return self
 
     def group_by_updated_ts(self) -> Self:
-        self.core.group_by.append('updated_ts')
+        self.core.group_by.append("updated_ts")
         return self
 
     def key_name_updated_ts(self) -> Self:
-        self.core.key_name = 'updated_ts'
+        self.core.key_name = "updated_ts"
         return self
 
     def order_by_updated_ts_asc(self, *fn) -> Self:
-        self.core.order_by('updated_ts', False, fn)
+        self.core.order_by("updated_ts", False, fn)
         return self
 
     def order_by_updated_ts_desc(self, *fn) -> Self:
-        self.core.order_by('updated_ts', True, fn)
+        self.core.order_by("updated_ts", True, fn)
         return self
 
     def get_is_close(self):
         """is_close: bool."""
-        return self.core.column('is_close')
+        return self.core.column("is_close")
 
     def set_is_close(self, value) -> Self:
-        self.core.set_value('is_close', value)
+        self.core.set_value("is_close", value)
         return self
 
     def add_column_is_close(self) -> Self:
-        self.core.add_column('is_close')
+        self.core.add_column("is_close")
         return self
 
     def remove_column_is_close(self) -> Self:
-        self.core.remove_column('is_close')
+        self.core.remove_column("is_close")
         return self
 
     def group_by_is_close(self) -> Self:
-        self.core.group_by.append('is_close')
+        self.core.group_by.append("is_close")
         return self
 
     def key_name_is_close(self) -> Self:
-        self.core.key_name = 'is_close'
+        self.core.key_name = "is_close"
         return self
 
     def order_by_is_close_asc(self, *fn) -> Self:
-        self.core.order_by('is_close', False, fn)
+        self.core.order_by("is_close", False, fn)
         return self
 
     def order_by_is_close_desc(self, *fn) -> Self:
-        self.core.order_by('is_close', True, fn)
+        self.core.order_by("is_close", True, fn)
         return self
 
     def get_is_display(self):
         """is_display: bool."""
-        return self.core.column('is_display')
+        return self.core.column("is_display")
 
     def set_is_display(self, value) -> Self:
-        self.core.set_value('is_display', value)
+        self.core.set_value("is_display", value)
         return self
 
     def add_column_is_display(self) -> Self:
-        self.core.add_column('is_display')
+        self.core.add_column("is_display")
         return self
 
     def remove_column_is_display(self) -> Self:
-        self.core.remove_column('is_display')
+        self.core.remove_column("is_display")
         return self
 
     def group_by_is_display(self) -> Self:
-        self.core.group_by.append('is_display')
+        self.core.group_by.append("is_display")
         return self
 
     def key_name_is_display(self) -> Self:
-        self.core.key_name = 'is_display'
+        self.core.key_name = "is_display"
         return self
 
     def order_by_is_display_asc(self, *fn) -> Self:
-        self.core.order_by('is_display', False, fn)
+        self.core.order_by("is_display", False, fn)
         return self
 
     def order_by_is_display_desc(self, *fn) -> Self:
-        self.core.order_by('is_display', True, fn)
+        self.core.order_by("is_display", True, fn)
         return self
 
     def get_display_start_dt(self):
         """display_start_dt: str."""
-        return self.core.column('display_start_dt')
+        return self.core.column("display_start_dt")
 
     def set_display_start_dt(self, value) -> Self:
-        self.core.set_value('display_start_dt', value)
+        self.core.set_value("display_start_dt", value)
         return self
 
     def add_column_display_start_dt(self) -> Self:
-        self.core.add_column('display_start_dt')
+        self.core.add_column("display_start_dt")
         return self
 
     def remove_column_display_start_dt(self) -> Self:
-        self.core.remove_column('display_start_dt')
+        self.core.remove_column("display_start_dt")
         return self
 
     def group_by_display_start_dt(self) -> Self:
-        self.core.group_by.append('display_start_dt')
+        self.core.group_by.append("display_start_dt")
         return self
 
     def key_name_display_start_dt(self) -> Self:
-        self.core.key_name = 'display_start_dt'
+        self.core.key_name = "display_start_dt"
         return self
 
     def order_by_display_start_dt_asc(self, *fn) -> Self:
-        self.core.order_by('display_start_dt', False, fn)
+        self.core.order_by("display_start_dt", False, fn)
         return self
 
     def order_by_display_start_dt_desc(self, *fn) -> Self:
-        self.core.order_by('display_start_dt', True, fn)
+        self.core.order_by("display_start_dt", True, fn)
         return self
 
     def get_display_end_dt(self):
         """display_end_dt: str."""
-        return self.core.column('display_end_dt')
+        return self.core.column("display_end_dt")
 
     def set_display_end_dt(self, value) -> Self:
-        self.core.set_value('display_end_dt', value)
+        self.core.set_value("display_end_dt", value)
         return self
 
     def add_column_display_end_dt(self) -> Self:
-        self.core.add_column('display_end_dt')
+        self.core.add_column("display_end_dt")
         return self
 
     def remove_column_display_end_dt(self) -> Self:
-        self.core.remove_column('display_end_dt')
+        self.core.remove_column("display_end_dt")
         return self
 
     def group_by_display_end_dt(self) -> Self:
-        self.core.group_by.append('display_end_dt')
+        self.core.group_by.append("display_end_dt")
         return self
 
     def key_name_display_end_dt(self) -> Self:
-        self.core.key_name = 'display_end_dt'
+        self.core.key_name = "display_end_dt"
         return self
 
     def order_by_display_end_dt_asc(self, *fn) -> Self:
-        self.core.order_by('display_end_dt', False, fn)
+        self.core.order_by("display_end_dt", False, fn)
         return self
 
     def order_by_display_end_dt_desc(self, *fn) -> Self:
-        self.core.order_by('display_end_dt', True, fn)
+        self.core.order_by("display_end_dt", True, fn)
         return self
 
     def get_is_allday(self):
         """is_allday: bool."""
-        return self.core.column('is_allday')
+        return self.core.column("is_allday")
 
     def set_is_allday(self, value) -> Self:
-        self.core.set_value('is_allday', value)
+        self.core.set_value("is_allday", value)
         return self
 
     def add_column_is_allday(self) -> Self:
-        self.core.add_column('is_allday')
+        self.core.add_column("is_allday")
         return self
 
     def remove_column_is_allday(self) -> Self:
-        self.core.remove_column('is_allday')
+        self.core.remove_column("is_allday")
         return self
 
     def group_by_is_allday(self) -> Self:
-        self.core.group_by.append('is_allday')
+        self.core.group_by.append("is_allday")
         return self
 
     def key_name_is_allday(self) -> Self:
-        self.core.key_name = 'is_allday'
+        self.core.key_name = "is_allday"
         return self
 
     def order_by_is_allday_asc(self, *fn) -> Self:
-        self.core.order_by('is_allday', False, fn)
+        self.core.order_by("is_allday", False, fn)
         return self
 
     def order_by_is_allday_desc(self, *fn) -> Self:
-        self.core.order_by('is_allday', True, fn)
+        self.core.order_by("is_allday", True, fn)
         return self
 
     def get_target_club_reader_count(self):
         """target_club_reader_count: int."""
-        return self.core.column('target_club_reader_count')
+        return self.core.column("target_club_reader_count")
 
     def set_target_club_reader_count(self, value) -> Self:
-        self.core.set_value('target_club_reader_count', value)
+        self.core.set_value("target_club_reader_count", value)
         return self
 
     def add_column_target_club_reader_count(self) -> Self:
-        self.core.add_column('target_club_reader_count')
+        self.core.add_column("target_club_reader_count")
         return self
 
     def remove_column_target_club_reader_count(self) -> Self:
-        self.core.remove_column('target_club_reader_count')
+        self.core.remove_column("target_club_reader_count")
         return self
 
     def group_by_target_club_reader_count(self) -> Self:
-        self.core.group_by.append('target_club_reader_count')
+        self.core.group_by.append("target_club_reader_count")
         return self
 
     def key_name_target_club_reader_count(self) -> Self:
-        self.core.key_name = 'target_club_reader_count'
+        self.core.key_name = "target_club_reader_count"
         return self
 
     def order_by_target_club_reader_count_asc(self, *fn) -> Self:
-        self.core.order_by('target_club_reader_count', False, fn)
+        self.core.order_by("target_club_reader_count", False, fn)
         return self
 
     def order_by_target_club_reader_count_desc(self, *fn) -> Self:
-        self.core.order_by('target_club_reader_count', True, fn)
+        self.core.order_by("target_club_reader_count", True, fn)
         return self
 
     def plus_target_club_reader_count(self, n) -> Self:
-        self.core.put_plus('target_club_reader_count', n)
+        self.core.put_plus("target_club_reader_count", n)
         return self
 
     def minus_target_club_reader_count(self, n) -> Self:
-        self.core.put_minus('target_club_reader_count', n)
+        self.core.put_minus("target_club_reader_count", n)
         return self
 
     def sum_target_club_reader_count(self) -> Self:
-        self.core.aggregate('sum', 'target_club_reader_count')
+        self.core.aggregate("sum", "target_club_reader_count")
         return self
 
     def avg_target_club_reader_count(self) -> Self:
-        self.core.aggregate('avg', 'target_club_reader_count')
+        self.core.aggregate("avg", "target_club_reader_count")
         return self
 
     def get_success_count(self):
         """success_count: int."""
-        return self.core.column('success_count')
+        return self.core.column("success_count")
 
     def set_success_count(self, value) -> Self:
-        self.core.set_value('success_count', value)
+        self.core.set_value("success_count", value)
         return self
 
     def add_column_success_count(self) -> Self:
-        self.core.add_column('success_count')
+        self.core.add_column("success_count")
         return self
 
     def remove_column_success_count(self) -> Self:
-        self.core.remove_column('success_count')
+        self.core.remove_column("success_count")
         return self
 
     def group_by_success_count(self) -> Self:
-        self.core.group_by.append('success_count')
+        self.core.group_by.append("success_count")
         return self
 
     def key_name_success_count(self) -> Self:
-        self.core.key_name = 'success_count'
+        self.core.key_name = "success_count"
         return self
 
     def order_by_success_count_asc(self, *fn) -> Self:
-        self.core.order_by('success_count', False, fn)
+        self.core.order_by("success_count", False, fn)
         return self
 
     def order_by_success_count_desc(self, *fn) -> Self:
-        self.core.order_by('success_count', True, fn)
+        self.core.order_by("success_count", True, fn)
         return self
 
     def plus_success_count(self, n) -> Self:
-        self.core.put_plus('success_count', n)
+        self.core.put_plus("success_count", n)
         return self
 
     def minus_success_count(self, n) -> Self:
-        self.core.put_minus('success_count', n)
+        self.core.put_minus("success_count", n)
         return self
 
     def sum_success_count(self) -> Self:
-        self.core.aggregate('sum', 'success_count')
+        self.core.aggregate("sum", "success_count")
         return self
 
     def avg_success_count(self) -> Self:
-        self.core.aggregate('avg', 'success_count')
+        self.core.aggregate("avg", "success_count")
         return self
 
     def get_reader_count(self):
         """reader_count: int."""
-        return self.core.column('reader_count')
+        return self.core.column("reader_count")
 
     def set_reader_count(self, value) -> Self:
-        self.core.set_value('reader_count', value)
+        self.core.set_value("reader_count", value)
         return self
 
     def add_column_reader_count(self) -> Self:
-        self.core.add_column('reader_count')
+        self.core.add_column("reader_count")
         return self
 
     def remove_column_reader_count(self) -> Self:
-        self.core.remove_column('reader_count')
+        self.core.remove_column("reader_count")
         return self
 
     def group_by_reader_count(self) -> Self:
-        self.core.group_by.append('reader_count')
+        self.core.group_by.append("reader_count")
         return self
 
     def key_name_reader_count(self) -> Self:
-        self.core.key_name = 'reader_count'
+        self.core.key_name = "reader_count"
         return self
 
     def order_by_reader_count_asc(self, *fn) -> Self:
-        self.core.order_by('reader_count', False, fn)
+        self.core.order_by("reader_count", False, fn)
         return self
 
     def order_by_reader_count_desc(self, *fn) -> Self:
-        self.core.order_by('reader_count', True, fn)
+        self.core.order_by("reader_count", True, fn)
         return self
 
     def plus_reader_count(self, n) -> Self:
-        self.core.put_plus('reader_count', n)
+        self.core.put_plus("reader_count", n)
         return self
 
     def minus_reader_count(self, n) -> Self:
-        self.core.put_minus('reader_count', n)
+        self.core.put_minus("reader_count", n)
         return self
 
     def sum_reader_count(self) -> Self:
-        self.core.aggregate('sum', 'reader_count')
+        self.core.aggregate("sum", "reader_count")
         return self
 
     def avg_reader_count(self) -> Self:
-        self.core.aggregate('avg', 'reader_count')
+        self.core.aggregate("avg", "reader_count")
         return self
 
     def get_read_count(self):
         """read_count: int."""
-        return self.core.column('read_count')
+        return self.core.column("read_count")
 
     def set_read_count(self, value) -> Self:
-        self.core.set_value('read_count', value)
+        self.core.set_value("read_count", value)
         return self
 
     def add_column_read_count(self) -> Self:
-        self.core.add_column('read_count')
+        self.core.add_column("read_count")
         return self
 
     def remove_column_read_count(self) -> Self:
-        self.core.remove_column('read_count')
+        self.core.remove_column("read_count")
         return self
 
     def group_by_read_count(self) -> Self:
-        self.core.group_by.append('read_count')
+        self.core.group_by.append("read_count")
         return self
 
     def key_name_read_count(self) -> Self:
-        self.core.key_name = 'read_count'
+        self.core.key_name = "read_count"
         return self
 
     def order_by_read_count_asc(self, *fn) -> Self:
-        self.core.order_by('read_count', False, fn)
+        self.core.order_by("read_count", False, fn)
         return self
 
     def order_by_read_count_desc(self, *fn) -> Self:
-        self.core.order_by('read_count', True, fn)
+        self.core.order_by("read_count", True, fn)
         return self
 
     def plus_read_count(self, n) -> Self:
-        self.core.put_plus('read_count', n)
+        self.core.put_plus("read_count", n)
         return self
 
     def minus_read_count(self, n) -> Self:
-        self.core.put_minus('read_count', n)
+        self.core.put_minus("read_count", n)
         return self
 
     def sum_read_count(self) -> Self:
-        self.core.aggregate('sum', 'read_count')
+        self.core.aggregate("sum", "read_count")
         return self
 
     def avg_read_count(self) -> Self:
-        self.core.aggregate('avg', 'read_count')
+        self.core.aggregate("avg", "read_count")
         return self
 
     def get_photo_url(self):
         """photo_url: str."""
-        return self.core.column('photo_url')
+        return self.core.column("photo_url")
 
     def set_photo_url(self, value) -> Self:
-        self.core.set_value('photo_url', value)
+        self.core.set_value("photo_url", value)
         return self
 
     def add_column_photo_url(self) -> Self:
-        self.core.add_column('photo_url')
+        self.core.add_column("photo_url")
         return self
 
     def remove_column_photo_url(self) -> Self:
-        self.core.remove_column('photo_url')
+        self.core.remove_column("photo_url")
         return self
 
     def group_by_photo_url(self) -> Self:
-        self.core.group_by.append('photo_url')
+        self.core.group_by.append("photo_url")
         return self
 
     def key_name_photo_url(self) -> Self:
-        self.core.key_name = 'photo_url'
+        self.core.key_name = "photo_url"
         return self
 
     def order_by_photo_url_asc(self, *fn) -> Self:
-        self.core.order_by('photo_url', False, fn)
+        self.core.order_by("photo_url", False, fn)
         return self
 
     def order_by_photo_url_desc(self, *fn) -> Self:
-        self.core.order_by('photo_url', True, fn)
+        self.core.order_by("photo_url", True, fn)
         return self
 
     def get_user_seq(self):
         """user_seq: int."""
-        return self.core.column('user_seq')
+        return self.core.column("user_seq")
 
     def set_user_seq(self, value) -> Self:
-        self.core.set_value('user_seq', value)
+        self.core.set_value("user_seq", value)
         return self
 
     def add_column_user_seq(self) -> Self:
-        self.core.add_column('user_seq')
+        self.core.add_column("user_seq")
         return self
 
     def remove_column_user_seq(self) -> Self:
-        self.core.remove_column('user_seq')
+        self.core.remove_column("user_seq")
         return self
 
     def group_by_user_seq(self) -> Self:
-        self.core.group_by.append('user_seq')
+        self.core.group_by.append("user_seq")
         return self
 
     def key_name_user_seq(self) -> Self:
-        self.core.key_name = 'user_seq'
+        self.core.key_name = "user_seq"
         return self
 
     def order_by_user_seq_asc(self, *fn) -> Self:
-        self.core.order_by('user_seq', False, fn)
+        self.core.order_by("user_seq", False, fn)
         return self
 
     def order_by_user_seq_desc(self, *fn) -> Self:
-        self.core.order_by('user_seq', True, fn)
+        self.core.order_by("user_seq", True, fn)
         return self
 
     def plus_user_seq(self, n) -> Self:
-        self.core.put_plus('user_seq', n)
+        self.core.put_plus("user_seq", n)
         return self
 
     def minus_user_seq(self, n) -> Self:
-        self.core.put_minus('user_seq', n)
+        self.core.put_minus("user_seq", n)
         return self
 
     def sum_user_seq(self) -> Self:
-        self.core.aggregate('sum', 'user_seq')
+        self.core.aggregate("sum", "user_seq")
         return self
 
     def avg_user_seq(self) -> Self:
-        self.core.aggregate('avg', 'user_seq')
+        self.core.aggregate("avg", "user_seq")
         return self
 
     def get_service_seq(self):
         """service_seq: int."""
-        return self.core.column('service_seq')
+        return self.core.column("service_seq")
 
     def set_service_seq(self, value) -> Self:
-        self.core.set_value('service_seq', value)
+        self.core.set_value("service_seq", value)
         return self
 
     def add_column_service_seq(self) -> Self:
-        self.core.add_column('service_seq')
+        self.core.add_column("service_seq")
         return self
 
     def remove_column_service_seq(self) -> Self:
-        self.core.remove_column('service_seq')
+        self.core.remove_column("service_seq")
         return self
 
     def group_by_service_seq(self) -> Self:
-        self.core.group_by.append('service_seq')
+        self.core.group_by.append("service_seq")
         return self
 
     def key_name_service_seq(self) -> Self:
-        self.core.key_name = 'service_seq'
+        self.core.key_name = "service_seq"
         return self
 
     def order_by_service_seq_asc(self, *fn) -> Self:
-        self.core.order_by('service_seq', False, fn)
+        self.core.order_by("service_seq", False, fn)
         return self
 
     def order_by_service_seq_desc(self, *fn) -> Self:
-        self.core.order_by('service_seq', True, fn)
+        self.core.order_by("service_seq", True, fn)
         return self
 
     def plus_service_seq(self, n) -> Self:
-        self.core.put_plus('service_seq', n)
+        self.core.put_plus("service_seq", n)
         return self
 
     def minus_service_seq(self, n) -> Self:
-        self.core.put_minus('service_seq', n)
+        self.core.put_minus("service_seq", n)
         return self
 
     def sum_service_seq(self) -> Self:
-        self.core.aggregate('sum', 'service_seq')
+        self.core.aggregate("sum", "service_seq")
         return self
 
     def avg_service_seq(self) -> Self:
-        self.core.aggregate('avg', 'service_seq')
+        self.core.aggregate("avg", "service_seq")
         return self
 
     def get_service_region_seq(self):
         """service_region_seq: int."""
-        return self.core.column('service_region_seq')
+        return self.core.column("service_region_seq")
 
     def set_service_region_seq(self, value) -> Self:
-        self.core.set_value('service_region_seq', value)
+        self.core.set_value("service_region_seq", value)
         return self
 
     def add_column_service_region_seq(self) -> Self:
-        self.core.add_column('service_region_seq')
+        self.core.add_column("service_region_seq")
         return self
 
     def remove_column_service_region_seq(self) -> Self:
-        self.core.remove_column('service_region_seq')
+        self.core.remove_column("service_region_seq")
         return self
 
     def group_by_service_region_seq(self) -> Self:
-        self.core.group_by.append('service_region_seq')
+        self.core.group_by.append("service_region_seq")
         return self
 
     def key_name_service_region_seq(self) -> Self:
-        self.core.key_name = 'service_region_seq'
+        self.core.key_name = "service_region_seq"
         return self
 
     def order_by_service_region_seq_asc(self, *fn) -> Self:
-        self.core.order_by('service_region_seq', False, fn)
+        self.core.order_by("service_region_seq", False, fn)
         return self
 
     def order_by_service_region_seq_desc(self, *fn) -> Self:
-        self.core.order_by('service_region_seq', True, fn)
+        self.core.order_by("service_region_seq", True, fn)
         return self
 
     def plus_service_region_seq(self, n) -> Self:
-        self.core.put_plus('service_region_seq', n)
+        self.core.put_plus("service_region_seq", n)
         return self
 
     def minus_service_region_seq(self, n) -> Self:
-        self.core.put_minus('service_region_seq', n)
+        self.core.put_minus("service_region_seq", n)
         return self
 
     def sum_service_region_seq(self) -> Self:
-        self.core.aggregate('sum', 'service_region_seq')
+        self.core.aggregate("sum", "service_region_seq")
         return self
 
     def avg_service_region_seq(self) -> Self:
-        self.core.aggregate('avg', 'service_region_seq')
+        self.core.aggregate("avg", "service_region_seq")
         return self
 
     def get_service_member_seq(self):
         """service_member_seq: int."""
-        return self.core.column('service_member_seq')
+        return self.core.column("service_member_seq")
 
     def set_service_member_seq(self, value) -> Self:
-        self.core.set_value('service_member_seq', value)
+        self.core.set_value("service_member_seq", value)
         return self
 
     def add_column_service_member_seq(self) -> Self:
-        self.core.add_column('service_member_seq')
+        self.core.add_column("service_member_seq")
         return self
 
     def remove_column_service_member_seq(self) -> Self:
-        self.core.remove_column('service_member_seq')
+        self.core.remove_column("service_member_seq")
         return self
 
     def group_by_service_member_seq(self) -> Self:
-        self.core.group_by.append('service_member_seq')
+        self.core.group_by.append("service_member_seq")
         return self
 
     def key_name_service_member_seq(self) -> Self:
-        self.core.key_name = 'service_member_seq'
+        self.core.key_name = "service_member_seq"
         return self
 
     def order_by_service_member_seq_asc(self, *fn) -> Self:
-        self.core.order_by('service_member_seq', False, fn)
+        self.core.order_by("service_member_seq", False, fn)
         return self
 
     def order_by_service_member_seq_desc(self, *fn) -> Self:
-        self.core.order_by('service_member_seq', True, fn)
+        self.core.order_by("service_member_seq", True, fn)
         return self
 
     def plus_service_member_seq(self, n) -> Self:
-        self.core.put_plus('service_member_seq', n)
+        self.core.put_plus("service_member_seq", n)
         return self
 
     def minus_service_member_seq(self, n) -> Self:
-        self.core.put_minus('service_member_seq', n)
+        self.core.put_minus("service_member_seq", n)
         return self
 
     def sum_service_member_seq(self) -> Self:
-        self.core.aggregate('sum', 'service_member_seq')
+        self.core.aggregate("sum", "service_member_seq")
         return self
 
     def avg_service_member_seq(self) -> Self:
-        self.core.aggregate('avg', 'service_member_seq')
+        self.core.aggregate("avg", "service_member_seq")
         return self
 
     def get_start_dt(self):
         """start_dt: str."""
-        return self.core.column('start_dt')
+        return self.core.column("start_dt")
 
     def set_start_dt(self, value) -> Self:
-        self.core.set_value('start_dt', value)
+        self.core.set_value("start_dt", value)
         return self
 
     def add_column_start_dt(self) -> Self:
-        self.core.add_column('start_dt')
+        self.core.add_column("start_dt")
         return self
 
     def remove_column_start_dt(self) -> Self:
-        self.core.remove_column('start_dt')
+        self.core.remove_column("start_dt")
         return self
 
     def group_by_start_dt(self) -> Self:
-        self.core.group_by.append('start_dt')
+        self.core.group_by.append("start_dt")
         return self
 
     def key_name_start_dt(self) -> Self:
-        self.core.key_name = 'start_dt'
+        self.core.key_name = "start_dt"
         return self
 
     def order_by_start_dt_asc(self, *fn) -> Self:
-        self.core.order_by('start_dt', False, fn)
+        self.core.order_by("start_dt", False, fn)
         return self
 
     def order_by_start_dt_desc(self, *fn) -> Self:
-        self.core.order_by('start_dt', True, fn)
+        self.core.order_by("start_dt", True, fn)
         return self
 
     def get_end_dt(self):
         """end_dt: str."""
-        return self.core.column('end_dt')
+        return self.core.column("end_dt")
 
     def set_end_dt(self, value) -> Self:
-        self.core.set_value('end_dt', value)
+        self.core.set_value("end_dt", value)
         return self
 
     def add_column_end_dt(self) -> Self:
-        self.core.add_column('end_dt')
+        self.core.add_column("end_dt")
         return self
 
     def remove_column_end_dt(self) -> Self:
-        self.core.remove_column('end_dt')
+        self.core.remove_column("end_dt")
         return self
 
     def group_by_end_dt(self) -> Self:
-        self.core.group_by.append('end_dt')
+        self.core.group_by.append("end_dt")
         return self
 
     def key_name_end_dt(self) -> Self:
-        self.core.key_name = 'end_dt'
+        self.core.key_name = "end_dt"
         return self
 
     def order_by_end_dt_asc(self, *fn) -> Self:
-        self.core.order_by('end_dt', False, fn)
+        self.core.order_by("end_dt", False, fn)
         return self
 
     def order_by_end_dt_desc(self, *fn) -> Self:
-        self.core.order_by('end_dt', True, fn)
+        self.core.order_by("end_dt", True, fn)
         return self
 
     def get_uuid(self):
         """uuid: str."""
-        return self.core.column('uuid')
+        return self.core.column("uuid")
 
     def set_uuid(self, value) -> Self:
-        self.core.set_value('uuid', value)
+        self.core.set_value("uuid", value)
         return self
 
     def add_column_uuid(self) -> Self:
-        self.core.add_column('uuid')
+        self.core.add_column("uuid")
         return self
 
     def remove_column_uuid(self) -> Self:
-        self.core.remove_column('uuid')
+        self.core.remove_column("uuid")
         return self
 
     def group_by_uuid(self) -> Self:
-        self.core.group_by.append('uuid')
+        self.core.group_by.append("uuid")
         return self
 
     def key_name_uuid(self) -> Self:
-        self.core.key_name = 'uuid'
+        self.core.key_name = "uuid"
         return self
 
     def order_by_uuid_asc(self, *fn) -> Self:
-        self.core.order_by('uuid', False, fn)
+        self.core.order_by("uuid", False, fn)
         return self
 
     def order_by_uuid_desc(self, *fn) -> Self:
-        self.core.order_by('uuid', True, fn)
+        self.core.order_by("uuid", True, fn)
         return self
 
     def get_is_single_work(self):
         """is_single_work: bool."""
-        return self.core.column('is_single_work')
+        return self.core.column("is_single_work")
 
     def set_is_single_work(self, value) -> Self:
-        self.core.set_value('is_single_work', value)
+        self.core.set_value("is_single_work", value)
         return self
 
     def add_column_is_single_work(self) -> Self:
-        self.core.add_column('is_single_work')
+        self.core.add_column("is_single_work")
         return self
 
     def remove_column_is_single_work(self) -> Self:
-        self.core.remove_column('is_single_work')
+        self.core.remove_column("is_single_work")
         return self
 
     def group_by_is_single_work(self) -> Self:
-        self.core.group_by.append('is_single_work')
+        self.core.group_by.append("is_single_work")
         return self
 
     def key_name_is_single_work(self) -> Self:
-        self.core.key_name = 'is_single_work'
+        self.core.key_name = "is_single_work"
         return self
 
     def order_by_is_single_work_asc(self, *fn) -> Self:
-        self.core.order_by('is_single_work', False, fn)
+        self.core.order_by("is_single_work", False, fn)
         return self
 
     def order_by_is_single_work_desc(self, *fn) -> Self:
-        self.core.order_by('is_single_work', True, fn)
+        self.core.order_by("is_single_work", True, fn)
         return self
 
     def get_like_count(self):
         """like_count: int."""
-        return self.core.column('like_count')
+        return self.core.column("like_count")
 
     def set_like_count(self, value) -> Self:
-        self.core.set_value('like_count', value)
+        self.core.set_value("like_count", value)
         return self
 
     def add_column_like_count(self) -> Self:
-        self.core.add_column('like_count')
+        self.core.add_column("like_count")
         return self
 
     def remove_column_like_count(self) -> Self:
-        self.core.remove_column('like_count')
+        self.core.remove_column("like_count")
         return self
 
     def group_by_like_count(self) -> Self:
-        self.core.group_by.append('like_count')
+        self.core.group_by.append("like_count")
         return self
 
     def key_name_like_count(self) -> Self:
-        self.core.key_name = 'like_count'
+        self.core.key_name = "like_count"
         return self
 
     def order_by_like_count_asc(self, *fn) -> Self:
-        self.core.order_by('like_count', False, fn)
+        self.core.order_by("like_count", False, fn)
         return self
 
     def order_by_like_count_desc(self, *fn) -> Self:
-        self.core.order_by('like_count', True, fn)
+        self.core.order_by("like_count", True, fn)
         return self
 
     def plus_like_count(self, n) -> Self:
-        self.core.put_plus('like_count', n)
+        self.core.put_plus("like_count", n)
         return self
 
     def minus_like_count(self, n) -> Self:
-        self.core.put_minus('like_count', n)
+        self.core.put_minus("like_count", n)
         return self
 
     def sum_like_count(self) -> Self:
-        self.core.aggregate('sum', 'like_count')
+        self.core.aggregate("sum", "like_count")
         return self
 
     def avg_like_count(self) -> Self:
-        self.core.aggregate('avg', 'like_count')
+        self.core.aggregate("avg", "like_count")
         return self
 
     def get_aes_key_version(self):
         """aes_key_version: int."""
-        return self.core.column('aes_key_version')
+        return self.core.column("aes_key_version")
 
     def set_aes_key_version(self, value) -> Self:
-        self.core.set_value('aes_key_version', value)
+        self.core.set_value("aes_key_version", value)
         return self
 
     def add_column_aes_key_version(self) -> Self:
-        self.core.add_column('aes_key_version')
+        self.core.add_column("aes_key_version")
         return self
 
     def remove_column_aes_key_version(self) -> Self:
-        self.core.remove_column('aes_key_version')
+        self.core.remove_column("aes_key_version")
         return self
 
     def group_by_aes_key_version(self) -> Self:
-        self.core.group_by.append('aes_key_version')
+        self.core.group_by.append("aes_key_version")
         return self
 
     def key_name_aes_key_version(self) -> Self:
-        self.core.key_name = 'aes_key_version'
+        self.core.key_name = "aes_key_version"
         return self
 
     def order_by_aes_key_version_asc(self, *fn) -> Self:
-        self.core.order_by('aes_key_version', False, fn)
+        self.core.order_by("aes_key_version", False, fn)
         return self
 
     def order_by_aes_key_version_desc(self, *fn) -> Self:
-        self.core.order_by('aes_key_version', True, fn)
+        self.core.order_by("aes_key_version", True, fn)
         return self
 
     def plus_aes_key_version(self, n) -> Self:
-        self.core.put_plus('aes_key_version', n)
+        self.core.put_plus("aes_key_version", n)
         return self
 
     def minus_aes_key_version(self, n) -> Self:
-        self.core.put_minus('aes_key_version', n)
+        self.core.put_minus("aes_key_version", n)
         return self
 
     def sum_aes_key_version(self) -> Self:
-        self.core.aggregate('sum', 'aes_key_version')
+        self.core.aggregate("sum", "aes_key_version")
         return self
 
     def avg_aes_key_version(self) -> Self:
-        self.core.aggregate('avg', 'aes_key_version')
+        self.core.aggregate("avg", "aes_key_version")
         return self
 
     def get_aes_hex_email(self):
         """aes_hex_email: str."""
-        return self.core.column('aes_hex_email')
+        return self.core.column("aes_hex_email")
 
     def set_aes_hex_email(self, value) -> Self:
-        self.core.set_value('aes_hex_email', value)
+        self.core.set_value("aes_hex_email", value)
         return self
 
     def add_column_aes_hex_email(self) -> Self:
-        self.core.add_column('aes_hex_email')
+        self.core.add_column("aes_hex_email")
         return self
 
     def remove_column_aes_hex_email(self) -> Self:
-        self.core.remove_column('aes_hex_email')
+        self.core.remove_column("aes_hex_email")
         return self
 
     def group_by_aes_hex_email(self) -> Self:
-        self.core.group_by.append('aes_hex_email')
+        self.core.group_by.append("aes_hex_email")
         return self
 
     def key_name_aes_hex_email(self) -> Self:
-        self.core.key_name = 'aes_hex_email'
+        self.core.key_name = "aes_hex_email"
         return self
 
     def order_by_aes_hex_email_asc(self, *fn) -> Self:
-        self.core.order_by('aes_hex_email', False, fn)
+        self.core.order_by("aes_hex_email", False, fn)
         return self
 
     def order_by_aes_hex_email_desc(self, *fn) -> Self:
-        self.core.order_by('aes_hex_email', True, fn)
+        self.core.order_by("aes_hex_email", True, fn)
         return self
 
     def get_email_blind_index(self):
         """email_blind_index: str."""
-        return self.core.column('email_blind_index')
+        return self.core.column("email_blind_index")
 
     def set_email_blind_index(self, value) -> Self:
-        self.core.set_value('email_blind_index', value)
+        self.core.set_value("email_blind_index", value)
         return self
 
     def add_column_email_blind_index(self) -> Self:
-        self.core.add_column('email_blind_index')
+        self.core.add_column("email_blind_index")
         return self
 
     def remove_column_email_blind_index(self) -> Self:
-        self.core.remove_column('email_blind_index')
+        self.core.remove_column("email_blind_index")
         return self
 
     def group_by_email_blind_index(self) -> Self:
-        self.core.group_by.append('email_blind_index')
+        self.core.group_by.append("email_blind_index")
         return self
 
     def key_name_email_blind_index(self) -> Self:
-        self.core.key_name = 'email_blind_index'
+        self.core.key_name = "email_blind_index"
         return self
 
     def order_by_email_blind_index_asc(self, *fn) -> Self:
-        self.core.order_by('email_blind_index', False, fn)
+        self.core.order_by("email_blind_index", False, fn)
         return self
 
     def order_by_email_blind_index_desc(self, *fn) -> Self:
-        self.core.order_by('email_blind_index', True, fn)
+        self.core.order_by("email_blind_index", True, fn)
         return self
 
     def get_aes_hex_phone(self):
         """aes_hex_phone: str."""
-        return self.core.column('aes_hex_phone')
+        return self.core.column("aes_hex_phone")
 
     def set_aes_hex_phone(self, value) -> Self:
-        self.core.set_value('aes_hex_phone', value)
+        self.core.set_value("aes_hex_phone", value)
         return self
 
     def add_column_aes_hex_phone(self) -> Self:
-        self.core.add_column('aes_hex_phone')
+        self.core.add_column("aes_hex_phone")
         return self
 
     def remove_column_aes_hex_phone(self) -> Self:
-        self.core.remove_column('aes_hex_phone')
+        self.core.remove_column("aes_hex_phone")
         return self
 
     def group_by_aes_hex_phone(self) -> Self:
-        self.core.group_by.append('aes_hex_phone')
+        self.core.group_by.append("aes_hex_phone")
         return self
 
     def key_name_aes_hex_phone(self) -> Self:
-        self.core.key_name = 'aes_hex_phone'
+        self.core.key_name = "aes_hex_phone"
         return self
 
     def order_by_aes_hex_phone_asc(self, *fn) -> Self:
-        self.core.order_by('aes_hex_phone', False, fn)
+        self.core.order_by("aes_hex_phone", False, fn)
         return self
 
     def order_by_aes_hex_phone_desc(self, *fn) -> Self:
-        self.core.order_by('aes_hex_phone', True, fn)
+        self.core.order_by("aes_hex_phone", True, fn)
         return self
 
     def get_phone_blind_index(self):
         """phone_blind_index: str."""
-        return self.core.column('phone_blind_index')
+        return self.core.column("phone_blind_index")
 
     def set_phone_blind_index(self, value) -> Self:
-        self.core.set_value('phone_blind_index', value)
+        self.core.set_value("phone_blind_index", value)
         return self
 
     def add_column_phone_blind_index(self) -> Self:
-        self.core.add_column('phone_blind_index')
+        self.core.add_column("phone_blind_index")
         return self
 
     def remove_column_phone_blind_index(self) -> Self:
-        self.core.remove_column('phone_blind_index')
+        self.core.remove_column("phone_blind_index")
         return self
 
     def group_by_phone_blind_index(self) -> Self:
-        self.core.group_by.append('phone_blind_index')
+        self.core.group_by.append("phone_blind_index")
         return self
 
     def key_name_phone_blind_index(self) -> Self:
-        self.core.key_name = 'phone_blind_index'
+        self.core.key_name = "phone_blind_index"
         return self
 
     def order_by_phone_blind_index_asc(self, *fn) -> Self:
-        self.core.order_by('phone_blind_index', False, fn)
+        self.core.order_by("phone_blind_index", False, fn)
         return self
 
     def order_by_phone_blind_index_desc(self, *fn) -> Self:
-        self.core.order_by('phone_blind_index', True, fn)
+        self.core.order_by("phone_blind_index", True, fn)
         return self
 
     def get_price(self):
         """price: str (decimal text)."""
-        return self.core.column('price')
+        return self.core.column("price")
 
     def set_price(self, value) -> Self:
-        self.core.set_value('price', value)
+        self.core.set_value("price", value)
         return self
 
     def add_column_price(self) -> Self:
-        self.core.add_column('price')
+        self.core.add_column("price")
         return self
 
     def remove_column_price(self) -> Self:
-        self.core.remove_column('price')
+        self.core.remove_column("price")
         return self
 
     def group_by_price(self) -> Self:
-        self.core.group_by.append('price')
+        self.core.group_by.append("price")
         return self
 
     def key_name_price(self) -> Self:
-        self.core.key_name = 'price'
+        self.core.key_name = "price"
         return self
 
     def order_by_price_asc(self, *fn) -> Self:
-        self.core.order_by('price', False, fn)
+        self.core.order_by("price", False, fn)
         return self
 
     def order_by_price_desc(self, *fn) -> Self:
-        self.core.order_by('price', True, fn)
+        self.core.order_by("price", True, fn)
         return self
 
     def plus_price(self, n) -> Self:
-        self.core.put_plus('price', n)
+        self.core.put_plus("price", n)
         return self
 
     def minus_price(self, n) -> Self:
-        self.core.put_minus('price', n)
+        self.core.put_minus("price", n)
         return self
 
     def sum_price(self) -> Self:
-        self.core.aggregate('sum', 'price')
+        self.core.aggregate("sum", "price")
         return self
 
     def avg_price(self) -> Self:
-        self.core.aggregate('avg', 'price')
+        self.core.aggregate("avg", "price")
         return self
 
     def get_ip(self):
         """ip: str."""
-        return self.core.column('ip')
+        return self.core.column("ip")
 
     def set_ip(self, value) -> Self:
-        self.core.set_value('ip', value)
+        self.core.set_value("ip", value)
         return self
 
     def add_column_ip(self) -> Self:
-        self.core.add_column('ip')
+        self.core.add_column("ip")
         return self
 
     def remove_column_ip(self) -> Self:
-        self.core.remove_column('ip')
+        self.core.remove_column("ip")
         return self
 
     def group_by_ip(self) -> Self:
-        self.core.group_by.append('ip')
+        self.core.group_by.append("ip")
         return self
 
     def key_name_ip(self) -> Self:
-        self.core.key_name = 'ip'
+        self.core.key_name = "ip"
         return self
 
     def order_by_ip_asc(self, *fn) -> Self:
-        self.core.order_by('ip', False, fn)
+        self.core.order_by("ip", False, fn)
         return self
 
     def order_by_ip_desc(self, *fn) -> Self:
-        self.core.order_by('ip', True, fn)
+        self.core.order_by("ip", True, fn)
         return self
 
     def get_gz_extend(self):
         """gz_extend: StyledValue."""
-        return self.core.column('gz_extend')
+        return self.core.column("gz_extend")
 
     def set_gz_extend(self, value) -> Self:
-        self.core.set_value('gz_extend', value)
+        self.core.set_value("gz_extend", value)
         return self
 
     def add_column_gz_extend(self) -> Self:
-        self.core.add_column('gz_extend')
+        self.core.add_column("gz_extend")
         return self
 
     def remove_column_gz_extend(self) -> Self:
-        self.core.remove_column('gz_extend')
+        self.core.remove_column("gz_extend")
         return self
 
     def group_by_gz_extend(self) -> Self:
-        self.core.group_by.append('gz_extend')
+        self.core.group_by.append("gz_extend")
         return self
 
     def key_name_gz_extend(self) -> Self:
-        self.core.key_name = 'gz_extend'
+        self.core.key_name = "gz_extend"
         return self
 
     def order_by_gz_extend_asc(self, *fn) -> Self:
-        self.core.order_by('gz_extend', False, fn)
+        self.core.order_by("gz_extend", False, fn)
         return self
 
     def order_by_gz_extend_desc(self, *fn) -> Self:
-        self.core.order_by('gz_extend', True, fn)
+        self.core.order_by("gz_extend", True, fn)
         return self
 
     def get_json_setting(self):
         """json_setting: StyledValue of an ordered-json value."""
-        return self.core.column('json_setting')
+        return self.core.column("json_setting")
 
     def set_json_setting(self, value) -> Self:
-        self.core.set_value('json_setting', value)
+        self.core.set_value("json_setting", value)
         return self
 
     def add_column_json_setting(self) -> Self:
-        self.core.add_column('json_setting')
+        self.core.add_column("json_setting")
         return self
 
     def remove_column_json_setting(self) -> Self:
-        self.core.remove_column('json_setting')
+        self.core.remove_column("json_setting")
         return self
 
     def group_by_json_setting(self) -> Self:
-        self.core.group_by.append('json_setting')
+        self.core.group_by.append("json_setting")
         return self
 
     def key_name_json_setting(self) -> Self:
-        self.core.key_name = 'json_setting'
+        self.core.key_name = "json_setting"
         return self
 
     def order_by_json_setting_asc(self, *fn) -> Self:
-        self.core.order_by('json_setting', False, fn)
+        self.core.order_by("json_setting", False, fn)
         return self
 
     def order_by_json_setting_desc(self, *fn) -> Self:
-        self.core.order_by('json_setting', True, fn)
+        self.core.order_by("json_setting", True, fn)
         return self
 
     def get_jsons_tags(self):
         """jsons_tags: StyledValue of an ordered-json value."""
-        return self.core.column('jsons_tags')
+        return self.core.column("jsons_tags")
 
     def set_jsons_tags(self, value) -> Self:
-        self.core.set_value('jsons_tags', value)
+        self.core.set_value("jsons_tags", value)
         return self
 
     def add_column_jsons_tags(self) -> Self:
-        self.core.add_column('jsons_tags')
+        self.core.add_column("jsons_tags")
         return self
 
     def remove_column_jsons_tags(self) -> Self:
-        self.core.remove_column('jsons_tags')
+        self.core.remove_column("jsons_tags")
         return self
 
     def group_by_jsons_tags(self) -> Self:
-        self.core.group_by.append('jsons_tags')
+        self.core.group_by.append("jsons_tags")
         return self
 
     def key_name_jsons_tags(self) -> Self:
-        self.core.key_name = 'jsons_tags'
+        self.core.key_name = "jsons_tags"
         return self
 
     def order_by_jsons_tags_asc(self, *fn) -> Self:
-        self.core.order_by('jsons_tags', False, fn)
+        self.core.order_by("jsons_tags", False, fn)
         return self
 
     def order_by_jsons_tags_desc(self, *fn) -> Self:
-        self.core.order_by('jsons_tags', True, fn)
+        self.core.order_by("jsons_tags", True, fn)
         return self
 
     def get_base64_extra(self):
         """base64_extra: StyledValue."""
-        return self.core.column('base64_extra')
+        return self.core.column("base64_extra")
 
     def set_base64_extra(self, value) -> Self:
-        self.core.set_value('base64_extra', value)
+        self.core.set_value("base64_extra", value)
         return self
 
     def add_column_base64_extra(self) -> Self:
-        self.core.add_column('base64_extra')
+        self.core.add_column("base64_extra")
         return self
 
     def remove_column_base64_extra(self) -> Self:
-        self.core.remove_column('base64_extra')
+        self.core.remove_column("base64_extra")
         return self
 
     def group_by_base64_extra(self) -> Self:
-        self.core.group_by.append('base64_extra')
+        self.core.group_by.append("base64_extra")
         return self
 
     def key_name_base64_extra(self) -> Self:
-        self.core.key_name = 'base64_extra'
+        self.core.key_name = "base64_extra"
         return self
 
     def order_by_base64_extra_asc(self, *fn) -> Self:
-        self.core.order_by('base64_extra', False, fn)
+        self.core.order_by("base64_extra", False, fn)
         return self
 
     def order_by_base64_extra_desc(self, *fn) -> Self:
-        self.core.order_by('base64_extra', True, fn)
+        self.core.order_by("base64_extra", True, fn)
         return self
 
     def get_serialize_data(self):
         """serialize_data: StyledValue."""
-        return self.core.column('serialize_data')
+        return self.core.column("serialize_data")
 
     def set_serialize_data(self, value) -> Self:
-        self.core.set_value('serialize_data', value)
+        self.core.set_value("serialize_data", value)
         return self
 
     def add_column_serialize_data(self) -> Self:
-        self.core.add_column('serialize_data')
+        self.core.add_column("serialize_data")
         return self
 
     def remove_column_serialize_data(self) -> Self:
-        self.core.remove_column('serialize_data')
+        self.core.remove_column("serialize_data")
         return self
 
     def group_by_serialize_data(self) -> Self:
-        self.core.group_by.append('serialize_data')
+        self.core.group_by.append("serialize_data")
         return self
 
     def key_name_serialize_data(self) -> Self:
-        self.core.key_name = 'serialize_data'
+        self.core.key_name = "serialize_data"
         return self
 
     def order_by_serialize_data_asc(self, *fn) -> Self:
-        self.core.order_by('serialize_data', False, fn)
+        self.core.order_by("serialize_data", False, fn)
         return self
 
     def order_by_serialize_data_desc(self, *fn) -> Self:
-        self.core.order_by('serialize_data', True, fn)
+        self.core.order_by("serialize_data", True, fn)
         return self
 
     def force_index_ik(self) -> Self:
-        self.core.index = 'ik'
+        self.core.index = "ik"
         return self
 
     def force_index_ix_author_service_member(self) -> Self:
-        self.core.index = 'ix_author_service_member'
+        self.core.index = "ix_author_service_member"
         return self
 
     def force_index_ix_email_blind_index(self) -> Self:
-        self.core.index = 'ix_email_blind_index'
+        self.core.index = "ix_email_blind_index"
         return self
 
     def force_index_ix_phone_blind_index(self) -> Self:
-        self.core.index = 'ix_phone_blind_index'
+        self.core.index = "ix_phone_blind_index"
         return self
 
     def force_index_ix_service(self) -> Self:
-        self.core.index = 'ix_service'
+        self.core.index = "ix_service"
         return self
 
     def force_index_ix_user(self) -> Self:
-        self.core.index = 'ix_user'
+        self.core.index = "ix_user"
         return self
 
     def force_index_uq_author_uuid(self) -> Self:
-        self.core.index = 'uq_author_uuid'
+        self.core.index = "uq_author_uuid"
         return self
 
     def seq(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'seq')(value, *compared)
+        return Model.__getattr__(self, "seq")(value, *compared)
 
     def name(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'name')(value, *compared)
+        return Model.__getattr__(self, "name")(value, *compared)
 
     def description(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'description')(value, *compared)
+        return Model.__getattr__(self, "description")(value, *compared)
 
     def created_ts(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'created_ts')(value, *compared)
+        return Model.__getattr__(self, "created_ts")(value, *compared)
 
     def updated_ts(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'updated_ts')(value, *compared)
+        return Model.__getattr__(self, "updated_ts")(value, *compared)
 
     def is_close(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'is_close')(value, *compared)
+        return Model.__getattr__(self, "is_close")(value, *compared)
 
     def is_display(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'is_display')(value, *compared)
+        return Model.__getattr__(self, "is_display")(value, *compared)
 
     def display_start_dt(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'display_start_dt')(value, *compared)
+        return Model.__getattr__(self, "display_start_dt")(value, *compared)
 
     def display_end_dt(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'display_end_dt')(value, *compared)
+        return Model.__getattr__(self, "display_end_dt")(value, *compared)
 
     def is_allday(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'is_allday')(value, *compared)
+        return Model.__getattr__(self, "is_allday")(value, *compared)
 
     def target_club_reader_count(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'target_club_reader_count')(value, *compared)
+        return Model.__getattr__(self, "target_club_reader_count")(value, *compared)
 
     def success_count(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'success_count')(value, *compared)
+        return Model.__getattr__(self, "success_count")(value, *compared)
 
     def reader_count(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'reader_count')(value, *compared)
+        return Model.__getattr__(self, "reader_count")(value, *compared)
 
     def read_count(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'read_count')(value, *compared)
+        return Model.__getattr__(self, "read_count")(value, *compared)
 
     def photo_url(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'photo_url')(value, *compared)
+        return Model.__getattr__(self, "photo_url")(value, *compared)
 
     def user_seq(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'user_seq')(value, *compared)
+        return Model.__getattr__(self, "user_seq")(value, *compared)
 
     def service_seq(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'service_seq')(value, *compared)
+        return Model.__getattr__(self, "service_seq")(value, *compared)
 
     def service_region_seq(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'service_region_seq')(value, *compared)
+        return Model.__getattr__(self, "service_region_seq")(value, *compared)
 
     def service_member_seq(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'service_member_seq')(value, *compared)
+        return Model.__getattr__(self, "service_member_seq")(value, *compared)
 
     def start_dt(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'start_dt')(value, *compared)
+        return Model.__getattr__(self, "start_dt")(value, *compared)
 
     def end_dt(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'end_dt')(value, *compared)
+        return Model.__getattr__(self, "end_dt")(value, *compared)
 
     def uuid(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'uuid')(value, *compared)
+        return Model.__getattr__(self, "uuid")(value, *compared)
 
     def is_single_work(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'is_single_work')(value, *compared)
+        return Model.__getattr__(self, "is_single_work")(value, *compared)
 
     def like_count(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'like_count')(value, *compared)
+        return Model.__getattr__(self, "like_count")(value, *compared)
 
     def aes_key_version(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'aes_key_version')(value, *compared)
+        return Model.__getattr__(self, "aes_key_version")(value, *compared)
 
     def aes_hex_email(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'aes_hex_email')(value, *compared)
+        return Model.__getattr__(self, "aes_hex_email")(value, *compared)
 
     def email_blind_index(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'email_blind_index')(value, *compared)
+        return Model.__getattr__(self, "email_blind_index")(value, *compared)
 
     def aes_hex_phone(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'aes_hex_phone')(value, *compared)
+        return Model.__getattr__(self, "aes_hex_phone")(value, *compared)
 
     def phone_blind_index(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'phone_blind_index')(value, *compared)
+        return Model.__getattr__(self, "phone_blind_index")(value, *compared)
 
     def price(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'price')(value, *compared)
+        return Model.__getattr__(self, "price")(value, *compared)
 
     def ip(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'ip')(value, *compared)
+        return Model.__getattr__(self, "ip")(value, *compared)
 
     def gz_extend(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'gz_extend')(value, *compared)
+        return Model.__getattr__(self, "gz_extend")(value, *compared)
 
     def json_setting(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'json_setting')(value, *compared)
+        return Model.__getattr__(self, "json_setting")(value, *compared)
 
     def jsons_tags(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'jsons_tags')(value, *compared)
+        return Model.__getattr__(self, "jsons_tags")(value, *compared)
 
     def base64_extra(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'base64_extra')(value, *compared)
+        return Model.__getattr__(self, "base64_extra")(value, *compared)
 
     def serialize_data(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'serialize_data')(value, *compared)
+        return Model.__getattr__(self, "serialize_data")(value, *compared)
 
     def tuple_service_region_seq_with_is_close(self, values) -> Self:
-        return Model.__getattr__(self, 'tuple_service_region_seq_with_is_close')(values)
+        return Model.__getattr__(self, "tuple_service_region_seq_with_is_close")(values)
 
     def tuple_service_region_seq_with_is_close_with_is_display(self, values) -> Self:
-        return Model.__getattr__(self, 'tuple_service_region_seq_with_is_close_with_is_display')(values)
+        return Model.__getattr__(
+            self, "tuple_service_region_seq_with_is_close_with_is_display"
+        )(values)
 
-    def tuple_service_region_seq_with_is_close_with_is_display_with_is_allday(self, values) -> Self:
-        return Model.__getattr__(self, 'tuple_service_region_seq_with_is_close_with_is_display_with_is_allday')(values)
+    def tuple_service_region_seq_with_is_close_with_is_display_with_is_allday(
+        self, values
+    ) -> Self:
+        return Model.__getattr__(
+            self,
+            "tuple_service_region_seq_with_is_close_with_is_display_with_is_allday",
+        )(values)
 
     def tuple_service_seq_with_is_close(self, values) -> Self:
-        return Model.__getattr__(self, 'tuple_service_seq_with_is_close')(values)
+        return Model.__getattr__(self, "tuple_service_seq_with_is_close")(values)
 
     def tuple_user_seq_with_is_close(self, values) -> Self:
-        return Model.__getattr__(self, 'tuple_user_seq_with_is_close')(values)
+        return Model.__getattr__(self, "tuple_user_seq_with_is_close")(values)
 
 
 class User(Model):
@@ -1529,93 +1540,93 @@ class User(Model):
 
     @property
     def entity_def(self):
-        return model.entity_of('user', User)
+        return model.entity_of("user", User)
 
     def get_seq(self):
         """seq: int."""
-        return self.core.column('seq')
+        return self.core.column("seq")
 
     def set_seq(self, value) -> Self:
-        self.core.set_value('seq', value)
+        self.core.set_value("seq", value)
         return self
 
     def add_column_seq(self) -> Self:
-        self.core.add_column('seq')
+        self.core.add_column("seq")
         return self
 
     def remove_column_seq(self) -> Self:
-        self.core.remove_column('seq')
+        self.core.remove_column("seq")
         return self
 
     def group_by_seq(self) -> Self:
-        self.core.group_by.append('seq')
+        self.core.group_by.append("seq")
         return self
 
     def key_name_seq(self) -> Self:
-        self.core.key_name = 'seq'
+        self.core.key_name = "seq"
         return self
 
     def order_by_seq_asc(self, *fn) -> Self:
-        self.core.order_by('seq', False, fn)
+        self.core.order_by("seq", False, fn)
         return self
 
     def order_by_seq_desc(self, *fn) -> Self:
-        self.core.order_by('seq', True, fn)
+        self.core.order_by("seq", True, fn)
         return self
 
     def plus_seq(self, n) -> Self:
-        self.core.put_plus('seq', n)
+        self.core.put_plus("seq", n)
         return self
 
     def minus_seq(self, n) -> Self:
-        self.core.put_minus('seq', n)
+        self.core.put_minus("seq", n)
         return self
 
     def sum_seq(self) -> Self:
-        self.core.aggregate('sum', 'seq')
+        self.core.aggregate("sum", "seq")
         return self
 
     def avg_seq(self) -> Self:
-        self.core.aggregate('avg', 'seq')
+        self.core.aggregate("avg", "seq")
         return self
 
     def get_name(self):
         """name: str."""
-        return self.core.column('name')
+        return self.core.column("name")
 
     def set_name(self, value) -> Self:
-        self.core.set_value('name', value)
+        self.core.set_value("name", value)
         return self
 
     def add_column_name(self) -> Self:
-        self.core.add_column('name')
+        self.core.add_column("name")
         return self
 
     def remove_column_name(self) -> Self:
-        self.core.remove_column('name')
+        self.core.remove_column("name")
         return self
 
     def group_by_name(self) -> Self:
-        self.core.group_by.append('name')
+        self.core.group_by.append("name")
         return self
 
     def key_name_name(self) -> Self:
-        self.core.key_name = 'name'
+        self.core.key_name = "name"
         return self
 
     def order_by_name_asc(self, *fn) -> Self:
-        self.core.order_by('name', False, fn)
+        self.core.order_by("name", False, fn)
         return self
 
     def order_by_name_desc(self, *fn) -> Self:
-        self.core.order_by('name', True, fn)
+        self.core.order_by("name", True, fn)
         return self
 
     def seq(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'seq')(value, *compared)
+        return Model.__getattr__(self, "seq")(value, *compared)
 
     def name(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'name')(value, *compared)
+        return Model.__getattr__(self, "name")(value, *compared)
 
 
 class Service(Model):
@@ -1623,93 +1634,93 @@ class Service(Model):
 
     @property
     def entity_def(self):
-        return model.entity_of('service', Service)
+        return model.entity_of("service", Service)
 
     def get_seq(self):
         """seq: int."""
-        return self.core.column('seq')
+        return self.core.column("seq")
 
     def set_seq(self, value) -> Self:
-        self.core.set_value('seq', value)
+        self.core.set_value("seq", value)
         return self
 
     def add_column_seq(self) -> Self:
-        self.core.add_column('seq')
+        self.core.add_column("seq")
         return self
 
     def remove_column_seq(self) -> Self:
-        self.core.remove_column('seq')
+        self.core.remove_column("seq")
         return self
 
     def group_by_seq(self) -> Self:
-        self.core.group_by.append('seq')
+        self.core.group_by.append("seq")
         return self
 
     def key_name_seq(self) -> Self:
-        self.core.key_name = 'seq'
+        self.core.key_name = "seq"
         return self
 
     def order_by_seq_asc(self, *fn) -> Self:
-        self.core.order_by('seq', False, fn)
+        self.core.order_by("seq", False, fn)
         return self
 
     def order_by_seq_desc(self, *fn) -> Self:
-        self.core.order_by('seq', True, fn)
+        self.core.order_by("seq", True, fn)
         return self
 
     def plus_seq(self, n) -> Self:
-        self.core.put_plus('seq', n)
+        self.core.put_plus("seq", n)
         return self
 
     def minus_seq(self, n) -> Self:
-        self.core.put_minus('seq', n)
+        self.core.put_minus("seq", n)
         return self
 
     def sum_seq(self) -> Self:
-        self.core.aggregate('sum', 'seq')
+        self.core.aggregate("sum", "seq")
         return self
 
     def avg_seq(self) -> Self:
-        self.core.aggregate('avg', 'seq')
+        self.core.aggregate("avg", "seq")
         return self
 
     def get_name(self):
         """name: str."""
-        return self.core.column('name')
+        return self.core.column("name")
 
     def set_name(self, value) -> Self:
-        self.core.set_value('name', value)
+        self.core.set_value("name", value)
         return self
 
     def add_column_name(self) -> Self:
-        self.core.add_column('name')
+        self.core.add_column("name")
         return self
 
     def remove_column_name(self) -> Self:
-        self.core.remove_column('name')
+        self.core.remove_column("name")
         return self
 
     def group_by_name(self) -> Self:
-        self.core.group_by.append('name')
+        self.core.group_by.append("name")
         return self
 
     def key_name_name(self) -> Self:
-        self.core.key_name = 'name'
+        self.core.key_name = "name"
         return self
 
     def order_by_name_asc(self, *fn) -> Self:
-        self.core.order_by('name', False, fn)
+        self.core.order_by("name", False, fn)
         return self
 
     def order_by_name_desc(self, *fn) -> Self:
-        self.core.order_by('name', True, fn)
+        self.core.order_by("name", True, fn)
         return self
 
     def seq(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'seq')(value, *compared)
+        return Model.__getattr__(self, "seq")(value, *compared)
 
     def name(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'name')(value, *compared)
+        return Model.__getattr__(self, "name")(value, *compared)
 
 
 class ServiceRegion(Model):
@@ -1717,148 +1728,148 @@ class ServiceRegion(Model):
 
     @property
     def entity_def(self):
-        return model.entity_of('service_region', ServiceRegion)
+        return model.entity_of("service_region", ServiceRegion)
 
     def get_seq(self):
         """seq: int."""
-        return self.core.column('seq')
+        return self.core.column("seq")
 
     def set_seq(self, value) -> Self:
-        self.core.set_value('seq', value)
+        self.core.set_value("seq", value)
         return self
 
     def add_column_seq(self) -> Self:
-        self.core.add_column('seq')
+        self.core.add_column("seq")
         return self
 
     def remove_column_seq(self) -> Self:
-        self.core.remove_column('seq')
+        self.core.remove_column("seq")
         return self
 
     def group_by_seq(self) -> Self:
-        self.core.group_by.append('seq')
+        self.core.group_by.append("seq")
         return self
 
     def key_name_seq(self) -> Self:
-        self.core.key_name = 'seq'
+        self.core.key_name = "seq"
         return self
 
     def order_by_seq_asc(self, *fn) -> Self:
-        self.core.order_by('seq', False, fn)
+        self.core.order_by("seq", False, fn)
         return self
 
     def order_by_seq_desc(self, *fn) -> Self:
-        self.core.order_by('seq', True, fn)
+        self.core.order_by("seq", True, fn)
         return self
 
     def plus_seq(self, n) -> Self:
-        self.core.put_plus('seq', n)
+        self.core.put_plus("seq", n)
         return self
 
     def minus_seq(self, n) -> Self:
-        self.core.put_minus('seq', n)
+        self.core.put_minus("seq", n)
         return self
 
     def sum_seq(self) -> Self:
-        self.core.aggregate('sum', 'seq')
+        self.core.aggregate("sum", "seq")
         return self
 
     def avg_seq(self) -> Self:
-        self.core.aggregate('avg', 'seq')
+        self.core.aggregate("avg", "seq")
         return self
 
     def get_service_seq(self):
         """service_seq: int."""
-        return self.core.column('service_seq')
+        return self.core.column("service_seq")
 
     def set_service_seq(self, value) -> Self:
-        self.core.set_value('service_seq', value)
+        self.core.set_value("service_seq", value)
         return self
 
     def add_column_service_seq(self) -> Self:
-        self.core.add_column('service_seq')
+        self.core.add_column("service_seq")
         return self
 
     def remove_column_service_seq(self) -> Self:
-        self.core.remove_column('service_seq')
+        self.core.remove_column("service_seq")
         return self
 
     def group_by_service_seq(self) -> Self:
-        self.core.group_by.append('service_seq')
+        self.core.group_by.append("service_seq")
         return self
 
     def key_name_service_seq(self) -> Self:
-        self.core.key_name = 'service_seq'
+        self.core.key_name = "service_seq"
         return self
 
     def order_by_service_seq_asc(self, *fn) -> Self:
-        self.core.order_by('service_seq', False, fn)
+        self.core.order_by("service_seq", False, fn)
         return self
 
     def order_by_service_seq_desc(self, *fn) -> Self:
-        self.core.order_by('service_seq', True, fn)
+        self.core.order_by("service_seq", True, fn)
         return self
 
     def plus_service_seq(self, n) -> Self:
-        self.core.put_plus('service_seq', n)
+        self.core.put_plus("service_seq", n)
         return self
 
     def minus_service_seq(self, n) -> Self:
-        self.core.put_minus('service_seq', n)
+        self.core.put_minus("service_seq", n)
         return self
 
     def sum_service_seq(self) -> Self:
-        self.core.aggregate('sum', 'service_seq')
+        self.core.aggregate("sum", "service_seq")
         return self
 
     def avg_service_seq(self) -> Self:
-        self.core.aggregate('avg', 'service_seq')
+        self.core.aggregate("avg", "service_seq")
         return self
 
     def get_name(self):
         """name: str."""
-        return self.core.column('name')
+        return self.core.column("name")
 
     def set_name(self, value) -> Self:
-        self.core.set_value('name', value)
+        self.core.set_value("name", value)
         return self
 
     def add_column_name(self) -> Self:
-        self.core.add_column('name')
+        self.core.add_column("name")
         return self
 
     def remove_column_name(self) -> Self:
-        self.core.remove_column('name')
+        self.core.remove_column("name")
         return self
 
     def group_by_name(self) -> Self:
-        self.core.group_by.append('name')
+        self.core.group_by.append("name")
         return self
 
     def key_name_name(self) -> Self:
-        self.core.key_name = 'name'
+        self.core.key_name = "name"
         return self
 
     def order_by_name_asc(self, *fn) -> Self:
-        self.core.order_by('name', False, fn)
+        self.core.order_by("name", False, fn)
         return self
 
     def order_by_name_desc(self, *fn) -> Self:
-        self.core.order_by('name', True, fn)
+        self.core.order_by("name", True, fn)
         return self
 
     def force_index_ix_service_region_service(self) -> Self:
-        self.core.index = 'ix_service_region_service'
+        self.core.index = "ix_service_region_service"
         return self
 
     def seq(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'seq')(value, *compared)
+        return Model.__getattr__(self, "seq")(value, *compared)
 
     def service_seq(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'service_seq')(value, *compared)
+        return Model.__getattr__(self, "service_seq")(value, *compared)
 
     def name(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'name')(value, *compared)
+        return Model.__getattr__(self, "name")(value, *compared)
 
 
 class ServiceMember(Model):
@@ -1866,168 +1877,168 @@ class ServiceMember(Model):
 
     @property
     def entity_def(self):
-        return model.entity_of('service_member', ServiceMember)
+        return model.entity_of("service_member", ServiceMember)
 
     def get_seq(self):
         """seq: int."""
-        return self.core.column('seq')
+        return self.core.column("seq")
 
     def set_seq(self, value) -> Self:
-        self.core.set_value('seq', value)
+        self.core.set_value("seq", value)
         return self
 
     def add_column_seq(self) -> Self:
-        self.core.add_column('seq')
+        self.core.add_column("seq")
         return self
 
     def remove_column_seq(self) -> Self:
-        self.core.remove_column('seq')
+        self.core.remove_column("seq")
         return self
 
     def group_by_seq(self) -> Self:
-        self.core.group_by.append('seq')
+        self.core.group_by.append("seq")
         return self
 
     def key_name_seq(self) -> Self:
-        self.core.key_name = 'seq'
+        self.core.key_name = "seq"
         return self
 
     def order_by_seq_asc(self, *fn) -> Self:
-        self.core.order_by('seq', False, fn)
+        self.core.order_by("seq", False, fn)
         return self
 
     def order_by_seq_desc(self, *fn) -> Self:
-        self.core.order_by('seq', True, fn)
+        self.core.order_by("seq", True, fn)
         return self
 
     def plus_seq(self, n) -> Self:
-        self.core.put_plus('seq', n)
+        self.core.put_plus("seq", n)
         return self
 
     def minus_seq(self, n) -> Self:
-        self.core.put_minus('seq', n)
+        self.core.put_minus("seq", n)
         return self
 
     def sum_seq(self) -> Self:
-        self.core.aggregate('sum', 'seq')
+        self.core.aggregate("sum", "seq")
         return self
 
     def avg_seq(self) -> Self:
-        self.core.aggregate('avg', 'seq')
+        self.core.aggregate("avg", "seq")
         return self
 
     def get_service_seq(self):
         """service_seq: int."""
-        return self.core.column('service_seq')
+        return self.core.column("service_seq")
 
     def set_service_seq(self, value) -> Self:
-        self.core.set_value('service_seq', value)
+        self.core.set_value("service_seq", value)
         return self
 
     def add_column_service_seq(self) -> Self:
-        self.core.add_column('service_seq')
+        self.core.add_column("service_seq")
         return self
 
     def remove_column_service_seq(self) -> Self:
-        self.core.remove_column('service_seq')
+        self.core.remove_column("service_seq")
         return self
 
     def group_by_service_seq(self) -> Self:
-        self.core.group_by.append('service_seq')
+        self.core.group_by.append("service_seq")
         return self
 
     def key_name_service_seq(self) -> Self:
-        self.core.key_name = 'service_seq'
+        self.core.key_name = "service_seq"
         return self
 
     def order_by_service_seq_asc(self, *fn) -> Self:
-        self.core.order_by('service_seq', False, fn)
+        self.core.order_by("service_seq", False, fn)
         return self
 
     def order_by_service_seq_desc(self, *fn) -> Self:
-        self.core.order_by('service_seq', True, fn)
+        self.core.order_by("service_seq", True, fn)
         return self
 
     def plus_service_seq(self, n) -> Self:
-        self.core.put_plus('service_seq', n)
+        self.core.put_plus("service_seq", n)
         return self
 
     def minus_service_seq(self, n) -> Self:
-        self.core.put_minus('service_seq', n)
+        self.core.put_minus("service_seq", n)
         return self
 
     def sum_service_seq(self) -> Self:
-        self.core.aggregate('sum', 'service_seq')
+        self.core.aggregate("sum", "service_seq")
         return self
 
     def avg_service_seq(self) -> Self:
-        self.core.aggregate('avg', 'service_seq')
+        self.core.aggregate("avg", "service_seq")
         return self
 
     def get_user_seq(self):
         """user_seq: int."""
-        return self.core.column('user_seq')
+        return self.core.column("user_seq")
 
     def set_user_seq(self, value) -> Self:
-        self.core.set_value('user_seq', value)
+        self.core.set_value("user_seq", value)
         return self
 
     def add_column_user_seq(self) -> Self:
-        self.core.add_column('user_seq')
+        self.core.add_column("user_seq")
         return self
 
     def remove_column_user_seq(self) -> Self:
-        self.core.remove_column('user_seq')
+        self.core.remove_column("user_seq")
         return self
 
     def group_by_user_seq(self) -> Self:
-        self.core.group_by.append('user_seq')
+        self.core.group_by.append("user_seq")
         return self
 
     def key_name_user_seq(self) -> Self:
-        self.core.key_name = 'user_seq'
+        self.core.key_name = "user_seq"
         return self
 
     def order_by_user_seq_asc(self, *fn) -> Self:
-        self.core.order_by('user_seq', False, fn)
+        self.core.order_by("user_seq", False, fn)
         return self
 
     def order_by_user_seq_desc(self, *fn) -> Self:
-        self.core.order_by('user_seq', True, fn)
+        self.core.order_by("user_seq", True, fn)
         return self
 
     def plus_user_seq(self, n) -> Self:
-        self.core.put_plus('user_seq', n)
+        self.core.put_plus("user_seq", n)
         return self
 
     def minus_user_seq(self, n) -> Self:
-        self.core.put_minus('user_seq', n)
+        self.core.put_minus("user_seq", n)
         return self
 
     def sum_user_seq(self) -> Self:
-        self.core.aggregate('sum', 'user_seq')
+        self.core.aggregate("sum", "user_seq")
         return self
 
     def avg_user_seq(self) -> Self:
-        self.core.aggregate('avg', 'user_seq')
+        self.core.aggregate("avg", "user_seq")
         return self
 
     def force_index_ix_service_member_service(self) -> Self:
-        self.core.index = 'ix_service_member_service'
+        self.core.index = "ix_service_member_service"
         return self
 
     def force_index_ix_service_member_user(self) -> Self:
-        self.core.index = 'ix_service_member_user'
+        self.core.index = "ix_service_member_user"
         return self
 
     def seq(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'seq')(value, *compared)
+        return Model.__getattr__(self, "seq")(value, *compared)
 
     def service_seq(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'service_seq')(value, *compared)
+        return Model.__getattr__(self, "service_seq")(value, *compared)
 
     def user_seq(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'user_seq')(value, *compared)
+        return Model.__getattr__(self, "user_seq")(value, *compared)
 
 
 class CompositeAccount(Model):
@@ -2035,147 +2046,147 @@ class CompositeAccount(Model):
 
     @property
     def entity_def(self):
-        return model.entity_of('composite_account', CompositeAccount)
+        return model.entity_of("composite_account", CompositeAccount)
 
     def get_tenant_id(self):
         """tenant_id: int."""
-        return self.core.column('tenant_id')
+        return self.core.column("tenant_id")
 
     def set_tenant_id(self, value) -> Self:
-        self.core.set_value('tenant_id', value)
+        self.core.set_value("tenant_id", value)
         return self
 
     def add_column_tenant_id(self) -> Self:
-        self.core.add_column('tenant_id')
+        self.core.add_column("tenant_id")
         return self
 
     def remove_column_tenant_id(self) -> Self:
-        self.core.remove_column('tenant_id')
+        self.core.remove_column("tenant_id")
         return self
 
     def group_by_tenant_id(self) -> Self:
-        self.core.group_by.append('tenant_id')
+        self.core.group_by.append("tenant_id")
         return self
 
     def key_name_tenant_id(self) -> Self:
-        self.core.key_name = 'tenant_id'
+        self.core.key_name = "tenant_id"
         return self
 
     def order_by_tenant_id_asc(self, *fn) -> Self:
-        self.core.order_by('tenant_id', False, fn)
+        self.core.order_by("tenant_id", False, fn)
         return self
 
     def order_by_tenant_id_desc(self, *fn) -> Self:
-        self.core.order_by('tenant_id', True, fn)
+        self.core.order_by("tenant_id", True, fn)
         return self
 
     def plus_tenant_id(self, n) -> Self:
-        self.core.put_plus('tenant_id', n)
+        self.core.put_plus("tenant_id", n)
         return self
 
     def minus_tenant_id(self, n) -> Self:
-        self.core.put_minus('tenant_id', n)
+        self.core.put_minus("tenant_id", n)
         return self
 
     def sum_tenant_id(self) -> Self:
-        self.core.aggregate('sum', 'tenant_id')
+        self.core.aggregate("sum", "tenant_id")
         return self
 
     def avg_tenant_id(self) -> Self:
-        self.core.aggregate('avg', 'tenant_id')
+        self.core.aggregate("avg", "tenant_id")
         return self
 
     def get_account_id(self):
         """account_id: int."""
-        return self.core.column('account_id')
+        return self.core.column("account_id")
 
     def set_account_id(self, value) -> Self:
-        self.core.set_value('account_id', value)
+        self.core.set_value("account_id", value)
         return self
 
     def add_column_account_id(self) -> Self:
-        self.core.add_column('account_id')
+        self.core.add_column("account_id")
         return self
 
     def remove_column_account_id(self) -> Self:
-        self.core.remove_column('account_id')
+        self.core.remove_column("account_id")
         return self
 
     def group_by_account_id(self) -> Self:
-        self.core.group_by.append('account_id')
+        self.core.group_by.append("account_id")
         return self
 
     def key_name_account_id(self) -> Self:
-        self.core.key_name = 'account_id'
+        self.core.key_name = "account_id"
         return self
 
     def order_by_account_id_asc(self, *fn) -> Self:
-        self.core.order_by('account_id', False, fn)
+        self.core.order_by("account_id", False, fn)
         return self
 
     def order_by_account_id_desc(self, *fn) -> Self:
-        self.core.order_by('account_id', True, fn)
+        self.core.order_by("account_id", True, fn)
         return self
 
     def plus_account_id(self, n) -> Self:
-        self.core.put_plus('account_id', n)
+        self.core.put_plus("account_id", n)
         return self
 
     def minus_account_id(self, n) -> Self:
-        self.core.put_minus('account_id', n)
+        self.core.put_minus("account_id", n)
         return self
 
     def sum_account_id(self) -> Self:
-        self.core.aggregate('sum', 'account_id')
+        self.core.aggregate("sum", "account_id")
         return self
 
     def avg_account_id(self) -> Self:
-        self.core.aggregate('avg', 'account_id')
+        self.core.aggregate("avg", "account_id")
         return self
 
     def get_name(self):
         """name: str."""
-        return self.core.column('name')
+        return self.core.column("name")
 
     def set_name(self, value) -> Self:
-        self.core.set_value('name', value)
+        self.core.set_value("name", value)
         return self
 
     def add_column_name(self) -> Self:
-        self.core.add_column('name')
+        self.core.add_column("name")
         return self
 
     def remove_column_name(self) -> Self:
-        self.core.remove_column('name')
+        self.core.remove_column("name")
         return self
 
     def group_by_name(self) -> Self:
-        self.core.group_by.append('name')
+        self.core.group_by.append("name")
         return self
 
     def key_name_name(self) -> Self:
-        self.core.key_name = 'name'
+        self.core.key_name = "name"
         return self
 
     def order_by_name_asc(self, *fn) -> Self:
-        self.core.order_by('name', False, fn)
+        self.core.order_by("name", False, fn)
         return self
 
     def order_by_name_desc(self, *fn) -> Self:
-        self.core.order_by('name', True, fn)
+        self.core.order_by("name", True, fn)
         return self
 
     def tenant_id(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'tenant_id')(value, *compared)
+        return Model.__getattr__(self, "tenant_id")(value, *compared)
 
     def account_id(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'account_id')(value, *compared)
+        return Model.__getattr__(self, "account_id")(value, *compared)
 
     def name(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'name')(value, *compared)
+        return Model.__getattr__(self, "name")(value, *compared)
 
     def tuple_tenant_id_with_account_id(self, values) -> Self:
-        return Model.__getattr__(self, 'tuple_tenant_id_with_account_id')(values)
+        return Model.__getattr__(self, "tuple_tenant_id_with_account_id")(values)
 
 
 class CompositeMembership(Model):
@@ -2183,147 +2194,147 @@ class CompositeMembership(Model):
 
     @property
     def entity_def(self):
-        return model.entity_of('composite_membership', CompositeMembership)
+        return model.entity_of("composite_membership", CompositeMembership)
 
     def get_tenant_id(self):
         """tenant_id: int."""
-        return self.core.column('tenant_id')
+        return self.core.column("tenant_id")
 
     def set_tenant_id(self, value) -> Self:
-        self.core.set_value('tenant_id', value)
+        self.core.set_value("tenant_id", value)
         return self
 
     def add_column_tenant_id(self) -> Self:
-        self.core.add_column('tenant_id')
+        self.core.add_column("tenant_id")
         return self
 
     def remove_column_tenant_id(self) -> Self:
-        self.core.remove_column('tenant_id')
+        self.core.remove_column("tenant_id")
         return self
 
     def group_by_tenant_id(self) -> Self:
-        self.core.group_by.append('tenant_id')
+        self.core.group_by.append("tenant_id")
         return self
 
     def key_name_tenant_id(self) -> Self:
-        self.core.key_name = 'tenant_id'
+        self.core.key_name = "tenant_id"
         return self
 
     def order_by_tenant_id_asc(self, *fn) -> Self:
-        self.core.order_by('tenant_id', False, fn)
+        self.core.order_by("tenant_id", False, fn)
         return self
 
     def order_by_tenant_id_desc(self, *fn) -> Self:
-        self.core.order_by('tenant_id', True, fn)
+        self.core.order_by("tenant_id", True, fn)
         return self
 
     def plus_tenant_id(self, n) -> Self:
-        self.core.put_plus('tenant_id', n)
+        self.core.put_plus("tenant_id", n)
         return self
 
     def minus_tenant_id(self, n) -> Self:
-        self.core.put_minus('tenant_id', n)
+        self.core.put_minus("tenant_id", n)
         return self
 
     def sum_tenant_id(self) -> Self:
-        self.core.aggregate('sum', 'tenant_id')
+        self.core.aggregate("sum", "tenant_id")
         return self
 
     def avg_tenant_id(self) -> Self:
-        self.core.aggregate('avg', 'tenant_id')
+        self.core.aggregate("avg", "tenant_id")
         return self
 
     def get_account_id(self):
         """account_id: int."""
-        return self.core.column('account_id')
+        return self.core.column("account_id")
 
     def set_account_id(self, value) -> Self:
-        self.core.set_value('account_id', value)
+        self.core.set_value("account_id", value)
         return self
 
     def add_column_account_id(self) -> Self:
-        self.core.add_column('account_id')
+        self.core.add_column("account_id")
         return self
 
     def remove_column_account_id(self) -> Self:
-        self.core.remove_column('account_id')
+        self.core.remove_column("account_id")
         return self
 
     def group_by_account_id(self) -> Self:
-        self.core.group_by.append('account_id')
+        self.core.group_by.append("account_id")
         return self
 
     def key_name_account_id(self) -> Self:
-        self.core.key_name = 'account_id'
+        self.core.key_name = "account_id"
         return self
 
     def order_by_account_id_asc(self, *fn) -> Self:
-        self.core.order_by('account_id', False, fn)
+        self.core.order_by("account_id", False, fn)
         return self
 
     def order_by_account_id_desc(self, *fn) -> Self:
-        self.core.order_by('account_id', True, fn)
+        self.core.order_by("account_id", True, fn)
         return self
 
     def plus_account_id(self, n) -> Self:
-        self.core.put_plus('account_id', n)
+        self.core.put_plus("account_id", n)
         return self
 
     def minus_account_id(self, n) -> Self:
-        self.core.put_minus('account_id', n)
+        self.core.put_minus("account_id", n)
         return self
 
     def sum_account_id(self) -> Self:
-        self.core.aggregate('sum', 'account_id')
+        self.core.aggregate("sum", "account_id")
         return self
 
     def avg_account_id(self) -> Self:
-        self.core.aggregate('avg', 'account_id')
+        self.core.aggregate("avg", "account_id")
         return self
 
     def get_role(self):
         """role: str."""
-        return self.core.column('role')
+        return self.core.column("role")
 
     def set_role(self, value) -> Self:
-        self.core.set_value('role', value)
+        self.core.set_value("role", value)
         return self
 
     def add_column_role(self) -> Self:
-        self.core.add_column('role')
+        self.core.add_column("role")
         return self
 
     def remove_column_role(self) -> Self:
-        self.core.remove_column('role')
+        self.core.remove_column("role")
         return self
 
     def group_by_role(self) -> Self:
-        self.core.group_by.append('role')
+        self.core.group_by.append("role")
         return self
 
     def key_name_role(self) -> Self:
-        self.core.key_name = 'role'
+        self.core.key_name = "role"
         return self
 
     def order_by_role_asc(self, *fn) -> Self:
-        self.core.order_by('role', False, fn)
+        self.core.order_by("role", False, fn)
         return self
 
     def order_by_role_desc(self, *fn) -> Self:
-        self.core.order_by('role', True, fn)
+        self.core.order_by("role", True, fn)
         return self
 
     def tenant_id(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'tenant_id')(value, *compared)
+        return Model.__getattr__(self, "tenant_id")(value, *compared)
 
     def account_id(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'account_id')(value, *compared)
+        return Model.__getattr__(self, "account_id")(value, *compared)
 
     def role(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'role')(value, *compared)
+        return Model.__getattr__(self, "role")(value, *compared)
 
     def tuple_tenant_id_with_account_id(self, values) -> Self:
-        return Model.__getattr__(self, 'tuple_tenant_id_with_account_id')(values)
+        return Model.__getattr__(self, "tuple_tenant_id_with_account_id")(values)
 
 
 class SoftRecord(Model):
@@ -2331,128 +2342,128 @@ class SoftRecord(Model):
 
     @property
     def entity_def(self):
-        return model.entity_of('soft_record', SoftRecord)
+        return model.entity_of("soft_record", SoftRecord)
 
     def get_seq(self):
         """seq: int."""
-        return self.core.column('seq')
+        return self.core.column("seq")
 
     def set_seq(self, value) -> Self:
-        self.core.set_value('seq', value)
+        self.core.set_value("seq", value)
         return self
 
     def add_column_seq(self) -> Self:
-        self.core.add_column('seq')
+        self.core.add_column("seq")
         return self
 
     def remove_column_seq(self) -> Self:
-        self.core.remove_column('seq')
+        self.core.remove_column("seq")
         return self
 
     def group_by_seq(self) -> Self:
-        self.core.group_by.append('seq')
+        self.core.group_by.append("seq")
         return self
 
     def key_name_seq(self) -> Self:
-        self.core.key_name = 'seq'
+        self.core.key_name = "seq"
         return self
 
     def order_by_seq_asc(self, *fn) -> Self:
-        self.core.order_by('seq', False, fn)
+        self.core.order_by("seq", False, fn)
         return self
 
     def order_by_seq_desc(self, *fn) -> Self:
-        self.core.order_by('seq', True, fn)
+        self.core.order_by("seq", True, fn)
         return self
 
     def plus_seq(self, n) -> Self:
-        self.core.put_plus('seq', n)
+        self.core.put_plus("seq", n)
         return self
 
     def minus_seq(self, n) -> Self:
-        self.core.put_minus('seq', n)
+        self.core.put_minus("seq", n)
         return self
 
     def sum_seq(self) -> Self:
-        self.core.aggregate('sum', 'seq')
+        self.core.aggregate("sum", "seq")
         return self
 
     def avg_seq(self) -> Self:
-        self.core.aggregate('avg', 'seq')
+        self.core.aggregate("avg", "seq")
         return self
 
     def get_name(self):
         """name: str."""
-        return self.core.column('name')
+        return self.core.column("name")
 
     def set_name(self, value) -> Self:
-        self.core.set_value('name', value)
+        self.core.set_value("name", value)
         return self
 
     def add_column_name(self) -> Self:
-        self.core.add_column('name')
+        self.core.add_column("name")
         return self
 
     def remove_column_name(self) -> Self:
-        self.core.remove_column('name')
+        self.core.remove_column("name")
         return self
 
     def group_by_name(self) -> Self:
-        self.core.group_by.append('name')
+        self.core.group_by.append("name")
         return self
 
     def key_name_name(self) -> Self:
-        self.core.key_name = 'name'
+        self.core.key_name = "name"
         return self
 
     def order_by_name_asc(self, *fn) -> Self:
-        self.core.order_by('name', False, fn)
+        self.core.order_by("name", False, fn)
         return self
 
     def order_by_name_desc(self, *fn) -> Self:
-        self.core.order_by('name', True, fn)
+        self.core.order_by("name", True, fn)
         return self
 
     def get_deleted_at(self):
         """deleted_at: str."""
-        return self.core.column('deleted_at')
+        return self.core.column("deleted_at")
 
     def set_deleted_at(self, value) -> Self:
-        self.core.set_value('deleted_at', value)
+        self.core.set_value("deleted_at", value)
         return self
 
     def add_column_deleted_at(self) -> Self:
-        self.core.add_column('deleted_at')
+        self.core.add_column("deleted_at")
         return self
 
     def remove_column_deleted_at(self) -> Self:
-        self.core.remove_column('deleted_at')
+        self.core.remove_column("deleted_at")
         return self
 
     def group_by_deleted_at(self) -> Self:
-        self.core.group_by.append('deleted_at')
+        self.core.group_by.append("deleted_at")
         return self
 
     def key_name_deleted_at(self) -> Self:
-        self.core.key_name = 'deleted_at'
+        self.core.key_name = "deleted_at"
         return self
 
     def order_by_deleted_at_asc(self, *fn) -> Self:
-        self.core.order_by('deleted_at', False, fn)
+        self.core.order_by("deleted_at", False, fn)
         return self
 
     def order_by_deleted_at_desc(self, *fn) -> Self:
-        self.core.order_by('deleted_at', True, fn)
+        self.core.order_by("deleted_at", True, fn)
         return self
 
     def seq(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'seq')(value, *compared)
+        return Model.__getattr__(self, "seq")(value, *compared)
 
     def name(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'name')(value, *compared)
+        return Model.__getattr__(self, "name")(value, *compared)
 
     def deleted_at(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'deleted_at')(value, *compared)
+        return Model.__getattr__(self, "deleted_at")(value, *compared)
 
 
 class Account(Model):
@@ -2460,93 +2471,93 @@ class Account(Model):
 
     @property
     def entity_def(self):
-        return model.entity_of('account', Account)
+        return model.entity_of("account", Account)
 
     def get_seq(self):
         """seq: int."""
-        return self.core.column('seq')
+        return self.core.column("seq")
 
     def set_seq(self, value) -> Self:
-        self.core.set_value('seq', value)
+        self.core.set_value("seq", value)
         return self
 
     def add_column_seq(self) -> Self:
-        self.core.add_column('seq')
+        self.core.add_column("seq")
         return self
 
     def remove_column_seq(self) -> Self:
-        self.core.remove_column('seq')
+        self.core.remove_column("seq")
         return self
 
     def group_by_seq(self) -> Self:
-        self.core.group_by.append('seq')
+        self.core.group_by.append("seq")
         return self
 
     def key_name_seq(self) -> Self:
-        self.core.key_name = 'seq'
+        self.core.key_name = "seq"
         return self
 
     def order_by_seq_asc(self, *fn) -> Self:
-        self.core.order_by('seq', False, fn)
+        self.core.order_by("seq", False, fn)
         return self
 
     def order_by_seq_desc(self, *fn) -> Self:
-        self.core.order_by('seq', True, fn)
+        self.core.order_by("seq", True, fn)
         return self
 
     def plus_seq(self, n) -> Self:
-        self.core.put_plus('seq', n)
+        self.core.put_plus("seq", n)
         return self
 
     def minus_seq(self, n) -> Self:
-        self.core.put_minus('seq', n)
+        self.core.put_minus("seq", n)
         return self
 
     def sum_seq(self) -> Self:
-        self.core.aggregate('sum', 'seq')
+        self.core.aggregate("sum", "seq")
         return self
 
     def avg_seq(self) -> Self:
-        self.core.aggregate('avg', 'seq')
+        self.core.aggregate("avg", "seq")
         return self
 
     def get_name(self):
         """name: str."""
-        return self.core.column('name')
+        return self.core.column("name")
 
     def set_name(self, value) -> Self:
-        self.core.set_value('name', value)
+        self.core.set_value("name", value)
         return self
 
     def add_column_name(self) -> Self:
-        self.core.add_column('name')
+        self.core.add_column("name")
         return self
 
     def remove_column_name(self) -> Self:
-        self.core.remove_column('name')
+        self.core.remove_column("name")
         return self
 
     def group_by_name(self) -> Self:
-        self.core.group_by.append('name')
+        self.core.group_by.append("name")
         return self
 
     def key_name_name(self) -> Self:
-        self.core.key_name = 'name'
+        self.core.key_name = "name"
         return self
 
     def order_by_name_asc(self, *fn) -> Self:
-        self.core.order_by('name', False, fn)
+        self.core.order_by("name", False, fn)
         return self
 
     def order_by_name_desc(self, *fn) -> Self:
-        self.core.order_by('name', True, fn)
+        self.core.order_by("name", True, fn)
         return self
 
     def seq(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'seq')(value, *compared)
+        return Model.__getattr__(self, "seq")(value, *compared)
 
     def name(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'name')(value, *compared)
+        return Model.__getattr__(self, "name")(value, *compared)
 
 
 class Project(Model):
@@ -2554,93 +2565,93 @@ class Project(Model):
 
     @property
     def entity_def(self):
-        return model.entity_of('project', Project)
+        return model.entity_of("project", Project)
 
     def get_seq(self):
         """seq: int."""
-        return self.core.column('seq')
+        return self.core.column("seq")
 
     def set_seq(self, value) -> Self:
-        self.core.set_value('seq', value)
+        self.core.set_value("seq", value)
         return self
 
     def add_column_seq(self) -> Self:
-        self.core.add_column('seq')
+        self.core.add_column("seq")
         return self
 
     def remove_column_seq(self) -> Self:
-        self.core.remove_column('seq')
+        self.core.remove_column("seq")
         return self
 
     def group_by_seq(self) -> Self:
-        self.core.group_by.append('seq')
+        self.core.group_by.append("seq")
         return self
 
     def key_name_seq(self) -> Self:
-        self.core.key_name = 'seq'
+        self.core.key_name = "seq"
         return self
 
     def order_by_seq_asc(self, *fn) -> Self:
-        self.core.order_by('seq', False, fn)
+        self.core.order_by("seq", False, fn)
         return self
 
     def order_by_seq_desc(self, *fn) -> Self:
-        self.core.order_by('seq', True, fn)
+        self.core.order_by("seq", True, fn)
         return self
 
     def plus_seq(self, n) -> Self:
-        self.core.put_plus('seq', n)
+        self.core.put_plus("seq", n)
         return self
 
     def minus_seq(self, n) -> Self:
-        self.core.put_minus('seq', n)
+        self.core.put_minus("seq", n)
         return self
 
     def sum_seq(self) -> Self:
-        self.core.aggregate('sum', 'seq')
+        self.core.aggregate("sum", "seq")
         return self
 
     def avg_seq(self) -> Self:
-        self.core.aggregate('avg', 'seq')
+        self.core.aggregate("avg", "seq")
         return self
 
     def get_name(self):
         """name: str."""
-        return self.core.column('name')
+        return self.core.column("name")
 
     def set_name(self, value) -> Self:
-        self.core.set_value('name', value)
+        self.core.set_value("name", value)
         return self
 
     def add_column_name(self) -> Self:
-        self.core.add_column('name')
+        self.core.add_column("name")
         return self
 
     def remove_column_name(self) -> Self:
-        self.core.remove_column('name')
+        self.core.remove_column("name")
         return self
 
     def group_by_name(self) -> Self:
-        self.core.group_by.append('name')
+        self.core.group_by.append("name")
         return self
 
     def key_name_name(self) -> Self:
-        self.core.key_name = 'name'
+        self.core.key_name = "name"
         return self
 
     def order_by_name_asc(self, *fn) -> Self:
-        self.core.order_by('name', False, fn)
+        self.core.order_by("name", False, fn)
         return self
 
     def order_by_name_desc(self, *fn) -> Self:
-        self.core.order_by('name', True, fn)
+        self.core.order_by("name", True, fn)
         return self
 
     def seq(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'seq')(value, *compared)
+        return Model.__getattr__(self, "seq")(value, *compared)
 
     def name(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'name')(value, *compared)
+        return Model.__getattr__(self, "name")(value, *compared)
 
 
 class AccountProject(Model):
@@ -2648,116 +2659,116 @@ class AccountProject(Model):
 
     @property
     def entity_def(self):
-        return model.entity_of('account_project', AccountProject)
+        return model.entity_of("account_project", AccountProject)
 
     def get_account_seq(self):
         """account_seq: int."""
-        return self.core.column('account_seq')
+        return self.core.column("account_seq")
 
     def set_account_seq(self, value) -> Self:
-        self.core.set_value('account_seq', value)
+        self.core.set_value("account_seq", value)
         return self
 
     def add_column_account_seq(self) -> Self:
-        self.core.add_column('account_seq')
+        self.core.add_column("account_seq")
         return self
 
     def remove_column_account_seq(self) -> Self:
-        self.core.remove_column('account_seq')
+        self.core.remove_column("account_seq")
         return self
 
     def group_by_account_seq(self) -> Self:
-        self.core.group_by.append('account_seq')
+        self.core.group_by.append("account_seq")
         return self
 
     def key_name_account_seq(self) -> Self:
-        self.core.key_name = 'account_seq'
+        self.core.key_name = "account_seq"
         return self
 
     def order_by_account_seq_asc(self, *fn) -> Self:
-        self.core.order_by('account_seq', False, fn)
+        self.core.order_by("account_seq", False, fn)
         return self
 
     def order_by_account_seq_desc(self, *fn) -> Self:
-        self.core.order_by('account_seq', True, fn)
+        self.core.order_by("account_seq", True, fn)
         return self
 
     def plus_account_seq(self, n) -> Self:
-        self.core.put_plus('account_seq', n)
+        self.core.put_plus("account_seq", n)
         return self
 
     def minus_account_seq(self, n) -> Self:
-        self.core.put_minus('account_seq', n)
+        self.core.put_minus("account_seq", n)
         return self
 
     def sum_account_seq(self) -> Self:
-        self.core.aggregate('sum', 'account_seq')
+        self.core.aggregate("sum", "account_seq")
         return self
 
     def avg_account_seq(self) -> Self:
-        self.core.aggregate('avg', 'account_seq')
+        self.core.aggregate("avg", "account_seq")
         return self
 
     def get_project_seq(self):
         """project_seq: int."""
-        return self.core.column('project_seq')
+        return self.core.column("project_seq")
 
     def set_project_seq(self, value) -> Self:
-        self.core.set_value('project_seq', value)
+        self.core.set_value("project_seq", value)
         return self
 
     def add_column_project_seq(self) -> Self:
-        self.core.add_column('project_seq')
+        self.core.add_column("project_seq")
         return self
 
     def remove_column_project_seq(self) -> Self:
-        self.core.remove_column('project_seq')
+        self.core.remove_column("project_seq")
         return self
 
     def group_by_project_seq(self) -> Self:
-        self.core.group_by.append('project_seq')
+        self.core.group_by.append("project_seq")
         return self
 
     def key_name_project_seq(self) -> Self:
-        self.core.key_name = 'project_seq'
+        self.core.key_name = "project_seq"
         return self
 
     def order_by_project_seq_asc(self, *fn) -> Self:
-        self.core.order_by('project_seq', False, fn)
+        self.core.order_by("project_seq", False, fn)
         return self
 
     def order_by_project_seq_desc(self, *fn) -> Self:
-        self.core.order_by('project_seq', True, fn)
+        self.core.order_by("project_seq", True, fn)
         return self
 
     def plus_project_seq(self, n) -> Self:
-        self.core.put_plus('project_seq', n)
+        self.core.put_plus("project_seq", n)
         return self
 
     def minus_project_seq(self, n) -> Self:
-        self.core.put_minus('project_seq', n)
+        self.core.put_minus("project_seq", n)
         return self
 
     def sum_project_seq(self) -> Self:
-        self.core.aggregate('sum', 'project_seq')
+        self.core.aggregate("sum", "project_seq")
         return self
 
     def avg_project_seq(self) -> Self:
-        self.core.aggregate('avg', 'project_seq')
+        self.core.aggregate("avg", "project_seq")
         return self
 
     def force_index_ix_account_project_project(self) -> Self:
-        self.core.index = 'ix_account_project_project'
+        self.core.index = "ix_account_project_project"
         return self
 
     def account_seq(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'account_seq')(value, *compared)
+        return Model.__getattr__(self, "account_seq")(value, *compared)
 
     def project_seq(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'project_seq')(value, *compared)
+        return Model.__getattr__(self, "project_seq")(value, *compared)
 
     def tuple_account_seq_with_project_seq(self, values) -> Self:
-        return Model.__getattr__(self, 'tuple_account_seq_with_project_seq')(values)
+        return Model.__getattr__(self, "tuple_account_seq_with_project_seq")(values)
 
 
 class Task(Model):
@@ -2765,128 +2776,128 @@ class Task(Model):
 
     @property
     def entity_def(self):
-        return model.entity_of('task', Task)
+        return model.entity_of("task", Task)
 
     def get_seq(self):
         """seq: int."""
-        return self.core.column('seq')
+        return self.core.column("seq")
 
     def set_seq(self, value) -> Self:
-        self.core.set_value('seq', value)
+        self.core.set_value("seq", value)
         return self
 
     def add_column_seq(self) -> Self:
-        self.core.add_column('seq')
+        self.core.add_column("seq")
         return self
 
     def remove_column_seq(self) -> Self:
-        self.core.remove_column('seq')
+        self.core.remove_column("seq")
         return self
 
     def group_by_seq(self) -> Self:
-        self.core.group_by.append('seq')
+        self.core.group_by.append("seq")
         return self
 
     def key_name_seq(self) -> Self:
-        self.core.key_name = 'seq'
+        self.core.key_name = "seq"
         return self
 
     def order_by_seq_asc(self, *fn) -> Self:
-        self.core.order_by('seq', False, fn)
+        self.core.order_by("seq", False, fn)
         return self
 
     def order_by_seq_desc(self, *fn) -> Self:
-        self.core.order_by('seq', True, fn)
+        self.core.order_by("seq", True, fn)
         return self
 
     def plus_seq(self, n) -> Self:
-        self.core.put_plus('seq', n)
+        self.core.put_plus("seq", n)
         return self
 
     def minus_seq(self, n) -> Self:
-        self.core.put_minus('seq', n)
+        self.core.put_minus("seq", n)
         return self
 
     def sum_seq(self) -> Self:
-        self.core.aggregate('sum', 'seq')
+        self.core.aggregate("sum", "seq")
         return self
 
     def avg_seq(self) -> Self:
-        self.core.aggregate('avg', 'seq')
+        self.core.aggregate("avg", "seq")
         return self
 
     def get_title(self):
         """title: str."""
-        return self.core.column('title')
+        return self.core.column("title")
 
     def set_title(self, value) -> Self:
-        self.core.set_value('title', value)
+        self.core.set_value("title", value)
         return self
 
     def add_column_title(self) -> Self:
-        self.core.add_column('title')
+        self.core.add_column("title")
         return self
 
     def remove_column_title(self) -> Self:
-        self.core.remove_column('title')
+        self.core.remove_column("title")
         return self
 
     def group_by_title(self) -> Self:
-        self.core.group_by.append('title')
+        self.core.group_by.append("title")
         return self
 
     def key_name_title(self) -> Self:
-        self.core.key_name = 'title'
+        self.core.key_name = "title"
         return self
 
     def order_by_title_asc(self, *fn) -> Self:
-        self.core.order_by('title', False, fn)
+        self.core.order_by("title", False, fn)
         return self
 
     def order_by_title_desc(self, *fn) -> Self:
-        self.core.order_by('title', True, fn)
+        self.core.order_by("title", True, fn)
         return self
 
     def get_state(self):
         """state: str."""
-        return self.core.column('state')
+        return self.core.column("state")
 
     def set_state(self, value) -> Self:
-        self.core.set_value('state', value)
+        self.core.set_value("state", value)
         return self
 
     def add_column_state(self) -> Self:
-        self.core.add_column('state')
+        self.core.add_column("state")
         return self
 
     def remove_column_state(self) -> Self:
-        self.core.remove_column('state')
+        self.core.remove_column("state")
         return self
 
     def group_by_state(self) -> Self:
-        self.core.group_by.append('state')
+        self.core.group_by.append("state")
         return self
 
     def key_name_state(self) -> Self:
-        self.core.key_name = 'state'
+        self.core.key_name = "state"
         return self
 
     def order_by_state_asc(self, *fn) -> Self:
-        self.core.order_by('state', False, fn)
+        self.core.order_by("state", False, fn)
         return self
 
     def order_by_state_desc(self, *fn) -> Self:
-        self.core.order_by('state', True, fn)
+        self.core.order_by("state", True, fn)
         return self
 
     def seq(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'seq')(value, *compared)
+        return Model.__getattr__(self, "seq")(value, *compared)
 
     def title(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'title')(value, *compared)
+        return Model.__getattr__(self, "title")(value, *compared)
 
     def state(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'state')(value, *compared)
+        return Model.__getattr__(self, "state")(value, *compared)
 
 
 class HexCell(Model):
@@ -2894,125 +2905,125 @@ class HexCell(Model):
 
     @property
     def entity_def(self):
-        return model.entity_of('hex_cell', HexCell)
+        return model.entity_of("hex_cell", HexCell)
 
     def get_seq(self):
         """seq: int."""
-        return self.core.column('seq')
+        return self.core.column("seq")
 
     def set_seq(self, value) -> Self:
-        self.core.set_value('seq', value)
+        self.core.set_value("seq", value)
         return self
 
     def add_column_seq(self) -> Self:
-        self.core.add_column('seq')
+        self.core.add_column("seq")
         return self
 
     def remove_column_seq(self) -> Self:
-        self.core.remove_column('seq')
+        self.core.remove_column("seq")
         return self
 
     def group_by_seq(self) -> Self:
-        self.core.group_by.append('seq')
+        self.core.group_by.append("seq")
         return self
 
     def key_name_seq(self) -> Self:
-        self.core.key_name = 'seq'
+        self.core.key_name = "seq"
         return self
 
     def order_by_seq_asc(self, *fn) -> Self:
-        self.core.order_by('seq', False, fn)
+        self.core.order_by("seq", False, fn)
         return self
 
     def order_by_seq_desc(self, *fn) -> Self:
-        self.core.order_by('seq', True, fn)
+        self.core.order_by("seq", True, fn)
         return self
 
     def plus_seq(self, n) -> Self:
-        self.core.put_plus('seq', n)
+        self.core.put_plus("seq", n)
         return self
 
     def minus_seq(self, n) -> Self:
-        self.core.put_minus('seq', n)
+        self.core.put_minus("seq", n)
         return self
 
     def sum_seq(self) -> Self:
-        self.core.aggregate('sum', 'seq')
+        self.core.aggregate("sum", "seq")
         return self
 
     def avg_seq(self) -> Self:
-        self.core.aggregate('avg', 'seq')
+        self.core.aggregate("avg", "seq")
         return self
 
     def get_label(self):
         """label: str."""
-        return self.core.column('label')
+        return self.core.column("label")
 
     def set_label(self, value) -> Self:
-        self.core.set_value('label', value)
+        self.core.set_value("label", value)
         return self
 
     def add_column_label(self) -> Self:
-        self.core.add_column('label')
+        self.core.add_column("label")
         return self
 
     def remove_column_label(self) -> Self:
-        self.core.remove_column('label')
+        self.core.remove_column("label")
         return self
 
     def group_by_label(self) -> Self:
-        self.core.group_by.append('label')
+        self.core.group_by.append("label")
         return self
 
     def key_name_label(self) -> Self:
-        self.core.key_name = 'label'
+        self.core.key_name = "label"
         return self
 
     def order_by_label_asc(self, *fn) -> Self:
-        self.core.order_by('label', False, fn)
+        self.core.order_by("label", False, fn)
         return self
 
     def order_by_label_desc(self, *fn) -> Self:
-        self.core.order_by('label', True, fn)
+        self.core.order_by("label", True, fn)
         return self
 
     def get_value(self):
         """value: str."""
-        return self.core.column('value')
+        return self.core.column("value")
 
     def set_value(self, value) -> Self:
-        self.core.set_value('value', value)
+        self.core.set_value("value", value)
         return self
 
     def add_column_value(self) -> Self:
-        self.core.add_column('value')
+        self.core.add_column("value")
         return self
 
     def remove_column_value(self) -> Self:
-        self.core.remove_column('value')
+        self.core.remove_column("value")
         return self
 
     def group_by_value(self) -> Self:
-        self.core.group_by.append('value')
+        self.core.group_by.append("value")
         return self
 
     def key_name_value(self) -> Self:
-        self.core.key_name = 'value'
+        self.core.key_name = "value"
         return self
 
     def order_by_value_asc(self, *fn) -> Self:
-        self.core.order_by('value', False, fn)
+        self.core.order_by("value", False, fn)
         return self
 
     def order_by_value_desc(self, *fn) -> Self:
-        self.core.order_by('value', True, fn)
+        self.core.order_by("value", True, fn)
         return self
 
     def seq(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'seq')(value, *compared)
+        return Model.__getattr__(self, "seq")(value, *compared)
 
     def label(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'label')(value, *compared)
+        return Model.__getattr__(self, "label")(value, *compared)
 
     def value(self, value, *compared) -> Self:
-        return Model.__getattr__(self, 'value')(value, *compared)
+        return Model.__getattr__(self, "value")(value, *compared)

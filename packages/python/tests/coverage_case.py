@@ -13,8 +13,14 @@ def run_cases(cases):
     """Runs exactly the case IDs of the command line in their order; an unknown, repeated or missing ID is
     an error before any case runs."""
     requested = sys.argv[1:]
-    if not requested or len(set(requested)) != len(requested) or any(i not in cases for i in requested):
-        raise SystemExit(f'usage: {Path(sys.argv[0]).name} {"|".join(cases)}...; got {requested}')
+    if (
+        not requested
+        or len(set(requested)) != len(requested)
+        or any(i not in cases for i in requested)
+    ):
+        raise SystemExit(
+            f"usage: {Path(sys.argv[0]).name} {'|'.join(cases)}...; got {requested}"
+        )
     for case_id in requested:
         cases[case_id]()
-        print(f'CASE {case_id} PASS', flush=True)
+        print(f"CASE {case_id} PASS", flush=True)

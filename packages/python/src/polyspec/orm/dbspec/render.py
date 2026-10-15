@@ -7,16 +7,20 @@ from polyspec.orm.dbspec.audit import audit_records
 from polyspec.orm.dbspec.check import read_check
 from polyspec.orm.dbspec.manifest import check_set
 from polyspec.orm.dbspec.names import renderer_name
-from polyspec.orm.dbspec.model import DbspecColumn, DbspecDocument, DbspecTable, \
-    DbspecType
+from polyspec.orm.dbspec.model import (
+    DbspecColumn,
+    DbspecDocument,
+    DbspecTable,
+    DbspecType,
+)
 
-__all__ = ['UUID_PATTERN', 'Renderer', 'render_dbspec', 'render_dbspec_statements']
+__all__ = ["UUID_PATTERN", "Renderer", "render_dbspec", "render_dbspec_statements"]
 
-DIALECTS = frozenset(('mysql', 'postgres', 'sqlite'))
+DIALECTS = frozenset(("mysql", "postgres", "sqlite"))
 
-UUID_PATTERN = '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+UUID_PATTERN = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
 
-_ACTIONS = {'restrict': 'RESTRICT', 'cascade': 'CASCADE', 'set_null': 'SET NULL'}
+_ACTIONS = {"restrict": "RESTRICT", "cascade": "CASCADE", "set_null": "SET NULL"}
 
 
 def _use_order(documents) -> list:
@@ -47,22 +51,24 @@ class Renderer:
 
     def q(self, name: str) -> str:
         """식별자를 quote한다."""
-        return f'`{name}`' if self.d == 'mysql' else f'"{name}"'
+        return f"`{name}`" if self.d == "mysql" else f'"{name}"'
 
     def list(self, names) -> str:
-        return ', '.join(self.q(n) for n in names)
+        return ", ".join(self.q(n) for n in names)
 
     def table(self, t: DbspecTable) -> list:
         out = [self.create_table(t, t.name, lambda c: renderer_name(t.name, c), ())]
-        if self.d == 'sqlite':
+        if self.d == "sqlite":
             for u in sorted(t.uniques, key=lambda u: u.name):
-                out.append(f'CREATE UNIQUE INDEX {self.q(u.name)} ON {self.q(t.name)} '
-                           f'({self.list(u.columns)})')
+                out.append(
+                    f"CREATE UNIQUE INDEX {self.q(u.name)} ON {self.q(t.name)} "
+                    f"({self.list(u.columns)})"
+                )
         for x in sorted(t.indexes, key=lambda x: x.name):
-            columns = ', '.join(self.q(c.name) + (' DESC' if c.descending else '')
-                                for c in x.columns)
-            out.append(f'CREATE INDEX {self.q(x.name)} ON {self.q(t.name)} '
-                       f'({columns})')
+            columns = ", ".join(
+                self.q(c.name) + (" DESC" if c.descending else "") for c in x.columns
+            )
+            out.append(f"CREATE INDEX {self.q(x.name)} ON {self.q(t.name)} ({columns})")
         return out
 
     def create_table(self, t: DbspecTable, name: str, check_name, hidden) -> str:
@@ -73,259 +79,324 @@ class Renderer:
         for c in hidden:
             plain = DbspecColumn(c.comments, c.name, c.type, True, False, c.default)
             parts.append(self.column(plain))
-        if not (self.d == 'sqlite' and any(c.identity for c in t.columns)):
-            parts.append(f'PRIMARY KEY ({self.list(t.primary_key.columns)})')
-        if self.d != 'sqlite':
+        if not (self.d == "sqlite" and any(c.identity for c in t.columns)):
+            parts.append(f"PRIMARY KEY ({self.list(t.primary_key.columns)})")
+        if self.d != "sqlite":
             for u in sorted(t.uniques, key=lambda u: u.name):
-                parts.append(f'CONSTRAINT {self.q(u.name)} UNIQUE '
-                             f'({self.list(u.columns)})')
+                parts.append(
+                    f"CONSTRAINT {self.q(u.name)} UNIQUE ({self.list(u.columns)})"
+                )
         else:
             for f in sorted(t.foreign_keys, key=lambda f: f.name):
                 parts.append(self.foreign_key(f))
         for c in t.columns:
             check = self.type_check(c)
-            if check != '':
-                parts.append(f'CONSTRAINT {self.q(check_name(c.name))} CHECK ({check})')
+            if check != "":
+                parts.append(f"CONSTRAINT {self.q(check_name(c.name))} CHECK ({check})")
         for k in sorted(t.checks, key=lambda k: k.name):
-            parts.append(f'CONSTRAINT {self.q(k.name)} CHECK '
-                         f'({self.predicate(t, read_check(k.expression, k.name))})')
-        create = f'CREATE TABLE {self.q(name)} ({", ".join(parts)})'
-        if self.d == 'mysql':
-            create += ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin'
+            parts.append(
+                f"CONSTRAINT {self.q(k.name)} CHECK "
+                f"({self.predicate(t, read_check(k.expression, k.name))})"
+            )
+        create = f"CREATE TABLE {self.q(name)} ({', '.join(parts)})"
+        if self.d == "mysql":
+            create += " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"
         return create
 
     def column(self, c: DbspecColumn) -> str:
         if c.identity:
-            if self.d == 'mysql':
-                return f'{self.q(c.name)} BIGINT NOT NULL AUTO_INCREMENT'
-            if self.d == 'postgres':
-                return f'{self.q(c.name)} bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL'
-            return f'{self.q(c.name)} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT'
-        s = f'{self.q(c.name)} {self.type_text(c.type)} ' \
-            f'{"NULL" if c.nullable else "NOT NULL"}'
+            if self.d == "mysql":
+                return f"{self.q(c.name)} BIGINT NOT NULL AUTO_INCREMENT"
+            if self.d == "postgres":
+                return (
+                    f"{self.q(c.name)} bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL"
+                )
+            return f"{self.q(c.name)} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT"
+        s = (
+            f"{self.q(c.name)} {self.type_text(c.type)} "
+            f"{'NULL' if c.nullable else 'NOT NULL'}"
+        )
         if c.default is not None:
-            s += f' DEFAULT {self.default_text(c.type, c.default)}'
+            s += f" DEFAULT {self.default_text(c.type, c.default)}"
         return s
 
     def type_text(self, t: DbspecType) -> str:
-        if self.d == 'mysql':
-            return {'i16': 'SMALLINT', 'i32': 'INT', 'i64': 'BIGINT',
-                    'bool': 'tinyint(1)',
-                    'decimal': f'DECIMAL({t.precision},{t.scale})',
-                    'f64': 'DOUBLE',
-                    'varchar': f'varchar({t.length}) CHARACTER SET utf8mb4 '
-                               f'COLLATE utf8mb4_0900_bin',
-                    'text': 'LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin',
-                    'bytes': 'LONGBLOB',
-                    'uuid': 'char(36) CHARACTER SET ascii COLLATE ascii_bin',
-                    'date': 'DATE', 'time': f'TIME({t.precision})',
-                    'datetime': f'DATETIME({t.precision})'}[t.kind]
-        if self.d == 'postgres':
-            return {'i16': 'smallint', 'i32': 'integer', 'i64': 'bigint',
-                    'bool': 'boolean',
-                    'decimal': f'numeric({t.precision},{t.scale})',
-                    'f64': 'double precision', 'varchar': f'varchar({t.length}) '
-                                                          f'COLLATE "C"',
-                    'text': 'text COLLATE "C"', 'bytes': 'bytea', 'uuid': 'uuid',
-                    'date': 'date', 'time': f'time({t.precision})',
-                    'datetime': f'timestamp({t.precision})'}[t.kind]
-        return {'i16': 'smallint', 'i32': 'integer', 'i64': 'bigint',
-                'bool': 'BOOLEAN', 'decimal': f'DECIMALINT({t.precision},{t.scale})',
-                'f64': 'REAL', 'varchar': f'varchar({t.length})',
-                'text': 'TEXT', 'uuid': 'TEXT', 'bytes': 'BLOB', 'date': 'DATE',
-                'time': 'TIME', 'datetime': 'DATETIME'}[t.kind]
+        if self.d == "mysql":
+            return {
+                "i16": "SMALLINT",
+                "i32": "INT",
+                "i64": "BIGINT",
+                "bool": "tinyint(1)",
+                "decimal": f"DECIMAL({t.precision},{t.scale})",
+                "f64": "DOUBLE",
+                "varchar": f"varchar({t.length}) CHARACTER SET utf8mb4 "
+                f"COLLATE utf8mb4_0900_bin",
+                "text": "LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin",
+                "bytes": "LONGBLOB",
+                "uuid": "char(36) CHARACTER SET ascii COLLATE ascii_bin",
+                "date": "DATE",
+                "time": f"TIME({t.precision})",
+                "datetime": f"DATETIME({t.precision})",
+            }[t.kind]
+        if self.d == "postgres":
+            return {
+                "i16": "smallint",
+                "i32": "integer",
+                "i64": "bigint",
+                "bool": "boolean",
+                "decimal": f"numeric({t.precision},{t.scale})",
+                "f64": "double precision",
+                "varchar": f'varchar({t.length}) COLLATE "C"',
+                "text": 'text COLLATE "C"',
+                "bytes": "bytea",
+                "uuid": "uuid",
+                "date": "date",
+                "time": f"time({t.precision})",
+                "datetime": f"timestamp({t.precision})",
+            }[t.kind]
+        return {
+            "i16": "smallint",
+            "i32": "integer",
+            "i64": "bigint",
+            "bool": "BOOLEAN",
+            "decimal": f"DECIMALINT({t.precision},{t.scale})",
+            "f64": "REAL",
+            "varchar": f"varchar({t.length})",
+            "text": "TEXT",
+            "uuid": "TEXT",
+            "bytes": "BLOB",
+            "date": "DATE",
+            "time": "TIME",
+            "datetime": "DATETIME",
+        }[t.kind]
 
     def default_text(self, t: DbspecType, d) -> str:
-        if d.kind == 'literal':
+        if d.kind == "literal":
             return self.literal(t, d.text)
-        if t.kind != 'datetime':
-            raise ValueError(f'default now of a {t.kind} column')
+        if t.kind != "datetime":
+            raise ValueError(f"default now of a {t.kind} column")
         p = t.precision
-        if self.d == 'mysql':
-            return f'CURRENT_TIMESTAMP({p})'
-        if self.d == 'postgres':
-            return 'statement_timestamp()'
+        if self.d == "mysql":
+            return f"CURRENT_TIMESTAMP({p})"
+        if self.d == "postgres":
+            return "statement_timestamp()"
         if p == 0:
             return "(strftime('%Y-%m-%d %H:%M:%S', 'now'))"
         if p <= 3:
             return f"(substr(strftime('%Y-%m-%d %H:%M:%f', 'now'), 1, {20 + p}))"
-        return (f"(strftime('%Y-%m-%d %H:%M:%f', 'now') || "
-                f"'{'0' * (p - 3)}')")
+        return f"(strftime('%Y-%m-%d %H:%M:%f', 'now') || '{'0' * (p - 3)}')"
 
     def literal(self, t, text: str) -> str:
         """그 dialect에서 type t(null이면 column type 없음)의 정규 literal."""
-        if text in ('true', 'false'):
-            if self.d == 'postgres':
+        if text in ("true", "false"):
+            if self.d == "postgres":
                 return text.upper()
-            return '1' if text == 'true' else '0'
+            return "1" if text == "true" else "0"
         if text.startswith("'"):
-            return text.replace('\\', '\\\\') if self.d == 'mysql' else text
-        if t is not None and t.kind == 'decimal' and self.d == 'sqlite':
+            return text.replace("\\", "\\\\") if self.d == "mysql" else text
+        if t is not None and t.kind == "decimal" and self.d == "sqlite":
             return _scaled_decimal(text)
         return text
 
     def foreign_key(self, f) -> str:
-        return (f'CONSTRAINT {self.q(f.name)} FOREIGN KEY ({self.list(f.columns)}) '
-                f'REFERENCES {self.q(f.table)} ({self.list(f.references)}) '
-                f'ON DELETE {_ACTIONS[f.on_delete]} '
-                f'ON UPDATE {_ACTIONS[f.on_update]}')
+        return (
+            f"CONSTRAINT {self.q(f.name)} FOREIGN KEY ({self.list(f.columns)}) "
+            f"REFERENCES {self.q(f.table)} ({self.list(f.references)}) "
+            f"ON DELETE {_ACTIONS[f.on_delete]} "
+            f"ON UPDATE {_ACTIONS[f.on_update]}"
+        )
 
     def type_check(self, c: DbspecColumn) -> str:
         """column의 renderer CHECK; dialect가 type 자체를 강제하면 ''이다."""
         if c.identity:
-            return ''
+            return ""
         q = self.q(c.name)
         t = c.type
-        if self.d == 'mysql':
-            if t.kind == 'bool':
-                return f'{q} IN (0, 1)'
-            if t.kind == 'uuid':
+        if self.d == "mysql":
+            if t.kind == "bool":
+                return f"{q} IN (0, 1)"
+            if t.kind == "uuid":
                 return f"REGEXP_LIKE({q}, '{UUID_PATTERN}', 'c')"
-            if t.kind == 'time':
+            if t.kind == "time":
                 return f"{q} >= '00:00:00' AND {q} < '24:00:00'"
-            return ''
-        if self.d == 'postgres':
-            return f"{q} < '24:00:00'" if t.kind == 'time' else ''
+            return ""
+        if self.d == "postgres":
+            return f"{q} < '24:00:00'" if t.kind == "time" else ""
         integer = f"typeof({q}) IN ('integer', 'null')"
-        if t.kind == 'i16':
-            return f'{integer} AND {q} BETWEEN -32768 AND 32767'
-        if t.kind == 'i32':
-            return f'{integer} AND {q} BETWEEN -2147483648 AND 2147483647'
-        if t.kind == 'i64':
+        if t.kind == "i16":
+            return f"{integer} AND {q} BETWEEN -32768 AND 32767"
+        if t.kind == "i32":
+            return f"{integer} AND {q} BETWEEN -2147483648 AND 2147483647"
+        if t.kind == "i64":
             return integer
-        if t.kind == 'bool':
-            return f'{q} IN (0, 1)'
-        if t.kind == 'decimal':
-            limit = '9' * t.precision
-            return f'{integer} AND {q} BETWEEN -{limit} AND {limit}'
-        if t.kind == 'f64':
+        if t.kind == "bool":
+            return f"{q} IN (0, 1)"
+        if t.kind == "decimal":
+            limit = "9" * t.precision
+            return f"{integer} AND {q} BETWEEN -{limit} AND {limit}"
+        if t.kind == "f64":
             return f"typeof({q}) IN ('real', 'null')"
-        if t.kind == 'varchar':
-            return f'length({q}) <= {t.length}'
-        if t.kind == 'uuid':
-            hexa = '[0-9a-f]' * 4
+        if t.kind == "varchar":
+            return f"length({q}) <= {t.length}"
+        if t.kind == "uuid":
+            hexa = "[0-9a-f]" * 4
             return f"{q} GLOB '{'[0-9a-f]' * 8}-{hexa}-{hexa}-{hexa}-{'[0-9a-f]' * 12}'"
-        if t.kind == 'date':
-            return f'{q} IS date({q})'
-        if t.kind == 'time':
+        if t.kind == "date":
+            return f"{q} IS date({q})"
+        if t.kind == "time":
             if t.precision == 0:
                 return f"{q} IS time({q}) AND {q} < '24:00:00'"
-            clock = f'substr({q}, 1, 8)'
-            return (f'length({q}) = {9 + t.precision} AND {clock} IS time({clock}) '
-                    f"AND {clock} < '24:00:00' AND substr({q}, 9, 1) = '.' AND "
-                    f"substr({q}, 10) GLOB '{'[0-9]' * t.precision}'")
-        if t.kind == 'datetime':
+            clock = f"substr({q}, 1, 8)"
+            return (
+                f"length({q}) = {9 + t.precision} AND {clock} IS time({clock}) "
+                f"AND {clock} < '24:00:00' AND substr({q}, 9, 1) = '.' AND "
+                f"substr({q}, 10) GLOB '{'[0-9]' * t.precision}'"
+            )
+        if t.kind == "datetime":
             if t.precision == 0:
-                return (f'length({q}) = 19 AND {q} IS datetime({q}) AND '
-                        f"substr({q}, 12, 2) < '24'")
-            stamp = f'substr({q}, 1, 19)'
-            return (f'length({q}) = {20 + t.precision} AND {stamp} IS '
-                    f'datetime({stamp}) AND substr({q}, 12, 2) < \'24\' AND '
-                    f"substr({q}, 20, 1) = '.' AND "
-                    f"substr({q}, 21) GLOB '{'[0-9]' * t.precision}'")
-        return ''
+                return (
+                    f"length({q}) = 19 AND {q} IS datetime({q}) AND "
+                    f"substr({q}, 12, 2) < '24'"
+                )
+            stamp = f"substr({q}, 1, 19)"
+            return (
+                f"length({q}) = {20 + t.precision} AND {stamp} IS "
+                f"datetime({stamp}) AND substr({q}, 12, 2) < '24' AND "
+                f"substr({q}, 20, 1) = '.' AND "
+                f"substr({q}, 21) GLOB '{'[0-9]' * t.precision}'"
+            )
+        return ""
 
     def predicate(self, t: DbspecTable, e: dict) -> str:
         """table t의 check 술어를 그 dialect로 쓴다."""
-        if e['kind'] == 'logical':
+        if e["kind"] == "logical":
             # and 안의 or만 괄호로 묶는다.
             def side(q):
-                if e['op'] == 'and' and q['kind'] == 'logical' and q['op'] == 'or':
-                    return f'({self.predicate(t, q)})'
+                if e["op"] == "and" and q["kind"] == "logical" and q["op"] == "or":
+                    return f"({self.predicate(t, q)})"
                 return self.predicate(t, q)
+
             return f"{side(e['left'])} {e['op'].upper()} {side(e['right'])}"
-        if e['kind'] == 'compare':
-            type_ = _operand_type(t, e['left'], e['right'])
-            return (f"{self.operand(type_, e['left'])} {e['op']} "
-                    f"{self.operand(type_, e['right'])}")
-        if e['kind'] == 'in':
-            type_ = _operand_type(t, e['operand'], None)
-            listed = ', '.join(self.literal(type_, l) for l in e['list'])
-            return (f"{self.operand(type_, e['operand'])}"
-                    f"{' NOT' if e['negated'] else ''} IN ({listed})")
-        return (f"{self.operand(None, e['operand'])} IS "
-                f"{'NOT NULL' if e['negated'] else 'NULL'}")
+        if e["kind"] == "compare":
+            type_ = _operand_type(t, e["left"], e["right"])
+            return (
+                f"{self.operand(type_, e['left'])} {e['op']} "
+                f"{self.operand(type_, e['right'])}"
+            )
+        if e["kind"] == "in":
+            type_ = _operand_type(t, e["operand"], None)
+            listed = ", ".join(self.literal(type_, item) for item in e["list"])
+            return (
+                f"{self.operand(type_, e['operand'])}"
+                f"{' NOT' if e['negated'] else ''} IN ({listed})"
+            )
+        return (
+            f"{self.operand(None, e['operand'])} IS "
+            f"{'NOT NULL' if e['negated'] else 'NULL'}"
+        )
 
     def operand(self, type_, e: dict) -> str:
-        if e['kind'] == 'column':
-            return self.q(e['name'])
-        return self.literal(type_, e['text'])
+        if e["kind"] == "column":
+            return self.q(e["name"])
+        return self.literal(type_, e["text"])
 
     def triggers(self, t: DbspecTable) -> list:
         """immutable과 audit setting의 trigger."""
         if t.settings is None:
             return []
         out: list = []
-        if any(s.kind == 'immutable' for s in t.settings.settings):
-            message = f'table {t.name} is immutable'
-            out.extend(self.reject(t, 'immutable_update', 'BEFORE UPDATE', message))
-            out.extend(self.reject(t, 'immutable_delete', 'BEFORE DELETE', message))
+        if any(s.kind == "immutable" for s in t.settings.settings):
+            message = f"table {t.name} is immutable"
+            out.extend(self.reject(t, "immutable_update", "BEFORE UPDATE", message))
+            out.extend(self.reject(t, "immutable_delete", "BEFORE DELETE", message))
         for a in t.settings.settings:
-            if a.kind != 'audit':
+            if a.kind != "audit":
                 continue
-            out.extend(self.history(t, a, 'audit_insert', 'AFTER INSERT', "'insert'",
-                                    'NULL'))
-            out.extend(self.history(t, a, 'audit_update', 'AFTER UPDATE', "'update'",
-                                    f'OLD.{self.q(a.column)}'))
-            out.extend(self.reject(t, 'audit_delete', 'BEFORE DELETE',
-                                   f'table {t.name} deletes through its soft delete '
-                                   f'column'))
+            out.extend(
+                self.history(t, a, "audit_insert", "AFTER INSERT", "'insert'", "NULL")
+            )
+            out.extend(
+                self.history(
+                    t,
+                    a,
+                    "audit_update",
+                    "AFTER UPDATE",
+                    "'update'",
+                    f"OLD.{self.q(a.column)}",
+                )
+            )
+            out.extend(
+                self.reject(
+                    t,
+                    "audit_delete",
+                    "BEFORE DELETE",
+                    f"table {t.name} deletes through its soft delete column",
+                )
+            )
         return out
 
-    def trigger(self, t: DbspecTable, event: str, timing: str, body: str,
-                rejects: bool) -> list:
+    def trigger(
+        self, t: DbspecTable, event: str, timing: str, body: str, rejects: bool
+    ) -> list:
         """몸통이 statement 하나인 trigger <table>$<event>. PostgreSQL은 같은
         이름의 function으로 감싼다."""
         name = self.q(renderer_name(t.name, event))
-        on = f' {timing} ON {self.q(t.name)} FOR EACH ROW '
-        if self.d == 'mysql':
-            return [f'CREATE TRIGGER {name}{on}{body}']
-        if self.d == 'postgres':
-            end = 'END$$' if rejects else 'RETURN NULL; END$$'
-            return [f'CREATE FUNCTION {name}() RETURNS trigger LANGUAGE plpgsql '
-                    f'AS $$BEGIN {body}; {end}',
-                    f'CREATE TRIGGER {name}{on}EXECUTE FUNCTION {name}()']
-        return [f'CREATE TRIGGER {name}{on}BEGIN {body}; END']
+        on = f" {timing} ON {self.q(t.name)} FOR EACH ROW "
+        if self.d == "mysql":
+            return [f"CREATE TRIGGER {name}{on}{body}"]
+        if self.d == "postgres":
+            end = "END$$" if rejects else "RETURN NULL; END$$"
+            return [
+                f"CREATE FUNCTION {name}() RETURNS trigger LANGUAGE plpgsql "
+                f"AS $$BEGIN {body}; {end}",
+                f"CREATE TRIGGER {name}{on}EXECUTE FUNCTION {name}()",
+            ]
+        return [f"CREATE TRIGGER {name}{on}BEGIN {body}; END"]
 
     def reject(self, t: DbspecTable, event: str, timing: str, message: str) -> list:
-        if self.d == 'mysql':
+        if self.d == "mysql":
             body = f"SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '{message}'"
-        elif self.d == 'postgres':
+        elif self.d == "postgres":
             body = f"RAISE EXCEPTION '{message}'"
         else:
             body = f"SELECT RAISE(ABORT, '{message}')"
         return self.trigger(t, event, timing, body, True)
 
-    def history(self, t: DbspecTable, a, event: str, timing: str, action: str,
-                previous: str) -> list:
+    def history(
+        self, t: DbspecTable, a, event: str, timing: str, action: str, previous: str
+    ) -> list:
         recorded = [c for c in t.columns if audit_records(a, c.name)]
-        columns = [self.q(a.action), self.q(a.previous)] + [self.q(c.name)
-                                                           for c in recorded]
-        values = [action, previous] + [f'NEW.{self.q(c.name)}' for c in recorded]
-        body = (f'INSERT INTO {self.q(a.into)} ({", ".join(columns)}) '
-                f'VALUES ({", ".join(values)})')
+        columns = [self.q(a.action), self.q(a.previous)] + [
+            self.q(c.name) for c in recorded
+        ]
+        values = [action, previous] + [f"NEW.{self.q(c.name)}" for c in recorded]
+        body = (
+            f"INSERT INTO {self.q(a.into)} ({', '.join(columns)}) "
+            f"VALUES ({', '.join(values)})"
+        )
         return self.trigger(t, event, timing, body, False)
 
 
 def _scaled_decimal(text: str) -> str:
     """정규 decimal literal에 10^scale을 곱한 값: 점과 앞자리 0을 뺀 자릿수."""
-    negative = text.startswith('-')
-    digits = (text[1:] if negative else text).replace('.', '').lstrip('0')
-    if digits == '':
-        return '0'
-    return '-' + digits if negative else digits
+    negative = text.startswith("-")
+    digits = (text[1:] if negative else text).replace(".", "").lstrip("0")
+    if digits == "":
+        return "0"
+    return "-" + digits if negative else digits
 
 
 def _operand_type(t: DbspecTable, a: dict, b):
     """피연산자 가운데 column의 type. 검증된 비교에는 column이 하나 이상
     있다."""
     for e in (a, b):
-        if e is None or e['kind'] != 'column':
+        if e is None or e["kind"] != "column":
             continue
-        column = next((c for c in t.columns if c.name == e['name']), None)
+        column = next((c for c in t.columns if c.name == e["name"]), None)
         if column is None:
-            raise ValueError(f'check column {e["name"]} is not a column of table '
-                             f'{t.name}')
+            raise ValueError(
+                f"check column {e['name']} is not a column of table {t.name}"
+            )
         return column.type
     return None
 
@@ -335,36 +406,39 @@ def render_dbspec(documents: list[DbspecDocument], dialect: str) -> dict:
     "Rendered statements"): 문서는 `use` 순서, table은 문서 순서다. 검사가 실패하면
     그 진단을, dialect를 모르면 TypeError를 던진다."""
     rendered = render_dbspec_statements(documents, dialect)
-    if rendered['statements'] is None:
+    if rendered["statements"] is None:
         return rendered
-    return {'statements': [s['sql'] for s in rendered['statements']],
-            'diagnostics': []}
+    return {"statements": [s["sql"] for s in rendered["statements"]], "diagnostics": []}
 
 
 def render_dbspec_statements(documents, dialect: str) -> dict:
     """render_dbspec의 문장을 같은 순서로, 그 문장이 만들거나 바꾸는 table과
     함께 쓴다."""
     if dialect not in DIALECTS:
-        raise TypeError(f'unknown dbspec dialect {dialect}')
+        raise TypeError(f"unknown dbspec dialect {dialect}")
     if not isinstance(documents, (list, tuple)):
-        raise TypeError('dbspec documents must be a list of parsed documents')
+        raise TypeError("dbspec documents must be a list of parsed documents")
     _, diagnostics = check_set(documents)
     if diagnostics:
-        return {'statements': None, 'diagnostics': diagnostics}
+        return {"statements": None, "diagnostics": diagnostics}
     r = Renderer(dialect)
     # 외부 문서의 table은 그 문서를 소유한 set이 만든다.
     ordered = [d for d in _use_order(documents) if d.external is not True]
     out: list = []
     for document in ordered:
         for t in document.tables:
-            out.extend({'sql': sql, 'table': t.name} for sql in r.table(t))
-    if dialect != 'sqlite':
+            out.extend({"sql": sql, "table": t.name} for sql in r.table(t))
+    if dialect != "sqlite":
         for document in ordered:
             for t in document.tables:
                 for f in sorted(t.foreign_keys, key=lambda f: f.name):
-                    out.append({'sql': f'ALTER TABLE {r.q(t.name)} ADD '
-                                       f'{r.foreign_key(f)}', 'table': t.name})
+                    out.append(
+                        {
+                            "sql": f"ALTER TABLE {r.q(t.name)} ADD {r.foreign_key(f)}",
+                            "table": t.name,
+                        }
+                    )
     for document in ordered:
         for t in document.tables:
-            out.extend({'sql': sql, 'table': t.name} for sql in r.triggers(t))
-    return {'statements': out, 'diagnostics': []}
+            out.extend({"sql": sql, "table": t.name} for sql in r.triggers(t))
+    return {"statements": out, "diagnostics": []}

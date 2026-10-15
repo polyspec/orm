@@ -43,3 +43,8 @@ namespaces = true
 # reads the shared dbspec vectors against their JSON Schemas (tests/dbspec/schema). make install-python installs it into the
 # venv; the client never imports it.
 test = ["jsonschema-rs==0.58.6"]
+
+# The models that orm-gen generates and the Makefile's go-model-check compares byte for byte: their methods are API for
+# the consumers of the bench models, and the generated text is never edited by hand.
+[tool.vulture]
+exclude = ["src/polyspec/orm/models/"]

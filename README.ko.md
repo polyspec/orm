@@ -1,5 +1,5 @@
 <!-- doc-id: readme -->
-<!-- source-sha256: c40fae2cee2f0784c086e5a94f74c49703af9ee80bff779595ed463ab0f5cc79 -->
+<!-- source-sha256: 6e6014811af4ee4abb29975df628276482ce2cfb8ff2c37807f0797aee11084f -->
 # orm
 
 **Go, PHP, Python, Rust, TypeScript**를 위한 스키마 기반 모델 query grammar다. 목표 문법은 [docs/dsl.ko.md](docs/dsl.ko.md), 작업 순서는 [docs/plan.ko.md](docs/plan.ko.md)에 명시되어 있다.
@@ -25,9 +25,17 @@ const authors = await new Author().connect(slave1).serviceSeq(7).andIsClose(fals
     .relation(new User().matchUserSeqWithSeq()).orderBySeqDesc().limit(0, 20).gets();
 ```
 ```python
-authors = Author().connect(slave1).service_seq(7).and_is_close(False) \
-    .and_(lambda q: q.is_display(True).or_().is_allday(True)) \
-    .relation(User().match_user_seq_with_seq()).order_by_seq_desc().limit(0, 20).gets()
+authors = (
+    Author()
+    .connect(slave1)
+    .service_seq(7)
+    .and_is_close(False)
+    .and_(lambda q: q.is_display(True).or_().is_allday(True))
+    .relation(User().match_user_seq_with_seq())
+    .order_by_seq_desc()
+    .limit(0, 20)
+    .gets()
+)
 ```
 다섯 chain은 같은 SQL, bind, 결과를 만든다. `tests/conformance`는 MySQL, PostgreSQL, SQLite에서 공통 벡터를 검사한다.
 

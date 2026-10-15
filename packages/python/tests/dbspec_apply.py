@@ -31,10 +31,10 @@ class Conn:
         cursor = self.connection.execute(sql, tuple(values))
         rows = [list(row) for row in cursor.fetchall()]
         cursor.close()
-        return {'rows': rows, 'insert_id': None, 'affected': 0}
+        return {"rows": rows, "insert_id": None, "affected": 0}
 
     def value(self, sql: str):
-        return self.execute(sql, [])['rows'][0][0]
+        return self.execute(sql, [])["rows"][0][0]
 
     def close(self) -> None:
         self.connection.close()
@@ -42,74 +42,83 @@ class Conn:
 
 def chain() -> list:
     """plans.json의 create-from-empty와 rename-table-and-column chain이다."""
-    data = json.loads((ROOT / 'tests' / 'dbspec' / 'plans.json').read_text())
+    data = json.loads((ROOT / "tests" / "dbspec" / "plans.json").read_text())
     plans = []
-    for case_id in ('create-from-empty', 'rename-table-and-column'):
-        case = next(c for c in data['cases'] if c['id'] == case_id)
-        result = parse_plan('\n'.join(case['plan']) + '\n')
-        assert result['plan'] is not None, result['diagnostics'][:1]
-        plans.append(result['plan'])
+    for case_id in ("create-from-empty", "rename-table-and-column"):
+        case = next(c for c in data["cases"] if c["id"] == case_id)
+        result = parse_plan("\n".join(case["plan"]) + "\n")
+        assert result["plan"] is not None, result["diagnostics"][:1]
+        plans.append(result["plan"])
     return plans
 
 
 def history(conn: Conn) -> list:
-    rows = conn.execute('SELECT "name", "state", "step" FROM "dbspec$plans"', [])['rows']
+    rows = conn.execute('SELECT "name", "state", "step" FROM "dbspec$plans"', [])[
+        "rows"
+    ]
     return sorted(tuple(row) for row in rows)
 
 
 class DbspecApplyTest(unittest.TestCase):
     def test_sqlite_scenarios(self) -> None:
-        with tempfile.TemporaryDirectory(prefix='dbspec-apply-') as tmp:
+        with tempfile.TemporaryDirectory(prefix="dbspec-apply-") as tmp:
             scenarios(tmp)
 
 
 def scenarios(tmp: str) -> None:
     plans = chain()
-    sources = [None, plans[0]['schema']]
-    steps = [len(plan_steps(source, p, 'sqlite')['steps'])
-             for p, source in zip(plans, sources)]
+    sources = [None, plans[0]["schema"]]
+    steps = [
+        len(plan_steps(source, p, "sqlite")["steps"])
+        for p, source in zip(plans, sources)
+    ]
     # 첫 plan만 적용한다.
-    conn = Conn(os.path.join(tmp, 'first.sqlite3'))
-    apply_plans(conn, 'sqlite', plans[:1], lambda: NOW)
-    assert history(conn) == [('create_from_empty', 'applied', steps[0])], \
-        history(conn)
+    conn = Conn(os.path.join(tmp, "first.sqlite3"))
+    apply_plans(conn, "sqlite", plans[:1], lambda: NOW)
+    assert history(conn) == [("create_from_empty", "applied", steps[0])], history(conn)
     assert conn.value('SELECT COUNT(*) FROM "users"') == 0
     conn.close()
     # chain 전체를 적용한다.
-    conn = Conn(os.path.join(tmp, 'chain.sqlite3'))
-    apply_plans(conn, 'sqlite', plans, lambda: NOW)
-    assert history(conn) == [('create_from_empty', 'applied', steps[0]),
-                             ('rename_table_and_column', 'applied',
-                              steps[1])], history(conn)
+    conn = Conn(os.path.join(tmp, "chain.sqlite3"))
+    apply_plans(conn, "sqlite", plans, lambda: NOW)
+    assert history(conn) == [
+        ("create_from_empty", "applied", steps[0]),
+        ("rename_table_and_column", "applied", steps[1]),
+    ], history(conn)
     conn.close()
     # 둘째 plan의 statement 1 뒤에 멈추고 recover로 끝낸다.
-    conn = Conn(os.path.join(tmp, 'stopped.sqlite3'))
+    conn = Conn(os.path.join(tmp, "stopped.sqlite3"))
     stopped = []
 
     def stop(event):
-        stopped.append(event['kind'])
-        if event['kind'] == 'applied' and event['plan'] == 'rename_table_and_column' \
-                and event['step'] == 1:
-            raise RuntimeError('stop')
+        stopped.append(event["kind"])
+        if (
+            event["kind"] == "applied"
+            and event["plan"] == "rename_table_and_column"
+            and event["step"] == 1
+        ):
+            raise RuntimeError("stop")
+
     try:
-        apply_plans(conn, 'sqlite', plans, lambda: NOW, stop)
-        raise AssertionError('stop did not interrupt the chain')
+        apply_plans(conn, "sqlite", plans, lambda: NOW, stop)
+        raise AssertionError("stop did not interrupt the chain")
     except RuntimeError as error:
-        assert str(error) == 'stop'
-    assert history(conn) == [('create_from_empty', 'applied', steps[0]),
-                             ('rename_table_and_column', 'applying', 1)], \
-        history(conn)
-    recover_plans(conn, 'sqlite', plans, lambda: NOW)
-    assert history(conn) == [('create_from_empty', 'applied', steps[0]),
-                             ('rename_table_and_column', 'applied',
-                              steps[1])], history(conn)
+        assert str(error) == "stop"
+    assert history(conn) == [
+        ("create_from_empty", "applied", steps[0]),
+        ("rename_table_and_column", "applying", 1),
+    ], history(conn)
+    recover_plans(conn, "sqlite", plans, lambda: NOW)
+    assert history(conn) == [
+        ("create_from_empty", "applied", steps[0]),
+        ("rename_table_and_column", "applied", steps[1]),
+    ], history(conn)
     # 마지막 plan을 되돌린다.
-    rollback_plans(conn, 'sqlite', plans, lambda: NOW)
-    assert history(conn) == [('create_from_empty', 'applied', steps[0])], \
-        history(conn)
+    rollback_plans(conn, "sqlite", plans, lambda: NOW)
+    assert history(conn) == [("create_from_empty", "applied", steps[0])], history(conn)
     assert conn.value('SELECT COUNT(*) FROM "users"') == 0
     conn.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     testcase.main()

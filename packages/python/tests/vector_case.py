@@ -10,9 +10,11 @@ from typing import Any, Callable, Iterable
 class VectorCase(unittest.TestCase):
     """A case of a shared vector file: check(test, case) runs it, and the case id names it."""
 
-    def __init__(self, case_id: str, check: Callable[[unittest.TestCase, Any], None], case: Any) -> None:
+    def __init__(
+        self, case_id: str, check: Callable[[unittest.TestCase, Any], None], case: Any
+    ) -> None:
         # The method is not runTest, so the loader does not build a case of this class by itself.
-        super().__init__('run_case')
+        super().__init__("run_case")
         self.case_id = case_id
         self.check = check
         self.case = case
@@ -27,13 +29,17 @@ class VectorCase(unittest.TestCase):
         return self.case_id
 
     def __repr__(self) -> str:
-        return f'<VectorCase {self.case_id}>'
+        return f"<VectorCase {self.case_id}>"
 
     def shortDescription(self) -> None:  # noqa: N802 - unittest's method name
         return None
 
 
-def vector_tests(kind: type[VectorCase], cases: Iterable[Any], check: Callable[[unittest.TestCase, Any], None],
-                 case_id: Callable[[Any], str] = lambda case: case['id']) -> unittest.TestSuite:
+def vector_tests(
+    kind: type[VectorCase],
+    cases: Iterable[Any],
+    check: Callable[[unittest.TestCase, Any], None],
+    case_id: Callable[[Any], str] = lambda case: case["id"],
+) -> unittest.TestSuite:
     """The suite of one `kind` instance for each case, in the order of the file."""
     return unittest.TestSuite(kind(case_id(case), check, case) for case in cases)

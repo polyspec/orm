@@ -4,31 +4,32 @@ import time
 
 from polyspec.orm.errors import OrmError
 
-__all__ = ['StatementEvent', 'Subscribers', 'statement_kind']
+__all__ = ["StatementEvent", "Subscribers", "statement_kind"]
 
 
 def statement_kind(sql: str) -> str:
     """planner가 쓴 statement의 kind다: SQL의 첫 단어다. ALTER는 MySQL identity restart의 schema
     statement다."""
-    verb = sql.lstrip().split(' ', 1)[0].upper()
-    if verb == 'ALTER':
-        return 'schema'
-    if verb == 'INSERT':
-        return 'insert'
-    if verb == 'UPDATE':
-        return 'update'
-    if verb == 'DELETE':
-        return 'delete'
-    return 'select'
+    verb = sql.lstrip().split(" ", 1)[0].upper()
+    if verb == "ALTER":
+        return "schema"
+    if verb == "INSERT":
+        return "insert"
+    if verb == "UPDATE":
+        return "update"
+    if verb == "DELETE":
+        return "delete"
+    return "select"
 
 
 class StatementEvent:
     """연결이 database에 보낸 statement 하나."""
 
-    __slots__ = ('sql', 'binds', 'kind', 'tables', 'elapsed', 'transaction', 'error')
+    __slots__ = ("sql", "binds", "kind", "tables", "elapsed", "transaction", "error")
 
-    def __init__(self, sql: str, binds, kind: str, tables, elapsed: float,
-                 transaction, error):
+    def __init__(
+        self, sql: str, binds, kind: str, tables, elapsed: float, transaction, error
+    ):
         self.sql = sql
         self.binds = binds
         self.kind = kind
@@ -49,15 +50,19 @@ class Subscribers:
     def subscribe(self, subscriber):
         """subscriber를 등록하고 해제 함수를 돌려준다."""
         if not callable(subscriber):
-            raise OrmError('CONFIG', 'subscribe takes a function that receives a '
-                                     'statement event')
+            raise OrmError(
+                "CONFIG", "subscribe takes a function that receives a statement event"
+            )
+
         # 같은 함수를 두 번 등록해도 해제는 자기 등록 하나만 지운다.
         def entry(event):
             return subscriber(event)
+
         self.list = [*self.list, entry]
 
         def unsubscribe():
             self.list = [s for s in self.list if s is not entry]
+
         return unsubscribe
 
     def next_transaction(self) -> int:
@@ -77,9 +82,17 @@ class Subscribers:
             raise
         finally:
             if self.list:
-                self._publish(StatementEvent(sql, list(binds), kind, list(tables),
-                                             time.perf_counter() - start, transaction,
-                                             error))
+                self._publish(
+                    StatementEvent(
+                        sql,
+                        list(binds),
+                        kind,
+                        list(tables),
+                        time.perf_counter() - start,
+                        transaction,
+                        error,
+                    )
+                )
 
     def _publish(self, event: StatementEvent) -> None:
         """subscriber를 등록 순서로 부른다. 하나가 던지면 나머지는 부르지 않고
@@ -88,7 +101,7 @@ class Subscribers:
             try:
                 subscriber(event)
             except OrmError as failure:
-                if failure.code == 'SUBSCRIBER':
+                if failure.code == "SUBSCRIBER":
                     raise
                 raise _subscriber_error(failure) from None
             except Exception as failure:  # noqa: BLE001
@@ -98,4 +111,6 @@ class Subscribers:
 def _subscriber_error(failure: Exception) -> OrmError:
     """subscriber 오류의 text를 message에 담고 그 오류를 cause로 둔 SUBSCRIBER 오류다. OrmError의 text는
     `<code>: <message>`이며, TypeScript client가 `error.message`로 쓰는 text와 같다."""
-    return OrmError('SUBSCRIBER', f'statement event subscriber failed: {failure}', failure)
+    return OrmError(
+        "SUBSCRIBER", f"statement event subscriber failed: {failure}", failure
+    )

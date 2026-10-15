@@ -10,8 +10,18 @@ import unittest
 from pathlib import Path
 
 
-from polyspec.ordered_json import Value as OrderedJson, stringify as ordered_json_stringify
-from polyspec.orm.codec import CodecError, blind_index, decode, encode, host_decode, host_encode
+from polyspec.ordered_json import (
+    Value as OrderedJson,
+    stringify as ordered_json_stringify,
+)
+from polyspec.orm.codec import (
+    CodecError,
+    blind_index,
+    decode,
+    encode,
+    host_decode,
+    host_encode,
+)
 from polyspec.orm.styled_value import StyledValue
 from .vector_case import VectorCase, vector_tests
 from . import testcase
@@ -46,124 +56,206 @@ def shown(value) -> str:
 
 def stages_of(styles):
     # vector는 mermaid style 이름을 쓴다; json과 jsons는 둘 다 ordered_json 단계다.
-    return ['ordered_json' if style in ('json', 'jsons') else style for style in styles]
+    return ["ordered_json" if style in ("json", "jsons") else style for style in styles]
 
 
 def check_vector(test: unittest.TestCase, vector: dict) -> None:
     failures = []
-    raw = None if vector['encoded_b64'] is None else base64.b64decode(
-        vector['encoded_b64'])
-    name = vector['name']
+    raw = (
+        None
+        if vector["encoded_b64"] is None
+        else base64.b64decode(vector["encoded_b64"])
+    )
+    name = vector["name"]
     try:
-        decoded = decode(stages_of(vector['styles']), raw)
+        decoded = decode(stages_of(vector["styles"]), raw)
     except Exception as error:
-        test.fail(f'{name}: decode {error}')
-    kind = 'sql-null' if raw is None else 'value'
+        test.fail(f"{name}: decode {error}")
+    kind = "sql-null" if raw is None else "value"
     if not isinstance(decoded, StyledValue) or decoded.kind != kind:
-        test.fail(f'{name}: decoded state {shown(decoded)} want {kind}')
-    payload = decoded.payload() if kind == 'value' else None
-    if 'ordered_json' in stages_of(vector['styles']) and kind == 'value':
+        test.fail(f"{name}: decoded state {shown(decoded)} want {kind}")
+    payload = decoded.payload() if kind == "value" else None
+    if "ordered_json" in stages_of(vector["styles"]) and kind == "value":
         if not isinstance(payload, OrderedJson):
-            failures.append(f'{name}: a json stage decoded {type(payload).__name__}, '
-                            f'not an ordered-json value')
-    if not same(payload, vector['value']):
-        failures.append(f'{name}: decoded {shown(payload)} want '
-                        f'{json.dumps(canonical(vector["value"]), sort_keys=True)}')
-    encoded = encode(stages_of(vector['styles']), decoded)
-    encoded_b64 = None if encoded is None else base64.b64encode(
-        encoded.encode('utf-8') if isinstance(encoded, str) else encoded).decode('ascii')
+            failures.append(
+                f"{name}: a json stage decoded {type(payload).__name__}, "
+                f"not an ordered-json value"
+            )
+    if not same(payload, vector["value"]):
+        failures.append(
+            f"{name}: decoded {shown(payload)} want "
+            f"{json.dumps(canonical(vector['value']), sort_keys=True)}"
+        )
+    encoded = encode(stages_of(vector["styles"]), decoded)
+    encoded_b64 = (
+        None
+        if encoded is None
+        else base64.b64encode(
+            encoded.encode("utf-8") if isinstance(encoded, str) else encoded
+        ).decode("ascii")
+    )
     OUTPUT[name] = encoded_b64
-    if vector['deterministic'] and encoded_b64 != vector['encoded_b64']:
-        failures.append(f'{name}: encoded {encoded_b64} want {vector["encoded_b64"]}')
-    round_trip = decode(stages_of(vector['styles']), encoded)
-    if not isinstance(round_trip, StyledValue) or round_trip.kind != kind \
-            or not same(round_trip.payload() if kind == 'value' else None,
-                        vector['value']):
-        round_trip_payload = round_trip.payload() \
-            if isinstance(round_trip, StyledValue) and round_trip.kind == 'value' else None
-        failures.append(f'{name}: round trip {shown(round_trip_payload)} want '
-                        f'{json.dumps(canonical(vector["value"]), sort_keys=True)}')
+    if vector["deterministic"] and encoded_b64 != vector["encoded_b64"]:
+        failures.append(f"{name}: encoded {encoded_b64} want {vector['encoded_b64']}")
+    round_trip = decode(stages_of(vector["styles"]), encoded)
+    if (
+        not isinstance(round_trip, StyledValue)
+        or round_trip.kind != kind
+        or not same(round_trip.payload() if kind == "value" else None, vector["value"])
+    ):
+        round_trip_payload = (
+            round_trip.payload()
+            if isinstance(round_trip, StyledValue) and round_trip.kind == "value"
+            else None
+        )
+        failures.append(
+            f"{name}: round trip {shown(round_trip_payload)} want "
+            f"{json.dumps(canonical(vector['value']), sort_keys=True)}"
+        )
     if failures:
-        test.fail('\n'.join(failures))
+        test.fail("\n".join(failures))
 
 
 def check_aes_vector(test: unittest.TestCase, vector: dict) -> None:
-    encoded = host_encode(vector['plain'], ['aes', 'hex'], vector['key'])
-    decoded = host_decode(encoded, ['aes', 'hex'], vector['key'])
-    test.assertEqual(decoded, vector['plain'])
-    fixed = host_decode(vector['envelope_hex'], ['aes', 'hex'], vector['key'])
-    test.assertEqual(fixed, vector['plain'])
+    encoded = host_encode(vector["plain"], ["aes", "hex"], vector["key"])
+    decoded = host_decode(encoded, ["aes", "hex"], vector["key"])
+    test.assertEqual(decoded, vector["plain"])
+    fixed = host_decode(vector["envelope_hex"], ["aes", "hex"], vector["key"])
+    test.assertEqual(fixed, vector["plain"])
 
 
 class CodecVectorTest(unittest.TestCase):
     def test_error_cases(self):
         cases = [
-            ('bad JSON', lambda: decode(['ordered_json'], b'{bad'), 'CODEC_DECODE'),
-            ('bad base64', lambda: decode(['serialize', 'base64'], b'@@@'), 'CODEC_DECODE'),
-            ('serialized object', lambda: decode(['serialize'], b'O:8:"stdClass":0:{}'),
-             'CODEC_UNSUPPORTED'),
-            ('bad zlib', lambda: decode(['serialize', 'gz'], b'not zlib'), 'CODEC_DECODE'),
-            ('unknown style', lambda: encode(['unknown'], StyledValue.value('value')),
-             'CODEC_UNSUPPORTED'),
-            ('unknown encode style',
-             lambda: encode(['filepart', 'serialize'], StyledValue.value({})),
-             'CODEC_UNSUPPORTED'),
-            ('unknown decode style', lambda: decode(['filepart'], b'a:0:{}'),
-             'CODEC_UNSUPPORTED'),
-            ('duplicate YAML key', lambda: decode(['yaml'], b'a: 1\na: 2\n'), 'CODEC_DECODE'),
-            ('multiple YAML documents',
-             lambda: decode(['yaml'], b'---\na: 1\n---\na: 2\n'), 'CODEC_DECODE'),
-            ('YAML alias', lambda: decode(['yaml'], b'a: &x [1]\nb: *x\n'), 'CODEC_DECODE'),
-            ('YAML custom tag', lambda: decode(['yaml'], b'a: !custom value\n'), 'CODEC_DECODE'),
-            ('YAML non-finite number', lambda: decode(['yaml'], b'value: .inf\n'),
-             'CODEC_DECODE'),
-            ('YAML boolean map key', lambda: decode(['yaml'], b'true: value\n'), 'CODEC_DECODE'),
-            ('invalid YAML order',
-             lambda: encode(['serialize', 'yaml'], StyledValue.value({})),
-             'CODEC_UNSUPPORTED'),
+            ("bad JSON", lambda: decode(["ordered_json"], b"{bad"), "CODEC_DECODE"),
+            (
+                "bad base64",
+                lambda: decode(["serialize", "base64"], b"@@@"),
+                "CODEC_DECODE",
+            ),
+            (
+                "serialized object",
+                lambda: decode(["serialize"], b'O:8:"stdClass":0:{}'),
+                "CODEC_UNSUPPORTED",
+            ),
+            (
+                "bad zlib",
+                lambda: decode(["serialize", "gz"], b"not zlib"),
+                "CODEC_DECODE",
+            ),
+            (
+                "unknown style",
+                lambda: encode(["unknown"], StyledValue.value("value")),
+                "CODEC_UNSUPPORTED",
+            ),
+            (
+                "unknown encode style",
+                lambda: encode(["filepart", "serialize"], StyledValue.value({})),
+                "CODEC_UNSUPPORTED",
+            ),
+            (
+                "unknown decode style",
+                lambda: decode(["filepart"], b"a:0:{}"),
+                "CODEC_UNSUPPORTED",
+            ),
+            (
+                "duplicate YAML key",
+                lambda: decode(["yaml"], b"a: 1\na: 2\n"),
+                "CODEC_DECODE",
+            ),
+            (
+                "multiple YAML documents",
+                lambda: decode(["yaml"], b"---\na: 1\n---\na: 2\n"),
+                "CODEC_DECODE",
+            ),
+            (
+                "YAML alias",
+                lambda: decode(["yaml"], b"a: &x [1]\nb: *x\n"),
+                "CODEC_DECODE",
+            ),
+            (
+                "YAML custom tag",
+                lambda: decode(["yaml"], b"a: !custom value\n"),
+                "CODEC_DECODE",
+            ),
+            (
+                "YAML non-finite number",
+                lambda: decode(["yaml"], b"value: .inf\n"),
+                "CODEC_DECODE",
+            ),
+            (
+                "YAML boolean map key",
+                lambda: decode(["yaml"], b"true: value\n"),
+                "CODEC_DECODE",
+            ),
+            (
+                "invalid YAML order",
+                lambda: encode(["serialize", "yaml"], StyledValue.value({})),
+                "CODEC_UNSUPPORTED",
+            ),
         ]
         failures = []
         for name, operation, code in cases:
             try:
                 operation()
-                failures.append(f'{name}: expected {code}')
+                failures.append(f"{name}: expected {code}")
             except CodecError as error:
                 if error.code != code:
-                    failures.append(f'{name}: {error} want {code}')
+                    failures.append(f"{name}: {error} want {code}")
             except Exception as error:
-                failures.append(f'{name}: {error!r} want CodecError {code}')
+                failures.append(f"{name}: {error!r} want CodecError {code}")
         if failures:
-            self.fail('\n'.join(failures))
+            self.fail("\n".join(failures))
 
     def test_blind_index(self):
-        self.assertEqual(blind_index('member@example.test', 'blind-key'),
-                         '1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8')
+        self.assertEqual(
+            blind_index("member@example.test", "blind-key"),
+            "1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8",
+        )
 
 
 def tearDownModule() -> None:  # noqa: N802 - unittest's function name
     """Writes the encoded output of every codec vector only to the directory that ORM_CODEC_OUT (make codec-check)
     names, through a temporary file renamed into place."""
-    directory = os.environ.get('ORM_CODEC_OUT')
+    directory = os.environ.get("ORM_CODEC_OUT")
     if directory:
         os.makedirs(directory, exist_ok=True)
-        temporary = os.path.join(directory, f'python.json.tmp-{os.getpid()}')
-        with open(temporary, 'w', encoding='utf-8') as handle:
-            handle.write(json.dumps(OUTPUT, indent=2) + '\n')
-        os.replace(temporary, os.path.join(directory, 'python.json'))
+        temporary = os.path.join(directory, f"python.json.tmp-{os.getpid()}")
+        with open(temporary, "w", encoding="utf-8") as handle:
+            handle.write(json.dumps(OUTPUT, indent=2) + "\n")
+        os.replace(temporary, os.path.join(directory, "python.json"))
 
 
 class Case(VectorCase):
     """A case of the vector file of this module."""
 
 
-def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
+def load_tests(
+    loader: unittest.TestLoader, tests: unittest.TestSuite, _pattern: object
+) -> unittest.TestSuite:
     """One test for each codec vector, named by the vector, and one for each AES vector, named by its key."""
-    with open(ROOT / 'tests' / 'codec' / 'vectors.json', encoding='utf-8') as handle:
-        tests.addTests(vector_tests(Case, json.load(handle)['vectors'], check_vector, lambda vector: vector['name']))
-    with open(ROOT / 'tests' / 'codec' / 'aes-vectors.json', encoding='utf-8') as handle:
-        tests.addTests(vector_tests(Case, json.load(handle)['vectors'], check_aes_vector, lambda vector: vector['key']))
+    with open(ROOT / "tests" / "codec" / "vectors.json", encoding="utf-8") as handle:
+        tests.addTests(
+            vector_tests(
+                Case,
+                json.load(handle)["vectors"],
+                check_vector,
+                lambda vector: vector["name"],
+            )
+        )
+    with open(
+        ROOT / "tests" / "codec" / "aes-vectors.json", encoding="utf-8"
+    ) as handle:
+        tests.addTests(
+            vector_tests(
+                Case,
+                json.load(handle)["vectors"],
+                check_aes_vector,
+                lambda vector: vector["key"],
+            )
+        )
     return tests
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     testcase.main()

@@ -40,34 +40,34 @@ _output = threading.Lock()
 
 def _emit(line: str) -> None:
     with _output:
-        sys.stdout.write(line + '\n')
+        sys.stdout.write(line + "\n")
         sys.stdout.flush()
 
 
 def warning(message: str) -> None:
     """Writes `WARNING <message>`: a performance measurement above its documented bound, which is not a failure."""
-    _emit(f'WARNING {message}')
+    _emit(f"WARNING {message}")
 
 
 def _trim(value: float) -> str:
-    text = f'{value:.3f}'.rstrip('0').rstrip('.')
-    return text or '0'
+    text = f"{value:.3f}".rstrip("0").rstrip(".")
+    return text or "0"
 
 
 def duration(seconds: float) -> str:
     """Seconds in the String form of Go's time.Duration (1m0s, 1.5s, 12ms), the form of the other implementations."""
     ms = seconds * 1000
     if round(ms * 1000) < 1000:
-        return f'{round(ms * 1000)}µs'
+        return f"{round(ms * 1000)}µs"
     if round(ms) < 1000:
-        return f'{round(ms)}ms'
+        return f"{round(ms)}ms"
     total = round(ms) / 1000
     if total < 60:
-        return f'{_trim(total)}s'
+        return f"{_trim(total)}s"
     hours = int(total // 3600)
     minutes = int((total % 3600) // 60)
     rest = total - hours * 3600 - minutes * 60
-    return f'{f"{hours}h" if hours else ""}{minutes}m{_trim(rest)}s'
+    return f"{f'{hours}h' if hours else ''}{minutes}m{_trim(rest)}s"
 
 
 class _Running:
@@ -84,8 +84,10 @@ class _Running:
         return duration(time.monotonic() - self.started)
 
     def _expire(self) -> None:
-        _emit(f'FAIL {self.name} elapsed={self.elapsed()}: deadline {duration(self.deadline)} exceeded '
-              'and the case did not stop')
+        _emit(
+            f"FAIL {self.name} elapsed={self.elapsed()}: deadline {duration(self.deadline)} exceeded "
+            "and the case did not stop"
+        )
         os._exit(1)
 
 
@@ -95,14 +97,14 @@ _current: Optional[_Running] = None
 def step(text: str) -> None:
     """Writes a STEP line of the running case."""
     if _current is None:
-        raise RuntimeError('step outside a case')
-    _emit(f'STEP {_current.name} elapsed={_current.elapsed()}: {text}')
+        raise RuntimeError("step outside a case")
+    _emit(f"STEP {_current.name} elapsed={_current.elapsed()}: {text}")
 
 
 def _reason(err: Any) -> str:
     kind, value, _ = err
     lines = traceback.format_exception_only(kind, value)
-    return ' '.join(line.strip() for line in lines).replace('\n', ' ') or kind.__name__
+    return " ".join(line.strip() for line in lines).replace("\n", " ") or kind.__name__
 
 
 class CaseResult(unittest.TextTestResult):
@@ -118,15 +120,19 @@ class CaseResult(unittest.TextTestResult):
     def startTest(self, test: unittest.TestCase) -> None:  # noqa: N802 - unittest's method name
         global _current
         super().startTest(test)
-        deadline = float(getattr(test, 'deadline', COMPUTE))
+        deadline = float(getattr(test, "deadline", COMPUTE))
         if not deadline > 0:
-            raise ValueError(f'case {test.id()}: deadline {deadline} is not positive')
+            raise ValueError(f"case {test.id()}: deadline {deadline} is not positive")
         _current = _Running(test.id(), deadline)
-        _emit(f'RUN {_current.name} deadline={duration(deadline)}')
+        _emit(f"RUN {_current.name} deadline={duration(deadline)}")
         _current.watchdog.start()
 
     def _fail(self, test: unittest.TestCase, reason: str) -> None:
-        if _current is not None and _current.name == test.id() and _current.failure is None:
+        if (
+            _current is not None
+            and _current.name == test.id()
+            and _current.failure is None
+        ):
             _current.failure = reason
 
     def addFailure(self, test: unittest.TestCase, err: Any) -> None:  # noqa: N802
@@ -137,26 +143,30 @@ class CaseResult(unittest.TextTestResult):
         super().addError(test, err)
         if _current is None or _current.name != test.id():
             # An error outside a case (a module or class fixture, an import) is a case of its own.
-            _emit(f'RUN {test.id()} deadline={duration(COMPUTE)}')
-            _emit(f'FAIL {test.id()} elapsed=0µs: {_reason(err)}')
+            _emit(f"RUN {test.id()} deadline={duration(COMPUTE)}")
+            _emit(f"FAIL {test.id()} elapsed=0µs: {_reason(err)}")
             return
         self._fail(test, _reason(err))
 
-    def addSubTest(self, test: unittest.TestCase, subtest: unittest.TestCase, err: Any) -> None:  # noqa: N802
+    def addSubTest(
+        self, test: unittest.TestCase, subtest: unittest.TestCase, err: Any
+    ) -> None:  # noqa: N802
         super().addSubTest(test, subtest, err)
         if err is not None:
-            self._fail(test, f'{subtest.id()[len(test.id()):].strip()}: {_reason(err)}')
+            self._fail(
+                test, f"{subtest.id()[len(test.id()) :].strip()}: {_reason(err)}"
+            )
 
     def addUnexpectedSuccess(self, test: unittest.TestCase) -> None:  # noqa: N802
         super().addUnexpectedSuccess(test)
-        self._fail(test, 'unexpected success')
+        self._fail(test, "unexpected success")
 
     def addSkip(self, test: unittest.TestCase, reason: str) -> None:  # noqa: N802
         super().addSkip(test, reason)
         if _current is None or _current.name != test.id():
             # A skipped class or module never starts its cases.
-            _emit(f'RUN {test.id()} deadline={duration(COMPUTE)}')
-            _emit(f'SKIP {test.id()} elapsed=0µs')
+            _emit(f"RUN {test.id()} deadline={duration(COMPUTE)}")
+            _emit(f"SKIP {test.id()} elapsed=0µs")
             return
         _current.skipped = True
 
@@ -167,27 +177,31 @@ class CaseResult(unittest.TextTestResult):
         if running is not None:
             running.watchdog.cancel()
             if running.failure is not None:
-                _emit(f'FAIL {running.name} elapsed={running.elapsed()}: {running.failure}')
+                _emit(
+                    f"FAIL {running.name} elapsed={running.elapsed()}: {running.failure}"
+                )
             elif running.skipped:
-                _emit(f'SKIP {running.name} elapsed={running.elapsed()}')
+                _emit(f"SKIP {running.name} elapsed={running.elapsed()}")
             else:
-                _emit(f'PASS {running.name} elapsed={running.elapsed()}')
+                _emit(f"PASS {running.name} elapsed={running.elapsed()}")
         super().stopTest(test)
 
 
 class CaseRunner(unittest.TextTestRunner):
     """The unittest runner of every Python test: TextTestRunner with CaseResult."""
+
     resultclass = CaseResult
 
 
-def main(module: Optional[str] = '__main__', **options: Any) -> None:
+def main(module: Optional[str] = "__main__", **options: Any) -> None:
     """unittest.main with CaseRunner; a test module ends with it."""
     unittest.main(module=module, testRunner=CaseRunner, **options)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # `python -m packages.python.tests.testcase discover ...` runs a discovered tree through CaseRunner. The tests import
     # this module as packages.python.tests.testcase, so the run uses that module, whose state step() reads, and not
     # this __main__ copy.
     from packages.python.tests import testcase as harness
+
     harness.main(module=None)

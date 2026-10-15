@@ -1,6 +1,5 @@
 # A terminal-by method (getCountBy<Column>) after other conditions joins its condition with AND
 # to them, as the chain of a query does (docs/usage.md "Terminal methods").
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -14,18 +13,29 @@ ROOT = Path(__file__).resolve().parents[3]
 class TerminalByTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        tmp = tempfile.TemporaryDirectory(prefix='orm-terminal-')
+        tmp = tempfile.TemporaryDirectory(prefix="orm-terminal-")
         cls.addClassCleanup(tmp.cleanup)
-        cls.models = generate(tmp.name, ROOT / 'contracts' / 'fixtures' / 'bench' / 'dbspec-set.json')
-        cls.db = cls.models.connect(f'sqlite://{tmp.name}/terminal.sqlite3',
-                                    aesKey='bench-salt', blindIndexKey='bench-blind-index')
+        cls.models = generate(
+            tmp.name, ROOT / "contracts" / "fixtures" / "bench" / "dbspec-set.json"
+        )
+        cls.db = cls.models.connect(
+            f"sqlite://{tmp.name}/terminal.sqlite3",
+            aesKey="bench-salt",
+            blindIndexKey="bench-blind-index",
+        )
         run_script(cls.db, DDL)
         for is_close in (0, 0, 1):
             cls.db._connection.execute(
                 'INSERT INTO "author" ("name", "user_seq", "service_seq", "service_region_seq", '
                 '"service_member_seq", "start_dt", "end_dt", "is_close", "aes_key_version") '
-                'VALUES (?, 1, 7, 1, 1, ?, ?, ?, 1)',
-                ['t', '2026-06-01 00:00:00.000000', '2026-06-01 00:00:00.000000', is_close])
+                "VALUES (?, 1, 7, 1, 1, ?, ?, ?, 1)",
+                [
+                    "t",
+                    "2026-06-01 00:00:00.000000",
+                    "2026-06-01 00:00:00.000000",
+                    is_close,
+                ],
+            )
 
     @classmethod
     def tearDownClass(cls):
@@ -37,5 +47,5 @@ class TerminalByTest(unittest.TestCase):
         self.assertEqual(query.get_count(), 3)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     testcase.main()
