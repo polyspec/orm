@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 482b4f3b0d727e65b3a86b96a278fe8a86af62e7fafe8ff1f0c124fd2d3409d3 -->
+<!-- source-sha256: 7ecc303523a8d5fd21c860dc98ce43b0c6baf7f5b43c14c73da9133489e87df7 -->
 # 변경 이력
 
 ## Unreleased
 
+- Python codec과 apply runner가 공유 검사에서 실행되고, Python PostgreSQL apply는 lock_timeout을 $1 marker로 복원한다. (#T77-2)
 - Python test가 다른 구현처럼 공유 harness로 보고한다: deadline과 함께 RUN, STEP, PASS, FAIL, SKIP. (#T77-1)
 - PHP client가 YAML 1.2.2 표로 core schema를 해석하는 fork min-median-max/yaml v1.0.0-p1로 YAML을 읽는다. consumer는 docs/packaging.md처럼 fork의 vcs repository를 선언한다. (#T142-1-1)
 - repository 검사가 Makefile을 모든 target을 prerequisite, recipe와 함께 이름 짓는 reader 하나로 읽는다. (#T137-1-4-2-2)
