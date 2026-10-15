@@ -46,7 +46,7 @@ export type StatementDone = (sql: string, elapsed: number, error: OrmError | nul
 
 
 /** A connection pool or one reserved connection. */
-export interface DriverConnection {
+interface DriverConnection {
   readonly name: DriverName;
   /** Runs one prepared statement; an aborted signal cancels it and raises CANCELED. */
   execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult>;
@@ -551,7 +551,7 @@ class SqliteSession implements DriverSession {
 export interface SqlDsn { driver: DriverName; zone: string; sslCa?: string; }
 
 /** A markdown:// DSN: the flowmark server address, the corpus and the token of the markdown IR executor (docs/protocol.md §5). */
-export interface MarkdownParsedDsn { driver: 'markdown'; zone: string; markdown: MarkdownDsn; }
+interface MarkdownParsedDsn { driver: 'markdown'; zone: string; markdown: MarkdownDsn; }
 
 export type ParsedDsn = SqlDsn | MarkdownParsedDsn;
 
@@ -583,7 +583,7 @@ function mysqlTls(url: URL): string | undefined {
  * ssl-mode=VERIFY_IDENTITY의 mysql2 TLS option이거나 undefined다: `ssl-ca`의 CA, 그 CA가
  * 서명하지 않은 인증서의 거부, host 이름 검사다.
  */
-export function mysqlSsl(parsed: SqlDsn): { ca: string; rejectUnauthorized: true; verifyIdentity: true } | undefined {
+function mysqlSsl(parsed: SqlDsn): { ca: string; rejectUnauthorized: true; verifyIdentity: true } | undefined {
   if (parsed.sslCa === undefined) return undefined;
   try { return { ca: readFileSync(parsed.sslCa, 'utf8'), rejectUnauthorized: true, verifyIdentity: true }; } catch (error) {
     throw new OrmError('CONFIG', `mysql DSN ssl-ca ${parsed.sslCa} cannot be read: ${errorText(error)}`, error);

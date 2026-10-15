@@ -7,7 +7,7 @@ import mysql from 'mysql2/promise';
 import pg from 'pg';
 
 /** The rows of a statement: its column names and each row as an array of values. */
-export type Rows = { columns: string[]; rows: unknown[][] };
+type Rows = { columns: string[]; rows: unknown[][] };
 
 /** A connection to one database. */
 export type StateDatabase = {

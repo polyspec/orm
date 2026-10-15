@@ -5,7 +5,7 @@ import { OrmError } from '../runtime_error.js';
 import { columnFunctionArity, columnFunctionTypes, isValueFunction, valueFunctionUnits } from './dialect.js';
 import { entityOf, fieldOf as columnOf, type Entity, type Field as Column, type RuntimeModel } from './model.js';
 
-export const IR_VERSION = 1;
+const IR_VERSION = 1;
 
 const comparable = ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'between', 'is_null', 'is_not_null'];
 
@@ -31,7 +31,7 @@ const opsByType: Readonly<Record<string, readonly string[]>> = {
 /** Codec stages whose stored value is compared through the encoded bind value. */
 const hostStages = new Set(['aes', 'hex', 'ip']);
 
-export const columnOps = new Set(['eq_col', 'not_eq_col', 'gt_col', 'gte_col', 'lt_col', 'lte_col']);
+const columnOps = new Set(['eq_col', 'not_eq_col', 'gt_col', 'gte_col', 'lt_col', 'lte_col']);
 
 const numericTypes = new Set(['i16', 'i32', 'i64', 'f64', 'decimal']);
 

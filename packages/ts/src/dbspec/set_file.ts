@@ -5,7 +5,7 @@ import { present } from '../present.js';
 // as in Node. readDbspecSet (set_read.ts) runs it between the checks of the file tree.
 
 /** The name of every set file. */
-export const DBSPEC_SET_NAME = 'dbspec-set.json';
+const DBSPEC_SET_NAME = 'dbspec-set.json';
 
 /** The rules of the set reader. */
 export type DbspecSetRule =

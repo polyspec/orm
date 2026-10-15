@@ -4,7 +4,7 @@
 // GITHUB_STEP_SUMMARY, ORM_CHECK_RUN_ID, ORM_CI_SETUP, ORM_GIT_RANGE, 상위 make의 MAKEFLAGS와 Makefile이 export하는
 // 변수는 하위 process에 닿지 않는다. PATH는 도구를 찾고, HOME은 git, cargo, go의 사용자 설정과 cache를 찾으며,
 // TMPDIR은 check runner가 단계마다 주는 임시 directory다(AGENTS.md).
-export const INHERITED_VARIABLES = ['PATH', 'HOME', 'TMPDIR'];
+const INHERITED_VARIABLES = ['PATH', 'HOME', 'TMPDIR'];
 
 export function isolatedEnvironment(variables: Record<string, string> = {}): Record<string, string> {
   const env: Record<string, string> = {};

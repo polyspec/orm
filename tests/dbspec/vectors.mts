@@ -6,23 +6,23 @@ import { JsonError, parseJson, SchemaError, type SchemaIssue } from '../../scrip
 import { readInput } from './input.mts';
 
 /** Lines of text, each without its line end. */
-export type Lines = string[];
+type Lines = string[];
 /** A statement that runs or fails, or a query and the value it gives, optionally for some dialects only. */
-export type Behavior = ({ sql: string } | { query: string; want?: string }) & { fails?: true; dialects?: ('mysql' | 'postgres' | 'sqlite')[] };
+type Behavior = ({ sql: string } | { query: string; want?: string }) & { fails?: true; dialects?: ('mysql' | 'postgres' | 'sqlite')[] };
 /** tests/dbspec/ddl.json. */
-export type DdlVectors = {
+type DdlVectors = {
   version: 1; note: string;
   cases: { id: string; documents: Record<string, Lines>; statements: Record<'mysql' | 'postgres' | 'sqlite', Lines>; behavior: Behavior[] }[];
 };
 /** A step of a plan in one dialect. */
-export type PlanStep = {
+type PlanStep = {
   statement: string; effect: string; rollback?: string; irreversible?: string; finalize?: true; restore?: string; restore_if?: string;
   rollback_restore?: string; null_checks?: [string, string, string | null][];
 };
 /** An error of a plan, a chain or a comparison: rule, line, column and message (null when the message is not compared). */
-export type PlanError = [string, number, number, string | null];
+type PlanError = [string, number, number, string | null];
 /** tests/dbspec/plans.json. */
-export type PlanVectors = {
+type PlanVectors = {
   version: 1; note: string;
   cases: { id: string; source: Lines | null; plan: Lines; changes: Lines[]; steps: Record<'mysql' | 'postgres' | 'sqlite', PlanStep[]>; before: Behavior[]; after: Behavior[] }[];
   invalid: { id: string; source: Lines; plan: Lines; errors: Lines }[];
@@ -31,7 +31,7 @@ export type PlanVectors = {
   comparisons: { id: string; source: Lines; target: Lines; differences: [string, string, string][]; errors: PlanError[] }[];
 };
 /** tests/dbspec/mermaid.json. */
-export type MermaidVectors = {
+type MermaidVectors = {
   version: 1; note: string;
   export: { id: string; document: Lines; documents: Record<string, Lines>; mermaid: Lines; dropped: [string, string, string][] }[];
   import: { id: string; mermaid: Lines; document: Lines; dropped: [string, string, string][] }[];
@@ -39,7 +39,7 @@ export type MermaidVectors = {
   round_trip: { id: string; path: string; imported: [string, string, string][]; dropped: [string, string, string][] }[];
 };
 /** tests/dbspec/syntax.json. */
-export type SyntaxVectors = { version: 1; note: string; cases: { id: string; tokens: [number, number, number, string][] }[] };
+type SyntaxVectors = { version: 1; note: string; cases: { id: string; tokens: [number, number, number, string][] }[] };
 
 /** The vector files by the name of their schema. */
 type Vectors = { ddl: DdlVectors; plans: PlanVectors; mermaid: MermaidVectors; syntax: SyntaxVectors };

@@ -14,7 +14,6 @@ import { normalizeDecimal } from './decimal.js';
 import { decimalFromScaled } from './decimal.js';
 import { GroupRow, GroupRows } from './group_rows.js';
 
-export { CORE } from './core.js';
 
 /** A generated model class. */
 export interface ModelClass<T extends Model = Model> {
@@ -604,7 +603,7 @@ async function pageOf(c: Core, page: number, perPage: number): Promise<Page> {
   return { items, totalCount: total, totalPages: Math.ceil(total / perPage), page, perPage };
 }
 
-export async function inTransaction(conn: Db | undefined, fn: () => Promise<void>): Promise<void> {
+async function inTransaction(conn: Db | undefined, fn: () => Promise<void>): Promise<void> {
   if (conn === undefined) {
     resolve(undefined);
     return fn();
@@ -731,7 +730,7 @@ async function creates(c: Core, models: readonly Model[]): Promise<number> {
  * (docs/protocol.md "Relation steps"): each the largest power of two that is at most the rows left and at most
  * the bind-limit chunk, floor(bind limit / columns) and at least 1.
  */
-export function insertParts(rows: number, columns: number, driver: string): number[] {
+function insertParts(rows: number, columns: number, driver: string): number[] {
   const chunk = Math.max(1, Math.floor((driver === 'sqlite' ? 999 : 65535) / columns));
   const parts: number[] = [];
   for (let left = rows; left > 0;) {
@@ -912,7 +911,7 @@ function pairs(c: Core): Array<[string, unknown]> {
   return out;
 }
 
-export function toArray(c: Core): Record<string, unknown> {
+function toArray(c: Core): Record<string, unknown> {
   return Object.fromEntries(pairs(c).map(([k, v]) => [k, arrayValue(v)]));
 }
 
@@ -1041,4 +1040,3 @@ function outputName(set: RuntimeModel, schema: Entity, name: string): string {
   return snake(name);
 }
 
-export { keyOfValues };

@@ -24,8 +24,6 @@ export function isValueFunction(name: string): boolean {
   return Object.hasOwn(valueFunctionUnits, name) || name === 'now' || name === 'today';
 }
 
-export type RowLockMode = 'update' | 'share' | 'update_nowait' | 'share_nowait';
-
 export interface Dialect {
   readonly name: 'mysql' | 'postgres' | 'sqlite';
   quote(ident: string): string;
@@ -65,12 +63,12 @@ export interface Dialect {
   restartIdentity(table: string, column: string): string;
 }
 
-export function quoteWith(q: string, ident: string): string {
+function quoteWith(q: string, ident: string): string {
   return ident.split('.').map(part => q + part.replaceAll(q, q + q) + q).join('.');
 }
 
 /** text를 SQL 문자열 literal로 quote한다. */
-export function literal(text: string): string {
+function literal(text: string): string {
   return `'${text.replaceAll("'", "''")}'`;
 }
 
@@ -95,7 +93,7 @@ function conflictUpsert(conflict: readonly string[], assigns: string): string {
 }
 
 /** AES is host-side so the row key version selects the key; hex and ip are SQL-side. */
-export const mysql: Dialect = {
+const mysql: Dialect = {
   name: 'mysql',
   quote: ident => quoteWith('`', ident),
   placeholder: () => '?',
@@ -150,7 +148,7 @@ export const mysql: Dialect = {
 };
 
 /** Every codec stage is host-side: an ip value is stored as bytes in a bytea column. */
-export const postgres: Dialect = {
+const postgres: Dialect = {
   name: 'postgres',
   quote: ident => quoteWith('"', ident),
   placeholder: n => `$${n}`,
@@ -200,7 +198,7 @@ export const postgres: Dialect = {
 };
 
 /** Every codec stage is host-side. */
-export const sqlite: Dialect = {
+const sqlite: Dialect = {
   name: 'sqlite',
   quote(ident) {
     return quoteWith('"', ident.split('.').join('__'));

@@ -9,7 +9,7 @@ import { readLosslessJson } from './json.mts';
 const schemas = resolve(import.meta.dirname, '../../../scripts/schema');
 
 export type Symbols = Record<string, string>;
-export type Language = { roots?: string[]; symbols?: string };
+type Language = { roots?: string[]; symbols?: string };
 export type Native = { symbol?: string; signature?: string };
 export type Rule = {
   id?: string; for?: string; inputs?: string[]; output?: string; errors?: string[]; state?: string;
@@ -26,7 +26,7 @@ export type Extension = {
 export type Component = {
   id?: string; fields?: Record<string, string>; methods?: string[]; ownership?: string; ownership_ko?: string; internal?: string; internal_ko?: string;
 };
-export type Edge = { from?: string; to?: string; kind?: string; role?: string; role_ko?: string };
+type Edge = { from?: string; to?: string; kind?: string; role?: string; role_ko?: string };
 /**
  * Sequence는 공통 state contract 하나다. statements는 그 sequence가 보내는 statement의 kind를 순서대로 적는다: model
  * statement(select, insert, update, delete), transaction 제어(begin, commit, rollback, savepoint, release, rollback_to)와
@@ -98,7 +98,7 @@ export function validateManifest(m: Manifest): void {
  * method의 rule은 도표가 빠뜨린 공통 API다. internal로 표시한 구성요소는 두 언어로 각 client가 그 method를 공통 signature
  * 없이 비공개로 구현하는 이유를 적으므로 그 method에는 rule이 없다.
  */
-export function checkComponentMethods(m: Manifest): void {
+function checkComponentMethods(m: Manifest): void {
   const rules = allRules(m);
   const declared = new Set(rules.map(r => r.id ?? ''));
   const listed = new Set<string>();

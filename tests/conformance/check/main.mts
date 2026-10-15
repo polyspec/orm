@@ -42,7 +42,7 @@ const outputSchema = join(repository, 'scripts/schema/conformance-output.schema.
 // 출력을 단계로), 모든 database와 두 번의 실행이 build된 runner를 실행한다.
 // runnerDeadline: build된 runner process 하나가 bench database에서 모든 vector를 실행한다(개발 machine에서 1-3 s).
 // 1분이 지난 runner는 멈춘 것이다.
-export const runnerDeadline = 60_000;
+const runnerDeadline = 60_000;
 // stateDeadline: database state digest(state.mts)나 counter(counters.mts)를 읽고 되돌리는 일 하나의 기한이다. bench
 // database의 digest는 1 s 안에 읽힌다.
 export const stateDeadline = 60_000;
@@ -75,7 +75,7 @@ export function vectorsPath(driver: string): string {
 const chosen = (selected: string[], name: string): boolean => selected.length === 0 || selected.includes(name);
 
 /** joinErrors is one error of the errors that are not null, each on its own line, or null when there is none (errors.Join of Go). */
-export function joinErrors(errors: unknown[]): Error | null {
+function joinErrors(errors: unknown[]): Error | null {
   const list = errors.filter(error => error !== null && error !== undefined);
   if (list.length === 0) return null;
   return new AggregateError(list, list.map(errorMessage).join('\n'));
@@ -221,7 +221,7 @@ export async function runAndCheckState(db: StateDatabase, database: string, lang
  * writes, so two runs on the same database must not overlap. The name is a hash of the DSN; the file lives in the
  * temporary directory.
  */
-export function lockPath(dsn: string): string {
+function lockPath(dsn: string): string {
   return join(tmpdir(), `orm-conformance-${createHash('sha256').update(dsn).digest('hex').slice(0, 16)}.lock`);
 }
 
@@ -281,7 +281,7 @@ export async function runLanguage(context: Context, stateDB: StateDatabase, root
 }
 
 /** The built runners: the Go runner that buildRunners builds and the Rust runner that buildRustRunner copies. */
-export const runners = { go: '', rust: '' };
+const runners = { go: '', rust: '' };
 
 /**
  * buildRustRunner builds the Rust runner under the exclusive lease of the shared Rust target directory (LEASE,
@@ -610,7 +610,7 @@ export function recordVerified(root: string, outputs: string[], driver: string, 
 }
 
 /** main runs the command of argv and returns the exit status. */
-export async function main(argv: string[]): Promise<number> {
+async function main(argv: string[]): Promise<number> {
   try {
     return await command(argv);
   } catch (error) {
