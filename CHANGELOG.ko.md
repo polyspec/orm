@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b5faa0a22f130cbc858ba5ba7814635dbd2504bd412a5294f3813023a5b4673c -->
+<!-- source-sha256: 55f9f8f605dd41ca010b8cc16018831cee4498db6533db9cd866fe4574faf684 -->
 # 변경 이력
 
 ## Unreleased
 
+- 각 parity binding이 suite 하나를 실행한다. (#T148-3-4)
 - parity가 모든 구현의 모든 feature unit을 묶는다. (#T148-3-3)
 - 공유 vector case id에 slash가 없어 parity가 모든 case를 묶는다. (#T148-3-3-1)
 - Python bind vector가 case harness로 실행된다. (#T89-4)
