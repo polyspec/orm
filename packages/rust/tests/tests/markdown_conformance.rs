@@ -367,9 +367,9 @@ async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
         }
         "insert_rows_tasks" => {
             let rows = vec![
-                Tasks::new().set_owner("P1").set_title("write spec").set_points(3).set_due(Some("2026-10-01".to_string())),
-                Tasks::new().set_owner("P1").set_title("review").set_points(5).set_due(None::<String>),
-                Tasks::new().set_owner("P2").set_title("ship").set_points(8).set_due(Some("2026-10-05".to_string())),
+                Tasks::new().set_owner("P1").set_title("write spec").set_points(3).set_due(Some("2026-10-01".to_string()))?,
+                Tasks::new().set_owner("P1").set_title("review").set_points(5).set_due(None::<String>)?,
+                Tasks::new().set_owner("P2").set_title("ship").set_points(8).set_due(Some("2026-10-05".to_string()))?,
             ];
             json!(Tasks::new().connect(db).creates(rows).await?)
         }
