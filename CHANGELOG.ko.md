@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5dbf64da65296be2a3c6ae7956e983320629ff2fcac1ea6b1463d426d2506510 -->
+<!-- source-sha256: f0238e307579dc0c559e5b89bab33b135233d31fdf58ddfc4c737cc8a68b0be6 -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP와 PHP extension vector runner가 다른 runner처럼 fork min-median-max/json-schema v2.6.0-p1로 모든 schema 거부를 보고한다. (#T137-1-4-3-1)
 - 모든 구현이 빈 key_by를 없는 것으로 읽고, protocol.md가 그것을 적는다. (#T77-7)
 - Python이 모든 공유 suite를 실행한다. aggregate는 범위 밖 값에 CODEC_DECODE를 답하고, percent escape가 깨진 SQLite DSN은 CONFIG이며, MySQL install은 statement event를 발행한다. (#T77-3)
 - Python codec과 apply runner가 공유 검사에서 실행되고, Python PostgreSQL apply는 lock_timeout을 $1 marker로 복원한다. (#T77-2)
