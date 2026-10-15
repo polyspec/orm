@@ -621,7 +621,6 @@ func meets(a, b *runtimemodel.Field) bool {
 	return meet.Kind(a.Type, a.Scale, a.Precision) == meet.Kind(b.Type, b.Scale, b.Precision)
 }
 
-
 // colPairOpAllowed reports whether the column comparison op may compare the columns left and right: its base operator
 // (eq for eq_col) must be one of the left column's type, and neither column may have a codec, since a codec's stored
 // form is not the value the operator orders. Two columns whose only codec is ip compare by eq_col and not_eq_col,
