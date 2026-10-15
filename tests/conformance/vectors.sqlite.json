@@ -1073,11 +1073,14 @@
               7,
               "$NOW",
               36500,
+              "$NOW",
+              "$NOW",
+              36500,
               "$NOW"
             ],
             "error": null,
             "kind": "select",
-            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ? AND \"a\".\"start_dt\" \u003e (datetime(?, '-' || CAST(? AS TEXT) || ' days') || substr(?, 20))",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ? AND \"a\".\"start_dt\" \u003e CASE WHEN (datetime(?, '-' || CAST(? AS TEXT) || ' days') || substr(?, 20)) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (datetime(?, '-' || CAST(? AS TEXT) || ' days') || substr(?, 20)) END",
             "tables": [
               "author"
             ],
@@ -1088,11 +1091,14 @@
               7,
               "$NOW",
               1200,
+              "$NOW",
+              "$NOW",
+              1200,
               "$NOW"
             ],
             "error": null,
             "kind": "select",
-            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ? AND \"a\".\"start_dt\" \u003c (datetime(?, '+' || CAST(? AS TEXT) || ' months', 'floor') || substr(?, 20))",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ? AND \"a\".\"start_dt\" \u003c CASE WHEN (datetime(?, '+' || CAST(? AS TEXT) || ' months', 'floor') || substr(?, 20)) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (datetime(?, '+' || CAST(? AS TEXT) || ' months', 'floor') || substr(?, 20)) END",
             "tables": [
               "author"
             ],
@@ -2892,6 +2898,130 @@
             "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"service\" AS \"a\" WHERE \"a\".\"seq\" IN (?, ?)",
             "tables": [
               "service"
+            ],
+            "transaction": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "relative_time_out_of_range",
+      "chain": "andGtStartDt and andLeStartDt with secondsAgo(1e15), daysLater(4000000) and monthsAgo(200000): each NULL, so no row",
+      "expect": {
+        "result": {
+          "days_later": [
+            0,
+            0
+          ],
+          "months_ago": [
+            0,
+            0
+          ],
+          "seconds_ago": [
+            0,
+            0
+          ]
+        },
+        "statements": [
+          {
+            "binds": [
+              "$NOW",
+              1000000000000000,
+              "$NOW",
+              "$NOW",
+              1000000000000000,
+              "$NOW"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"start_dt\" \u003e CASE WHEN (datetime(?, '-' || CAST(? AS TEXT) || ' seconds') || substr(?, 20)) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (datetime(?, '-' || CAST(? AS TEXT) || ' seconds') || substr(?, 20)) END",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              "$NOW",
+              1000000000000000,
+              "$NOW",
+              "$NOW",
+              1000000000000000,
+              "$NOW"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"start_dt\" \u003c= CASE WHEN (datetime(?, '-' || CAST(? AS TEXT) || ' seconds') || substr(?, 20)) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (datetime(?, '-' || CAST(? AS TEXT) || ' seconds') || substr(?, 20)) END",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              "$NOW",
+              4000000,
+              "$NOW",
+              "$NOW",
+              4000000,
+              "$NOW"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"start_dt\" \u003e CASE WHEN (datetime(?, '+' || CAST(? AS TEXT) || ' days') || substr(?, 20)) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (datetime(?, '+' || CAST(? AS TEXT) || ' days') || substr(?, 20)) END",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              "$NOW",
+              4000000,
+              "$NOW",
+              "$NOW",
+              4000000,
+              "$NOW"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"start_dt\" \u003c= CASE WHEN (datetime(?, '+' || CAST(? AS TEXT) || ' days') || substr(?, 20)) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (datetime(?, '+' || CAST(? AS TEXT) || ' days') || substr(?, 20)) END",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              "$NOW",
+              200000,
+              "$NOW",
+              "$NOW",
+              200000,
+              "$NOW"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"start_dt\" \u003e CASE WHEN (datetime(?, '-' || CAST(? AS TEXT) || ' months', 'floor') || substr(?, 20)) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (datetime(?, '-' || CAST(? AS TEXT) || ' months', 'floor') || substr(?, 20)) END",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              "$NOW",
+              200000,
+              "$NOW",
+              "$NOW",
+              200000,
+              "$NOW"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"start_dt\" \u003c= CASE WHEN (datetime(?, '-' || CAST(? AS TEXT) || ' months', 'floor') || substr(?, 20)) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (datetime(?, '-' || CAST(? AS TEXT) || ' months', 'floor') || substr(?, 20)) END",
+            "tables": [
+              "author"
             ],
             "transaction": null
           }

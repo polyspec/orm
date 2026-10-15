@@ -154,6 +154,10 @@ func postgresProbes() []Probe {
 			e.Want("SELECT now() = transaction_timestamp()", "true")
 			e.Exec("COMMIT")
 		}),
+		p("relative.interval_out_of_range", "make_interval with a huge interval fails with interval out of range (22008), and a result past 9999-12-31 is the year 10000 or later", func(e *Env) {
+			e.Fails("SELECT CAST('2026-06-01 00:00:00' AS timestamp(6)) - make_interval(secs => CAST(1e300 AS double precision))", "22008")
+			e.Want("SELECT CAST(CAST('2026-06-01 00:00:00' AS timestamp(6)) + make_interval(days => 3000000) AS text)", "10240-02-20 00:00:00")
+		}),
 		// UUID, enum and JSON.
 		p("uuid.native_normalized", "UUID accepts braces and upper case and returns lower case", func(e *Env) {
 			e.Exec("CREATE TABLE t (u uuid)", "INSERT INTO t VALUES ('{A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11}')")

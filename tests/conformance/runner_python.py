@@ -1106,6 +1106,24 @@ def main():
 
     run("column_pairs", column_pairs)
 
+    def relative_time_out_of_range():
+        # A relative time function outside 0001-01-01 to 9999-12-31, or with an interval no database represents, is NULL, so
+        # a comparison and its negation both match no row. secondsAgo takes an integer in every client, so 1e15 seconds
+        # stands for an interval past every bound.
+        counts = {}
+        for name, f in [
+            ("seconds_ago", orm.seconds_ago(1000000000000000)),
+            ("days_later", orm.days_later(4000000)),
+            ("months_ago", orm.months_ago(200000)),
+        ]:
+            counts[name] = [
+                author().and_gt_start_dt(f).get_count(),
+                author().and_le_start_dt(f).get_count(),
+            ]
+        return counts
+
+    run("relative_time_out_of_range", relative_time_out_of_range)
+
     def aes_status():
         keyring = AesKeyring({1: "bench-salt"}, 1)
         status = db.utils().aes().status(Author(), keyring)

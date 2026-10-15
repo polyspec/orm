@@ -20,6 +20,34 @@ export const valueFunctionUnits: Readonly<Record<string, string>> = {
   seconds_later: 'second', minutes_later: 'minute', hours_later: 'hour', days_later: 'day', months_later: 'month',
 };
 
+/**
+ * The largest interval of each unit that stays inside orm's range, 0001-01-01 to 9999-12-31 (3652059 days): a relative
+ * time function whose interval exceeds it is NULL, so no database computes it and PostgreSQL never fails with interval
+ * out of range (postgres.relative.interval_out_of_range).
+ */
+const intervalBounds: Readonly<Record<string, string>> = { second: '315537897600', minute: '5258964960', hour: '87649416', day: '3652059', month: '119988' };
+
+/**
+ * The interval argument of a relative time function, NULL past its bound. The guard sits inside the argument, not
+ * around the function, so a database that folds constants never evaluates an out-of-range interval.
+ */
+function guardInterval(unit: string, operandCast: string, arg: () => string): string {
+  // A typed placeholder needs its cast on both sides: PostgreSQL infers an uncast THEN placeholder as text.
+  const cast = (placeholder: string): string => (operandCast === '' ? placeholder : `CAST(${placeholder} AS ${operandCast})`);
+  const operand = cast(arg());
+  const bound = intervalBounds[unit];
+  return `CASE WHEN ${operand} BETWEEN -${bound} AND ${bound} THEN ${cast(arg())} END`;
+}
+
+/**
+ * A relative time value, NULL outside 0001-01-01 00:00:00 to 9999-12-31 23:59:59.999999: past the range MySQL and
+ * SQLite give NULL, below it they give the year 0000 (mysql.relative.out_of_range_null,
+ * sqlite.relative.out_of_range_null), and PostgreSQL gives the year 10000 or later.
+ */
+function guardResult(value: () => string): string {
+  return `CASE WHEN ${value()} BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN ${value()} END`;
+}
+
 export function isValueFunction(name: string): boolean {
   return Object.hasOwn(valueFunctionUnits, name) || name === 'now' || name === 'today';
 }
@@ -169,7 +197,7 @@ const mysql: Dialect = {
     if (name === 'today') return 'CURDATE()';
     const unit = valueFunctionUnits[name];
     if (unit === undefined) return undefined;
-    return `${name.endsWith('_later') ? 'DATE_ADD' : 'DATE_SUB'}(NOW(6), INTERVAL ${arg()} ${unit.toUpperCase()})`;
+    return guardResult(() => `${name.endsWith('_later') ? 'DATE_ADD' : 'DATE_SUB'}(NOW(6), INTERVAL ${guardInterval(unit, '', arg)} ${unit.toUpperCase()})`);
   },
   // utf8mb4_0900_bin compares code points under LIKE; LIKE BINARY is deprecated since MySQL 8.0.27.
   containsBinary: (col, value) => `${col} LIKE ${value('like_contains')}`,
@@ -223,8 +251,11 @@ const postgres: Dialect = {
     const field = fields[unit];
     if (field === undefined) throw new Error(`the interval unit ${unit} has no make_interval field`);
     const cast = field === 'secs' ? 'double precision' : 'integer';
-    const clock = `CAST(${now()} AS timestamp(6))`;
-    return `(${clock}${name.endsWith('_later') ? ' + ' : ' - '}make_interval(${field} => CAST(${arg()} AS ${cast})))`;
+    const operandCast = cast === 'double precision' ? cast : 'bigint';
+    return guardResult(() => {
+      const clock = `CAST(${now()} AS timestamp(6))`;
+      return `(${clock}${name.endsWith('_later') ? ' + ' : ' - '}make_interval(${field} => CAST(${guardInterval(unit, operandCast, arg)} AS ${cast})))`;
+    });
   },
   containsBinary: (col, value) => `${col} LIKE ${value('like_contains')}`,
   tupleIn: (cols, rows, negate) => tupleIn(cols, rows, negate, false),
@@ -282,9 +313,11 @@ const sqlite: Dialect = {
     const sign = name.endsWith('_later') ? "'+'" : "'-'";
     // datetime returns whole seconds: append the six fraction digits of a
     // second clock slot, which equals the first in one statement.
-    const clock = now();
-    const modifier = `${sign} || CAST(${arg()} AS TEXT) || ' ${unit}s'${unit === 'month' ? ", 'floor'" : ''}`;
-    return `(datetime(${clock}, ${modifier}) || substr(${now()}, 20))`;
+    return guardResult(() => {
+      const clock = now();
+      const modifier = `${sign} || CAST(${arg()} AS TEXT) || ' ${unit}s'${unit === 'month' ? ", 'floor'" : ''}`;
+      return `(datetime(${clock}, ${modifier}) || substr(${now()}, 20))`;
+    });
   },
   // SQLite LIKE ignores ASCII case.
   containsBinary: (col, value) => `instr(${col}, ${value('')}) > 0`,

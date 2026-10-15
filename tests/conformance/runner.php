@@ -549,6 +549,17 @@ vector('column_pairs', function () use ($author): array {
     return $result;
 });
 
+vector('relative_time_out_of_range', function () use ($author): array {
+    // A relative time function outside 0001-01-01 to 9999-12-31, or with an interval no database represents, is NULL, so
+    // a comparison and its negation both match no row. secondsAgo takes an integer in every client, so 1e15 seconds
+    // stands for an interval past every bound.
+    $counts = [];
+    foreach (['seconds_ago' => Orm::secondsAgo(1000000000000000), 'days_later' => Orm::daysLater(4000000), 'months_ago' => Orm::monthsAgo(200000)] as $name => $f) {
+        $counts[$name] = [$author()->andGtStartDt($f)->getCount(), $author()->andLeStartDt($f)->getCount()];
+    }
+    return $counts;
+});
+
 vector('aes_status', function () use ($db): array {
     $status = $db->utils()->aes()->status(new Author, new AesKeyring([1 => 'bench-salt'], 1));
     $versions = [];

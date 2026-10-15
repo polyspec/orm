@@ -504,6 +504,16 @@ async function main() {
     result.relation_varchar_i64 = await caught(author().relation(new Service().matchNameWithSeq()).limit(0, 1).gets());
     return result;
   });
+  await run('relative_time_out_of_range', async () => {
+    // A relative time function outside 0001-01-01 to 9999-12-31, or with an interval no database represents, is NULL, so
+    // a comparison and its negation both match no row. secondsAgo takes an integer in every client, so 1e15 seconds
+    // stands for an interval past every bound.
+    const counts: Record<string, unknown> = {};
+    for (const [name, f] of [['seconds_ago', orm.secondsAgo(1000000000000000)], ['days_later', orm.daysLater(4000000)], ['months_ago', orm.monthsAgo(200000)]] as const) {
+      counts[name] = [await author().andGtStartDt(f).getCount(), await author().andLeStartDt(f).getCount()];
+    }
+    return counts;
+  });
   await run('aes_status', async () => {
     const keyring = new AesKeyring(new Map([[1, 'bench-salt']]), 1);
     const status = await db.utils().aes().status(new Author(), keyring);

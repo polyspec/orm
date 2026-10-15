@@ -1072,11 +1072,15 @@
             "binds": [
               7,
               "$NOW",
+              36500,
+              36500,
+              "$NOW",
+              36500,
               36500
             ],
             "error": null,
             "kind": "select",
-            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = $1 AND \"a\".\"start_dt\" \u003e (CAST($2 AS timestamp(6)) - make_interval(days =\u003e CAST($3 AS integer)))",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = $1 AND \"a\".\"start_dt\" \u003e CASE WHEN (CAST($2 AS timestamp(6)) - make_interval(days =\u003e CAST(CASE WHEN CAST($3 AS bigint) BETWEEN -3652059 AND 3652059 THEN CAST($4 AS bigint) END AS integer))) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (CAST($5 AS timestamp(6)) - make_interval(days =\u003e CAST(CASE WHEN CAST($6 AS bigint) BETWEEN -3652059 AND 3652059 THEN CAST($7 AS bigint) END AS integer))) END",
             "tables": [
               "author"
             ],
@@ -1086,11 +1090,15 @@
             "binds": [
               7,
               "$NOW",
+              1200,
+              1200,
+              "$NOW",
+              1200,
               1200
             ],
             "error": null,
             "kind": "select",
-            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = $1 AND \"a\".\"start_dt\" \u003c (CAST($2 AS timestamp(6)) + make_interval(months =\u003e CAST($3 AS integer)))",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = $1 AND \"a\".\"start_dt\" \u003c CASE WHEN (CAST($2 AS timestamp(6)) + make_interval(months =\u003e CAST(CASE WHEN CAST($3 AS bigint) BETWEEN -119988 AND 119988 THEN CAST($4 AS bigint) END AS integer))) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (CAST($5 AS timestamp(6)) + make_interval(months =\u003e CAST(CASE WHEN CAST($6 AS bigint) BETWEEN -119988 AND 119988 THEN CAST($7 AS bigint) END AS integer))) END",
             "tables": [
               "author"
             ],
@@ -2881,6 +2889,130 @@
             "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"service\" AS \"a\" WHERE \"a\".\"seq\" IN ($1, $2)",
             "tables": [
               "service"
+            ],
+            "transaction": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "relative_time_out_of_range",
+      "chain": "andGtStartDt and andLeStartDt with secondsAgo(1e15), daysLater(4000000) and monthsAgo(200000): each NULL, so no row",
+      "expect": {
+        "result": {
+          "days_later": [
+            0,
+            0
+          ],
+          "months_ago": [
+            0,
+            0
+          ],
+          "seconds_ago": [
+            0,
+            0
+          ]
+        },
+        "statements": [
+          {
+            "binds": [
+              "$NOW",
+              1000000000000000,
+              1000000000000000,
+              "$NOW",
+              1000000000000000,
+              1000000000000000
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"start_dt\" \u003e CASE WHEN (CAST($1 AS timestamp(6)) - make_interval(secs =\u003e CAST(CASE WHEN CAST($2 AS double precision) BETWEEN -315537897600 AND 315537897600 THEN CAST($3 AS double precision) END AS double precision))) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (CAST($4 AS timestamp(6)) - make_interval(secs =\u003e CAST(CASE WHEN CAST($5 AS double precision) BETWEEN -315537897600 AND 315537897600 THEN CAST($6 AS double precision) END AS double precision))) END",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              "$NOW",
+              1000000000000000,
+              1000000000000000,
+              "$NOW",
+              1000000000000000,
+              1000000000000000
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"start_dt\" \u003c= CASE WHEN (CAST($1 AS timestamp(6)) - make_interval(secs =\u003e CAST(CASE WHEN CAST($2 AS double precision) BETWEEN -315537897600 AND 315537897600 THEN CAST($3 AS double precision) END AS double precision))) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (CAST($4 AS timestamp(6)) - make_interval(secs =\u003e CAST(CASE WHEN CAST($5 AS double precision) BETWEEN -315537897600 AND 315537897600 THEN CAST($6 AS double precision) END AS double precision))) END",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              "$NOW",
+              4000000,
+              4000000,
+              "$NOW",
+              4000000,
+              4000000
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"start_dt\" \u003e CASE WHEN (CAST($1 AS timestamp(6)) + make_interval(days =\u003e CAST(CASE WHEN CAST($2 AS bigint) BETWEEN -3652059 AND 3652059 THEN CAST($3 AS bigint) END AS integer))) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (CAST($4 AS timestamp(6)) + make_interval(days =\u003e CAST(CASE WHEN CAST($5 AS bigint) BETWEEN -3652059 AND 3652059 THEN CAST($6 AS bigint) END AS integer))) END",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              "$NOW",
+              4000000,
+              4000000,
+              "$NOW",
+              4000000,
+              4000000
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"start_dt\" \u003c= CASE WHEN (CAST($1 AS timestamp(6)) + make_interval(days =\u003e CAST(CASE WHEN CAST($2 AS bigint) BETWEEN -3652059 AND 3652059 THEN CAST($3 AS bigint) END AS integer))) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (CAST($4 AS timestamp(6)) + make_interval(days =\u003e CAST(CASE WHEN CAST($5 AS bigint) BETWEEN -3652059 AND 3652059 THEN CAST($6 AS bigint) END AS integer))) END",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              "$NOW",
+              200000,
+              200000,
+              "$NOW",
+              200000,
+              200000
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"start_dt\" \u003e CASE WHEN (CAST($1 AS timestamp(6)) - make_interval(months =\u003e CAST(CASE WHEN CAST($2 AS bigint) BETWEEN -119988 AND 119988 THEN CAST($3 AS bigint) END AS integer))) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (CAST($4 AS timestamp(6)) - make_interval(months =\u003e CAST(CASE WHEN CAST($5 AS bigint) BETWEEN -119988 AND 119988 THEN CAST($6 AS bigint) END AS integer))) END",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              "$NOW",
+              200000,
+              200000,
+              "$NOW",
+              200000,
+              200000
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"start_dt\" \u003c= CASE WHEN (CAST($1 AS timestamp(6)) - make_interval(months =\u003e CAST(CASE WHEN CAST($2 AS bigint) BETWEEN -119988 AND 119988 THEN CAST($3 AS bigint) END AS integer))) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (CAST($4 AS timestamp(6)) - make_interval(months =\u003e CAST(CASE WHEN CAST($5 AS bigint) BETWEEN -119988 AND 119988 THEN CAST($6 AS bigint) END AS integer))) END",
+            "tables": [
+              "author"
             ],
             "transaction": null
           }

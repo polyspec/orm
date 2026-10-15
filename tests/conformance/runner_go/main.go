@@ -978,6 +978,32 @@ func run() (status int) {
 		}
 		return result, nil
 	})
+	run("relative_time_out_of_range", func() (any, error) {
+		// A relative time function outside 0001-01-01 to 9999-12-31, or with an interval no database represents, is NULL, so
+		// a comparison and its negation both match no row. secondsAgo takes an integer in every client, so 1e15 seconds
+		// stands for an interval past every bound.
+		counts := map[string]any{}
+		for _, c := range []struct {
+			name string
+			f    orm.Func
+		}{
+			{"seconds_ago", orm.SecondsAgo(1000000000000000)},
+			{"days_later", orm.DaysLater(4000000)},
+			{"months_ago", orm.MonthsAgo(200000)},
+		} {
+			name, f := c.name, c.f
+			gt, err := author().AndGtStartDt(f).GetCount()
+			if err != nil {
+				return nil, err
+			}
+			le, err := author().AndLeStartDt(f).GetCount()
+			if err != nil {
+				return nil, err
+			}
+			counts[name] = []any{gt, le}
+		}
+		return counts, nil
+	})
 	run("aes_status", func() (any, error) {
 		keyring, err := orm.NewAESKeyring(map[int32]string{1: "bench-salt"}, 1)
 		if err != nil {

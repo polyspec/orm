@@ -773,6 +773,22 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         result.insert("relation_varchar_i64".into(), code_of(author().relation(Service::new().match_name_with_seq()).limit(0, 1).gets().await));
         Ok::<Value, polyspec_orm::Error>(Value::Object(result))
     });
+    run!("relative_time_out_of_range", async {
+        // A relative time function outside 0001-01-01 to 9999-12-31, or with an interval no database represents, is NULL, so
+        // a comparison and its negation both match no row. secondsAgo takes an integer in every client, so 1e15 seconds
+        // stands for an interval past every bound.
+        let mut counts = Map::new();
+        for (name, f) in [
+            ("seconds_ago", polyspec_orm::seconds_ago(1000000000000000)),
+            ("days_later", polyspec_orm::days_later(4000000)),
+            ("months_ago", polyspec_orm::months_ago(200000)),
+        ] {
+            let gt = author().and_gt_start_dt(f.clone()).get_count().await?;
+            let le = author().and_le_start_dt(f).get_count().await?;
+            counts.insert(name.into(), json!([gt, le]));
+        }
+        Ok::<Value, polyspec_orm::Error>(Value::Object(counts))
+    });
     run!("aes_status", async {
         let keyring = AesKeyring::new([(1, "bench-salt".to_owned())].into_iter().collect(), 1)?;
         let status = db.utils().aes().status(&Author::new(), &keyring).await?;

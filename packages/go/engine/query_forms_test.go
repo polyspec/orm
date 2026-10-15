@@ -215,9 +215,10 @@ func TestValueFunctionsForEveryDialect(t *testing.T) {
 	  {"pred":{"conn":"and","column":"created_ts","op":"lte","value":{"name":"now"}}},
 	  {"pred":{"conn":"and","column":"created_ts","op":"lt","value":{"name":"months_later","ps":[1]}}}]}`
 	for driver, parts := range map[string][]string{
-		"mysql":    {"`a`.`created_ts` > DATE_SUB(NOW(6), INTERVAL ? DAY)", "`a`.`created_ts` <= NOW(6)", "DATE_ADD(NOW(6), INTERVAL ? MONTH)"},
-		"postgres": {`"a"."created_ts" > (CAST($1 AS timestamp(6)) - make_interval(days => CAST($2 AS integer)))`, `"a"."created_ts" <= CAST($3 AS timestamp(6))`, `(CAST($4 AS timestamp(6)) + make_interval(months => CAST($5 AS integer)))`},
-		"sqlite":   {`"a"."created_ts" > (datetime(?, '-' || CAST(? AS TEXT) || ' days') || substr(?, 20))`, `"a"."created_ts" <= ?`, `(datetime(?, '+' || CAST(? AS TEXT) || ' months', 'floor') || substr(?, 20))`},
+		// The guards keep a relative time function NULL outside 0001-01-01 to 9999-12-31 (docs/dialects.md).
+		"mysql":    {"WHERE `a`.`created_ts` > CASE WHEN DATE_SUB(NOW(6), INTERVAL CASE WHEN ? BETWEEN -3652059 AND 3652059 THEN ? END DAY) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN DATE_SUB(NOW(6), INTERVAL CASE WHEN ? BETWEEN -3652059 AND 3652059 THEN ? END DAY) END AND `a`.`created_ts` <= NOW(6) AND `a`.`created_ts` < CASE WHEN DATE_ADD(NOW(6), INTERVAL CASE WHEN ? BETWEEN -119988 AND 119988 THEN ? END MONTH) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN DATE_ADD(NOW(6), INTERVAL CASE WHEN ? BETWEEN -119988 AND 119988 THEN ? END MONTH) END"},
+		"postgres": {`WHERE "a"."created_ts" > CASE WHEN (CAST($1 AS timestamp(6)) - make_interval(days => CAST(CASE WHEN CAST($2 AS bigint) BETWEEN -3652059 AND 3652059 THEN CAST($3 AS bigint) END AS integer))) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (CAST($4 AS timestamp(6)) - make_interval(days => CAST(CASE WHEN CAST($5 AS bigint) BETWEEN -3652059 AND 3652059 THEN CAST($6 AS bigint) END AS integer))) END AND "a"."created_ts" <= CAST($7 AS timestamp(6)) AND "a"."created_ts" < CASE WHEN (CAST($8 AS timestamp(6)) + make_interval(months => CAST(CASE WHEN CAST($9 AS bigint) BETWEEN -119988 AND 119988 THEN CAST($10 AS bigint) END AS integer))) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (CAST($11 AS timestamp(6)) + make_interval(months => CAST(CASE WHEN CAST($12 AS bigint) BETWEEN -119988 AND 119988 THEN CAST($13 AS bigint) END AS integer))) END`},
+		"sqlite":   {`WHERE "a"."created_ts" > CASE WHEN (datetime(?, '-' || CAST(? AS TEXT) || ' days') || substr(?, 20)) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (datetime(?, '-' || CAST(? AS TEXT) || ' days') || substr(?, 20)) END AND "a"."created_ts" <= ? AND "a"."created_ts" < CASE WHEN (datetime(?, '+' || CAST(? AS TEXT) || ' months', 'floor') || substr(?, 20)) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (datetime(?, '+' || CAST(? AS TEXT) || ' months', 'floor') || substr(?, 20)) END`},
 	} {
 		p := formsCompile(t, formsEngine(t, driver), body)
 		requireSQL(t, p.Steps[0].SQL, parts...)
@@ -228,8 +229,8 @@ func TestValueFunctionsForEveryDialect(t *testing.T) {
 					nows++
 				}
 			}
-			if nows != 5 {
-				t.Errorf("sqlite now slots %d, want 5", nows)
+			if nows != 9 {
+				t.Errorf("sqlite now slots %d, want 9", nows)
 			}
 		}
 	}

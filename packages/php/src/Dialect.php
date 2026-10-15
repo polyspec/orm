@@ -322,7 +322,7 @@ final class Dialect
                     $fn === 'now' => 'NOW(6)',
                     $fn === 'today' => 'CURDATE()',
                     $unit === null => null,
-                    default => ($later ? 'DATE_ADD' : 'DATE_SUB') . '(NOW(6), INTERVAL ' . $arg() . ' ' . strtoupper($unit) . ')',
+                    default => self::guardResult(fn (): string => ($later ? 'DATE_ADD' : 'DATE_SUB') . '(NOW(6), INTERVAL ' . self::guardInterval($unit, '', $arg) . ' ' . strtoupper($unit) . ')'),
                 };
             case 'postgres':
                 // executor clock을 bind하므로 한 statement의 clock은 하나다: now()는 transaction 시작,
@@ -338,9 +338,12 @@ final class Dialect
                 }
                 $field = ['second' => 'secs', 'minute' => 'mins', 'hour' => 'hours', 'day' => 'days', 'month' => 'months'][$unit];
                 $cast = $field === 'secs' ? 'double precision' : 'integer';
-                $clock = 'CAST(' . $now() . ' AS timestamp(6))';
-                $value = 'CAST(' . $arg() . " AS $cast)";
-                return '(' . $clock . ($later ? ' + ' : ' - ') . "make_interval($field => $value))";
+                $operandCast = $cast === 'double precision' ? $cast : 'bigint';
+                return self::guardResult(function () use ($now, $arg, $unit, $cast, $operandCast, $later, $field): string {
+                    $clock = 'CAST(' . $now() . ' AS timestamp(6))';
+                    $value = 'CAST(' . self::guardInterval($unit, $operandCast, $arg) . " AS $cast)";
+                    return '(' . $clock . ($later ? ' + ' : ' - ') . "make_interval($field => $value))";
+                });
             default:
                 if ($fn === 'now') {
                     return $now();
@@ -353,9 +356,46 @@ final class Dialect
                 }
                 // datetime은 초 단위를 돌려주므로 한 statement에서 첫 slot과 같은
                 // 두 번째 clock slot의 소수 여섯 자리를 붙인다.
-                $clock = $now();
-                $modifier = ($later ? "'+'" : "'-'") . ' || CAST(' . $arg() . " AS TEXT) || ' {$unit}s'" . ($unit === 'month' ? ", 'floor'" : '');
-                return "(datetime($clock, $modifier) || substr(" . $now() . ', 20))';
+                return self::guardResult(function () use ($now, $arg, $unit, $later): string {
+                    $clock = $now();
+                    $modifier = ($later ? "'+'" : "'-'") . ' || CAST(' . $arg() . " AS TEXT) || ' {$unit}s'" . ($unit === 'month' ? ", 'floor'" : '');
+                    return "(datetime($clock, $modifier) || substr(" . $now() . ', 20))';
+                });
         }
+    }
+
+    /**
+     * The largest interval of each unit that stays inside orm's range, 0001-01-01 to 9999-12-31 (3652059 days): a
+     * relative time function whose interval exceeds it is NULL, so no database computes it and PostgreSQL never fails
+     * with interval out of range (postgres.relative.interval_out_of_range).
+     */
+    private const INTERVAL_BOUNDS = ['second' => '315537897600', 'minute' => '5258964960', 'hour' => '87649416', 'day' => '3652059', 'month' => '119988'];
+
+    /**
+     * The interval argument of a relative time function, NULL past its bound. The guard sits inside the argument, not
+     * around the function, so a database that folds constants never evaluates an out-of-range interval.
+     *
+     * @param \Closure(): string $arg
+     */
+    private static function guardInterval(string $unit, string $operandCast, \Closure $arg): string
+    {
+        // A typed placeholder needs its cast on both sides: PostgreSQL infers an uncast THEN placeholder as text.
+        $cast = static fn (string $placeholder): string => $operandCast === '' ? $placeholder : "CAST($placeholder AS $operandCast)";
+        $operand = $cast($arg());
+        $bound = self::INTERVAL_BOUNDS[$unit];
+        return "CASE WHEN $operand BETWEEN -$bound AND $bound THEN " . $cast($arg()) . ' END';
+    }
+
+    /**
+     * A relative time value, NULL outside 0001-01-01 00:00:00 to 9999-12-31 23:59:59.999999: past the range MySQL and
+     * SQLite give NULL, below it they give the year 0000 (mysql.relative.out_of_range_null,
+     * sqlite.relative.out_of_range_null), and PostgreSQL gives the year 10000 or later.
+     *
+     * @param \Closure(): string $value
+     */
+    private static function guardResult(\Closure $value): string
+    {
+        $first = $value();
+        return "CASE WHEN $first BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN " . $value() . ' END';
     }
 }

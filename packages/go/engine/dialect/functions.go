@@ -22,6 +22,33 @@ var ValueFunctionUnits = map[string]string{
 	"seconds_later": "second", "minutes_later": "minute", "hours_later": "hour", "days_later": "day", "months_later": "month",
 }
 
+// intervalBounds is the largest interval of each unit that stays inside orm's range, 0001-01-01 to 9999-12-31
+// (3652059 days): a relative time function whose interval exceeds it is NULL, so no database computes it and
+// PostgreSQL never fails with interval out of range (postgres.relative.interval_out_of_range).
+var intervalBounds = map[string]string{"second": "315537897600", "minute": "5258964960", "hour": "87649416", "day": "3652059", "month": "119988"}
+
+// guardInterval renders the interval argument of a relative time function, NULL past its bound. The guard sits inside
+// the argument, not around the function, so a database that folds constants never evaluates an out-of-range interval.
+func guardInterval(unit, operandCast string, arg func() string) string {
+	// A typed placeholder needs its cast on both sides: PostgreSQL infers an uncast THEN placeholder as text.
+	cast := func(placeholder string) string {
+		if operandCast == "" {
+			return placeholder
+		}
+		return "CAST(" + placeholder + " AS " + operandCast + ")"
+	}
+	operand := cast(arg())
+	bound := intervalBounds[unit]
+	return "CASE WHEN " + operand + " BETWEEN -" + bound + " AND " + bound + " THEN " + cast(arg()) + " END"
+}
+
+// guardResult renders a relative time value as NULL outside 0001-01-01 00:00:00 to 9999-12-31 23:59:59.999999: past
+// the range MySQL and SQLite give NULL, below it they give the year 0000 (mysql.relative.out_of_range_null,
+// sqlite.relative.out_of_range_null), and PostgreSQL gives the year 10000 or later.
+func guardResult(value func() string) string {
+	return "CASE WHEN " + value() + " BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN " + value() + " END"
+}
+
 // IsValueFunction reports whether name is a value function.
 func IsValueFunction(name string) bool {
 	_, relative := ValueFunctionUnits[name]
@@ -57,7 +84,9 @@ func (MySQL) ValueFunction(name string, arg, _ func() string) (string, bool) {
 	if strings.HasSuffix(name, "_later") {
 		fn = "DATE_ADD"
 	}
-	return fn + "(NOW(6), INTERVAL " + arg() + " " + strings.ToUpper(unit) + ")", true
+	return guardResult(func() string {
+		return fn + "(NOW(6), INTERVAL " + guardInterval(unit, "", arg) + " " + strings.ToUpper(unit) + ")"
+	}), true
 }
 
 func (MySQL) TupleIn(cols []string, rows [][]string, negate bool) string {
@@ -111,9 +140,15 @@ func (Postgres) ValueFunction(name string, arg, now func() string) (string, bool
 	if field == "secs" {
 		cast = "double precision"
 	}
-	clock := "CAST(" + now() + " AS timestamp(6))"
-	value := "CAST(" + arg() + " AS " + cast + ")"
-	return "(" + clock + op + "make_interval(" + field + " => " + value + "))", true
+	operandCast := "bigint"
+	if cast == "double precision" {
+		operandCast = cast
+	}
+	return guardResult(func() string {
+		clock := "CAST(" + now() + " AS timestamp(6))"
+		value := "CAST(" + guardInterval(unit, operandCast, arg) + " AS " + cast + ")"
+		return "(" + clock + op + "make_interval(" + field + " => " + value + "))"
+	}), true
 }
 
 func (Postgres) TupleIn(cols []string, rows [][]string, negate bool) string {
@@ -166,12 +201,14 @@ func (SQLite) ValueFunction(name string, arg, now func() string) (string, bool) 
 	if strings.HasSuffix(name, "_later") {
 		sign = "'+'"
 	}
-	clock := now()
-	modifier := sign + " || CAST(" + arg() + " AS TEXT) || ' " + unit + "s'"
-	if unit == "month" {
-		modifier += ", 'floor'"
-	}
-	return "(datetime(" + clock + ", " + modifier + ") || substr(" + now() + ", 20))", true
+	return guardResult(func() string {
+		clock := now()
+		modifier := sign + " || CAST(" + arg() + " AS TEXT) || ' " + unit + "s'"
+		if unit == "month" {
+			modifier += ", 'floor'"
+		}
+		return "(datetime(" + clock + ", " + modifier + ") || substr(" + now() + ", 20))"
+	}), true
 }
 
 func (SQLite) TupleIn(cols []string, rows [][]string, negate bool) string {

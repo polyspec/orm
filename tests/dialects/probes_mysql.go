@@ -193,6 +193,12 @@ func mysqlProbes() []Probe {
 			e.Exec("CREATE TABLE t (d date)")
 			e.Fails("INSERT INTO t VALUES ('0000-00-00')", "1292")
 		}),
+		p("relative.out_of_range_null", "DATE_ADD and DATE_SUB past 9999-12-31 or with an interval too large are NULL, and below 0001-01-01 they give the year 0000, outside orm's range", func(e *Env) {
+			e.Want("SELECT DATE_ADD(TIMESTAMP '2026-06-01 00:00:00', INTERVAL 4000000 DAY) IS NULL", "1")
+			e.Want("SELECT DATE_SUB(TIMESTAMP '2026-06-01 00:00:00', INTERVAL 1e300 SECOND) IS NULL", "1")
+			e.Want("SELECT DATE_SUB(TIMESTAMP '2026-06-01 00:00:00', INTERVAL 200000 MONTH) IS NULL", "1")
+			e.Want("SELECT CAST(DATE_SUB(TIMESTAMP '2026-06-01 00:00:00', INTERVAL 24312 MONTH) AS CHAR)", "0000-06-01 00:00:00")
+		}),
 		// UUID, enum and JSON.
 		p("uuid.no_type", "MySQL has no UUID type (1064)", func(e *Env) {
 			e.Fails("CREATE TABLE t (u uuid)", "1064")

@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: dd635444923af1345981ce0981ded1fcabce3b61bc37798ebf7516c960d39e75 -->
+<!-- source-sha256: d93b45d67bb8f85c85c2461f4f8cb430e10903e14b6f65a61e3a6c5704ed35ca -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -53,6 +53,7 @@ import하지 않으면 `orm.Open`은 필요한 import를 포함한 `CONFIG`를 �
 - AES column이 있는 entity는 `aes_version` setting으로 key version column을 선언한다. 읽기는 그 column을 한 번만 고른다. request가 고른 column이면 그것을, 아니면 숨은 column을 쓰며, 저장된 version으로 설정된 key version에서 key를 선택한다. key가 없거나 ciphertext가 유효하지 않으면 `CONFIG` 또는 `CODEC_DECODE`를 반환하며 이전 version에 current key를 사용하지 않는다.
 - bench database는 `scripts/bench-db.mts`가 만든다. `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`의 database를 다시 만들고, TypeScript bench model로 `contracts/fixtures/bench/bench.dbs`를 설치하고, `benchmarks/sql/seed.mysql.sql`, `benchmarks/sql/seed.pg.sql`, `benchmarks/sql/seed.sqlite.sql`을 실행한 뒤 TypeScript client의 host codec으로 인증된 host 형식의 AES와 blind-index 값을 채운다.
 - `contains`는 모든 database에서 substring을 찾고, ASCII 글자는 대소문자 구분 없이, 다른 모든 문자는 code point로 비교한다: MySQL은 두 피연산자의 A–Z를 중첩 `REPLACE`로 접고(위 `Lk`), PostgreSQL `COLLATE "C"` 아래의 `ILIKE`와 SQLite `LIKE`는 ASCII 글자만 접는다. conformance vector `contains_ascii_fold`가 결과를 고정한다.
+- 상대 시간 함수(`seconds_ago`부터 `months_later`까지)는 결과가 0001-01-01 00:00:00부터 9999-12-31 23:59:59.999999 밖이거나 interval이 그 범위의 폭(315537897600초, 5258964960분, 87649416시간, 3652059일, 119988개월)을 넘으면 NULL이다. 그래서 그 함수와의 비교와 그 비교의 부정이 모두 어떤 행과도 맞지 않는다. 범위를 넘으면 MySQL과 SQLite는 NULL을, 범위 아래에서는 0000년을 준다(`mysql.relative.out_of_range_null`, `sqlite.relative.out_of_range_null`). PostgreSQL은 표현할 수 없는 interval에서 실패하고 범위를 넘으면 10000년을 준다(`postgres.relative.interval_out_of_range`). 그래서 모든 dialect는 interval을 `CASE WHEN <interval> BETWEEN -<폭> AND <폭> THEN <interval> END`로 감싸되 상수 접기가 표현할 수 없는 interval을 계산하지 않도록 함수 안에서 감싸고, 결과를 `CASE WHEN <결과> BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN <결과> END`로 감싼다. SQLite는 적용할 수 없는 interval에 이미 NULL을 주므로 결과 guard만 쓴다. conformance vector `relative_time_out_of_range`가 각 비교의 양쪽을 실행한다.
 - conformance vector의 결과는 세 database에서 같아야 한다. `get_query`는 방언 SQL을 반환한다.
 
 ## Schema definitions

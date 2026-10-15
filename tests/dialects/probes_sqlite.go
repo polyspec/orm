@@ -76,6 +76,12 @@ func sqliteProbes() []Probe {
 			e.Want("SELECT j FROM t", `{"b":1, "a":1,"a":2}`)
 			e.Want("SELECT json(j) FROM t", `{"b":1,"a":1,"a":2}`)
 		}),
+		p("relative.out_of_range_null", "datetime() past 9999-12-31 or with an interval too large is NULL, and below 0001-01-01 it gives the year 0000, outside orm's range", func(e *Env) {
+			e.Want("SELECT datetime('2026-06-01 00:00:00', '+4000000 days') IS NULL", "1")
+			e.Want("SELECT datetime('2026-06-01 00:00:00', '-1e300 seconds') IS NULL", "1")
+			e.Want("SELECT datetime('2026-06-01 00:00:00', '-200000 months') IS NULL", "1")
+			e.Want("SELECT datetime('2026-06-01 00:00:00', '-740000 days')", "0000-05-13 00:00:00")
+		}),
 		// Null, defaults and catalog text.
 		p("default.catalog_text", "PRAGMA table_info returns the default text as written", func(e *Env) {
 			e.Exec("CREATE TABLE t (a varchar(5) DEFAULT 'x', b int DEFAULT 0, c TEXT DEFAULT CURRENT_TIMESTAMP, d int DEFAULT (1+1), f TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now') || '000'))")

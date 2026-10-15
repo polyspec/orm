@@ -386,6 +386,7 @@ Go uses `orm.Year()`, Rust uses `polyspec_orm::year()`, TypeScript uses `orm.yea
 
 - Every connection reads and writes datetime values in UTC ([config](config.md)); MySQL and PostgreSQL connections set the session time zone to UTC.
 - Month arithmetic keeps the last valid day of the target month, as MySQL and PostgreSQL do.
+- A relative time function outside 0001-01-01 to 9999-12-31 23:59:59.999999, or with an interval past that span, is NULL, and each dialect guards the forms above for it ([dialects](dialects.md)).
 
 ### 10.2 Column functions
 

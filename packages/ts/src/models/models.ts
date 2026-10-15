@@ -587,6 +587,7 @@ export class Author extends Model {
   declare andIsClose: (v0: boolean | readonly (boolean)[] | ValueFunction | Model) => this;
   declare andLbName: (v0: string) => this;
   declare andLeReadCount: (v0: number | ValueFunction) => this;
+  declare andLeStartDt: (...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) => this;
   declare andLkName: (v0: string) => this;
   declare andLtReadCount: (v0: number | ValueFunction) => this;
   declare andLtSeq: (v0: number | ValueFunction) => this;

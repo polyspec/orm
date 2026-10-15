@@ -1071,11 +1071,14 @@
           {
             "binds": [
               7,
+              36500,
+              36500,
+              36500,
               36500
             ],
             "error": null,
             "kind": "select",
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`start_dt` \u003e DATE_SUB(NOW(6), INTERVAL ? DAY)",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`start_dt` \u003e CASE WHEN DATE_SUB(NOW(6), INTERVAL CASE WHEN ? BETWEEN -3652059 AND 3652059 THEN ? END DAY) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN DATE_SUB(NOW(6), INTERVAL CASE WHEN ? BETWEEN -3652059 AND 3652059 THEN ? END DAY) END",
             "tables": [
               "author"
             ],
@@ -1084,11 +1087,14 @@
           {
             "binds": [
               7,
+              1200,
+              1200,
+              1200,
               1200
             ],
             "error": null,
             "kind": "select",
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`start_dt` \u003c DATE_ADD(NOW(6), INTERVAL ? MONTH)",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`start_dt` \u003c CASE WHEN DATE_ADD(NOW(6), INTERVAL CASE WHEN ? BETWEEN -119988 AND 119988 THEN ? END MONTH) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN DATE_ADD(NOW(6), INTERVAL CASE WHEN ? BETWEEN -119988 AND 119988 THEN ? END MONTH) END",
             "tables": [
               "author"
             ],
@@ -2891,6 +2897,118 @@
             "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `service` AS `a` WHERE `a`.`seq` IN (?, ?)",
             "tables": [
               "service"
+            ],
+            "transaction": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "relative_time_out_of_range",
+      "chain": "andGtStartDt and andLeStartDt with secondsAgo(1e15), daysLater(4000000) and monthsAgo(200000): each NULL, so no row",
+      "expect": {
+        "result": {
+          "days_later": [
+            0,
+            0
+          ],
+          "months_ago": [
+            0,
+            0
+          ],
+          "seconds_ago": [
+            0,
+            0
+          ]
+        },
+        "statements": [
+          {
+            "binds": [
+              1000000000000000,
+              1000000000000000,
+              1000000000000000,
+              1000000000000000
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`start_dt` \u003e CASE WHEN DATE_SUB(NOW(6), INTERVAL CASE WHEN ? BETWEEN -315537897600 AND 315537897600 THEN ? END SECOND) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN DATE_SUB(NOW(6), INTERVAL CASE WHEN ? BETWEEN -315537897600 AND 315537897600 THEN ? END SECOND) END",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              1000000000000000,
+              1000000000000000,
+              1000000000000000,
+              1000000000000000
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`start_dt` \u003c= CASE WHEN DATE_SUB(NOW(6), INTERVAL CASE WHEN ? BETWEEN -315537897600 AND 315537897600 THEN ? END SECOND) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN DATE_SUB(NOW(6), INTERVAL CASE WHEN ? BETWEEN -315537897600 AND 315537897600 THEN ? END SECOND) END",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              4000000,
+              4000000,
+              4000000,
+              4000000
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`start_dt` \u003e CASE WHEN DATE_ADD(NOW(6), INTERVAL CASE WHEN ? BETWEEN -3652059 AND 3652059 THEN ? END DAY) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN DATE_ADD(NOW(6), INTERVAL CASE WHEN ? BETWEEN -3652059 AND 3652059 THEN ? END DAY) END",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              4000000,
+              4000000,
+              4000000,
+              4000000
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`start_dt` \u003c= CASE WHEN DATE_ADD(NOW(6), INTERVAL CASE WHEN ? BETWEEN -3652059 AND 3652059 THEN ? END DAY) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN DATE_ADD(NOW(6), INTERVAL CASE WHEN ? BETWEEN -3652059 AND 3652059 THEN ? END DAY) END",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              200000,
+              200000,
+              200000,
+              200000
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`start_dt` \u003e CASE WHEN DATE_SUB(NOW(6), INTERVAL CASE WHEN ? BETWEEN -119988 AND 119988 THEN ? END MONTH) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN DATE_SUB(NOW(6), INTERVAL CASE WHEN ? BETWEEN -119988 AND 119988 THEN ? END MONTH) END",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              200000,
+              200000,
+              200000,
+              200000
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`start_dt` \u003c= CASE WHEN DATE_SUB(NOW(6), INTERVAL CASE WHEN ? BETWEEN -119988 AND 119988 THEN ? END MONTH) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN DATE_SUB(NOW(6), INTERVAL CASE WHEN ? BETWEEN -119988 AND 119988 THEN ? END MONTH) END",
+            "tables": [
+              "author"
             ],
             "transaction": null
           }

@@ -1062,6 +1062,21 @@
               },
               {
                 "from": "param",
+                "param": 5,
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 5,
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 5,
+                "type": "i32"
+              },
+              {
+                "from": "param",
                 "param": 6,
                 "type": "i64"
               },
@@ -1071,7 +1086,7 @@
                 "type": "text"
               }
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(`a`.`name`, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') LIKE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(?, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') AND `a`.`read_count` BETWEEN ? AND ? AND `a`.`price` = ? AND `a`.`email_blind_index` = ? AND `a`.`start_dt` > DATE_SUB(NOW(6), INTERVAL ? DAY) AND YEAR(`a`.`created_ts`) = ? AND `a`.`ip` = INET6_ATON(?)",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(`a`.`name`, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') LIKE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(?, 'A', 'a'), 'B', 'b'), 'C', 'c'), 'D', 'd'), 'E', 'e'), 'F', 'f'), 'G', 'g'), 'H', 'h'), 'I', 'i'), 'J', 'j'), 'K', 'k'), 'L', 'l'), 'M', 'm'), 'N', 'n'), 'O', 'o'), 'P', 'p'), 'Q', 'q'), 'R', 'r'), 'S', 's'), 'T', 't'), 'U', 'u'), 'V', 'v'), 'W', 'w'), 'X', 'x'), 'Y', 'y'), 'Z', 'z') AND `a`.`read_count` BETWEEN ? AND ? AND `a`.`price` = ? AND `a`.`email_blind_index` = ? AND `a`.`start_dt` > CASE WHEN DATE_SUB(NOW(6), INTERVAL CASE WHEN ? BETWEEN -3652059 AND 3652059 THEN ? END DAY) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN DATE_SUB(NOW(6), INTERVAL CASE WHEN ? BETWEEN -3652059 AND 3652059 THEN ? END DAY) END AND YEAR(`a`.`created_ts`) = ? AND `a`.`ip` = INET6_ATON(?)",
             "tables": [
               "author"
             ]
@@ -1120,6 +1135,26 @@
               },
               {
                 "from": "param",
+                "param": 5,
+                "type": "i32"
+              },
+              {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 5,
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 5,
+                "type": "i32"
+              },
+              {
+                "from": "param",
                 "param": 6,
                 "type": "i64"
               },
@@ -1129,7 +1164,7 @@
                 "type": "bytes"
               }
             ],
-            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"name\" ILIKE $1 AND \"a\".\"read_count\" BETWEEN $2 AND $3 AND \"a\".\"price\" = $4 AND \"a\".\"email_blind_index\" = $5 AND \"a\".\"start_dt\" > (CAST($6 AS timestamp(6)) - make_interval(days => CAST($7 AS integer))) AND EXTRACT(YEAR FROM \"a\".\"created_ts\")::int = $8 AND \"a\".\"ip\" = $9",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"name\" ILIKE $1 AND \"a\".\"read_count\" BETWEEN $2 AND $3 AND \"a\".\"price\" = $4 AND \"a\".\"email_blind_index\" = $5 AND \"a\".\"start_dt\" > CASE WHEN (CAST($6 AS timestamp(6)) - make_interval(days => CAST(CASE WHEN CAST($7 AS bigint) BETWEEN -3652059 AND 3652059 THEN CAST($8 AS bigint) END AS integer))) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (CAST($9 AS timestamp(6)) - make_interval(days => CAST(CASE WHEN CAST($10 AS bigint) BETWEEN -3652059 AND 3652059 THEN CAST($11 AS bigint) END AS integer))) END AND EXTRACT(YEAR FROM \"a\".\"created_ts\")::int = $12 AND \"a\".\"ip\" = $13",
             "tables": [
               "author"
             ]
@@ -1182,6 +1217,21 @@
                 "type": "datetime"
               },
               {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 5,
+                "type": "i32"
+              },
+              {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
                 "from": "param",
                 "param": 6,
                 "type": "i64"
@@ -1192,7 +1242,7 @@
                 "type": "bytes"
               }
             ],
-            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"name\" LIKE ? ESCAPE '\\' AND \"a\".\"read_count\" BETWEEN ? AND ? AND \"a\".\"price\" = ? AND \"a\".\"email_blind_index\" = ? AND \"a\".\"start_dt\" > (datetime(?, '-' || CAST(? AS TEXT) || ' days') || substr(?, 20)) AND CAST(strftime('%Y', \"a\".\"created_ts\") AS INTEGER) = ? AND \"a\".\"ip\" = ?",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"name\" LIKE ? ESCAPE '\\' AND \"a\".\"read_count\" BETWEEN ? AND ? AND \"a\".\"price\" = ? AND \"a\".\"email_blind_index\" = ? AND \"a\".\"start_dt\" > CASE WHEN (datetime(?, '-' || CAST(? AS TEXT) || ' days') || substr(?, 20)) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (datetime(?, '-' || CAST(? AS TEXT) || ' days') || substr(?, 20)) END AND CAST(strftime('%Y', \"a\".\"created_ts\") AS INTEGER) = ? AND \"a\".\"ip\" = ?",
             "tables": [
               "author"
             ]
@@ -2104,9 +2154,24 @@
                 "from": "param",
                 "param": 0,
                 "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i32"
               }
             ],
-            "sql": "SELECT COUNT(*) FROM `clock_cell` AS `a` WHERE `a`.`at0` >= NOW(6) AND `a`.`at3` < DATE_SUB(NOW(6), INTERVAL ? DAY) AND `a`.`at6` < NOW(6)",
+            "sql": "SELECT COUNT(*) FROM `clock_cell` AS `a` WHERE `a`.`at0` >= NOW(6) AND `a`.`at3` < CASE WHEN DATE_SUB(NOW(6), INTERVAL CASE WHEN ? BETWEEN -3652059 AND 3652059 THEN ? END DAY) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN DATE_SUB(NOW(6), INTERVAL CASE WHEN ? BETWEEN -3652059 AND 3652059 THEN ? END DAY) END AND `a`.`at6` < NOW(6)",
             "tables": [
               "clock_cell"
             ]
@@ -2132,12 +2197,32 @@
                 "type": "i32"
               },
               {
+                "from": "param",
+                "param": 0,
+                "type": "i32"
+              },
+              {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i32"
+              },
+              {
                 "from": "now",
                 "precision": 6,
                 "type": "datetime"
               }
             ],
-            "sql": "SELECT COUNT(*) FROM \"clock_cell\" AS \"a\" WHERE \"a\".\"at0\" >= CAST($1 AS timestamp(6)) AND \"a\".\"at3\" < (CAST($2 AS timestamp(6)) - make_interval(days => CAST($3 AS integer))) AND \"a\".\"at6\" < CAST($4 AS timestamp(6))",
+            "sql": "SELECT COUNT(*) FROM \"clock_cell\" AS \"a\" WHERE \"a\".\"at0\" >= CAST($1 AS timestamp(6)) AND \"a\".\"at3\" < CASE WHEN (CAST($2 AS timestamp(6)) - make_interval(days => CAST(CASE WHEN CAST($3 AS bigint) BETWEEN -3652059 AND 3652059 THEN CAST($4 AS bigint) END AS integer))) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (CAST($5 AS timestamp(6)) - make_interval(days => CAST(CASE WHEN CAST($6 AS bigint) BETWEEN -3652059 AND 3652059 THEN CAST($7 AS bigint) END AS integer))) END AND \"a\".\"at6\" < CAST($8 AS timestamp(6))",
             "tables": [
               "clock_cell"
             ]
@@ -2171,9 +2256,24 @@
                 "from": "now",
                 "precision": 6,
                 "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i32"
+              },
+              {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
               }
             ],
-            "sql": "SELECT COUNT(*) FROM \"clock_cell\" AS \"a\" WHERE (\"a\".\"at0\" || '.000000') >= ? AND (\"a\".\"at3\" || '000') < (datetime(?, '-' || CAST(? AS TEXT) || ' days') || substr(?, 20)) AND \"a\".\"at6\" < ?",
+            "sql": "SELECT COUNT(*) FROM \"clock_cell\" AS \"a\" WHERE (\"a\".\"at0\" || '.000000') >= ? AND (\"a\".\"at3\" || '000') < CASE WHEN (datetime(?, '-' || CAST(? AS TEXT) || ' days') || substr(?, 20)) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (datetime(?, '-' || CAST(? AS TEXT) || ' days') || substr(?, 20)) END AND \"a\".\"at6\" < ?",
             "tables": [
               "clock_cell"
             ]

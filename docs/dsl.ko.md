@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: f4b23987ef8e423c614bfb3e0147df4c64e49845f33c85676a03cc9518028604 -->
+<!-- source-sha256: d56fe6594dcae47e7ffee71196e8a7f79b0e4c1acadc3c8648622cfc6e5773f8 -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -387,6 +387,7 @@ Go는 `orm.Year()`, Rust는 `polyspec_orm::year()`, TypeScript는 `orm.year()`, 
 
 - 모든 연결은 datetime 값을 UTC로 읽고 쓴다([config](config.ko.md)). MySQL과 PostgreSQL 연결은 세션 시간대를 UTC로 설정한다.
 - 월 계산은 MySQL, PostgreSQL과 같이 대상 월의 마지막 유효 일자를 유지한다.
+- 0001-01-01부터 9999-12-31 23:59:59.999999 밖이거나 그 폭을 넘는 interval의 상대 시간 함수는 NULL이며, 각 dialect가 위 형식에 그 guard를 붙인다([dialects](dialects.ko.md)).
 
 ### 10.2 컬럼 함수
 

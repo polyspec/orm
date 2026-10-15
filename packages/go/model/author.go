@@ -1887,6 +1887,11 @@ func (x *AuthorModel) AndLeReadCount[T0 argIntCmp](v0 T0) *AuthorModel {
 	return x
 }
 
+func (x *AuthorModel) AndLeStartDt[T0 argTimeCmp](v0 T0, compared ...any) *AuthorModel {
+	x.m.Where("and", chainAuthorAndLeStartDt, append([]any{v0}, compared...)...)
+	return x
+}
+
 func (x *AuthorModel) AndLkName[T0 argStringLike](v0 T0) *AuthorModel {
 	x.m.Where("and", chainAuthorAndLkName, v0)
 	return x
@@ -2179,6 +2184,8 @@ var chainAuthorAndIsClose = []orm.ChainKey{{Column: "is_close"}}
 var chainAuthorAndLbName = []orm.ChainKey{{Op: "lb", Column: "name"}}
 
 var chainAuthorAndLeReadCount = []orm.ChainKey{{Op: "le", Column: "read_count"}}
+
+var chainAuthorAndLeStartDt = []orm.ChainKey{{Op: "le", Column: "start_dt"}}
 
 var chainAuthorAndLkName = []orm.ChainKey{{Op: "lk", Column: "name"}}
 

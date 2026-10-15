@@ -39,6 +39,43 @@ value_function_units = {
 }
 
 
+# The largest interval of each unit that stays inside orm's range, 0001-01-01 to 9999-12-31 (3652059 days): a relative
+# time function whose interval exceeds it is NULL, so no database computes it and PostgreSQL never fails with interval
+# out of range (postgres.relative.interval_out_of_range).
+_INTERVAL_BOUNDS = {
+    "second": "315537897600",
+    "minute": "5258964960",
+    "hour": "87649416",
+    "day": "3652059",
+    "month": "119988",
+}
+
+
+def _guard_interval(unit, operand_cast, arg):
+    """The interval argument of a relative time function, NULL past its bound. The guard sits inside the argument,
+    not around the function, so a database that folds constants never evaluates an out-of-range interval."""
+
+    # A typed placeholder needs its cast on both sides: PostgreSQL infers an uncast THEN placeholder as text.
+    def cast(placeholder):
+        return (
+            placeholder
+            if operand_cast == ""
+            else f"CAST({placeholder} AS {operand_cast})"
+        )
+
+    operand = cast(arg())
+    bound = _INTERVAL_BOUNDS[unit]
+    return f"CASE WHEN {operand} BETWEEN -{bound} AND {bound} THEN {cast(arg())} END"
+
+
+def _guard_result(value):
+    """A relative time value, NULL outside 0001-01-01 00:00:00 to 9999-12-31 23:59:59.999999: past the range MySQL
+    and SQLite give NULL, below it they give the year 0000 (mysql.relative.out_of_range_null,
+    sqlite.relative.out_of_range_null), and PostgreSQL gives the year 10000 or later."""
+    first = value()
+    return f"CASE WHEN {first} BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN {value()} END"
+
+
 def is_value_function(name: str) -> bool:
     return name in value_function_units or name in ("now", "today")
 
@@ -239,7 +276,11 @@ class MysqlDialect(_Dialect):
         if unit is None:
             return None
         fn = "DATE_ADD" if name.endswith("_later") else "DATE_SUB"
-        return f"{fn}(NOW(6), INTERVAL {arg()} {unit.upper()})"
+        return _guard_result(
+            lambda: (
+                f"{fn}(NOW(6), INTERVAL {_guard_interval(unit, '', arg)} {unit.upper()})"
+            )
+        )
 
     def contains_binary(self, col, value):
         # utf8mb4_0900_bin compares code points under LIKE; LIKE BINARY is deprecated since MySQL 8.0.27.
@@ -319,8 +360,16 @@ class PostgresDialect(_Dialect):
         }[unit]
         cast = "double precision" if field == "secs" else "integer"
         sign = " + " if name.endswith("_later") else " - "
-        clock = f"CAST({now()} AS timestamp(6))"
-        return f"({clock}{sign}make_interval({field} => CAST({arg()} AS {cast})))"
+        operand_cast = cast if cast == "double precision" else "bigint"
+
+        def value():
+            clock = f"CAST({now()} AS timestamp(6))"
+            interval = _guard_interval(unit, operand_cast, arg)
+            return (
+                f"({clock}{sign}make_interval({field} => CAST({interval} AS {cast})))"
+            )
+
+        return _guard_result(value)
 
     def restart_identity(self, table, column):
         # identity sequence를 가장 큰 key에 1을 더한 값으로 정하고 is_called를 false로 두어 다음
@@ -386,13 +435,17 @@ class SqliteDialect(_Dialect):
         if unit is None:
             return None
         sign = "'+'" if name.endswith("_later") else "'-'"
+
         # datetime은 초 단위만 돌려주므로 second clock slot의 여섯 소수 자리를 이어
         # 붙인다; 한 statement 안에서 그것은 첫 clock과 같다.
-        clock = now()
-        modifier = f"{sign} || CAST({arg()} AS TEXT) || ' {unit}s'" + (
-            ", 'floor'" if unit == "month" else ""
-        )
-        return f"(datetime({clock}, {modifier}) || substr({now()}, 20))"
+        def value():
+            clock = now()
+            modifier = f"{sign} || CAST({arg()} AS TEXT) || ' {unit}s'" + (
+                ", 'floor'" if unit == "month" else ""
+            )
+            return f"(datetime({clock}, {modifier}) || substr({now()}, 20))"
+
+        return _guard_result(value)
 
     def contains_binary(self, col, value):
         # SQLite LIKE는 ASCII 대소문자를 무시한다.

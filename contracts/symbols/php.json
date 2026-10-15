@@ -2071,6 +2071,8 @@
   "packages/php/src/Dialect.php::Polyspec\\Orm\\Dialect::containsBinary": "public function containsBinary(string $col, Closure $value): string",
   "packages/php/src/Dialect.php::Polyspec\\Orm\\Dialect::decodesStyle": "public function decodesStyle(string $style): bool",
   "packages/php/src/Dialect.php::Polyspec\\Orm\\Dialect::forceIndex": "public function forceIndex(string $index): string",
+  "packages/php/src/Dialect.php::Polyspec\\Orm\\Dialect::guardInterval": "private static function guardInterval(string $unit, string $operandCast, Closure $arg): string",
+  "packages/php/src/Dialect.php::Polyspec\\Orm\\Dialect::guardResult": "private static function guardResult(Closure $value): string",
   "packages/php/src/Dialect.php::Polyspec\\Orm\\Dialect::handlesStyle": "public function handlesStyle(string $style): bool",
   "packages/php/src/Dialect.php::Polyspec\\Orm\\Dialect::hostNow": "public function hostNow(): bool",
   "packages/php/src/Dialect.php::Polyspec\\Orm\\Dialect::insertReturningId": "public function insertReturningId(): bool",

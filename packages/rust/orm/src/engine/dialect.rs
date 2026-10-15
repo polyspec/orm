@@ -283,7 +283,7 @@ impl Dialect {
         Some(match self {
             Dialect::MySql => {
                 let f = if later { "DATE_ADD" } else { "DATE_SUB" };
-                format!("{f}(NOW(6), INTERVAL {} {})", arg(), unit.to_uppercase())
+                guard_result(&mut || format!("{f}(NOW(6), INTERVAL {} {})", guard_interval(unit, "", arg), unit.to_uppercase()))
             }
             Dialect::Postgres => {
                 let op = if later { " + " } else { " - " };
@@ -295,18 +295,24 @@ impl Dialect {
                     _ => "months",
                 };
                 let cast = if field == "secs" { "double precision" } else { "integer" };
-                let clock = format!("CAST({} AS timestamp(6))", now());
-                format!("({clock}{op}make_interval({field} => CAST({} AS {cast})))", arg())
+                let operand_cast = if cast == "double precision" { cast } else { "bigint" };
+                guard_result(&mut || {
+                    let clock = format!("CAST({} AS timestamp(6))", now());
+                    let interval = guard_interval(unit, operand_cast, arg);
+                    format!("({clock}{op}make_interval({field} => CAST({interval} AS {cast})))")
+                })
             }
             Dialect::Sqlite => {
                 // datetime returns whole seconds: append the six fraction
                 // digits of a second clock slot, which equals the first in
                 // one statement.
                 let sign = if later { "'+'" } else { "'-'" };
-                let clock = now();
                 let floor = if unit == "month" { ", 'floor'" } else { "" };
-                let modifier = format!("{sign} || CAST({} AS TEXT) || ' {unit}s'{floor}", arg());
-                format!("(datetime({clock}, {modifier}) || substr({}, 20))", now())
+                guard_result(&mut || {
+                    let clock = now();
+                    let modifier = format!("{sign} || CAST({} AS TEXT) || ' {unit}s'{floor}", arg());
+                    format!("(datetime({clock}, {modifier}) || substr({}, 20))", now())
+                })
             }
         })
     }
@@ -371,4 +377,37 @@ fn ascii_lower(x: &str) -> String {
         s.push_str(&format!(", '{}', '{}')", c as char, c.to_ascii_lowercase() as char));
     }
     s
+}
+
+/// The largest interval of each unit that stays inside orm's range, 0001-01-01 to 9999-12-31 (3652059 days): a
+/// relative time function whose interval exceeds it is NULL, so no database computes it and PostgreSQL never fails
+/// with interval out of range (postgres.relative.interval_out_of_range).
+fn interval_bound(unit: &str) -> &'static str {
+    match unit {
+        "second" => "315537897600",
+        "minute" => "5258964960",
+        "hour" => "87649416",
+        "day" => "3652059",
+        _ => "119988",
+    }
+}
+
+/// The interval argument of a relative time function, NULL past its bound. The guard sits inside the argument, not
+/// around the function, so a database that folds constants never evaluates an out-of-range interval.
+fn guard_interval(unit: &str, operand_cast: &str, arg: &mut dyn FnMut() -> String) -> String {
+    // A typed placeholder needs its cast on both sides: PostgreSQL infers an uncast THEN placeholder as text.
+    let cast = |placeholder: String| if operand_cast.is_empty() { placeholder } else { format!("CAST({placeholder} AS {operand_cast})") };
+    let operand = cast(arg());
+    let bound = interval_bound(unit);
+    let then = cast(arg());
+    format!("CASE WHEN {operand} BETWEEN -{bound} AND {bound} THEN {then} END")
+}
+
+/// A relative time value, NULL outside 0001-01-01 00:00:00 to 9999-12-31 23:59:59.999999: past the range MySQL and
+/// SQLite give NULL, below it they give the year 0000 (mysql.relative.out_of_range_null,
+/// sqlite.relative.out_of_range_null), and PostgreSQL gives the year 10000 or later.
+fn guard_result(value: &mut dyn FnMut() -> String) -> String {
+    let first = value();
+    let then = value();
+    format!("CASE WHEN {first} BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN {then} END")
 }
