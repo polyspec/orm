@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c8567134123071bd705421f91fbaff646f337d54d87b702ff7e54e0717defe9f -->
+<!-- source-sha256: 769fe6a2076530f1bd3bd3c865b53915f3222274792b697311c7430043572939 -->
 # 변경 이력
 
 ## Unreleased
 
+- vulture 도구의 lock sidecar를 mise.lock 옆에 추적해 새 checkout이 도구를 설치한다. (#T181-1)
 - repository가 kit 0.0.50을 받는다. node는 mise.toml의 도구이고, 모든 recipe가 경로로 도구를 실행하며, make lint-python이 ruff와 vulture를 실행해 통과한다. (#T181)
 - PHP와 PHP extension vector runner가 다른 runner처럼 fork min-0-max/json-schema v2.6.0-p1로 모든 schema 거부를 보고한다. (#T137-1-4-3-1)
 - 모든 구현이 빈 key_by를 없는 것으로 읽고, protocol.md가 그것을 적는다. (#T77-7)

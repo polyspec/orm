@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 00e7f12b35d845910f66de5b043b4a2836ce624b1367810819b81c6d125d99a6 -->
+<!-- source-sha256: aac7d06ffb43e48b0017e3af04d3bce9b06bdfaf1ae0fab56bb1249485b3eb17 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1177,6 +1177,8 @@
     Evidence: CI record가 TestCommittedTablesAreGenerated(unicode_word.ts가 Unicode 17.0.0 표와 다름)를 적는다. 변경 뒤 go test ./tests/dbspec/unicode, typescript-build, ts-model-check가 통과하고 4e304aac의 CI가 통과한다.
 - [o] T181 kit 0.0.48부터 0.0.50까지 받는다. 원인: kit 0.0.48(K169, K171: node는 mise.toml로, recipe의 모든 도구는 kit 변수나 절대 경로로), 0.0.49(K172부터 K177), 0.0.50(K178부터 K185)이 copy, Makefile 규칙, dependency review를 바꾸고, kit은 0.0.50과 함께 한 번에 받기를 권한다. 완료 조건: make kit-sync가 그중 최신을 받고, 모든 recipe가 K171대로 도구를 실행하며, kit-check, lint-ts, layout-check, dependency-policy-check가 통과한다. 우회 원인: 0.0.50이 release되지 않았다. Retry: kit 0.0.50이 release될 때.
   Evidence: make kit-sync로 kit 0.0.50을 받는다(kit-check 통과). node 26.12.0은 mise.toml의 도구이고 .node-version은 지웠다. 모든 recipe가 $(NODE), $(NPM), $(GO), $(COMPOSER), $(PYTHON3)으로 도구를 실행한다(kit-check가 이름만 쓴 84곳을 찾았고 지금 0). knip이 binary를 선언하고, ciExempt가 이유와 함께 feature-owner-check를 적으며, php-ext composer.json은 자기 lock과 함께 dependency policy가 덮는다. ruff 0.17.0과 vulture 2.16이 mise.toml의 도구라 make lint-python이 실행되고, ruff 125건, format 135건, vulture 658건을 disable 없이 고쳐 통과한다. lint-ts, layout-check, dependency-policy-check, release-coverage, python-unit-check, scripts/repo와 scripts/check가 통과한다.
+  - [o] T181-1 vulture의 lock sidecar를 commit한다 (T181에 이어). 원인: mise.lock은 pypi:vulture의 uv lock을 경로 .mise/locks/pypi-vulture/2.16과 sha256으로 적는데, T181 작업이 그 folder를 지워 새 checkout에서 `mise install --locked`가 "dependency sidecar … .mise/locks/pypi-vulture/2.16: No such file or directory"로 실패했다(kit이 보고). 완료 조건: mise.lock이 적은 digest의 sidecar를 추적하고, 새 worktree에서 install-tools가 성공한다.
+    Evidence: origin/main의 새 worktree에서 make install-tools가 그 message로 실패했다. make toolchain-lock이 sidecar와 그 digest를 mise.lock에 썼고, 그 뒤 install-tools가 성공하며 kit-check, layout-check, dependency-policy-check, release-coverage가 통과한다.
 - [o] T156 모든 생성기가 모든 key의 모든 prefix마다 유형 있는 메서드를 선언한다. 원인: scan한 소스가 호출하는 메서드만 생성되어, 어떤 소스도 호출하지 않는 key prefix에는 메서드가 없었다(hyper U-97). 완료 조건: Go, Rust, TypeScript model이 primary key, unique key, index의 모든 prefix마다 메서드를 선언하고, Python은 같은 이름을 실행 시점에 해석하며, symbol 기록과 docs/usage.md를 갱신한다.
   - [o] T156-1 T156 이후 orm main CI를 다시 green으로 만든다 (T156에 이어). 원인: run 38502539388이 실패했다. Python key-prefix 테스트가 PYTHONPATH를 바꾸고 지워진 packages/orm-python/bin/orm-gen을 실행했고, Go와 Rust key-prefix 테스트가 testcase를 시작하지 않았으며, generator/gen_go_key_prefix_test.go가 어떤 feature에도 속하지 않았고, src/models/markdown_fixture에 key-prefix 메서드가 없었다. 완료 조건: 각각을 고치고 그 소유 검사가 통과한다.
   - [o] T156-2 Go markdown model을 다시 생성한다 (T156에 이어). 원인: run 38504701356이 go-markdown-model-generated에서 실패했다. packages/orm-go/markdownmodel에 key-prefix 메서드가 없었다. 완료 조건: go generate가 폴더를 바꾸지 않는다.
