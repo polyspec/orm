@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5b867e2bf2b0dd707935288acfb7ea6682b942e06647e7548f0464b98d9ef3cb -->
+<!-- source-sha256: 1f863cfd24b1df323d42d9414a8227eaca270fc2d2f82224e6353cea4d5c18a3 -->
 # 변경 이력
 
 ## Unreleased
 
+- 0001년부터 9999년 밖의 상대 시간이 모든 database에서 NULL이다. (#T98)
 - dbspec 검사와 IR validator가 client마다 meet table 하나를 읽는다. (#T96-1)
 - joined child가 모든 database에서 soft delete된 행을 제외한다. (#T95)
 - IR read 답 fixture가 모든 client의 decoding이 같음을 증명한다. (#T105)
