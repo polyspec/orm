@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c6219a211ab7d5ade71afdcc8ece4ceec9ca7917396e76f7dd1b6894687419f3 -->
+<!-- source-sha256: c50bc2edfcd247746ccdb6fd123eeefe9951955ed028b953dc34ad32285c2ad3 -->
 # 변경 이력
 
 ## Unreleased
 
+- repository가 kit 0.0.53을 받는다. (#T184)
 - 모든 planner가 PostgreSQL uuid를 한 형태로 읽고 bind한다. (#T92-1)
 - client가 한 규칙으로 write의 affected 수를 보고하고, test 진입점을 거친 conformance vector가 그것을 증명한다. (#T88-1)
 - conformance vector가 upsert가 모든 database에서 conflict key를 정확히 하나 적음을 증명한다. (#T87-1)

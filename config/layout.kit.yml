@@ -87,7 +87,8 @@ templates:
     message: "S5: a file at the root that the layout does not declare; move it into a root folder or declare it in vars.root_files of layout-root-files in config/layout.yml"
 
 rules:
-  # S5: the root folders of every monorepo, and the dot folders of Git, GitHub and kit.
+  # S5: the root folders of every monorepo, and the dot folders of Git, GitHub and kit. .mise holds .mise/locks/, the uv lock
+  # sidecars that make toolchain-lock writes and mise.lock names: lock data that is tracked with mise.lock (K192).
   - id: layout-root-folders
     kind: dir_absent
     level: error
