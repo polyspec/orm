@@ -53,6 +53,9 @@
     "mysql": "the MySQL client that make test-servers and its tests run",
     "mysqld": "the MySQL server that make test-servers starts",
     "pg_ctl": "the PostgreSQL control tool that make test-servers runs",
-    "mysql_tzinfo_to_sql": "the MySQL tool that loads the time zone tables for make test-servers"
+    "mysql_tzinfo_to_sql": "the MySQL tool that loads the time zone tables for make test-servers",
+    "make": "GNU make, which the tests of scripts/check/run, scripts/repo/python-venv and tests/cargo-test run on the Makefile",
+    "php": "the PHP of .php-version, which scripts/ci/php-extension-tools.mts, scripts/php-without-mysql.mts and the interface and repository checks run",
+    "go": "the Go of mise.toml, which tests/go-run.mts, tests/go-test.mts and scripts/docs/markdown-table.mts run"
   }
 }
