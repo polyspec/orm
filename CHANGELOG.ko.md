@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 406d92fe6600d20ca0fa3648a07d486075fe88297b3dfcf9a8632a55a60ec29e -->
+<!-- source-sha256: 347b983a317af301f0f4648ac86c225d293c94653a73cbe1ad1af391ec551df3 -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript conformance runner의 contains 호출에 type이 붙는다. (#T79-1)
 - MySQL contains_binary가 deprecated LIKE BINARY 대신 binary collation의 LIKE를 쓴다. (#T81)
 - MySQL contains가 PostgreSQL, SQLite처럼 ASCII 대소문자만 접는다. (#T79)
 - kit-check가 mise.lock 옆의 mise lock sidecar를 owner로 갖는다. (#T181-3)

@@ -926,6 +926,8 @@ export class CompositeAccount extends Model {
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
 
   declare andAccountId: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  declare andLbName: (v0: string) => this;
+  declare andLkName: (v0: string) => this;
   declare getByTenantIdAndAccountId: (v0: number | readonly (number)[] | ValueFunction | Model, v1: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
   declare tenantId: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare tupleTenantIdWithAccountId: (v0: ReadonlyArray<readonly [number, number]>) => this;
