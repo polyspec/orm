@@ -1,5 +1,5 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: 4c693a30a909ba81d9ed91392a4316c54abbd920dd60dcd74cd3685084b6f83d -->
+<!-- source-sha256: be2e96d4816db5fb45055bf7fb79bab453a7bd566f4871c1d1804f6f1fab10cf -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
@@ -33,9 +33,14 @@
   ```json
   {
     "require": { "polyspec/orm": "<version>" },
-    "repositories": [{ "type": "artifact", "url": "vendor/polyspec" }]
+    "repositories": [
+      { "type": "artifact", "url": "vendor/polyspec" },
+      { "type": "vcs", "url": "https://github.com/min-0-max/yaml", "no-api": true }
+    ]
   }
   ```
+
+  client는 `purrphp/yaml` `1.0.0-p1`을 요구한다. 이는 fork https://github.com/min-0-max/yaml 의 release로, plain scalar를 YAML 1.2.2의 core schema(10.3.2절)로 읽는다. upstream PurrPHP/yaml 1.0.0은 그렇게 읽지 않는다. Composer는 `repositories`를 project의 root manifest에서만 읽고 의존성의 manifest에서는 읽지 않으므로, orm package는 이 source를 consumer에게 전달할 수 없다: consumer가 위처럼 `vcs` repository를 직접 선언하며, tests/release-consumer/composer도 같이 한다. `no-api`는 Composer가 GitHub API에 묻지 않고 공개 repository를 HTTPS로 clone하게 한다. 그렇지 않으면 API의 익명 rate limit(HTTP 403)이 Composer가 key가 필요한 SSH clone으로 넘어간다.
 
   `polyspec/orm-dbspec`는 type `php-ext`다: PIE가 build하고 설치하며, Composer는 설치하지 않는다.
 
@@ -52,4 +57,4 @@ psycopg의 binary extra는 그것이 펼쳐지는 두 plain requirement `psycopg
 release하는 manifest는 packages/ts/package.json, packages/php/composer.json, packages/php-ext/composer.json이다. 그것들은 다른 저장소의 polyspec package를 정확한 version으로 받고 repository를 선언하지 않는다. release하지 않는 두 private root manifest가 이 저장소에서 그 version을 푼다:
 
 - 저장소 root의 package.json은 `workspaces`에 `packages/*`를 두고, 그 `overrides`는 `@polyspec/ordered-json`을 GitHub Release의 tarball URL(release tag를 적는다)에서 받고, vitepress의 최신 release가 advisory가 있는 `vite` 5에 의존하므로 `vite` 7을 받는다. root의 `npm ci`가 workspace를 설치하고. root의 package-lock.json이 유일한 npm lockfile이다.
-- 저장소 root의 composer.json은 packages/php를 `path` repository에서, polyspec/ordered-json을 `dist`가 GitHub Release의 zip URL과 그 shasum인 `package` repository에서 설치한다. URL이 release tag를 적는다. 그 `vendor-dir`은 vendor-php다. root의 vendor는 Go module의 vendor directory이기 때문이다. `config.platform.php`는 client의 가장 낮은 PHP인 `8.4.0`이다. root의 composer.lock이 유일한 Composer lockfile이고, PHP test는 vendor-php/autoload.php를 load한다.
+- 저장소 root의 composer.json은 packages/php를 `path` repository에서, polyspec/ordered-json을 `dist`가 GitHub Release의 zip URL과 그 shasum인 `package` repository에서 설치한다. URL이 release tag를 적는다. purrphp/yaml은 fork min-0-max/yaml의 `vcs` repository에서 설치한다. 그 `vendor-dir`은 vendor-php다. root의 vendor는 Go module의 vendor directory이기 때문이다. `config.platform.php`는 client의 가장 낮은 PHP인 `8.4.0`이다. root의 composer.lock이 유일한 Composer lockfile이고, PHP test는 vendor-php/autoload.php를 load한다.

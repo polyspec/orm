@@ -40,6 +40,11 @@
                     "shasum": "5f93a2c0df5967163801cb3d4d087e44834bb456"
                 }
             }
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/min-0-max/yaml",
+            "no-api": true
         }
     ],
     "config": {
