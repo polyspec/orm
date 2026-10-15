@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0b3cd4384765c0d3692d2431f61c00c8b280dd9caac46d2b9bb25773128be9f0 -->
+<!-- source-sha256: f01f984922bc89c8f441b11d00387a5dd14f41f47bbcf7c9af03f7e91bde6495 -->
 # 변경 이력
 
 ## Unreleased
 
+- Rust ir-answers 검사가 main에서 컴파일된다. (#T190)
 - Python이 MySQL과 PostgreSQL에서 time과 date 셀을 읽는다. (#T117)
 - toArray가 모든 client에서 datetime과 time을 소수 여섯 자리로 쓴다. (#T121)
 - optimistic update가 Go와 Rust에서 읽은 행의 version을 정규 text로 바인딩한다. (#T89-3-2)

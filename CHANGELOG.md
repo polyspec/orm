@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Rust ir-answers check compiles on main. (#T190)
 - Python reads time and date cells on MySQL and PostgreSQL. (#T117)
 - toArray writes datetime and time with six fraction digits in every client. (#T121)
 - The optimistic update binds the loaded row's version as canonical text in Go and Rust. (#T89-3-2)
