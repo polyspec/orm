@@ -367,16 +367,16 @@ class Model:
         return int(scalar_of(self.core, 'count'))
 
     def get_sum(self) -> float:
-        from polyspec.orm.model_exec import scalar_of
+        from polyspec.orm.model_exec import _aggregate_number, scalar_of
         if self.core.agg_fn != 'sum':
             raise OrmError('CONFIG', 'get_sum requires sum_<col>()')
-        return float(scalar_of(self.core, 'sum', self.core.agg))
+        return _aggregate_number(scalar_of(self.core, 'sum', self.core.agg))
 
     def get_avg(self) -> float:
-        from polyspec.orm.model_exec import scalar_of
+        from polyspec.orm.model_exec import _aggregate_number, scalar_of
         if self.core.agg_fn != 'avg':
             raise OrmError('CONFIG', 'get_avg requires avg_<col>()')
-        return float(scalar_of(self.core, 'avg', self.core.agg))
+        return _aggregate_number(scalar_of(self.core, 'avg', self.core.agg))
 
     def gets_count(self) -> GroupRows:
         """group 값들과 검사된 row 수를, 불완전한 model row 없이 돌려준다."""

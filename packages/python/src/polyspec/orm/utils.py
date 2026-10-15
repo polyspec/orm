@@ -507,9 +507,11 @@ def _frame_runner(db):
 
 
 def _session_runner(db):
-    """Runs a statement outside any transaction (MySQL schema statements)."""
+    """Runs a statement outside any transaction (MySQL schema statements) and publishes its statement event, as
+    every statement of the connection does (docs/usage.md "Statement events")."""
     def run(kind, tables, sql, values):
-        return db._sent(lambda: db._connection.execute(sql, list(values)))['rows']
+        return db.events.send(kind, tables, None, list(values), sql,
+                              lambda: db._sent(lambda: db._connection.execute(sql, list(values)))['rows'])
     return run
 
 

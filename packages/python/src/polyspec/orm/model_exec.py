@@ -1,6 +1,8 @@
 # model 실행: 조립된 chain의 질의를 내보내고 결과를 model로 조립한다
 # (docs/usage.md).
+import math
 import re
+from decimal import Decimal
 
 from polyspec.orm.core import Core, SetSpec
 from polyspec.orm.database import (Db, Executor, _ACTIVE, convert, key_of_values,
@@ -292,6 +294,26 @@ def execute_query(runner_core: Core, kind: str):
     if kind == 'get_count_by':
         return int(scalar_of(runner_core, 'count'))
     raise OrmError('CONFIG', f'unknown query method {kind}')
+
+
+# The text of a finite decimal number, the form of an aggregate scalar that a driver gives as text.
+_NUMBER_TEXT = re.compile(r'-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?')
+
+
+def _aggregate_number(value) -> float:
+    """The binary64 value of the scalar of a sum or an average (contracts/fixtures/aggregate_numeric.json): an int, a
+    float, a Decimal or the text of a decimal number, rounded to the nearest binary64. Any other value, and a value
+    outside the finite binary64 range, is CODEC_DECODE."""
+    if isinstance(value, bool) or not (isinstance(value, (int, float, Decimal))
+                                       or (isinstance(value, str) and _NUMBER_TEXT.fullmatch(value))):
+        raise OrmError('CODEC_DECODE', 'aggregate scalar is not a finite number')
+    try:
+        number = float(value)
+    except OverflowError:
+        number = math.inf
+    if not math.isfinite(number):
+        raise OrmError('CODEC_DECODE', 'aggregate scalar is outside finite binary64 range')
+    return number
 
 
 def scalar_of(c: Core, kind: str, agg: str = ''):

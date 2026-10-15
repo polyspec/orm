@@ -1,5 +1,5 @@
 <!-- doc-id: features -->
-<!-- source-sha256: 8da7e614ae6039f0d2d57076d6be06951ca1d03094bb15913289c8a19479551f -->
+<!-- source-sha256: 36b260c786eebc091c3b10f64d5deb8d7424446b5d2453974a6fb96085c772ab -->
 # 기능 정의
 
 실행 기준은 저장소의 기능 manifest이다. 먼저 manifest의 `source.read_order` 경로를 읽고 선택한 기능의 모든 참조 경로를 읽는다. 각 항목은 input, output, 상태 전이, 오류, client 지원 상태, fixture, test, paired document, 실제 검증 명령을 정의한다.
@@ -14,7 +14,7 @@
 | model_generation | 모델 생성 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
 | schema_definition | 스키마 정의와 마이그레이션 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: pass |
 | schema_install | 스키마 설치 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
-| planner | 프로세스 내 planner | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| planner | 프로세스 내 planner | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: pass |
 | composite_keys | 복합 key | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
 | authenticated_encryption | 인증 암호화 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
 | parameter_chunking | 파라미터 분할 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |

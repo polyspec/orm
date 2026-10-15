@@ -3793,7 +3793,7 @@
         "php": "pass",
         "rust": "pass",
         "typescript": "pass",
-        "python": "planned"
+        "python": "pass"
       },
       "fixtures": [
         "contracts/fixtures/planner.json",
@@ -3823,7 +3823,7 @@
         "packages/rust/orm/tests/unit/coverage_planner.rs",
         "packages/ts/tests/coverage_planner.mjs",
         "packages/go/engine/planner/restore_test.go",
-        "packages/python/tests/test_planner_fixture.py",
+        "packages/python/tests/coverage_planner.py",
         "packages/go/engine/ir/validate_test.go",
         "packages/python/tests/test_ir_validate.py",
         "packages/go/engine/ir/params_test.go",
@@ -4381,6 +4381,84 @@
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_planner.mjs",
+                  "cases": [
+                    "planner_statement",
+                    "planner_count",
+                    "planner_rejects_unknown_column",
+                    "planner_restore",
+                    "planner_tables",
+                    "planner_restore_rejects_non_key",
+                    "planner_restore_key_from_set",
+                    "planner_restore_extra_condition",
+                    "planner_restore_primary_key_first",
+                    "planner_restore_first_unique_by_name",
+                    "planner_bind_types_select",
+                    "planner_bind_types_update",
+                    "planner_bind_types_insert",
+                    "planner_parent_key_types",
+                    "planner_not_group",
+                    "planner_rejects_top_not",
+                    "planner_rejects_top_group_conn",
+                    "planner_rejects_first_item_conn",
+                    "planner_column_refs",
+                    "planner_rejects_ref_unknown_column",
+                    "planner_rejects_outer_ref_outside_subquery",
+                    "planner_rejects_unjoined_ref",
+                    "planner_ref_path_absent",
+                    "planner_group_by_count",
+                    "planner_group_count_order_column",
+                    "planner_group_count_order_column_function",
+                    "planner_group_count_order_random",
+                    "planner_rejects_group_by_all",
+                    "planner_rejects_group_by_sum",
+                    "planner_rejects_group_by_join",
+                    "planner_rejects_group_by_subquery",
+                    "planner_rejects_group_order_non_group_column",
+                    "planner_rejects_nullable_key_by",
+                    "planner_insert_by_value",
+                    "planner_insert_on_duplicate_plus",
+                    "planner_rejects_insert_set_plus",
+                    "planner_rejects_insert_set_minus",
+                    "planner_ip_eq_col_ip",
+                    "planner_rejects_bool_gt_col",
+                    "planner_rejects_ip_gt_col",
+                    "planner_rejects_aes_eq_col",
+                    "planner_col_pair_integers",
+                    "planner_rejects_col_pair_integer_varchar",
+                    "planner_rejects_in_subquery_integer_varchar",
+                    "planner_rejects_join_integer_varchar",
+                    "planner_rejects_relation_integer_varchar",
+                    "planner_rejects_upsert_primary_and_unique_key",
+                    "planner_rejects_upsert_unique_key_not_assigned",
+                    "planner_rejects_upsert_without_a_key",
+                    "planner_order_nullable_column",
+                    "planner_order_not_null_column",
+                    "planner_order_nullable_column_function",
+                    "planner_order_nullable_group_count",
+                    "planner_order_nullable_limit_per_parent",
+                    "planner_scalar_column_subquery",
+                    "planner_rejects_scalar_column_subquery_without_limit",
+                    "planner_rejects_scalar_column_subquery_without_key_order",
+                    "planner_rejects_in_subquery_limit"
+                  ]
+                }
+              ]
+            }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/coverage_planner.py"
+            ],
+            "inputs": [
+              "contracts/fixtures/planner.json",
+              "contracts/fixtures/restore_keys.dbs"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_planner.py",
                   "cases": [
                     "planner_statement",
                     "planner_count",

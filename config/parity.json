@@ -82,6 +82,7 @@
         { "implementation": "go", "test": "packages/go/orm/conversion_error_test.go", "symbol": "TestAggregateNumericFixture" },
         { "implementation": "php", "test": "packages/php/tests/AggregateNumericTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/aggregate_numeric.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_aggregate_numeric.py" },
         { "implementation": "rust", "test": "packages/rust/orm/src/value.rs", "symbol": "value::aggregate_numeric" }
       ]
     },
@@ -92,6 +93,7 @@
         { "implementation": "go", "test": "packages/go/orm/coverage_authenticated_encryption_test.go", "symbol": "TestCoverageAesEnvelopeDecrypt" },
         { "implementation": "php", "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/coverage_authenticated_encryption.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_authenticated_encryption.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs", "symbol": "coverage_aes_envelope_decrypt" }
       ]
     },
@@ -102,6 +104,7 @@
         { "implementation": "go", "test": "packages/go/orm/decimal_model_test.go", "symbol": "TestDecimalModelFixture" },
         { "implementation": "php", "test": "packages/php/tests/DecimalModelTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/decimal_model.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_decimal_model.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/decimal_model.rs", "symbol": "decimal_model_fixture" }
       ]
     },
@@ -123,6 +126,7 @@
         { "implementation": "go", "test": "packages/go/orm/coverage_planner_test.go", "symbol": "TestCoveragePlannerStatement" },
         { "implementation": "php", "test": "packages/php/tests/CoveragePlannerTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/coverage_planner.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/coverage_planner.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/unit/coverage_planner.rs", "symbol": "engine::coverage_planner::coverage_planner_statement" }
       ]
     },
@@ -145,6 +149,7 @@
         { "implementation": "go", "test": "packages/go/orm/styled_state_test.go", "symbol": "TestStyledColumnStateFixture" },
         { "implementation": "php", "test": "packages/php/tests/StyledValueTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/styled-value.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_styled_column_states.py" },
         { "implementation": "rust", "test": "packages/rust/orm/src/codec.rs", "symbol": "codec::tests::styled_column_state_fixture_preserves_stored_values" }
       ]
     },
@@ -155,6 +160,7 @@
         { "implementation": "go", "test": "packages/go/orm/install_test.go", "symbol": "TestInstallVerifiesTheDatabase" },
         { "implementation": "php", "test": "packages/php/tests/SchemaSetTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/install_changed_database.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/install.rs", "symbol": "install_verifies_the_database" }
       ]
     },
@@ -492,6 +498,7 @@
         { "implementation": "go", "test": "packages/go/orm/sqlite_path_test.go", "symbol": "TestSQLitePathCases" },
         { "implementation": "php", "test": "packages/php/tests/DsnTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dsn.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_sqlite_paths.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/sqlite_file_name.rs", "symbol": "sqlite_path_cases" }
       ]
     },
@@ -502,6 +509,7 @@
         { "implementation": "go", "test": "packages/go/orm/coverage_statement_events_test.go", "symbol": "TestCoverageStatementEvents" },
         { "implementation": "php", "test": "packages/php/tests/CoverageStatementEventsTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/coverage_statement_events.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/statement_events.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/statement_events.rs", "symbol": "coverage_statement_events" }
       ]
     },
