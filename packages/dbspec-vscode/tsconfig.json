@@ -6,6 +6,8 @@
     "lib": ["ES2022"],
     "types": ["vscode"],
     "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
     "skipLibCheck": true,
     "noEmit": true
   },

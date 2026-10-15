@@ -331,8 +331,9 @@ export class Core {
   public removeColumn(column: string): void { if (!this.columns.remove.includes(column)) this.columns.remove.push(column); }
   public orderBy(column: string, desc: boolean, fn: readonly unknown[]): void {
     if (fn.length > 1) return this.fail('orderBy accepts one column function');
-    if (fn.length === 1 && !(fn[0] instanceof ColumnFunction)) return this.fail('orderBy accepts a column function only');
-    this.order.push({ column, desc, fn: fn[0] as ColumnFunction | undefined });
+    const [first] = fn;
+    if (first !== undefined && !(first instanceof ColumnFunction)) return this.fail('orderBy accepts a column function only');
+    this.order.push(first === undefined ? { column, desc } : { column, desc, fn: first });
   }
   public setLimit(offset: number, count: number): void {
     if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(count) || offset < 0 || count < 1) return this.fail('limit requires a non-negative offset and a positive count');
@@ -532,7 +533,7 @@ export class BuiltRequest {
       const item: Order = {};
       if (o.random) item.random = true;
       else {
-        item.column = o.column;
+        if (o.column !== undefined) item.column = o.column;
         if (o.desc) item.desc = true;
         if (o.fn) item.fn = o.fn.ir(v => this.param(v));
       }
@@ -608,7 +609,7 @@ export class BuiltRequest {
     switch (p.kind) {
       case 'tuple':
         delete out.column;
-        out.cols = p.cols;
+        if (p.cols !== undefined) out.cols = p.cols;
         out.ps = (p.value as unknown[][]).flatMap(row => row.map(v => this.param(v)));
         break;
       case 'between':
@@ -653,7 +654,7 @@ export class BuiltRequest {
     if (scalar && c.agg !== '') {
       sub.agg = c.aggFn;
       sub.column = c.agg;
-    } else if (c.columns.add.length === 1) {
+    } else if (c.columns.add.length === 1 && c.columns.add[0] !== undefined) {
       sub.column = c.columns.add[0];
     } else {
       this.fail(configError('a subquery model must add exactly one column with addColumn<Col>()'));

@@ -3,6 +3,7 @@
 // rows, and INSERT, UPDATE, and DELETE statements.
 import type { Assemble, Assignment, BindSlot, Child, Group, KeyReference, OrmFunction, Plan, PlanStep, Predicate, Request, RequestQuery, Subquery } from '../ir.js';
 import { OrmError } from '../runtime_error.js';
+import { present } from '../present.js';
 import { type Dialect, valueFunctionUnits } from './dialect.js';
 import { entityOf, fieldOf as columnOf, type Entity, type Field as Column, type RuntimeModel } from './model.js';
 import { conflictKey, restoreKey } from './validate.js';
@@ -129,6 +130,11 @@ function sortedKeys(record: Readonly<Record<string, unknown>> | undefined): stri
   return Object.keys(record ?? {}).sort((x, y) => (x < y ? -1 : x > y ? 1 : 0));
 }
 
+/** The entries of `record` in the order of their sorted keys. */
+function sortedEntries<V>(record: Readonly<Record<string, V>> | undefined): [string, V][] {
+  return Object.entries(record ?? {}).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0));
+}
+
 function hasGroupBy(q: RequestQuery): boolean {
   return (q.group_by ?? []).length > 0;
 }
@@ -171,7 +177,10 @@ function addBlindIndexAssignments(ent: Entity, set: Assignment[]): Assignment[] 
   for (const a of [...set]) {
     const col = columnOf(ent, a.column);
     if (!col || col.blindIndex === '' || assigned(set, col.blindIndex)) continue;
-    set.push({ column: col.blindIndex, p: a.p, null: a.null });
+    const derived: Assignment = { column: col.blindIndex };
+    if (a.p !== undefined) derived.p = a.p;
+    if (a.null !== undefined) derived.null = a.null;
+    set.push(derived);
   }
   return set;
 }
@@ -344,7 +353,7 @@ export class Planner {
       }
     }
     const st: Omit<PlanStep, 'id'> = { role: 'main', sql, tables: b.tables(), bind_slots: b.binds };
-    if ((q.lock ?? '') !== '') st.lock = q.lock;
+    if (q.lock !== undefined && q.lock !== '') st.lock = q.lock;
     if (kind === 'count' && steps.length > 0) st.role = 'count';
     else if (rc) {
       st.role = 'relation';
@@ -494,8 +503,8 @@ export class Planner {
     for (const pk of s.ent.primaryKey) if (!base.includes(pk)) base = [pk, ...base];
     const out: OutColumn[] = base.map(x => ({ name: x, column: x }));
     if (c) {
-      for (const name of sortedKeys(c.fn)) out.push({ name, column: c.fn![name]!.column, fn: c.fn![name]!.fn });
-      for (const name of sortedKeys(c.sub)) out.push({ name, column: '', sub: c.sub![name] });
+      for (const [name, fn] of sortedEntries(c.fn)) out.push({ name, column: fn.column, fn: fn.fn });
+      for (const [name, sub] of sortedEntries(c.sub)) out.push({ name, column: '', sub });
     }
     return out;
   }
@@ -766,11 +775,12 @@ export class Planner {
       vals.push(c.value(b));
     }
     let sql = `INSERT INTO ${b.table(ent)} (${cols.join(', ')}) VALUES (${vals.join(', ')})`;
-    if ((r.rows ?? []).length > 0) {
+    const rows = r.rows ?? [];
+    if (rows.length > 0) {
       // Derived blind-index columns take the value of their AES source column.
-      const source = set.map((a, i) => i < input.length ? i : input.findIndex(x => x.column === blindIndexSource(ent, a.column)!.name));
-      for (const row of r.rows!) {
-        const more = set.map((a, i) => this.renderAssign(b, ent, columnOf(ent, a.column)!, { column: a.column, p: row[source[i]!] }));
+      const source = set.map((a, i) => i < input.length ? i : input.findIndex(x => x.column === present(blindIndexSource(ent, a.column), `the AES source of ${a.column}`).name));
+      for (const row of rows) {
+        const more = set.map((a, i) => this.renderAssign(b, ent, present(columnOf(ent, a.column), `column ${a.column}`), { column: a.column, p: present(row[present(source[i], `the source of ${a.column}`)], `the parameter of ${a.column} in a row`) }));
         for (const c of managed) more.push(c.value(b));
         sql += `, (${more.join(', ')})`;
       }

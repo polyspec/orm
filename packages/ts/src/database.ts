@@ -688,7 +688,10 @@ export class Db {
     }
     for (let attempt = 0; ; attempt++) {
       try {
-        return await this.run(callback, { isolation: options.isolation, readOnly: options.readOnly, timeoutMs }, record);
+        const begin: BeginOptions = { timeoutMs };
+        if (options.isolation !== undefined) begin.isolation = options.isolation;
+        if (options.readOnly !== undefined) begin.readOnly = options.readOnly;
+        return await this.run(callback, begin, record);
       } catch (error) {
         if (!(error instanceof OrmError) || error.code !== 'DEADLOCK' || attempt >= retry) throw error;
         await new Promise(resolve => setTimeout(resolve, (50 << attempt) + Math.floor(Math.random() * 20)));

@@ -217,8 +217,9 @@ async function shownCheck(
   let checks = shown.get(table);
   if (checks === undefined) {
     const rows = await query('SHOW CREATE TABLE `' + table.replace(/`/g, '``') + '`');
-    if (rows.length === 0) throw new Error(`SHOW CREATE TABLE ${table} returned no row`);
-    checks = createChecks(rows[0].text(1));
+    const [row] = rows;
+    if (row === undefined) throw new Error(`SHOW CREATE TABLE ${table} returned no row`);
+    checks = createChecks(row.text(1));
     shown.set(table, checks);
   }
   const clause = checks.get(name);
@@ -231,6 +232,8 @@ export function createChecks(create: string): Map<string, string> {
   const checks = new Map<string, string>();
   const pattern = /CONSTRAINT `([^`]+)` CHECK \(/g;
   for (let m = pattern.exec(create); m !== null; m = pattern.exec(create)) {
+    const name = m[1];
+    if (name === undefined) throw new Error('the CHECK pattern captures no constraint name');
     const start = m.index + m[0].length;
     let depth = 1;
     for (let i = start; i < create.length; i++) {
@@ -242,7 +245,7 @@ export function createChecks(create: string): Map<string, string> {
       } else if (c === '(') {
         depth++;
       } else if (c === ')' && --depth === 0) {
-        checks.set(m[1], create.slice(start, i).replace(/[\\']/g, (ch) => (ch === '\\' ? '\\\\' : "\\'")));
+        checks.set(name, create.slice(start, i).replace(/[\\']/g, (ch) => (ch === '\\' ? '\\\\' : "\\'")));
         break;
       }
     }

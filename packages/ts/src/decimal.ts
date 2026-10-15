@@ -9,7 +9,7 @@ export function normalizeDecimal(input: string, precision: number, scale: number
   if (typeof input !== 'string' || !/^[+-]?[0-9]+(?:\.[0-9]+)?$/.test(input)) return fail('invalid text');
   let negative = input.startsWith('-');
   const unsigned = /^[+-]/.test(input) ? input.slice(1) : input;
-  const [wholePart, fractionPart = ''] = unsigned.split('.');
+  const [wholePart = '', fractionPart = ''] = unsigned.split('.');
   const whole = wholePart.replace(/^0+/, '') || '0';
   if (fractionPart.length > scale) return fail('fraction exceeds scale');
   if ((whole === '0' ? 0 : whole.length) + scale > precision) return fail('value exceeds precision');
