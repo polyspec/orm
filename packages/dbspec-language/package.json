@@ -28,7 +28,7 @@
     "node": ">=26.11.1"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && tsc -p tsconfig.cli.json"
+    "build": "tsc -p tsconfig.build.json && tsc -p src/cli/tsconfig.json"
   },
   "dependencies": {
     "@polyspec/orm": "0.0.17"

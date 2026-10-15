@@ -51,10 +51,12 @@ export function renderDbs(fence: DbsFence, fences: readonly DbsFence[], page: st
   if (fence.set !== null) {
     for (const other of fences) {
       if (other === fence || other.set !== fence.set) continue;
-      if (Object.hasOwn(set, other.document!)) {
-        throw new Error(`${page}:${other.line}: dbs set ${fence.set} declares the document ${other.document} twice`);
+      const name = other.document;
+      if (name === null) throw new Error(`${page}:${other.line}: a fence of dbs set ${fence.set} declares no document`);
+      if (Object.hasOwn(set, name)) {
+        throw new Error(`${page}:${other.line}: dbs set ${fence.set} declares the document ${name} twice`);
       }
-      set[other.document!] = other.text;
+      set[name] = other.text;
     }
   }
   const doc = openDocument(fence.text, { set });
