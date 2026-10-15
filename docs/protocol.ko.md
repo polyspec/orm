@@ -33,6 +33,8 @@
 
 요청에는 값이 들어가지 않는다. 모든 값은 클라이언트가 가진 매개변수 목록의 위치이며, `n_params`는 그 목록의 길이다. 따라서 plan은 값과 무관하다.
 
+모든 클라이언트는 요청을 엄격하게 decode한다. 최상위나 어떤 객체(`ref`, `pred`, item, group, order item, `limit`, join, relation, 할당) 안에서든 그 객체가 정의하지 않은 member는 `IR_INVALID`이고, JSON type이 틀린 member도 그렇다: 문자열이 아닌 `column`, `agg`, `entity`, `op`, 정수가 아닌 매개변수 위치나 개수, 배열이 아닌 목록 member, 객체가 아닌 객체 member가 그 예다. `sum`과 `avg`는 column을 `agg`에 적으므로 `sum` 요청의 `column`은 정의되지 않은 member다. 이 형태 검사는 다른 모든 규칙보다 먼저 하므로, type이 틀린 이름의 요청은 `COLUMN_UNKNOWN`이나 `ENTITY_UNKNOWN`이 아니라 `IR_INVALID`로 실패한다. null인 member는 없는 것과 같다. `tests/ir/validate.json`(`shape-*` case)이 이 사례를 담고, Go, PHP, Rust, TypeScript, Python이 이를 실행한다.
+
 | 필드 | 규칙 |
 |---|---|
 | `manifest_hash` | generated code가 가진 document set의 `manifestHash`다. `sha256:` 뒤에 소문자 16진수 64자리가 온다([manifest와 hash](dbspec.ko.md#manifest-and-hashes)). 클라이언트가 읽은 모델과 hash가 다른 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다. 이 필드는 `schema_hash`를 대신하며 오류 코드 이름은 그대로다 |

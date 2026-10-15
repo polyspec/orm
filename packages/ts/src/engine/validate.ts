@@ -439,8 +439,80 @@ export function conflictKey(ent: Entity, set: readonly Assignment[]): readonly s
   return candidate.columns;
 }
 
+// The member types of every request record (docs/protocol.md): int, string, bool, list<T>, map<T>, or a record name.
+// The table is the same as PHP's Validator::RECORDS and the fields of Go's ir.Request.
+const queryShape: Readonly<Record<string, string>> = {
+  entity: 'string', columns: 'Columns', on: 'Group', where: 'Group', joins: 'list<Join>', relations: 'list<Relation>',
+  order: 'list<Order>', group_by: 'list<string>', limit: 'Limit', force_index: 'string', lock: 'string', key_by: 'string',
+  flatten: 'bool', limit_per_parent: 'int', if_parent: 'IfParent', no_cascade_delete: 'bool',
+};
+const records: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  Request: {
+    ...queryShape, ir_version: 'int', manifest_hash: 'string', kind: 'string', load: 'bool', set: 'list<Assign>',
+    on_duplicate: 'list<Assign>', rows: 'list<list<int>>', optimistic: 'Optimist', agg: 'string', n_params: 'int',
+  },
+  Query: queryShape,
+  Columns: { mode: 'string', add: 'list<string>', remove: 'list<string>', fn: 'map<ColFunc>', sub: 'map<Sub>' },
+  Func: { name: 'string', ps: 'list<int>' },
+  ColFunc: { column: 'string', fn: 'Func' },
+  Sub: { query: 'Query', column: 'string', agg: 'string' },
+  Join: { rel: 'string', kind: 'string', query: 'Query', left: 'string', right: 'string' },
+  Relation: { rel: 'string', query: 'Query', kind: 'string', keys: 'list<KeyPair>' },
+  KeyPair: { left: 'string', right: 'string' },
+  Group: { conn: 'string', not: 'bool', items: 'list<Item>' },
+  Item: { pred: 'Pred', group: 'Group', joined: 'JoinedRef' },
+  JoinedRef: { conn: 'string', join: 'string' },
+  Pred: {
+    conn: 'string', column: 'string', op: 'string', p: 'int', ps: 'list<int>', ref: 'ColRef', fn: 'Func', value: 'Func',
+    cols: 'list<string>', sub: 'Sub',
+  },
+  ColRef: { path: 'string', column: 'string' },
+  Order: { column: 'string', desc: 'bool', random: 'bool', fn: 'Func' },
+  Limit: { offset: 'int', count: 'int' },
+  IfParent: { column: 'string', p: 'int' },
+  Assign: { column: 'string', p: 'int', null: 'bool', plus_p: 'int', minus_p: 'int' },
+  Optimist: { column: 'string', p: 'int' },
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Refuses an unknown member and a member of the wrong type with IR_INVALID, like a strict decoder. */
+function shape(record: string, value: unknown, path: string): void {
+  if (!isRecord(value)) fail('IR_INVALID', `${path === '' ? '' : `${path}: `}object required`);
+  const fields = records[record] ?? {};
+  for (const [key, member] of Object.entries(value)) {
+    const type = Object.hasOwn(fields, key) ? fields[key] : undefined;
+    if (type === undefined) fail('IR_INVALID', `json: unknown field "${key}"`);
+    typed(type, member, path === '' ? key : `${path}.${key}`);
+  }
+}
+
+function typed(type: string, value: unknown, path: string): void {
+  // An absent member reads as null in JSON; a TypeScript request may hold it as undefined.
+  if (value === null || value === undefined) return;
+  if (type.startsWith('list<')) {
+    if (!Array.isArray(value)) fail('IR_INVALID', `${path}: list required`);
+    for (const item of value as unknown[]) typed(type.slice(5, -1), item, path);
+    return;
+  }
+  if (type.startsWith('map<')) {
+    if (!isRecord(value)) fail('IR_INVALID', `${path}: object required`);
+    for (const item of Object.values(value)) typed(type.slice(4, -1), item, path);
+    return;
+  }
+  const ok = type === 'int' ? Number.isInteger(value) : type === 'string' ? typeof value === 'string' : type === 'bool' ? typeof value === 'boolean' : undefined;
+  if (ok === undefined) {
+    shape(type, value, path);
+    return;
+  }
+  if (!ok) fail('IR_INVALID', `${path}: ${type} required`);
+}
+
 /** Checks a request against the manifest. */
 export function validate(m: RuntimeModel, r: Request): void {
+  shape('Request', r, '');
   if (r.ir_version !== IR_VERSION) fail('VERSION_MISMATCH', `ir_version ${String(r.ir_version)}, engine ${String(IR_VERSION)}`);
   if (r.manifest_hash !== m.manifestHash) fail('SCHEMA_HASH_MISMATCH', `client ${r.manifest_hash}, engine ${m.manifestHash}`);
   if (!kinds.has(r.kind)) fail('IR_INVALID', `unknown kind "${r.kind}"`);

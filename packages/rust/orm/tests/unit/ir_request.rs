@@ -23,24 +23,25 @@ pub(crate) fn schema(at: &str) -> Manifest {
 /// fixture에서 `id` case 하나를 찾아 그 schema 문서의 경로, input과 expected를 돌려준다.
 /// An object whose members are all the same kind, such as the `sub` map of `columns`: its member names are free.
 fn members_of<'a>(value: &'a Value, at: &str) -> &'a Map<String, Value> {
-    value.as_object().unwrap_or_else(|| panic!("{at}: expected an object, got {value}"))
+    value.as_object().unwrap_or_else(|| panic!("{REJECTED}{at}: expected an object, got {value}"))
 }
 
 /// `value`의 member를 읽는다. `allowed` 밖의 member는 그 위치와 함께 거부한다.
 pub(crate) fn members<'a>(value: &'a Value, at: &str, allowed: &[&str]) -> &'a Map<String, Value> {
-    let object = value.as_object().unwrap_or_else(|| panic!("{at}: expected an object, got {value}"));
+    let object = value.as_object().unwrap_or_else(|| panic!("{REJECTED}{at}: expected an object, got {value}"));
     for key in object.keys() {
-        assert!(allowed.contains(&key.as_str()), "{at}.{key}: unsupported request member");
+        assert!(allowed.contains(&key.as_str()), "{REJECTED}{at}.{key}: unsupported request member");
     }
     object
 }
 
 fn string(object: &Map<String, Value>, at: &str, key: &str) -> String {
-    object.get(key).and_then(Value::as_str).unwrap_or_else(|| panic!("{at}.{key}: expected a string")).to_owned()
+    object.get(key).and_then(Value::as_str).unwrap_or_else(|| panic!("{REJECTED}{at}.{key}: expected a string")).to_owned()
 }
 
-/// `REJECTED` 뒤의 panic은 Rust의 typed request가 담을 수 없는 member type이다. JSON을 decode하는 client가
-/// 그런 request를 IR_INVALID로 거절하듯, typed request는 그것을 만들 수 없다.
+/// A panic after `REJECTED` is a request shape that Rust's typed request cannot hold: an unknown member, a member of
+/// the wrong type, or a missing required member. As a client that decodes JSON refuses such a request with IR_INVALID
+/// (docs/protocol.md), the typed request cannot be built from it.
 pub(crate) const REJECTED: &str = "IR_INVALID: ";
 
 /// text member다. 문자열이 아닌 값은 typed request가 담을 수 없다.
@@ -57,9 +58,9 @@ fn strings(object: &Map<String, Value>, at: &str, key: &str) -> Vec<String> {
         .get(key)
         .map(|list| {
             list.as_array()
-                .unwrap_or_else(|| panic!("{at}.{key}: expected an array"))
+                .unwrap_or_else(|| panic!("{REJECTED}{at}.{key}: expected an array"))
                 .iter()
-                .map(|s| s.as_str().unwrap_or_else(|| panic!("{at}.{key}: expected strings")).to_owned())
+                .map(|s| s.as_str().unwrap_or_else(|| panic!("{REJECTED}{at}.{key}: expected strings")).to_owned())
                 .collect()
         })
         .unwrap_or_default()
@@ -93,11 +94,11 @@ fn normalized(value: &Value) -> Value {
 }
 
 fn index(value: &Value, at: &str) -> usize {
-    value.as_u64().and_then(|n| usize::try_from(n).ok()).unwrap_or_else(|| panic!("{at}: expected a parameter index, got {value}"))
+    value.as_u64().and_then(|n| usize::try_from(n).ok()).unwrap_or_else(|| panic!("{REJECTED}{at}: expected a parameter index, got {value}"))
 }
 
 fn count(value: Option<&Value>, at: &str) -> u32 {
-    value.and_then(Value::as_u64).and_then(|n| u32::try_from(n).ok()).unwrap_or_else(|| panic!("{at}: expected a count"))
+    value.and_then(Value::as_u64).and_then(|n| u32::try_from(n).ok()).unwrap_or_else(|| panic!("{REJECTED}{at}: expected a count"))
 }
 
 /// column 함수나 value 함수 하나를 IR로 읽는다.
@@ -110,7 +111,7 @@ fn func(value: &Value, at: &str) -> ir::Func {
 fn indexes(object: &Map<String, Value>, at: &str, key: &str) -> Vec<usize> {
     object
         .get(key)
-        .map(|ps| ps.as_array().unwrap_or_else(|| panic!("{at}.{key}: expected an array")).iter().map(|p| index(p, &format!("{at}.{key}"))).collect())
+        .map(|ps| ps.as_array().unwrap_or_else(|| panic!("{REJECTED}{at}.{key}: expected an array")).iter().map(|p| index(p, &format!("{at}.{key}"))).collect())
         .unwrap_or_default()
 }
 
@@ -118,7 +119,7 @@ fn indexes(object: &Map<String, Value>, at: &str, key: &str) -> Vec<usize> {
 fn assigns(value: &Value, at: &str) -> Vec<ir::Assign> {
     value
         .as_array()
-        .unwrap_or_else(|| panic!("{at}: expected an array"))
+        .unwrap_or_else(|| panic!("{REJECTED}{at}: expected an array"))
         .iter()
         .enumerate()
         .map(|(i, a)| {
@@ -127,7 +128,7 @@ fn assigns(value: &Value, at: &str) -> Vec<ir::Assign> {
             ir::Assign {
                 column: string(a, &at, "column"),
                 p: a.get("p").map(|p| index(p, &format!("{at}.p"))),
-                null: a.get("null").map(|n| n.as_bool().unwrap_or_else(|| panic!("{at}.null: expected a boolean"))).unwrap_or(false),
+                null: a.get("null").map(|n| n.as_bool().unwrap_or_else(|| panic!("{REJECTED}{at}.null: expected a boolean"))).unwrap_or(false),
                 plus_p: a.get("plus_p").map(|p| index(p, &format!("{at}.plus_p"))),
                 minus_p: a.get("minus_p").map(|p| index(p, &format!("{at}.minus_p"))),
             }
@@ -137,7 +138,7 @@ fn assigns(value: &Value, at: &str) -> Vec<ir::Assign> {
 
 fn group(value: &Value, at: &str) -> ir::Group {
     let object = members(value, at, &["conn", "not", "items"]);
-    let items = object.get("items").and_then(Value::as_array).unwrap_or_else(|| panic!("{at}.items: expected an array"));
+    let items = object.get("items").and_then(Value::as_array).unwrap_or_else(|| panic!("{REJECTED}{at}.items: expected an array"));
     let items = items
         .iter()
         .enumerate()
@@ -157,7 +158,7 @@ fn group(value: &Value, at: &str) -> ir::Group {
                 };
             }
             let pred = members(
-                members(item, &at, &["pred", "group", "joined"]).get("pred").unwrap_or_else(|| panic!("{at}: expected pred")),
+                members(item, &at, &["pred", "group", "joined"]).get("pred").unwrap_or_else(|| panic!("{REJECTED}{at}: expected pred")),
                 &format!("{at}.pred"),
                 &["conn", "column", "op", "p", "ps", "sub", "fn", "value", "ref"],
             );
@@ -170,7 +171,13 @@ fn group(value: &Value, at: &str) -> ir::Group {
                     p: pred.get("p").map(|p| index(p, &format!("{at}.p"))),
                     ps: pred
                         .get("ps")
-                        .map(|ps| ps.as_array().unwrap_or_else(|| panic!("{at}.ps: expected an array")).iter().map(|p| index(p, &format!("{at}.ps"))).collect())
+                        .map(|ps| {
+                            ps.as_array()
+                                .unwrap_or_else(|| panic!("{REJECTED}{at}.ps: expected an array"))
+                                .iter()
+                                .map(|p| index(p, &format!("{at}.ps")))
+                                .collect()
+                        })
                         .unwrap_or_default(),
                     r#fn: pred.get("fn").map(|f| func(f, &format!("{at}.fn"))),
                     value: pred.get("value").map(|f| func(f, &format!("{at}.value"))),
@@ -188,7 +195,10 @@ fn group(value: &Value, at: &str) -> ir::Group {
                         let at = format!("{at}.sub");
                         let object = members(sub, &at, &["query", "column", "agg"]);
                         ir::Sub {
-                            query: Box::new(query(object.get("query").unwrap_or_else(|| panic!("{at}.query: expected a query")), &format!("{at}.query"))),
+                            query: Box::new(query(
+                                object.get("query").unwrap_or_else(|| panic!("{REJECTED}{at}.query: expected a query")),
+                                &format!("{at}.query"),
+                            )),
                             column: object.get("column").map(|_| string(object, &at, "column")).unwrap_or_default(),
                             agg: object.get("agg").map(|_| string(object, &at, "agg")).unwrap_or_default(),
                         }
@@ -200,7 +210,7 @@ fn group(value: &Value, at: &str) -> ir::Group {
         .collect();
     ir::Group {
         conn: object.get("conn").map(|_| string(object, at, "conn")).unwrap_or_default(),
-        not: object.get("not").map(|n| n.as_bool().unwrap_or_else(|| panic!("{at}.not: expected a boolean"))).unwrap_or(false),
+        not: object.get("not").map(|n| n.as_bool().unwrap_or_else(|| panic!("{REJECTED}{at}.not: expected a boolean"))).unwrap_or(false),
         items,
     }
 }
@@ -229,7 +239,10 @@ fn query(value: &Value, at: &str) -> ir::Query {
                             let at = format!("{at}.{name}");
                             let object = members(sub, &at, &["query", "column", "agg"]);
                             let sub = ir::Sub {
-                                query: Box::new(query(object.get("query").unwrap_or_else(|| panic!("{at}.query: expected a query")), &format!("{at}.query"))),
+                                query: Box::new(query(
+                                    object.get("query").unwrap_or_else(|| panic!("{REJECTED}{at}.query: expected a query")),
+                                    &format!("{at}.query"),
+                                )),
                                 column: object.get("column").map(|_| string(object, &at, "column")).unwrap_or_default(),
                                 agg: object.get("agg").map(|_| string(object, &at, "agg")).unwrap_or_default(),
                             };
@@ -252,7 +265,7 @@ fn query(value: &Value, at: &str) -> ir::Query {
             .map(|items| {
                 items
                     .as_array()
-                    .unwrap_or_else(|| panic!("{at}.{key}: expected an array"))
+                    .unwrap_or_else(|| panic!("{REJECTED}{at}.{key}: expected an array"))
                     .iter()
                     .enumerate()
                     .map(|(i, item)| (format!("{at}.{key}[{i}]"), item))
@@ -266,8 +279,8 @@ fn query(value: &Value, at: &str) -> ir::Query {
             let o = members(o, &at, &["column", "desc", "random", "fn"]);
             ir::Order {
                 column: if o.contains_key("column") { string(o, &at, "column") } else { String::new() },
-                desc: o.get("desc").map(|d| d.as_bool().unwrap_or_else(|| panic!("{at}.desc: expected a boolean"))).unwrap_or(false),
-                random: o.get("random").map(|r| r.as_bool().unwrap_or_else(|| panic!("{at}.random: expected a boolean"))).unwrap_or(false),
+                desc: o.get("desc").map(|d| d.as_bool().unwrap_or_else(|| panic!("{REJECTED}{at}.desc: expected a boolean"))).unwrap_or(false),
+                random: o.get("random").map(|r| r.as_bool().unwrap_or_else(|| panic!("{REJECTED}{at}.random: expected a boolean"))).unwrap_or(false),
                 r#fn: o.get("fn").map(|f| func(f, &format!("{at}.fn"))),
             }
         })
@@ -281,7 +294,7 @@ fn query(value: &Value, at: &str) -> ir::Query {
                 kind: string(j, &at, "kind"),
                 left: string(j, &at, "left"),
                 right: string(j, &at, "right"),
-                query: Box::new(query(j.get("query").unwrap_or_else(|| panic!("{at}.query: expected a query")), &format!("{at}.query"))),
+                query: Box::new(query(j.get("query").unwrap_or_else(|| panic!("{REJECTED}{at}.query: expected a query")), &format!("{at}.query"))),
             }
         })
         .collect();
@@ -292,7 +305,7 @@ fn query(value: &Value, at: &str) -> ir::Query {
             let keys = r
                 .get("keys")
                 .and_then(Value::as_array)
-                .unwrap_or_else(|| panic!("{at}.keys: expected an array"))
+                .unwrap_or_else(|| panic!("{REJECTED}{at}.keys: expected an array"))
                 .iter()
                 .map(|k| {
                     let k = members(k, &format!("{at}.keys"), &["left", "right"]);
@@ -303,7 +316,7 @@ fn query(value: &Value, at: &str) -> ir::Query {
                 rel: string(r, &at, "rel"),
                 kind: string(r, &at, "kind"),
                 keys,
-                query: Box::new(query(r.get("query").unwrap_or_else(|| panic!("{at}.query: expected a query")), &format!("{at}.query"))),
+                query: Box::new(query(r.get("query").unwrap_or_else(|| panic!("{REJECTED}{at}.query: expected a query")), &format!("{at}.query"))),
             }
         })
         .collect();
@@ -322,7 +335,10 @@ fn query(value: &Value, at: &str) -> ir::Query {
         if_parent: object.get("if_parent").map(|v| {
             let at = format!("{at}.if_parent");
             let o = members(v, &at, &["column", "p"]);
-            ir::IfParent { column: string(o, &at, "column"), p: index(o.get("p").unwrap_or_else(|| panic!("{at}.p: expected an index")), &format!("{at}.p")) }
+            ir::IfParent {
+                column: string(o, &at, "column"),
+                p: index(o.get("p").unwrap_or_else(|| panic!("{REJECTED}{at}.p: expected an index")), &format!("{at}.p")),
+            }
         }),
         ..Default::default()
     }
@@ -363,7 +379,7 @@ pub(crate) fn request(input: &Value, manifest_hash: &str) -> ir::Request {
         manifest_hash: manifest_hash.to_owned(),
         kind: string(object, at, "kind"),
         query: query(&query_input, at),
-        n_params: index(object.get("n_params").unwrap_or_else(|| panic!("input.n_params: expected a count")), "input.n_params"),
+        n_params: index(object.get("n_params").unwrap_or_else(|| panic!("{REJECTED}input.n_params: expected a count")), "input.n_params"),
         set: object.get("set").map(|set| assigns(set, "input.set")).unwrap_or_default(),
         on_duplicate: object.get("on_duplicate").map(|set| assigns(set, "input.on_duplicate")).unwrap_or_default(),
         agg: object.get("agg").map(|_| string(object, at, "agg")).unwrap_or_default(),
@@ -371,7 +387,7 @@ pub(crate) fn request(input: &Value, manifest_hash: &str) -> ir::Request {
             let o = members(o, "input.optimistic", &["column", "p"]);
             ir::Optimist {
                 column: string(o, "input.optimistic", "column"),
-                p: index(o.get("p").unwrap_or_else(|| panic!("input.optimistic.p: expected a parameter index")), "input.optimistic.p"),
+                p: index(o.get("p").unwrap_or_else(|| panic!("{REJECTED}input.optimistic.p: expected a parameter index")), "input.optimistic.p"),
             }
         }),
         ..Default::default()

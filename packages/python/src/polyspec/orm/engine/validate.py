@@ -660,8 +660,138 @@ def conflict_key(ent: Entity, assignments) -> list:
     return columns
 
 
+# The member types of every request record (docs/protocol.md): int, string, bool, list<T>, map<T>, or a
+# record name. The table is the same as PHP's Validator::RECORDS and the fields of Go's ir.Request.
+_QUERY_SHAPE = {
+    "entity": "string",
+    "columns": "Columns",
+    "on": "Group",
+    "where": "Group",
+    "joins": "list<Join>",
+    "relations": "list<Relation>",
+    "order": "list<Order>",
+    "group_by": "list<string>",
+    "limit": "Limit",
+    "force_index": "string",
+    "lock": "string",
+    "key_by": "string",
+    "flatten": "bool",
+    "limit_per_parent": "int",
+    "if_parent": "IfParent",
+    "no_cascade_delete": "bool",
+}
+_RECORDS = {
+    "Request": {
+        **_QUERY_SHAPE,
+        "ir_version": "int",
+        "manifest_hash": "string",
+        "kind": "string",
+        "load": "bool",
+        "set": "list<Assign>",
+        "on_duplicate": "list<Assign>",
+        "rows": "list<list<int>>",
+        "optimistic": "Optimist",
+        "agg": "string",
+        "n_params": "int",
+    },
+    "Query": _QUERY_SHAPE,
+    "Columns": {
+        "mode": "string",
+        "add": "list<string>",
+        "remove": "list<string>",
+        "fn": "map<ColFunc>",
+        "sub": "map<Sub>",
+    },
+    "Func": {"name": "string", "ps": "list<int>"},
+    "ColFunc": {"column": "string", "fn": "Func"},
+    "Sub": {"query": "Query", "column": "string", "agg": "string"},
+    "Join": {
+        "rel": "string",
+        "kind": "string",
+        "query": "Query",
+        "left": "string",
+        "right": "string",
+    },
+    "Relation": {
+        "rel": "string",
+        "query": "Query",
+        "kind": "string",
+        "keys": "list<KeyPair>",
+    },
+    "KeyPair": {"left": "string", "right": "string"},
+    "Group": {"conn": "string", "not": "bool", "items": "list<Item>"},
+    "Item": {"pred": "Pred", "group": "Group", "joined": "JoinedRef"},
+    "JoinedRef": {"conn": "string", "join": "string"},
+    "Pred": {
+        "conn": "string",
+        "column": "string",
+        "op": "string",
+        "p": "int",
+        "ps": "list<int>",
+        "ref": "ColRef",
+        "fn": "Func",
+        "value": "Func",
+        "cols": "list<string>",
+        "sub": "Sub",
+    },
+    "ColRef": {"path": "string", "column": "string"},
+    "Order": {"column": "string", "desc": "bool", "random": "bool", "fn": "Func"},
+    "Limit": {"offset": "int", "count": "int"},
+    "IfParent": {"column": "string", "p": "int"},
+    "Assign": {
+        "column": "string",
+        "p": "int",
+        "null": "bool",
+        "plus_p": "int",
+        "minus_p": "int",
+    },
+    "Optimist": {"column": "string", "p": "int"},
+}
+
+
+def _shape(record: str, value, path: str) -> None:
+    """Refuses an unknown member and a member of the wrong type with IR_INVALID, like a strict decoder."""
+    if not isinstance(value, dict):
+        _fail("IR_INVALID", f"{path}: object required" if path else "object required")
+    fields = _RECORDS[record]
+    for key, member in value.items():
+        if key not in fields:
+            _fail("IR_INVALID", f'json: unknown field "{key}"')
+        _typed(fields[key], member, f"{path}.{key}" if path else str(key))
+
+
+def _typed(kind: str, value, path: str) -> None:
+    if value is None:
+        return
+    if kind.startswith("list<"):
+        if not isinstance(value, list):
+            _fail("IR_INVALID", f"{path}: list required")
+        for item in value:
+            _typed(kind[5:-1], item, path)
+        return
+    if kind.startswith("map<"):
+        if not isinstance(value, dict):
+            _fail("IR_INVALID", f"{path}: object required")
+        for item in value.values():
+            _typed(kind[4:-1], item, path)
+        return
+    if kind == "int":
+        # bool is a subclass of int in Python, but not a JSON integer.
+        ok = isinstance(value, int) and not isinstance(value, bool)
+    elif kind == "string":
+        ok = isinstance(value, str)
+    elif kind == "bool":
+        ok = isinstance(value, bool)
+    else:
+        _shape(kind, value, path)
+        return
+    if not ok:
+        _fail("IR_INVALID", f"{path}: {kind} required")
+
+
 def validate(m: RuntimeModel, r: dict) -> None:
     """request를 manifest에 대해 검사한다."""
+    _shape("Request", r, "")
     if r.get("ir_version") != IR_VERSION:
         _fail(
             "VERSION_MISMATCH", f"ir_version {r.get('ir_version')}, engine {IR_VERSION}"
