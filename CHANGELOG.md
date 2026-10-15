@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A conformance vector proves that an upsert names exactly one conflict key on every database. (#T87-1)
 - The MySQL migration fixture removes its temporary root and stops its servers when its setup fails. (#T183)
 - The committed Go models hold the service relation of a service region. (#T85-1)
 - The Rust value test asserts the time rule of T92. (#T92-2)
