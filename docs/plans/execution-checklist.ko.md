@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 86b8702c1f007d13293bbb5f297bb62a20e6f5654b28f13f716aa2bb1471acf4 -->
+<!-- source-sha256: 536fc0f50cda12e3fe165a44c6f4327bd4d8693eb267fcf64bbde0ba8a58252c -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1083,6 +1083,7 @@
     - [!] T148-3-1 PHP와 PHP extension parity binding을 root Composer project의 PHPUnit으로 실행한다 (T148-3에 이어). 원인: kit의 PHP runner는 package마다 vendor/bin/phpunit을 찾는데 orm은 root Composer project(vendor-php, T148-1-1)에 PHPUnit을 한 번 설치하므로 R3 binding 59개가 시작하지 못한다. 완료 조건: 가장 가까운 Composer project에서 PHPUnit을 찾는 kit 0.0.50(K178) 뒤 parity가 그것을 실행한다. 우회 원인: kit 도구가 정한다. Retry: kit 0.0.50이 release될 때(T181).
     - [ ] T148-3-2 parity R2가 binding이 없다고 보고하는 Python feature를 bind한다 (T148-3에 이어). 원인: aggregate-numeric, authenticated-encryption, decimal-model, planner, styled-column-states, install-changed-database, sqlite-paths, statement-events에 Python binding이 없고 대부분 Python test도 없다. 완료 조건: 각각 config/parity.json에 bind된 Python test가 있거나, 먼저 Python에 feature를 구현한다.
     - [ ] T148-3-3 parity R2가 binding이 없다고 보고하는 Go, PHP, PHP extension, Rust feature를 bind한다 (T148-3에 이어). 원인: go의 codec, codec-aes, dbspec-syntax, php와 rust의 codec-aes, php-extension의 schema-definition과 dbspec-sets에 binding이 없다. 완료 조건: 각각 그것을 실행하는 test에 bind한다.
+      - [ ] T148-3-3-1 공유 vector case 이름에서 slash를 뺀다 (T148-3-3에 이어). 원인: tests/codec/vectors.json의 case 91개(yaml_core/...)와 tests/dbspec/syntax.json의 304개(canonical/..., invalid/...)가 slash를 담아 Go가 subtest로 중첩하므로, kit이 codec과 dbspec-syntax unit의 Go binding을 거부한다. T148-3-3의 나머지 unit 5개는 bind했다(Go, PHP, Rust의 codec-aes, PHP extension의 dbspec-sets와 schema-definition). 완료 조건: 모든 vector file과 runner에서 공유 case id에 slash가 없고, Go codec과 dbspec-syntax unit이 bind되며, parity가 그것에 R2를 보고하지 않는다.
     - [ ] T148-3-4 여러 suite를 실행하는 binding file을 나눈다 (T148-3에 이어). 원인: R3 63줄이 suite에 없는 case를 보고한다. 모든 언어의 dbspec cases, mermaid, plans, codec file이 한 file에서 다른 suite의 case나 추가 test를 실행한다. 완료 조건: 각 binding file이 suite 하나를 그 case id로 실행한다.
     - [ ] T148-3-5 feature-coverage binding의 case에 이름을 준다 (T148-3에 이어). 원인: Go, TypeScript, Rust의 coverage_* binding이 case 이름을 보고하지 않고(R3 not executed), Rust codec과 styled-state case는 id를 가질 수 없는 lib test다. 완료 조건: 각 case가 id로 실행된다.
     - [ ] T148-3-6 Python conformance runner를 test로 실행한다 (T148-3에 이어). 원인: tests/conformance/runner_python.py가 parity에서 5(실행한 test 없음)로 끝나고 Python root 밖에 있다(R6). 완료 조건: Python conformance case가 Python package 안에서 id로 실행된다.
