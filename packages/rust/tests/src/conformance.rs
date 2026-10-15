@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 
 polyspec_orm::models!();
 
-use model::{Author, CompositeAccount, HexCell, Service, ServiceMember, ServiceRegion, SoftRecord, Task, User};
+use model::{Author, CompositeAccount, HexCell, Service, ServiceMember, ServiceRegion, SoftRecord, Task, TimeCell, User};
 use polyspec_orm::{AesKeyring, Collection, Db, Model, Null, Param};
 use serde_json::{json, Map, Value};
 
@@ -734,5 +734,31 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         let odd_length = code_of(HexCell::new().connect(db).get_by_seq(2).await);
         Ok::<Value, polyspec_orm::Error>(json!({"white_space": white_space, "odd_length": odd_length}))
     });
+    // A datetime(p) or time(p) value is bound with exactly p fraction digits, the form the SQLite CHECK of the column
+    // requires (docs/dialects.md); zeros past p are dropped. Each vector inserts, reads the row back by the same
+    // parameter and deletes it.
+    let at = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(12, 34, 56).unwrap();
+    run!(
+        "datetime_p0_roundtrip",
+        db.transaction(async || {
+            let created = TimeCell::new().connect(db).set_at(at).set_clock("10:11:12").create().await?;
+            mask(shared, &[created.get_seq().unwrap()], &[]);
+            let rows = TimeCell::new().connect(db).at(at).gets().await?;
+            created.delete(false).await?;
+            Ok::<Value, polyspec_orm::Error>(picks(&rows, &["clock"]))
+        })
+        .retry(0)
+    );
+    run!(
+        "time_p3_roundtrip",
+        db.transaction(async || {
+            let created = TimeCell::new().connect(db).set_at(at).set_clock("10:11:12.345000").create().await?;
+            mask(shared, &[created.get_seq().unwrap()], &[]);
+            let rows = TimeCell::new().connect(db).clock("10:11:12.345").gets().await?;
+            created.delete(false).await?;
+            Ok::<Value, polyspec_orm::Error>(picks(&rows, &["clock"]))
+        })
+        .retry(0)
+    );
     out
 }

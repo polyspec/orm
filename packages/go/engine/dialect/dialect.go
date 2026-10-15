@@ -26,6 +26,12 @@ type Dialect interface {
 	ReadExpr(col string, styles []string, ph func() string) (string, int)
 	// WriteExpr wraps a bound value for a style pipeline on write.
 	WriteExpr(ph func() string, styles []string) (string, int)
+	// ReadTime reads a time(p) column as its value text `HH:MM:SS` with exactly p
+	// fraction digits, which the database writes (MySQL CAST AS CHAR, PostgreSQL
+	// to_char); SQLite stores that text.
+	ReadTime(col string, precision int) string
+	// WriteTime binds a time(p) value as its text: PostgreSQL casts the text to time.
+	WriteTime(ph string) string
 	// Now은 precision 자리 소수 초로 column에 쓰는 database clock을 render한다:
 	// MySQL은 p > 0이면 CURRENT_TIMESTAMP(p), 나머지는 CURRENT_TIMESTAMP다.
 	Now(precision int) string

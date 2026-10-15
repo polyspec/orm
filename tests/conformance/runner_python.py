@@ -62,7 +62,7 @@ def parse_args(args):
 # Set by main() from the arguments; importing this module parses nothing.
 DSN, MODELS_DIR, SELECTED = None, None, []
 bench = Author = CompositeAccount = Service = ServiceMember = ServiceRegion = None
-User = SoftRecord = Task = HexCell = None
+User = SoftRecord = Task = HexCell = TimeCell = None
 
 log = []
 transactions = {}
@@ -279,7 +279,8 @@ def load_models():
         User, \
         SoftRecord, \
         Task, \
-        HexCell
+        HexCell, \
+        TimeCell
     # The models generated from contracts/fixtures/bench/bench.dbs are compiled from their source and
     # registered as models; the client itself is the one installed into the interpreter.
     source = os.path.join(MODELS_DIR, "models.py")
@@ -303,6 +304,7 @@ def load_models():
         bench.Task,
         bench.HexCell,
     )
+    TimeCell = bench.TimeCell
 
 
 def main():
@@ -325,6 +327,8 @@ def main():
         "delete_recursive",
         "contains_ascii_fold",
         "contains_binary_code_point",
+        "datetime_p0_roundtrip",
+        "time_p3_roundtrip",
     }
 
     def run(name, fn):
@@ -1007,6 +1011,31 @@ def main():
         }
 
     run("hex_malformed", hex_malformed)
+
+    # A datetime(p) or time(p) value is bound with exactly p fraction digits, the form the SQLite CHECK of the column
+    # requires (docs/dialects.md); zeros past p are dropped. Each vector inserts, reads the row back by the same
+    # parameter and deletes it.
+    at = datetime.datetime(2026, 6, 1, 12, 34, 56, tzinfo=datetime.timezone.utc)
+
+    def datetime_p0_roundtrip():
+        created = TimeCell().connect(db).set_at(at).set_clock("10:11:12").create()
+        mask([created.get_seq()])
+        rows = TimeCell().connect(db).at(at).gets()
+        created.delete()
+        return picks(rows, "clock")
+
+    run("datetime_p0_roundtrip", datetime_p0_roundtrip)
+
+    def time_p3_roundtrip():
+        created = (
+            TimeCell().connect(db).set_at(at).set_clock("10:11:12.345000").create()
+        )
+        mask([created.get_seq()])
+        rows = TimeCell().connect(db).clock("10:11:12.345").gets()
+        created.delete()
+        return picks(rows, "clock")
+
+    run("time_p3_roundtrip", time_p3_roundtrip)
 
     db.close()
     unknown = [name for name in SELECTED if name not in declared]

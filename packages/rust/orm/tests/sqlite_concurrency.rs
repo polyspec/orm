@@ -9,7 +9,7 @@ use futures_util::future::join_all;
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
 
 static SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/bench/bench.dbs"), "sha256:27675b7fddd99bfdcb47f88bd4050552b25c1c345d84908a29b1b6d339d91322");
+    Schema::new(include_str!("../../../../contracts/fixtures/bench/bench.dbs"), "sha256:6b97fb31e729ecb3a5032a1fc7c2cae93b59b7a7cedd718d7004ce31586fb875");
 
 static ENTITY: Entity =
     Entity { name: "service", schema: &SCHEMA, new: polyspec_orm::model::new_boxed::<Service>, collect: polyspec_orm::model::collect_boxed::<Service> };

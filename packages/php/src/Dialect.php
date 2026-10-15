@@ -168,6 +168,25 @@ final class Dialect
         return $ph;
     }
 
+    /**
+     * time(p) column을 소수 정확히 p자리의 값 text `HH:MM:SS`로 읽는 expression이다. database가 그 text를 쓴다(MySQL
+     * CAST AS CHAR, PostgreSQL to_char). SQLite는 그 text를 저장한다.
+     */
+    public function readTime(string $col, int $precision): string
+    {
+        return match ($this->name) {
+            'mysql' => "CAST($col AS CHAR)",
+            'postgres' => $precision === 0 ? "to_char($col, 'HH24:MI:SS')" : "substr(to_char($col, 'HH24:MI:SS.US'), 1, " . (9 + $precision) . ')',
+            default => $col,
+        };
+    }
+
+    /** time(p) 값을 text로 bind하는 expression이다. PostgreSQL은 text를 time으로 cast한다. */
+    public function writeTime(string $ph): string
+    {
+        return $this->name === 'postgres' ? "CAST(CAST($ph AS text) AS time)" : $ph;
+    }
+
     /** The row lock suffix; SQLite locks in the executor. */
     public function rowLock(string $mode): ?string
     {

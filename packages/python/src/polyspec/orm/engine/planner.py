@@ -559,7 +559,7 @@ class Planner:
                 _fail("COLUMN_UNKNOWN", f"{s.ent.name}.{name}")
             out = f"{s.alias}__{name}"
             parts.append(
-                f"{self.d.read_expr(self._qcol(s, name), self._read_sql_styles(_styles(col)))} AS {self.d.quote(out)}"
+                f"{self._read_column(self._qcol(s, name), col)} AS {self.d.quote(out)}"
             )
             out_names.append(out)
             asm["columns"].append(
@@ -607,9 +607,7 @@ class Planner:
                 expr = f"({self._sub_select(b, s, c['sub'])})"
                 type_ = self._sub_type(c["sub"])
             else:
-                expr = self.d.read_expr(
-                    self._qcol(s, c["column"]), self._read_sql_styles(_styles(col))
-                )
+                expr = self._read_column(self._qcol(s, c["column"]), col)
                 col_styles = self._client_styles(_styles(col))
             out = f"{s.alias}__{c['name']}"
             parts.append(f"{expr} AS {self.d.quote(out)}")
@@ -884,6 +882,13 @@ class Planner:
             )
         _fail("OPERATOR_UNKNOWN", op)
 
+    def _read_column(self, qcol: str, col: Field) -> str:
+        """column을 SQL 쪽 read stage로 읽는다; time(p) column은 p자리 text로 읽는다."""
+        expr = self.d.read_expr(qcol, self._read_sql_styles(_styles(col)))
+        return (
+            self.d.read_time(expr, col.precision or 0) if col.type == "time" else expr
+        )
+
     def _render_value(self, b: _Builder, col: Field, i: int) -> str:
         """값 하나를 bind한다; SQL 쪽 stage가 감싸고 host 쪽 stage는 slot에 기록한다."""
         host = [
@@ -895,6 +900,8 @@ class Planner:
         # SQL 쪽 style 함수가 감싸는 값의 type은 그 함수 입력의 type이다.
         ph = b.col_param(i, col) if not sql else b.param(i, _style_input_type(sql[0]))
         b.last().host_styles = host
+        if not sql and col.type == "time":
+            return self.d.write_time(ph)
         return self.d.write_expr(ph, sql)
 
     def _render_blind_index_value(self, b: _Builder, index: Field, i: int) -> str:

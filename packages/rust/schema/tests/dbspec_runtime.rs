@@ -77,7 +77,8 @@ fn runtime_model_of_bench() {
             "project",
             "account_project",
             "task",
-            "hex_cell"
+            "hex_cell",
+            "time_cell"
         ]
     );
     let author = model.entity("author").unwrap();

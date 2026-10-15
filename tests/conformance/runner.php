@@ -10,6 +10,7 @@ require __DIR__ . '/result_php_helpers.php';
 use Polyspec\Orm\Tests\Model\Author;
 use Polyspec\Orm\Tests\Model\CompositeAccount;
 use Polyspec\Orm\Tests\Model\HexCell;
+use Polyspec\Orm\Tests\Model\TimeCell;
 use Polyspec\Orm\Tests\Model\Service;
 use Polyspec\Orm\Tests\Model\ServiceMember;
 use Polyspec\Orm\Tests\Model\ServiceRegion;
@@ -154,7 +155,7 @@ $db->subscribe(static function (StatementEvent $e): void {
 $out = [];
 /** @var array<string, callable> vector 이름별 chain, 선언 순서 */
 $vectors = [];
-$writeVectors = array_fill_keys(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point'], true);
+$writeVectors = array_fill_keys(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip'], true);
 
 /** vector를 선언한다. 선택된 vector는 모든 선언이 끝난 뒤 선언 순서대로 실행한다. */
 function vector(string $name, callable $fn): void
@@ -501,6 +502,25 @@ vector('hex_malformed', fn(): array => [
     'white_space' => caught(fn() => (new HexCell)($db)->getBySeq(1)),
     'odd_length' => caught(fn() => (new HexCell)($db)->getBySeq(2)),
 ]);
+
+// A datetime(p) or time(p) value is bound with exactly p fraction digits, the form the SQLite CHECK of the column
+// requires (docs/dialects.md); zeros past p are dropped. Each vector inserts, reads the row back by the same parameter
+// and deletes it.
+$at = new DateTimeImmutable('2026-06-01 12:34:56', new DateTimeZone('UTC'));
+vector('datetime_p0_roundtrip', function () use ($db, $at): array {
+    $created = (new TimeCell)($db)->setAt($at)->setClock('10:11:12')->create();
+    mask([$created->getSeq()]);
+    $rows = (new TimeCell)($db)->at($at)->gets();
+    $created->delete();
+    return picks($rows, 'clock');
+});
+vector('time_p3_roundtrip', function () use ($db, $at): array {
+    $created = (new TimeCell)($db)->setAt($at)->setClock('10:11:12.345000')->create();
+    mask([$created->getSeq()]);
+    $rows = (new TimeCell)($db)->clock('10:11:12.345')->gets();
+    $created->delete();
+    return picks($rows, 'clock');
+});
 
 foreach (array_keys($selected) as $name) {
     if (!isset($vectors[$name])) {

@@ -165,3 +165,10 @@ table hex_cell {
     codec value hex
   }
 }
+
+table time_cell {
+  seq i64 identity
+  at datetime(0)
+  clock time(3)
+  primary key (seq)
+}

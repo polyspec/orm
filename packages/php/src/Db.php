@@ -1128,11 +1128,17 @@ final class Db
      */
     public static function timeValue(mixed $v, string $colType, int $precision, \DateTimeZone $zone): mixed
     {
+        if ($colType === 'time' && $v instanceof \DateTimeInterface) {
+            $v = \DateTimeImmutable::createFromInterface($v)->setTimezone($zone)->format('H:i:s.u');
+        }
         if ($colType === 'time' && is_string($v)) {
             if (preg_match('/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?$/D', $v, $m) !== 1 || (int) $m[1] > 23 || (int) $m[2] > 59 || (int) $m[3] > 59) {
                 throw new OrmException(Code::CODEC_ENCODE, "time value \"$v\" is not HH:MM:SS[.ffffff]");
             }
             $fraction = str_pad($m[4] ?? '', 6, '0');
+            if (trim(substr($fraction, $precision), '0') !== '') {
+                throw new OrmException(Code::CODEC_ENCODE, "time value \"$v\" has a non-zero digit past its $precision fraction digits");
+            }
             return "$m[1]:$m[2]:$m[3]" . ($precision > 0 ? '.' . substr($fraction, 0, $precision) : '');
         }
         if ($v instanceof \DateTimeInterface) {
@@ -1195,7 +1201,7 @@ final class Db
                 case 'param':
                     $v = $params[$b['param']];
                     $colType = $b['col_type'] ?? '';
-                    if (($colType === 'datetime' || $colType === 'date') && $v !== null) {
+                    if (($colType === 'datetime' || $colType === 'date' || $colType === 'time') && $v !== null) {
                         $v = $this->bindTimeValue($v, $colType, $b['precision'] ?? 0);
                     }
                     if ($colType === 'decimal' && $v !== null) {

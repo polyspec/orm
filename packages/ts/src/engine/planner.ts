@@ -430,7 +430,7 @@ export class Planner {
     for (const name of s.q.group_by ?? []) {
       const col = columnOf(s.ent, name) ?? fail('COLUMN_UNKNOWN', `${s.ent.name}.${name}`);
       const out = `${s.alias}__${name}`;
-      parts.push(`${this.d.readExpr(this.qcol(s, name), this.readSqlStyles(styles(col)))} AS ${this.d.quote(out)}`);
+      parts.push(`${this.readColumn(this.qcol(s, name), col)} AS ${this.d.quote(out)}`);
       outNames.push(out);
       asm.columns.push({ index: idx.n++, name, column: name, type: col.type, styles: this.clientStyles(styles(col)), hidden: false });
     }
@@ -460,7 +460,7 @@ export class Planner {
         type = this.subType(c.sub);
       } else {
         const own = present(col, `column ${s.ent.name}.${c.column}`);
-        expr = this.d.readExpr(this.qcol(s, c.column), this.readSqlStyles(styles(own)));
+        expr = this.readColumn(this.qcol(s, c.column), own);
         colStyles = this.clientStyles(styles(own));
       }
       const out = `${s.alias}__${c.name}`;
@@ -650,6 +650,12 @@ export class Planner {
     return fail('OPERATOR_UNKNOWN', op);
   }
 
+  /** A column read with its SQL-side read stages; a time(p) column reads as its p-digit text. */
+  private readColumn(qcol: string, col: Column): string {
+    const expr = this.d.readExpr(qcol, this.readSqlStyles(styles(col)));
+    return col.type === 'time' ? this.d.readTime(expr, col.precision ?? 0) : expr;
+  }
+
   /** Binds one value; SQL-side stages wrap it, host-side stages are recorded on the slot. */
   private renderValue(b: Builder, col: Column, i: number): string {
     const host = styles(col).filter(st => (st === 'aes' || st === 'hex' || st === 'ip') && !this.d.handlesStage(st));
@@ -658,6 +664,7 @@ export class Planner {
     const [first] = sql;
     const ph = first === undefined ? b.colParam(i, col) : b.param(i, styleInputType(first));
     b.last().host_styles = host;
+    if (first === undefined && col.type === 'time') return this.d.writeTime(ph);
     return this.d.writeExpr(ph, sql);
   }
 

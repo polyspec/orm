@@ -405,7 +405,7 @@ func (d *DB) markdownParam(i int, v any, uses []ir.ParamUse) (json.RawMessage, e
 			v = base64.StdEncoding.EncodeToString([]byte(x))
 		case "date", "time", "datetime":
 			var err error
-			if v, err = d.sqliteTimeValue(x, use.Type, 6); err != nil {
+			if v, err = d.bindTimeValue(x, use.Type, 6); err != nil {
 				return nil, err
 			}
 		}

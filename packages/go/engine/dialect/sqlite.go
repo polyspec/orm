@@ -57,7 +57,9 @@ func (SQLite) Upsert(conflict []string, assigns string) string {
 func (SQLite) ReadExpr(col string, _ []string, _ func() string) (string, int) { return col, 0 }
 func (SQLite) WriteExpr(ph func() string, _ []string) (string, int)           { return ph(), 1 }
 
-func (SQLite) HostNow() bool { return true }
+func (SQLite) HostNow() bool                     { return true }
+func (SQLite) ReadTime(col string, _ int) string { return col }
+func (SQLite) WriteTime(ph string) string        { return ph }
 
 // SQLite has no row-lock clause. Each executor implements the common lock
 // modes with an ORM-owned transaction-scoped lock row; the SQL suffix remains

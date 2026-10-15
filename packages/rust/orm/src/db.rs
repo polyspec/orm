@@ -605,10 +605,11 @@ impl Db {
     }
 
     /// Writes a datetime or date value in the text form SQLite stores, so a
-    /// string value compares equal to the stored value. A datetime string with
+    /// string value compares equal to the stored value; every driver binds that
+    /// text (docs/dialects.md). A datetime string with
     /// an offset is converted to the connection time zone. `datetime(p)` text는
     /// 소수 p자리로 쓰고, p자리 뒤에 0이 아닌 자리가 있으면 CODEC_ENCODE다.
-    fn sqlite_time_value(&self, v: Param, col_type: &str, precision: i64) -> Result<Param> {
+    fn bind_time_value(&self, v: Param, col_type: &str, precision: i64) -> Result<Param> {
         match v {
             Param::DateTime(t) if col_type == "date" => Ok(Param::Str(t.format("%Y-%m-%d").to_string())),
             Param::Str(text) if col_type == "date" => {
@@ -638,8 +639,8 @@ impl Db {
                 "parent" => out.extend(parent_vals.iter().cloned()),
                 "param" => {
                     let mut v = param_arg(b, params)?;
-                    if sqlite && (b.col_type == "datetime" || b.col_type == "date") {
-                        v = self.sqlite_time_value(v, &b.col_type, b.precision)?;
+                    if b.col_type == "datetime" || b.col_type == "date" {
+                        v = self.bind_time_value(v, &b.col_type, b.precision)?;
                     }
                     if b.col_type == "time" {
                         v = time_value(v, b.precision)?;
@@ -1122,29 +1123,21 @@ fn clock_digits(text: &str, precision: i64) -> String {
     }
 }
 
-/// `time(p)` 값은 소수 정확히 p자리의 `HH:MM:SS` text다 (docs/dbspec.md, "Runtime model").
+/// `time(p)` 값은 소수 정확히 p자리의 `HH:MM:SS` text다 (docs/dbspec.md, "Runtime model"). 값은 `HH:MM:SS[.f{1,6}]`
+/// text이고, p자리 뒤의 0은 버리며 0이 아닌 자리는 CODEC_ENCODE다.
 fn time_value(v: Param, precision: i64) -> Result<Param> {
     let text = match v {
         Param::Null => return Ok(Param::Null),
         Param::Str(text) => text,
         other => return Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("time value must be HH:MM:SS text, received {other:?}") }),
     };
-    let p = usize::try_from(precision).unwrap_or(0);
-    let b = text.as_bytes();
-    let clock = b.len() >= 8
-        && digits(&b[0..2])
-        && b[2] == b':'
-        && digits(&b[3..5])
-        && b[5] == b':'
-        && digits(&b[6..8])
-        && &text[0..2] < "24"
-        && &text[3..5] < "60"
-        && &text[6..8] < "60";
-    let fraction = if p == 0 { b.len() == 8 } else { b.len() == 9 + p && b[8] == b'.' && digits(&b[9..]) };
-    if !clock || !fraction {
-        return Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("time value {text:?} is not HH:MM:SS with {p} fraction digits") });
+    let full = message_time_text(&text, "time", &Zone)?;
+    let (whole, fraction) = full.split_at(8);
+    let p = usize::try_from(precision).unwrap_or(0).min(6);
+    if fraction[1 + p..].bytes().any(|b| b != b'0') {
+        return Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("time value {text:?} has more than {p} fraction digits") });
     }
-    Ok(Param::Str(text))
+    Ok(Param::Str(if p == 0 { whole.to_owned() } else { format!("{whole}{}", &fraction[..1 + p]) }))
 }
 
 fn invalid_time_text(text: &str, col_type: &str) -> Error {

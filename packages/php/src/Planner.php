@@ -266,7 +266,7 @@ final class Planner
         $parts = [];
         foreach ($s->q['group_by'] ?? [] as $name) {
             $col = RuntimeModel::column($s->ent, $name);
-            $expr = $this->d->readExpr($this->qcol($s, $name), $this->readSqlStyles($col));
+            $expr = $this->readColumn($this->qcol($s, $name), $col);
             $out = $s->alias . '__' . $name;
             $parts[] = $expr . ' AS ' . $this->d->quote($out);
             $outNames[] = $out;
@@ -316,7 +316,7 @@ final class Planner
                 $expr = '(' . $this->subSelect($b, $s, $c['sub']) . ')';
                 $type = $this->subType($c['sub']);
             } else {
-                $expr = $this->d->readExpr($this->qcol($s, $c['column']), $this->readSqlStyles($col));
+                $expr = $this->readColumn($this->qcol($s, $c['column']), $col);
                 $styles = $this->clientStyles($col);
             }
             $parts[] = $expr . ' AS ' . $this->d->quote($s->alias . '__' . $c['name']);
@@ -584,13 +584,21 @@ final class Planner
         return $col['blind_index'];
     }
 
+    /** A column read with its SQL-side read stages; a time(p) column reads as its p-digit text. */
+    private function readColumn(string $qcol, array $col): string
+    {
+        $expr = $this->d->readExpr($qcol, $this->readSqlStyles($col));
+        return $col['type'] === 'time' ? $this->d->readTime($expr, $col['precision'] ?? 0) : $expr;
+    }
+
     /** Binds one value, wrapped for the SQL-side stages; the other secret stages are marked for the executor. */
     private function renderValue(PlanBinds $b, array $col, int $i): string
     {
         $styles = $this->sqlStyles($col);
         $host = array_values(array_filter($col['codec'], fn(string $st): bool => in_array($st, RuntimeModel::HOST_STAGES, true) && !$this->d->handlesStyle($st)));
         if ($styles === []) {
-            return $b->colParam($i, $col, '', $host);
+            $ph = $b->colParam($i, $col, '', $host);
+            return $col['type'] === 'time' ? $this->d->writeTime($ph) : $ph;
         }
         // SQL 쪽 style 함수가 감싸는 값의 type은 그 함수 입력의 type이다.
         return $this->d->writeExpr($b->param($i, self::styleInputType($styles[0]), '', $host), $styles);
