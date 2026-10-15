@@ -4,6 +4,7 @@
 ## Unreleased
 
 - AGENTS points to the local links rule of kit for 0.0.x development. (#T186)
+- The Python conformance target runs through the case harness on the databases of the run. (#T148-3-6-1)
 - Parity builds the PHP extension and passes every PHP binding. (#T148-3-8)
 - The Python conformance runner runs as a test. (#T148-3-6)
 - The feature-coverage bindings run every case under its id. (#T148-3-5)

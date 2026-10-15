@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 72bff9f6d85f4934f7daf007893331eb3b0f2f109c2e42db264323abc52be9cc -->
+<!-- source-sha256: 4af60025a5b54bf93f121878d60ebcb0b3a18545b19fbccb1f1494677a71cc2f -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1131,6 +1131,8 @@
       Evidence: Go, TypeScript, Rust, Python schema-definition binding이 모든 fixture case를 id로 실행하고, conformance는 dialect마다 binding 하나가 각 vector를 기록된 기대값과 비교하며, Go 구현 인자에 featurecoverage tag가 붙는다. 건너뛰던 Go styled-state fixture의 unselected와 nonnull_sql_null case도 이제 실행된다.
     - [o] T148-3-6 Python conformance runner를 test로 실행한다 (T148-3에 이어). 원인: tests/conformance/runner_python.py가 parity에서 5(실행한 test 없음)로 끝나고 Python root 밖에 있다(R6). 완료 조건: Python conformance case가 Python package 안에서 id로 실행된다.
       Evidence: packages/python/tests/conformance_mysql.py, conformance_postgres.py, conformance_sqlite.py가 새 conformance-check/python target으로 Python conformance runner를 test로 실행한다.
+      - [o] T148-3-6-1 Python conformance target을 harness와 run database로 실행한다 (T148-3-6에 이어). 원인: conformance-check/python이 $(WITH_TEST_ENV) 없이 `python -m unittest …`를 실행해, python-unit-check가 그 줄을 거부했고 make run-databases에서 target이 "BENCH_MYSQL_DSN is required"로 실패했다. 완료 조건: target이 run 환경으로 packages.python.tests.testcase를 실행하고, python-unit-check와 전체 conformance-check가 통과한다.
+        Evidence: python-unit-check가 그 줄에서 실패했고 target은 BENCH_* 없이 실패했다. 이제 target은 lease-tool과 conformance-python-models 뒤에 `$(WITH_TEST_ENV) … -m packages.python.tests.testcase`를 실행하며, python-unit-check가 통과하고, make run-databases TARGETS=conformance-check가 Python 부분(test 135개)과 함께 통과하고 세 vector file은 바뀌지 않는다.
     - [ ] T148-3-7 parity R4, R5, R6, R7, R9, R10을 통과한다 (T148-3에 이어). 원인: parity 검사가 R5 396건(bind되지 않은 test file), R10 120건(client를 넷으로 세는 문서), R6 78건(root 밖 test), R4 4건(선언되지 않은 suite), R9 4건(오래된 client 목록), R7 2건(오류 code를 선언하지 않는 TypeScript와 Python)을 보고한다. 완료 조건: 각 규칙이 통과하고, 큰 묶음은 더 나눈다.
       - [ ] T148-3-7-1 parity R5를 통과한다: 모든 test file이 묶인다 (T148-3-7에 이어). 원인: R5가 binding이 없는 test file 420개를 보고한다. 대부분은 어느 parity unit도 적지 않은 한 언어 test다. 완료 조건: 각 test가 다섯 구현에 묶인 unit에 속하거나 unit의 기존 binding으로 옮겨지고, R5가 0을 보고한다.
       - [ ] T148-3-7-2 parity R6을 통과한다: 선언된 root 밖의 test (T148-3-7에 이어). 원인: R6가 scripts/, tests/dialects, tests/dbspec, tests/conformance runner, examples/, benchmarks/rust, packages/dbspec-* 아래 test 76개를 보고한다. 완료 조건: 각 test가 root 아래로 옮겨지거나 이유와 함께 tools root에 선언되고, R6가 0을 보고한다.

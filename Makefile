@@ -1049,8 +1049,8 @@ conformance-check: conformance-counter-check conformance-result-check conformanc
 # (config/parity.json, conformance-mysql, conformance-postgres, conformance-sqlite): one case for each vector, named by the
 # vector name, on the bench database of the run (BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN, BENCH_SQLITE_DSN).
 .PHONY: conformance-check/python
-conformance-check/python: python-venv-check
-	$(PYTHON_VENV)/bin/python -m unittest packages.python.tests.conformance_mysql packages.python.tests.conformance_postgres packages.python.tests.conformance_sqlite
+conformance-check/python: lease-tool python-venv-check conformance-python-models
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.testcase packages.python.tests.conformance_mysql packages.python.tests.conformance_postgres packages.python.tests.conformance_sqlite
 conformance-check/run: lease-tool conformance-python-models
 	$(if $(and $(VECTOR),$(RECORD)),@echo "conformance-check: RECORD=1 records only a full run; a run of selected vectors also records the first-use statements of each connection that the full run makes in an earlier vector" >&2; exit 2)
 	$(HOLD_TYPESCRIPT)

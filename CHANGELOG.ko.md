@@ -1,10 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c11c081b1ade29f9c6c40759723320c48b42340522bdeb71901e909522ed770e -->
+<!-- source-sha256: 895160245e8ba10e4aafd5fddc37034b2ea311855d685bb87accf800ed59b899 -->
 # 변경 이력
 
 ## Unreleased
 
 - AGENTS가 0.0.x 개발의 local link 규칙으로 kit 문서를 안내한다. (#T186)
+- Python conformance target이 run의 database에서 case harness로 실행된다. (#T148-3-6-1)
 - parity가 PHP extension을 build하고 모든 PHP binding을 통과한다. (#T148-3-8)
 - Python conformance runner가 test로 실행된다. (#T148-3-6)
 - feature-coverage binding이 모든 case를 id로 실행한다. (#T148-3-5)
