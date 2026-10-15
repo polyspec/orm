@@ -128,7 +128,8 @@ func identityLoadParam(t *testing.T, v any) any {
 }
 
 // TestIdentityLoad는 case 파일의 모든 case를 case ID의 subtest로 실행한다. compile case는
-// 세 dialect에서, execute case는 MySQL, PostgreSQL, SQLite의 case database마다 실행한다.
+// 세 dialect에서, execute case는 그 subtest 안에서 MySQL, PostgreSQL, SQLite의 case database마다
+// 차례로 실행한다.
 func TestIdentityLoad(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	doc := readIdentityLoad(t)
@@ -139,7 +140,8 @@ func TestIdentityLoad(t *testing.T) {
 				compileIdentityLoadCase(t, doc, c)
 			case "execute":
 				for _, driver := range []string{"mysql", "postgres", "sqlite"} {
-					t.Run(driver, func(t *testing.T) { executeIdentityLoadCase(t, doc, c, driver) })
+					t.Logf("driver %s", driver)
+					executeIdentityLoadCase(t, doc, c, driver)
 				}
 			default:
 				t.Fatalf("unknown operation %q", c.Operation)

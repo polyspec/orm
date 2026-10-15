@@ -175,17 +175,44 @@ function applied(string $dbspec, array $chain, array $script, string $path): arr
 #[Small]
 final class DbspecTest extends TestCase
 {
-    public static function documentCases(): iterable
+    /** The canonical cases of tests/dbspec/cases.json, one data set per case id. */
+    public static function canonicalCases(): iterable
     {
-        $cases = dbspec_read_cases();
-        foreach (['canonical', 'normalize', 'invalid'] as $kind) {
-            yield from dbspec_case_sets($kind, $cases[$kind]);
-        }
+        return dbspec_case_ids('canonical', dbspec_read_cases()['canonical']);
+    }
+
+    /** The normalize cases of tests/dbspec/cases.json, one data set per case id. */
+    public static function normalizeCases(): iterable
+    {
+        return dbspec_case_ids('normalize', dbspec_read_cases()['normalize']);
+    }
+
+    /** The invalid cases of tests/dbspec/cases.json, one data set per case id. */
+    public static function invalidCases(): iterable
+    {
+        return dbspec_case_ids('invalid', dbspec_read_cases()['invalid']);
+    }
+
+    #[DataProvider('canonicalCases')]
+    public function test_canonical(string $kind, array $case): void
+    {
+        $this->checkDocument($kind, $case);
+    }
+
+    #[DataProvider('normalizeCases')]
+    public function test_normalize(string $kind, array $case): void
+    {
+        $this->checkDocument($kind, $case);
+    }
+
+    #[DataProvider('invalidCases')]
+    public function test_invalid(string $kind, array $case): void
+    {
+        $this->checkDocument($kind, $case);
     }
 
     // php-extension/canonical, normalize, invalid
-    #[DataProvider('documentCases')]
-    public function test_document(string $kind, array $case): void
+    private function checkDocument(string $kind, array $case): void
     {
         $id = "$kind/{$case['id']}";
         $texts = dbspec_documents($case['documents'], $case['crlf'] ?? false, $case['mixed'] ?? false);
@@ -211,7 +238,7 @@ final class DbspecTest extends TestCase
     public static function positionCases(): iterable
     {
         foreach (dbspec_read_cases()['positions'] as $case) {
-            yield 'positions/' . $case['id'] => [$case];
+            yield $case['id'] => [$case];
         }
     }
 
@@ -230,7 +257,7 @@ final class DbspecTest extends TestCase
     public static function fileCases(): iterable
     {
         foreach (dbspec_read_cases()['files'] as $case) {
-            yield 'files/' . $case['id'] => [$case];
+            yield $case['id'] => [$case];
         }
     }
 
@@ -252,7 +279,7 @@ final class DbspecTest extends TestCase
     public static function hashesCases(): iterable
     {
         foreach (dbspec_read_cases()['hashes'] as $case) {
-            yield 'hashes/' . $case['id'] => [$case];
+            yield $case['id'] => [$case];
         }
     }
 
@@ -273,7 +300,7 @@ final class DbspecTest extends TestCase
     public static function renderCases(): iterable
     {
         foreach (ext_ddl()['cases'] as $case) {
-            yield 'render/' . $case['id'] => [$case];
+            yield $case['id'] => [$case];
         }
     }
 

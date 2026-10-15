@@ -111,7 +111,7 @@ final class DbspecPlanTest extends TestCase
     public static function casesCases(): iterable
     {
         foreach (plan_vectors()['cases'] as $case) {
-            yield 'plan/' . $case['id'] => [$case];
+            yield $case['id'] => [$case];
         }
     }
 
@@ -148,7 +148,7 @@ final class DbspecPlanTest extends TestCase
     public static function invalidCases(): iterable
     {
         foreach (plan_vectors()['invalid'] as $case) {
-            yield 'plan/invalid/' . $case['id'] => [$case];
+            yield $case['id'] => [$case];
         }
     }
 
@@ -174,7 +174,7 @@ final class DbspecPlanTest extends TestCase
     public static function chainsCases(): iterable
     {
         foreach (plan_vectors()['chains'] as $case) {
-            yield 'plan/chain/' . $case['id'] => [$case];
+            yield $case['id'] => [$case];
         }
     }
 
@@ -196,7 +196,7 @@ final class DbspecPlanTest extends TestCase
     public static function parseCases(): iterable
     {
         foreach (plan_vectors()['parse'] as $case) {
-            yield 'plan/parse/' . $case['id'] => [$case];
+            yield $case['id'] => [$case];
         }
     }
 
@@ -216,7 +216,7 @@ final class DbspecPlanTest extends TestCase
     public static function comparisonsCases(): iterable
     {
         foreach (plan_vectors()['comparisons'] as $case) {
-            yield 'plan/comparison/' . $case['id'] => [$case];
+            yield $case['id'] => [$case];
         }
     }
 

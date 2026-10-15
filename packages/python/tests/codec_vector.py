@@ -1,11 +1,9 @@
-# 공유 codec vector 검사: tests/codec/vectors.json의 모든 vector와 AES vector를
-# decode, encode, round trip으로 확인한다 (packages/ts/tests/codec-vector.mjs와
-# 같은 검사). ORM_CODEC_OUT(make codec-check)이 있으면 각 vector의 encode 출력을
-# 그 directory의 python.json에 쓰고, PHP의 CodecVectorsTest가 그것을 decode해 비교한다.
-# 실행: make codec-check/python
+# The checks of the shared codec vectors (tests/codec/vectors.json, tests/codec/aes-vectors.json): decode, encode and
+# round trip, the same checks as packages/ts/tests/codec-vector.mjs, and the unit tests of the codec errors and the
+# blind index. The vectors run from test_codec_vectors.py and test_codec_aes_vectors.py, one test for each vector.
+# Run: python -m packages.python.tests.codec_vector
 import base64
 import json
-import os
 import unittest
 from pathlib import Path
 
@@ -23,7 +21,6 @@ from polyspec.orm.codec import (
     host_encode,
 )
 from polyspec.orm.styled_value import StyledValue
-from .vector_case import VectorCase, vector_tests
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -214,47 +211,18 @@ class CodecVectorTest(unittest.TestCase):
         )
 
 
-def tearDownModule() -> None:  # noqa: N802 - unittest's function name
-    """Writes the encoded output of every codec vector only to the directory that ORM_CODEC_OUT (make codec-check)
-    names, through a temporary file renamed into place."""
-    directory = os.environ.get("ORM_CODEC_OUT")
-    if directory:
-        os.makedirs(directory, exist_ok=True)
-        temporary = os.path.join(directory, f"python.json.tmp-{os.getpid()}")
-        with open(temporary, "w", encoding="utf-8") as handle:
-            handle.write(json.dumps(OUTPUT, indent=2) + "\n")
-        os.replace(temporary, os.path.join(directory, "python.json"))
-
-
-class Case(VectorCase):
-    """A case of the vector file of this module."""
-
-
-def load_tests(
-    loader: unittest.TestLoader, tests: unittest.TestSuite, _pattern: object
-) -> unittest.TestSuite:
-    """One test for each codec vector, named by the vector, and one for each AES vector, named by its key."""
+def codec_vectors() -> list:
+    """The vectors of tests/codec/vectors.json, in the order of the file."""
     with open(ROOT / "tests" / "codec" / "vectors.json", encoding="utf-8") as handle:
-        tests.addTests(
-            vector_tests(
-                Case,
-                json.load(handle)["vectors"],
-                check_vector,
-                lambda vector: vector["name"],
-            )
-        )
+        return json.load(handle)["vectors"]
+
+
+def aes_vectors() -> list:
+    """The vectors of tests/codec/aes-vectors.json, in the order of the file."""
     with open(
         ROOT / "tests" / "codec" / "aes-vectors.json", encoding="utf-8"
     ) as handle:
-        tests.addTests(
-            vector_tests(
-                Case,
-                json.load(handle)["vectors"],
-                check_aes_vector,
-                lambda vector: vector["key"],
-            )
-        )
-    return tests
+        return json.load(handle)["vectors"]
 
 
 if __name__ == "__main__":

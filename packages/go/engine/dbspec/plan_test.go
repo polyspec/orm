@@ -177,15 +177,18 @@ func planSourceOf(lines []string) (*Document, error) {
 	return d, nil
 }
 
-// TestPlanVectors는 모든 case의 diff와 세 dialect의 statement, 그리고 invalid
-// case의 diagnostic이 vector와 같은지 확인한다.
+// TestPlanVectors는 모든 case의 diff와 세 dialect의 statement가 vector와 같은지
+// 확인한다. TestPlanInvalidVectors는 invalid case의 diagnostic을 확인한다.
 func TestPlanVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	v := loadPlanVectors(t)
-	for _, c := range v.Cases {
+	for _, c := range loadPlanVectors(t).Cases {
 		t.Run(c.ID, func(t *testing.T) { checkPlanCase(t, c) })
 	}
-	for _, c := range v.Invalid {
+}
+
+func TestPlanInvalidVectors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	for _, c := range loadPlanVectors(t).Invalid {
 		t.Run(c.ID, func(t *testing.T) { checkPlanInvalid(t, c) })
 	}
 }

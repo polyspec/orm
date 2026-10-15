@@ -80,7 +80,7 @@
       "file": "contracts/fixtures/aggregate_numeric.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/conversion_error_test.go", "symbol": "TestAggregateNumericFixture" },
-        { "implementation": "php", "test": "packages/php/tests/AggregateNumericTest.php" },
+        { "implementation": "php", "test": "packages/php/tests/AggregateNumericTest.php", "symbol": "AggregateNumericTest::test_aggregate_numeric" },
         { "implementation": "typescript", "test": "packages/ts/tests/aggregate_numeric.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_aggregate_numeric.py" },
         { "implementation": "rust", "test": "packages/rust/orm/src/value.rs", "symbol": "value::aggregate_numeric" }
@@ -102,7 +102,7 @@
       "file": "contracts/fixtures/decimal_model.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/decimal_model_test.go", "symbol": "TestDecimalModelFixture" },
-        { "implementation": "php", "test": "packages/php/tests/DecimalModelTest.php" },
+        { "implementation": "php", "test": "packages/php/tests/DecimalModelTest.php", "symbol": "DecimalModelTest::test_decimal_model" },
         { "implementation": "typescript", "test": "packages/ts/tests/decimal_model.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_decimal_model.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/decimal_model.rs", "symbol": "decimal_model_fixture" }
@@ -113,7 +113,7 @@
       "file": "contracts/fixtures/identity_load.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/identity_load_test.go", "symbol": "TestIdentityLoad" },
-        { "implementation": "php", "test": "packages/php/tests/IdentityLoadTest.php" },
+        { "implementation": "php", "test": "packages/php/tests/IdentityLoadTest.php", "symbol": "IdentityLoadTest::test_identity_load" },
         { "implementation": "typescript", "test": "packages/ts/tests/identity-load.mjs" },
         { "implementation": "python", "test": "packages/python/tests/identity_load.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/identity_load.rs", "symbol": "identity_load" }
@@ -147,7 +147,7 @@
       "file": "contracts/fixtures/styled_column_states.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/styled_state_test.go", "symbol": "TestStyledColumnStateFixture" },
-        { "implementation": "php", "test": "packages/php/tests/StyledValueTest.php" },
+        { "implementation": "php", "test": "packages/php/tests/StyledValueTest.php", "symbol": "StyledValueTest::test_styled_value" },
         { "implementation": "typescript", "test": "packages/ts/tests/styled-value.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_styled_column_states.py" },
         { "implementation": "rust", "test": "packages/rust/orm/src/codec.rs", "symbol": "codec::tests::styled_column_state_fixture_preserves_stored_values" }
@@ -158,7 +158,7 @@
       "file": "contracts/fixtures/install/changed_database.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/install_test.go", "symbol": "TestInstallVerifiesTheDatabase" },
-        { "implementation": "php", "test": "packages/php/tests/SchemaSetTest.php" },
+        { "implementation": "php", "test": "packages/php/tests/SchemaSetTest.php", "symbol": "SchemaSetTest::test_install_verifies_the_database" },
         { "implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs" },
         { "implementation": "python", "test": "packages/python/tests/install_changed_database.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/install.rs", "symbol": "install_verifies_the_database" }
@@ -169,9 +169,9 @@
       "file": "tests/codec/vectors.json", "cases": "$.vectors[*].name",
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/codec_test.go", "symbol": "TestCodecVectors" },
-        { "implementation": "php", "test": "packages/php/tests/CodecVectorsTest.php" },
+        { "implementation": "php", "test": "packages/php/tests/CodecVectorsTest.php", "symbol": "CodecVectorsTest::test_php_vector" },
         { "implementation": "typescript", "test": "packages/ts/tests/codec-vector.mjs" },
-        { "implementation": "python", "test": "packages/python/tests/codec_vector.py" },
+        { "implementation": "python", "test": "packages/python/tests/test_codec_vectors.py" },
         { "implementation": "rust", "test": "packages/rust/orm/src/codec.rs", "symbol": "codec::tests::vectors" }
       ]
     },
@@ -182,8 +182,8 @@
         { "implementation": "go", "test": "packages/go/orm/codec_test.go", "symbol": "TestCodecAESVectors" },
         { "implementation": "php", "test": "packages/php/tests/CodecAesVectorsTest.php", "symbol": "CodecAesVectorsTest::test_vector" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/codec_aes_vectors.rs", "symbol": "aes_vectors" },
-        { "implementation": "typescript", "test": "packages/ts/tests/codec-vector.mjs" },
-        { "implementation": "python", "test": "packages/python/tests/codec_vector.py" }
+        { "implementation": "typescript", "test": "packages/ts/tests/codec-aes-vector.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_codec_aes_vectors.py" }
       ]
     },
     {
@@ -191,8 +191,8 @@
       "file": "tests/codec/decode-vectors.json", "cases": "$.vectors[*].name",
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/codec_test.go", "symbol": "TestCodecDecodeVectors" },
-        { "implementation": "php", "test": "packages/php/tests/HostcodecTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/codec-vector.mjs" },
+        { "implementation": "php", "test": "packages/php/tests/HostcodecTest.php", "symbol": "HostcodecTest::test_decode_vector" },
+        { "implementation": "typescript", "test": "packages/ts/tests/codec-decode-vector.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_codec_decode_vectors.py" },
         { "implementation": "rust", "test": "packages/rust/orm/src/codec.rs", "symbol": "codec::tests::decode_vectors" }
       ]
@@ -202,7 +202,7 @@
       "file": "tests/ir/validate.json", "cases": "$.cases[*].name",
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/ir/validate_test.go", "symbol": "TestValidateVectors" },
-        { "implementation": "php", "test": "packages/php/tests/EngineTest.php" },
+        { "implementation": "php", "test": "packages/php/tests/EngineTest.php", "symbol": "EngineTest::test_validate" },
         { "implementation": "typescript", "test": "packages/ts/tests/engine.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_ir_validate.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/ir_validate.rs", "symbol": "validate_vectors" }
@@ -245,36 +245,36 @@
       "id": "dbspec-canonical", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/cases.json", "cases": "$.canonical[*].id",
       "bindings": [
-        { "implementation": "go", "test": "packages/go/engine/dbspec/vectors_test.go", "symbol": "TestSharedVectors" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecTest.php" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/dbspec.mjs" },
-        { "implementation": "python", "test": "packages/python/tests/dbspec_cases.py" },
-        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec.rs", "symbol": "shared_dbspec_vectors" }
+        { "implementation": "go", "test": "packages/go/engine/dbspec/vectors_test.go", "symbol": "TestCanonicalVectors" },
+        { "implementation": "php", "test": "packages/php/tests/DbspecTest.php", "symbol": "DbspecTest::test_canonical" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php", "symbol": "DbspecTest::test_canonical" },
+        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-canonical.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_dbspec_canonical.py" },
+        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec.rs", "symbol": "shared_dbspec_vectors::canonical" }
       ]
     },
     {
       "id": "dbspec-normalize", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/cases.json", "cases": "$.normalize[*].id",
       "bindings": [
-        { "implementation": "go", "test": "packages/go/engine/dbspec/vectors_test.go", "symbol": "TestSharedVectors" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecTest.php" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/dbspec.mjs" },
-        { "implementation": "python", "test": "packages/python/tests/dbspec_cases.py" },
-        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec.rs", "symbol": "shared_dbspec_vectors" }
+        { "implementation": "go", "test": "packages/go/engine/dbspec/vectors_test.go", "symbol": "TestNormalizeVectors" },
+        { "implementation": "php", "test": "packages/php/tests/DbspecTest.php", "symbol": "DbspecTest::test_normalize" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php", "symbol": "DbspecTest::test_normalize" },
+        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-normalize.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_dbspec_normalize.py" },
+        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec.rs", "symbol": "shared_dbspec_vectors::normalize" }
       ]
     },
     {
       "id": "dbspec-invalid", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/cases.json", "cases": "$.invalid[*].id",
       "bindings": [
-        { "implementation": "go", "test": "packages/go/engine/dbspec/vectors_test.go", "symbol": "TestSharedVectors" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecTest.php" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/dbspec.mjs" },
-        { "implementation": "python", "test": "packages/python/tests/dbspec_cases.py" },
-        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec.rs", "symbol": "shared_dbspec_vectors" }
+        { "implementation": "go", "test": "packages/go/engine/dbspec/vectors_test.go", "symbol": "TestInvalidVectors" },
+        { "implementation": "php", "test": "packages/php/tests/DbspecTest.php", "symbol": "DbspecTest::test_invalid" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php", "symbol": "DbspecTest::test_invalid" },
+        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-invalid.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_dbspec_invalid.py" },
+        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec.rs", "symbol": "shared_dbspec_vectors::invalid" }
       ]
     },
     {
@@ -282,10 +282,10 @@
       "file": "tests/dbspec/cases.json", "cases": "$.hashes[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/manifest_test.go", "symbol": "TestManifestVectors" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecManifestTest.php" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/dbspec.mjs" },
-        { "implementation": "python", "test": "packages/python/tests/dbspec_cases.py" },
+        { "implementation": "php", "test": "packages/php/tests/DbspecManifestTest.php", "symbol": "DbspecManifestTest::test_hashes" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php", "symbol": "DbspecTest::test_hashes" },
+        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-hashes.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_dbspec_hashes.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_manifest.rs", "symbol": "manifest_vectors" }
       ]
     },
@@ -295,9 +295,9 @@
       "bindings": [
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecSetsTest.php", "symbol": "DbspecSetsTest::test_sets" },
         { "implementation": "go", "test": "packages/go/engine/dbspec/manifest_test.go", "symbol": "TestDocumentSets" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecManifestTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/dbspec.mjs" },
-        { "implementation": "python", "test": "packages/python/tests/dbspec_cases.py" },
+        { "implementation": "php", "test": "packages/php/tests/DbspecManifestTest.php", "symbol": "DbspecManifestTest::test_sets" },
+        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-sets.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_dbspec_sets.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_manifest.rs", "symbol": "set_vectors" }
       ]
     },
@@ -306,10 +306,10 @@
       "file": "tests/dbspec/cases.json", "cases": "$.files[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/vectors_test.go", "symbol": "TestFileVectors" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecTest.php" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/dbspec.mjs" },
-        { "implementation": "python", "test": "packages/python/tests/dbspec_cases.py" },
+        { "implementation": "php", "test": "packages/php/tests/DbspecTest.php", "symbol": "DbspecTest::test_files" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php", "symbol": "DbspecTest::test_files" },
+        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-files.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_dbspec_files.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec.rs", "symbol": "shared_dbspec_files" }
       ]
     },
@@ -318,11 +318,11 @@
       "file": "tests/dbspec/cases.json", "cases": "$.positions[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/vectors_test.go", "symbol": "TestPositionVectors" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecTest.php" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/dbspec.mjs" },
-        { "implementation": "python", "test": "packages/python/tests/dbspec_cases.py" },
-        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec.rs", "symbol": "shared_dbspec_vectors" }
+        { "implementation": "php", "test": "packages/php/tests/DbspecTest.php", "symbol": "DbspecTest::test_positions" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php", "symbol": "DbspecTest::test_positions" },
+        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-positions.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_dbspec_positions.py" },
+        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec.rs", "symbol": "shared_dbspec_vectors::positions" }
       ]
     },
     {
@@ -330,8 +330,8 @@
       "file": "tests/dbspec/set-files.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/set_test.go", "symbol": "TestReadSetVectors" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecSetTest.php" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecSetTest.php" },
+        { "implementation": "php", "test": "packages/php/tests/DbspecSetTest.php", "symbol": "DbspecSetTest::test_set" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecSetTest.php", "symbol": "DbspecSetTest::test_set" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-set.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_set_files.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_set.rs", "symbol": "shared_set_file_vectors" }
@@ -342,9 +342,9 @@
       "file": "tests/dbspec/syntax.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/syntax_vectors_test.go", "symbol": "TestSharedSyntaxVectors" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecAnalyzeTest.php" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecAnalyzeTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-analyze.mjs" },
+        { "implementation": "php", "test": "packages/php/tests/DbspecAnalyzeTest.php", "symbol": "DbspecAnalyzeTest::test_syntax" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecAnalyzeTest.php", "symbol": "DbspecAnalyzeTest::test_syntax" },
+        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-syntax.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_syntax_vectors.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec.rs", "symbol": "shared_dbspec_syntax" }
       ]
@@ -354,8 +354,8 @@
       "file": "tests/dbspec/ddl.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/render_test.go", "symbol": "TestRenderVectors" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecRenderTest.php" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php" },
+        { "implementation": "php", "test": "packages/php/tests/DbspecRenderTest.php", "symbol": "DbspecRenderTest::test_ddl" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php", "symbol": "DbspecTest::test_render" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-render.mjs" },
         { "implementation": "python", "test": "packages/python/tests/dbspec_ddl.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_render.rs", "symbol": "render_vectors" }
@@ -366,8 +366,8 @@
       "file": "tests/dbspec/introspect.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "tests/dialects/introspect_physical_test.go", "symbol": "TestIntrospectUnsupported" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecIntrospectTest.php" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecIntrospectTest.php" },
+        { "implementation": "php", "test": "packages/php/tests/DbspecIntrospectTest.php", "symbol": "DbspecIntrospectTest::test_unsupported" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecIntrospectTest.php", "symbol": "DbspecIntrospectTest::test_unsupported" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-introspect.mjs" },
         { "implementation": "python", "test": "packages/python/tests/dbspec_introspect.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/dbspec_introspect.rs", "symbol": "introspect_unsupported" }
@@ -378,8 +378,8 @@
       "file": "tests/dbspec/show-create.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/show_create_test.go", "symbol": "TestMySQLShownCheckVectors" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecShowCreateTest.php" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecShowCreateTest.php" },
+        { "implementation": "php", "test": "packages/php/tests/DbspecShowCreateTest.php", "symbol": "DbspecShowCreateTest::test_show_create" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecShowCreateTest.php", "symbol": "DbspecShowCreateTest::test_introspect" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-show-create.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_show_create.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_show_create.rs", "symbol": "show_create_vectors" }
@@ -389,48 +389,48 @@
       "id": "dbspec-mermaid-export", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/mermaid.json", "cases": "$.export[*].id",
       "bindings": [
-        { "implementation": "go", "test": "packages/go/engine/dbspec/mermaid_test.go", "symbol": "TestMermaidVectors" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecMermaidTest.php" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecMermaidTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-mermaid.mjs" },
-        { "implementation": "python", "test": "packages/python/tests/dbspec_mermaid.py" },
-        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_mermaid.rs", "symbol": "mermaid_vectors" }
+        { "implementation": "go", "test": "packages/go/engine/dbspec/mermaid_test.go", "symbol": "TestMermaidExportVectors" },
+        { "implementation": "php", "test": "packages/php/tests/DbspecMermaidTest.php", "symbol": "DbspecMermaidTest::test_export" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecMermaidTest.php", "symbol": "DbspecMermaidTest::test_export" },
+        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-mermaid-export.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_dbspec_mermaid_export.py" },
+        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_mermaid.rs", "symbol": "mermaid_vectors::export" }
       ]
     },
     {
       "id": "dbspec-mermaid-import", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/mermaid.json", "cases": "$.import[*].id",
       "bindings": [
-        { "implementation": "go", "test": "packages/go/engine/dbspec/mermaid_test.go", "symbol": "TestMermaidVectors" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecMermaidTest.php" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecMermaidTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-mermaid.mjs" },
-        { "implementation": "python", "test": "packages/python/tests/dbspec_mermaid.py" },
-        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_mermaid.rs", "symbol": "mermaid_vectors" }
+        { "implementation": "go", "test": "packages/go/engine/dbspec/mermaid_test.go", "symbol": "TestMermaidImportVectors" },
+        { "implementation": "php", "test": "packages/php/tests/DbspecMermaidTest.php", "symbol": "DbspecMermaidTest::test_import" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecMermaidTest.php", "symbol": "DbspecMermaidTest::test_import" },
+        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-mermaid-import.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_dbspec_mermaid_import.py" },
+        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_mermaid.rs", "symbol": "mermaid_vectors::import" }
       ]
     },
     {
       "id": "dbspec-mermaid-invalid", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/mermaid.json", "cases": "$.invalid[*].id",
       "bindings": [
-        { "implementation": "go", "test": "packages/go/engine/dbspec/mermaid_test.go", "symbol": "TestMermaidVectors" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecMermaidTest.php" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecMermaidTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-mermaid.mjs" },
-        { "implementation": "python", "test": "packages/python/tests/dbspec_mermaid.py" },
-        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_mermaid.rs", "symbol": "mermaid_vectors" }
+        { "implementation": "go", "test": "packages/go/engine/dbspec/mermaid_test.go", "symbol": "TestMermaidInvalidVectors" },
+        { "implementation": "php", "test": "packages/php/tests/DbspecMermaidTest.php", "symbol": "DbspecMermaidTest::test_invalid" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecMermaidTest.php", "symbol": "DbspecMermaidTest::test_invalid" },
+        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-mermaid-invalid.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_dbspec_mermaid_invalid.py" },
+        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_mermaid.rs", "symbol": "mermaid_vectors::invalid" }
       ]
     },
     {
       "id": "dbspec-mermaid-round-trip", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/mermaid.json", "cases": "$.round_trip[*].id",
       "bindings": [
-        { "implementation": "go", "test": "packages/go/engine/dbspec/mermaid_test.go", "symbol": "TestMermaidVectors" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecMermaidTest.php" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecMermaidTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-mermaid.mjs" },
-        { "implementation": "python", "test": "packages/python/tests/dbspec_mermaid.py" },
-        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_mermaid.rs", "symbol": "mermaid_vectors" }
+        { "implementation": "go", "test": "packages/go/engine/dbspec/mermaid_test.go", "symbol": "TestMermaidRoundTripVectors" },
+        { "implementation": "php", "test": "packages/php/tests/DbspecMermaidTest.php", "symbol": "DbspecMermaidTest::test_round_trip" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecMermaidTest.php", "symbol": "DbspecMermaidTest::test_round_trip" },
+        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-mermaid-round-trip.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_dbspec_mermaid_round_trip.py" },
+        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_mermaid.rs", "symbol": "mermaid_vectors::round_trip" }
       ]
     },
     {
@@ -438,23 +438,23 @@
       "file": "tests/dbspec/plans.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestPlanVectors" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecPlanTest.php" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecPlanTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-plan.mjs" },
-        { "implementation": "python", "test": "packages/python/tests/dbspec_plans.py" },
-        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_plan.rs", "symbol": "plan_vectors" }
+        { "implementation": "php", "test": "packages/php/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_case" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_case" },
+        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-plan-cases.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_dbspec_plan_cases.py" },
+        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_plan.rs", "symbol": "plan_vectors::cases" }
       ]
     },
     {
       "id": "dbspec-plans-invalid", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/plans.json", "cases": "$.invalid[*].id",
       "bindings": [
-        { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestPlanVectors" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecPlanTest.php" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecPlanTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-plan.mjs" },
-        { "implementation": "python", "test": "packages/python/tests/dbspec_plans.py" },
-        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_plan.rs", "symbol": "plan_vectors" }
+        { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestPlanInvalidVectors" },
+        { "implementation": "php", "test": "packages/php/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_invalid" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_invalid" },
+        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-plan-invalid.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_dbspec_plan_invalid.py" },
+        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_plan.rs", "symbol": "plan_vectors::invalid" }
       ]
     },
     {
@@ -462,10 +462,10 @@
       "file": "tests/dbspec/plans.json", "cases": "$.chains[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestPlanChains" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecPlanTest.php" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecPlanTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-plan.mjs" },
-        { "implementation": "python", "test": "packages/python/tests/dbspec_plans.py" },
+        { "implementation": "php", "test": "packages/php/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_chain" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_chain" },
+        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-plan-chains.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_dbspec_plan_chains.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_plan.rs", "symbol": "plan_chains" }
       ]
     },
@@ -474,10 +474,10 @@
       "file": "tests/dbspec/plans.json", "cases": "$.parse[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestPlanParseErrors" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecPlanTest.php" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecPlanTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-plan.mjs" },
-        { "implementation": "python", "test": "packages/python/tests/dbspec_plans.py" },
+        { "implementation": "php", "test": "packages/php/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_parse" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_parse" },
+        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-plan-parse.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_dbspec_plan_parse.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_plan.rs", "symbol": "plan_parse_errors" }
       ]
     },
@@ -486,10 +486,10 @@
       "file": "tests/dbspec/plans.json", "cases": "$.comparisons[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestCompareSchemas" },
-        { "implementation": "php", "test": "packages/php/tests/DbspecPlanTest.php" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecPlanTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-plan.mjs" },
-        { "implementation": "python", "test": "packages/python/tests/dbspec_plans.py" },
+        { "implementation": "php", "test": "packages/php/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_comparison" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_comparison" },
+        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-plan-comparisons.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_dbspec_plan_comparisons.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_plan.rs", "symbol": "plan_comparisons" }
       ]
     },
@@ -498,7 +498,7 @@
       "file": "tests/dsn/sqlite-paths.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/sqlite_path_test.go", "symbol": "TestSQLitePathCases" },
-        { "implementation": "php", "test": "packages/php/tests/DsnTest.php" },
+        { "implementation": "php", "test": "packages/php/tests/DsnTest.php", "symbol": "DsnTest::test_sqlite_path" },
         { "implementation": "typescript", "test": "packages/ts/tests/dsn.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_sqlite_paths.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/sqlite_file_name.rs", "symbol": "sqlite_path_cases" }
@@ -520,7 +520,7 @@
       "file": "contracts/fixtures/statement_fault.json", "cases": "$.cases[*]",
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/statement_fault_test.go", "symbol": "TestStatementFaultSQLite" },
-        { "implementation": "php", "test": "packages/php/tests/StatementFaultTest.php" },
+        { "implementation": "php", "test": "packages/php/tests/StatementFaultTest.php", "symbol": "StatementFaultTest::test_statement_fault" },
         { "implementation": "typescript", "test": "packages/ts/tests/statement_fault.mjs" },
         { "implementation": "python", "test": "packages/python/tests/statement_fault.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/statement_fault.rs", "symbol": "statement_fault_cases" }
@@ -531,7 +531,7 @@
       "file": "tests/markdown/cases.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/markdownmodel/conformance_test.go", "symbol": "TestMarkdownConformance" },
-        { "implementation": "php", "test": "packages/php/tests/MarkdownConformanceTest.php" },
+        { "implementation": "php", "test": "packages/php/tests/MarkdownConformanceTest.php", "symbol": "MarkdownConformanceTest::test_markdown_conformance" },
         { "implementation": "python", "test": "packages/python/tests/markdown_conformance.py" },
         { "implementation": "rust", "test": "packages/rust/tests/tests/markdown_conformance.rs", "symbol": "markdown_conformance" },
         { "implementation": "typescript", "test": "packages/ts/tests/markdown_conformance.mjs" }

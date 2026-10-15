@@ -209,7 +209,8 @@ func TestInstallVerifiesTheDatabase(t *testing.T) {
 		s := fixtureSchema(t, strings.TrimSuffix(c.Document, ".dbs"))
 		t.Run(c.ID, func(t *testing.T) {
 			for _, driver := range []string{"sqlite", "mysql", "postgres"} {
-				t.Run(driver, func(t *testing.T) {
+				func() {
+					t.Logf("driver %s", driver)
 					dsn := newDatabase(t, driver)
 					db, err := orm.Connect(dsn, orm.Config{})
 					if err != nil {
@@ -237,9 +238,9 @@ func TestInstallVerifiesTheDatabase(t *testing.T) {
 						t.Fatalf("install over the changed database = %v, want %s", err, want)
 					}
 					if _, err := raw.Exec(c.Remaining); err != nil {
-						t.Fatalf("the rejected install changed the database: %v", err)
+						t.Fatalf("%s: the rejected install changed the database: %v", driver, err)
 					}
-				})
+				}()
 			}
 		})
 	}

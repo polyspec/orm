@@ -272,6 +272,7 @@ func TestIntrospectUnsupported(t *testing.T) {
 				}
 			}
 		}}
-		t.Run(probe.ID, func(t *testing.T) { runProbeCase(t, servers, probe, index, "") })
+		// The subtest is the case id of tests/dbspec/introspect.json; the probe keeps its dialect-qualified id.
+		t.Run(c.ID, func(t *testing.T) { runProbeCase(t, servers, probe, index, "") })
 	}
 }

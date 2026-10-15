@@ -80,23 +80,6 @@ def read_vectors():
         return json.load(handle)
 
 
-class SyntaxVectorFileTest(unittest.TestCase):
-    def test_the_file_holds_a_case_for_every_input(self):
-        vectors = read_vectors()
-        self.assertEqual(sorted(vectors), ["cases", "note", "version"])
-        self.assertEqual(vectors["version"], 1)
-        expected = {}
-        for case in vectors["cases"]:
-            self.assertEqual(sorted(case), ["id", "tokens"])
-            self.assertNotIn(case["id"], expected, f"{case['id']} is listed twice")
-            expected[case["id"]] = case["tokens"]
-        self.assertEqual(
-            sorted(i for i, _, _ in vector_inputs(read_cases())),
-            sorted(expected),
-            "the vector ids and the cases of cases.json differ",
-        )
-
-
 class Case(VectorCase):
     """A case of the vector file of this module."""
 

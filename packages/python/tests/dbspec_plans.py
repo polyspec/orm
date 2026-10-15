@@ -4,7 +4,6 @@
 import json
 import unittest
 from pathlib import Path
-from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -13,7 +12,6 @@ from polyspec.orm.dbspec.compare import compare_schemas  # noqa: E402
 from polyspec.orm.dbspec.plan import chain_plans, parse_plan  # noqa: E402
 from polyspec.orm.dbspec.plan_diff import diff_plan  # noqa: E402
 from polyspec.orm.dbspec.plan_steps import effect_text, plan_steps  # noqa: E402
-from .vector_case import VectorCase, vector_tests  # noqa: E402
 
 
 def _text(value) -> str:
@@ -130,25 +128,16 @@ def check_comparison(_test: unittest.TestCase, case: dict) -> None:
         ], f"{case['id']}: differences differ"
 
 
-class Case(VectorCase):
-    """A case of the vector file of this module."""
+# The check of each section of plans.json; each section runs from its own module (test_dbspec_plan_<section>.py).
+CHECKS = {
+    "cases": check_case,
+    "invalid": check_invalid,
+    "chains": check_chain,
+    "parse": check_parse,
+    "comparisons": check_comparison,
+}
 
 
-def load_tests(
-    loader: unittest.TestLoader, tests: unittest.TestSuite, _pattern: object
-) -> unittest.TestSuite:
-    """One test for each case of every section, named by the case id."""
-    data = json.loads((ROOT / "tests" / "dbspec" / "plans.json").read_text())
-    for section, check in (
-        ("cases", check_case),
-        ("invalid", check_invalid),
-        ("chains", check_chain),
-        ("parse", check_parse),
-        ("comparisons", check_comparison),
-    ):
-        tests.addTests(vector_tests(Case, data[section], check))
-    return tests
-
-
-if __name__ == "__main__":
-    testcase.main()
+def section_cases(section: str) -> list:
+    """The cases of one section of plans.json, in the order of the file."""
+    return json.loads((ROOT / "tests" / "dbspec" / "plans.json").read_text())[section]

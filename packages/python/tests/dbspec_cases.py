@@ -1,6 +1,7 @@
-# 공유 dbspec 사례 검사: tests/dbspec/cases.json의 canonical, normalize, invalid,
-# hashes, sets, files 사례를 전부 실행한다 (다른 client의 dbspec test와 같은 검사).
-# 실행: python packages/python/tests/dbspec_cases.py
+# The checks of the shared dbspec cases of tests/dbspec/cases.json (the same checks as the dbspec tests of the other
+# clients) and the unit tests of the parse positions. Each section of cases.json runs from its own module,
+# test_dbspec_<section>.py, one test for each case of that section only, named by the case id.
+# Run: python -m packages.python.tests.dbspec_cases
 import dataclasses
 import unittest
 from pathlib import Path
@@ -14,8 +15,6 @@ from polyspec.orm.dbspec import (
     parse_dbspec,
     read_dbspec_file,
 )
-from .dbspec_cases_reader import read_cases  # noqa: E402
-from .vector_case import VectorCase, vector_tests  # noqa: E402
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -238,32 +237,6 @@ def check_files(test: unittest.TestCase, case) -> None:
     expected = [(e["line"], e["column"], e["rule"]) for e in case["errors"]]
     if found != expected:
         test.fail(f"{case['id']}: want {expected} got {found}")
-
-
-# Each section's check, in the order of cases.json.
-CHECKS = (
-    ("canonical", check_canonical),
-    ("normalize", check_normalize),
-    ("invalid", check_invalid),
-    ("hashes", check_hashes),
-    ("sets", check_sets),
-    ("files", check_files),
-    ("positions", check_positions),
-)
-
-
-class Case(VectorCase):
-    """A case of the vector file of this module."""
-
-
-def load_tests(
-    loader: unittest.TestLoader, tests: unittest.TestSuite, _pattern: object
-) -> unittest.TestSuite:
-    """One test for each case of every section, named by the case id."""
-    cases = read_cases()
-    for section, check in CHECKS:
-        tests.addTests(vector_tests(Case, cases[section], check))
-    return tests
 
 
 class DbspecPositionTest(unittest.TestCase):

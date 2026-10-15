@@ -229,7 +229,7 @@ final class DbspecIntrospectTest extends TestCase
             throw new RuntimeException('Missing introspect vectors');
         }
         foreach ($vectors['cases'] as $case) {
-            yield "introspect/{$case['dialect']}/{$case['id']}" => [$case];
+            yield $case['id'] => [$case];
         }
     }
 
