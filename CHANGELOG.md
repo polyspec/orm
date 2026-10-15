@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The ip encoder refuses white space instead of trimming it. (#T109)
 - A single-stage text stage list stores the text alike in every client. (#T108)
 - A relative time outside 0001 to 9999 is NULL on every database. (#T98)
 - The dbspec check and the IR validator read one meet table per client. (#T96-1)
