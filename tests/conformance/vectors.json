@@ -1269,7 +1269,7 @@
             ],
             "error": null,
             "kind": "insert",
-            "sql": "INSERT INTO `author` (`name`, `user_seq`, `service_seq`, `service_region_seq`, `service_member_seq`, `start_dt`, `end_dt`, `price`, `ip`, `aes_hex_email`, `json_setting`, `serialize_data`, `email_blind_index`, `aes_key_version`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, INET6_ATON(?), HEX(?), ?, ?, ?, ?)",
+            "sql": "INSERT INTO `author` (`name`, `user_seq`, `service_seq`, `service_region_seq`, `service_member_seq`, `start_dt`, `end_dt`, `price`, `ip`, `aes_hex_email`, `json_setting`, `serialize_data`, `email_blind_index`, `aes_key_version`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, INET6_ATON(?), ?, ?, ?, ?, ?)",
             "tables": [
               "author"
             ],

@@ -117,11 +117,11 @@ impl Dialect {
         }
     }
 
-    /// 쓰기에서 codec stage를 SQL에서 적용하는지 판단한다. PostgreSQL의 `bytes` column은
+    /// 쓰기에서 codec stage를 SQL에서 적용하는지 판단한다(MySQL: `ip`). `hex`는 모든 dialect에서 executor가 적용한다. PostgreSQL의 `bytes` column은
     /// `bytea`라서 `ip`도 executor가 적용한다.
     pub fn handles_style(self, style: &str) -> bool {
         match self {
-            Dialect::MySql => style == "hex" || style == "ip",
+            Dialect::MySql => style == "ip",
             Dialect::Postgres | Dialect::Sqlite => false,
         }
     }
@@ -229,10 +229,8 @@ impl Dialect {
             Dialect::MySql => {
                 let mut expr = ph;
                 for s in styles {
-                    match *s {
-                        "hex" => expr = format!("HEX({expr})"),
-                        "ip" => expr = format!("INET6_ATON({expr})"),
-                        _ => {}
+                    if *s == "ip" {
+                        expr = format!("INET6_ATON({expr})");
                     }
                 }
                 expr

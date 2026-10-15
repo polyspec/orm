@@ -82,10 +82,10 @@ final class Dialect
         return $this->name === 'mysql' && $precision > 0 ? "CURRENT_TIMESTAMP($precision)" : 'CURRENT_TIMESTAMP';
     }
 
-    /** 쓰기에서 codec stage를 SQL에서 적용하는지 여부다. 나머지는 executor가 적용한다. */
+    /** 쓰기에서 codec stage를 SQL에서 적용하는지 여부다(MySQL: ip). hex를 포함한 나머지는 executor가 적용한다. */
     public function handlesStyle(string $style): bool
     {
-        return $this->name === 'mysql' && ($style === 'hex' || $style === 'ip');
+        return $this->name === 'mysql' && $style === 'ip';
     }
 
     /**
@@ -176,7 +176,6 @@ final class Dialect
     {
         foreach ($styles as $s) {
             $ph = match ($s) {
-                'hex' => "HEX($ph)",
                 'ip' => "INET6_ATON($ph)",
             };
         }

@@ -145,13 +145,12 @@ const mysql: Dialect = {
   writeExpr(ph, stages) {
     let expr = ph;
     for (const s of stages) {
-      if (s === 'hex') expr = `HEX(${expr})`;
-      else if (s === 'ip') expr = `INET6_ATON(${expr})`;
+      if (s === 'ip') expr = `INET6_ATON(${expr})`;
     }
     return expr;
   },
   now: precision => precision > 0 ? `CURRENT_TIMESTAMP(${precision})` : 'CURRENT_TIMESTAMP',
-  handlesStage: s => s === 'hex' || s === 'ip',
+  handlesStage: s => s === 'ip',
   decodesStage: s => s === 'ip',
   hostNow: false,
   clockOperand: col => col,

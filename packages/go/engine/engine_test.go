@@ -174,7 +174,7 @@ func TestWrites(t *testing.T) {
 	  {"column":"name","p":0},{"column":"aes_hex_email","p":1},{"column":"user_seq","p":2},
 	  {"column":"service_seq","p":3},{"column":"service_region_seq","p":4},{"column":"service_member_seq","p":5},
 	  {"column":"start_dt","p":6},{"column":"end_dt","p":7}]`)
-	if want := "INSERT INTO `author` (`name`, `aes_hex_email`, `user_seq`, `service_seq`, `service_region_seq`, `service_member_seq`, `start_dt`, `end_dt`, `email_blind_index`, `aes_key_version`) VALUES (?, HEX(?), ?, ?, ?, ?, ?, ?, ?, ?)"; p.Steps[0].SQL != want {
+	if want := "INSERT INTO `author` (`name`, `aes_hex_email`, `user_seq`, `service_seq`, `service_region_seq`, `service_member_seq`, `start_dt`, `end_dt`, `email_blind_index`, `aes_key_version`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"; p.Steps[0].SQL != want {
 		t.Errorf("insert: %s", p.Steps[0].SQL)
 	}
 	if len(p.Steps[0].BindSlots) < 9 || !slices.Equal(p.Steps[0].BindSlots[8].HostStyles, []string{"blind_index"}) {

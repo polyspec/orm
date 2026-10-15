@@ -175,7 +175,7 @@ def _ascii_lower(x: str) -> str:
 
 
 class MysqlDialect(_Dialect):
-    """AES는 host 쪽이라 row의 key version이 key를 고르고, hex와 ip는 SQL 쪽이다."""
+    """AES와 hex는 host 쪽이라 row의 key version이 key를 고르고 모든 dialect가 같은 hex text를 쓰며, ip는 SQL 쪽이다."""
 
     name = "mysql"
 
@@ -207,9 +207,7 @@ class MysqlDialect(_Dialect):
     def write_expr(self, ph, stages):
         expr = ph
         for stage in stages:
-            if stage == "hex":
-                expr = f"HEX({expr})"
-            elif stage == "ip":
+            if stage == "ip":
                 expr = f"INET6_ATON({expr})"
         return expr
 
@@ -219,7 +217,7 @@ class MysqlDialect(_Dialect):
         )
 
     def handles_stage(self, stage):
-        return stage in ("hex", "ip")
+        return stage == "ip"
 
     def decodes_stage(self, stage):
         return stage == "ip"

@@ -40,7 +40,7 @@ type Dialect interface {
 	// MySQL은 p > 0이면 CURRENT_TIMESTAMP(p), 나머지는 CURRENT_TIMESTAMP다.
 	Now(precision int) string
 	// HandlesStyle은 쓰기에서 codec stage를 이 dialect의 SQL에서 적용하는지 알린다
-	// (MySQL: hex, ip). 나머지 stage는 executor가 적용한다.
+	// (MySQL: ip). hex를 포함한 나머지 stage는 executor가 적용한다.
 	HandlesStyle(style string) bool
 	// DecodesStyle은 읽기에서 codec stage를 이 dialect의 SQL에서 푸는지 알린다(MySQL: ip).
 	// hex는 어느 dialect도 SQL에서 풀지 않는다: UNHEX는 홀수 길이를 받고 공백이 있는 셀에 NULL을

@@ -616,7 +616,7 @@ pub fn aes_decrypt(cipher_text: &[u8], key: &str) -> Result<Vec<u8>> {
     cipher.decrypt(&nonce, Payload { msg: &cipher_text[offset + 12..], aad: AES_V2_PREFIX }).map_err(|_| err(CODEC_DECODE, "aes: authentication failed"))
 }
 
-/// `HEX(...)`: upper-case hex text.
+/// Upper-case hex text, the form every encoder writes.
 pub fn hex_upper(b: &[u8]) -> String {
     const DIGITS: &[u8; 16] = b"0123456789ABCDEF";
     let mut s = String::with_capacity(b.len() * 2);
@@ -627,7 +627,7 @@ pub fn hex_upper(b: &[u8]) -> String {
     s
 }
 
-/// Reads the upper-case hex text that `hex_upper` and MySQL `HEX()` write. The
+/// Reads the upper-case hex text that `hex_upper` writes. The
 /// text is decoded exactly: a lower-case letter, white space or any other byte
 /// outside the upper-case hex digits is `CODEC_DECODE` (docs/codec.md).
 pub fn hex_decode(s: &str) -> Result<Vec<u8>> {

@@ -7,7 +7,7 @@ import (
 
 // MySQL is the primary dialect. Style expressions are defined to preserve the
 // stored byte representation
-// AES is host-side; hex and IP packing remain SQL-side.
+// AES and hex are host-side; IP packing remains SQL-side.
 type MySQL struct{}
 
 func (MySQL) Name() string                   { return "mysql" }
@@ -41,9 +41,11 @@ func (MySQL) RowLock(mode string) (string, bool) {
 	}
 }
 
-// AES is host-side so row version metadata can select the key before decode.
-// hex and ip remain SQL-side because they do not depend on a secret.
-func (MySQL) HandlesStyle(s string) bool { return s == "hex" || s == "ip" }
+// AES is host-side so row version metadata can select the key before decode,
+// and hex is host-side so every dialect writes and reads the same text
+// (docs/dialects.md, Rules that keep the three databases identical). ip
+// remains SQL-side: INET6_ATON packs the address into the binary column.
+func (MySQL) HandlesStyle(s string) bool { return s == "ip" }
 
 func (MySQL) DecodesStyle(s string) bool { return s == "ip" }
 
@@ -98,10 +100,7 @@ func (MySQL) ReadExpr(col string, styles []string, ph func() string) (string, in
 func (MySQL) WriteExpr(ph func() string, styles []string) (string, int) {
 	expr, binds := ph(), 1
 	for _, s := range styles {
-		switch s {
-		case "hex":
-			expr = "HEX(" + expr + ")"
-		case "ip":
+		if s == "ip" {
 			expr = "INET6_ATON(" + expr + ")"
 		}
 	}

@@ -1292,13 +1292,15 @@
               },
               {
                 "from": "param",
+                "length": 255,
                 "param": 1,
-                "type": "bytes"
+                "type": "varchar"
               },
               {
                 "from": "param",
+                "length": 255,
                 "param": 2,
-                "type": "bytes"
+                "type": "varchar"
               },
               {
                 "from": "param",
@@ -1328,7 +1330,7 @@
                 "type": "datetime"
               }
             ],
-            "sql": "UPDATE `author` SET `read_count` = `author`.`read_count` + ?, `aes_hex_email` = HEX(?), `aes_hex_phone` = HEX(?), `email_blind_index` = ?, `phone_blind_index` = ?, `aes_key_version` = ?, `updated_ts` = CURRENT_TIMESTAMP(6) WHERE `author`.`seq` = ? AND `author`.`updated_ts` = ?",
+            "sql": "UPDATE `author` SET `read_count` = `author`.`read_count` + ?, `aes_hex_email` = ?, `aes_hex_phone` = ?, `email_blind_index` = ?, `phone_blind_index` = ?, `aes_key_version` = ?, `updated_ts` = CURRENT_TIMESTAMP(6) WHERE `author`.`seq` = ? AND `author`.`updated_ts` = ?",
             "tables": [
               "author"
             ]
@@ -1509,8 +1511,9 @@
               },
               {
                 "from": "param",
+                "length": 255,
                 "param": 1,
-                "type": "bytes"
+                "type": "varchar"
               },
               {
                 "from": "param",
@@ -1561,7 +1564,7 @@
                 "type": "i32"
               }
             ],
-            "sql": "INSERT INTO `author` (`name`, `aes_hex_email`, `start_dt`, `end_dt`, `user_seq`, `service_seq`, `service_region_seq`, `service_member_seq`, `email_blind_index`, `aes_key_version`) VALUES (?, HEX(?), ?, ?, ?, ?, ?, ?, ?, ?)",
+            "sql": "INSERT INTO `author` (`name`, `aes_hex_email`, `start_dt`, `end_dt`, `user_seq`, `service_seq`, `service_region_seq`, `service_member_seq`, `email_blind_index`, `aes_key_version`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             "tables": [
               "author"
             ]
