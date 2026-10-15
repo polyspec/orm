@@ -4,7 +4,7 @@
   "type": "module",
   "packageManager": "npm@12.2.0+sha512.66c2632a94e796649738b2d7894d710c2cc2e1696893823066687f6b0d8a52e5f2b54eeaeaa32ffdc513ecca1e49ff794a5c2ec3f9515d879f1b3182b291cf35",
   "engines": {
-    "node": ">=26.11.1"
+    "node": ">=26.12.0"
   },
   "workspaces": [
     "packages/*"
@@ -21,7 +21,7 @@
     "typescript:test": "node tests/run-long.mts typescript-build -- npm run typescript:build && node packages/ts/tests/dsn.mjs && node packages/ts/tests/idle-connection-end.mjs && node packages/ts/tests/engine.mjs && node packages/ts/tests/generate.mjs && node packages/ts/tests/generate-scan.mjs && node packages/ts/tests/codec-vector.mjs && node packages/ts/tests/styled-value.mjs && node packages/ts/tests/dbspec.mjs && node packages/ts/tests/dbspec-rules.mjs && node packages/ts/tests/package-declarations.mjs && node packages/ts/tests/request_hook.mjs && node scripts/typescript/sqlite-test.mts"
   },
   "devDependencies": {
-    "@polyspec/kit": "https://github.com/polyspec/kit/releases/download/v0.0.47/polyspec-kit-npm-0.0.47.tgz",
+    "@polyspec/kit": "https://github.com/polyspec/kit/releases/download/v0.0.50/polyspec-kit-npm-0.0.50.tgz",
     "@types/node": "26.6.5",
     "@types/semver": "7.8.0",
     "ajv": "8.20.0",

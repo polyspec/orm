@@ -1,10 +1,11 @@
 // Installs the mise release that config/toolchain.json mise declares into var/tools/mise-release, with the wrapper mise in
 // var/tools/bin; the data, cache, state and config of mise, its installs and its shims, are var/tools/mise.
-// mise installs every other tool of the checkout from mise.toml and mise.lock, so it is installed by the bootstrap, after the npm
-// of packageManager and before any package. The archive is mise-v<version>-<os>-<arch>.tar.gz of the GitHub release of mise for
+// mise installs every other tool of the checkout from mise.toml and mise.lock, so it is installed first by the bootstrap, which
+// then installs the node of mise.toml with it (installNode), before npm and before any package (K171). The archive is mise-v<version>-<os>-<arch>.tar.gz of the GitHub release of mise for
 // this platform; the download is refused unless its sha256 is the digest that the declaration gives for the platform. The
 // wrapper keeps every directory that mise reads or writes under var/tools, trusts the config of the checkout and installs only
 // what mise.lock pins (MISE_LOCKED), so nothing of the machine changes and no config of the home is read.
+import { execFileSync } from 'node:child_process';
 import { rmSync } from 'node:fs';
 import { writeAtomic } from './files.mts';
 import path from 'node:path';
@@ -121,4 +122,27 @@ export function installMise({ root, declared, platform = `${process.platform}-${
   writeWrapper(root, MISE_WRAPPER, miseWrapper(root, binary(prefix), declared.version), print);
   writeAtomic(toolsPath(root, 'go.mod'), TOOLS_GO_MOD);
   return result;
+}
+
+/** The wrapper of var/tools/bin that runs the Node.js of mise.toml, which mise installs into var/tools/mise. */
+export const NODE_WRAPPER = 'node';
+
+/**
+ * Installs the Node.js of mise.toml at the digest of mise.lock with the mise of the checkout (`mise install --locked node`)
+ * and writes the wrapper node of var/tools/bin, which starts that node by the absolute path that `mise where node` prints.
+ * The wrapper runs node itself, not the shim of mise: a shim puts the bin directory of the install, with the npm that Node.js
+ * bundles, first on the PATH of node, so a command npm of a tool would not run the npm of packageManager. A mise.toml that
+ * declares no node, or a mise.lock that does not pin it, fails the install of mise. Returns the path of the wrapper.
+ */
+export function installNode({ root, print = () => {} }: { root: string; print?: (text: string) => void }): string {
+  const mise = toolsPath(root, 'bin', MISE_WRAPPER);
+  try {
+    run(mise, ['install', '--locked', 'node'], { cwd: root, env: bootstrapEnvironment(root) }, print);
+  } catch (error) {
+    if (!(error instanceof Error)) throw error;
+    throw new Error(`${error.message}; mise.toml must declare node, the Node.js release of the checkout, and mise.lock must pin it (make toolchain-lock)`);
+  }
+  const directory = execFileSync(mise, ['where', 'node'], { cwd: root, env: bootstrapEnvironment(root), encoding: 'utf8' }).trim();
+  writeWrapper(root, NODE_WRAPPER, wrapperText('the Node.js of mise.toml of this checkout', `exec ${quote(path.join(directory, 'bin', 'node'))} "$@"`), print);
+  return toolsPath(root, 'bin', NODE_WRAPPER);
 }

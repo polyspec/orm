@@ -10,6 +10,12 @@ ONLINE ?=
 ifneq ($(wildcard $(KIT)/kit.mk),)
 include $(KIT)/kit.mk
 else
+# The tools of the two steps, as kit.mk names them: the node of the machine starts the bootstrap, and the npm that it installs
+# runs npm ci, by its absolute path (K171). The bootstrap also installs the node of the checkout, which a recipe of the
+# repository that install-packages needs starts as $(NODE), as under kit.mk (K185); the other tools come with install-tools.
+BOOTSTRAP_NODE := node
+NODE := $(CURDIR)/var/tools/bin/node
+NPM := $(CURDIR)/var/tools/bin/npm
 ifneq ($(filter-out install-tools install-packages,$(or $(MAKECMDGOALS),the default goal)),)
 $(error $(KIT)/kit.mk is missing; run make install-tools TOOLS=npm, then make install-packages)
 endif
@@ -17,7 +23,7 @@ endif
 .PHONY: install-tools
 install-tools: ## Install the npm of packageManager into var/tools, before the package is installed; only TOOLS=npm; ONLINE
 ifeq ($(TOOLS),npm)
-	$(ONLINE) node scripts/kit/bootstrap/bootstrap.mts
+	$(ONLINE) $(BOOTSTRAP_NODE) scripts/kit/bootstrap/bootstrap.mts
 else
 	@echo "install-tools: only TOOLS=npm runs before the package is installed; run make install-tools TOOLS=npm, then make install-packages" >&2; exit 2
 endif
@@ -27,4 +33,4 @@ endif
 # The package-lock pins @polyspec/kit by the URL of its release asset. npm 12 refuses a dependency of a URL unless the project
 # opts in; --allow-remote=root allows only the URLs that package.json itself names.
 install-packages: ## Install the packages of package-lock.json, @polyspec/kit included, with the npm of var/tools; ONLINE
-	$(ONLINE) var/tools/bin/npm ci --allow-remote=root
+	$(ONLINE) $(NPM) ci --allow-remote=root

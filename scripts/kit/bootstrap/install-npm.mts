@@ -45,8 +45,11 @@ function unpackVerified({ root, next, version, sha512, print }: { root: string; 
 /** The wrappers of var/tools/bin that run the installed npm, each with its script of npm/bin. */
 export const NPM_WRAPPERS = { npm: 'npm-cli.js', npx: 'npx-cli.js' };
 
-/** Installs the declared npm `{ version, sha512 }` into var/tools/npm of `root` and writes the wrappers; returns `{ installed, release }`. */
-export function installNpm({ root, declared, print = () => {} }: { root: string; declared: { version: string; sha512?: string | undefined }; print?: (text: string) => void }) {
+/**
+ * Installs the declared npm `{ version, sha512 }` into var/tools/npm of `root` and writes the wrappers, which run it with
+ * `node`, the node of the checkout by its absolute path; returns `{ installed, release }`.
+ */
+export function installNpm({ root, declared, node, print = () => {} }: { root: string; declared: { version: string; sha512?: string | undefined }; node: string; print?: (text: string) => void }) {
   const recorded = declared.sha512 ? `${declared.version}+sha512.${declared.sha512}` : declared.version;
   const prefix = toolsPath(root, 'npm');
   const result = installOnce({
@@ -58,7 +61,7 @@ export function installNpm({ root, declared, print = () => {} }: { root: string;
     },
   });
   for (const [name, cli] of Object.entries(NPM_WRAPPERS)) {
-    writeWrapper(root, name, wrapperText(`${name} ${declared.version} of this checkout`, `exec node ${quote(path.join(prefix, 'node_modules/npm/bin', cli))} "$@"`), print);
+    writeWrapper(root, name, wrapperText(`${name} ${declared.version} of this checkout`, `exec ${quote(node)} ${quote(path.join(prefix, 'node_modules/npm/bin', cli))} "$@"`), print);
   }
   return result;
 }

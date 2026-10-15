@@ -32,19 +32,20 @@ jobs:
       TAG: ${{ github.ref_name }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      # actions/checkout v6.1.0: the whole history and every branch, so origin/main is there for the ancestry check.
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      # actions/checkout v7.0.1: the whole history and every branch, so origin/main is there for the ancestry check.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
-      # actions/setup-node v6.5.0: the Node.js of .node-version runs the bootstrap and the tools of @polyspec/kit. The pinned
-      # npm of var/tools installs the packages, so the cache of setup-node is off.
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+      # actions/setup-node v7.1.0: the Node.js of mise.toml starts the bootstrap, which installs that release into var/tools
+      # with mise (K171); the tools of @polyspec/kit then run the node of var/tools. The pinned npm of var/tools installs the
+      # packages, so the cache of setup-node is off.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
-          node-version-file: .node-version
+          node-version-file: mise.toml
           package-manager-cache: false
-      # actions/setup-php: the PHP of .php-version runs the Composer proof of the release; a checkout that declares
+      # shivammathur/setup-php 2.40.0: the PHP of .php-version runs the Composer proof of the release; a checkout that declares
       # none keeps the PHP of the runner.
-      - uses: shivammathur/setup-php@d52fc211a0436f8839a587b3b5b8efddab4744ea
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
         if: ${{ hashFiles('.php-version') != '' }}
         with:
           php-version-file: .php-version

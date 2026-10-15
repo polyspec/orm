@@ -7,6 +7,5 @@
       "tests/kit/record-*.mts"
     ]
   },
-  "ignoreBinaries": ["make", "go", "rustup", "shasum", "php", "composer", "python3", "cargo", "node", "git"],
   "ignoreDependencies": ["@polyspec/kit", "oxlint", "oxlint-tsgolint", "jscpd"]
 }
