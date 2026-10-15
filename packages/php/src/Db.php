@@ -1122,6 +1122,18 @@ final class Db
     }
 
     /**
+     * A bound datetime value as text with precision fraction digits: a digit past precision must be zero and is
+     * dropped, and a non-zero digit there is no value of the column (CODEC_ENCODE).
+     */
+    private static function boundTimeText(\DateTimeImmutable $t, int $precision, string $colType): string
+    {
+        if (trim(substr($t->format('u'), $precision), '0') !== '') {
+            throw new OrmException(Code::CODEC_ENCODE, "$colType value " . $t->format('Y-m-d H:i:s.u') . " has a non-zero digit past its $precision fraction digits");
+        }
+        return self::timeText($t, $precision);
+    }
+
+    /**
      * datetime이나 date 값을 offset 없는 text로 쓴다. datetime은 UTC로 바꾸고
      * column precision 자리의 소수를 가지므로, SQLite에 저장된 text와 같고
      * MySQL과 PostgreSQL은 offset literal을 받지 않는다(docs/dialects.md). date는
@@ -1156,7 +1168,7 @@ final class Db
         if ($v instanceof \DateTimeInterface) {
             return $colType === 'date'
                 ? $v->format('Y-m-d')
-                : self::timeText(\DateTimeImmutable::createFromInterface($v)->setTimezone($zone), $precision);
+                : self::boundTimeText(\DateTimeImmutable::createFromInterface($v)->setTimezone($zone), $precision, $colType);
         }
         if (!is_string($v)) {
             return $v;
@@ -1179,13 +1191,13 @@ final class Db
             if ($t === false || $t->format('Y-m-d H:i:s.u') !== $text) {
                 throw self::invalidTimeText($v, $colType);
             }
-            return self::timeText($t, $precision);
+            return self::boundTimeText($t, $precision, $colType);
         }
         $t = \DateTimeImmutable::createFromFormat('!Y-m-d H:i:s.uP', $text . ($offset === 'Z' ? '+00:00' : $offset));
         if ($t === false || $t->format('Y-m-d H:i:s.u') !== $text) {
             throw self::invalidTimeText($v, $colType);
         }
-        return self::timeText($t->setTimezone($zone), $precision);
+        return self::boundTimeText($t->setTimezone($zone), $precision, $colType);
     }
 
     private static function invalidTimeText(string $v, string $colType): OrmException
@@ -1212,6 +1224,11 @@ final class Db
                     break;
                 case 'param':
                     $v = $params[$b['param']];
+                    // A transformed value is the text of its operator, and a host-styled value is the input of its
+                    // first stage, which Codec::hostEncode checks.
+                    if (($b['transform'] ?? '') === '' && empty($b['host_styles'])) {
+                        ParamCheck::check($b['param'], $v, ParamCheck::bindSlotType($b), $this->zone);
+                    }
                     $colType = $b['col_type'] ?? '';
                     if (($colType === 'datetime' || $colType === 'date' || $colType === 'time') && $v !== null) {
                         $v = $this->bindTimeValue($v, $colType, $b['precision'] ?? 0);

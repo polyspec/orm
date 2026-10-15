@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { bindSlotType, checkParam } from './bind_check.js';
 import { blindIndex, decode, hostDecode, hostEncode } from './codec.js';
 import type { Assemble, BindSlot, Group, KeyReference, Plan, PlanStep, Request } from './ir.js';
 import { driverValue, isolationSql, openDriver, parseDsn, sqliteBusy, zoneOffset, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue, type Isolation, type PoolStats, type StatementDone } from './driver.js';
@@ -245,7 +246,8 @@ function pad2(n: number): string { return String(n).padStart(2, '0'); }
 export function formatInstant(instant: Date, zone: string): string {
   const shifted = new Date(instant.getTime() + zoneOffset(zone) * 60_000);
   const micro = String(shifted.getUTCMilliseconds()).padStart(3, '0') + '000';
-  return `${shifted.getUTCFullYear()}-${pad2(shifted.getUTCMonth() + 1)}-${pad2(shifted.getUTCDate())} ${pad2(shifted.getUTCHours())}:${pad2(shifted.getUTCMinutes())}:${pad2(shifted.getUTCSeconds())}.${micro}`;
+  const year = shifted.getUTCFullYear();
+  return `${year < 0 ? `-${String(-year).padStart(4, '0')}` : String(year).padStart(4, '0')}-${pad2(shifted.getUTCMonth() + 1)}-${pad2(shifted.getUTCDate())} ${pad2(shifted.getUTCHours())}:${pad2(shifted.getUTCMinutes())}:${pad2(shifted.getUTCSeconds())}.${micro}`;
 }
 
 const dateText = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -298,7 +300,10 @@ function timeForm(value: unknown, colType: string, zone: string, precision: numb
   if (m[8] === undefined) return `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}:${m[6]}${f}`;
   const digits = m[8].slice(1).replace(':', '');
   const offset = m[8] === 'Z' ? 0 : (m[8].startsWith('-') ? -1 : 1) * (Number(digits.slice(0, 2)) * 60 + Number(digits.slice(2) || '0'));
-  const instant = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), Number(m[6])) - offset * 60_000);
+  // Date.UTC reads a year below 100 as 1900 plus the year, so the year is set after.
+  const wall = new Date(Date.UTC(2000, Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), Number(m[6])));
+  wall.setUTCFullYear(Number(m[1]));
+  const instant = new Date(wall.getTime() - offset * 60_000);
   return `${formatInstant(instant, zone).slice(0, 19)}${f}`;
 }
 
@@ -1062,6 +1067,9 @@ export class Db {
       switch (slot.from) {
         case 'param': {
           let value = params[slot.param];
+          // A transformed value is the text of its operator, and a host-styled value is the input of its first stage,
+          // which hostEncode checks.
+          if (!slot.transform && slot.host_styles.length === 0) checkParam(slot.param, value, bindSlotType(slot), this.zone);
           if ((slot.col_type === 'datetime' || slot.col_type === 'date' || slot.col_type === 'time') && value !== null) {
             value = timeValue(value, slot.col_type, this.zone, slot.precision ?? 0);
           }

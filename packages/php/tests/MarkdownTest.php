@@ -207,6 +207,38 @@ final class MarkdownTest extends TestCase
         markdown_received($server);
     }
 
+    public function test_bind_vectors(): void
+    {
+        // tests/bind/vectors.json의 bind case: parameter 값을 그 slot의 논리 type으로 검사한다(docs/protocol.md §5
+        // "Parameters"). Go의 TestBindVectors와 같은 case다.
+        $vectors = json_decode((string) file_get_contents(__DIR__ . '/../../../tests/bind/vectors.json'), true, flags: JSON_THROW_ON_ERROR);
+        $zone = new \DateTimeZone($vectors['zone']);
+        // {"int": text}는 int, {"f64": text}는 무한이나 NaN인 float, {"bytes": base64}는 Bytes다.
+        $value = static function (mixed $v): mixed {
+            if (!is_array($v)) {
+                return $v;
+            }
+            return match (true) {
+                isset($v['int']) => (int) $v['int'],
+                isset($v['f64']) => match ($v['f64']) { 'NaN' => NAN, 'Infinity' => INF, '-Infinity' => -INF },
+                isset($v['bytes']) => new \Polyspec\Orm\Bytes(base64_decode($v['bytes'], true)),
+            };
+        };
+        self::assertNotSame([], $vectors['bind']);
+        foreach ($vectors['bind'] as $c) {
+            $slot = ['type' => $c['slot']['type'], 'precision' => $c['slot']['precision'] ?? 0, 'scale' => $c['slot']['scale'] ?? 0, 'length' => $c['slot']['length'] ?? 0];
+            $v = $value($c['value']);
+            $e = markdown_error(static function () use ($v, $slot, $zone): void {
+                \Polyspec\Orm\ParamCheck::check(0, $v, $slot, $zone);
+            });
+            if (isset($c['code'])) {
+                self::assertFalse($e?->code_ !== $c['code'], "{$c['name']}: " . ($e?->getMessage() ?? 'bound') . "; want {$c['code']}");
+            } else {
+                self::assertFalse($e !== null || $v != $value($c['bound']), "{$c['name']}: " . ($e?->getMessage() ?? '') . '; want it bound');
+            }
+        }
+    }
+
     public function test_param_uses(): void
     {
         $model = RuntimeModel::build(RuntimeModel::parse(['params.dbs' => 'dbspec 1 params

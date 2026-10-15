@@ -9,6 +9,7 @@ load_tests
 _.shortDescription
 SetParseVectors
 BindMessageVectors
+BindVectors
 MysqlCells
 PostgresCells
 MysqlPlaceholders

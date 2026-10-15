@@ -342,6 +342,14 @@ async fn markdown_call(ex: &Executor, req: &mut Req) -> Result<(Vec<u8>, Arc<Man
     req.ir.n_params = req.params.len();
     engine::validate(&manifest, &req.ir)?;
     let uses = engine::param_uses(&manifest, &req.ir);
+    for (i, value) in req.params.iter().enumerate() {
+        for u in &uses[i] {
+            if u.column.is_some_and(|c| c.codec.iter().any(|s| matches!(s.as_str(), "aes" | "hex" | "ip"))) {
+                continue;
+            }
+            crate::bind_check::check_param(i, value, &crate::bind_check::use_slot_type(u), &db.inner.zone)?;
+        }
+    }
     let mut params = Vec::with_capacity(req.params.len());
     for (i, value) in req.params.iter().enumerate() {
         params.push(markdown_param(i, value, uses[i].first(), &db.inner.cfg.aes_key, &db.inner.zone)?);

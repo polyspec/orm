@@ -621,22 +621,7 @@ impl Db {
     /// an offset is converted to the connection time zone. `datetime(p)` text는
     /// 소수 p자리로 쓰고, p자리 뒤에 0이 아닌 자리가 있으면 CODEC_ENCODE다.
     fn bind_time_value(&self, v: Param, col_type: &str, precision: i64) -> Result<Param> {
-        match v {
-            Param::DateTime(t) if col_type == "date" => Ok(Param::Str(t.format("%Y-%m-%d").to_string())),
-            Param::Str(text) if col_type == "date" => {
-                if sqlite_date_text(&text) {
-                    Ok(Param::Str(text))
-                } else {
-                    Err(invalid_time_text(&text, col_type))
-                }
-            }
-            Param::DateTime(t) => datetime_digits(&t.format(SQLITE_DATETIME).to_string(), precision).map(Param::Str),
-            Param::Str(text) => {
-                let full = sqlite_datetime_text(&text, &self.inner.zone).ok_or_else(|| invalid_time_text(&text, col_type))?;
-                datetime_digits(&full, precision).map(Param::Str)
-            }
-            other => Ok(other),
-        }
+        bound_time_value(v, col_type, precision, &self.inner.zone)
     }
 
     /// step의 bind slot 값을 정한다. `audit`은 step이 실행되는 transaction의 audit 기록이다.
@@ -649,6 +634,13 @@ impl Db {
             match b.from.as_str() {
                 "parent" => out.extend(parent_vals.iter().cloned()),
                 "param" => {
+                    // A transformed value is the text of its operator, and a host-styled value is the input of its
+                    // first stage, which host_encode checks.
+                    if b.transform.is_empty() && b.host_styles.is_empty() {
+                        if let Some(v) = params.get(b.param) {
+                            crate::bind_check::check_param(b.param, v, &crate::bind_check::bind_slot_type(b), &self.inner.zone)?;
+                        }
+                    }
                     let mut v = param_arg(b, params)?;
                     if b.col_type == "datetime" || b.col_type == "date" {
                         v = self.bind_time_value(v, &b.col_type, b.precision)?;
@@ -1027,6 +1019,26 @@ fn digits(b: &[u8]) -> bool {
     b.iter().all(u8::is_ascii_digit)
 }
 
+/// A date or datetime bind in the text form SQLite stores (Db::bind_time_value) in the connection time zone `zone`.
+pub(crate) fn bound_time_value(v: Param, col_type: &str, precision: i64, zone: &Zone) -> Result<Param> {
+    match v {
+        Param::DateTime(t) if col_type == "date" => Ok(Param::Str(t.format("%Y-%m-%d").to_string())),
+        Param::Str(text) if col_type == "date" => {
+            if sqlite_date_text(&text) {
+                Ok(Param::Str(text))
+            } else {
+                Err(invalid_time_text(&text, col_type))
+            }
+        }
+        Param::DateTime(t) => datetime_digits(&t.format(SQLITE_DATETIME).to_string(), precision).map(Param::Str),
+        Param::Str(text) => {
+            let full = sqlite_datetime_text(&text, zone).ok_or_else(|| invalid_time_text(&text, col_type))?;
+            datetime_digits(&full, precision).map(Param::Str)
+        }
+        other => Ok(other),
+    }
+}
+
 fn sqlite_date_text(text: &str) -> bool {
     let b = text.as_bytes();
     b.len() == 10
@@ -1136,7 +1148,7 @@ fn clock_digits(text: &str, precision: i64) -> String {
 
 /// `time(p)` 값은 소수 정확히 p자리의 `HH:MM:SS` text다 (docs/dbspec.md, "Runtime model"). 값은 `HH:MM:SS[.f{1,6}]`
 /// text이고, p자리 뒤의 0은 버리며 0이 아닌 자리는 CODEC_ENCODE다.
-fn time_value(v: Param, precision: i64) -> Result<Param> {
+pub(crate) fn time_value(v: Param, precision: i64) -> Result<Param> {
     let text = match v {
         Param::Null => return Ok(Param::Null),
         Param::Str(text) => text,

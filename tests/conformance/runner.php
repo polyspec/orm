@@ -9,6 +9,7 @@ require __DIR__ . '/result_php_helpers.php';
 require dirname(__DIR__, 2) . '/packages/php/testing/Faults.php';
 
 use Polyspec\Orm\Tests\Model\Author;
+use Polyspec\Orm\Tests\Model\BindCell;
 use Polyspec\Orm\Tests\Model\ClockCell;
 use Polyspec\Orm\Tests\Model\CompositeAccount;
 use Polyspec\Orm\Tests\Model\HexCell;
@@ -575,6 +576,23 @@ vector('affected_counts', function () use ($db): array {
     $row->delete();
     return $out;
 });
+
+// A value outside the logical type of its slot is CODEC_ENCODE before any statement (docs/protocol.md §5 "Parameters").
+// A create that the client lets through is deleted, so the vector leaves the database as it found it.
+$rejected = static function (callable $create): array {
+    try {
+        $created = $create();
+    } catch (Throwable $e) {
+        return ['code' => code($e)];
+    }
+    mask([$created->getSeq()]);
+    $created->delete();
+    return ['code' => null];
+};
+vector('datetime_precision_rejected', fn(): array => $rejected(fn() => (new TimeCell)($db)->setAt(new DateTimeImmutable('2026-06-01 12:34:56.5', new DateTimeZone('UTC')))->setClock('10:11:12')->create()));
+vector('varchar_length_rejected', fn(): array => $rejected(fn() => (new BindCell)($db)->setLabel('123456789')->create()));
+vector('text_nul_rejected', fn(): array => $rejected(fn() => (new BindCell)($db)->setLabel('nul')->setBody("a\0b")->create()));
+vector('uuid_form_rejected', fn(): array => $rejected(fn() => (new BindCell)($db)->setLabel('uuid')->setToken('123E4567-E89B-12D3-A456-426614174000')->create()));
 
 // One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now` hold that
 // clock truncated to their digits, and a datetime(p) column compares with a clock at six digits. The executor clock is

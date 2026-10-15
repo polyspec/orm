@@ -12,6 +12,7 @@ from urllib.parse import urlsplit, parse_qsl
 
 from polyspec.orm.codec import blind_index, decode as codec_decode, host_encode
 from polyspec.orm.clock import wall_micros
+from polyspec.orm.bind_check import bind_slot_type, check_param
 from polyspec.orm.decimal import decimal_scaled, normalize_decimal
 from polyspec.orm.engine.dialect import dialect_of
 from polyspec.orm.engine.model import Field, RuntimeModel, field_of
@@ -246,7 +247,10 @@ def _time_form(value, col_type: str, zone: str, precision: int):
             value = value.replace(
                 tzinfo=datetime.timezone(datetime.timedelta(minutes=_zone_offset(zone)))
             )
-        text = format_instant(value.astimezone(datetime.timezone.utc), zone)
+        try:
+            text = format_instant(value.astimezone(datetime.timezone.utc), zone)
+        except OverflowError:
+            return None
         return (
             text[:10]
             if col_type == "date"
@@ -289,16 +293,20 @@ def _time_form(value, col_type: str, zone: str, precision: int):
     else:
         sign = -1 if m.group(8).startswith("-") else 1
         offset = sign * (int(digits[:2]) * 60 + int(digits[2:] or "0"))
-    instant = datetime.datetime(
-        int(m.group(1)),
-        int(m.group(2)),
-        int(m.group(3)),
-        int(m.group(4)),
-        int(m.group(5)),
-        int(m.group(6)),
-        tzinfo=datetime.timezone.utc,
-    ) - datetime.timedelta(minutes=offset)
-    return f"{format_instant(instant, zone)[:19]}{f}"
+    try:
+        instant = datetime.datetime(
+            int(m.group(1)),
+            int(m.group(2)),
+            int(m.group(3)),
+            int(m.group(4)),
+            int(m.group(5)),
+            int(m.group(6)),
+            tzinfo=datetime.timezone.utc,
+        ) - datetime.timedelta(minutes=offset)
+        return f"{format_instant(instant, zone)[:19]}{f}"
+    except OverflowError:
+        # The instant is outside 0001-01-01 to 9999-12-31, which no datetime value holds.
+        return None
 
 
 def _time_shape(col_type: str, precision: int) -> str:
@@ -310,13 +318,18 @@ def _time_shape(col_type: str, precision: int) -> str:
     return "YYYY-MM-DD HH:MM:SS" + f + "[Z|±HH:MM]"
 
 
+def _shown(value) -> str:
+    """value as an error message writes it: a string as JSON, another value as its text."""
+    return json.dumps(value) if isinstance(value, str) else str(value)
+
+
 def time_value(value, col_type: str, zone: str, precision: int) -> str:
     """date, time, datetime bind를 저장 text 형태로 쓴다; 다른 값은 CODEC_ENCODE다."""
     text = _time_form(value, col_type, zone, precision)
     if text is None:
         raise OrmError(
             "CODEC_ENCODE",
-            f"{col_type} value {json.dumps(value)} is not "
+            f"{col_type} value {_shown(value)} is not "
             f"{_time_shape(col_type, precision)}",
         )
     return text
@@ -329,7 +342,7 @@ def read_time(value, col_type: str, zone: str, precision: int) -> str:
     if text is None:
         raise OrmError(
             "CODEC_DECODE",
-            f"{col_type} cell {json.dumps(value)} is not "
+            f"{col_type} cell {_shown(value)} is not "
             f"{_time_shape(col_type, precision)}",
         )
     return text
@@ -1022,6 +1035,10 @@ class Db:
             source = slot["from"]
             if source == "param":
                 value = params[slot["param"]]
+                # A transformed value is the text of its operator, and a host-styled value is the input of its
+                # first stage, which host_encode checks.
+                if not slot.get("transform") and not slot.get("host_styles"):
+                    check_param(slot["param"], value, bind_slot_type(slot), self.zone)
                 if (
                     slot["col_type"] in ("datetime", "date", "time")
                     and value is not None

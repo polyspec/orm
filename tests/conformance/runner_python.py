@@ -62,7 +62,9 @@ def parse_args(args):
 # Set by main() from the arguments; importing this module parses nothing.
 DSN, MODELS_DIR, SELECTED = None, None, []
 bench = Author = CompositeAccount = Service = ServiceMember = ServiceRegion = None
-User = SoftRecord = Task = HexCell = TimeCell = ClockCell = UpsertCell = UuidCell = None
+User = SoftRecord = Task = HexCell = TimeCell = ClockCell = UpsertCell = UuidCell = (
+    BindCell
+) = None
 
 log = []
 transactions = {}
@@ -283,7 +285,8 @@ def load_models():
         TimeCell, \
         ClockCell, \
         UpsertCell, \
-        UuidCell
+        UuidCell, \
+        BindCell
     # The models generated from contracts/fixtures/bench/bench.dbs are compiled from their source and
     # registered as models; the client itself is the one installed into the interpreter.
     source = os.path.join(MODELS_DIR, "models.py")
@@ -311,6 +314,7 @@ def load_models():
     ClockCell = bench.ClockCell
     UpsertCell = bench.UpsertCell
     UuidCell = bench.UuidCell
+    BindCell = bench.BindCell
 
 
 def main():
@@ -1130,6 +1134,55 @@ def main():
         return out
 
     run("affected_counts", affected_counts)
+
+    # A value outside the logical type of its slot is CODEC_ENCODE before any statement (docs/protocol.md §5
+    # "Parameters"). A create that the client lets through is deleted, so the vector leaves the database as it
+    # found it.
+    def rejected(create):
+        try:
+            created = create()
+        except Exception as error:  # noqa: BLE001 - every library error is the result of the vector
+            return {"code": code_of(error)}
+        mask([created.get_seq()])
+        created.delete()
+        return {"code": None}
+
+    run(
+        "datetime_precision_rejected",
+        lambda: rejected(
+            lambda: (
+                TimeCell()
+                .connect(db)
+                .set_at(at.replace(microsecond=500000))
+                .set_clock("10:11:12")
+                .create()
+            )
+        ),
+    )
+    run(
+        "varchar_length_rejected",
+        lambda: rejected(
+            lambda: BindCell().connect(db).set_label("123456789").create()
+        ),
+    )
+    run(
+        "text_nul_rejected",
+        lambda: rejected(
+            lambda: BindCell().connect(db).set_label("nul").set_body("a\x00b").create()
+        ),
+    )
+    run(
+        "uuid_form_rejected",
+        lambda: rejected(
+            lambda: (
+                BindCell()
+                .connect(db)
+                .set_label("uuid")
+                .set_token("123E4567-E89B-12D3-A456-426614174000")
+                .create()
+            )
+        ),
+    )
 
     # One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now`
     # hold that clock truncated to their digits, and a datetime(p) column compares with a clock at six digits. The

@@ -3153,6 +3153,46 @@
       }
     },
     {
+      "name": "datetime_precision_rejected",
+      "chain": "TimeCell setAt(2026-06-01 12:34:56.5) setClock('10:11:12') create(): datetime(0) has a non-zero digit past p, CODEC_ENCODE before any statement",
+      "expect": {
+        "result": {
+          "code": "CODEC_ENCODE"
+        },
+        "statements": []
+      }
+    },
+    {
+      "name": "varchar_length_rejected",
+      "chain": "BindCell setLabel('123456789') create(): nine characters for varchar(8), CODEC_ENCODE before any statement",
+      "expect": {
+        "result": {
+          "code": "CODEC_ENCODE"
+        },
+        "statements": []
+      }
+    },
+    {
+      "name": "text_nul_rejected",
+      "chain": "BindCell setLabel('nul') setBody('a' U+0000 'b') create(): U+0000 in text, CODEC_ENCODE before any statement",
+      "expect": {
+        "result": {
+          "code": "CODEC_ENCODE"
+        },
+        "statements": []
+      }
+    },
+    {
+      "name": "uuid_form_rejected",
+      "chain": "BindCell setLabel('uuid') setToken('123E4567-E89B-12D3-A456-426614174000') create(): an upper-case uuid, CODEC_ENCODE before any statement",
+      "expect": {
+        "result": {
+          "code": "CODEC_ENCODE"
+        },
+        "statements": []
+      }
+    },
+    {
       "name": "clock_truncate_write",
       "chain": "FixClock(db, '2026-06-01 12:34:56.999999'); ClockCell setLabel('write')-\u003ecreate() leaving at0, at3 and at6 to default now; getBySeq(seq): at0 and at3 equal at6 truncated to 0 and 3 digits; delete()",
       "expect": {

@@ -9,7 +9,7 @@
 // Each --vector selects one vector by name; without one every vector runs.
 // The models embed the manifest of contracts/fixtures/bench/bench.dbs.
 import {
-  AesKeyring, Author, ClockCell, type Collection, type Model, CompositeAccount, HexCell, Service, TimeCell, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, UpsertCell, User, UuidCell, connect, orm,
+  AesKeyring, Author, BindCell, ClockCell, type Collection, type Model, CompositeAccount, HexCell, Service, TimeCell, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, UpsertCell, User, UuidCell, connect, orm,
 } from '../../packages/ts/dist/index.js';
 import { fixClock, lastAffected } from '../../packages/ts/dist/testing.js';
 import { parseArgs } from 'node:util';
@@ -534,6 +534,23 @@ async function main() {
     await row.delete();
     return out;
   });
+
+  // A value outside the logical type of its slot is CODEC_ENCODE before any statement (docs/protocol.md §5
+  // "Parameters"). A create that the client lets through is deleted, so the vector leaves the database as it found it.
+  const rejected = async (create: () => Promise<{ getSeq(): number | bigint; delete(): Promise<unknown> }>) => {
+    try {
+      const created = await create();
+      mask([created.getSeq()]);
+      await created.delete();
+      return { code: null };
+    } catch (error) {
+      return { code: code(error) };
+    }
+  };
+  await run('datetime_precision_rejected', () => rejected(() => new TimeCell().connect(db).setAt(new Date(Date.UTC(2026, 5, 1, 12, 34, 56, 500))).setClock('10:11:12').create()));
+  await run('varchar_length_rejected', () => rejected(() => new BindCell().connect(db).setLabel('123456789').create()));
+  await run('text_nul_rejected', () => rejected(() => new BindCell().connect(db).setLabel('nul').setBody('a\u0000b').create()));
+  await run('uuid_form_rejected', () => rejected(() => new BindCell().connect(db).setLabel('uuid').setToken('123E4567-E89B-12D3-A456-426614174000').create()));
 
   // One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now` hold that
   // clock truncated to their digits, and a datetime(p) column compares with a clock at six digits. The executor clock is

@@ -27,7 +27,7 @@ final class AccountProject extends Model
             ],
             'unique' => [],
             'indexes' => ['ix_account_project_project' => ['project_seq']],
-            'manifest_hash' => 'sha256:1a91aae4209ba2c778335adecf8c79efce1c1b7bf07ab18720a076b88ace69f7',
+            'manifest_hash' => 'sha256:6b243f5910037ab61aca570f15bcb9c94461a80690ec6ed9546fecaf51e5af29',
         ];
     }
 
