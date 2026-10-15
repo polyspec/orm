@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3cafab6795853b607be3bc418d066611601994fdbccf0dd8210b10ff5cca6b86 -->
+<!-- source-sha256: 406d92fe6600d20ca0fa3648a07d486075fe88297b3dfcf9a8632a55a60ec29e -->
 # 변경 이력
 
 ## Unreleased
 
+- MySQL contains_binary가 deprecated LIKE BINARY 대신 binary collation의 LIKE를 쓴다. (#T81)
 - MySQL contains가 PostgreSQL, SQLite처럼 ASCII 대소문자만 접는다. (#T79)
 - kit-check가 mise.lock 옆의 mise lock sidecar를 owner로 갖는다. (#T181-3)
 - Python dbspec introspection과 apply가 공개 Connection protocol을 받는다. (#T181-2)
