@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b645aa054bfaba3761ddffcc800376b2992ffc51cbf89a92d0a9c43f1cf5875f -->
+<!-- source-sha256: d56d5746db8e37a61b8789aac41238823504cf93d61c1bf4bcea2dab6f4b3efa -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP rollback test가 session 수가 아니라 connection id로 session을 찾는다. (#T53)
 - PHP extension이 자기 package에서 dbspec sets와 schema-definition suite를 실행한다. (#T111)
 - begin 메시지가 모든 client에서 read-only 옵션을 포함한다. (#T107)
 - commit에서 바뀐 read는 다시 시도하지 않고 거부한다. (#T106)
