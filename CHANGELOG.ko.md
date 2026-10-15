@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 347b983a317af301f0f4648ac86c225d293c94653a73cbe1ad1af391ec551df3 -->
+<!-- source-sha256: 9f0912ef5498a629300a026fdba497451afa2a61151eda575863b8049a3f2851 -->
 # 변경 이력
 
 ## Unreleased
 
+- 모든 client가 markdown message의 time, date, datetime 문자열을 한 형태로 쓴다. (#T91)
 - TypeScript conformance runner의 contains 호출에 type이 붙는다. (#T79-1)
 - MySQL contains_binary가 deprecated LIKE BINARY 대신 binary collation의 LIKE를 쓴다. (#T81)
 - MySQL contains가 PostgreSQL, SQLite처럼 ASCII 대소문자만 접는다. (#T79)

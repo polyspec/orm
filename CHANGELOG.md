@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Every client writes a time, date or datetime string of the markdown message in one form. (#T91)
 - The TypeScript conformance runner types its contains calls. (#T79-1)
 - MySQL contains_binary renders LIKE under the binary collation instead of the deprecated LIKE BINARY. (#T81)
 - MySQL contains folds only ASCII case, as PostgreSQL and SQLite do. (#T79)
