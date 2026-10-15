@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Parity builds the PHP extension and passes every PHP binding. (#T148-3-8)
 - The Python conformance runner runs as a test. (#T148-3-6)
 - The feature-coverage bindings run every case under its id. (#T148-3-5)
 - Each parity binding runs one suite. (#T148-3-4)
