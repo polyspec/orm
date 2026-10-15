@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: dd6ea3b08a962737f60dffdbd5dd3d822b8c20f5edc216ad312b0169457b8cf9 -->
+<!-- source-sha256: b42a8f59361a5c5651cd93509a383934dbadcd3d84df41a4165515438bd0cadc -->
 # 변경 이력
 
 ## Unreleased
 
+- orm-gen의 TypeScript 출력이 entity와 column을 이름을 대며 throw하는 검사로 읽고, non-null assertion이나 cast가 없어 생성 model이 kit 0.0.47의 lint를 통과한다. Core.jsonColumn이 ordered_json column을 읽는다. (#T179)
 - repository가 kit 0.0.47을 받고, scripts와 tests가 disable이나 cast 없이 그 TypeScript lint를 통과한다. (#T137-1-4-7)
 - go-vet-check가 tests/analyzers의 Go analyzer를 맡는다. (#T137-1-9)
 - 모든 dbspec compare runner가 자기 생태계의 validator로 tests/dbspec/schema의 공유 JSON Schema에 vector를 검증하고, runner 자신의 field 검사는 지웠다. (#T137-1-4-3)
