@@ -82,17 +82,6 @@ final class HostcodecTest extends TestCase
     #[DataProvider('decodeVectors')]
     public function test_decode_vector(array $v): void
     {
-        // purrphp/yaml 1.0.0 CoreSchema matches true, null and .inf without regard to case; the YAML 1.2.2 core
-        // schema (10.3.2) takes only true|True|TRUE, null|Null|NULL and .inf|.Inf|.INF, so these keys are
-        // strings. Each is skipped with its reason until the purrphp release of T142-1-1 is pinned.
-        $exclusions = [
-            'yaml-key-plain-mixed-case-true' => 'purrphp/yaml 1.0.0 CoreSchema reads tRUE as true, not the string (T142-1-1)',
-            'yaml-key-plain-mixed-case-null' => 'purrphp/yaml 1.0.0 CoreSchema reads nULL as null, not the string (T142-1-1)',
-            'yaml-key-plain-mixed-case-infinity' => 'purrphp/yaml 1.0.0 CoreSchema reads .InF as infinity, not the string (T142-1-1)',
-        ];
-        if (isset($exclusions[$v['name']])) {
-            self::markTestSkipped($exclusions[$v['name']]);
-        }
         $raw = array_key_exists('stored', $v) ? $v['stored'] : (string) hex2bin($v['stored_hex']);
         $host = array_diff($v['styles'], ['hex', 'ip']) === [];
         $got = null;

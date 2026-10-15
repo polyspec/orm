@@ -32,9 +32,14 @@ In 0.0.x the polyspec packages are distributed through GitHub only, as release a
   ```json
   {
     "require": { "polyspec/orm": "<version>" },
-    "repositories": [{ "type": "artifact", "url": "vendor/polyspec" }]
+    "repositories": [
+      { "type": "artifact", "url": "vendor/polyspec" },
+      { "type": "vcs", "url": "https://github.com/min-median-max/yaml", "no-api": true }
+    ]
   }
   ```
+
+  The client requires `purrphp/yaml` `1.0.0-p1`, the release of the fork https://github.com/min-median-max/yaml that reads plain scalars by the core schema of YAML 1.2.2 (section 10.3.2); upstream PurrPHP/yaml 1.0.0 does not. Composer reads `repositories` only from the root manifest of a project, never from a dependency's, so the orm package cannot carry this source: a consumer declares the `vcs` repository itself, as above, and tests/release-consumer/composer does the same. `no-api` makes Composer clone the public repository over HTTPS instead of asking the GitHub API, whose anonymous rate limit (HTTP 403) would otherwise send it to an SSH clone that needs a key.
 
   `polyspec/orm-dbspec` has the type `php-ext`: PIE builds and installs it, and Composer does not.
 
@@ -51,4 +56,4 @@ The binary extra of psycopg is written as the two plain requirements that it exp
 The released manifests are packages/ts/package.json, packages/php/composer.json and packages/php-ext/composer.json. They take the polyspec packages of other repositories by exact version and declare no repository. Two private root manifests, which are never released, resolve those versions in this repository:
 
 - package.json at the repository root lists `packages/*` under `workspaces`, and its `overrides` take `@polyspec/ordered-json` from the tarball URL of its GitHub Release, the URL naming the release tag, and take `vite` 7 for vitepress, whose latest release depends on `vite` 5, a release with advisories. `npm ci` at the root installs the workspace. package-lock.json at the root is the one npm lockfile.
-- composer.json at the repository root installs packages/php from a `path` repository and polyspec/ordered-json from a `package` repository whose `dist` is the zip URL of its GitHub Release with its shasum; the URL names the release tag. Its `vendor-dir` is vendor-php, because vendor at the root is the vendor directory of the Go module, and its `config.platform.php` is `8.4.0`, the lowest PHP of the clients. composer.lock at the root is the one Composer lockfile, and the PHP tests load vendor-php/autoload.php.
+- composer.json at the repository root installs packages/php from a `path` repository, polyspec/ordered-json from a `package` repository whose `dist` is the zip URL of its GitHub Release with its shasum (the URL names the release tag), and purrphp/yaml from the `vcs` repository of the fork min-median-max/yaml. Its `vendor-dir` is vendor-php, because vendor at the root is the vendor directory of the Go module, and its `config.platform.php` is `8.4.0`, the lowest PHP of the clients. composer.lock at the root is the one Composer lockfile, and the PHP tests load vendor-php/autoload.php.

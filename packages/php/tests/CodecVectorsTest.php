@@ -17,17 +17,6 @@ use Polyspec\Orm\StyledValue;
 #[Small]
 final class CodecVectorsTest extends TestCase
 {
-    // The vectors PHP does not yet read, each with the defect that stops it; each is skipped with it.
-    private const EXCLUSIONS = [
-        // purrphp/yaml 1.0.0 CoreSchema (OCTAL_PATTERN, HEXADECIMAL_PATTERN) takes a sign before 0o/0x;
-        // the YAML 1.2.2 core schema (10.3.2) has none, so +0x1 is a string.
-        'yaml_core/signed_hex_like' => 'purrphp/yaml 1.0.0 CoreSchema reads +0x1 as the integer 1, not the string',
-        // purrphp/yaml 1.0.0 CoreSchema matches DECIMAL_PATTERN but casts with FILTER_VALIDATE_INT, which
-        // refuses a leading zero, so the core int 0777 becomes the float 777.0. The value comparison
-        // below does not tell 777 from 777.0, so the vector is listed by name.
-        'yaml_core/leading_zero_int' => 'purrphp/yaml 1.0.0 CoreSchema reads 0777 as the float 777.0, not the integer 777',
-    ];
-
     /** Value model: an ordered-json value is decoded; sequential arrays are lists, other arrays are maps with sorted string keys. */
     private static function canon(mixed $v): mixed
     {
@@ -59,13 +48,6 @@ final class CodecVectorsTest extends TestCase
         return array_map(static fn(string $s): string => $s === 'json' ? 'ordered_json' : $s, $v['styles']);
     }
 
-    private static function skipExcluded(array $v): void
-    {
-        if (isset(self::EXCLUSIONS[$v['name']])) {
-            self::markTestSkipped(self::EXCLUSIONS[$v['name']]);
-        }
-    }
-
     /** @return iterable<string, array{array<string, mixed>}> tests/codec/vectors.json의 vector마다 */
     public static function vectors(): iterable
     {
@@ -80,7 +62,6 @@ final class CodecVectorsTest extends TestCase
     #[DataProvider('vectors')]
     public function test_php_vector(array $v): void
     {
-        self::skipExcluded($v);
         $styles = self::styles($v);
         $raw = $v['encoded_b64'] === null ? null : base64_decode($v['encoded_b64'], true);
         $decoded = Codec::decode($styles, $raw);
@@ -89,6 +70,13 @@ final class CodecVectorsTest extends TestCase
         if ($v['deterministic']) {
             self::assertSame($v['encoded_b64'], $enc === null ? null : base64_encode($enc), 'php encode differs');
         }
+    }
+
+    // The value comparison above encodes both sides as JSON, which writes the float 777.0 as 777, so the
+    // core int of yaml_core/leading_zero_int (YAML 1.2.2, 10.3.2: [-+]?[0-9]+) is also compared by its PHP type.
+    public function test_yaml_core_leading_zero_int_is_an_int(): void
+    {
+        self::assertSame(777, Codec::decode(['yaml'], '0777')->payload());
     }
 
     /** @return iterable<string, array{Closure, string}> */
@@ -137,7 +125,6 @@ final class CodecVectorsTest extends TestCase
         self::assertNotSame('', $out, 'ORM_CODEC_OUT is unset; run make codec-check, which runs the Go, Rust and TypeScript codec tests into its run directory');
         $file = "$out/$lang.json";
         self::assertFileExists($file, "the $lang codec test of this run did not write it");
-        self::skipExcluded($v);
         $outs = json_decode(file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
         self::assertArrayHasKey($v['name'], $outs, "$lang: missing {$v['name']}");
         $raw = $outs[$v['name']] === null ? null : base64_decode($outs[$v['name']], true);

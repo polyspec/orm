@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "dde9ef320a7205253c6002eedbcf024b",
+    "content-hash": "49106037020dce1e7991436f828eb199",
     "packages": [
         {
             "name": "nikic/php-parser",
@@ -95,7 +95,7 @@
             "dist": {
                 "type": "path",
                 "url": "packages/php",
-                "reference": "930cd37ee627c73baeee57ee015771d6f0d2c291"
+                "reference": "517d0f320bd80e142d1b42f5913f7e492c3f5cde"
             },
             "require": {
                 "composer-runtime-api": "^2.2",
@@ -105,7 +105,7 @@
                 "nikic/php-parser": "^5.9.0",
                 "php": ">=8.5",
                 "polyspec/ordered-json": "0.0.9",
-                "purrphp/yaml": "^1.0",
+                "purrphp/yaml": "1.0.0-p1",
                 "symfony/yaml": "^8.1"
             },
             "suggest": {
@@ -200,16 +200,16 @@
         },
         {
             "name": "purrphp/yaml",
-            "version": "1.0.0",
+            "version": "v1.0.0-p1",
             "source": {
                 "type": "git",
-                "url": "https://github.com/PurrPHP/yaml.git",
-                "reference": "c069a72e06e5a11a725b50226122f1eb26eb64fe"
+                "url": "https://github.com/min-median-max/yaml",
+                "reference": "98daf838506e3199d5a058c90adff5a40940959e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/PurrPHP/yaml/zipball/c069a72e06e5a11a725b50226122f1eb26eb64fe",
-                "reference": "c069a72e06e5a11a725b50226122f1eb26eb64fe",
+                "url": "https://api.github.com/repos/min-median-max/yaml/zipball/98daf838506e3199d5a058c90adff5a40940959e",
+                "reference": "98daf838506e3199d5a058c90adff5a40940959e",
                 "shasum": ""
             },
             "require": {
@@ -227,7 +227,43 @@
                     "Purr\\Yaml\\": "src/"
                 }
             },
-            "notification-url": "https://packagist.org/downloads/",
+            "autoload-dev": {
+                "psr-4": {
+                    "Purr\\Yaml\\Test\\": [
+                        "test/unit",
+                        "test/src"
+                    ],
+                    "src\\": "test/src/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "vendor/bin/phpunit"
+                ],
+                "test-coverage": [
+                    "vendor/bin/phpunit --coverage-html coverage"
+                ],
+                "coverage": [
+                    "vendor/bin/phpunit --coverage-text --colors=never --coverage-clover coverage/clover.xml"
+                ],
+                "cs-fix": [
+                    "vendor/bin/php-cs-fixer fix"
+                ],
+                "cs-check": [
+                    "vendor/bin/php-cs-fixer fix --dry-run --diff"
+                ],
+                "analyse": [
+                    "vendor/bin/phpstan analyse --memory-limit=1G"
+                ],
+                "refactor": [
+                    "vendor/bin/rector process"
+                ],
+                "check": [
+                    "@cs-check",
+                    "@analyse",
+                    "@test"
+                ]
+            },
             "license": [
                 "MIT"
             ],
@@ -249,7 +285,7 @@
                 "issues": "https://github.com/PurrPHP/yaml/issues",
                 "source": "https://github.com/PurrPHP/yaml"
             },
-            "time": "2026-08-04T18:35:41+00:00"
+            "time": "2026-10-15T02:57:00+00:00"
         },
         {
             "name": "symfony/polyfill-ctype",
