@@ -83,6 +83,7 @@ impl Type {
     /// columns meet when their kinds are equal. Integers share a class and so do varchar and text; a decimal carries its
     /// scale and a time or datetime its precision; every other type is its own class. dbspec's check validation and the
     /// IR validator of polyspec-orm both read it, so the two cannot drift (docs/dbspec.md "Checks").
+    /// Internal to polyspec-orm: it is not part of the schema crate's API, and nothing outside polyspec-orm may use it.
     #[doc(hidden)]
     pub fn meet_kind(&self) -> String {
         match self {
