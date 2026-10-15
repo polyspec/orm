@@ -1,5 +1,5 @@
 <!-- doc-id: codec -->
-<!-- source-sha256: d797de0dbf3da127024151b4ae2e0d679a56222e209e9a8c00697d1822765ee9 -->
+<!-- source-sha256: 71065e15fe954db0795774ea473127f6b13db30af65679ca8d975fc1a962d986 -->
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유한하지 않은 값, 지원하지 않는 값에 `CODEC_DECODE`를 반환한다. Host 인코딩은 단계가 없거나 텍스트·바이트가 아닌 값에 `CODEC_ENCODE`를 반환한다. 생성 모델 대입은 컬럼 이름을 붙여 변환 오류를 보고한다. 행 조립은 오류를 호출자에게 반환하고 insert는 쓰기 전에 대입 필드를 검증한다. 빈 바이트 배열은 SQL NULL과 구분한다. scalar 집계 변환은 유효한 십진수를 가장 가까운 유한 binary64 값으로 받는다.
@@ -38,7 +38,7 @@ table service_config {
 }
 ```
 
-키는 연결 설정에서 받는다. Go `orm.Config`는 `AESKey`, `AESVersion`, `AESKeys`, PHP `Config`와 TypeScript 연결 옵션은 `aesKey`, `aesVersion`, `aesKeys`, Rust `polyspec_orm::Config`는 `aes_key`, `aes_version`, `aes_keys`를 사용한다. 쓰기는 현재 version의 키 `AESKeys[AESVersion]`로 암호화하고 그 version을 `aes_key_version`에 기록한다. `AESKey`는 그 키이며 키 목록에 그 키가 있으면 생략할 수 있고, 그 키와 다른 `AESKey`는 연결을 `CONFIG`로 실패시킨다. 읽기는 저장된 version의 키를 선택한다. `utils().aes().rotate(model, keyring)`는 version이 keyring의 현재 version과 다른 모든 행을 다시 암호화한다. `jsontext` 컬럼은 `json` 또는 `jsons` 단계만 받으므로 암호화한 JSON 값은 항상 blob 컬럼이다. 감사 변경 행은 AES 컬럼을 평문이나 암호문이 아닌 `{"redacted": true, "present": true}`로 기록한다.
+키는 연결 설정에서 받는다. Go `orm.Config`는 `AESKey`, `AESVersion`, `AESKeys`, PHP `Config`, TypeScript 연결 옵션, Python 연결 옵션은 `aesKey`, `aesVersion`, `aesKeys`, Rust `polyspec_orm::Config`는 `aes_key`, `aes_version`, `aes_keys`를 사용한다. 쓰기는 현재 version의 키 `AESKeys[AESVersion]`로 암호화하고 그 version을 `aes_key_version`에 기록한다. `AESKey`는 그 키이며 키 목록에 그 키가 있으면 생략할 수 있고, 그 키와 다른 `AESKey`는 연결을 `CONFIG`로 실패시킨다. 읽기는 저장된 version의 키를 선택한다. `utils().aes().rotate(model, keyring)`는 version이 keyring의 현재 version과 다른 모든 행을 다시 암호화한다. `jsontext` 컬럼은 `json` 또는 `jsons` 단계만 받으므로 암호화한 JSON 값은 항상 blob 컬럼이다. 감사 변경 행은 AES 컬럼을 평문이나 암호문이 아닌 `{"redacted": true, "present": true}`로 기록한다.
 
 | 스타일 | 쓰기(값 → 저장 바이트) | 읽기(저장 바이트 → 값) | 기준 |
 |---|---|---|---|
@@ -100,7 +100,7 @@ PHP 배열은 순서 있는 맵이다. 키가 정확히 `0..n-1`인 배열은 �
 `hex`는 대문자 hex 숫자만 받는다. 모든 인코더가 대문자를 쓰므로 소문자는 `CODEC_DECODE`다. Go는 다른 클라이언트가 host 디코딩을 공개하듯(PHP `Codec::hostDecode`, TypeScript `hostDecode`, Rust `codec::host_decode`, Python `host_decode`) `orm.HostDecode(raw, styles, aesKey)`를 공개한다. `aes`가 없는 목록에는 key가 필요 없다.
 
 ## 벡터 (`tests/codec`)
-`vectors.json`은 `php tests/codec/gen.php`로 생성한다. 각 러너는 저장 바이트를 읽어 정규화한 JSON을 비교한 뒤, 다시 인코딩한 serialize 계열 바이트와 JSON/gz 왕복 값을 비교한다. TypeScript는 같은 파일을 `node packages/ts/tests/codec-vector.mjs`로, Python은 `python -m packages.python.tests.test_codec_vectors`로 실행한다. `make codec-check`는 Go, Rust, TypeScript, Python 러너를 실행하고 각 러너는 인코딩 결과를 `$ORM_CODEC_OUT`에 쓰며, PHP `CodecVectorsTest`가 네 출력을 모두 디코딩한다(tests/codec/README.md). 데이터베이스 왕복은 `tests/conformance`의 `codec_roundtrip`이 검사한다. `decode-vectors.json`은 저장 셀과 각 셀이 디코딩되어야 할 값이나 오류를 적는다([디코딩은 정확하다](#decoding-is-exact) 참고). Go, PHP, Rust, TypeScript, Python의 codec 테스트가 각자 자기 패키지에서 그 파일을 읽는다. PHP 확장 `orm_dbspec`에는 codec이 없다. 확장은 dbspec 표면만 구현하며, 그 상수 `Setting::CODEC_STAGES`(`packages/php-ext/src/orm_dbspec.c`)는 `codec` 설정이 적을 수 있는 단계의 이름일 뿐 어떤 셀도 디코딩하지 않는다. PHP 프로그램은 PHP 클라이언트의 `Polyspec\Orm\Codec`으로 디코딩한다.
+`vectors.json`은 `php tests/codec/gen.php`로 생성한다. 각 러너는 저장 바이트를 읽어 정규화한 JSON을 비교한 뒤, 다시 인코딩한 serialize 계열 바이트와 JSON/gz 왕복 값을 비교한다. TypeScript는 같은 파일을 `node packages/ts/tests/codec-vector.mjs`로, Python은 `python -m packages.python.tests.test_codec_vectors`로 실행한다. `make codec-check`는 Go, Rust, TypeScript, Python 러너를 실행하고 각 러너는 인코딩 결과를 `$ORM_CODEC_OUT`에 쓰며, PHP `CodecVectorsTest`가 다른 클라이언트의 출력을 모두 디코딩한다(tests/codec/README.md). 데이터베이스 왕복은 `tests/conformance`의 `codec_roundtrip`이 검사한다. `decode-vectors.json`은 저장 셀과 각 셀이 디코딩되어야 할 값이나 오류를 적는다([디코딩은 정확하다](#decoding-is-exact) 참고). Go, PHP, Rust, TypeScript, Python의 codec 테스트가 각자 자기 패키지에서 그 파일을 읽는다. PHP 확장 `orm_dbspec`에는 codec이 없다. 확장은 dbspec 표면만 구현하며, 그 상수 `Setting::CODEC_STAGES`(`packages/php-ext/src/orm_dbspec.c`)는 `codec` 설정이 적을 수 있는 단계의 이름일 뿐 어떤 셀도 디코딩하지 않는다. PHP 프로그램은 PHP 클라이언트의 `Polyspec\Orm\Codec`으로 디코딩한다.
 
 ## 생성 코드
 - 읽기: 실행기가 위치형 행을 읽은 직후 `assemble.columns[].styles`에 따라 각 셀을 디코드한다.

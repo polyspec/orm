@@ -1,9 +1,9 @@
 ---
 layout: home
-title: Common ORM for Go, PHP, Rust, and TypeScript
+title: Common ORM for Go, PHP, Python, Rust, and TypeScript
 hero:
   name: orm
-  text: Common ORM Interface for Go, PHP, Rust, and TypeScript
+  text: Common ORM Interface for Go, PHP, Python, Rust, and TypeScript
   tagline: Generate query, row, and relation types from a schema and execute them with language-specific drivers.
   actions:
     - theme: brand

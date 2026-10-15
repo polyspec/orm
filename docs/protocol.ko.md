@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 8df548788af6da79a4557b9b6185c25cccb66ae9b4d7f7f179152d36a55a6e65 -->
+<!-- source-sha256: 02313dc6d65676b52f87037730884acbf3628dd3aa6981002b5e178ec696aafe -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -257,6 +257,7 @@ test는 자기 클라이언트의 test entry point로 연결의 write 결과를 
 | PHP | `packages/php/src/Validator.php`, `Planner.php`, `Dialect.php`, `Dbspec/Renderer.php` DDL |
 | Rust | `packages/rust/orm/src/engine/`, `packages/rust/schema/src/dbspec/` DDL |
 | TypeScript | `packages/ts/src/engine/`, `packages/ts/src/dbspec/` DDL |
+| Python | `packages/python/src/polyspec/orm/engine/`, `packages/python/src/polyspec/orm/dbspec/` DDL |
 
 generated code는 document set의 manifest text와 `manifestHash`를 가진다. 클라이언트는 그 text로 runtime model을 한 번 만들고, 선언한 hash와 text의 hash가 다르면 거부한다(`SCHEMA_HASH_MISMATCH`). plan 캐시 키는 manifest hash와 요청 형태다. 매개변수 값은 키에 포함하지 않는다.
 

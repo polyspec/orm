@@ -10,7 +10,7 @@ the reference vectors for each style stack and value, with stored bytes (base64)
 | `cargo test -p polyspec-orm --lib codec::tests::vectors` (in `packages/rust`) | same | `$ORM_CODEC_OUT/rust.json` |
 | `node packages/ts/tests/codec-vector.mjs` | same | `$ORM_CODEC_OUT/typescript.json` |
 | `python -m packages.python.tests.test_codec_vectors` (the venv of `make install-python`) | same | `$ORM_CODEC_OUT/python.json` |
-| `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecVectorsTest.php` | same for PHP, then decodes the four outputs in `$ORM_CODEC_OUT` — what Go, Rust, TypeScript and Python wrote must read back as the same value | — |
+| `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecVectorsTest.php` | same for PHP, then decodes the outputs in `$ORM_CODEC_OUT` — what Go, Rust, TypeScript and Python wrote must read back as the same value | — |
 
 `make codec-check` runs all five in that order with `ORM_CODEC_OUT` set to a directory of its own run,
 so the checker reads only what this run wrote, never an output that another target or an earlier run

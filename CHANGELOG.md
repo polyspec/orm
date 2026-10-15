@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The documents name every implementation of config/parity.json, and the docs rules refuse a stale count. (#T77-11)
 - make check and CI run the PHP extension's dbspec suites. (#T188)
 - Every AES vector has an explicit name that each client reads. (#T112)
 - A PHP datetime without an offset binds in the connection zone, including a daylight-saving wall clock. (#T116)

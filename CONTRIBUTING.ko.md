@@ -1,5 +1,5 @@
 <!-- doc-id: contributing -->
-<!-- source-sha256: 62027443c283558253f9df571f804743c5f1f414ab0eed25f32cf0a30da3dd5f -->
+<!-- source-sha256: 59700367e8030475405c83bb50c3c23d31be289012ba7b0555b7bc22e1ab8c61 -->
 # 기여 안내
 
 ## 필수 작업 순서
@@ -55,7 +55,7 @@ ProxySQL 사용자는 `orm`, 비밀번호는 `orm`이다. PgBouncer는 primary�
 
 `make check`, `feature-check`, `ts-check`, `ts-min-check`, `client-db-check`, `client-pooler-check`, `case-database-check`, `conformance-check`, `db-test`, `perf-check`는 `.runtime/servers/env`를 읽고, 파일이 없으면 실패한다. `client-pooler-check`는 `ORM_TEST_POSTGRES_DSN`을 PgBouncer DSN으로, `ORM_TEST_MYSQL_DSN`을 ProxySQL DSN으로 바꾸어 클라이언트 데이터베이스 테스트를 실행한다. 이 target들은 환경 파일의 서버 DSN을 `ORM_TEST_MYSQL_SERVER_DSN`과 `ORM_TEST_POSTGRES_SERVER_DSN`으로도 export하며, pooler check는 이 둘을 바꾸지 않는다. rollback 실패 case는 이 DSN으로 transaction의 서버 session을 종료한다. ProxySQL은 text protocol의 `KILL`을 자기 client session에 대한 명령으로 받기 때문이다.
 
-클라이언트 데이터베이스 case는 `ORM_TEST_MYSQL_DSN`이나 `ORM_TEST_POSTGRES_DSN`이 가리키는 데이터베이스를 쓰지 않고, 그 데이터베이스가 비어 있다고 가정하지 않는다. 빈 데이터베이스를 확인하거나 schema를 설치하는 case는 그 DSN으로 자기 데이터베이스 `orm_case_<pid>_<n>`을, SQLite에서는 임시 directory에 자기 파일 `orm-case-<pid>-<n>.sqlite`를 만들고, 끝날 때 실패한 뒤에도 지운다. DSN의 사용자에게는 데이터베이스를 만드는 권한이 필요하다. `orm_test_single`을 거치는 statement timeout case는 `orm_test`에만 닿으므로 그곳에 자기 이름의 table을 만들고 지운다. `make case-database-check`는 두 공유 데이터베이스에 table 하나를 남겨 둔 채 네 클라이언트의 model case를 실행하고, case가 통과하며 공유 데이터베이스, 그 PostgreSQL schema, `orm_case_` 데이터베이스와 `orm-case-` 파일을 그대로 두지 않으면 실패한다.
+클라이언트 데이터베이스 case는 `ORM_TEST_MYSQL_DSN`이나 `ORM_TEST_POSTGRES_DSN`이 가리키는 데이터베이스를 쓰지 않고, 그 데이터베이스가 비어 있다고 가정하지 않는다. 빈 데이터베이스를 확인하거나 schema를 설치하는 case는 그 DSN으로 자기 데이터베이스 `orm_case_<pid>_<n>`을, SQLite에서는 임시 directory에 자기 파일 `orm-case-<pid>-<n>.sqlite`를 만들고, 끝날 때 실패한 뒤에도 지운다. DSN의 사용자에게는 데이터베이스를 만드는 권한이 필요하다. `orm_test_single`을 거치는 statement timeout case는 `orm_test`에만 닿으므로 그곳에 자기 이름의 table을 만들고 지운다. `make case-database-check`는 두 공유 데이터베이스에 table 하나를 남겨 둔 채 다섯 클라이언트의 model case를 실행하고, case가 통과하며 공유 데이터베이스, 그 PostgreSQL schema, `orm_case_` 데이터베이스와 `orm-case-` 파일을 그대로 두지 않으면 실패한다.
 
 ## Interface 변경
 

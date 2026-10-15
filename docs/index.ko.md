@@ -1,9 +1,9 @@
 ---
 layout: home
-title: Go·PHP·Rust·TypeScript 공통 ORM
+title: Go·PHP·Python·Rust·TypeScript 공통 ORM
 hero:
   name: orm
-  text: Go·PHP·Rust·TypeScript 공통 ORM 인터페이스
+  text: Go·PHP·Python·Rust·TypeScript 공통 ORM 인터페이스
   tagline: 스키마에서 query·row·relation 타입을 생성하고 언어별 드라이버로 실행한다.
   actions:
     - theme: brand
@@ -24,7 +24,7 @@ features:
     link: /dialects
 ---
 <!-- doc-id: index -->
-<!-- source-sha256: 1bccd6b73decedd98cae7efdebd88994f58397f8d03aa7633554bf9d8240469d -->
+<!-- source-sha256: 56e2df7cc3c0558c97cf964332ede24ca93067ff4ded7420ad913536e6c27627 -->
 
 ## 다섯 클라이언트의 같은 query
 

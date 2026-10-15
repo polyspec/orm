@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: fed4416534f703226a2b1550865438b7a01d0ddde9e363ca08c36a6f625f19e1 -->
+<!-- source-sha256: fbe3358377b0667444fba04a683f5a914c176390acd0fb71210015809677fbdc -->
 # 변경 이력
 
 ## Unreleased
 
+- 문서가 config/parity.json의 모든 구현을 적으며, 문서 규칙이 낡은 개수를 거부한다. (#T77-11)
 - make check와 CI가 PHP extension의 dbspec suite를 실행한다. (#T188)
 - 모든 AES vector가 각 client가 읽는 명시적 name을 가진다. (#T112)
 - offset이 없는 PHP datetime이 연결 zone에서 바인딩되며, 일광 절약 시간 wall clock도 포함한다. (#T116)

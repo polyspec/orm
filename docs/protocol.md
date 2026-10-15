@@ -256,6 +256,7 @@ Every client validates and plans requests in the calling process. No compiler se
 | PHP | `packages/php/src/Validator.php`, `Planner.php`, `Dialect.php`, `Dbspec/Renderer.php` DDL |
 | Rust | `packages/rust/orm/src/engine/`, `packages/rust/schema/src/dbspec/` DDL |
 | TypeScript | `packages/ts/src/engine/`, `packages/ts/src/dbspec/` DDL |
+| Python | `packages/python/src/polyspec/orm/engine/`, `packages/python/src/polyspec/orm/dbspec/` DDL |
 
 Generated code carries the manifest text of its document set and its `manifestHash`. The client builds the runtime model from that text once and rejects text whose hash differs from the declared one (`SCHEMA_HASH_MISMATCH`). The plan cache key is the manifest hash and the request shape. Parameter values are not part of the key.
 
