@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Python codec and apply runners run in the shared checks; the Python PostgreSQL apply restores lock_timeout with a $1 marker. (#T77-2)
 - The Python tests report through the shared harness: RUN with a deadline, STEP, PASS, FAIL and SKIP, as the other implementations do. (#T77-1)
 - The PHP client reads YAML through the fork min-0-max/yaml v1.0.0-p1, which resolves the core schema by the YAML 1.2.2 table; a consumer declares the fork's vcs repository, as docs/packaging.md shows. (#T142-1-1)
 - The repository checks read the Makefile through one reader that names every target with its prerequisites and recipe. (#T137-1-4-2-2)
