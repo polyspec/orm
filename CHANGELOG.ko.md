@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a4b0bc5ed721359081a152d4c400c430fd36a5d14599ab0d21c917335498c330 -->
+<!-- source-sha256: fed4416534f703226a2b1550865438b7a01d0ddde9e363ca08c36a6f625f19e1 -->
 # 변경 이력
 
 ## Unreleased
 
+- make check와 CI가 PHP extension의 dbspec suite를 실행한다. (#T188)
 - 모든 AES vector가 각 client가 읽는 명시적 name을 가진다. (#T112)
 - offset이 없는 PHP datetime이 연결 zone에서 바인딩되며, 일광 절약 시간 wall clock도 포함한다. (#T116)
 - date, time, datetime 매개변수는 모든 client에서 정규 text 형태만 받고, native 값은 CODEC_ENCODE로 거부한다. (#T89-3)

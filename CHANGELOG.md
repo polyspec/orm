@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- make check and CI run the PHP extension's dbspec suites. (#T188)
 - Every AES vector has an explicit name that each client reads. (#T112)
 - A PHP datetime without an offset binds in the connection zone, including a daylight-saving wall clock. (#T116)
 - Date, time and datetime parameters take the canonical text form in every client; a native value is refused with CODEC_ENCODE. (#T89-3)
