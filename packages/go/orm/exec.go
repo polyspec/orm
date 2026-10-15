@@ -393,7 +393,7 @@ func (res *result) related(ch *plan.Child, parent []any) ([][]any, error) {
 		return nil, nil
 	}
 	if ifp := sr.step.Parent.IfParent; ifp != nil {
-		match, err := SameScalar(parent[ifp.Index], res.params[ifp.Param])
+		match, err := ifParentMatch(parent[ifp.Index], res.params[ifp.Param])
 		if err != nil {
 			return nil, err
 		}
@@ -603,12 +603,26 @@ func childKeys(p *plan.Plan, st *plan.Step) []plan.KeyRef {
 	panic("orm: relation step without a child")
 }
 
+// ifParentMatch reports whether a parent cell equals the if_parent parameter. The parameter has the
+// column's logical type; a bool column is the integer 0 or 1 on MySQL and SQLite, so a bool parameter
+// compares with the cell read as a bool.
+func ifParentMatch(cell, param any) (bool, error) {
+	if want, ok := param.(bool); ok && cell != nil {
+		got, err := AsBool(cell)
+		if err != nil {
+			return false, err
+		}
+		return got == want, nil
+	}
+	return SameScalar(cell, param)
+}
+
 func parentValues(pr *plan.ParentRef, parents [][]any, params []any) ([]any, error) {
 	seen := map[Key]bool{}
 	var out []any
 	for _, row := range parents {
 		if pr.IfParent != nil {
-			match, err := SameScalar(row[pr.IfParent.Index], params[pr.IfParent.Param])
+			match, err := ifParentMatch(row[pr.IfParent.Index], params[pr.IfParent.Param])
 			if err != nil {
 				return nil, err
 			}

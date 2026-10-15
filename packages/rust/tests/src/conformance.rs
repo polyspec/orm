@@ -834,5 +834,26 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         }
         Ok::<Value, polyspec_orm::Error>(Value::Object(out))
     });
+    // a flattened region of a closed author (seq, name and service_seq collide with the parent; absent for an open author) that holds a flattened service (seq and name collide) with its service members
+    run!("relations_flatten", async {
+        let rows = author()
+            .remove_all_columns()
+            .add_column_name()
+            .add_column_is_close()
+            .relation(
+                ServiceRegion::new().match_service_region_seq_with_seq().possible_is_close(true).parent_node().relation(
+                    Service::new()
+                        .match_service_seq_with_seq()
+                        .parent_node()
+                        .relations(ServiceMember::new().match_seq_with_service_seq().remove_all_columns().order_by_seq_asc().group_limit(2)),
+                ),
+            )
+            .service_seq(7)
+            .order_by_seq_asc()
+            .limit(0, 8)
+            .gets()
+            .await?;
+        rows.to_array()
+    });
     out
 }

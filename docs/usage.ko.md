@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 025ec75a733c952935960fdc28208f4b9b0b7a1fcba8c0d710c08563e8911dc6 -->
+<!-- source-sha256: 0a9b297b5e5794cca3728af9d85fbcfa83b02b0ca4412a42f8795d8a769a8edf -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
@@ -253,7 +253,7 @@ $rows = (new Author)->connect($slave1)->serviceSeq(7)->limit(0, 20)
 | `match<L>With<R>()` | 부모 컬럼 `L`과 자식 컬럼 `R`이 같음 |
 | `alias<Name>()` | 관계 결과 명칭 |
 | `keyName<Col>()` | many 컬렉션의 키 컬럼. 중복이면 마지막 행 사용 |
-| `parentNode()` | one 관계 컬럼을 부모 행에 병합. 부모 값 우선 |
+| `parentNode()` | one 관계 컬럼을 부모 행에 병합. 부모 값 우선 ([protocol](protocol.md#_1-2-joins-and-relations)) |
 | `groupLimit(n)` | `ROW_NUMBER() OVER (PARTITION BY …)`로 부모당 n행 |
 | `possible<Col>(v)` | 부모 행이 일치할 때만 조회 |
 | `deleteLock()` | `delete(true)`의 중단 지점 |

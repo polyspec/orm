@@ -3649,6 +3649,7 @@
   "packages/go/orm/exec.go::decodeSelectedRow": "func(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyring) error",
   "packages/go/orm/exec.go::expandIn": "func(st *plan.Step, vals []any) (string, []any)",
   "packages/go/orm/exec.go::getQuery": "func(ex executor, r *request) (*Statement, error)",
+  "packages/go/orm/exec.go::ifParentMatch": "func(cell, param any) (bool, error)",
   "packages/go/orm/exec.go::newCached": "func(key uint64, p *plan.Plan) *cached",
   "packages/go/orm/exec.go::paginate": "func(ex executor, r *request) (*result, int64, error)",
   "packages/go/orm/exec.go::paramValue": "func(b *plan.BindSlot, r *request) (any, error)",

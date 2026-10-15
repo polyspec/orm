@@ -980,6 +980,20 @@ func run() (status int) {
 		return out, nil
 	})
 
+	// a flattened region of a closed author (seq, name and service_seq collide with the parent; absent for an open author) that holds a flattened service (seq and name collide) with its service members
+	run("relations_flatten", func() (any, error) {
+		rows, err := author().
+			RemoveAllColumns().AddColumnName().AddColumnIsClose().
+			Relation(model.ServiceRegion().MatchServiceRegionSeqWithSeq().PossibleIsClose(true).ParentNode().
+				Relation(model.Service().MatchServiceSeqWithSeq().ParentNode().
+					Relations(model.ServiceMember().MatchSeqWithServiceSeq().RemoveAllColumns().OrderBySeqAsc().GroupLimit(2)))).
+			ServiceSeq(7).OrderBySeqAsc().Limit(0, 8).Gets()
+		if err != nil {
+			return nil, err
+		}
+		return rows.ToArray(), nil
+	})
+
 	vectors, err := selectVectors(declared, selected)
 	check(err)
 	for _, v := range vectors {
