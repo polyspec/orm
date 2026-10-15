@@ -51,6 +51,57 @@ def answering_server(answer: str):
     return listener, thread
 
 
+def keyed_server(answers: dict):
+    """A listener that answers connect with {"ok": true} and every later message with the answer of answers
+    keyed by the op of a control message or the kind of a request; a message without an answer is IR_INVALID."""
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(1)
+
+    def serve():
+        try:
+            conn, _ = listener.accept()
+        except OSError:
+            return
+        with conn, conn.makefile("rb") as lines:
+            first = True
+            while True:
+                line = lines.readline()
+                if not line:
+                    return
+                if first:
+                    first = False
+                    reply = {"ok": True}
+                else:
+                    key = "unreadable"
+                    try:
+                        message = json.loads(line)
+                        key = (
+                            message.get("op")
+                            or message.get("request", {}).get("kind")
+                            or key
+                        )
+                    except ValueError:
+                        pass
+                    reply = answers.get(
+                        key,
+                        {
+                            "error": {
+                                "code": "IR_INVALID",
+                                "message": f"the case has no answer for {key}",
+                            }
+                        },
+                    )
+                try:
+                    conn.sendall(json.dumps(reply).encode() + b"\n")
+                except OSError:
+                    return
+
+    thread = threading.Thread(target=serve, daemon=True)
+    thread.start()
+    return listener, thread
+
+
 def setUpModule():
     STATE["workdir"] = Path(tempfile.mkdtemp(prefix="orm-ir-answers-"))
     STATE["models"] = generate(
@@ -68,7 +119,10 @@ def check_case(test: unittest.TestCase, case: dict) -> None:
     run = STATE["funcs"].get(case["chain"])
     if run is None:
         test.fail(f"chain {case['chain']} is no markdown conformance case")
-    listener, thread = answering_server(json.dumps(case["answer"]))
+    if "answers" in case:
+        listener, thread = keyed_server(case["answers"])
+    else:
+        listener, thread = answering_server(json.dumps(case["answer"]))
     port = listener.getsockname()[1]
     s = Served(STATE["models"], STATE["workdir"], str(port), TOKEN)
     s.db = STATE["models"].connect(s.dsn("conformance", TOKEN))

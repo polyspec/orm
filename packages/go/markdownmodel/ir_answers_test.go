@@ -4,6 +4,7 @@ package markdownmodel_test
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"net"
 	"os"
@@ -31,7 +32,9 @@ func TestIRAnswers(t *testing.T) {
 			ID     string          `json:"id"`
 			Chain  string          `json:"chain"`
 			Answer json.RawMessage `json:"answer"`
-			Expect any             `json:"expect"`
+			// Answers answers a transaction's messages by the op of a control message or the kind of a request.
+			Answers map[string]json.RawMessage `json:"answers"`
+			Expect  any                        `json:"expect"`
 		} `json:"cases"`
 	}
 	if err := json.Unmarshal(b, &doc); err != nil {
@@ -45,7 +48,12 @@ func TestIRAnswers(t *testing.T) {
 			if run == nil {
 				t.Fatalf("chain %s is no markdown conformance case", c.Chain)
 			}
-			dsn := answeringServer(t, string(c.Answer))
+			dsn := ""
+			if c.Answers != nil {
+				dsn = keyedServer(t, c.Answers)
+			} else {
+				dsn = answeringServer(t, string(c.Answer))
+			}
 			db, err := markdownmodel.Connect(dsn, orm.Config{PoolSize: 1})
 			if err != nil {
 				t.Fatal(err)
@@ -92,6 +100,57 @@ func answeringServer(t *testing.T, answer string) string {
 			}
 		}
 		r.ReadString('\n')
+	}()
+	return "markdown://" + ln.Addr().String() + "/conformance?token=0123456789abcdef0123456789abcdef"
+}
+
+// keyedServer는 한 연결의 connect에 {"ok": true}를, 그다음 message마다 answers에서 그 control message의 op나
+// request의 kind로 찾은 답을 쓰는 listener의 DSN이다. 답이 없는 message에는 IR_INVALID를 쓴다.
+func keyedServer(t *testing.T, answers map[string]json.RawMessage) string {
+	t.Helper()
+	ln, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { ln.Close() })
+	go func() {
+		conn, err := ln.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		r := bufio.NewReader(conn)
+		for first := true; ; first = false {
+			line, err := r.ReadString('\n')
+			if err != nil {
+				return
+			}
+			reply := `{"ok":true}`
+			if !first {
+				var msg struct {
+					Op      string `json:"op"`
+					Request struct {
+						Kind string `json:"kind"`
+					} `json:"request"`
+				}
+				key := "unreadable"
+				if json.Unmarshal([]byte(line), &msg) == nil {
+					key = msg.Op
+					if key == "" {
+						key = msg.Request.Kind
+					}
+				}
+				var compact bytes.Buffer
+				if answer, ok := answers[key]; ok && json.Compact(&compact, answer) == nil {
+					reply = compact.String()
+				} else {
+					reply = `{"error":{"code":"IR_INVALID","message":"the case has no answer for ` + key + `"}}`
+				}
+			}
+			if _, err := conn.Write([]byte(reply + "\n")); err != nil {
+				return
+			}
+		}
 	}()
 	return "markdown://" + ln.Addr().String() + "/conformance?token=0123456789abcdef0123456789abcdef"
 }

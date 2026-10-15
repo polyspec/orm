@@ -473,6 +473,24 @@ def conformance_cases() -> dict:
         read = s.models.People().connect(s.db).id("P1").get()
         return {"error": code, "name": read.get_name()}
 
+    def transaction_retry_commit(s):
+        # A transaction that reads P1 and writes its own name back, with retry options: the commit's code
+        # (None when it commits) and how many times the callback ran. WRITE_CONFLICT is never retried,
+        # DEADLOCK is (contracts/fixtures/ir_answers.json).
+        runs = []
+
+        def body():
+            runs.append(1)
+            m = s.models.People().id("P1").get()
+            m.set_name(m.get_name()).update()
+
+        code = None
+        try:
+            s.db.transaction(body, {"retry": 3})
+        except OrmError as error:
+            code = error.code
+        return {"error": code, "runs": len(runs)}
+
     def connect_mismatch(corpus_of, token_of):
         def run(s):
             db = s.models.connect(s.dsn(corpus_of(s), token_of(s)))
@@ -512,6 +530,7 @@ def conformance_cases() -> dict:
         "get_query": get_query,
         "isolation": isolation,
         "write_conflict": write_conflict,
+        "transaction_retry_commit": transaction_retry_commit,
         "connect_corpus_mismatch": connect_mismatch(
             lambda s: "other", lambda s: s.token
         ),

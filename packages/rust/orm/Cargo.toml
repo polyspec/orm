@@ -71,6 +71,11 @@ path = "tests/codec_aes_vectors.rs"
 harness = false
 
 [[test]]
+name = "code_catalog"
+path = "tests/code_catalog.rs"
+harness = false
+
+[[test]]
 name = "ir_validate"
 path = "tests/ir_validate.rs"
 harness = false

@@ -594,10 +594,17 @@ where
                 Err(payload) => match rollback_and_resume(&tx, payload).await {},
             };
             match result {
-                Ok(v) => {
-                    commit(&tx).await?;
-                    return Ok(v);
-                }
+                // A deadlocked commit is retried as a deadlocked callback is, as the other clients retry the whole
+                // transaction; any other commit error, such as WRITE_CONFLICT, is returned at once.
+                Ok(v) => match commit(&tx).await {
+                    Ok(()) => return Ok(v),
+                    Err(e) if e.is_deadlock() && attempt < self.retry => {
+                        let jitter = rand::random::<u64>() % 20;
+                        tokio::time::sleep(std::time::Duration::from_millis((50u64 << attempt.min(10)) + jitter)).await;
+                        attempt += 1;
+                    }
+                    Err(e) => return Err(e),
+                },
                 Err(e) => {
                     if let Err(rollback_error) = rollback(&tx).await.and_then(|()| rollback_fault(self.db)) {
                         return Err(Error::rollback(e, rollback_error));
@@ -705,10 +712,17 @@ impl<'a, F> Transaction<'a, F> {
                 Err(payload) => match rollback_and_resume(&tx, payload).await {},
             };
             match result {
-                Ok(v) => {
-                    commit(&tx).await?;
-                    return Ok(v);
-                }
+                // A deadlocked commit is retried as a deadlocked callback is, as the other clients retry the whole
+                // transaction; any other commit error, such as WRITE_CONFLICT, is returned at once.
+                Ok(v) => match commit(&tx).await {
+                    Ok(()) => return Ok(v),
+                    Err(e) if e.is_deadlock() && attempt < self.retry => {
+                        let jitter = rand::random::<u64>() % 20;
+                        tokio::time::sleep(std::time::Duration::from_millis((50u64 << attempt.min(10)) + jitter)).await;
+                        attempt += 1;
+                    }
+                    Err(e) => return Err(e),
+                },
                 Err(e) => {
                     if let Err(rollback_error) = rollback(&tx).await.and_then(|()| rollback_fault(self.db)) {
                         return Err(Error::rollback(e, rollback_error));

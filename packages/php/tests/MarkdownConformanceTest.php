@@ -389,6 +389,23 @@ final class MarkdownConformanceTest extends TestCase
                 $read = (new People())->connect($s->db)->id('P1')->get();
                 return ['error' => $code, 'name' => $read->getName()];
             },
+            // A transaction that reads P1 and writes its own name back, with retry options: the commit's code (null when
+            // it commits) and how many times the callback ran. WRITE_CONFLICT is never retried, DEADLOCK is
+            // (contracts/fixtures/ir_answers.json).
+            'transaction_retry_commit' => static function (Served $s): mixed {
+                $runs = 0;
+                $code = null;
+                try {
+                    $s->db->transaction(static function () use (&$runs): void {
+                        $runs++;
+                        $m = (new People())->id('P1')->get();
+                        $m->setName($m->getName())->update();
+                    }, retry: 3);
+                } catch (OrmException $e) {
+                    $code = $e->code_;
+                }
+                return ['error' => $code, 'runs' => $runs];
+            },
             'connect_corpus_mismatch' => static function (Served $s): mixed {
                 connect($s->dsn('other', $s->token), new Config())->close();
                 return null;

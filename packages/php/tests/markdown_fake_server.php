@@ -7,9 +7,16 @@ declare(strict_types=1);
  * 끝나거나 답이 떨어지면 연결을 닫고 받은 줄들을 JSON 배열 한 줄로 쓰고 끝난다.
  *
  *   php markdown_fake_server.php <answer>...
+ *
+ * With --keyed and a JSON object, it answers connect with {"ok":true} and every later message with the member of the
+ * object named by the op of a control message or the kind of a request, until the connection ends; a message without
+ * a member is answered IR_INVALID.
+ *
+ *   php markdown_fake_server.php --keyed <answers object>
  */
 
 $answers = array_slice($argv, 1);
+$keyed = ($answers[0] ?? '') === '--keyed' ? json_decode($answers[1] ?? '{}', true, 512, JSON_THROW_ON_ERROR) : null;
 $server = stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr);
 if ($server === false) {
     fwrite(STDERR, "listen: $errstr\n");
@@ -20,7 +27,24 @@ fwrite(STDOUT, substr($name, strrpos($name, ':') + 1) . "\n");
 fflush(STDOUT);
 $received = [];
 $conn = stream_socket_accept($server, -1);
-if ($conn !== false) {
+if ($conn !== false && $keyed !== null) {
+    while (($line = fgets($conn)) !== false) {
+        $received[] = rtrim($line, "\n");
+        if (count($received) === 1) {
+            $answer = '{"ok":true}';
+        } else {
+            $message = json_decode($line, true);
+            $key = is_array($message) ? ($message['op'] ?? $message['request']['kind'] ?? 'unreadable') : 'unreadable';
+            $answer = array_key_exists($key, $keyed)
+                ? json_encode($keyed[$key], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION)
+                : json_encode(['error' => ['code' => 'IR_INVALID', 'message' => "the case has no answer for $key"]]);
+        }
+        if (fwrite($conn, $answer . "\n") === false) {
+            break;
+        }
+    }
+    fclose($conn);
+} elseif ($conn !== false) {
     foreach ($answers as $answer) {
         $line = fgets($conn);
         if ($line === false) {

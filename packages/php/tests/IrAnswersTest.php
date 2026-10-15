@@ -34,7 +34,10 @@ final class IrAnswersTest extends TestCase
     {
         $chain = MarkdownConformanceTest::conformance_cases()[$case['chain']] ?? null;
         self::assertNotNull($chain, "chain {$case['chain']} is no markdown conformance case");
-        $server = markdown_fake_server(['{"ok":true}', json_encode($case['answer'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION)]);
+        $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR;
+        $server = isset($case['answers'])
+            ? markdown_fake_server(['--keyed', json_encode($case['answers'], $flags)])
+            : markdown_fake_server(['{"ok":true}', json_encode($case['answer'], $flags)]);
         $served = new Served();
         $served->db = \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
         $error = null;

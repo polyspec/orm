@@ -539,6 +539,29 @@ func conformanceCases() map[string]caseFunc {
 			}
 			return map[string]any{"error": orm.ErrorCode(err), "name": read.GetName()}, nil
 		},
+		// transaction_retry_commit runs a transaction that reads P1 and writes its own name back, with retry options,
+		// and answers the commit's code (null when it commits) and how many times the callback ran: a commit that is
+		// WRITE_CONFLICT is never retried, a DEADLOCK is (contracts/fixtures/ir_answers.json).
+		"transaction_retry_commit": func(s *served) (any, error) {
+			runs := 0
+			err := s.db.Transaction(func() error {
+				runs++
+				m, err := markdownmodel.People().Id("P1").Get()
+				if err != nil {
+					return err
+				}
+				_, err = m.SetName(m.GetName()).Update()
+				return err
+			}, orm.Retry(3))
+			var code any
+			if err != nil {
+				if orm.ErrorCode(err) == "" {
+					return nil, err
+				}
+				code = orm.ErrorCode(err)
+			}
+			return map[string]any{"error": code, "runs": runs}, nil
+		},
 		"connect_corpus_mismatch": func(s *served) (any, error) {
 			db, err := markdownmodel.Connect(s.dsn("other", s.token), orm.Config{})
 			if err == nil {

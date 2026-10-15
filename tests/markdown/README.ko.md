@@ -1,5 +1,5 @@
 <!-- doc-id: tests-markdown-readme -->
-<!-- source-sha256: d26bc94d670e66fe86fc6fcf0c8019de36cf076d5bfb34110fb63ee16c76ed39 -->
+<!-- source-sha256: 9322efd6cef3b93fc84a9e58d932a90d6aefd73e8627566ff005f5303d49769f -->
 # Markdown executor 적합성
 
 markdown IR executor([프로토콜](../../docs/protocol.ko.md#_5-ir-executors))는 데이터베이스가 아니라 flowmark
@@ -56,4 +56,4 @@ case의 결과는 JSON 값이며, 결과와 `expect`를 모두 JSON으로 읽은
 `paginate`, 행 하나와 여러 행과 `identity` key와 `on_duplicate`의 `insert`, `optimistic`이 있고 없는 `update`,
 foreign key 거절과 soft delete의 `delete`, `restore`), join과 relation, commit, rollback, savepoint rollback의
 트랜잭션, 읽기 전용 트랜잭션, row lock `update`와 거절되는 `update_nowait`, 거절되는 `getQuery()`와 `isolation`,
-engine 밖의 편집을 만난 commit(`WRITE_CONFLICT`, 재시도하지 않는다), corpus나 token이 다른 연결(`CONFIG`)이다.
+engine 밖의 편집을 만난 commit(`WRITE_CONFLICT`, 재시도하지 않는다), retry option으로 commit하는 transaction(`transaction_retry_commit`, `{"error", "runs"}`: commit의 code나 null과 callback이 실행된 횟수이며, `contracts/fixtures/ir_answers.json`이 이를 `WRITE_CONFLICT`와 `DEADLOCK`으로 답한 commit으로도 실행한다), corpus나 token이 다른 연결(`CONFIG`)이다.

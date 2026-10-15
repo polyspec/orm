@@ -504,6 +504,7 @@ A program that compiles requests itself, such as a load that writes rows with th
 | `OPTIMISTIC_LOCK` | `update(true)` found a newer `updated_ts`; read again and retry |
 | `LOCK_NOT_AVAILABLE` | A `*_nowait` row-lock request could not acquire the lock immediately; do not retry it as a transaction conflict |
 | `DUPLICATE_KEY` / `DEADLOCK` | Mapped driver error with original text retained; deadlock follows the transaction retries |
+| `WRITE_CONFLICT` | An IR executor found a target changed since it was read, or, at the commit, a change since the read that makes the transaction's writes other writes; it names the file and line. It is never retried, even with retry options, unlike `DEADLOCK` |
 | `CANCELED` | The statement stopped before it finished: a cancellation, a timeout bound, or a SQLite lock that another connection still held when `busy_timeout` ended; it is not retried |
 | `READ_ONLY` | A write reached a read-only server or connection: a replica, a read-only transaction, or a SQLite database opened read-only; send the write through the primary connection |
 | `CONSTRAINT` | A CHECK constraint refused the row; the error keeps the driver message and the driver error |

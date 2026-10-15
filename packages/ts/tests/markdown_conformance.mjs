@@ -218,6 +218,19 @@ const conformanceCases = {
   lock_nowait: async s => s.db.transaction(async () => { await new People().connect(s.db).id('P1').forUpdateNoWait().get(); }),
   get_query: async s => new People().connect(s.db).getQuery(),
   isolation: async s => s.db.transaction(async () => undefined, { isolation: 'serializable' }),
+  // A transaction that reads P1 and writes its own name back, with retry options: the commit's code (null when it
+  // commits) and how many times the callback ran. WRITE_CONFLICT is never retried, DEADLOCK is
+  // (contracts/fixtures/ir_answers.json).
+  transaction_retry_commit: async s => {
+    let runs = 0;
+    const error = await s.db.transaction(async () => {
+      runs += 1;
+      const m = await new People().id('P1').get();
+      await m.setName(m.getName()).update();
+    }, { retry: 3 }).then(() => undefined, e => e);
+    if (error !== undefined && !(error instanceof OrmError)) throw error;
+    return { error: error === undefined ? null : error.code, runs };
+  },
   write_conflict: async s => {
     const error = await s.db.transaction(async () => {
       const m = await new People().id('P1').get();
@@ -244,6 +257,34 @@ function normalize(value) {
 
 let served;
 /** connect에 {"ok":true}, 다음 message에 answer를 쓰는 listener다. */
+/**
+ * A listener that answers connect with {"ok":true} and every later message with the answer of answers keyed by the op
+ * of a control message or the kind of a request; a message without an answer is IR_INVALID.
+ */
+async function keyedServer(answers) {
+  const server = createServer(socket => {
+    let first = true;
+    createInterface({ input: socket }).on('line', line => {
+      if (first) {
+        first = false;
+        socket.write('{"ok":true}\n');
+        return;
+      }
+      let key = 'unreadable';
+      try {
+        const message = JSON.parse(line);
+        key = message.op ?? message.request?.kind ?? key;
+      } catch {}
+      const answer = Object.hasOwn(answers, key) ? answers[key] : { error: { code: 'IR_INVALID', message: `the case has no answer for ${key}` } };
+      socket.write(`${JSON.stringify(answer)}\n`);
+    });
+    socket.on('error', () => {});
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  return { dsn: `markdown://127.0.0.1:${port}/conformance?token=0123456789abcdef0123456789abcdef`, close: () => new Promise(resolve => server.close(resolve)) };
+}
+
 async function answeringServer(answer) {
   const server = createServer(socket => {
     const replies = ['{"ok":true}', answer];
@@ -263,7 +304,7 @@ if (process.argv.includes('--ir-answers')) {
     await runner.run(`ir-answers/${c.id}`, COMPUTE, async () => {
       const chain = conformanceCases[c.chain];
       if (chain === undefined) throw new Error(`chain ${c.chain} is no markdown conformance case`);
-      const server = await answeringServer(JSON.stringify(c.answer));
+      const server = c.answers !== undefined ? await keyedServer(c.answers) : await answeringServer(JSON.stringify(c.answer));
       const db = await connect(server.dsn);
       let got;
       try {

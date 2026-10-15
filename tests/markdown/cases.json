@@ -63,6 +63,7 @@
     { "id": "isolation", "expect": { "error": "CAPABILITY_UNSUPPORTED" } },
     { "id": "write_conflict", "expect": { "error": "WRITE_CONFLICT", "name": "Ann B" } },
     { "id": "connect_corpus_mismatch", "expect": { "error": "CONFIG" } },
-    { "id": "connect_token_mismatch", "expect": { "error": "CONFIG" } }
+    { "id": "connect_token_mismatch", "expect": { "error": "CONFIG" } },
+    { "id": "transaction_retry_commit", "expect": { "error": null, "runs": 1 } }
   ]
 }

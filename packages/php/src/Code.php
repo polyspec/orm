@@ -49,7 +49,7 @@ final class Code
     public const COLUMN_UNSELECTED = 'COLUMN_UNSELECTED';
     /** executor: updateOptimistic matched no row (updated_ts changed) */
     public const OPTIMISTIC_LOCK = 'OPTIMISTIC_LOCK';
-    /** executor: a target changed since it was read; names the file and line; the client never retries it */
+    /** executor: a target changed since it was read, or a change since the read makes the transaction's writes other writes; names the file and line; the client never retries it */
     public const WRITE_CONFLICT = 'WRITE_CONFLICT';
     /** executor: styled column bytes could not be decoded (docs/codec.md) */
     public const CODEC_DECODE = 'CODEC_DECODE';

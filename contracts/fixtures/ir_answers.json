@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "comment": "The read answers of an IR executor (docs/protocol.md section 5, Read): each case runs the chain of the markdown conformance case named by chain (tests/markdown/README.md) on a connection whose server answers connect with {\"ok\": true} and the chain's one request with answer, and the chain's result, the model array form of tests/markdown/README.md, equals expect. A row is a JSON object of its outputs in projection order, then each join (an object, or null) and each relation (a one relation an object or null, a many relation an array). Values use the parameter value model: a decimal is a string, a date its text, an integer or f64 a JSON number, a bool a JSON bool.",
+  "comment": "The read answers of an IR executor (docs/protocol.md section 5, Read): each case runs the chain of the markdown conformance case named by chain (tests/markdown/README.md) on a connection whose server answers connect with {\"ok\": true} and the chain's one request with answer, and the chain's result, the model array form of tests/markdown/README.md, equals expect. A case of a transaction gives answers instead of answer: an object keyed by the op of each control message (begin, commit, rollback) and by the kind of each request (one, update), whose value answers every such message; the result of the chain transaction_retry_commit is {\"error\": <code or null>, \"runs\": <the times its callback ran>}. A row is a JSON object of its outputs in projection order, then each join (an object, or null) and each relation (a one relation an object or null, a many relation an array). Values use the parameter value model: a decimal is a string, a date its text, an integer or f64 a JSON number, a bool a JSON bool.",
   "cases": [
     {
       "id": "one",
@@ -79,6 +79,30 @@
       "chain": "relation_one",
       "answer": { "rows": [{ "id": "T3", "owner": "P2", "title": "ship", "people_model": null }] },
       "expect": { "id": "T3", "owner": "P2", "title": "ship", "people_model": null }
+    },
+    {
+      "id": "commit_write_conflict",
+      "chain": "transaction_retry_commit",
+      "answers": {
+        "begin": { "ok": true },
+        "one": { "rows": [{ "id": "P1", "name": "Ann", "email": "ann@example.com", "age": 30, "active": true, "score": "1.50" }] },
+        "update": { "affected": 1, "keys": [] },
+        "commit": { "error": { "code": "WRITE_CONFLICT", "message": "people.flowmark.md:3: a row the transaction read changed since it was read" } },
+        "rollback": { "ok": true }
+      },
+      "expect": { "error": "WRITE_CONFLICT", "runs": 1 }
+    },
+    {
+      "id": "commit_deadlock",
+      "chain": "transaction_retry_commit",
+      "answers": {
+        "begin": { "ok": true },
+        "one": { "rows": [{ "id": "P1", "name": "Ann", "email": "ann@example.com", "age": 30, "active": true, "score": "1.50" }] },
+        "update": { "affected": 1, "keys": [] },
+        "commit": { "error": { "code": "DEADLOCK", "message": "deadlock" } },
+        "rollback": { "ok": true }
+      },
+      "expect": { "error": "DEADLOCK", "runs": 4 }
     }
   ]
 }

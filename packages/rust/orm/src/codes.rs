@@ -43,7 +43,7 @@ pub const NO_ROWS: &str = "NO_ROWS";
 pub const COLUMN_UNSELECTED: &str = "COLUMN_UNSELECTED";
 /// executor: updateOptimistic matched no row (updated_ts changed)
 pub const OPTIMISTIC_LOCK: &str = "OPTIMISTIC_LOCK";
-/// executor: a target changed since it was read; names the file and line; the client never retries it
+/// executor: a target changed since it was read, or a change since the read makes the transaction's writes other writes; names the file and line; the client never retries it
 pub const WRITE_CONFLICT: &str = "WRITE_CONFLICT";
 /// executor: styled column bytes could not be decoded (docs/codec.md)
 pub const CODEC_DECODE: &str = "CODEC_DECODE";

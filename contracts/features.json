@@ -8912,7 +8912,11 @@
         "packages/rust/orm/src/codes.rs",
         "packages/go/cmd/orm-gen/errors.go"
       ],
-      "tests": [],
+      "tests": [
+        "packages/go/orm/codes_test.go",
+        "packages/php/tests/CodeCatalogTest.php",
+        "packages/rust/orm/tests/code_catalog.rs"
+      ],
       "command": "sh -c 'dir=$(mktemp -d) && trap \"rm -rf \\\"$dir\\\"\" EXIT && for pair in go:packages/go/orm/codes.go php:packages/php/src/Code.php rust:packages/rust/orm/src/codes.rs; do node tests/go-run.mts orm-gen ./packages/go/cmd/orm-gen errors --lang \"${pair%%:*}\" --out \"$dir/${pair%%:*}\" && diff -u \"${pair#*:}\" \"$dir/${pair%%:*}\" || exit 1; done'"
     },
     {

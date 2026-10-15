@@ -60,6 +60,7 @@ const CASES: &[&str] = &[
     "get_query",
     "isolation",
     "write_conflict",
+    "transaction_retry_commit",
     "connect_corpus_mismatch",
     "connect_token_mismatch",
 ];
@@ -147,16 +148,38 @@ fn markdown_conformance_case(id: &str, expect: &Value) {
 
 /// Runs one case of contracts/fixtures/ir_answers.json: a listener answers connect with {"ok": true} and the chain's
 /// one request with the case's answer, and the chain's result equals expect (docs/protocol.md section 5, Read).
-fn ir_answer_case(chain: &str, answer: &Value, expect: &Value) {
+/// A case with `answers` instead of `answer` is a transaction: the listener answers every later message with the member
+/// of `answers` named by the op of a control message or the kind of a request, and a message without one IR_INVALID.
+fn ir_answer_case(chain: &str, answer: &Value, answers: &Value, expect: &Value) {
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("a current-thread runtime");
     let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("a listener");
     let port = listener.local_addr().expect("its address").port();
     let replies = [r#"{"ok":true}"#.to_owned(), answer.to_string()];
+    let keyed = answers.as_object().cloned();
     let server = std::thread::spawn(move || {
         use std::io::Write;
         let Ok((conn, _)) = listener.accept() else { return };
         let mut writer = conn.try_clone().expect("a second handle");
         let mut lines = std::io::BufReader::new(conn).lines();
+        if let Some(keyed) = keyed {
+            let mut first = true;
+            while let Some(Ok(line)) = lines.next() {
+                let reply = if std::mem::take(&mut first) {
+                    json!({ "ok": true })
+                } else {
+                    let message: Value = serde_json::from_str(&line).unwrap_or(Value::Null);
+                    let key = message["op"].as_str().or(message["request"]["kind"].as_str()).unwrap_or("unreadable").to_owned();
+                    keyed
+                        .get(&key)
+                        .cloned()
+                        .unwrap_or_else(|| json!({ "error": { "code": "IR_INVALID", "message": format!("the case has no answer for {key}") } }))
+                };
+                if writer.write_all(format!("{reply}\n").as_bytes()).is_err() {
+                    return;
+                }
+            }
+            return;
+        }
         for reply in replies {
             if !matches!(lines.next(), Some(Ok(_))) {
                 return;
@@ -197,7 +220,7 @@ fn main() {
         .map(|case| {
             let id = case["id"].as_str().expect("id").to_owned();
             polyspec_orm_testcase::trial(format!("ir_answers::{id}"), polyspec_orm_testcase::COMPUTE, move || {
-                ir_answer_case(case["chain"].as_str().expect("chain"), &case["answer"], &case["expect"])
+                ir_answer_case(case["chain"].as_str().expect("chain"), &case["answer"], &case["answers"], &case["expect"])
             })
         })
         .collect();
@@ -514,6 +537,23 @@ async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             let read = People::new().connect(db).id("P1").get().await?;
             let code = committed.err().map(|error| error.code().to_owned()).unwrap_or_default();
             json!({ "error": code, "name": read.get_name()? })
+        }
+        // A transaction that reads P1 and writes its own name back, with retry options: the commit's code (null when it
+        // commits) and how many times the callback ran. WRITE_CONFLICT is never retried, DEADLOCK is
+        // (contracts/fixtures/ir_answers.json).
+        "transaction_retry_commit" => {
+            let runs = std::sync::atomic::AtomicU32::new(0);
+            let committed = db
+                .transaction(async || {
+                    runs.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    let m = People::new().id("P1").get().await?;
+                    let name = m.get_name()?.to_owned();
+                    m.set_name(&name).update(false).await.map(drop)
+                })
+                .retry(3)
+                .await;
+            let code = committed.err().map(|error| Value::from(error.code().to_owned())).unwrap_or(Value::Null);
+            json!({ "error": code, "runs": runs.load(std::sync::atomic::Ordering::SeqCst) })
         }
         "connect_corpus_mismatch" => {
             markdown_model::connect(&s.dsn("other", &s.token), 0, Config::default()).await?.close().await;
