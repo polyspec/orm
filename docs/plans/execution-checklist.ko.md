@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 921eee3ffa95dfdd5d45fc1183fde67f77ce05bd547d8f05487f09df881c3c3d -->
+<!-- source-sha256: 51f9d25a7274e869a1c65c6e6edce5e775d6c45a5b161bd6538ee060d6583c95 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1200,6 +1200,7 @@
   - [o] T169-1 conformance vector에 insert part를 기록한다 (T169에 이어). 원인: T169가 creates를 2 + 1 part로 바꿨지만 tests/conformance는 3행 INSERT 하나를 유지해, main CI가 다섯 client 모두에서 같이 실패했다. Evidence: check compare -vector creates_and_save가 mysql, postgres, sqlite에서 vector 1개 × 5개 언어 동일을 보고한다.
   - [o] T169-2 선택한 conformance vector를 make로 실행하고 다섯 client를 기술한다 (T169-1에 이어). 원인: tests/conformance/README.md가 아직 client 네 개와 출력 파일 네 개를 말하고, -vector를 check run에 넘기는 make target이 없어 vector 하나에도 손으로 만든 database와 make 환경이 필요하다. 완료 조건: make target이 test server로 지정한 vector를 실행, 비교, 기록하고, README가 그것과 다섯 client를 기술한다.
   Evidence: VECTOR=creates_and_save가 세 database에서 vector 1개 × 5개 언어 동일을 보고한다. VECTOR와 RECORD=1은 이유를 출력하고 2로 끝난다.
+  - [ ] T169-3 IN-list 길이마다 plan cache가 커지지 않게 한다 (T169에 이어). 원인: T169의 완료 근거는 insert parts만 다룬다. Planner는 IN-list의 원소마다 placeholder를 하나씩 만들므로(packages/php/src/Planner.php:525, 다른 planner도 같다), 길이마다 별도 plan과 cache 항목이 생긴다. RED: 같은 IN-list 요청을 길이 1부터 300까지 실행하고 plan cache 항목 수를 세는 test. 현재 코드에서는 길이마다 하나씩 늘어난다. 완료 조건: plan이 목록 길이에 의존하지 않거나(정해진 placeholder 묶음과 채우기 방식), cache의 메모리 상한을 밝혀 강제한다. 모든 client의 plan cache를 같은 기준으로 판단한다.
 - [o] T170 TypeScript model을 쓰는 것만 담아 생성한다 (T137-1-3-1에 이어). 원인: kit 0.0.43의 fsm lint-ts가 orm-gen이 쓴 models.ts에서 쓰지 않는 import, 같은 이름의 class와 interface(declaration merging), 쓰지 않는 MANIFEST_* export를 찾는다. 완료 조건: TS emitter가 model이 쓰는 import와 export만 쓰고 type마다 한 번만 선언하며, generator test가 이를 확인하고, 생성 파일의 lint가 통과한다.
   Evidence: 쓰지 않는 import와 interface가 합쳐진 class를 거부하는 models-scan test가 수정 전 실패하고 수정 후 통과한다. ts-check/types와 ts-model-check가 통과한다. MANIFEST_TEXT와 MANIFEST_HASH는 docs/usage.md가 정한 대로 export를 유지한다.
   - [o] T170-1 생성 model의 TypeScript symbol을 기록한다 (T170에 이어). 원인: T170이 contracts/symbols/typescript.json을 기록하지 않고 model을 다시 생성해 main에서 make interface-check가 실패했다. Evidence: 기록은 생성 model과 declareMember만 다르다. interface-check 8개가 통과한다.
