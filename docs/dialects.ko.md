@@ -412,7 +412,7 @@ DSN scheme `markdown://`은 SQL dialect 대신 flowmark IR executor를 고른다
 | `select explicit`, `entity`, `navigation` | client 쪽이며 저장에 효과가 없다 |  |
 | `aes`, `aes_version`, `blind_index` | corpus에서 schema 오류 | key는 client를 떠나지 않는다 |
 | `audit`, `immutable` setting | corpus에서 schema 오류 | 대신 `state_machine … history` |
-| transaction | session 위의 `begin`부터 `commit`/`rollback`까지 | `readOnly`는 지키며 lock을 잡는다 |
+| transaction | session 위의 `begin`부터 `commit`/`rollback`까지 | `readOnly`를 지킨다: 클라이언트는 `read_only` true인 `begin`을 쓰고, executor는 그 transaction에 쓰기 lock을 잡지 않으며 그 안의 모든 쓰기를 `READ_ONLY`로 거절한다 |
 | savepoint | 중첩 stage |  |
 | `orderByRandom` | 지원 | 순서에 seed를 쓰지 않는다 |
 | audit 값을 가진 transaction | `CAPABILITY_UNSUPPORTED` |  |

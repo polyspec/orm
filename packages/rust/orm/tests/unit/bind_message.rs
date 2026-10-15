@@ -1,7 +1,7 @@
 //! bind_message: tests/bind/vectors.json의 message case, IR executor message parameter의 runtime value model JSON
 //! 이다(docs/protocol.md §5 "Parameters"). Go의 TestBindMessageVectors와 같은 case다. markdown_param은 crate 안에서만
 //! 보이므로 src/markdown.rs가 이 file을 unit test module로 둔다.
-use super::markdown_param;
+use super::{begin_message, markdown_param};
 use crate::db::Zone;
 use crate::engine::ParamUse;
 use crate::{Error, Param};
@@ -28,4 +28,20 @@ fn message_vectors() {
         }
     }
     assert!(failed.is_empty(), "{}", failed.join("\n"));
+}
+
+/// The control cases of tests/bind/vectors.json: the begin control message of a transaction with and without its
+/// read_only option (docs/protocol.md §5 "Session").
+#[test]
+fn control_vectors() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let raw = std::fs::read_to_string(polyspec_orm_testcase::manifest_dir().join("../../../tests/bind/vectors.json")).unwrap();
+    let vectors: serde_json::Value = serde_json::from_str(&raw).unwrap();
+    let cases = vectors["control"].as_array().expect("tests/bind/vectors.json has control cases");
+    assert!(!cases.is_empty(), "tests/bind/vectors.json has no control cases");
+    for c in cases {
+        let read_only = c["read_only"].as_bool().unwrap();
+        let got = serde_json::to_value(begin_message(read_only)).unwrap();
+        assert_eq!(got, c["json"], "control/{}", c["name"]);
+    }
 }

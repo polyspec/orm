@@ -569,17 +569,20 @@ def markdown_links(row: list) -> MdLinks:
     return links if isinstance(links, MdLinks) else MdLinks()
 
 
+def begin_message(read_only: bool) -> dict:
+    """The begin control message of a transaction: a read-only transaction sends read_only true, any other leaves the
+    member out (docs/protocol.md section 5 Session, the control cases of tests/bind/vectors.json)."""
+    return {"op": "begin", "read_only": True} if read_only else {"op": "begin"}
+
+
 def begin_markdown(db, frame, options: dict) -> None:
     """markdown transaction을 연다: 연결의 session을 transaction이 끝날 때까지 frame이 잡고 begin을 보낸다.
     읽기 전용 transaction은 read_only를 보낸다."""
     if options.get("isolation") is not None:
         unsupported_on_markdown(db, "the transaction isolation option")
     frame.connection = db._connection
-    msg = {"op": "begin"}
-    if options.get("readOnly"):
-        msg["read_only"] = True
     try:
-        frame.connection.call(msg)
+        frame.connection.call(begin_message(bool(options.get("readOnly"))))
     except BaseException:
         frame.finished = True
         frame.connection = None

@@ -2177,6 +2177,7 @@
   "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::aggregateValue": "private static function aggregateValue(mixed $v): string|int|float|null",
   "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::answerError": "private static function answerError(string $message): Polyspec\\Orm\\OrmException",
   "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::answerValue": "private static function answerValue(string $type, mixed $v, string $where): mixed",
+  "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::beginMessage": "public static function beginMessage(bool $readOnly): array",
   "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::call": "private static function call(Polyspec\\Orm\\Db $db, Polyspec\\Orm\\Request $r): array",
   "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::isObject": "private static function isObject(mixed $v): bool",
   "packages/php/src/Markdown.php::Polyspec\\Orm\\Markdown::layout": "private static function layout(Polyspec\\Orm\\RuntimeModel $m, array $q, bool $groups, array $rows): array",

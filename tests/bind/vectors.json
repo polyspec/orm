@@ -1,5 +1,9 @@
 {
   "zone": "+00:00",
+  "control": [
+    {"name": "begin", "read_only": false, "json": {"op": "begin"}},
+    {"name": "begin-read-only", "read_only": true, "json": {"op": "begin", "read_only": true}}
+  ],
   "message": [
     {"name": "time-p0", "type": "time", "precision": 0, "value": "10:00:00", "json": "10:00:00.000000"},
     {"name": "time-p3", "type": "time", "precision": 3, "value": "10:00:00.123", "json": "10:00:00.123000"},

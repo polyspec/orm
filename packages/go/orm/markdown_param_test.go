@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -24,6 +25,12 @@ type bindVectors struct {
 		Code      string `json:"code"`
 	} `json:"message"`
 	Bind []bindCase `json:"bind"`
+	// Control holds the begin control message of a transaction with and without its read_only option.
+	Control []struct {
+		Name     string          `json:"name"`
+		ReadOnly bool            `json:"read_only"`
+		JSON     json.RawMessage `json:"json"`
+	} `json:"control"`
 }
 
 // bindCase is a bind case of tests/bind/vectors.json: a parameter value checked against
@@ -57,6 +64,27 @@ func TestBindMessageVectors(t *testing.T) {
 	}
 	if v.Zone != "+00:00" {
 		t.Fatalf("zone %q; this runner writes in UTC", v.Zone)
+	}
+	if len(v.Control) == 0 {
+		t.Fatal("tests/bind/vectors.json has no control cases")
+	}
+	for _, c := range v.Control {
+		t.Run("control/"+c.Name, func(t *testing.T) {
+			got, err := json.Marshal(beginMessage(c.ReadOnly))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var gotValue, wantValue any
+			if err := json.Unmarshal(got, &gotValue); err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal(c.JSON, &wantValue); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(gotValue, wantValue) {
+				t.Fatalf("begin of read_only %v = %s; want %s", c.ReadOnly, got, c.JSON)
+			}
+		})
 	}
 	d := &DB{location: time.UTC}
 	for _, c := range v.Message {

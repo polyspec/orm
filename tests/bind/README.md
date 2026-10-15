@@ -17,6 +17,10 @@ rejecting case.
 "Parameters"): a slot `type` and `precision`, a client `value`, and either the `json` value the
 message carries or the error `code`. `zone` is the connection time zone the cases assume.
 
+`control` cases write the `begin` control message of a transaction (docs/protocol.md §5 "Session"): the
+transaction's `read_only` option and the `json` object of the message, `{"op": "begin", "read_only": true}` for a
+read-only transaction and `{"op": "begin"}` without the member otherwise. The message runners of the table run them.
+
 | runner | command |
 |---|---|
 | Go | `go test ./packages/go/orm -run '^(TestBindVectors\|TestBindMessageVectors)$'` |

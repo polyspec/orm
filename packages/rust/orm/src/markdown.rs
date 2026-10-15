@@ -138,6 +138,12 @@ pub(crate) struct MdControl<'a> {
     pub(crate) name: Option<&'a str>,
 }
 
+/// The begin control message of a transaction: a read-only transaction sends `read_only` true, any other leaves the
+/// member out (docs/protocol.md §5 Session, the control cases of tests/bind/vectors.json).
+pub(crate) fn begin_message(read_only: bool) -> MdControl<'static> {
+    MdControl { op: "begin", read_only, name: None }
+}
+
 impl MdSession {
     /// server에 연결하고 첫 message connect로 corpus와 token을 보낸다.
     async fn dial(dsn: &MarkdownDsn) -> Result<MdSession> {

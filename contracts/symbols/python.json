@@ -748,6 +748,7 @@
   "packages/python/src/polyspec/orm/markdown.py::aggregate_value": "def aggregate_value(raw)",
   "packages/python/src/polyspec/orm/markdown.py::answer_value": "def answer_value(type_: str, raw, where: str)",
   "packages/python/src/polyspec/orm/markdown.py::begin_markdown": "def begin_markdown(db, frame, options: dict) -\u003e None",
+  "packages/python/src/polyspec/orm/markdown.py::begin_message": "def begin_message(read_only: bool) -\u003e dict",
   "packages/python/src/polyspec/orm/markdown.py::dial_markdown": "def dial_markdown(dsn: MarkdownDsn) -\u003e MdSession",
   "packages/python/src/polyspec/orm/markdown.py::end_markdown": "def end_markdown(frame, op: str) -\u003e None",
   "packages/python/src/polyspec/orm/markdown.py::markdown_call": "def markdown_call(ex, request: dict, params) -\u003e tuple[dict, RuntimeModel]",

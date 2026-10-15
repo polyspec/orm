@@ -1540,6 +1540,7 @@
   "packages/rust/orm/src/markdown.rs::aggregate_value": " fn aggregate_value (raw : \u0026 RawValue) -\u003e Result \u003c Val \u003e",
   "packages/rust/orm/src/markdown.rs::answer_err": " fn answer_err (msg : impl std :: fmt :: Display) -\u003e Error",
   "packages/rust/orm/src/markdown.rs::answer_value": " fn answer_value (typ : \u0026 str , raw : \u0026 RawValue) -\u003e Result \u003c Val \u003e",
+  "packages/rust/orm/src/markdown.rs::begin_message": "pub (crate) fn begin_message (read_only : bool) -\u003e MdControl \u003c 'static \u003e",
   "packages/rust/orm/src/markdown.rs::connection_lost": " fn connection_lost (msg : impl Into \u003c String \u003e) -\u003e Error",
   "packages/rust/orm/src/markdown.rs::markdown_call": " async fn markdown_call (ex : \u0026 Executor , req : \u0026 mut Req) -\u003e Result \u003c (Vec \u003c u8 \u003e , Arc \u003c Manifest \u003e) \u003e",
   "packages/rust/orm/src/markdown.rs::markdown_param": " fn markdown_param (i : usize , value : \u0026 Param , slot : Option \u003c \u0026 ParamUse \u003c '_ \u003e \u003e , aes_key : \u0026 str , zone : \u0026 crate :: db :: Zone) -\u003e Result \u003c Value \u003e",

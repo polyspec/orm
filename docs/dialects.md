@@ -417,7 +417,7 @@ The DSN scheme `markdown://` selects the flowmark IR executor instead of a SQL d
 | `select explicit`, `entity`, `navigation` | Client-side | no storage effect |
 | `aes`, `aes_version`, `blind_index` | Schema error on a corpus | the key never leaves the client |
 | `audit`, `immutable` settings | Schema error on a corpus | `state_machine … history` instead |
-| transactions | `begin` to `commit`/`rollback` over the session | `readOnly` honoured and takes the lock |
+| transactions | `begin` to `commit`/`rollback` over the session | `readOnly` is honoured: the client sends `begin` with `read_only` true, the executor takes no write lock for the transaction and answers every write in it `READ_ONLY` |
 | savepoints | Nested stages |  |
 | `orderByRandom` | Supported | the order is not seeded |
 | a transaction with audit values | `CAPABILITY_UNSUPPORTED` |  |

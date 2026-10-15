@@ -11,6 +11,17 @@ namespace Polyspec\Orm;
 final class Markdown
 {
     /** markdown 연결에서 SQL 전용 surface가 받는 오류다(docs/dialects.md "Markdown IR executor"). */
+    /**
+     * The begin control message of a transaction: a read-only transaction sends read_only true, any other leaves the
+     * member out (docs/protocol.md §5 Session, the control cases of tests/bind/vectors.json).
+     *
+     * @return array{op: 'begin', read_only?: true}
+     */
+    public static function beginMessage(bool $readOnly): array
+    {
+        return $readOnly ? ['op' => 'begin', 'read_only' => true] : ['op' => 'begin'];
+    }
+
     public static function unsupported(string $surface): OrmException
     {
         return new OrmException(Code::CAPABILITY_UNSUPPORTED, "$surface is not supported by the markdown IR executor");

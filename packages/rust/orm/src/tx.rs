@@ -13,7 +13,7 @@ use futures_util::FutureExt as _;
 use crate::db::{Db, Executor, Pool};
 use crate::driver::{CancellableConnection, MySqlOwnedTx, TxInner};
 use crate::events::{self, Sent, KIND_BEGIN, KIND_COMMIT, KIND_RELEASE, KIND_ROLLBACK, KIND_ROLLBACK_TO, KIND_SAVEPOINT, KIND_UTILITY};
-use crate::markdown::{MdControl, MdPool};
+use crate::markdown::{begin_message, MdControl, MdPool};
 use crate::schema::Schema;
 use crate::value::Param;
 use crate::{codes, Error, Result};
@@ -905,7 +905,7 @@ async fn begin_markdown(db: &Db, pool: &Arc<MdPool>, isolation: Option<Isolation
         db.unsupported_on_markdown("the transaction isolation option")?;
     }
     let mut session = pool.acquire().await?;
-    session.call(&MdControl { op: "begin", read_only, name: None }).await?;
+    session.call(&begin_message(read_only)).await?;
     Ok(TxShared {
         db: db.clone(),
         number: db.next_transaction(),

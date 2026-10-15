@@ -1,5 +1,5 @@
 <!-- doc-id: tests-bind-readme -->
-<!-- source-sha256: ec6dfbb6094a95e431ceb88061ceb0707349dcfabfa3e3f18cbf6cf8d3f491c6 -->
+<!-- source-sha256: 8e32fae49a8ca64b928b83900be48f5903490f93c36479f605d4338f864075b5 -->
 # Bind vector
 
 `vectors.json`은 클라이언트 bind 경로의 공유 case다. 각 구현이 자기 package의 test에서 실행하며, 모든 case는
@@ -14,6 +14,10 @@ object다: `{"int": text}`는 JSON 수의 정확한 범위를 넘는 정수, `{"
 `message` case는 parameter 하나를 IR executor message 값으로 쓴다(docs/protocol.md §5 "Parameters"): slot의
 `type`과 `precision`, 클라이언트 `value`, 그리고 message가 싣는 `json` 값이나 error `code`다. `zone`은 case가
 가정하는 연결 시간대다.
+
+`control` case는 transaction의 `begin` control message를 쓴다(docs/protocol.md §5 "Session"): transaction의
+`read_only` option과 message의 `json` 객체이며, 읽기 전용 transaction은 `{"op": "begin", "read_only": true}`, 그 밖의
+transaction은 member가 없는 `{"op": "begin"}`이다. 표의 message runner가 이 case를 실행한다.
 
 | runner | command |
 |---|---|

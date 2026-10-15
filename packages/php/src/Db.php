@@ -737,7 +737,7 @@ final class Db
             throw Markdown::unsupported('the transaction isolation option');
         }
         $frame = new TxFrame($this, $readOnly, $isolation, $this->nextTransaction());
-        $this->markdownSession()->call(['op' => 'begin'] + ($readOnly ? ['read_only' => true] : []));
+        $this->markdownSession()->call(Markdown::beginMessage($readOnly));
         return $frame;
     }
 

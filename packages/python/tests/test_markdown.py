@@ -171,10 +171,16 @@ class BindMessageVectors(unittest.TestCase):
         import types
 
         from polyspec.orm.engine.params import ParamUse
-        from polyspec.orm.markdown import markdown_param
+        from polyspec.orm.markdown import begin_message, markdown_param
 
         root = pathlib.Path(__file__).resolve().parents[3]
         vectors = json.loads((root / "tests/bind/vectors.json").read_text())
+        self.assertTrue(
+            vectors.get("control"), "tests/bind/vectors.json has no control cases"
+        )
+        for case in vectors["control"]:
+            with self.subTest("control/" + case["name"]):
+                self.assertEqual(begin_message(case["read_only"]), case["json"])
         db = types.SimpleNamespace(zone=vectors["zone"], aes_key="")
         for case in vectors["message"]:
             with self.subTest(case["name"]):

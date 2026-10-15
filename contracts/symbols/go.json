@@ -4016,6 +4016,7 @@
   "packages/go/orm/markdown.go::aggregateValue": "func(raw json.RawMessage) (any, error)",
   "packages/go/orm/markdown.go::answerErr": "func(format string, a ...any) error",
   "packages/go/orm/markdown.go::answerValue": "func(typ string, raw json.RawMessage) (any, error)",
+  "packages/go/orm/markdown.go::beginMessage": "func(readOnly bool) mdControl",
   "packages/go/orm/markdown.go::dialMarkdown": "func(ctx context.Context, dsn markdownDSN) (*mdSession, error)",
   "packages/go/orm/markdown.go::markdownCall": "func(ex executor, r *request) (json.RawMessage, *runtimemodel.Model, error)",
   "packages/go/orm/markdown.go::markdownDSN": "type markdownDSN struct { address string corpus string token string }",

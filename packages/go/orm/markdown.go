@@ -865,6 +865,12 @@ func markdownLinks(row []any) *mdLinks {
 	return links
 }
 
+// beginMessage is the begin control message of a transaction: a read-only transaction sends read_only true, any
+// other leaves the member out (docs/protocol.md §5 Session, the control cases of tests/bind/vectors.json).
+func beginMessage(readOnly bool) mdControl {
+	return mdControl{Op: "begin", ReadOnly: readOnly}
+}
+
 // beginMarkdown은 markdown transaction을 연다: pool의 session 하나를 transaction이 끝날
 // 때까지 잡고 begin을 보낸다. 읽기 전용 transaction은 read_only를 보낸다.
 func (d *DB) beginMarkdown(o txOptions) (*txConn, error) {
@@ -877,7 +883,7 @@ func (d *DB) beginMarkdown(o txOptions) (*txConn, error) {
 		cancel()
 		return nil, err
 	}
-	if _, err := s.call(ctx, mdControl{Op: "begin", ReadOnly: o.readOnly}); err != nil {
+	if _, err := s.call(ctx, beginMessage(o.readOnly)); err != nil {
 		d.md.release(s)
 		cancel()
 		return nil, err

@@ -191,6 +191,11 @@ final class MarkdownTest extends TestCase
         $server = markdown_fake_server(['{"ok":true}']);
         $db = Orm::connect($server[2], new Config());
         self::assertFalse((new DateTimeImmutable("2000-01-01", $db->zone()))->format("P") !== $vectors["zone"], "zone {$db->zone()->getName()}; want {$vectors['zone']}");
+        // The control cases: the begin control message of a transaction with and without readOnly (§5 Session).
+        self::assertNotEmpty($vectors['control'] ?? [], 'tests/bind/vectors.json has no control cases');
+        foreach ($vectors['control'] as $c) {
+            self::assertSame($c['json'], \Polyspec\Orm\Markdown::beginMessage($c['read_only']), "control/{$c['name']}");
+        }
         $param = new \ReflectionMethod(\Polyspec\Orm\Markdown::class, 'param');
         foreach ($vectors['message'] as $c) {
             $got = null;
