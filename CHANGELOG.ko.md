@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1f27a46c1973ba9c708c7bf0d79a38b904621f636c189019089186998663fc50 -->
+<!-- source-sha256: 6b92cf012d844c40684eb2a561ca00ccb6634921d28106e945b84d7a10e2e0b7 -->
 # 변경 이력
 
 ## Unreleased
 
+- statement가 모든 database에서 column 정밀도의 clock 값 하나를 읽는다. (#T93)
 - 모든 client가 datetime과 time 값을 정확히 p자리 소수로 bind한다. (#T92)
 - 모든 client가 markdown message의 time, date, datetime 문자열을 한 형태로 쓴다. (#T91)
 - TypeScript conformance runner의 contains 호출에 type이 붙는다. (#T79-1)

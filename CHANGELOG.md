@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A statement reads one clock value at the column precision on every database. (#T93)
 - Every client binds datetime and time values with exactly p fraction digits. (#T92)
 - Every client writes a time, date or datetime string of the markdown message in one form. (#T91)
 - The TypeScript conformance runner types its contains calls. (#T79-1)
