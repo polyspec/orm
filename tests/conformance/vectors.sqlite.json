@@ -3204,6 +3204,31 @@
       }
     },
     {
+      "name": "contains_null",
+      "chain": "Author serviceSeq(7) andLkName(NULL) getCount(): the contains value NULL binds NULL, so col LIKE NULL matches no row",
+      "expect": {
+        "result": {
+          "code": null,
+          "count": 0
+        },
+        "statements": [
+          {
+            "binds": [
+              7,
+              null
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ? AND \"a\".\"name\" LIKE ? ESCAPE '\\'",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          }
+        ]
+      }
+    },
+    {
       "name": "clock_truncate_write",
       "chain": "FixClock(db, '2026-06-01 12:34:56.999999'); ClockCell setLabel('write')-\u003ecreate() leaving at0, at3 and at6 to default now; getBySeq(seq): at0 and at3 equal at6 truncated to 0 and 3 digits; delete()",
       "expect": {

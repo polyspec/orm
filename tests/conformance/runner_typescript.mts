@@ -9,7 +9,7 @@
 // Each --vector selects one vector by name; without one every vector runs.
 // The models embed the manifest of contracts/fixtures/bench/bench.dbs.
 import {
-  AesKeyring, Author, BindCell, ClockCell, type Collection, type Model, CompositeAccount, HexCell, Service, TimeCell, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, UpsertCell, User, UuidCell, connect, orm,
+  AesKeyring, Author, BindCell, CORE, ClockCell, type Collection, type Model, CompositeAccount, HexCell, Service, TimeCell, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, UpsertCell, User, UuidCell, connect, orm,
 } from '../../packages/ts/dist/index.js';
 import { fixClock, lastAffected } from '../../packages/ts/dist/testing.js';
 import { parseArgs } from 'node:util';
@@ -551,6 +551,16 @@ async function main() {
   await run('varchar_length_rejected', () => rejected(() => new BindCell().connect(db).setLabel('123456789').create()));
   await run('text_nul_rejected', () => rejected(() => new BindCell().connect(db).setLabel('nul').setBody('a\u0000b').create()));
   await run('uuid_form_rejected', () => rejected(() => new BindCell().connect(db).setLabel('uuid').setToken('123E4567-E89B-12D3-A456-426614174000').create()));
+  // A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/protocol.md §2).
+  await run('contains_null', async () => {
+    try {
+      const q = author().serviceSeq(7);
+      q[CORE].whereChain('and', [{ conn: '', op: 'lk', column: 'name', columns: [], compare: '' }], [null]);
+      return { code: null, count: await q.getCount() };
+    } catch (error) {
+      return { code: code(error), count: null };
+    }
+  });
 
   // One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now` hold that
   // clock truncated to their digits, and a datetime(p) column compares with a clock at six digits. The executor clock is

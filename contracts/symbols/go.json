@@ -3950,6 +3950,7 @@
   "packages/go/orm/exec.go::styledScanCol#field.name": "string",
   "packages/go/orm/exec.go::styledScanCols": "func(a *plan.Assemble) []styledScanCol",
   "packages/go/orm/exec.go::transactionNumber": "func(ex executor) int64",
+  "packages/go/orm/exec.go::transformParam": "func(kind string, v any) (any, error)",
   "packages/go/orm/exec.go::write": "func(ex executor, r *request) (key any, affected int64, err error)",
   "packages/go/orm/fault_ormtest.go::FailNextRollback": "func(db *DB)",
   "packages/go/orm/fault_ormtest.go::FailNextStatement": "func(db *DB, code, message string)",

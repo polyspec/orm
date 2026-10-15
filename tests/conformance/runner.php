@@ -593,6 +593,14 @@ vector('datetime_precision_rejected', fn(): array => $rejected(fn() => (new Time
 vector('varchar_length_rejected', fn(): array => $rejected(fn() => (new BindCell)($db)->setLabel('123456789')->create()));
 vector('text_nul_rejected', fn(): array => $rejected(fn() => (new BindCell)($db)->setLabel('nul')->setBody("a\0b")->create()));
 vector('uuid_form_rejected', fn(): array => $rejected(fn() => (new BindCell)($db)->setLabel('uuid')->setToken('123E4567-E89B-12D3-A456-426614174000')->create()));
+// A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/protocol.md §2).
+vector('contains_null', function () use ($author): array {
+    try {
+        return ['code' => null, 'count' => $author()->serviceSeq(7)->andLkName(null)->getCount()];
+    } catch (Throwable $e) {
+        return ['code' => code($e), 'count' => null];
+    }
+});
 
 // One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now` hold that
 // clock truncated to their digits, and a datetime(p) column compares with a clock at six digits. The executor clock is

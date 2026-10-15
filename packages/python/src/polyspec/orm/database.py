@@ -12,7 +12,7 @@ from urllib.parse import urlsplit, parse_qsl
 
 from polyspec.orm.codec import blind_index, decode as codec_decode, host_encode
 from polyspec.orm.clock import wall_micros
-from polyspec.orm.bind_check import bind_slot_type, check_param
+from polyspec.orm.bind_check import bind_slot_type, check_param, transform_param
 from polyspec.orm.decimal import decimal_scaled, normalize_decimal
 from polyspec.orm.engine.dialect import dialect_of
 from polyspec.orm.engine.model import Field, RuntimeModel, field_of
@@ -1060,11 +1060,7 @@ class Db:
                             value, slot.get("precision") or 0, slot.get("scale") or 0
                         )
                 if slot.get("transform"):
-                    if not isinstance(value, str):
-                        raise OrmError(
-                            "CONFIG", f"{slot['transform']} requires a string value"
-                        )
-                    value = _transform(slot["transform"], value)
+                    value = transform_param(slot["transform"], value)
                 if "blind_index" in slot.get("host_styles", ()):
                     if value is not None:
                         value = blind_index(value, self.blind_index_key)
@@ -1555,17 +1551,6 @@ class Db:
     def active_frame(self):
         """이 연결에서 열려 있는 transaction frame(없으면 None)."""
         return _active_for(self)
-
-
-def _transform(kind: str, value: str) -> str:
-    escaped = value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    if kind == "like_contains":
-        return f"%{escaped}%"
-    if kind == "like_starts":
-        return f"{escaped}%"
-    if kind == "like_ends":
-        return f"%{escaped}"
-    return value
 
 
 def _audit_value(slot: dict, audit):

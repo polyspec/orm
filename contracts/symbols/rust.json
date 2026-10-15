@@ -471,6 +471,7 @@
   "packages/rust/orm/src/bind_check.rs::check_param": "pub (crate) fn check_param (i : usize , v : \u0026 Param , s : \u0026 ParamSlot \u003c '_ \u003e , zone : \u0026 Zone) -\u003e Result \u003c () \u003e",
   "packages/rust/orm/src/bind_check.rs::encode_error": " fn encode_error (msg : String) -\u003e Error",
   "packages/rust/orm/src/bind_check.rs::is_canonical_uuid": " fn is_canonical_uuid (text : \u0026 str) -\u003e bool",
+  "packages/rust/orm/src/bind_check.rs::transform_param": "pub (crate) fn transform_param (kind : \u0026 str , v : \u0026 Param) -\u003e Result \u003c Param \u003e",
   "packages/rust/orm/src/bind_check.rs::use_slot_type": "pub (crate) fn use_slot_type \u003c 'a \u003e (u : \u0026 'a ParamUse \u003c '_ \u003e) -\u003e ParamSlot \u003c 'a \u003e",
   "packages/rust/orm/src/codec.rs::Parser": " struct Parser \u003c 'a \u003e { b : \u0026 'a [u8] , i : usize , }",
   "packages/rust/orm/src/codec.rs::Parser \u003c 'a \u003e::expect": " fn expect (\u0026 mut self , c : u8) -\u003e Result \u003c () \u003e",

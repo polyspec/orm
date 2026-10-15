@@ -10,7 +10,13 @@ from dataclasses import dataclass
 from polyspec.orm.engine.params import ParamUse
 from polyspec.orm.errors import OrmError
 
-__all__ = ["ParamSlot", "bind_slot_type", "check_param", "use_slot_type"]
+__all__ = [
+    "ParamSlot",
+    "bind_slot_type",
+    "check_param",
+    "transform_param",
+    "use_slot_type",
+]
 
 
 @dataclass(frozen=True)
@@ -132,3 +138,20 @@ def check_param(i: int, value, slot: ParamSlot, zone: str) -> None:
                 "CODEC_ENCODE",
                 f"parameter {i} ({_shown(value)}) is outside 0001-01-01 to 9999-12-31",
             )
+
+
+def transform_param(kind: str, value):
+    """Applies the value transform kind to a parameter: SQL NULL binds NULL, so `col LIKE NULL` matches no row, and a
+    value other than text is CODEC_ENCODE."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise OrmError("CODEC_ENCODE", f"{kind} requires a string value")
+    escaped = value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    if kind == "like_contains":
+        return f"%{escaped}%"
+    if kind == "like_starts":
+        return f"{escaped}%"
+    if kind == "like_ends":
+        return f"%{escaped}"
+    return value

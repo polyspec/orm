@@ -1245,7 +1245,7 @@ final class Db
                         $v = \DateTimeImmutable::createFromInterface($v)->setTimezone($this->zone)->format('Y-m-d H:i:s.u');
                     }
                     if (($b['transform'] ?? '') !== '') {
-                        $v = Transform::apply($b['transform'], (string) $v);
+                        $v = Transform::param($b['transform'], $v);
                     } elseif (in_array('blind_index', $b['host_styles'] ?? [], true)) {
                         $v = Codec::blindIndex($v, $cfg->blindIndexKey);
                     } elseif (!empty($b['host_styles'])) {

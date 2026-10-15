@@ -274,6 +274,8 @@ export class Core {
     }
     const op = present(operators[key.op], `the operator ${key.op}`);
     const nullable = key.op === '' || key.op === 'ne';
+    // contains binds NULL as its value, which matches no row (docs/protocol.md §2).
+    if (value === null && (key.op === 'lk' || key.op === 'lb')) return [p({ kind: 'value', op, value }), 0];
     if (value === null) {
       if (!nullable) throw configError(`null is not accepted by the ${key.op} operator`);
       return [p({ kind: 'null', op: key.op === 'ne' ? 'is_not_null' : 'is_null' }), 0];

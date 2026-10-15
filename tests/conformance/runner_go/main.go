@@ -1008,6 +1008,17 @@ func run() (status int) {
 		return rejected(bindCell().SetLabel("uuid").SetToken(&token).Create())
 	})
 
+	// A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/protocol.md §2).
+	run("contains_null", func() (any, error) {
+		q := author().ServiceSeq(7)
+		q.Orm_().Where("and", []orm.ChainKey{{Op: "lk", Column: "name"}}, orm.Null)
+		n, err := q.GetCount()
+		if err != nil {
+			return map[string]any{"code": code(err), "count": nil}, nil
+		}
+		return map[string]any{"code": nil, "count": n}, nil
+	})
+
 	// The clock vectors need the test entry point of the client, which only a build
 	// with the tag ormtest has (clock_ormtest.go); conformance builds the runner with
 	// it, and the checker refuses an output that lacks a declared vector.

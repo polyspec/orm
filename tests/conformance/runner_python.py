@@ -1184,6 +1184,18 @@ def main():
         ),
     )
 
+    # A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/protocol.md §2).
+    def contains_null():
+        try:
+            return {
+                "code": None,
+                "count": author().service_seq(7).and_lk_name(None).get_count(),
+            }
+        except Exception as error:  # noqa: BLE001 - every library error is the result of the vector
+            return {"code": code_of(error), "count": None}
+
+    run("contains_null", contains_null)
+
     # One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now`
     # hold that clock truncated to their digits, and a datetime(p) column compares with a clock at six digits. The
     # executor clock is fixed at .999999 through the test entry point, so a rounding clock shows as the next second;
