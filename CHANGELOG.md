@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The repository checks read the Makefile through one reader that names every target with its prerequisites and recipe. (#T137-1-4-2-2)
 - The repository checks read the run texts of the workflows and the Makefile recipes as shell commands, not lines or patterns. (#T137-1-4-2-1)
 - The Rust show-create vectors run through the public catalog path, each case a trial named by its id. (#T148-2-1)
 ## 0.0.18
