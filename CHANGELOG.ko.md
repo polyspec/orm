@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 498021e15eed8cec34ed17b2bf07195e3d09074caf6d4f38d0dc3759a8773230 -->
+<!-- source-sha256: 808ebb5533f1979560e555e58dbe65a7bf2c8c61c19722c2b16f9418cd956aa9 -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.18
 
+- Python wheel에 test extra가 없다. test의 JSON Schema validator는 PEP 735 dependency group이고, TypeScript build는 증분 기록을 tree 밖에 둔다. (#T180-1)
 - TypeScript package와 site가 root의 엄격함으로 kit 0.0.47의 lint를 통과하고, packages/ts는 TypeScript project reference로 build한다. (#T137-1-4-7-1)
 - orm-gen의 TypeScript 출력이 entity와 column을 이름을 대며 throw하는 검사로 읽고, non-null assertion이나 cast가 없어 생성 model이 kit 0.0.47의 lint를 통과한다. Core.jsonColumn이 ordered_json column을 읽는다. (#T179)
 - repository가 kit 0.0.47을 받고, scripts와 tests가 disable이나 cast 없이 그 TypeScript lint를 통과한다. (#T137-1-4-7)
