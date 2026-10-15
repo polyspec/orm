@@ -29,7 +29,7 @@ class CoverageCaseTest(unittest.TestCase):
     def test_runs_requested_cases_in_order(self):
         ran = []
         lines = run_with_arguments(
-            ["b", "a"], {"a": lambda item: ran.append("a"), "b": lambda item: ran.append("b")}
+            ["b", "a"], {"a": lambda: ran.append("a"), "b": lambda: ran.append("b")}
         )
         self.assertEqual(ran, ["b", "a"])
         self.assertEqual(lines, ["CASE b PASS", "CASE a PASS"])
@@ -51,7 +51,7 @@ class CoverageCaseTest(unittest.TestCase):
         ran = []
         for ids in ([], ["a", "a"], ["a", "z"]):
             with self.assertRaisesRegex(SystemExit, r"^usage: x\.py a\.\.\.; got "):
-                run_with_arguments(ids, {"a": lambda item: ran.append("a")})
+                run_with_arguments(ids, {"a": lambda: ran.append("a")})
         self.assertEqual(ran, [])
 
     def test_a_failed_case_raises_and_prints_no_pass(self):
@@ -66,7 +66,7 @@ class CoverageCaseTest(unittest.TestCase):
                 contextlib.redirect_stdout(out),
                 self.assertRaisesRegex(AssertionError, "broken"),
             ):
-                run_cases({"a": lambda item: None, "b": lambda item: fail()})
+                run_cases({"a": lambda: None, "b": fail})
         finally:
             sys.argv = argv
         self.assertEqual(out.getvalue().splitlines(), ["CASE a PASS"])

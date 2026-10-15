@@ -27,10 +27,12 @@ def run_cases(cases):
     items = feature_items(test)
     for case_id in requested:
         for item in items:
-            cases[case_id](item)
+            # A file without a database (item None) takes no item argument.
             if item is None:
+                cases[case_id]()
                 print(f"CASE {case_id} PASS", flush=True)
             else:
+                cases[case_id](item)
                 print(f"CASE {case_id} [{item[0]}] PASS", flush=True)
 
 
