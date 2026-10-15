@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 654b4ee4d54a3d954909ffa17a1df9275d435a06fd9829ebe7dd3c1effa58626 -->
+<!-- source-sha256: 2e10cfb6e68f0035fddd4149ffdbfad17f51bf9e2a52f31c6fa50fa84f9b13d1 -->
 # 변경 이력
 
 ## Unreleased
 
+- 공유 vector case id에 slash가 없어 parity가 모든 case를 묶는다. (#T148-3-3-1)
 - Python bind vector가 case harness로 실행된다. (#T89-4)
 - 모든 client가 statement 전에 non-null column의 NULL을 거부한다. (#T90)
 - 모든 client에서 contains 값이 text 또는 NULL로 bind된다. (#T80)

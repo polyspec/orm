@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 20ca9efc95f07233502b74b70571dfe57a763b10fb4f1aec9f8866ff70e347c2 -->
+<!-- source-sha256: 817fda932eb26171477f71507c86894a7a619405953cdcf129db62f76582e35b -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1122,7 +1122,8 @@
     - [o] T148-3-2 parity R2가 binding이 없다고 보고하는 Python feature를 bind한다 (T148-3에 이어). 원인: aggregate-numeric, authenticated-encryption, decimal-model, planner, styled-column-states, install-changed-database, sqlite-paths, statement-events에 Python binding이 없고 대부분 Python test도 없다. 완료 조건: 각각 config/parity.json에 bind된 Python test가 있거나, 먼저 Python에 feature를 구현한다.
       Evidence: T77-3이 Python feature 8개를 각각 fixture id로 case를 실행하는 test에 bind했다. make parity-declarations-check가 python R2 줄을 보고하지 않는다.
     - [ ] T148-3-3 parity R2가 binding이 없다고 보고하는 Go, PHP, PHP extension, Rust feature를 bind한다 (T148-3에 이어). 원인: go의 codec, codec-aes, dbspec-syntax, php와 rust의 codec-aes, php-extension의 schema-definition과 dbspec-sets에 binding이 없다. 완료 조건: 각각 그것을 실행하는 test에 bind한다.
-      - [ ] T148-3-3-1 공유 vector case 이름에서 slash를 뺀다 (T148-3-3에 이어). 원인: tests/codec/vectors.json의 case 91개(yaml_core/...)와 tests/dbspec/syntax.json의 304개(canonical/..., invalid/...)가 slash를 담아 Go가 subtest로 중첩하므로, kit이 codec과 dbspec-syntax unit의 Go binding을 거부한다. T148-3-3의 나머지 unit 5개는 bind했다(Go, PHP, Rust의 codec-aes, PHP extension의 dbspec-sets와 schema-definition). 완료 조건: 모든 vector file과 runner에서 공유 case id에 slash가 없고, Go codec과 dbspec-syntax unit이 bind되며, parity가 그것에 R2를 보고하지 않는다.
+      - [o] T148-3-3-1 공유 vector case 이름에서 slash를 뺀다 (T148-3-3에 이어). 원인: tests/codec/vectors.json의 case 91개(yaml_core/...)와 tests/dbspec/syntax.json의 304개(canonical/..., invalid/...)가 slash를 담아 Go가 subtest로 중첩하므로, kit이 codec과 dbspec-syntax unit의 Go binding을 거부한다. T148-3-3의 나머지 unit 5개는 bind했다(Go, PHP, Rust의 codec-aes, PHP extension의 dbspec-sets와 schema-definition). 완료 조건: 모든 vector file과 runner에서 공유 case id에 slash가 없고, Go codec과 dbspec-syntax unit이 bind되며, parity가 그것에 R2를 보고하지 않는다.
+        Evidence: 91개 codec case id와 304개 syntax case id가 두 generator와 모든 runner에서 부분을 "."로 잇고, Go codec과 dbspec-syntax unit이 symbol/id subtest로 묶이며, parity R2가 2에서 0이 되고 make codec-check와 dbspec-compare-check가 통과한다.
     - [ ] T148-3-4 여러 suite를 실행하는 binding file을 나눈다 (T148-3에 이어). 원인: R3 63줄이 suite에 없는 case를 보고한다. 모든 언어의 dbspec cases, mermaid, plans, codec file이 한 file에서 다른 suite의 case나 추가 test를 실행한다. 완료 조건: 각 binding file이 suite 하나를 그 case id로 실행한다.
     - [ ] T148-3-5 feature-coverage binding의 case에 이름을 준다 (T148-3에 이어). 원인: Go, TypeScript, Rust의 coverage_* binding이 case 이름을 보고하지 않고(R3 not executed), Rust codec과 styled-state case는 id를 가질 수 없는 lib test다. 완료 조건: 각 case가 id로 실행된다.
     - [ ] T148-3-6 Python conformance runner를 test로 실행한다 (T148-3에 이어). 원인: tests/conformance/runner_python.py가 parity에서 5(실행한 test 없음)로 끝나고 Python root 밖에 있다(R6). 완료 조건: Python conformance case가 Python package 안에서 id로 실행된다.

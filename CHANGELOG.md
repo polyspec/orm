@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Shared vector case ids use no slash, so parity binds every case. (#T148-3-3-1)
 - The Python bind vectors run through the case harness. (#T89-4)
 - Every client refuses NULL for a non-null column before any statement. (#T90)
 - A contains value binds as text or NULL in every client. (#T80)
