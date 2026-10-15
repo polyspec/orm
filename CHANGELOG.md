@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Probes and a citation check record the order of faults of one statement. (#T101)
 - AGENTS points to the local links rule of kit for 0.0.x development. (#T186)
 - The Python conformance target runs through the case harness on the databases of the run. (#T148-3-6-1)
 - Parity builds the PHP extension and passes every PHP binding. (#T148-3-8)
