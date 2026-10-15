@@ -704,6 +704,8 @@ fn predicate(key: &ChainKey, arg: Arg, single: bool) -> crate::Result<PredSpec> 
             }
             Ok(pred(op_of(key.op), PredValue::ValueFn(f)))
         }
+        // contains binds NULL as its value, which matches no row (docs/protocol.md §2).
+        Arg::Value(Value::Null) if key.op == "lk" || key.op == "lb" => Ok(pred(op_of(key.op), PredValue::One(Param::Null))),
         Arg::Value(Value::Null) => {
             if !eq {
                 return Err(config(format!("null is not accepted by the {} operator", key.op)));

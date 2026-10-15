@@ -403,6 +403,11 @@ func (c *Core) predicate(key ChainKey, value any, rest []any, single bool) (*pre
 	op := operators[key.Op]
 	switch v := value.(type) {
 	case NullType:
+		// contains binds NULL as its value, which matches no row (docs/protocol.md §2).
+		if key.Op == "lk" || key.Op == "lb" {
+			p.op, p.value = op, nil
+			return p, 0, nil
+		}
 		if key.Op != "" && key.Op != "ne" {
 			return nil, 0, configErr("null is not accepted by the %s operator", key.Op)
 		}

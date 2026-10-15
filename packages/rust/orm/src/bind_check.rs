@@ -131,6 +131,16 @@ pub(crate) fn check_param(i: usize, v: &Param, s: &ParamSlot<'_>, zone: &Zone) -
     Ok(())
 }
 
+/// Applies the value transform `kind` to a parameter: SQL NULL binds NULL, so `col LIKE NULL` matches no row, and a
+/// value other than text is CODEC_ENCODE.
+pub(crate) fn transform_param(kind: &str, v: &Param) -> Result<Param> {
+    match v {
+        Param::Null => Ok(Param::Null),
+        Param::Str(s) => Ok(Param::Str(crate::value::transform(kind, s)?)),
+        _ => Err(encode_error(format!("{kind} requires a string value"))),
+    }
+}
+
 #[cfg(test)]
 #[path = "../tests/unit/bind_vectors.rs"]
 mod bind_vectors;

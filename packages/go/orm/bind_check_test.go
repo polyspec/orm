@@ -92,7 +92,12 @@ func TestBindVectors(t *testing.T) {
 		t.Run(c.Name, func(t *testing.T) {
 			value := vectorValue(t, c.Value)
 			slot := paramSlot{Type: c.Slot.Type, Precision: c.Slot.Precision, Scale: c.Slot.Scale, Length: c.Slot.Length}
-			err := d.checkParam(0, value, slot)
+			var err error
+			if c.Slot.Transform != "" {
+				value, err = transformParam(c.Slot.Transform, value)
+			} else {
+				err = d.checkParam(0, value, slot)
+			}
 			if c.Code != "" {
 				var e *ir.Error
 				if !errors.As(err, &e) || e.Code != c.Code {

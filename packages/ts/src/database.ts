@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { bindSlotType, checkParam } from './bind_check.js';
+import { bindSlotType, checkParam, transformParam } from './bind_check.js';
 import { blindIndex, decode, hostDecode, hostEncode } from './codec.js';
 import type { Assemble, BindSlot, Group, KeyReference, Plan, PlanStep, Request } from './ir.js';
 import { driverValue, isolationSql, openDriver, parseDsn, sqliteBusy, zoneOffset, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue, type Isolation, type PoolStats, type StatementDone } from './driver.js';
@@ -1079,10 +1079,7 @@ export class Db {
               ? decimalScaled(value, slot.precision ?? 0, slot.scale ?? 0)
               : normalizeDecimal(value, slot.precision ?? 0, slot.scale ?? 0);
           }
-          if (slot.transform) {
-            if (typeof value !== 'string') throw new OrmError('CONFIG', `${slot.transform} requires a string value`);
-            value = transform(slot.transform, value);
-          }
+          if (slot.transform) value = transformParam(slot.transform, value);
           if (slot.host_styles.includes('blind_index')) {
             if (value !== null) value = blindIndex(value, this.blindIndexKey);
           } else if (slot.host_styles.length > 0) value = hostEncode(value, slot.host_styles, this.aesKey);
@@ -1179,14 +1176,6 @@ function auditValue(slot: BindSlot, audit: AuditRecord | undefined): unknown {
     throw new OrmError('CONFIG', `the audited table records its audits in ${slot.name}, but the audit of the transaction is a row of ${audit.table}`);
   }
   return audit.key;
-}
-
-function transform(kind: string, value: string): string {
-  const escaped = value.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
-  if (kind === 'like_contains') return `%${escaped}%`;
-  if (kind === 'like_starts') return `${escaped}%`;
-  if (kind === 'like_ends') return `%${escaped}`;
-  return value;
 }
 
 function checkLock(ex: Executor, request: Request): void {

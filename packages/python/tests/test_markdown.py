@@ -215,7 +215,7 @@ class BindVectors(unittest.TestCase):
         import json
         import pathlib
 
-        from polyspec.orm.bind_check import ParamSlot, check_param
+        from polyspec.orm.bind_check import ParamSlot, check_param, transform_param
 
         root = pathlib.Path(__file__).resolve().parents[3]
         vectors = json.loads((root / "tests/bind/vectors.json").read_text())
@@ -228,13 +228,20 @@ class BindVectors(unittest.TestCase):
                     case["slot"].get("length", 0),
                 )
                 value = vector_value(case["value"])
+                transform = case["slot"].get("transform")
+
+                def bind(value=value, slot=slot, transform=transform):
+                    if transform:
+                        return transform_param(transform, value)
+                    check_param(0, value, slot, vectors["zone"])
+                    return value
+
                 if "code" in case:
                     with self.assertRaises(OrmError) as caught:
-                        check_param(0, value, slot, vectors["zone"])
+                        bind()
                     self.assertEqual(caught.exception.code, case["code"])
                 else:
-                    check_param(0, value, slot, vectors["zone"])
-                    self.assertEqual(value, vector_value(case["bound"]))
+                    self.assertEqual(bind(), vector_value(case["bound"]))
 
 
 if __name__ == "__main__":

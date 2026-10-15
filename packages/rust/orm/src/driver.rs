@@ -17,7 +17,7 @@ use crate::db::Pool;
 use crate::db::Zone;
 use crate::plan::{Assemble, BindSlot, ParentRef, Plan, Step};
 use crate::row::{decode_boolean_columns, decode_styled, read_cell, read_row, DriverRow};
-use crate::value::{transform, Param, Val};
+use crate::value::{Param, Val};
 use crate::{Error, Result};
 
 pub const SECRET_MASK: &str = "$SECRET";
@@ -164,10 +164,7 @@ pub(crate) fn param_arg(b: &BindSlot, params: &[Param]) -> Result<Param> {
     if b.transform.is_empty() {
         return Ok(v.clone());
     }
-    let Param::Str(s) = v else {
-        return Err(Error::Config(format!("transform {} needs a string", b.transform)));
-    };
-    Ok(Param::Str(transform(&b.transform, s)?))
+    crate::bind_check::transform_param(&b.transform, v)
 }
 
 /// The hook's view of the binds: `secret` slots masked, everything else as bound.

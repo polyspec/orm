@@ -764,6 +764,10 @@ abstract class Model implements \JsonSerializable
         }
         $op = self::OPERATORS[$key['op']];
         $eq = $key['op'] === '' || $key['op'] === 'ne';
+        // contains binds NULL as its value, which matches no row (docs/protocol.md §2).
+        if ($value === null && ($key['op'] === 'lk' || $key['op'] === 'lb')) {
+            return [$p + ['op' => $op, 'value' => null, 'kind' => 'value'], 0];
+        }
         if ($value === null) {
             if (!$eq) {
                 throw new OrmException(Code::CONFIG, "null is not accepted by the {$key['op']} operator");

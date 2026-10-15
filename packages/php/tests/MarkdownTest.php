@@ -228,8 +228,13 @@ final class MarkdownTest extends TestCase
         foreach ($vectors['bind'] as $c) {
             $slot = ['type' => $c['slot']['type'], 'precision' => $c['slot']['precision'] ?? 0, 'scale' => $c['slot']['scale'] ?? 0, 'length' => $c['slot']['length'] ?? 0];
             $v = $value($c['value']);
-            $e = markdown_error(static function () use ($v, $slot, $zone): void {
-                \Polyspec\Orm\ParamCheck::check(0, $v, $slot, $zone);
+            $transform = $c['slot']['transform'] ?? '';
+            $e = markdown_error(static function () use (&$v, $slot, $zone, $transform): void {
+                if ($transform !== '') {
+                    $v = \Polyspec\Orm\Transform::param($transform, $v);
+                } else {
+                    \Polyspec\Orm\ParamCheck::check(0, $v, $slot, $zone);
+                }
             });
             if (isset($c['code'])) {
                 self::assertFalse($e?->code_ !== $c['code'], "{$c['name']}: " . ($e?->getMessage() ?? 'bound') . "; want {$c['code']}");

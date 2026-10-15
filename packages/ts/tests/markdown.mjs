@@ -10,7 +10,7 @@ import { COMPUTE, cases } from '../../../tests/testcase.mts';
 import { Db, OrmError } from '../dist/index.js';
 import { parseDsn } from '../dist/driver.js';
 import { markdownParam } from '../dist/markdown.js';
-import { checkParam } from '../dist/bind_check.js';
+import { checkParam, transformParam } from '../dist/bind_check.js';
 import { readFileSync } from 'node:fs';
 
 const run = cases();
@@ -178,10 +178,13 @@ function vectorValue(value) {
 }
 for (const c of bind.bind) {
   await run.run(`bind/${c.name}`, COMPUTE, () => {
-    const value = vectorValue(c.value);
+    let value = vectorValue(c.value);
     const slot = { type: c.slot.type, precision: c.slot.precision ?? 0, scale: c.slot.scale ?? 0, length: c.slot.length ?? 0 };
     let code = '';
-    try { checkParam(0, value, slot, bind.zone); } catch (error) {
+    try {
+      if (c.slot.transform !== undefined) value = transformParam(c.slot.transform, value);
+      else checkParam(0, value, slot, bind.zone);
+    } catch (error) {
       if (!(error instanceof OrmError)) throw error;
       code = error.code;
     }

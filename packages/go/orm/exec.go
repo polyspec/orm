@@ -262,11 +262,20 @@ func paramValue(b *plan.BindSlot, r *request) (any, error) {
 	if b.Transform == "" {
 		return v, nil
 	}
+	return transformParam(b.Transform, v)
+}
+
+// transformParam applies the value transform kind to a parameter: SQL NULL binds NULL, so
+// `col LIKE NULL` matches no row, and a value other than text is CODEC_ENCODE.
+func transformParam(kind string, v any) (any, error) {
+	if v == nil {
+		return nil, nil
+	}
 	s, ok := v.(string)
 	if !ok {
-		return nil, configErr("%s requires a string value", b.Transform)
+		return nil, codecErr(CodeCodecEncode, "%s requires a string value", kind)
 	}
-	return Transform(b.Transform, s), nil
+	return Transform(kind, s), nil
 }
 
 // Transform applies an executor-side value transform.

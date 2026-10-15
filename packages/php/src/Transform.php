@@ -19,6 +19,21 @@ final class Transform
         return $s;
     }
 
+    /**
+     * Applies the value transform $kind to a parameter: SQL NULL binds NULL, so `col LIKE NULL` matches no row, and
+     * a value other than text is CODEC_ENCODE.
+     */
+    public static function param(string $kind, mixed $v): ?string
+    {
+        if ($v === null) {
+            return null;
+        }
+        if (!is_string($v)) {
+            throw new OrmException(Code::CODEC_ENCODE, "$kind requires a string value");
+        }
+        return self::apply($kind, $v);
+    }
+
     private static function esc(string $s): string
     {
         return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $s);

@@ -836,6 +836,20 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     run!("varchar_length_rejected", rejected!(BindCell::new().connect(db).set_label("123456789").create()));
     run!("text_nul_rejected", rejected!(BindCell::new().connect(db).set_label("nul").set_body("a\u{0}b").create()));
     run!("uuid_form_rejected", rejected!(BindCell::new().connect(db).set_label("uuid").set_token("123E4567-E89B-12D3-A456-426614174000").create()));
+    // A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/protocol.md §2).
+    run!("contains_null", async {
+        let mut q = author().service_seq(7);
+        polyspec_orm::core::Core::chain(
+            polyspec_orm::Model::core_mut(&mut q),
+            "and",
+            &[polyspec_orm::core::ChainKey { op: "lk", column: "name", ..polyspec_orm::core::ChainKey::EMPTY }],
+            vec![polyspec_orm::core::Arg::Value(polyspec_orm::args::Value::Null)],
+        );
+        Ok::<Value, polyspec_orm::Error>(match q.get_count().await {
+            Ok(n) => json!({"code": null, "count": n}),
+            Err(e) => json!({"code": code(&e), "count": null}),
+        })
+    });
     // One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now` hold
     // that clock truncated to their digits, and a datetime(p) column compares with a clock at six digits. The executor
     // clock is fixed at .999999 through the test entry point, so a rounding clock shows as the next second; MySQL writes

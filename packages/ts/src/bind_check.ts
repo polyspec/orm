@@ -103,3 +103,17 @@ export function checkParam(i: number, value: unknown, slot: ParamSlot, zone: str
     }
   }
 }
+
+/**
+ * Applies the value transform kind to a parameter: SQL NULL binds NULL, so `col LIKE NULL` matches no row, and a value
+ * other than text is CODEC_ENCODE.
+ */
+export function transformParam(kind: string, value: unknown): unknown {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== 'string') throw new OrmError('CODEC_ENCODE', `${kind} requires a string value`);
+  const escaped = value.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
+  if (kind === 'like_contains') return `%${escaped}%`;
+  if (kind === 'like_starts') return `${escaped}%`;
+  if (kind === 'like_ends') return `%${escaped}`;
+  return value;
+}

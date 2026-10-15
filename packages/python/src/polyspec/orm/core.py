@@ -299,6 +299,9 @@ class Core:
             ), 0
         op = _OPERATORS[key.op]
         nullable = key.op in ("", "ne")
+        # contains binds NULL as its value, which matches no row (docs/protocol.md §2).
+        if value is None and key.op in ("lk", "lb"):
+            return p(kind="value", op=op, value=None), 0
         if value is None:
             if not nullable:
                 raise OrmError(

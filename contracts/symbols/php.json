@@ -2635,6 +2635,7 @@
   "packages/php/src/Transform.php::Polyspec\\Orm\\Transform": "final class Polyspec\\Orm\\Transform extends  implements  uses ",
   "packages/php/src/Transform.php::Polyspec\\Orm\\Transform::apply": "public static function apply(string $kind, string $s): string",
   "packages/php/src/Transform.php::Polyspec\\Orm\\Transform::esc": "private static function esc(string $s): string",
+  "packages/php/src/Transform.php::Polyspec\\Orm\\Transform::param": "public static function param(string $kind, mixed $v): ?string",
   "packages/php/src/TxFrame.php::Polyspec\\Orm\\TxFrame": "final class Polyspec\\Orm\\TxFrame extends  implements  uses ",
   "packages/php/src/TxFrame.php::Polyspec\\Orm\\TxFrame::$audit": "public ?array",
   "packages/php/src/TxFrame.php::Polyspec\\Orm\\TxFrame::$db": "public readonly Polyspec\\Orm\\Db",
