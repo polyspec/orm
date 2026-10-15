@@ -107,3 +107,6 @@ func (MySQL) WriteExpr(ph func() string, styles []string) (string, int) {
 	}
 	return expr, binds
 }
+
+func (MySQL) ReadUUID(col string) string { return col }
+func (MySQL) WriteUUID(ph string) string { return ph }

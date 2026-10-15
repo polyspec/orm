@@ -9,7 +9,7 @@
 // Each --vector selects one vector by name; without one every vector runs.
 // The models embed the manifest of contracts/fixtures/bench/bench.dbs.
 import {
-  AesKeyring, Author, ClockCell, type Collection, type Model, CompositeAccount, HexCell, Service, TimeCell, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, UpsertCell, User, connect, orm,
+  AesKeyring, Author, ClockCell, type Collection, type Model, CompositeAccount, HexCell, Service, TimeCell, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, UpsertCell, User, UuidCell, connect, orm,
 } from '../../packages/ts/dist/index.js';
 import { fixClock, lastAffected } from '../../packages/ts/dist/testing.js';
 import { parseArgs } from 'node:util';
@@ -133,7 +133,7 @@ async function main() {
     log.push({ sql: e.sql, binds: e.binds.map(norm), kind: e.kind, tables: [...e.tables], transaction, error: e.error === null ? null : code(e.error) });
   });
   const out: Record<string, { statements: Logged[]; result: unknown }> = {};
-  const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'upsert_one_key', 'affected_counts', 'clock_truncate_write', 'clock_compare_six_digits']);
+  const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'upsert_one_key', 'affected_counts', 'uuid_roundtrip', 'clock_truncate_write', 'clock_compare_six_digits']);
   const declared = new Set<string>();
   const run = async (name: string, fn: () => Promise<unknown>) => {
     declared.add(name);
@@ -505,6 +505,15 @@ async function main() {
     }
     await updated.delete();
     return { inserted: picks(inserted, 'label'), updated: picks(updated, 'label'), unassigned };
+  });
+  // A PostgreSQL uuid column is read as its text and a uuid value is bound as text cast to uuid, in one form in every
+  // planner (docs/dialects.md); the vector inserts, reads the row back by the same value and deletes it.
+  await run('uuid_roundtrip', async () => {
+    const created = await new UuidCell().connect(db).setId('0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5').create();
+    mask([created.getSeq()]);
+    const rows = await new UuidCell().connect(db).id('0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5').gets();
+    await created.delete();
+    return picks(rows, 'id');
   });
   // A write counts each written row once (docs/protocol.md "Write"): an upsert is 1 whether it inserts or updates, and an
   // update counts the row it matched even when the row already holds the value. The count is read through the test

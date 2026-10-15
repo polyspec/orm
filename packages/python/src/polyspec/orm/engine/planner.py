@@ -889,6 +889,8 @@ class Planner:
     def _read_column(self, qcol: str, col: Field) -> str:
         """column을 SQL 쪽 read stage로 읽는다; time(p) column은 p자리 text로 읽는다."""
         expr = self.d.read_expr(qcol, self._read_sql_styles(_styles(col)))
+        if col.type == "uuid":
+            return self.d.read_uuid(expr)
         return (
             self.d.read_time(expr, col.precision or 0) if col.type == "time" else expr
         )
@@ -906,6 +908,8 @@ class Planner:
         b.last().host_styles = host
         if not sql and col.type == "time":
             return self.d.write_time(ph)
+        if not sql and col.type == "uuid":
+            return self.d.write_uuid(ph)
         return self.d.write_expr(ph, sql)
 
     def _render_blind_index_value(self, b: _Builder, index: Field, i: int) -> str:

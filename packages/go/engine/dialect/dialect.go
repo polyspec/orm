@@ -32,6 +32,10 @@ type Dialect interface {
 	ReadTime(col string, precision int) string
 	// WriteTime binds a time(p) value as its text: PostgreSQL casts the text to time.
 	WriteTime(ph string) string
+	// ReadUUID reads a uuid column as its text: PostgreSQL casts the uuid to text.
+	ReadUUID(col string) string
+	// WriteUUID binds a uuid value as its text: PostgreSQL casts the text to uuid.
+	WriteUUID(ph string) string
 	// Now은 precision 자리 소수 초로 column에 쓰는 database clock을 render한다:
 	// MySQL은 p > 0이면 CURRENT_TIMESTAMP(p), 나머지는 CURRENT_TIMESTAMP다.
 	Now(precision int) string

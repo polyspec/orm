@@ -202,6 +202,18 @@ final class Dialect
         return $this->name === 'postgres' ? "CAST(CAST($ph AS text) AS time)" : $ph;
     }
 
+    /** uuid column을 text로 읽는 expression이다. PostgreSQL은 uuid를 text로 cast한다. */
+    public function readUuid(string $col): string
+    {
+        return $this->name === 'postgres' ? "CAST($col AS text)" : $col;
+    }
+
+    /** uuid 값을 text로 bind하는 expression이다. PostgreSQL은 text를 uuid로 cast한다. */
+    public function writeUuid(string $ph): string
+    {
+        return $this->name === 'postgres' ? "CAST(CAST($ph AS text) AS uuid)" : $ph;
+    }
+
     /** The row lock suffix; SQLite locks in the executor. */
     public function rowLock(string $mode): ?string
     {

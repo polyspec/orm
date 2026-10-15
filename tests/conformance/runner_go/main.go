@@ -282,7 +282,7 @@ func run() (status int) {
 	writeVectors := map[string]bool{
 		"write_cycle": true, "now_defaults": true, "required_columns": true,
 		"creates_and_save": true, "delete_recursive": true, "contains_ascii_fold": true, "contains_binary_code_point": true,
-		"datetime_p0_roundtrip": true, "time_p3_roundtrip": true, "upsert_one_key": true, "affected_counts": true,
+		"datetime_p0_roundtrip": true, "time_p3_roundtrip": true, "upsert_one_key": true, "uuid_roundtrip": true, "affected_counts": true,
 		"clock_truncate_write": true, "clock_compare_six_digits": true,
 	}
 	// vector는 선언 순서대로 모은 뒤, 선택을 검사하고 그 순서로 실행한다.
@@ -952,6 +952,25 @@ func run() (status int) {
 		}
 		failure := map[string]any{"error": code(unassigned), "message": fmt.Sprint(unassigned)}
 		return map[string]any{"inserted": picks(inserted, "label"), "updated": picks(updated, "label"), "unassigned": failure}, nil
+	})
+
+	// A PostgreSQL uuid column is read as its text and a uuid value is bound as
+	// text cast to uuid, in one form in every planner (docs/dialects.md); the
+	// vector inserts, reads the row back by the same value and deletes it.
+	run("uuid_roundtrip", func() (any, error) {
+		created, err := model.UuidCell().Connect(db).SetId("0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5").Create()
+		if err != nil {
+			return nil, err
+		}
+		mask([]int64{created.GetSeq()})
+		rows, err := model.UuidCell().Connect(db).Id("0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5").Gets()
+		if err != nil {
+			return nil, err
+		}
+		if err := created.Delete(); err != nil {
+			return nil, err
+		}
+		return picks(rows, "id"), nil
 	})
 
 	// The clock vectors need the test entry point of the client, which only a build

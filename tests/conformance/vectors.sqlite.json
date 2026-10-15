@@ -2991,6 +2991,71 @@
       }
     },
     {
+      "name": "uuid_roundtrip",
+      "chain": "UuidCell setId('0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5')-\u003ecreate(), id(same value)-\u003egets() picking id, delete(): a PostgreSQL uuid is read as text and bound as text cast to uuid",
+      "expect": {
+        "result": [
+          {
+            "id": "0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5"
+          }
+        ],
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "BEGIN IMMEDIATE",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"uuid_cell\" (\"id\") VALUES (?) RETURNING \"seq\"",
+            "tables": [
+              "uuid_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"id\" AS \"a__id\" FROM \"uuid_cell\" AS \"a\" WHERE \"a\".\"id\" = ?",
+            "tables": [
+              "uuid_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"uuid_cell\" WHERE \"uuid_cell\".\"seq\" = ?",
+            "tables": [
+              "uuid_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          }
+        ]
+      }
+    },
+    {
       "name": "affected_counts",
       "chain": "UpsertCell setCode('c1')-\u003esetLabel('x')-\u003eduplication(setLabel('y'))-\u003ecreate() twice (inserts, then updates), getBySeq(seq)-\u003esetLabel('y')-\u003eupdate() (the row already holds the value), setLabel('z')-\u003eupdate(), each followed by the affected count of the test entry point; delete()",
       "expect": {

@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 
 polyspec_orm::models!();
 
-use model::{Author, ClockCell, CompositeAccount, HexCell, Service, ServiceMember, ServiceRegion, SoftRecord, Task, TimeCell, UpsertCell, User};
+use model::{Author, ClockCell, CompositeAccount, HexCell, Service, ServiceMember, ServiceRegion, SoftRecord, Task, TimeCell, UpsertCell, User, UuidCell};
 use polyspec_orm::{AesKeyring, Collection, Db, Model, Null, Param};
 use serde_json::{json, Map, Value};
 
@@ -770,6 +770,19 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             Ok::<Value, polyspec_orm::Error>(
                 json!({"inserted": picks(&inserted, &["label"]), "updated": picks(&updated, &["label"]), "unassigned": unassigned}),
             )
+        })
+        .retry(0)
+    );
+    // A PostgreSQL uuid column is read as its text and a uuid value is bound as text cast to uuid, in one form in every
+    // planner (docs/dialects.md); the vector inserts, reads the row back by the same value and deletes it.
+    run!(
+        "uuid_roundtrip",
+        db.transaction(async || {
+            let created = UuidCell::new().connect(db).set_id("0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5").create().await?;
+            mask(shared, &[created.get_seq().unwrap()], &[]);
+            let rows = UuidCell::new().connect(db).id("0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5").gets().await?;
+            created.delete(false).await?;
+            Ok::<Value, polyspec_orm::Error>(picks(&rows, &["id"]))
         })
         .retry(0)
     );

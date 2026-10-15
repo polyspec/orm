@@ -28,7 +28,7 @@ final class ServiceMember extends Model
             ],
             'unique' => [],
             'indexes' => ['ix_service_member_service' => ['service_seq'], 'ix_service_member_user' => ['user_seq']],
-            'manifest_hash' => 'sha256:b621d52e823c050cb92b7cd5005919504611223f640c71430327a4e5e67019aa',
+            'manifest_hash' => 'sha256:1a91aae4209ba2c778335adecf8c79efce1c1b7bf07ab18720a076b88ace69f7',
         ];
     }
 

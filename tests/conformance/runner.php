@@ -20,6 +20,7 @@ use Polyspec\Orm\Tests\Model\SoftRecord;
 use Polyspec\Orm\Tests\Model\Task;
 use Polyspec\Orm\Tests\Model\UpsertCell;
 use Polyspec\Orm\Tests\Model\User;
+use Polyspec\Orm\Tests\Model\UuidCell;
 use Polyspec\Orm\AesKeyring;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\Collection;
@@ -159,7 +160,7 @@ $db->subscribe(static function (StatementEvent $e): void {
 $out = [];
 /** @var array<string, callable> vector 이름별 chain, 선언 순서 */
 $vectors = [];
-$writeVectors = array_fill_keys(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'upsert_one_key', 'affected_counts', 'clock_truncate_write', 'clock_compare_six_digits'], true);
+$writeVectors = array_fill_keys(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'upsert_one_key', 'affected_counts', 'uuid_roundtrip', 'clock_truncate_write', 'clock_compare_six_digits'], true);
 
 /** vector를 선언한다. 선택된 vector는 모든 선언이 끝난 뒤 선언 순서대로 실행한다. */
 function vector(string $name, callable $fn): void
@@ -549,6 +550,16 @@ vector('upsert_one_key', function () use ($db): array {
 // A write counts each written row once (docs/protocol.md "Write"): an upsert is 1 whether it inserts or updates, and an
 // update counts the row it matched even when the row already holds the value. The count is read through the test entry
 // point (docs/protocol.md "Test write result").
+// A PostgreSQL uuid column is read as its text and a uuid value is bound as text cast to uuid, in one form in every
+// planner (docs/dialects.md); the vector inserts, reads the row back by the same value and deletes it.
+vector('uuid_roundtrip', function () use ($db): array {
+    $created = (new UuidCell)($db)->setId('0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5')->create();
+    mask([$created->getSeq()]);
+    $rows = (new UuidCell)($db)->id('0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5')->gets();
+    $created->delete();
+    return picks($rows, 'id');
+});
+
 vector('affected_counts', function () use ($db): array {
     $out = [];
     $created = (new UpsertCell)($db)->setCode('c1')->setLabel('x')->duplication((new UpsertCell)->setLabel('y'))->create();

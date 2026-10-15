@@ -183,6 +183,20 @@ final class CoveragePlannerTest extends TestCase
         plannerCase($root, $fixture, 'planner_time_insert');
     }
 
+    public function test_planner_uuid_select(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_uuid_select');
+    }
+
+    public function test_planner_uuid_insert(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_uuid_insert');
+    }
+
     public function test_planner_clock_compare(): void
     {
         $root = dirname(__DIR__, 3);
