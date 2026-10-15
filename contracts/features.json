@@ -9065,7 +9065,8 @@
       ],
       "tests": [
         "packages/python/tests/test_testcase.py",
-        "packages/python/tests/test_no_path_change.py"
+        "packages/python/tests/test_no_path_change.py",
+        "packages/python/tests/test_install_lock.py"
       ],
       "command": "make --no-print-directory python-unit-check"
     }

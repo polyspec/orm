@@ -1,0 +1,15 @@
+# The pins of every package of packages/python/pylock.toml, transitive ones too (kit K54): name==version, or name @ url#sha256
+# for the polyspec archive. make python-lock writes the lock from pyproject.toml with these pins; make python-lock-check holds
+# the lock to them offline.
+cffi==2.1.1
+cryptography==50.0.2
+deprecation==2.1.0
+packaging==26.3
+polyspec-ordered-json @ https://github.com/polyspec/ordered-json/releases/download/v0.0.9/polyspec_ordered_json-0.0.9-py3-none-any.whl#sha256=bc4d26a9d5dcd42a72d7bb40f6b7c7dc749c710d3c60f2e9f4fe3e733102f01d
+psycopg==3.3.6
+psycopg-binary==3.3.6
+pycparser==3.11
+pymysql==1.2.3
+rapidyaml==0.15.2
+ruamel-yaml==0.19.1
+tzdata==2026.5

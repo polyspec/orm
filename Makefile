@@ -490,12 +490,16 @@ PYTHON_VENV = $(abspath packages/python/.venv)
 # install-python installs the tools of mise.toml (install-tools), among them the Python that mise.lock pins, and makes the
 # venv of that interpreter with kit's python-venv; no other python3 of PATH is used. The client is installed with that pip as
 # an editable package (pip install --editable) with its extra test, so the tests import the installed package and a source
-# change needs no reinstall.
+# change needs no reinstall. The dependencies come from the wheel lock packages/python/pylock.toml with --require-hashes (kit
+# K54): every file is checked by its sha256, and the editable install adds the package itself with --no-deps, since pip
+# refuses an editable requirement in hash-checking mode. The extra test is installed after it, as before.
 .PHONY: install-python
 install-python:
 	$(MAKE) --no-print-directory install-tools
 	$(MAKE) --no-print-directory python-venv DIR=$(PYTHON_VENV)
-	$(ONLINE) $(PYTHON3) -m pip --python $(PYTHON_VENV)/bin/python install --quiet --editable packages/python --group packages/python/pyproject.toml:test
+	$(ONLINE) $(PYTHON3) -m pip --python $(PYTHON_VENV)/bin/python install --quiet --require-hashes -r packages/python/pylock.toml
+	$(PYTHON3) -m pip --python $(PYTHON_VENV)/bin/python install --quiet --no-deps --editable packages/python
+	$(ONLINE) $(PYTHON3) -m pip --python $(PYTHON_VENV)/bin/python install --quiet --group packages/python/pyproject.toml:test
 # python-venv-check checks that the venv of install-python exists and runs the Python release of mise.toml. A missing venv
 # or another release fails without a download or a repair, and names the fix: remove the venv and run make install.
 .PHONY: python-venv-check

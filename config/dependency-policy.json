@@ -29,7 +29,15 @@
       ]
     }
   ],
-  "pythonLocks": [],
+  "pythonLocks": [
+    {
+      "lock": "packages/python/pylock.toml",
+      "source": {
+        "requirements": "packages/python/pyproject.toml",
+        "constraints": "packages/python/constraints.txt"
+      }
+    }
+  ],
   "advisoryExceptions": [
     {
       "lock": "package-lock.json",
