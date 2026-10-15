@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 20ea8b43f7627b0ee39130420f39d661fb3afc6008803796f8e312ec1062b109 -->
+<!-- source-sha256: 72bf4fadcadc2f0a8425204cd258c0b09d4f135b6cc04d79bf0a264c5fbfd5af -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1129,7 +1129,8 @@
       Evidence: suite마다 Go function, Rust trial module, PHP data-provider method, node file, Python module이 하나이고, 다른 test는 그 옆으로 옮겨 make target에서 계속 실행된다. 공유 file의 R3 줄이 모두 사라졌다(다음 항목 전 R3 161에서 38).
     - [o] T148-3-5 feature-coverage binding의 case에 이름을 준다 (T148-3에 이어). 원인: Go, TypeScript, Rust의 coverage_* binding이 case 이름을 보고하지 않고(R3 not executed), Rust codec과 styled-state case는 id를 가질 수 없는 lib test다. 완료 조건: 각 case가 id로 실행된다.
       Evidence: Go, TypeScript, Rust, Python schema-definition binding이 모든 fixture case를 id로 실행하고, conformance는 dialect마다 binding 하나가 각 vector를 기록된 기대값과 비교하며, Go 구현 인자에 featurecoverage tag가 붙는다. 건너뛰던 Go styled-state fixture의 unselected와 nonnull_sql_null case도 이제 실행된다.
-    - [ ] T148-3-6 Python conformance runner를 test로 실행한다 (T148-3에 이어). 원인: tests/conformance/runner_python.py가 parity에서 5(실행한 test 없음)로 끝나고 Python root 밖에 있다(R6). 완료 조건: Python conformance case가 Python package 안에서 id로 실행된다.
+    - [o] T148-3-6 Python conformance runner를 test로 실행한다 (T148-3에 이어). 원인: tests/conformance/runner_python.py가 parity에서 5(실행한 test 없음)로 끝나고 Python root 밖에 있다(R6). 완료 조건: Python conformance case가 Python package 안에서 id로 실행된다.
+      Evidence: packages/python/tests/conformance_mysql.py, conformance_postgres.py, conformance_sqlite.py가 새 conformance-check/python target으로 Python conformance runner를 test로 실행한다.
     - [ ] T148-3-7 parity R4, R5, R6, R7, R9, R10을 통과한다 (T148-3에 이어). 원인: parity 검사가 R5 396건(bind되지 않은 test file), R10 120건(client를 넷으로 세는 문서), R6 78건(root 밖 test), R4 4건(선언되지 않은 suite), R9 4건(오래된 client 목록), R7 2건(오류 code를 선언하지 않는 TypeScript와 Python)을 보고한다. 완료 조건: 각 규칙이 통과하고, 큰 묶음은 더 나눈다.
     - [ ] T148-3-8 PHP와 PHP extension parity binding을 통과시킨다 (T148-3-1에 이어). 원인: kit 0.0.50에서 PHP binding 62개가 시작하고 php R3 finding 36건이 남는다(database가 필요한 identity-load와 SchemaSet case, CodecVectors go_output, case id와 맞지 않는 data set 이름). config/parity.json은 어느 make target도 build하지 않는 .runtime/parity/php-extension/orm_dbspec.so를 읽는다. 완료 조건: make target이 parity 전에 그 extension을 build하고, 모든 PHP와 PHP extension binding이 case를 id로 통과한다.
 - [o] T149 schema_definition에서 Python을 덮는다. 원인: `schema_definition`은 Python이 `planned`이고 검증 명령이 없어, Python set reader와 분석 test는 `make python-check`로만 소유된다. 인수 조건: Python의 schema_definition coverage가 검증 명령과 함께 실행된다(파일 소유 부분은 T151로 옮겼다). 증거: 변경 전 검사기가 Python runner를 몰라 `node scripts/features/coverage.mjs --feature schema_definition --part owner/python`이 `undeclared owning client`로 실패했다; 이제 검사기가 Python owner를 `ORM_PYTHON`으로 실행하고(없으면 실패하며 PATH의 python을 쓰지 않는다), schema_definition이 `schema-python`(`make dbspec-python-check`)과 fixture case 일곱을 실행하는 Python owner를 선언하며 두 번 모두 통과하고, `make feature-unit-check`와 `node scripts/features/build.mjs --check`가 통과한다.

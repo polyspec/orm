@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Python conformance runner runs as a test. (#T148-3-6)
 - The feature-coverage bindings run every case under its id. (#T148-3-5)
 - Each parity binding runs one suite. (#T148-3-4)
 - Parity binds every feature unit in every implementation. (#T148-3-3)

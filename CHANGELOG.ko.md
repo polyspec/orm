@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: acbf930cf7cc17fa7adc9e7416726ddbc9186515bc8a1128642256b57e389e7e -->
+<!-- source-sha256: 793f1613ac2da94f0b91872f49d71b82b189f7b94f9d46a08c22ff4ab06835ee -->
 # 변경 이력
 
 ## Unreleased
 
+- Python conformance runner가 test로 실행된다. (#T148-3-6)
 - feature-coverage binding이 모든 case를 id로 실행한다. (#T148-3-5)
 - 각 parity binding이 suite 하나를 실행한다. (#T148-3-4)
 - parity가 모든 구현의 모든 feature unit을 묶는다. (#T148-3-3)
