@@ -42,9 +42,13 @@ The keys come from the connection configuration: `AESKey`, `AESVersion`, and `AE
 |---|---|---|---|
 | `json`, `jsons` | ordered-json text from the common value model | ordered-json parse | ordered-json `0.0.9` of its tag `v0.0.9`; Go uses the module `github.com/polyspec/ordered-json/packages/go` at the version packages/go/go.mod requires (`v0.0.9`), Rust the package of `packages/rust/Cargo.toml` at the tag, and PHP and TypeScript the version `0.0.9`, which the root composer.json and package.json of the repository take from the Composer zip and npm archive of the GitHub release `v0.0.9` |
 | `serialize` | PHP serialize | PHP unserialize | `serialize` / `unserialize` |
-| `base64` | base64(serialize(v)) | unserialize(base64_decode) | same |
-| `gz` | zlib(serialize(v), level 9) | unserialize(zlib inflate) | `gzcompress(…, 9)` / `gzuncompress` |
+| `base64` | base64 of the bytes of the stage before it | base64_decode | `base64_encode` / `base64_decode` |
+| `gz` | zlib of the bytes of the stage before it, level 9 | zlib inflate | `gzcompress(…, 9)` / `gzuncompress` |
 | `yaml` | YAML 1.2 document | YAML 1.2 parse | single document and common value model |
+
+### Stage lists {#stage-lists}
+
+Only a value stage (`json`, `jsons`, `serialize`, `yaml`) turns a value into bytes; `base64` and `gz` only transform the bytes of the stage before them, so the style `gz_*` is the list `['serialize','gz']` and serializes because it names `serialize`. A list that starts with `base64` or `gz`, such as `['base64']` or `['gz']`, serializes nothing in any client: the value is a string, the stage writes its UTF-8 text, and any other value fails with `CODEC_ENCODE`; SQL NULL stays SQL NULL. A read of such a list gives the text of the bytes, and bytes that are not valid UTF-8 fail with `CODEC_DECODE`. An empty cell fails with `CODEC_DECODE`, except under a last `base64` stage: the encoder writes an empty cell for empty bytes, so `""` stored with `['base64']` reads back as `""`, while `['serialize','base64']` refuses the empty cell in its `serialize` stage. `tests/codec/vectors.json` (the vectors `base64_text.*` and `gz_text.*`) and `tests/codec/decode-vectors.json` give these cases.
 
 ## Value model
 A `json` or `jsons` stage stores its text in a `jsontext` column, which is text on the three databases, so the stored text is read back as written. The stages `json aes` store the encrypted text in a blob column (see [Encrypted JSON value](#encrypted-json-value)). Data queried inside the database is modeled as columns or a child table; the ORM has no JSON path conditions and no JSON indexes.

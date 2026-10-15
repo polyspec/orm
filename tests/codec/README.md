@@ -17,5 +17,9 @@ so the checker reads only what this run wrote, never an output that another targ
 left. A runner writes its output only when `ORM_CODEC_OUT` is set, through a temporary file and a
 rename.
 
+A vector with `encode_error` instead of `encoded_b64` has no stored cell: encoding its value fails with that code
+in every runner, and no runner writes an output for it (the `base64_text.*` and `gz_text.*` vectors of a value that
+is not a string, docs/codec.md, Stage lists).
+
 `gz` and `json` are not byte-deterministic across implementations (compression, map key order);
 they are checked by value. Spec: `docs/codec.md`.

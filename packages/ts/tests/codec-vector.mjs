@@ -10,6 +10,16 @@ const output = {};
 
 // Each codec vector (tests/codec/vectors.json) is one case named by the vector.
 for (const vector of vectors) check(vector.name, wrong => {
+  if (vector.encode_error !== undefined) {
+    // A vector with encode_error has no stored cell: encoding its value fails with that code.
+    try {
+      const encoded = encodeCodec(stagesOf(vector.styles), StyledValue.value(vector.value));
+      wrong.push(`encode gave ${shown(encoded)} want ${vector.encode_error}`);
+    } catch (error) {
+      if (error?.code !== vector.encode_error) wrong.push(`encode ${String(error)} want ${vector.encode_error}`);
+    }
+    return;
+  }
   const raw = vector.encoded_b64 === null ? null : Buffer.from(vector.encoded_b64, 'base64');
   let decoded;
   try {

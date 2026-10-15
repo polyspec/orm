@@ -57,7 +57,9 @@ func Decode(styles []string, raw any) (StyledValue, error) {
 	default:
 		return StyledValue{}, codecErr(CodeCodecDecode, "cell is %T, not bytes", raw)
 	}
-	if len(b) == 0 {
+	// An empty cell is CODEC_DECODE, except under a last base64 stage, whose encoder writes an empty cell
+	// for empty bytes (docs/codec.md, Stage lists).
+	if len(b) == 0 && (len(styles) == 0 || styles[len(styles)-1] != "base64") {
 		return StyledValue{}, codecErr(CodeCodecDecode, "styled cell is empty")
 	}
 	var v any = b

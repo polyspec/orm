@@ -58,6 +58,12 @@ def stages_of(styles):
 
 def check_vector(test: unittest.TestCase, vector: dict) -> None:
     failures = []
+    if "encode_error" in vector:
+        # A vector with encode_error has no stored cell: encoding its value fails with that code.
+        with test.assertRaises(CodecError) as raised:
+            encode(stages_of(vector["styles"]), StyledValue.value(vector["value"]))
+        test.assertEqual(raised.exception.code, vector["encode_error"], vector["name"])
+        return
     raw = (
         None
         if vector["encoded_b64"] is None

@@ -958,6 +958,352 @@
             "deterministic": false
         },
         {
+            "name": "base64_text.null",
+            "styles": [
+                "base64"
+            ],
+            "value": null,
+            "encoded_b64": null,
+            "deterministic": true
+        },
+        {
+            "name": "base64_text.bool_true",
+            "styles": [
+                "base64"
+            ],
+            "value": true,
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "base64_text.int",
+            "styles": [
+                "base64"
+            ],
+            "value": 42,
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "base64_text.negative_int",
+            "styles": [
+                "base64"
+            ],
+            "value": -7,
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "base64_text.float",
+            "styles": [
+                "base64"
+            ],
+            "value": 1.5,
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "base64_text.float_small",
+            "styles": [
+                "base64"
+            ],
+            "value": 0.1,
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "base64_text.integral_float",
+            "styles": [
+                "base64"
+            ],
+            "value": 2,
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "base64_text.string",
+            "styles": [
+                "base64"
+            ],
+            "value": "hello",
+            "encoded_b64": "YUdWc2JHOD0=",
+            "deterministic": true
+        },
+        {
+            "name": "base64_text.unicode_slash",
+            "styles": [
+                "base64"
+            ],
+            "value": "한글/slash \"q\" \\ back",
+            "encoded_b64": "N1pXYzZyaUFMM05zWVhOb0lDSnhJaUJjSUdKaFkycz0=",
+            "deterministic": true
+        },
+        {
+            "name": "base64_text.empty_string",
+            "styles": [
+                "base64"
+            ],
+            "value": "",
+            "encoded_b64": "",
+            "deterministic": true
+        },
+        {
+            "name": "base64_text.empty_list",
+            "styles": [
+                "base64"
+            ],
+            "value": [],
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "base64_text.list",
+            "styles": [
+                "base64"
+            ],
+            "value": [
+                1,
+                "two",
+                3.5,
+                null,
+                false
+            ],
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "base64_text.nested_map",
+            "styles": [
+                "base64"
+            ],
+            "value": {
+                "a": 1,
+                "b": [
+                    1,
+                    2,
+                    {
+                        "c": "한"
+                    }
+                ],
+                "d": null,
+                "e": true,
+                "f": 1.5
+            },
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "base64_text.int_keys_sparse",
+            "styles": [
+                "base64"
+            ],
+            "value": {
+                "1": "x",
+                "5": "y"
+            },
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "base64_text.numeric_string_keys",
+            "styles": [
+                "base64"
+            ],
+            "value": {
+                "-3": "neg",
+                "07": "zero-padded",
+                "10": "ten"
+            },
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "base64_text.upload_nested",
+            "styles": [
+                "base64"
+            ],
+            "value": {
+                "files": [
+                    {
+                        "$type": "upload_file",
+                        "mime": "text/plain",
+                        "name": "report.txt",
+                        "path": "/tmp/report.txt"
+                    },
+                    {
+                        "$type": "upload_file",
+                        "mime": "",
+                        "name": "raw.bin",
+                        "path": "/tmp/raw.bin"
+                    }
+                ],
+                "title": "request"
+            },
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "gz_text.null",
+            "styles": [
+                "gz"
+            ],
+            "value": null,
+            "encoded_b64": null,
+            "deterministic": false
+        },
+        {
+            "name": "gz_text.bool_true",
+            "styles": [
+                "gz"
+            ],
+            "value": true,
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "gz_text.int",
+            "styles": [
+                "gz"
+            ],
+            "value": 42,
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "gz_text.negative_int",
+            "styles": [
+                "gz"
+            ],
+            "value": -7,
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "gz_text.float",
+            "styles": [
+                "gz"
+            ],
+            "value": 1.5,
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "gz_text.float_small",
+            "styles": [
+                "gz"
+            ],
+            "value": 0.1,
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "gz_text.integral_float",
+            "styles": [
+                "gz"
+            ],
+            "value": 2,
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "gz_text.string",
+            "styles": [
+                "gz"
+            ],
+            "value": "hello",
+            "encoded_b64": "eNrLSM3JyQcABiwCFQ==",
+            "deterministic": false
+        },
+        {
+            "name": "gz_text.unicode_slash",
+            "styles": [
+                "gz"
+            ],
+            "value": "한글/slash \"q\" \\ back",
+            "encoded_b64": "eNp7O3XOqx0N+sU5icUZCkqFSgoxCkmJydkAh9UJjQ==",
+            "deterministic": false
+        },
+        {
+            "name": "gz_text.empty_string",
+            "styles": [
+                "gz"
+            ],
+            "value": "",
+            "encoded_b64": "eNoDAAAAAAE=",
+            "deterministic": false
+        },
+        {
+            "name": "gz_text.empty_list",
+            "styles": [
+                "gz"
+            ],
+            "value": [],
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "gz_text.list",
+            "styles": [
+                "gz"
+            ],
+            "value": [
+                1,
+                "two",
+                3.5,
+                null,
+                false
+            ],
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "gz_text.nested_map",
+            "styles": [
+                "gz"
+            ],
+            "value": {
+                "a": 1,
+                "b": [
+                    1,
+                    2,
+                    {
+                        "c": "한"
+                    }
+                ],
+                "d": null,
+                "e": true,
+                "f": 1.5
+            },
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "gz_text.int_keys_sparse",
+            "styles": [
+                "gz"
+            ],
+            "value": {
+                "1": "x",
+                "5": "y"
+            },
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "gz_text.numeric_string_keys",
+            "styles": [
+                "gz"
+            ],
+            "value": {
+                "-3": "neg",
+                "07": "zero-padded",
+                "10": "ten"
+            },
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
+            "name": "gz_text.upload_nested",
+            "styles": [
+                "gz"
+            ],
+            "value": {
+                "files": [
+                    {
+                        "$type": "upload_file",
+                        "mime": "text/plain",
+                        "name": "report.txt",
+                        "path": "/tmp/report.txt"
+                    },
+                    {
+                        "$type": "upload_file",
+                        "mime": "",
+                        "name": "raw.bin",
+                        "path": "/tmp/raw.bin"
+                    }
+                ],
+                "title": "request"
+            },
+            "encode_error": "CODEC_ENCODE"
+        },
+        {
             "name": "yaml_core.binary_like",
             "styles": [
                 "yaml"

@@ -601,7 +601,9 @@ def decode(styles, raw):
     byte의 텍스트다."""
     if raw is None:
         return StyledValue.sql_null()
-    if len(raw) == 0:
+    # An empty cell is CODEC_DECODE, except under a last base64 stage, whose encoder writes an empty
+    # cell for empty bytes (docs/codec.md, Stage lists).
+    if len(raw) == 0 and (not styles or styles[-1] != "base64"):
         raise CodecError("CODEC_DECODE", "styled cell is empty")
     if isinstance(raw, memoryview):
         current = bytes(raw)

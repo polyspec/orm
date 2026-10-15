@@ -40,7 +40,9 @@ final class Codec
         if ($raw === null) {
             return StyledValue::sqlNull();
         }
-        if ($raw === '') {
+        // An empty cell is CODEC_DECODE, except under a last base64 stage, whose encoder writes an empty cell for
+        // empty bytes (docs/codec.md, Stage lists).
+        if ($raw === '' && end($styles) !== 'base64') {
             throw new OrmException(Code::CODEC_DECODE, 'styled cell is empty');
         }
         if (!is_string($raw)) {
@@ -94,6 +96,10 @@ final class Codec
                 default:
                     throw new OrmException(Code::CODEC_UNSUPPORTED, "style {$styles[$i]}");
             }
+        }
+        // Without a value stage (a list that starts with gz or base64) the value is the text of the bytes.
+        if (in_array($styles[0] ?? null, ['gz', 'base64'], true) && preg_match('//u', $v) !== 1) {
+            throw new OrmException(Code::CODEC_DECODE, 'decoded text is not valid UTF-8');
         }
         return StyledValue::value($v);
     }

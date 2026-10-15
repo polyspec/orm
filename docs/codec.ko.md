@@ -44,9 +44,13 @@ table service_config {
 |---|---|---|---|
 | `json`, `jsons` | 공통 값 모델의 ordered-json 텍스트 | ordered-json 파싱 | tag `v0.0.9`의 ordered-json `0.0.9`; Go는 packages/go/go.mod가 요구하는 version(`v0.0.9`)의 module `github.com/polyspec/ordered-json/packages/go`를, Rust는 그 tag의 `packages/rust/Cargo.toml` package를 사용하고, PHP와 TypeScript는 version `0.0.9`를 선언하며 저장소 root의 composer.json과 package.json이 그것을 GitHub release `v0.0.9`의 Composer zip과 npm archive에서 받는다 |
 | `serialize` | PHP serialize | PHP unserialize | `serialize` / `unserialize` |
-| `base64` | base64(serialize(v)) | unserialize(base64_decode) | 동일 |
-| `gz` | zlib(serialize(v), level 9) | unserialize(zlib inflate) | `gzcompress(…, 9)` / `gzuncompress` |
+| `base64` | 앞 stage가 쓴 byte의 base64 | base64_decode | `base64_encode` / `base64_decode` |
+| `gz` | 앞 stage가 쓴 byte의 zlib, level 9 | zlib inflate | `gzcompress(…, 9)` / `gzuncompress` |
 | `yaml` | YAML 1.2 문서 | YAML 1.2 파싱 | 단일 문서와 공통 값 모델 |
+
+### Stage 목록 {#stage-lists}
+
+값을 byte로 바꾸는 것은 value stage(`json`, `jsons`, `serialize`, `yaml`)뿐이다. `base64`와 `gz`는 앞 stage가 쓴 byte를 변환할 뿐이므로 style `gz_*`는 목록 `['serialize','gz']`이고, `serialize`가 목록에 있어서 serialize한다. `['base64']`나 `['gz']`처럼 `base64`나 `gz`로 시작하는 목록은 어느 client에서도 serialize하지 않는다: 값은 string이고 stage는 그 UTF-8 text를 쓰며, 다른 값은 `CODEC_ENCODE`로 실패한다. SQL NULL은 SQL NULL로 남는다. 이런 목록을 읽으면 byte의 text가 되고, 올바른 UTF-8이 아닌 byte는 `CODEC_DECODE`로 실패한다. 빈 cell은 `CODEC_DECODE`로 실패하지만 마지막 stage가 `base64`이면 예외다: encoder가 빈 byte를 빈 cell로 쓰므로 `['base64']`로 저장한 `""`는 `""`로 읽히고, `['serialize','base64']`는 빈 cell을 `serialize` stage에서 거절한다. `tests/codec/vectors.json`(vector `base64_text.*`와 `gz_text.*`)과 `tests/codec/decode-vectors.json`이 이 사례를 담는다.
 
 ## 값 모델 {#value-model}
 `json`과 `jsons` 단계는 텍스트를 `jsontext` 컬럼에 저장한다. 이 컬럼은 세 데이터베이스에서 모두 텍스트이므로 저장한 텍스트를 적은 그대로 읽는다. `json aes` 단계는 암호화한 텍스트를 blob 컬럼에 저장한다([암호화한 JSON 값](#encrypted-json-value) 참고). 데이터베이스 안에서 질의하는 데이터는 컬럼이나 자식 테이블로 만들며, ORM에는 JSON 경로 조건과 JSON 인덱스가 없다.

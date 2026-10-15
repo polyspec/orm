@@ -63,6 +63,16 @@ final class CodecVectorsTest extends TestCase
     public function test_php_vector(array $v): void
     {
         $styles = self::styles($v);
+        if (isset($v['encode_error'])) {
+            // A vector with encode_error has no stored cell: encoding its value fails with that code.
+            try {
+                Codec::encode($styles, StyledValue::value($v['value']));
+            } catch (OrmException $e) {
+                self::assertSame($v['encode_error'], $e->code_, 'php encode error');
+                return;
+            }
+            self::fail("php encode: expected {$v['encode_error']}");
+        }
         $raw = $v['encoded_b64'] === null ? null : base64_decode($v['encoded_b64'], true);
         $decoded = Codec::decode($styles, $raw);
         self::assertSame(self::canonText($v['value']), self::canonText($decoded->kind === 'sql-null' ? null : $decoded->payload()), 'php decode');
@@ -126,6 +136,10 @@ final class CodecVectorsTest extends TestCase
         $file = "$out/$lang.json";
         self::assertFileExists($file, "the $lang codec test of this run did not write it");
         $outs = json_decode(file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
+        if (isset($v['encode_error'])) {
+            self::assertArrayNotHasKey($v['name'], $outs, "$lang wrote an encoding for {$v['name']}, which must fail with {$v['encode_error']}");
+            return;
+        }
         self::assertArrayHasKey($v['name'], $outs, "$lang: missing {$v['name']}");
         $raw = $outs[$v['name']] === null ? null : base64_decode($outs[$v['name']], true);
         $decoded = Codec::decode(self::styles($v), $raw);

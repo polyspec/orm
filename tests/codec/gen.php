@@ -37,6 +37,12 @@ $styles = [
     'gz' => ['serialize', 'gz'],
     'yaml' => ['yaml'],
 ];
+// A list that starts with base64 or gz serializes nothing: the stage takes a string value and stores its UTF-8 text
+// (docs/codec.md, Stage lists). Any other value is CODEC_ENCODE, and SQL NULL stays SQL NULL.
+$textStyles = [
+    'base64_text' => ['base64'],
+    'gz_text' => ['gz'],
+];
 
 function encode(array $styles, mixed $v): ?string
 {
@@ -69,6 +75,22 @@ foreach ($styles as $name => $chain) {
             'encoded_b64' => $enc === null ? null : base64_encode($enc),
             // gz bytes depend on the zlib implementation; json key order differs; JSON cannot say 2.0 vs 2
             'deterministic' => !in_array('gz', $chain, true) && $name !== 'json' && $name !== 'yaml' && !(is_float($v) && floor($v) === $v),
+        ];
+    }
+}
+foreach ($textStyles as $name => $chain) {
+    foreach ($values as $vname => $v) {
+        if ($v !== null && !is_string($v)) {
+            $out[] = ['name' => "$name.$vname", 'styles' => $chain, 'value' => $v, 'encode_error' => 'CODEC_ENCODE'];
+            continue;
+        }
+        $enc = $v === null ? null : ($chain === ['gz'] ? gzcompress($v, 9) : base64_encode($v));
+        $out[] = [
+            'name' => "$name.$vname",
+            'styles' => $chain,
+            'value' => $v,
+            'encoded_b64' => $enc === null ? null : base64_encode($enc),
+            'deterministic' => $chain !== ['gz'],
         ];
     }
 }

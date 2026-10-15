@@ -25,6 +25,8 @@ type codecVector struct {
 	Value         any      `json:"value"`
 	EncodedB64    *string  `json:"encoded_b64"`
 	Deterministic bool     `json:"deterministic"`
+	// EncodeError is the code that encoding Value must fail with; such a vector has no stored cell.
+	EncodeError string `json:"encode_error"`
 }
 
 func canon(t *testing.T, v any) string {
@@ -128,6 +130,13 @@ func TestCodecVectors(t *testing.T) {
 	out := map[string]*string{}
 	for _, v := range f.Vectors {
 		t.Run(v.Name, func(t *testing.T) {
+			if v.EncodeError != "" {
+				enc, err := Encode(codecStages(v.Styles), Value(jsonNumbers(reNumber(v.Value))))
+				if err == nil || ErrorCode(err) != v.EncodeError {
+					t.Errorf("encode gave %#v, %v; want %s", enc, err, v.EncodeError)
+				}
+				return
+			}
 			want := canon(t, jsonNumbers(reNumber(v.Value)))
 			var raw any
 			if v.EncodedB64 != nil {

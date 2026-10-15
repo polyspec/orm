@@ -1,6 +1,6 @@
 //! Column-style codecs (docs/codec.md): ordered_json, serialize, base64, gz, yaml.
-//! Styles are listed in write order; `decode` applies them in reverse. 첫 stage가
-//! `gz`나 `base64`이면 값을 먼저 PHP serialize한다.
+//! Styles are listed in write order; `decode` applies them in reverse. A first `gz` or
+//! `base64` stage takes a string value and stores its UTF-8 text (docs/codec.md, Stage lists).
 
 use std::io::{Read, Write};
 use std::sync::LazyLock;
@@ -55,20 +55,19 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
             other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
         }
     }
-    if value.is_none() && serializes_first(styles.first().map(String::as_str)) {
-        value = Some(Val::Json(php_unserialize(&cur)?));
-    }
+    // Without a value stage (a list that starts with gz or base64) the value is the text of the bytes.
     Ok(match value {
         Some(value) => value,
         None => match String::from_utf8(cur) {
             Ok(text) => Val::Str(text),
+            Err(_) if !styles.is_empty() => return Err(err(CODEC_DECODE, "decoded text is not valid UTF-8")),
             Err(error) => Val::Bytes(error.into_bytes()),
         },
     })
 }
 
-/// 첫 stage가 `gz`나 `base64`이면 그 stage 앞에서 값을 PHP serialize한다 (docs/codec.md).
-fn serializes_first(stage: Option<&str>) -> bool {
+/// A first `gz` or `base64` stage takes bytes, so the value is a string and the stage encodes its UTF-8 text.
+fn takes_text(stage: Option<&str>) -> bool {
     matches!(stage, Some("gz" | "base64"))
 }
 
@@ -104,10 +103,11 @@ pub fn encode(styles: &[&str], v: StyledValue<&Value>) -> Result<Param> {
     let StyledValue::Value(v) = v else { return Ok(Param::Null) };
     let mut cur: Vec<u8> = Vec::new();
     let value = v.clone();
-    if serializes_first(styles.first().copied()) {
-        let mut s = String::new();
-        php_serialize(&mut s, &value)?;
-        cur = s.into_bytes();
+    if takes_text(styles.first().copied()) {
+        let Value::String(text) = &value else {
+            return Err(err(CODEC_ENCODE, format!("a first {} stage takes a string value", styles[0])));
+        };
+        cur = text.clone().into_bytes();
     }
     for (i, st) in styles.iter().enumerate() {
         match *st {
@@ -962,21 +962,21 @@ mod tests {
         assert_eq!(decode(&["ordered_json".to_string()], &Val::Str("{".into())).unwrap_err().code(), CODEC_DECODE);
     }
 
-    /// 첫 stage가 `gz`나 `base64`이면 값을 PHP serialize한 뒤 그 stage를 적용한다
-    /// (docs/codec.md, `gz`와 `base64`), 그래서 값은 styled value다.
+    /// A first `gz` or `base64` stage serializes nothing: it stores the UTF-8 text of a string value and refuses any
+    /// other value (docs/codec.md, Stage lists).
     #[test]
-    fn leading_gz_and_base64_serialize_the_value() {
+    fn leading_gz_and_base64_store_the_text() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let value = serde_json::json!({"a": [1, "x"], "b": null});
-        for (stage, serialized) in [("gz", ["serialize", "gz"]), ("base64", ["serialize", "base64"])] {
-            let stored = encode(&[stage], StyledValue::Value(&value)).unwrap();
-            assert_eq!(stored, encode(&serialized, StyledValue::Value(&value)).unwrap(), "{stage}: stored bytes");
-            let raw = match stored {
+        let text = Value::String("한 text".into());
+        for stage in ["gz", "base64"] {
+            assert_eq!(encode(&[stage], StyledValue::Value(&value)).unwrap_err().code(), CODEC_ENCODE, "{stage}: a map");
+            let raw = match encode(&[stage], StyledValue::Value(&text)).unwrap() {
                 Param::Str(s) => Val::Str(s),
                 Param::Bytes(b) => Val::Bytes(b),
                 other => panic!("{stage}: stored {other:?}"),
             };
-            assert_eq!(decode(&[stage.to_string()], &raw).unwrap(), Val::Json(value.clone()), "{stage}: read");
+            assert_eq!(decode(&[stage.to_string()], &raw).unwrap(), Val::Str("한 text".into()), "{stage}: read");
             assert_eq!(encode(&[stage], StyledValue::SqlNull).unwrap(), Param::Null, "{stage}: SQL NULL write");
         }
     }

@@ -20,7 +20,10 @@ struct Vector {
     styles: Vec<String>,
     value: Value,
     encoded_b64: Option<String>,
+    #[serde(default)]
     deterministic: bool,
+    /// The code that encoding `value` must fail with; such a vector has no stored cell.
+    encode_error: Option<String>,
 }
 
 /// The encodings of the codec vectors, by name, for ORM_CODEC_OUT.
@@ -78,6 +81,13 @@ fn vectors() -> Vec<Trial> {
 }
 
 fn vector_case(v: &Vector) {
+    if let Some(code) = &v.encode_error {
+        let styles: Vec<&str> = v.styles.iter().map(String::as_str).collect();
+        match encode(&styles, StyledValue::Value(&v.value)) {
+            Err(e) if e.code() == code => return,
+            other => panic!("{}: encode gave {other:?}, want {code}", v.name),
+        }
+    }
     let mut fails = Vec::new();
     let raw = match &v.encoded_b64 {
         None => Val::Null,
@@ -90,8 +100,9 @@ fn vector_case(v: &Vector) {
     let got = match &decoded {
         Ok(Val::Json(j)) => j.clone(),
         Ok(Val::Ordered(o)) => ordered_json_value(o).expect("the ordered-json value has a serde_json form"),
+        Ok(Val::Str(s)) => Value::String(s.clone()),
         Ok(Val::Null) => Value::Null,
-        other => panic!("decode {other:?}"),
+        other => panic!("{}: decode {other:?}", v.name),
     };
     if norm(&got) != norm(&v.value) {
         fails.push(format!("decoded {got} want {}", v.value));
@@ -124,6 +135,7 @@ fn vector_case(v: &Vector) {
     };
     match decode(&v.styles, &back_raw) {
         Ok(Val::Json(j)) if norm(&j) == norm(&v.value) => {}
+        Ok(Val::Str(s)) if v.value.as_str() == Some(s.as_str()) => {}
         Ok(Val::Ordered(o)) if ordered_json_value(&o).is_some_and(|j| norm(&j) == norm(&v.value)) => {}
         Ok(Val::Null) if v.value.is_null() => {}
         other => fails.push(format!("round trip {other:?}")),

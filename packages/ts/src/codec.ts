@@ -164,7 +164,9 @@ function decodeBase64(value: Uint8Array): Uint8Array {
  */
 export function decode(styles: readonly string[], raw: string | Uint8Array | null): StyledValue<CodecValue | JsonValue | string> {
   if (raw === null) return StyledValue.sqlNull();
-  if (raw.length === 0) throw new CodecError('CODEC_DECODE', 'styled cell is empty');
+  // An empty cell is CODEC_DECODE, except under a last base64 stage, whose encoder writes an empty cell for empty
+  // bytes (docs/codec.md, Stage lists).
+  if (raw.length === 0 && styles.at(-1) !== 'base64') throw new CodecError('CODEC_DECODE', 'styled cell is empty');
   let current = bytes(raw);
   let value: CodecValue | JsonValue | undefined;
   for (let index = styles.length - 1; index >= 0; index--) {
