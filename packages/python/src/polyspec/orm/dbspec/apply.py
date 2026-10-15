@@ -313,7 +313,7 @@ class _Applier:
 
             _finish(work,
                     lambda: previous is not None and self._query_value(
-                        "SELECT set_config('lock_timeout', %s, false)", [previous]),
+                        "SELECT set_config('lock_timeout', $1, false)", [previous]),
                     release)
             return
         self._sqlite_session(f)

@@ -115,14 +115,14 @@ final class CodecVectorsTest extends TestCase
     }
 
     /**
-     * Go(TestCodecVectors), Rust(codec test), TypeScript(codec-vector.mjs)의 출력은 make codec-check가 이 실행에서
+     * Go(TestCodecVectors), Rust(codec test), TypeScript(codec-vector.mjs), Python(codec_vector.py)의 출력은 make codec-check가 이 실행에서
      * 그 test를 실행해 ORM_CODEC_OUT directory에 쓴 것만 읽는다. 다른 target이나 앞선 실행이 쓴 출력을 읽으면 이
      * 실행의 code를 비교하지 않는다. 없는 출력을 건너뛰면 비교하지 않은 언어가 통과로 보인다.
      */
     private static function assertOutput(string $lang, array $v): void
     {
         $out = (string) getenv('ORM_CODEC_OUT');
-        self::assertNotSame('', $out, 'ORM_CODEC_OUT is unset; run make codec-check, which runs the Go, Rust and TypeScript codec tests into its run directory');
+        self::assertNotSame('', $out, 'ORM_CODEC_OUT is unset; run make codec-check, which runs the Go, Rust, TypeScript and Python codec tests into its run directory');
         $file = "$out/$lang.json";
         self::assertFileExists($file, "the $lang codec test of this run did not write it");
         $outs = json_decode(file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
@@ -151,5 +151,12 @@ final class CodecVectorsTest extends TestCase
     public function test_typescript_output(array $v): void
     {
         self::assertOutput('typescript', $v);
+    }
+
+    /** @param array<string, mixed> $v */
+    #[DataProvider('vectors')]
+    public function test_python_output(array $v): void
+    {
+        self::assertOutput('python', $v);
     }
 }
