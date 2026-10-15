@@ -2,7 +2,6 @@
 # 실행한다. hook은 handle의 각 request를 plan 직전에 받아 predicate, assignment, parameter를 더할 수 있다.
 # case 이름은 다른 client와 같다: without_hook, read_filter, insert_assign, loaded_row_writes, invalid_param,
 # restore_key, restore_condition, restore_no_key, restore_rewritten_key, restore_hook_set_key.
-import json
 import os
 import sys
 import tempfile
@@ -371,22 +370,6 @@ class InsertPartsTest(unittest.TestCase):
             0,
             "a failing part leaves no row",
         )
-
-    def test_parity(self):
-        from polyspec.orm.model_exec import _insert_parts
-
-        cases = json.loads(
-            (ROOT / "contracts" / "fixtures" / "insert_parts.json").read_text()
-        )["cases"]
-        for case in cases:
-            self.assertEqual(case["operation"], "insert_parts", case["id"])
-            given = case["input"]
-            limit = 999 if given["driver"] == "sqlite" else 65535
-            self.assertEqual(
-                _insert_parts(given["rows"], max(1, limit // given["columns"])),
-                case["expected"],
-                case["id"],
-            )
 
 
 if __name__ == "__main__":

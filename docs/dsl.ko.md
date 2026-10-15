@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: ffb01c76355567705c07ff36d85ed6d5c01cef51c49f6be6355c238e477fe83c -->
+<!-- source-sha256: 6e6f2189929a1509547715cc9fbeefa5de866f0a692dd58c3ead54dab7eb0232 -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -88,7 +88,7 @@ Key   = [Operator] Column
 - `<ColA><Op><ColB>(model)`는 같은 SQL 문장 안에서 호출한 모델의 컬럼 `ColA`와 `model`의 컬럼 `ColB`를 비교한다. `(new Product)->priceGtMinPrice($brand)`는 `a.price > b.min_price`를 출력한다. `Op`는 `Eq`, `Ne`, `Gt`, `Lt`, `Ge`, `Le`다. `on(fn)` 안에서 호출한 모델은 조인 자식이다.
 - `tuple<ColA>With<ColB>(list)`는 여러 컬럼을 값 묶음 목록과 비교한다. `tupleTenantIdWithAccountId([[1, 10], [2, 10]])`는 `(tenant_id, account_id) IN ((1, 10), (2, 10))`이다. `Ne`는 `NOT IN`을 만든다. Go는 컬럼마다 필드가 하나인 생성 값 묶음 구조체 `model.<Model><ColA>With<ColB>`, Rust는 튜플, TypeScript는 타입을 지정한 튜플, Python은 튜플을 사용한다. SQLite는 목록을 `IN (VALUES …)`로 출력한다.
 - `getsByServiceSeqAndIsClose(7, 0)`와 `serviceSeq(7)->andIsClose(0)->gets()`는 같은 조건을 만든다.
-- 체인은 모든 컬럼을 조합할 수 있다. PHP와 Python은 호출 시점에 체인을 해석한다. Go, Rust, TypeScript는 읽은 소스가 호출하는 체인 메서드를 생성하고, 알 수 없는 컬럼·연산자·인자 개수는 생성 단계에서 거부한다. PHP는 `--scan`을 주면 같은 메서드를 `@method` 태그로 선언하고 같은 오류를 생성 단계에서 거부한다. Python의 scan은 어떤 규칙에도 맞지 않는 model method를 생성 단계에서 보고한다.
+- 체인은 모든 컬럼을 조합할 수 있다. PHP와 Python은 호출 시점에 체인을 해석하고, Go, Rust, TypeScript는 읽은 소스가 호출하는 체인 메서드를 생성하고, 알 수 없는 컬럼·연산자·인자 개수는 생성 단계에서 거부하며, PHP는 `--scan`을 주면 같은 메서드를 `@method` 태그로 선언하고 같은 오류를 생성 단계에서 거부한다. Python의 scan은 어떤 규칙에도 맞지 않는 model method를 생성 단계에서 보고한다.
 - 각 언어는 자기 빌드 도구로 생성한다.
   - Go는 `--scan`으로 지정한 패키지를 읽고 호출이 타입 검사를 통과할 때까지 반복한다. `//go:generate` 줄에서 `go run github.com/polyspec/orm/packages/go/cmd/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --lang go --out model --scan ./...`를 실행한다. 기본 빌드가 `//go:build` 제약으로 제외하는 파일은 그 제약에 필요한 태그, GOOS, GOARCH로 읽으므로 `GOFLAGS=-tags` 없이도 태그를 지정한 테스트를 포함한다. 기본 빌드는 읽을 모든 패키지를 한 번 읽고, 그런 설정은 그 파일을 가진 패키지만 읽으며 다른 모든 패키지의 타입 정보는 기본 빌드에서 가져온다.
   - TypeScript는 `--scan`으로 지정한 파일을 oxc-parser로 읽고 정확한 메서드 시그니처를 작성한다. `tsc` 전에 `build` 스크립트에서 `orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out src/models --scan src`를 실행한다.
@@ -127,7 +127,7 @@ Key   = [Operator] Column
 
 - null은 nullable 컬럼에서만 허용한다. Go·Rust·TypeScript는 NOT NULL 컬럼의 null을 컴파일 단계에서 거부하고 PHP와 Python은 `CONFIG`를 반환한다.
 - 목록은 연산자가 없거나 `Eq`·`Ne`일 때만 허용한다. 다른 연산자는 목록과 null을 거부한다.
-- PHP, TypeScript, Python은 언어의 null 값을 사용한다. Go는 `orm.Null`, Rust는 `Null`을 사용한다.
+- PHP, TypeScript, Python은 언어의 null 값을, Go는 `orm.Null`을, Rust는 `Null`을 사용한다.
 - Go 메서드는 컬럼별 허용 값 타입을 제네릭 타입 매개변수로 제한한다. 정수 컬럼은 `int`, `int32`, `int64`와 각 타입의 슬라이스를 허용한다.
 - 실행하지 않은 모델을 값으로 넘기면 `IN (SELECT …)`, `Ne`와 함께 쓰면 `NOT IN`을 출력한다. 모델은 `addColumn<Col>()`로 컬럼 하나만 추가해야 하며 아니면 `CONFIG`를 반환한다.
 - ORM 함수 값은 10절의 함수를 적용한다. 컬럼 함수는 컬럼을 감싸며 비교 값은 메서드의 두 번째 인자다. 예: `andLeLocation(Orm::distance(129.16, 35.16), 2000)`. 값 함수는 비교 값 자체다. 예: `andGtCreatedTs(Orm::daysAgo(7))`.
@@ -403,4 +403,4 @@ Go는 `orm.Distance(…)`, Rust는 `polyspec_orm::distance(…)`, TypeScript는 
 - SQLite 하버사인 식은 SQLite 수학 함수가 필요하다. 연결이 이를 확인하며 사용할 수 없으면 `distance`는 `CAPABILITY_UNSUPPORTED`를 반환한다.
 - 목록에 없는 컬럼 타입에 컬럼 함수를 사용하면 `OPERATOR_NOT_ALLOWED`를 반환한다.
 - SQLite는 `decimal` 값을 부동소수점으로 저장하므로 SQLite의 십진 계산 결과는 MySQL, PostgreSQL과 다를 수 있다. ORM은 SQLite 저장 형식을 바꾸지 않는다.
-- SQLite 최소 버전은 3.46이다. 클라이언트는 driver가 link한 SQLite library의 version을 읽고(Go `modernc.org/sqlite`의 `RegisterSQLiteVersion`, PHP `PDO::ATTR_SERVER_VERSION`, TypeScript `process.versions.sqlite`, Rust `libsqlite3_sys::SQLITE_VERSION`), 그것을 묻거나 연결을 확인하는 statement 없이 연결한다.
+- SQLite 최소 버전은 3.46이다. 클라이언트는 driver가 link한 SQLite library의 version을 읽고(Go `modernc.org/sqlite`의 `RegisterSQLiteVersion`, PHP `PDO::ATTR_SERVER_VERSION`, TypeScript `process.versions.sqlite`, Rust `libsqlite3_sys::SQLITE_VERSION`, Python `sqlite3.sqlite_version`), 그것을 묻거나 연결을 확인하는 statement 없이 연결한다.

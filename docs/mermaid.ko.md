@@ -1,5 +1,5 @@
 <!-- doc-id: mermaid -->
-<!-- source-sha256: cad6e07aad9860a8d30952b3c086373ade1b90ac414e8cdd769e82b956b046d8 -->
+<!-- source-sha256: 0b2f19f962ec46ffbdcc7e3f4821a170213104eeb4d8945dcf96254e394d5969 -->
 # Mermaid diagram
 
 dbspec 문서가 schema의 원천이고, Mermaid `erDiagram`은 다른 도구를 위한 view다. export는 dbspec 문서에서 표준 `erDiagram`을 쓰고, import는 표준 `erDiagram`을 dbspec 문서로 읽으며 옮기지 못한 것을 모두 나열한다. `tests/dbspec/mermaid.json`이 공유 case를 담는다.
@@ -45,4 +45,4 @@ import한 문서는 parse되며, introspection처럼 parse가 거부한 줄의 �
 
 ## 검증
 
-각 client는 자기 check에서 `tests/dbspec/mermaid.json`의 case를 실행한다: `make dbspec-go-check`, `make dbspec-php-check`, `make dbspec-ts-check`, `make dbspec-rust-check`. `make dbspec-compare-check`는 모든 case를 Go, PHP, TypeScript, Rust client로 각각 두 번 실행하고 모든 출력이 첫 Go 출력과 같기를 요구한다: 모든 export case의 Mermaid text와 뺀 `[kind, table, name]`, 모든 import case와 invalid case의 emit한 문서와 뺀 객체 또는 `[rule, line, column]` diagnostic, 모든 round trip case의 export와 그 import다. reason은 비교하지 않는다.
+각 client는 자기 check에서 `tests/dbspec/mermaid.json`의 case를 실행한다: `make dbspec-go-check`, `make dbspec-php-check`, `make dbspec-ts-check`, `make dbspec-rust-check`, `make dbspec-python-check`, `make dbspec-php-extension-check`. `make dbspec-compare-check`는 모든 case를 Go, PHP, TypeScript, Rust, Python client와 PHP extension으로 각각 두 번 실행하고 모든 출력이 첫 Go 출력과 같기를 요구한다: 모든 export case의 Mermaid text와 뺀 `[kind, table, name]`, 모든 import case와 invalid case의 emit한 문서와 뺀 객체 또는 `[rule, line, column]` diagnostic, 모든 round trip case의 export와 그 import다. reason은 비교하지 않는다.

@@ -26,7 +26,7 @@ function dbspec_set_parse_described(array $result): array
 }
 
 /**
- * The data sets of tests/dbspec/set-parse.json, each named by its case name and holding [case]. A repeated name is an
+ * The data sets of tests/dbspec/set-parse.json, each named by its case id and holding [case]. A repeated id is an
  * error.
  *
  * @return iterable<string, array{array<string, mixed>}>
@@ -36,11 +36,11 @@ function dbspec_set_parse_sets(string $root): iterable
     $vectors = json_decode(file_get_contents("$root/tests/dbspec/set-parse.json"), true, 512, JSON_THROW_ON_ERROR);
     $seen = [];
     foreach ($vectors['cases'] as $case) {
-        if (isset($seen[$case['name']])) {
-            throw new RuntimeException("repeated set parse case {$case['name']}");
+        if (isset($seen[$case['id']])) {
+            throw new RuntimeException("repeated set parse case {$case['id']}");
         }
-        $seen[$case['name']] = true;
-        yield $case['name'] => [$case];
+        $seen[$case['id']] = true;
+        yield $case['id'] => [$case];
     }
 }
 

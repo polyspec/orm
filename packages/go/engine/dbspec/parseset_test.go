@@ -47,7 +47,7 @@ func TestParseSetVectors(t *testing.T) {
 	}
 	var vectors struct {
 		Cases []struct {
-			Name            string
+			ID, Name        string
 			Owned, External []string
 			Documents       []struct {
 				Name        string
@@ -61,22 +61,23 @@ func TestParseSetVectors(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, c := range vectors.Cases {
-		got := ParseSet(c.Owned, c.External)
-		if len(got) != len(c.Documents) {
-			t.Errorf("%s: %d documents, want %d", c.Name, len(got), len(c.Documents))
-			continue
-		}
-		for i, want := range c.Documents {
-			d := got[i]
-			if d.Name != want.Name || d.External != want.External || (d.Document != nil) != want.Parsed || len(d.Diagnostics) != len(want.Diagnostics) {
-				t.Errorf("%s: document %d is %q external=%v parsed=%v with %d diagnostics, want %+v", c.Name, i, d.Name, d.External, d.Document != nil, len(d.Diagnostics), want)
-				continue
+		t.Run(c.ID, func(t *testing.T) {
+			got := ParseSet(c.Owned, c.External)
+			if len(got) != len(c.Documents) {
+				t.Fatalf("%s: %d documents, want %d", c.Name, len(got), len(c.Documents))
 			}
-			for k, w := range want.Diagnostics {
-				if x := d.Diagnostics[k]; x.Rule != w.Rule || x.Line != w.Line || x.Column != w.Column || (w.Message != "" && x.Message != w.Message) {
-					t.Errorf("%s: document %d diagnostic %d is %+v, want %+v", c.Name, i, k, x, w)
+			for i, want := range c.Documents {
+				d := got[i]
+				if d.Name != want.Name || d.External != want.External || (d.Document != nil) != want.Parsed || len(d.Diagnostics) != len(want.Diagnostics) {
+					t.Errorf("%s: document %d is %q external=%v parsed=%v with %d diagnostics, want %+v", c.Name, i, d.Name, d.External, d.Document != nil, len(d.Diagnostics), want)
+					continue
+				}
+				for k, w := range want.Diagnostics {
+					if x := d.Diagnostics[k]; x.Rule != w.Rule || x.Line != w.Line || x.Column != w.Column || (w.Message != "" && x.Message != w.Message) {
+						t.Errorf("%s: document %d diagnostic %d is %+v, want %+v", c.Name, i, k, x, w)
+					}
 				}
 			}
-		}
+		})
 	}
 }

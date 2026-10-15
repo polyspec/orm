@@ -5,12 +5,12 @@
 
 The checker verifies these requirements:
 
-- Logical inputs and outputs match the Go, PHP, Rust, and TypeScript signatures of the model methods, the connection, the transaction, and the utilities.
+- Logical inputs and outputs match the Go, PHP, Rust, TypeScript, and Python signatures of the model methods, the connection, the transaction, and the utilities.
 - Model rules read the generated Go models, the PHP and TypeScript base classes, and the Rust `polyspec-orm-build` template of the fixed model methods.
 - Owner rules reject undeclared fields of `Page` and `AESRotationStatus`.
-- Record rules compare every field and nested type of the 20 request records in Go, PHP, Rust, and TypeScript. PHP record declarations come from `Validator::RECORDS`.
+- Record rules compare every field and nested type of the 20 request records in Go, PHP, Rust, TypeScript, and Python. PHP record declarations come from `Validator::RECORDS`.
 - Native symbol snapshots report public and internal declaration changes. SHA-256 values in the manifest prevent an unchecked snapshot replacement.
-- An extension of `extensions` in the manifest implements part of the contract outside the four clients: the PHP extension `php-extension` implements the `Dbspec` rules and the `DbspecDiagnostic` and `DbspecManifest` owners. Its declarations are read from its stub (`packages/php-ext/stubs`) with the PHP parser and compared with its own snapshot `contracts/symbols/php-extension.json` and hash; a rule or owner that the extension does not list must not have its adapter. `make dbspec-php-extension-check` checks that the loaded extension declares what the stub declares.
+- An extension of `extensions` in the manifest implements part of the shared interface outside the five clients: the PHP extension `php-extension` implements the `Dbspec` rules and the `DbspecDiagnostic` and `DbspecManifest` owners. Its declarations are read from its stub (`packages/php-ext/stubs`) with the PHP parser and compared with its own snapshot `contracts/symbols/php-extension.json` and hash; a rule or owner that the extension does not list must not have its adapter. `make dbspec-php-extension-check` checks that the loaded extension declares what the stub declares.
 - Sequence rules compare the results and statement counts of conformance vectors.
 - Error labels in method rules and the recorded `errors` sequence must match the codes in `docs/errors.yaml`. Native driver error categories remain explicit.
 - Prohibited symbols reject removed or unsupported operations such as cancellation and cursor pages.
@@ -47,7 +47,7 @@ node tests/interfaces/check/main.mts --generate --record --self-test
 
 `--record` writes review candidates. Review the source diff and update the manifest hash. CI does not use `--record` or `--generate`; it fails when generated files, diagrams, symbol snapshots, or execution contracts differ.
 
-`--language` limits declaration and record checks to one client. It does not replace the four-client check or conformance runs. PHP arrays are checked against the declared request shape; function bodies and the behavior of each error or state transition require executable cases.
+`--language` limits declaration and record checks to the client it names. It does not replace the check of every client or conformance runs. PHP arrays are checked against the declared request shape; function bodies and the behavior of each error or state transition require executable cases.
 
 Static checks do not prove equivalent function bodies for every input. Conformance statement traces and state checks verify runtime behavior. Driver internals, physical memory layout, and formal verification are outside this check.
 The error-label check verifies declared names. It does not prove that every method emits each listed error; executable cases are required for that behavior.

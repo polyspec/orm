@@ -156,7 +156,7 @@ The TypeScript result case checks the `CODEC_ENCODE` code when a styled value
 contains an undefined member; diagnostic wording is not part of the contract.
 `make conformance-result-check` runs their result cases. The Go runner applies
 the same error, integer, bind, field, and transaction checks. `make
-conformance-result-physical-check` runs Go, PHP, Rust, and TypeScript twice on each
+conformance-result-physical-check` runs Go, PHP, Rust, TypeScript, and Python twice on each
 database and checks identical output and unchanged rows and counters.
 
 The Rust runner rejects malformed bind values and derived integers, compares

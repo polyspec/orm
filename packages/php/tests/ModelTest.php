@@ -539,16 +539,10 @@ final class ModelTest extends TestCase
         }
     }
 
-    // Multi-row inserts run as power-of-two parts (docs/protocol.md "Relation steps"; shared cases
-    // contracts/fixtures/insert_parts.json): the statements stay at the size classes, the rows keep
+    // Multi-row inserts run as power-of-two parts (docs/protocol.md "Relation steps"; the shared cases of
+    // contracts/fixtures/insert_parts.json run in InsertPartsTest.php): the statements stay at the size classes, the rows keep
     // their order, and a failing part leaves no row of the call.
     private static function case_insert_parts(Db $db): void {
-        $fixture = json_decode((string) file_get_contents(self::$root . "/contracts/fixtures/insert_parts.json"), true, 512, JSON_THROW_ON_ERROR);
-        foreach ($fixture['cases'] as $case) {
-            self::check($case['operation'] === 'insert_parts', "insert_parts {$case['id']}: operation {$case['operation']}");
-            $got = Db::insertParts($case['input']['rows'], $case['input']['columns'], $case['input']['driver']);
-            self::check($got === $case['expected'], "insert_parts {$case['id']}: " . json_encode($got));
-        }
         $inserts = [];
         $unsubscribe = $db->subscribe(static function (\Polyspec\Orm\StatementEvent $e) use (&$inserts): void {
             if ($e->kind === \Polyspec\Orm\StatementEvent::INSERT) {
