@@ -315,6 +315,13 @@ fn coverage_planner_rejects_nullable_key_by() {
 
 #[test]
 #[ignore = "run by feature-check"]
+fn coverage_planner_key_by_empty_is_absent() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_key_by_empty_is_absent");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
 fn coverage_planner_insert_by_value() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_insert_by_value");

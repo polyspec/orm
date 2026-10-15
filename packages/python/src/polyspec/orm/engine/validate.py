@@ -225,7 +225,8 @@ class _Validator:
             scope = self.scopes(relation['query'])
             self.query(relation['query'], {'root': scope, 'outer': None, 'node': scope},
                        False, True)
-        if q.get('key_by') is not None:
+        # An empty key_by is absent, as an omitted one is (docs/protocol.md 1.2).
+        if q.get('key_by') not in (None, ''):
             key_column = field_of(ent, q['key_by'])
             if key_column is None:
                 _fail('COLUMN_UNKNOWN', f'{q["entity"]}.{q["key_by"]}')
@@ -234,7 +235,7 @@ class _Validator:
                 _fail('IR_INVALID', f'key_by {q["key_by"]} is nullable')
         if q.get('if_parent'):
             self.params([q['if_parent']['p']])
-        if not is_relation and (q.get('key_by') is not None or q.get('flatten')
+        if not is_relation and (q.get('key_by') not in (None, '') or q.get('flatten')
                                 or (q.get('limit_per_parent') or 0) > 0
                                 or q.get('if_parent') is not None
                                 or q.get('no_cascade_delete')):

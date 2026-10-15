@@ -295,6 +295,13 @@ final class CoveragePlannerTest extends TestCase
         plannerCase($root, $fixture, 'planner_rejects_nullable_key_by');
     }
 
+    public function test_planner_key_by_empty_is_absent(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_key_by_empty_is_absent');
+    }
+
     public function test_planner_insert_by_value(): void
     {
         $root = dirname(__DIR__, 3);

@@ -2487,6 +2487,50 @@
         "mysql": [
           {
             "role": "main",
+            "slots": [],
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a`",
+            "tables": [
+              "user"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\"",
+            "tables": [
+              "user"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\"",
+            "tables": [
+              "user"
+            ]
+          }
+        ]
+      },
+      "id": "planner_key_by_empty_is_absent",
+      "input": {
+        "entity": "user",
+        "ir_version": 1,
+        "key_by": "",
+        "kind": "all",
+        "n_params": 0
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
             "slots": [
               {
                 "from": "param",
