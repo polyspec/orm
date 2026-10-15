@@ -3,6 +3,7 @@
 import queue
 import socket
 import threading
+import math
 import unittest
 
 
@@ -186,6 +187,54 @@ class BindMessageVectors(unittest.TestCase):
                     self.assertEqual(
                         markdown_param(db, 0, case["value"], uses), case["json"]
                     )
+
+
+def vector_value(value):
+    """A value of a bind case as the host value a Python program passes: {"int": text} an int, {"f64": text} a
+    non-finite float, {"bytes": base64} bytes."""
+    import base64
+
+    if not isinstance(value, dict):
+        return value
+    if "int" in value:
+        return int(value["int"])
+    if "f64" in value:
+        return {"NaN": math.nan, "Infinity": math.inf, "-Infinity": -math.inf}[
+            value["f64"]
+        ]
+    if "bytes" in value:
+        return base64.b64decode(value["bytes"])
+    raise AssertionError(f"value {value!r} has no host form")
+
+
+class BindVectors(unittest.TestCase):
+    """tests/bind/vectors.json의 bind case: parameter 값을 그 slot의 논리 type으로 검사한다(docs/protocol.md §5
+    "Parameters"). Go의 TestBindVectors와 같은 case다."""
+
+    def test_bind_cases(self):
+        import json
+        import pathlib
+
+        from polyspec.orm.bind_check import ParamSlot, check_param
+
+        root = pathlib.Path(__file__).resolve().parents[3]
+        vectors = json.loads((root / "tests/bind/vectors.json").read_text())
+        for case in vectors["bind"]:
+            with self.subTest(case["name"]):
+                slot = ParamSlot(
+                    case["slot"]["type"],
+                    case["slot"].get("precision", 0),
+                    case["slot"].get("scale", 0),
+                    case["slot"].get("length", 0),
+                )
+                value = vector_value(case["value"])
+                if "code" in case:
+                    with self.assertRaises(OrmError) as caught:
+                        check_param(0, value, slot, vectors["zone"])
+                    self.assertEqual(caught.exception.code, case["code"])
+                else:
+                    check_param(0, value, slot, vectors["zone"])
+                    self.assertEqual(value, vector_value(case["bound"]))
 
 
 if __name__ == "__main__":

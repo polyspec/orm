@@ -39,11 +39,11 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:2003e4ab2efff89909df63c33002051b096abf0718fbd6824998959a8718a452",
-    "php": "sha256:b83daa9aaa3512f899b74c446412b9fd508067761cbef69bd6a847debdc71ba9",
-    "rust": "sha256:e75c79823a854d80c2ca2746749c75bd18484e470342243a9a7a1cb0d4116dc3",
-    "typescript": "sha256:edfcef75ebbd8d1ce98a623803fbd036351c0a8ba2c3d314f1feede04611a238",
-    "python": "sha256:0820fb35d5c741eaa7f3833ee129bb348e26a9cd0af606c134ce279db833fdb3"
+    "go": "sha256:afba6671cc59edd9edf27eb892208d394c05cbd137b121c56c270d611a2c7d71",
+    "php": "sha256:83b748decdcf4245b51cc95857f4ed3ac9a727387481a739fa32642e717d5671",
+    "rust": "sha256:2139539f5f88272f73ef7be57988b00347646c4d2674459f10783d142d1507f4",
+    "typescript": "sha256:855a908e16c656878de5c39cf26ccadbcc0d9093e0a5629c6c1dcc1db4e17379",
+    "python": "sha256:97be028d0258f5b45cbab57a84ff5c16cb5b9f60cbe21eed2bad4f2da677b0fb"
   },
   "extensions": {
     "php-extension": {

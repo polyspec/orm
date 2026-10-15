@@ -96,7 +96,9 @@
         "packages/rust/orm/tests/markdown.rs",
         "packages/ts/tests/markdown.mjs",
         "packages/go/orm/markdown_param_test.go",
+        "packages/go/orm/bind_check_test.go",
         "packages/rust/orm/tests/unit/bind_message.rs",
+        "packages/rust/orm/tests/unit/bind_vectors.rs",
         "packages/python/tests/test_markdown.py",
         "tests/bind/vectors.json"
       ],
@@ -162,6 +164,36 @@
           "inputs": [
             "packages/python/tests/test_markdown.py",
             "packages/python/src/polyspec/orm/markdown.py",
+            "tests/bind/vectors.json"
+          ]
+        },
+        {
+          "id": "bind-vectors-go",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestBindVectors$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/orm/bind_check_test.go",
+            "packages/go/orm/bind_check.go",
+            "tests/bind/vectors.json"
+          ]
+        },
+        {
+          "id": "bind-vectors-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts bind-vectors-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib bind_check::bind_vectors",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/orm/tests/unit/bind_vectors.rs",
+            "packages/rust/orm/src/bind_check.rs",
+            "tests/bind/vectors.json"
+          ]
+        },
+        {
+          "id": "bind-vectors-python",
+          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_markdown.BindVectors",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_markdown.py",
+            "packages/python/src/polyspec/orm/bind_check.py",
             "tests/bind/vectors.json"
           ]
         },

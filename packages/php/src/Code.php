@@ -53,7 +53,7 @@ final class Code
     public const WRITE_CONFLICT = 'WRITE_CONFLICT';
     /** executor: styled column bytes could not be decoded (docs/codec.md) */
     public const CODEC_DECODE = 'CODEC_DECODE';
-    /** executor: a styled input cannot be encoded, including SQL NULL for a non-null column */
+    /** executor: a parameter outside its slot's logical type, before any statement (kind, range, scale and precision, time precision, length, U+0000, uuid form), or a styled input that cannot be encoded, including SQL NULL for a non-null column */
     public const CODEC_ENCODE = 'CODEC_ENCODE';
     /** executor: PHP objects/references in serialize, unknown style */
     public const CODEC_UNSUPPORTED = 'CODEC_UNSUPPORTED';

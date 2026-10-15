@@ -25,7 +25,7 @@ await run.run('engine', COMPUTE, async () => {
   check(MANIFEST_TEXT === manifest.manifestText && MANIFEST_HASH === manifest.manifestHash, 'the generated models embed the manifest of bench.dbs');
   const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH);
   check(registerModel(MANIFEST_TEXT, MANIFEST_HASH) === model, 'registering the same manifest returns the registered model');
-  check([...model.entities.keys()].join(',') === 'author,user,service,service_region,service_member,composite_account,composite_membership,soft_record,account,project,account_project,task,hex_cell,time_cell,clock_cell,upsert_cell,uuid_cell', 'entities in document order');
+  check([...model.entities.keys()].join(',') === 'author,user,service,service_region,service_member,composite_account,composite_membership,soft_record,account,project,account_project,task,hex_cell,time_cell,clock_cell,upsert_cell,uuid_cell,bind_cell', 'entities in document order');
   // 선언한 hash로 가지 않는 text는 그 hash가 이미 등록되어 있어도 SCHEMA_HASH_MISMATCH다.
   const edited = MANIFEST_TEXT.replace('table author', 'table authors');
   check(edited !== MANIFEST_TEXT, 'the edited manifest text differs');

@@ -3,6 +3,7 @@
 // 조립한다.
 import { connect as netConnect, type Socket } from 'node:net';
 import { parse as parseJson, type Value } from '@polyspec/ordered-json';
+import { checkParam, useSlotType } from './bind_check.js';
 import { hostEncode } from './codec.js';
 import { decodeAssembly, formatInstant, timeValue, type Db, type Executor, type Result } from './database.js';
 import type { PoolBounds, PoolStats } from './driver.js';
@@ -299,6 +300,12 @@ async function markdownCall(ex: Executor, request: Request, params: readonly unk
   request.n_params = params.length;
   validate(model, request);
   const uses = paramUses(model, request);
+  params.forEach((value, i) => {
+    for (const use of uses[i] ?? []) {
+      if (use.column?.stages.some(s => s === 'aes' || s === 'hex' || s === 'ip')) continue;
+      checkParam(i, value, useSlotType(use), db.zone);
+    }
+  });
   const values = params.map((value, i) => markdownParam(db, i, value, uses[i] ?? []));
   const line = `{"ir_version":${JSON.stringify(request.ir_version)},"manifest_hash":${JSON.stringify(request.manifest_hash)},"request":${JSON.stringify(request)},"params":[${values.join(',')}],"now":${JSON.stringify(db.now(db.clockMicros(), 6))}}`;
   if (ex.frame !== undefined) return { answer: await present(ex.frame.md, 'the flowmark session of a markdown transaction').call(line, db.signal), model };

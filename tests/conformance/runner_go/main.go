@@ -973,6 +973,41 @@ func run() (status int) {
 		return picks(rows, "id"), nil
 	})
 
+	// A value outside the logical type of its slot is CODEC_ENCODE before any statement
+	// (docs/protocol.md §5 "Parameters"). A create that the client lets through is deleted,
+	// so the vector leaves the database as it found it.
+	rejected := func(created interface {
+		GetSeq() int64
+		Delete(...bool) error
+	}, err error) (any, error) {
+		if err == nil {
+			mask([]int64{created.GetSeq()})
+			if err := created.Delete(); err != nil {
+				return nil, err
+			}
+		}
+		return map[string]any{"code": code(err)}, nil
+	}
+	bindCell := func() *model.BindCellModel { return model.BindCell().Connect(db) }
+	run("datetime_precision_rejected", func() (any, error) {
+		row, err := timeCell().SetAt(at.Add(500 * time.Millisecond)).SetClock("10:11:12")
+		if err != nil {
+			return nil, err
+		}
+		return rejected(row.Create())
+	})
+	run("varchar_length_rejected", func() (any, error) {
+		return rejected(bindCell().SetLabel("123456789").Create())
+	})
+	run("text_nul_rejected", func() (any, error) {
+		body := "a\x00b"
+		return rejected(bindCell().SetLabel("nul").SetBody(&body).Create())
+	})
+	run("uuid_form_rejected", func() (any, error) {
+		token := "123E4567-E89B-12D3-A456-426614174000"
+		return rejected(bindCell().SetLabel("uuid").SetToken(&token).Create())
+	})
+
 	// The clock vectors need the test entry point of the client, which only a build
 	// with the tag ormtest has (clock_ormtest.go); conformance builds the runner with
 	// it, and the checker refuses an output that lacks a declared vector.

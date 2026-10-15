@@ -9,7 +9,9 @@ use std::sync::{Arc, Mutex};
 
 polyspec_orm::models!();
 
-use model::{Author, ClockCell, CompositeAccount, HexCell, Service, ServiceMember, ServiceRegion, SoftRecord, Task, TimeCell, UpsertCell, User, UuidCell};
+use model::{
+    Author, BindCell, ClockCell, CompositeAccount, HexCell, Service, ServiceMember, ServiceRegion, SoftRecord, Task, TimeCell, UpsertCell, User, UuidCell,
+};
 use polyspec_orm::{AesKeyring, Collection, Db, Model, Null, Param};
 use serde_json::{json, Map, Value};
 
@@ -814,6 +816,26 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         })
         .retry(0)
     );
+    // A value outside the logical type of its slot is CODEC_ENCODE before any statement (docs/protocol.md §5
+    // "Parameters"). A create that the client lets through is deleted, so the vector leaves the database as it found it.
+    macro_rules! rejected {
+        ($create:expr) => {
+            async {
+                match $create.await {
+                    Ok(created) => {
+                        mask(shared, &[created.get_seq().unwrap()], &[]);
+                        created.delete(false).await?;
+                        Ok::<Value, polyspec_orm::Error>(json!({"code": null}))
+                    }
+                    Err(e) => Ok(json!({"code": code(&e)})),
+                }
+            }
+        };
+    }
+    run!("datetime_precision_rejected", rejected!(TimeCell::new().connect(db).set_at(at + chrono::Duration::milliseconds(500)).set_clock("10:11:12").create()));
+    run!("varchar_length_rejected", rejected!(BindCell::new().connect(db).set_label("123456789").create()));
+    run!("text_nul_rejected", rejected!(BindCell::new().connect(db).set_label("nul").set_body("a\u{0}b").create()));
+    run!("uuid_form_rejected", rejected!(BindCell::new().connect(db).set_label("uuid").set_token("123E4567-E89B-12D3-A456-426614174000").create()));
     // One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now` hold
     // that clock truncated to their digits, and a datetime(p) column compares with a clock at six digits. The executor
     // clock is fixed at .999999 through the test entry point, so a rounding clock shows as the next second; MySQL writes

@@ -163,6 +163,13 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 	for _, b := range st.BindSlots {
 		switch b.From {
 		case "param":
+			// A transformed value is the text of its operator, and a host-styled value is the
+			// input of its first stage, which HostEncode checks.
+			if b.Transform == "" && len(b.HostStyles) == 0 && b.Param < len(r.params) {
+				if err := d.checkParam(b.Param, r.params[b.Param], bindSlotType(&b)); err != nil {
+					return nil, nil, err
+				}
+			}
 			v, err := paramValue(&b, r)
 			if err != nil {
 				return nil, nil, err

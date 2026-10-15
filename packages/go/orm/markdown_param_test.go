@@ -23,6 +23,22 @@ type bindVectors struct {
 		JSON      string `json:"json"`
 		Code      string `json:"code"`
 	} `json:"message"`
+	Bind []bindCase `json:"bind"`
+}
+
+// bindCase is a bind case of tests/bind/vectors.json: a parameter value checked against
+// the logical type of its slot, with the value it binds or the error code.
+type bindCase struct {
+	Name string `json:"name"`
+	Slot struct {
+		Type      string `json:"type"`
+		Precision int    `json:"precision"`
+		Scale     int    `json:"scale"`
+		Length    int    `json:"length"`
+	} `json:"slot"`
+	Value json.RawMessage `json:"value"`
+	Bound json.RawMessage `json:"bound"`
+	Code  string          `json:"code"`
 }
 
 // TestBindMessageVectors writes each message case of tests/bind/vectors.json as an

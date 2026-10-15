@@ -11,7 +11,7 @@ import (
 var _ time.Time
 
 // ManifestHash is the manifestHash of the document set the models were generated from.
-const ManifestHash = "sha256:1a91aae4209ba2c778335adecf8c79efce1c1b7bf07ab18720a076b88ace69f7"
+const ManifestHash = "sha256:6b243f5910037ab61aca570f15bcb9c94461a80690ec6ed9546fecaf51e5af29"
 
 // ManifestText is the manifest text of the document set the models were generated from.
 const ManifestText = "dbspec 1 bench\n" +
@@ -210,6 +210,14 @@ const ManifestText = "dbspec 1 bench\n" +
 	"  seq i64 identity\n" +
 	"  id uuid\n" +
 	"  primary key (seq)\n" +
+	"}\n" +
+	"\n" +
+	"table bind_cell {\n" +
+	"  seq i64 identity\n" +
+	"  label varchar(8)\n" +
+	"  body text null\n" +
+	"  token uuid null\n" +
+	"  primary key (seq)\n" +
 	"}\n"
 
 // Schema is the generated schema value: the manifest text with its declared
@@ -223,7 +231,7 @@ func Connect(dsn string, cfg orm.Config) (*orm.DB, error) { return orm.ConnectSc
 
 // ormModel is any generated model; a model value is a subquery.
 type ormModel interface {
-	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *CompositeAccountModel | *CompositeMembershipModel | *SoftRecordModel | *AccountModel | *ProjectModel | *AccountProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *UpsertCellModel | *UuidCellModel
+	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *CompositeAccountModel | *CompositeMembershipModel | *SoftRecordModel | *AccountModel | *ProjectModel | *AccountProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel
 }
 
 type argBoolEq interface {
@@ -264,7 +272,7 @@ type argTimeEq interface {
 
 // hasSeq is a model with the column seq.
 type hasSeq interface {
-	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *SoftRecordModel | *AccountModel | *ProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *UpsertCellModel | *UuidCellModel
+	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *SoftRecordModel | *AccountModel | *ProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel
 	Orm_() *orm.Core
 }
 

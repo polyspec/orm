@@ -350,6 +350,18 @@ func markdownCall(ex executor, r *request) (json.RawMessage, *runtimemodel.Model
 		return nil, nil, err
 	}
 	uses := ir.ParamUses(m, &r.ir)
+	for i, v := range r.params {
+		for _, u := range uses[i] {
+			if u.Column != nil {
+				if _, host := splitHost(u.Column.Codec); len(host) > 0 {
+					continue
+				}
+			}
+			if err := d.checkParam(i, v, useSlotType(u)); err != nil {
+				return nil, nil, err
+			}
+		}
+	}
 	msg := mdRequest{IRVersion: r.ir.IRVersion, ManifestHash: r.ir.ManifestHash, Request: &r.ir, Params: make([]json.RawMessage, len(r.params)), Now: d.now().Format("2006-01-02 15:04:05.000000")}
 	for i, v := range r.params {
 		if msg.Params[i], err = d.markdownParam(i, v, uses[i]); err != nil {

@@ -10,6 +10,7 @@ import { COMPUTE, cases } from '../../../tests/testcase.mts';
 import { Db, OrmError } from '../dist/index.js';
 import { parseDsn } from '../dist/driver.js';
 import { markdownParam } from '../dist/markdown.js';
+import { checkParam } from '../dist/bind_check.js';
 import { readFileSync } from 'node:fs';
 
 const run = cases();
@@ -163,6 +164,31 @@ for (const c of bind.message) {
       if (code !== c.code) throw new Error(`markdownParam(${JSON.stringify(c.value)}) = ${got} ${code}; want ${c.code}`);
     } else if (code !== '' || got !== JSON.stringify(c.json)) {
       throw new Error(`markdownParam(${JSON.stringify(c.value)}) = ${got} ${code}; want ${JSON.stringify(c.json)}`);
+    }
+  });
+}
+// tests/bind/vectors.json의 bind case: parameter 값을 그 slot의 논리 type으로 검사한다(docs/protocol.md §5
+// "Parameters"). Go의 TestBindVectors와 같은 case다.
+function vectorValue(value) {
+  if (value === null || typeof value !== 'object') return value;
+  if (value.int !== undefined) return BigInt(value.int);
+  if (value.f64 !== undefined) return Number(value.f64);
+  if (value.bytes !== undefined) return new Uint8Array(Buffer.from(value.bytes, 'base64'));
+  throw new Error(`value ${JSON.stringify(value)} has no host form`);
+}
+for (const c of bind.bind) {
+  await run.run(`bind/${c.name}`, COMPUTE, () => {
+    const value = vectorValue(c.value);
+    const slot = { type: c.slot.type, precision: c.slot.precision ?? 0, scale: c.slot.scale ?? 0, length: c.slot.length ?? 0 };
+    let code = '';
+    try { checkParam(0, value, slot, bind.zone); } catch (error) {
+      if (!(error instanceof OrmError)) throw error;
+      code = error.code;
+    }
+    if (c.code !== undefined) {
+      if (code !== c.code) throw new Error(`checkParam(${JSON.stringify(c.value)}) = ${code}; want ${c.code}`);
+    } else if (code !== '' || !isDeepStrictEqual(value, vectorValue(c.bound))) {
+      throw new Error(`checkParam(${JSON.stringify(c.value)}) = ${code}; want ${JSON.stringify(c.bound)} bound`);
     }
   });
 }

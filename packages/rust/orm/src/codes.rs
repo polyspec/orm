@@ -47,7 +47,7 @@ pub const OPTIMISTIC_LOCK: &str = "OPTIMISTIC_LOCK";
 pub const WRITE_CONFLICT: &str = "WRITE_CONFLICT";
 /// executor: styled column bytes could not be decoded (docs/codec.md)
 pub const CODEC_DECODE: &str = "CODEC_DECODE";
-/// executor: a styled input cannot be encoded, including SQL NULL for a non-null column
+/// executor: a parameter outside its slot's logical type, before any statement (kind, range, scale and precision, time precision, length, U+0000, uuid form), or a styled input that cannot be encoded, including SQL NULL for a non-null column
 pub const CODEC_ENCODE: &str = "CODEC_ENCODE";
 /// executor: PHP objects/references in serialize, unknown style
 pub const CODEC_UNSUPPORTED: &str = "CODEC_UNSUPPORTED";
