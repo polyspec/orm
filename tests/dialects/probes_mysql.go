@@ -154,6 +154,17 @@ func mysqlProbes() []Probe {
 			minutes, _ := strconv.Atoi(e.Value("SELECT TIMESTAMPDIFF(MINUTE, (SELECT d FROM t WHERE z = 'utc'), (SELECT d FROM t WHERE z = 'kst'))"))
 			e.Check(minutes >= 539 && minutes <= 541, "difference %d minutes", minutes)
 		}),
+		p("upsert.any_unique_key", "ON DUPLICATE KEY UPDATE meets an existing row on any unique key, not only the primary key", func(e *Env) {
+			e.Exec("CREATE TABLE t (id int PRIMARY KEY, code varchar(8) NOT NULL UNIQUE, v varchar(8))", "INSERT INTO t VALUES (1, 'a', 'old')",
+				"INSERT INTO t VALUES (2, 'a', 'new') ON DUPLICATE KEY UPDATE v = 'hit'")
+			e.WantRows("SELECT CONCAT(id, ':', v) FROM t ORDER BY id", "1:hit")
+		}),
+		p("upsert.not_null_unique_first", "when the row meets two rows on two unique keys, MySQL updates the one met on the NOT NULL unique key, whatever the declaration order", func(e *Env) {
+			e.Exec("CREATE TABLE t (id int PRIMARY KEY, b int NULL, a int NOT NULL, v varchar(8), UNIQUE KEY ub (b), UNIQUE KEY ua (a))",
+				"INSERT INTO t VALUES (1, 100, 10, 'r1'), (2, 200, 20, 'r2')",
+				"INSERT INTO t VALUES (3, 100, 20, 'n') ON DUPLICATE KEY UPDATE v = 'hit'")
+			e.WantRows("SELECT CONCAT(id, ':', v) FROM t ORDER BY id", "1:r1,2:hit")
+		}),
 		p("now.precision_truncates", "CURRENT_TIMESTAMP(p) and a DATETIME(p) DEFAULT CURRENT_TIMESTAMP(p) truncate the statement clock to p digits", func(e *Env) {
 			e.Exec(utc, "SET TIMESTAMP = UNIX_TIMESTAMP('2026-06-01 12:34:32') + 0.784706",
 				"CREATE TABLE t (z int, a datetime DEFAULT CURRENT_TIMESTAMP, b datetime(3) DEFAULT CURRENT_TIMESTAMP(3))", "INSERT INTO t (z) VALUES (1)")

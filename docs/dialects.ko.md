@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 9b9eb378e7b1418151029d03ad46facd2dd47e9b0ea0e90834016c313e32286b -->
+<!-- source-sha256: bc8ac243fe279dd24f22c47b01dbffe006a75c160c6a011388778ac1b3828009 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -14,7 +14,7 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
 | `Fulltext` / `FulltextBoolean` | `MATCH … AGAINST (… IN NATURAL LANGUAGE/BOOLEAN MODE)`, boolean value normalized (`+a +b*`) | `to_tsvector('simple', coalesce(a,'') || ' ' || …) @@ plainto_tsquery / websearch_to_tsquery('simple', ?)`, value trimmed only | **rejected** (FTS5 needs virtual tables) |
 | `forceIndex<Name>` | `FORCE INDEX (name)` | ignored (no hints) | `INDEXED BY "name"` |
 | insert id | `LAST_INSERT_ID()` (upsert adds `pk = LAST_INSERT_ID(pk)`) | `RETURNING pk` | `RETURNING pk` |
-| `duplication(model)` | `ON DUPLICATE KEY UPDATE` (validator가 허용한 충돌 key 하나만 만난다) | `ON CONFLICT (cols) DO UPDATE SET` — 충돌 대상은 validator가 허용한 충돌 key 하나다(upsert에는 삽입 행을 만날 수 있는 key가 정확히 하나다) | PostgreSQL과 같다 |
+| `duplication(model)` | `ON DUPLICATE KEY UPDATE` (validator가 허용한 충돌 key 하나만 만난다. MySQL은 아무 unique key에서나 행과 만나며(`mysql.upsert.any_unique_key`), NOT NULL unique key가 먼저다(`mysql.upsert.not_null_unique_first`)) | `ON CONFLICT (cols) DO UPDATE SET` — 충돌 대상은 validator가 허용한 충돌 key 하나다(upsert에는 삽입 행을 만날 수 있는 key가 정확히 하나다. 다른 unique key에서 만나는 행은 unique 위반이다, `postgres.upsert.other_key_conflicts`) | PostgreSQL과 같다(`sqlite.upsert.other_key_conflicts`). conformance vector `upsert_one_key`는 세 database에서 같은 결과를 준다 |
 | `groupLimit(n)` | `ROW_NUMBER() OVER (…)` | same | same |
 | `tuple<ColA>With<ColB>` | `(a, b) IN ((?, ?), …)` | same | `(a, b) IN (VALUES (?, ?), …)` |
 | `orderByRandom()` | `RAND()` | `random()` | `random()` |

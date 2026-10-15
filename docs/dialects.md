@@ -14,7 +14,7 @@ Executors still see the same plan shape: steps, bind slots, assemble.
 | `Fulltext` / `FulltextBoolean` | `MATCH … AGAINST (… IN NATURAL LANGUAGE/BOOLEAN MODE)`, boolean value normalized (`+a +b*`) | `to_tsvector('simple', coalesce(a,'') || ' ' || …) @@ plainto_tsquery / websearch_to_tsquery('simple', ?)`, value trimmed only | **rejected** (FTS5 needs virtual tables) |
 | `forceIndex<Name>` | `FORCE INDEX (name)` | ignored (no hints) | `INDEXED BY "name"` |
 | insert id | `LAST_INSERT_ID()` (upsert adds `pk = LAST_INSERT_ID(pk)`) | `RETURNING pk` | `RETURNING pk` |
-| `duplication(model)` | `ON DUPLICATE KEY UPDATE` (meets only the one conflict key the validator allows) | `ON CONFLICT (cols) DO UPDATE SET` — conflict target = the one conflict key the validator allows (an upsert has exactly one key that can meet the inserted row) | same as PostgreSQL |
+| `duplication(model)` | `ON DUPLICATE KEY UPDATE` (meets only the one conflict key the validator allows; MySQL meets a row on any unique key (`mysql.upsert.any_unique_key`), the NOT NULL unique key first (`mysql.upsert.not_null_unique_first`)) | `ON CONFLICT (cols) DO UPDATE SET` — conflict target = the one conflict key the validator allows (an upsert has exactly one key that can meet the inserted row; a row that meets another unique key is a unique violation, `postgres.upsert.other_key_conflicts`) | same as PostgreSQL (`sqlite.upsert.other_key_conflicts`); the conformance vector `upsert_one_key` gives one result on the three databases |
 | `groupLimit(n)` | `ROW_NUMBER() OVER (…)` | same | same |
 | `tuple<ColA>With<ColB>` | `(a, b) IN ((?, ?), …)` | same | `(a, b) IN (VALUES (?, ?), …)` |
 | `orderByRandom()` | `RAND()` | `random()` | `random()` |

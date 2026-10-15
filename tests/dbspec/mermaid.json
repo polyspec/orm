@@ -829,6 +829,11 @@
           "check",
           "task",
           "ck_task_state"
+        ],
+        [
+          "unique",
+          "upsert_cell",
+          "uq_upsert_cell_code"
         ]
       ],
       "id": "bench",
@@ -877,6 +882,11 @@
           "index",
           "service_region",
           "ix_service_region_service_seq"
+        ],
+        [
+          "unique",
+          "upsert_cell",
+          "code"
         ]
       ],
       "path": "contracts/fixtures/bench/bench.dbs"

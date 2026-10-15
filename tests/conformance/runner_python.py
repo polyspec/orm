@@ -62,7 +62,7 @@ def parse_args(args):
 # Set by main() from the arguments; importing this module parses nothing.
 DSN, MODELS_DIR, SELECTED = None, None, []
 bench = Author = CompositeAccount = Service = ServiceMember = ServiceRegion = None
-User = SoftRecord = Task = HexCell = TimeCell = ClockCell = None
+User = SoftRecord = Task = HexCell = TimeCell = ClockCell = UpsertCell = None
 
 log = []
 transactions = {}
@@ -281,7 +281,8 @@ def load_models():
         Task, \
         HexCell, \
         TimeCell, \
-        ClockCell
+        ClockCell, \
+        UpsertCell
     # The models generated from contracts/fixtures/bench/bench.dbs are compiled from their source and
     # registered as models; the client itself is the one installed into the interpreter.
     source = os.path.join(MODELS_DIR, "models.py")
@@ -307,6 +308,7 @@ def load_models():
     )
     TimeCell = bench.TimeCell
     ClockCell = bench.ClockCell
+    UpsertCell = bench.UpsertCell
 
 
 def main():
@@ -331,6 +333,7 @@ def main():
         "contains_binary_code_point",
         "datetime_p0_roundtrip",
         "time_p3_roundtrip",
+        "upsert_one_key",
         "clock_truncate_write",
         "clock_compare_six_digits",
     }
@@ -1040,6 +1043,40 @@ def main():
         return picks(rows, "clock")
 
     run("time_p3_roundtrip", time_p3_roundtrip)
+
+    # An upsert has exactly one conflict key (docs/protocol.md 1): upsert_cell leaves its identity primary key out, so
+    # the unique key on code is the one key that can meet the row; an insert that does not assign code is IR_INVALID
+    # before any statement.
+    def upsert_one_key():
+        created = (
+            UpsertCell()
+            .connect(db)
+            .set_code("k1")
+            .set_label("first")
+            .duplication(UpsertCell().set_label("second"))
+            .create()
+        )
+        mask([created.get_seq()])
+        inserted = UpsertCell().connect(db).code("k1").gets()
+        UpsertCell().connect(db).set_code("k1").set_label("other").duplication(
+            UpsertCell().set_label("second")
+        ).create()
+        updated = UpsertCell().connect(db).code("k1").gets()
+        unassigned = None
+        try:
+            UpsertCell().connect(db).set_label("none").duplication(
+                UpsertCell().set_label("second")
+            ).create()
+        except Exception as error:  # noqa: BLE001
+            unassigned = {"error": code_of(error), "message": str(error)}
+        updated.delete()
+        return {
+            "inserted": picks(inserted, "label"),
+            "updated": picks(updated, "label"),
+            "unassigned": unassigned,
+        }
+
+    run("upsert_one_key", upsert_one_key)
 
     # One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now`
     # hold that clock truncated to their digits, and a datetime(p) column compares with a clock at six digits. The

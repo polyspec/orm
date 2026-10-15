@@ -9,7 +9,7 @@ use chrono::NaiveDateTime;
 use polyspec_orm::{Config, Core, Db, Entity, Model, Param, Schema, StatementEvent, Val};
 
 static SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/bench/bench.dbs"), "sha256:06318b2325cc8123b21339f72401aadbe5966c261f476dbe758062574a595ae5");
+    Schema::new(include_str!("../../../../contracts/fixtures/bench/bench.dbs"), "sha256:b621d52e823c050cb92b7cd5005919504611223f640c71430327a4e5e67019aa");
 
 static ENTITY: Entity = Entity {
     name: "soft_record",

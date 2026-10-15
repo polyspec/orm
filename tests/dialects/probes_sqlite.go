@@ -47,6 +47,12 @@ func sqliteProbes() []Probe {
 			e.Want("SELECT typeof(9e999) || ' ' || (9e999 > 1e308)", "real 1")
 		}),
 		// Date and time.
+		p("upsert.other_key_conflicts", "ON CONFLICT names one target; a row that meets another unique key is a unique violation", func(e *Env) {
+			e.Exec("CREATE TABLE t (id int PRIMARY KEY, code varchar(8) NOT NULL UNIQUE, v varchar(8))", "INSERT INTO t VALUES (1, 'a', 'old')")
+			e.Fails("INSERT INTO t VALUES (2, 'a', 'new') ON CONFLICT (id) DO UPDATE SET v = 'hit'", "UNIQUE constraint failed: t.code")
+			e.Exec("INSERT INTO t VALUES (2, 'a', 'new') ON CONFLICT (code) DO UPDATE SET v = 'hit'")
+			e.WantRows("SELECT id || ':' || v FROM t ORDER BY id", "1:hit")
+		}),
 		p("datetime.text_unvalidated", "a DATETIME column stores any text", func(e *Env) {
 			e.Exec("CREATE TABLE t (d DATETIME)", "INSERT INTO t VALUES ('not a date')")
 			e.Want("SELECT d FROM t", "not a date")

@@ -278,7 +278,7 @@ func run() (status int) {
 	writeVectors := map[string]bool{
 		"write_cycle": true, "now_defaults": true, "required_columns": true,
 		"creates_and_save": true, "delete_recursive": true, "contains_ascii_fold": true, "contains_binary_code_point": true,
-		"datetime_p0_roundtrip": true, "time_p3_roundtrip": true,
+		"datetime_p0_roundtrip": true, "time_p3_roundtrip": true, "upsert_one_key": true,
 		"clock_truncate_write": true, "clock_compare_six_digits": true,
 	}
 	// vector는 선언 순서대로 모은 뒤, 선택을 검사하고 그 순서로 실행한다.
@@ -915,6 +915,39 @@ func run() (status int) {
 			return nil, err
 		}
 		return picks(rows, "clock"), nil
+	})
+
+	// An upsert has exactly one conflict key (docs/protocol.md 1): upsert_cell
+	// leaves its identity primary key out, so the unique key on code is the one key
+	// that can meet the row; an insert that does not assign code is IR_INVALID
+	// before any statement.
+	upsertCell := func() *model.UpsertCellModel { return model.UpsertCell().Connect(db) }
+	run("upsert_one_key", func() (any, error) {
+		created, err := upsertCell().SetCode("k1").SetLabel("first").
+			Duplication(model.UpsertCell().SetLabel("second")).Create()
+		if err != nil {
+			return nil, err
+		}
+		mask([]int64{created.GetSeq()})
+		inserted, err := upsertCell().Code("k1").Gets()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := upsertCell().SetCode("k1").SetLabel("other").
+			Duplication(model.UpsertCell().SetLabel("second")).Create(); err != nil {
+			return nil, err
+		}
+		updated, err := upsertCell().Code("k1").Gets()
+		if err != nil {
+			return nil, err
+		}
+		_, unassigned := upsertCell().SetLabel("none").
+			Duplication(model.UpsertCell().SetLabel("second")).Create()
+		if err := updated.Delete(); err != nil {
+			return nil, err
+		}
+		failure := map[string]any{"error": code(unassigned), "message": fmt.Sprint(unassigned)}
+		return map[string]any{"inserted": picks(inserted, "label"), "updated": picks(updated, "label"), "unassigned": failure}, nil
 	})
 
 	// The clock vectors need the test entry point of the client, which only a build
