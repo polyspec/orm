@@ -92,7 +92,10 @@ export const TOOLS_GO_MOD = '// The tools of this checkout, a module of its own 
  * Installs the declared mise `{ version, sha256 }` (sha256 by platform key) into var/tools/mise-release of `root`, writes the
  * wrapper, and writes the go.mod of var/tools.
  */
-export function installMise({ root, declared, platform = `${process.platform}-${process.arch}`, print = () => {} }: { root: string; declared: { version: string; sha256: Readonly<Record<string, unknown>> }; platform?: string; print?: (text: string) => void }) {
+/** The wrapper of var/tools/bin that runs the installed mise. */
+export const MISE_WRAPPER = 'mise';
+
+export function installMise({ root, declared, platform = `${process.platform}-${process.arch}`, print = () => {} }: { root: string; declared: { version: string; sha256: Readonly<Record<string, string>> }; platform?: string; print?: (text: string) => void }) {
   const asset = MISE_ASSETS[platform];
   if (!asset) throw new Error(`no mise archive is verified for ${platform}; the verified platforms are ${Object.keys(MISE_ASSETS).join(', ')}`);
   const sha256 = declared.sha256[platform];
@@ -115,7 +118,7 @@ export function installMise({ root, declared, platform = `${process.platform}-${
       rmSync(archive, { force: true });
     },
   });
-  writeWrapper(root, 'mise', miseWrapper(root, binary(prefix), declared.version), print);
+  writeWrapper(root, MISE_WRAPPER, miseWrapper(root, binary(prefix), declared.version), print);
   writeAtomic(toolsPath(root, 'go.mod'), TOOLS_GO_MOD);
   return result;
 }

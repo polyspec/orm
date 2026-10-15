@@ -21,7 +21,7 @@
     "typescript:test": "node tests/run-long.mts typescript-build -- npm run typescript:build && node packages/ts/tests/dsn.mjs && node packages/ts/tests/idle-connection-end.mjs && node packages/ts/tests/engine.mjs && node packages/ts/tests/generate.mjs && node packages/ts/tests/generate-scan.mjs && node packages/ts/tests/codec-vector.mjs && node packages/ts/tests/styled-value.mjs && node packages/ts/tests/dbspec.mjs && node packages/ts/tests/dbspec-rules.mjs && node packages/ts/tests/package-declarations.mjs && node packages/ts/tests/request_hook.mjs && node scripts/typescript/sqlite-test.mts"
   },
   "devDependencies": {
-    "@polyspec/kit": "https://github.com/polyspec/kit/releases/download/v0.0.42/polyspec-kit-npm-0.0.42.tgz",
+    "@polyspec/kit": "https://github.com/polyspec/kit/releases/download/v0.0.47/polyspec-kit-npm-0.0.47.tgz",
     "@types/node": "26.6.5",
     "@types/semver": "7.8.0",
     "ajv": "8.20.0",

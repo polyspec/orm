@@ -2,6 +2,10 @@
 # ruff with --config ruff.toml, so every Python file of the repository is checked with these rules, and config/layout.kit.yml
 # forbids a nested ruff configuration, which would escape them in an editor or a plain ruff run.
 target-version = "py314"
+# ruff's own setting for its cache, which otherwise is .ruff_cache at the root (layout S5 refuses it): var holds what the tools
+# write, and the setting holds for every ruff run of the repository, an editor's too. ruff reads the path relative to this file
+# when it finds the file and relative to its working directory under --config, so both are the root under make lint-python.
+cache-dir = "var/ruff"
 
 [lint]
 select = ["E4", "E7", "E9", "F", "TID251"]

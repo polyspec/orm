@@ -14,10 +14,12 @@
 // absent from the result. A malformed declaration throws an error with the file, the expected form and the actual value.
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { isJsonList, isJsonObject, readJsonObject } from './files.mts';
 
 /** A symbol extractor of the parity check that install-tools builds (install-symbols.mts). */
 export type InstalledExtractor = 'go' | 'php';
 const EXTRACTORS: readonly InstalledExtractor[] = ['go', 'php'];
+const isExtractor = (value: unknown): value is InstalledExtractor => EXTRACTORS.some(name => name === value);
 
 const EXACT = /^\d+\.\d+\.\d+$/;
 const MINOR = /^\d+\.\d+$/;
@@ -27,7 +29,7 @@ const read = (root: string, file: string): string => readFileSync(path.join(root
 export type Declared = { version: string; source: string };
 
 /** A release with the sha256 of its file for each platform key. */
-export type PlatformRelease = { version: string; sha256: Record<string, unknown>; source: string };
+export type PlatformRelease = { version: string; sha256: Record<string, string>; source: string };
 
 /** The declared toolchains of a checkout; an undeclared tool is absent. */
 export type DeclaredToolchain = {
@@ -45,7 +47,7 @@ export type DeclaredToolchain = {
  * configuration is not checked against its schema here, so each value stays unknown until a check below reads it.
  */
 // The cast only lets TypeScript read the key; the read itself is the same as before.
-const field = (value: unknown, key: string): unknown => (value as Record<string, unknown>)[key];
+const field = (value: unknown, key: string): unknown => (isJsonObject(value) ? value[key] : undefined);
 
 // Whether `value` is text that matches `pattern`; a JSON number or list is no text, whatever its text would be.
 const matches = (pattern: RegExp, value: unknown): value is string => typeof value === 'string' && pattern.test(value);
@@ -66,7 +68,7 @@ function minor(file: string, what: string, value: unknown): string {
  * without the key, and null fails at the first read with a TypeError, as JavaScript reads them.
  */
 export function toolchainConfig(root: string): Record<string, unknown> {
-  return existsSync(path.join(root, 'config/toolchain.json')) ? JSON.parse(read(root, 'config/toolchain.json')) : {};
+  return existsSync(path.join(root, 'config/toolchain.json')) ? readJsonObject(root, 'config/toolchain.json') : {};
 }
 
 /**
@@ -77,19 +79,23 @@ function platformRelease(key: string, value: unknown): PlatformRelease {
   const file = `config/toolchain.json ${key}`;
   const version = field(value, 'version');
   if (!matches(EXACT, version)) throw new Error(`${file} must record version as <major>.<minor>.<patch>; it records ${JSON.stringify(version)}`);
-  // Object.keys and Object.entries read any value: a text fails the digest check on its characters and a number has no keys.
-  const digests = (field(value, 'sha256') ?? {}) as Record<string, unknown>;
-  if (Object.keys(digests).length === 0) throw new Error(`${file} must record the sha256 of the ${key} archive of each platform, for example linux-x64; it records none`);
+  const digests = field(value, 'sha256') ?? {};
+  if (!isJsonObject(digests) || Object.keys(digests).length === 0) throw new Error(`${file} must record the sha256 of the ${key} archive of each platform, for example linux-x64; it records ${isJsonObject(digests) ? 'none' : JSON.stringify(digests)}`);
+  const sha256: Record<string, string> = {};
   for (const [platform, digest] of Object.entries(digests)) {
     if (!matches(/^[0-9a-f]{64}$/, digest)) throw new Error(`${file} must record the sha256 of ${platform} as 64 lowercase hexadecimal digits; it records ${JSON.stringify(digest)}`);
+    sha256[platform] = digest;
   }
-  return { version, sha256: digests, source: file };
+  return { version, sha256, source: file };
 }
+
+/** The composer.json of the Composer project of config/phpunit, from which install-tools installs the declared PHPUnit. */
+export const PHPUNIT_MANIFEST = 'config/phpunit/composer.json';
 
 // The PHPUnit release of the PHP tests of kit: its exact version; the Composer project that installs it is config/phpunit.
 function phpunit(value: unknown): Declared & { manifest: string } {
   const file = 'config/toolchain.json phpunit';
-  return { version: exact(file, 'the PHPUnit release', field(value, 'version')), manifest: 'config/phpunit/composer.json', source: file };
+  return { version: exact(file, 'the PHPUnit release', field(value, 'version')), manifest: PHPUNIT_MANIFEST, source: file };
 }
 
 // The build backend of the Python wheels: its exact requirement name==version and the sha256 of its wheel.
@@ -102,6 +108,15 @@ function pythonBackend(value: unknown): { requirement: string; sha256: string; s
   return { requirement, sha256, source: file };
 }
 
+/**
+ * pythonBackend of config/toolchain.json of `root`, the one declaration of the build backend of the Python wheels, which
+ * install-tools installs and release-backend and release-assets read; undefined when the file does not declare it.
+ */
+export function declaredPythonBackend(root: string): DeclaredToolchain['pythonBackend'] {
+  const config = toolchainConfig(root);
+  return config.pythonBackend ? pythonBackend(config.pythonBackend) : undefined;
+}
+
 /** The declared toolchains of the checkout at `root`. */
 export function declaredToolchain(root: string): DeclaredToolchain {
   const config = toolchainConfig(root);
@@ -110,21 +125,23 @@ export function declaredToolchain(root: string): DeclaredToolchain {
     declared.node = { version: exact('.node-version', 'the Node.js release', read(root, '.node-version').trim()), source: '.node-version' };
   }
   if (existsSync(path.join(root, 'package.json'))) {
-    const manager = field(JSON.parse(read(root, 'package.json')), 'packageManager') ?? '';
+    const manager = readJsonObject(root, 'package.json').packageManager ?? '';
     // A packageManager that is not text is no npm declaration, whatever its text would be.
     const match = typeof manager === 'string' ? /^npm@(\d+\.\d+\.\d+)(?:\+sha512\.([0-9a-f]{128}))?$/.exec(manager) : null;
     if (!match) throw new Error(`package.json packageManager is ${JSON.stringify(manager)}, expected npm@<major>.<minor>.<patch> or npm@<major>.<minor>.<patch>+sha512.<128 hexadecimal digits>`);
+    const [, version, sha512] = match;
     // The first group always takes part in a match.
-    declared.npm = { version: match[1]!, sha512: match[2], source: 'packageManager of package.json' };
+    if (version === undefined) throw new Error(`package.json packageManager ${JSON.stringify(manager)} matched without its version`);
+    declared.npm = { version, sha512, source: 'packageManager of package.json' };
   }
   const phpFile = existsSync(path.join(root, '.php-version')) ? minor('.php-version', 'the PHP minor release', read(root, '.php-version').trim()) : undefined;
   if (config.php) {
-    // The loop fails for a value that is not a list: with a TypeError when it is not iterable, with the minor check on the
-    // first character of a text. Each item that passes is a minor release as text.
-    const php = config.php as string[];
-    for (const value of php) minor('config/toolchain.json', 'php as a list of minor releases', value);
-    if (phpFile && !php.includes(phpFile)) throw new Error(`.php-version declares ${phpFile}, but config/toolchain.json php lists ${php.join(', ')}; list ${phpFile} or change .php-version`);
-    declared.php = { minors: php, source: 'config/toolchain.json php' };
+    const php = config.php;
+    if (!isJsonList(php)) throw new Error(`config/toolchain.json must record php as a list of minor releases; it records ${JSON.stringify(php)}`);
+    // Each item that passes is a minor release as text.
+    const minors = php.map(value => minor('config/toolchain.json', 'php as a list of minor releases', value));
+    if (phpFile && !minors.includes(phpFile)) throw new Error(`.php-version declares ${phpFile}, but config/toolchain.json php lists ${minors.join(', ')}; list ${phpFile} or change .php-version`);
+    declared.php = { minors, source: 'config/toolchain.json php' };
   } else if (phpFile) {
     declared.php = { minors: [phpFile], source: '.php-version' };
   }
@@ -134,8 +151,8 @@ export function declaredToolchain(root: string): DeclaredToolchain {
   }
   if (config.phpunit) declared.phpunit = phpunit(config.phpunit);
   if (config.symbolExtractors !== undefined) {
-    const extractors: unknown = config.symbolExtractors;
-    if (!Array.isArray(extractors) || !extractors.length || extractors.some(name => !EXTRACTORS.includes(name))) throw new Error(`config/toolchain.json symbolExtractors is ${JSON.stringify(extractors)}; expected a list of ${EXTRACTORS.join(', ')}`);
+    const extractors = config.symbolExtractors;
+    if (!isJsonList(extractors) || !extractors.length || !extractors.every(isExtractor)) throw new Error(`config/toolchain.json symbolExtractors is ${JSON.stringify(extractors)}; expected a list of ${EXTRACTORS.join(', ')}`);
     declared.symbolExtractors = { extractors, source: 'config/toolchain.json symbolExtractors' };
   }
   return declared;
