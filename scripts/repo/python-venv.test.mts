@@ -62,7 +62,7 @@ caseTest('install-python builds its venv with the pinned interpreter, never the 
     assert.doesNotMatch(result.stdout, /install-tools\.mjs \S/);
     assert.match(result.stdout, /python-venv DIR=/);
     // make puts the shims of mise before PATH, so python3 is the Python of mise.toml and the stub of PATH is never run.
-    assert.match(result.stdout, /(^|\s)python3 -m pip --python /m);
+    assert.match(result.stdout, /(^|\s)\S*\/var\/tools\/mise\/shims\/python3 -m pip --python /m);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

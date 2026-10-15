@@ -173,10 +173,10 @@ function recipe(target: string): string[] {
 // 환경으로 실행하므로(tests/environment.mts) CI group의 job이 이 case를 실행해도 그 GROUP과 GITHUB_ACTIONS는 닿지 않는다
 // (G5.119).
 caseTest('make check starts the kit guard and make check-run starts the runner', COMPUTE, () => {
-  assert.deepEqual(recipe('check'), ['node $(KIT)/full-run.$(KIT_EXT) run check-run']);
+  assert.deepEqual(recipe('check'), ['$(NODE) $(KIT)/full-run.$(KIT_EXT) run check-run']);
   const run = recipe('check-run');
   assert.ok(run.slice(0, 2).every(line => line.startsWith('$(if $(GROUP),') && line.endsWith(')')), run.join('\n'));
-  assert.deepEqual(run.slice(2), ['$(BUILD_LEASE) && node scripts/check/run.mts $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)']);
+  assert.deepEqual(run.slice(2), ['$(BUILD_LEASE) && $(NODE) scripts/check/run.mts $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)']);
   const dry = (variables: Record<string, string>) => spawnSync('make', ['-n', '--no-print-directory', 'check-run'], { cwd: repo, encoding: 'utf8', env: isolatedEnvironment(variables) });
   for (const variables of [{}, { GROUP: 'static', GITHUB_ACTIONS: 'true' }]) {
     const result = dry(variables);
@@ -340,7 +340,7 @@ caseTest('a target of independent commands runs each as a part of its own', COMP
   assert.deepEqual(problems, []);
 });
 
-// make -k case는 version-check의 실제 정의를 임시 Makefile에 두고, 첫 부분의 node가 실패하는 PATH에서 runner의
+// make -k case는 version-check의 실제 정의를 임시 Makefile에 두고, $(NODE)가 첫 부분에서 실패하는 node를 가리키게 한 채 runner의
 // command로 `make -k version-check`를 실행한다. 둘째 부분이 실행되고 make는 실패로 끝난다.
 caseTest('the parts of a target after a failed part still run under make -k', PROCESS, async () => {
   const base = realpathSync(mkdtempSync(join(tmpdir(), 'parts-')));
@@ -352,7 +352,8 @@ caseTest('the parts of a target after a failed part still run under make -k', PR
       if (at < 0) continue;
       definition.push(lines[at], ...recipe(target).map(line => `\t${line}`));
     }
-    writeFileSync(join(base, 'Makefile'), `${definition.join('\n')}\n`);
+    // The recipes start node as $(NODE) of kit.mk (K171), which the temporary Makefile points at the failing node.
+    writeFileSync(join(base, 'Makefile'), `NODE := ${join(base, 'bin/node')}\n${definition.join('\n')}\n`);
     mkdirSync(join(base, 'bin'));
     const log = join(base, 'ran.log');
     writeFileSync(join(base, 'bin/node'), `#!/bin/sh\necho "$*" >> ${log}\ncase "$*" in *check.test.mts*) echo 'FAIL version unit: expected 0, actual 1'; exit 1;; esac\n`, { mode: 0o755 });

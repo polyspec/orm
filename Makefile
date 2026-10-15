@@ -67,12 +67,17 @@ ONLINE := env -u CARGO_NET_OFFLINE -u GOPROXY -u npm_config_offline -u COMPOSER_
 # checkout first runs make install-tools TOOLS=npm and make install-packages, the two targets that run before the package
 # is installed.
 include scripts/kit/kit-bootstrap.mk
+# The tools of mise.toml that a recipe starts by its absolute path (kit K171): make 3.81, the make of macOS, looks a
+# recipe line without shell syntax up on the PATH that make started with, not on the PATH that kit.mk exports.
+GO := $(CURDIR)/var/tools/mise/shims/go
+COMPOSER := $(CURDIR)/var/tools/mise/shims/composer
+PYTHON3 := $(CURDIR)/var/tools/mise/shims/python3
 
 # commit-msg-check is the commit-msg hook: it checks the message file MESSAGE that git is about to commit.
 .PHONY: commit-msg-check
 commit-msg-check:
 	@test -n "$(MESSAGE)" || { echo "commit-msg-check: MESSAGE is missing; git gives the hook .githooks/commit-msg the message file, which passes it as MESSAGE"; exit 2; }
-	node $(KIT)/check-commits.$(KIT_EXT) --message "$(MESSAGE)"
+	$(NODE) $(KIT)/check-commits.$(KIT_EXT) --message "$(MESSAGE)"
 # WITH_TEST_ENV는 TEST_ENV를 읽는다. pooler를 거치지 않는 server DSN ORM_TEST_MYSQL_SERVER_DSN과
 # ORM_TEST_POSTGRES_SERVER_DSN도 TEST_ENV가 정의한다(make 밖의 go test도 같은 file을 읽는다).
 # client-pooler-check가 ORM_TEST_*_DSN을 pooler DSN으로 바꾸어도 rollback 실패 case는 이 DSN으로
@@ -193,10 +198,10 @@ CI_TARGETS_stress_pg_sqlite = feature-stress-pg-sqlite-check
 # scripts/check/databases.mts reads it.
 databases-create: typescript-build
 	$(READ_TYPESCRIPT)
-	node scripts/check/databases.mts create '$(SERVERS)' '$(DIRECTORY)' '$(NAME)'
+	$(NODE) scripts/check/databases.mts create '$(SERVERS)' '$(DIRECTORY)' '$(NAME)'
 
 run-databases:
-	$(BUILD_LEASE) && VECTOR='$(VECTOR)' RECORD='$(RECORD)' node scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(TARGETS)
+	$(BUILD_LEASE) && VECTOR='$(VECTOR)' RECORD='$(RECORD)' $(NODE) scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(TARGETS)
 
 # check is the guard of the full suite, the full-run tool of @polyspec/kit: it prints the reason and refuses while a checklist
 # item is [~], while tracked files have uncommitted changes, or when var/full-run.json records a full run of the same tree;
@@ -211,18 +216,18 @@ run-databases:
 # 부분이므로 GITHUB_ACTIONS가 true일 때만 받는다.
 CHECK_RUN_TARGETS = $(if $(GROUP),$(CI_TARGETS_$(GROUP)),$(CHECK_TARGETS))
 check:
-	node $(KIT)/full-run.$(KIT_EXT) run check-run
+	$(NODE) $(KIT)/full-run.$(KIT_EXT) run check-run
 check-run:
 	$(if $(GROUP),$(if $(filter $(GROUP),$(CI_GROUPS)),,$(error GROUP $(GROUP) names no CI group; give one of CI_GROUPS: $(CI_GROUPS))))
 	$(if $(GROUP),$(if $(filter true,$(GITHUB_ACTIONS)),,$(error GROUP runs one CI group of make check-run on GitHub Actions only; run make check without GROUP, which runs every target of CHECK_TARGETS)))
-	$(BUILD_LEASE) && node scripts/check/run.mts $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)
+	$(BUILD_LEASE) && $(NODE) scripts/check/run.mts $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)
 
 # ci-group-needs는 CI group GROUP의 job이 실행할 setup step을 step output 줄(`<output>=true|false`)로 쓴다: group의
 # target이 contracts/check-inputs.json에 선언한 need에서 정한다(scripts/check/ci-setup.mts). workflow는 그 줄을
 # $GITHUB_OUTPUT에 더하고, setup step은 자기 output이 true일 때만 실행한다.
 ci-group-needs:
 	$(if $(filter $(GROUP),$(CI_GROUPS)),,$(error GROUP $(GROUP) names no CI group; give one of CI_GROUPS: $(CI_GROUPS)))
-	@node scripts/check/ci-setup.mts outputs $(CI_TARGETS_$(GROUP))
+	@$(NODE) scripts/check/ci-setup.mts outputs $(CI_TARGETS_$(GROUP))
 
 # bench는 성능 측정(2000 table stress 문서의 parse, 적용, introspection과 비교, CPU 시간)을 check와 같은
 # runner로 target마다 실행한다. 측정은 출력하고 기준값을 넘으면 경고할 뿐 실패시키지 않는다(AGENTS.md).
@@ -230,7 +235,7 @@ BENCH_TARGETS = dbspec-stress-bench dbspec-apply-stress-bench dbspec-introspect-
 .PHONY: bench
 bench:
 	test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }
-	node scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(BENCH_TARGETS)
+	$(NODE) scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(BENCH_TARGETS)
 
 # GO_PACKAGES는 go.work의 세 module(packages/go, tests, examples)의 모든 package다. root는 module이
 # 아니므로 root의 ./...는 아무 package도 가리키지 않는다.
@@ -253,9 +258,9 @@ testcase-check: testcase-check/go testcase-check/node testcase-check/runners tes
 testcase-check/go:
 	$(GO_TEST) ./packages/go/testcase -count=1
 testcase-check/node:
-	node --test tests/testcase.test.mts
+	$(NODE) --test tests/testcase.test.mts
 testcase-check/runners:
-	node --test tests/go-test.test.mts tests/cargo-test.test.mts
+	$(NODE) --test tests/go-test.test.mts tests/cargo-test.test.mts
 testcase-check/rust: cargo-downloads-check
 	cd packages/rust && $(CARGO_TEST) testcase-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-testcase
 
@@ -268,7 +273,7 @@ client-pooler-check: lease-tool
 # runner-check는 check runner(scripts/check/run.mts)와 그 실행 기록(scripts/check/record.mts)을 임시 git checkout과 stub 단계로
 # 검사한다. 실제 target과 database는 실행하지 않는다.
 runner-check:
-	node --test scripts/check/run.test.mts scripts/check/continue.test.mts scripts/check/step.test.mts scripts/check/downloads.test.mts scripts/json/schema.test.mts
+	$(NODE) --test scripts/check/run.test.mts scripts/check/continue.test.mts scripts/check/step.test.mts scripts/check/downloads.test.mts scripts/json/schema.test.mts
 
 # dbspec-rust-check는 공유 dbspec vector, Rust rule case, plan과 Mermaid case, 감싼 SQLite
 # connection으로 주입한 apply 정리 error를 두 번 실행한다.
@@ -469,7 +474,7 @@ dbspec-compare-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-compare-check-$
 dbspec-compare-check: dbspec-compare-check/unit dbspec-compare-check/runners dbspec-compare-check/inputs dbspec-compare-check/compare
 	rm -rf $(RUN_DIR)
 dbspec-compare-check/unit:
-	node --test tests/dbspec/compare/check.test.mts
+	$(NODE) --test tests/dbspec/compare/check.test.mts
 # PYTHON_VENV is the virtual environment that install-python makes. It holds the Python client installed in editable mode,
 # with the pinned dependencies of its pyproject.toml (ordered-json, cryptography, PyMySQL, psycopg, rapidyaml, ruamel.yaml) and
 # of its extra test (jsonschema-rs); the checks
@@ -483,7 +488,7 @@ PYTHON_VENV = $(abspath packages/python/.venv)
 install-python:
 	$(MAKE) --no-print-directory install-tools
 	$(MAKE) --no-print-directory python-venv DIR=$(PYTHON_VENV)
-	$(ONLINE) python3 -m pip --python $(PYTHON_VENV)/bin/python install --quiet --editable packages/python --group packages/python/pyproject.toml:test
+	$(ONLINE) $(PYTHON3) -m pip --python $(PYTHON_VENV)/bin/python install --quiet --editable packages/python --group packages/python/pyproject.toml:test
 # python-venv-check checks that the venv of install-python exists and runs the Python release of mise.toml. A missing venv
 # or another release fails without a download or a repair, and names the fix: remove the venv and run make install.
 .PHONY: python-venv-check
@@ -533,11 +538,11 @@ dbspec-compare-check/prepare: cargo-downloads-check lease-tool python-venv-check
 	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 dbspec-compare-check/runners: dbspec-compare-check/prepare
-	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/compare/runners.test.mts
+	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) $(NODE) --test tests/dbspec/compare/runners.test.mts
 dbspec-compare-check/inputs: dbspec-compare-check/prepare
-	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/inputs.test.mts
+	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) $(NODE) --test tests/dbspec/inputs.test.mts
 dbspec-compare-check/compare: dbspec-compare-check/prepare
-	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python node tests/dbspec/compare/check.mts tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json tests/dbspec/syntax.json
+	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python $(NODE) tests/dbspec/compare/check.mts tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json tests/dbspec/syntax.json
 
 dbspec-compare-bench:
 	$(MAKE) --no-print-directory dbspec-compare-check DBSPEC_COMPARE_TABLES=2000
@@ -565,8 +570,8 @@ dbspec-stress-bench/php-introspect: php-vendor-check dbspec-stress-bench/prepare
 dbspec-stress-bench/typescript: dbspec-stress-bench/prepare lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	node --test packages/ts/tests/dbspec-stress.mjs
-	node --test packages/ts/tests/dbspec-stress.mjs
+	$(NODE) --test packages/ts/tests/dbspec-stress.mjs
+	$(NODE) --test packages/ts/tests/dbspec-stress.mjs
 dbspec-stress-bench/rust: dbspec-stress-bench/prepare cargo-downloads-check
 	$(RUN_LONG) rust-build/dbspec_stress --cwd packages/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p polyspec-orm-schema --example dbspec_stress
 	$(RUN_TARGET)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
@@ -730,15 +735,15 @@ php-extension-arginfo:
 # TypeScript package와 lockfile, feature contract, 문서)이 같은지 확인한다.
 version-check: version-check/unit version-check/run
 version-check/unit:
-	node --test scripts/version/check.test.mts
+	$(NODE) --test scripts/version/check.test.mts
 version-check/run:
-	node scripts/version/check.mts
+	$(NODE) scripts/version/check.mts
 
 repo-check: repo-check/unit repo-check/run
 repo-check/unit:
-	node --test scripts/repo/check.test.mts scripts/repo/python-venv.test.mts
+	$(NODE) --test scripts/repo/check.test.mts scripts/repo/python-venv.test.mts
 repo-check/run:
-	node scripts/repo/check.mts
+	$(NODE) scripts/repo/check.mts
 
 # test-servers-check는 test-servers.mts의 MySQL 설정 migration(scripts/test-servers-mysql.mts)을 임시
 # root의 서버로 검사한다: 다른 설정은 같은 수로 옮기고, 같은 설정은 아무것도 하지 않으며, 겹칠 이름은
@@ -752,23 +757,23 @@ BUILD_STOP_PROCESS = $(RUN_LONG) go-build/stop-process -- $(PUBLISH) $(STOP_PROC
 test-servers-check:
 	$(BUILD_STOP_PROCESS)
 	$(BUILD_LEASE)
-	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) node --test scripts/test-servers.test.mts scripts/test-servers-mysql.test.mts
+	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) --test scripts/test-servers.test.mts scripts/test-servers-mysql.test.mts
 
 test-servers:
 	$(BUILD_STOP_PROCESS)
 	$(BUILD_LEASE)
-	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) node scripts/test-servers.mts start
+	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts start
 
 # make test-servers-tls loads the TLS files of the MySQL TLS cases into running
 # servers and writes their DSNs into TEST_ENV; make test-servers does it at the
 # start.
 test-servers-tls:
-	node scripts/test-servers.mts tls
+	$(NODE) scripts/test-servers.mts tls
 
 test-servers-stop:
 	$(BUILD_STOP_PROCESS)
 	$(BUILD_LEASE)
-	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) node scripts/test-servers.mts stop
+	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts stop
 
 # test-servers-leases는 server의 lease 보유자를 적고, test-servers-leases-clear는 보유자 process가 없어진
 # 죽은 lease(보유자와 releaser가 모두 끝난 것)를 지우며 지운 것을 적는다. 죽은 lease는 다음 요청이 가져가기도 한다(tests/lease).
@@ -799,13 +804,13 @@ feature-owner-check: hooks-check
 
 feature-unit-check: feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select
 feature-unit-check/docs:
-	node scripts/features/build.mts --check
+	$(NODE) scripts/features/build.mts --check
 feature-unit-check/coverage:
-	node --test scripts/features/coverage.test.mts
+	$(NODE) --test scripts/features/coverage.test.mts
 feature-unit-check/owners:
-	node --test scripts/features/owners.test.mts scripts/features/manifest.test.mts
+	$(NODE) --test scripts/features/owners.test.mts scripts/features/manifest.test.mts
 feature-unit-check/select:
-	node --test scripts/features/select.test.mts
+	$(NODE) --test scripts/features/select.test.mts
 
 # feature-check는 기능의 coverage와 모든 검증 명령이고, make check는 그것을 세 target으로 실행한다: feature-coverage는
 # coverage, feature-verify-rust는 shard rust(cargo로 Rust를 build하고 실행하는 명령)의 검증 명령, feature-verify-other는
@@ -844,7 +849,7 @@ feature-stress-pg-sqlite-check: feature-check/build
 	$(WITH_TEST_ENV) node scripts/features/check.mts --run $(addprefix --helper ,$(FEATURE_STRESS_PG_SQLITE_HELPERS))
 
 feature-docs:
-	node scripts/features/build.mts
+	$(NODE) scripts/features/build.mts
 
 package-check: lease-tool
 	$(RUN_LONG) package -- node scripts/package-check.mts
@@ -960,7 +965,7 @@ conformance-result-check/php: php-vendor-check
 conformance-result-check/typescript: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
-	node --test tests/conformance/result_typescript.test.mts
+	$(NODE) --test tests/conformance/result_typescript.test.mts
 conformance-result-check/go:
 	$(GO_TEST) ./tests/conformance/runner_go -count=1
 conformance-result-check/python: python-venv-check
@@ -1033,7 +1038,7 @@ conformance-check/run: lease-tool conformance-python-models
 	    dir=$(RUN_DIR)/out; [ $$db = mysql ] || dir=$$dir/$$db; \
 	    for pending in $$dir/.run-*; do \
 	      [ -d "$$pending" ] || continue; \
-	      node tests/conformance/check/main.mts record --driver $$db $(CONFORMANCE_VECTORS) $$pending/go.json $$pending/php.json $$pending/rust.json $$pending/typescript.json $$pending/python.json || exit 1; \
+	      $(NODE) tests/conformance/check/main.mts record --driver $$db $(CONFORMANCE_VECTORS) $$pending/go.json $$pending/php.json $$pending/rust.json $$pending/typescript.json $$pending/python.json || exit 1; \
 	      recorded=1; \
 	    done; \
 	  done; \
@@ -1062,11 +1067,11 @@ markdown-conformance-check/rust: lease-tool cargo-downloads-check
 markdown-conformance-check/typescript: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	FLOWMARK=$(FLOWMARK) node --conditions=orm-test packages/ts/tests/markdown_conformance.mjs
+	FLOWMARK=$(FLOWMARK) $(NODE) --conditions=orm-test packages/ts/tests/markdown_conformance.mjs
 
 decimal-bench-sqlite: typescript-build
 	$(READ_TYPESCRIPT)
-	node scripts/decimal-bench-sqlite.mts
+	$(NODE) scripts/decimal-bench-sqlite.mts
 
 # decimal-physical-check의 case는 owner process마다 기한(scripts/physical.mts의 TIMEOUT_MS)을 가진다. 그 process가
 # 쓰는 build(Rust test binary decimal_physical, Go decimalmodel test)는 장기
@@ -1077,17 +1082,17 @@ decimal-physical-check: php-vendor-check cargo-downloads-check lease-tool
 	test -n "$(DECIMAL_ENV)" -a -f "$(DECIMAL_ENV)" || { echo 'DECIMAL_ENV names no decimal database of this run; run make run-databases TARGETS=$@' >&2; exit 1; }
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/decimal-physical -- $(CARGO_LEASED) cargo test --no-run --offline --locked --manifest-path packages/rust/Cargo.toml -p polyspec-orm-tests --bin decimal_physical
 	$(RUN_LONG) go-build/decimal-physical -- $(PUBLISH) $(abspath .runtime/bin/decimalmodel.test) go test -c -o @OUT@ -tags decimalphysical ./packages/go/decimalmodel
-	. $(DECIMAL_ENV) && node scripts/decimal-physical-check.mts
+	. $(DECIMAL_ENV) && $(NODE) scripts/decimal-physical-check.mts
 
 # interface-check는 interface checker(tests/interfaces/check)의 test와 checker 자신을 --self-test로 실행한다. checker는 entity
 # 단위 rule을 TypeScript client의 build(packages/ts/dist)가 읽는 dbspec entity 순서로 펼친다.
 .PHONY: interface-check/tests interface-check/self-test
 interface-check: interface-check/tests interface-check/self-test
 interface-check/tests: php-vendor-check
-	node --test tests/interfaces/check/*.test.mts
+	$(NODE) --test tests/interfaces/check/*.test.mts
 interface-check/self-test: php-vendor-check lease-tool typescript-build
 	$(READ_TYPESCRIPT)
-	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/interfaces/check/main.mts --self-test
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(NODE) tests/interfaces/check/main.mts --self-test
 
 go-model-check:
 	$(RUN_LONG) go-model -- sh -c 'cd packages/go/model && go generate ./ && git diff --exit-code -- .'
@@ -1098,7 +1103,7 @@ go-model-check:
 ts-model-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	node --test packages/ts/tests/models-scan.mjs
+	$(NODE) --test packages/ts/tests/models-scan.mjs
 
 perf-check:
 	$(WITH_TEST_ENV) node scripts/perf-test.mts
@@ -1109,7 +1114,7 @@ perf-check:
 scripts-typecheck: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	npm run --workspace @polyspec/dbspec-language build
+	$(NPM) run --workspace @polyspec/dbspec-language build
 	$(RUN_LONG) scripts-typecheck -- node_modules/.bin/tsc -p tsconfig.json
 
 ts-check: ts-check/hold ts-check/types ts-check/test
@@ -1124,7 +1129,7 @@ ts-check/test: ts-check/hold
 # package.json supports.
 ts-min-check: lease-tool
 	$(HOLD_TYPESCRIPT)
-	$(WITH_TEST_ENV) PATH="$$(node scripts/typescript/node-min.mts):$$PATH" && export PATH && node --version && npm run typescript:test
+	$(WITH_TEST_ENV) NODE_MIN="$$($(NODE) scripts/typescript/node-min.mts)" && PATH="$$NODE_MIN:$$PATH" && export PATH && "$$NODE_MIN/node" --version && "$$NODE_MIN/npm" run typescript:test
 
 # dbspec-ts-check는 TypeScript client를 build하고, 공유 dbspec vector, set file vector, plan vector, Mermaid
 # vector, apply 정리 error, 그것들이 아직 다루지 않는 rule, Unicode word 표가 모든 code point에서 그 구간과
@@ -1133,7 +1138,7 @@ ts-min-check: lease-tool
 dbspec-ts-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	node --test packages/ts/tests/browser-entry.mjs packages/ts/tests/dbspec.mjs packages/ts/tests/dbspec-set.mjs packages/ts/tests/dbspec-set-parse.mjs packages/ts/tests/dbspec-analyze.mjs packages/ts/tests/syntax-vectors.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec-render.mjs packages/ts/tests/dbspec-plan.mjs packages/ts/tests/dbspec-mermaid.mjs packages/ts/tests/dbspec-apply-cleanup.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs
+	$(NODE) --test packages/ts/tests/browser-entry.mjs packages/ts/tests/dbspec.mjs packages/ts/tests/dbspec-set.mjs packages/ts/tests/dbspec-set-parse.mjs packages/ts/tests/dbspec-analyze.mjs packages/ts/tests/syntax-vectors.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec-render.mjs packages/ts/tests/dbspec-plan.mjs packages/ts/tests/dbspec-mermaid.mjs packages/ts/tests/dbspec-apply-cleanup.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs
 
 # dbspec-language-check는 TypeScript client와 @polyspec/dbspec-language를 build하고, 언어 서비스의 module graph가
 # node module, Node global과 driver에 닿지 않는지, 공유 vector의 format과 hash, 토큰과 UTF-16 범위, tests/editor의
@@ -1145,39 +1150,39 @@ dbspec-ts-check: lease-tool
 dbspec-lsp-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	npm run --workspace @polyspec/dbspec-language build
-	npm run --workspace @polyspec/dbspec-lsp build
-	node --test packages/dbspec-lsp/tests/session.test.mjs
+	$(NPM) run --workspace @polyspec/dbspec-language build
+	$(NPM) run --workspace @polyspec/dbspec-lsp build
+	$(NODE) --test packages/dbspec-lsp/tests/session.test.mjs
 
 # dbspec-codemirror-check builds the CodeMirror adapter and runs the editor fixtures through an EditorState.
 dbspec-codemirror-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	npm run --workspace @polyspec/dbspec-language build
-	npm run --workspace @polyspec/dbspec-codemirror build
-	node --test packages/dbspec-codemirror/tests/fixtures.test.mjs
+	$(NPM) run --workspace @polyspec/dbspec-language build
+	$(NPM) run --workspace @polyspec/dbspec-codemirror build
+	$(NODE) --test packages/dbspec-codemirror/tests/fixtures.test.mjs
 
 # dbspec-vscode-check builds the VS Code extension (the type check and the esbuild bundles of the extension and the
 # bundled language server) and checks its manifest and bundles without VS Code.
 dbspec-vscode-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	npm run --workspace @polyspec/dbspec-language build
-	npm run --workspace @polyspec/dbspec-lsp build
-	npm run --workspace polyspec-dbspec build
-	node --test packages/dbspec-vscode/tests/manifest.test.mjs
+	$(NPM) run --workspace @polyspec/dbspec-language build
+	$(NPM) run --workspace @polyspec/dbspec-lsp build
+	$(NPM) run --workspace polyspec-dbspec build
+	$(NODE) --test packages/dbspec-vscode/tests/manifest.test.mjs
 
 # install-vscode installs the VS Code of the integration test into var/tools/vscode with kit's VS Code installer, at the
 # minimum release that packages/dbspec-vscode declares (engines.vscode); it downloads once and keeps a complete copy.
 .PHONY: install-vscode
 install-vscode:
-	$(ONLINE) node $(KIT)/install-vscode.$(KIT_EXT) packages/dbspec-vscode $(CURDIR)/var/tools/vscode
+	$(ONLINE) $(NODE) $(KIT)/install-vscode.$(KIT_EXT) packages/dbspec-vscode $(CURDIR)/var/tools/vscode
 
 # dbspec-vscode-integration runs the editor fixtures through vscode.provideDocumentSemanticTokens inside the VS Code that
 # make install-vscode installed; the run reads that copy and never downloads.
 .PHONY: dbspec-vscode-integration
 dbspec-vscode-integration: dbspec-vscode-check
-	node packages/dbspec-vscode/tests/integration/run.mjs --vscode $(CURDIR)/var/tools/vscode
+	$(NODE) packages/dbspec-vscode/tests/integration/run.mjs --vscode $(CURDIR)/var/tools/vscode
 
 # ci-vscode-integration runs dbspec-vscode-integration on a virtual X server (xvfb-run), since VS Code needs a display; the
 # editor job of CI runs it on Linux, and a desktop runs dbspec-vscode-integration itself.
@@ -1188,8 +1193,8 @@ ci-vscode-integration:
 dbspec-language-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	npm run --workspace @polyspec/dbspec-language build
-	node --test packages/dbspec-language/tests/module-graph.test.mjs packages/dbspec-language/tests/editor.test.mjs packages/dbspec-language/tests/vectors.test.mjs packages/dbspec-language/tests/resolve-set.test.mjs packages/dbspec-language/tests/cli.test.mjs
+	$(NPM) run --workspace @polyspec/dbspec-language build
+	$(NODE) --test packages/dbspec-language/tests/module-graph.test.mjs packages/dbspec-language/tests/editor.test.mjs packages/dbspec-language/tests/vectors.test.mjs packages/dbspec-language/tests/resolve-set.test.mjs packages/dbspec-language/tests/cli.test.mjs
 
 # The prefix of `make install-cli`: the copy of dbspec-fmt in $(CLI_PREFIX)/lib and its script in $(CLI_PREFIX)/bin.
 CLI_PREFIX ?= $(HOME)/.local
@@ -1201,19 +1206,19 @@ CLI_PREFIX ?= $(HOME)/.local
 install-cli: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	npm run --workspace @polyspec/dbspec-language build
-	$(ONLINE) node scripts/install-cli.mts install --prefix $(CLI_PREFIX)
+	$(NPM) run --workspace @polyspec/dbspec-language build
+	$(ONLINE) $(NODE) scripts/install-cli.mts install --prefix $(CLI_PREFIX)
 
 uninstall-cli:
-	node scripts/install-cli.mts uninstall --prefix $(CLI_PREFIX)
+	$(NODE) scripts/install-cli.mts uninstall --prefix $(CLI_PREFIX)
 
 # install-cli-check installs dbspec-fmt into a temporary prefix with scripts/install-cli.mts, runs it and uninstalls it
 # (tests/cli/install-cli.test.mts); the install reads the registry.
 install-cli-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	npm run --workspace @polyspec/dbspec-language build
-	$(ONLINE) node --test tests/cli/install-cli.test.mts
+	$(NPM) run --workspace @polyspec/dbspec-language build
+	$(ONLINE) $(NODE) --test tests/cli/install-cli.test.mts
 
 # dbspec-go-check는 Go dbspec engine package(packages/go/engine/dbspec)의 test를 모두 실행한다: tests/dbspec/cases.json의
 # 공유 vector, 자기 rule case, manifest, statement, plan, comparison, Mermaid vector, apply 정리 error,
@@ -1229,40 +1234,40 @@ dbspec-go-check/unicode:
 	$(GO_TEST) ./tests/dbspec/unicode -count=1
 
 docs-dev:
-	npm run docs:dev
+	$(NPM) run docs:dev
 
 docs-build:
-	npm run docs:build
+	$(NPM) run docs:build
 
 # docs-ci는 CI(ci.yml)의 job docs가 실행하는 문서 검사(docs-verify-idempotent, docs-check)를 make check의 runner로
 # test server 없이 실행한다(scripts/check/run.mts `-`). 실패해도 다음 target을 실행하고, target마다의 log와 summary를
 # .runtime/check/<실행 id>/report에 남기며, workflow는 그것을 job summary와 artifact로 올린다.
 docs-ci:
-	node scripts/check/run.mts --job-summary - docs-verify-idempotent docs-check
+	$(NODE) scripts/check/run.mts --job-summary - docs-verify-idempotent docs-check
 
 docs-check:
-	npm run docs:check
+	$(NPM) run docs:check
 
 docs-verify-idempotent:
-	npm run docs:verify-idempotent
+	$(NPM) run docs:verify-idempotent
 
 docs-rules-check:
-	npm run docs:rules-check
+	$(NPM) run docs:rules-check
 
 # docs-dbs-check runs the unit cases of the dbs fence (docs/.vitepress/dbs.ts) after building the packages it reads, and
 # type-checks the site's TypeScript with docs/.vitepress/tsconfig.json, the project that make lint-ts also judges it by.
 docs-dbs-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	npm run --workspace @polyspec/dbspec-language build
+	$(NPM) run --workspace @polyspec/dbspec-language build
 	$(RUN_LONG) docs-typecheck -- node_modules/.bin/tsc -p docs/.vitepress/tsconfig.json
-	node --test tests/docs/dbs-fence.test.mts
+	$(NODE) --test tests/docs/dbs-fence.test.mts
 
 # markdown-table-check compares the table "Markdown IR executor" of docs/dialects.md and docs/dialects.ko.md with the
 # capability table of flowmark's docs/spec/60-dialect.md at the version of tests/markdown/flowmark.version, which it
 # downloads as install-flowmark does.
 markdown-table-check:
-	node scripts/docs/markdown-table.mts
+	$(NODE) scripts/docs/markdown-table.mts
 
 # go-fmt-check fails when gofmt would change a tracked Go source and lists
 # the files it would change.
@@ -1306,7 +1311,7 @@ codec-check/typescript: lease-tool
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(CODEC_OUT)
 	$(TSC_BUILD)
-	ORM_CODEC_OUT=$(CODEC_OUT) node packages/ts/tests/codec-vector.mjs
+	ORM_CODEC_OUT=$(CODEC_OUT) $(NODE) packages/ts/tests/codec-vector.mjs
 codec-check/compare: php-vendor-check codec-check/go codec-check/rust codec-check/typescript codec-check/python
 	ORM_CODEC_OUT=$(CODEC_OUT) php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecVectorsTest.php
 	rm -rf $(CODEC_OUT)
@@ -1348,12 +1353,12 @@ install: install-php install-rust install-go install-node-min install-php-extens
 # install-interfaces-typescript installs the TypeScript 6.0.3 that tests/interfaces/typescript.mts reads declarations with
 # (config/toolchain.json exceptions): TypeScript 7.0 ships no JavaScript API of its compiler.
 install-interfaces-typescript:
-	$(ONLINE) npm ci --prefix tests/interfaces/typescript --no-audit --no-fund
+	$(ONLINE) $(NPM) ci --prefix tests/interfaces/typescript --no-audit --no-fund
 # install-php installs the one Composer project of the repository, the development root (vendor-php): it installs packages/php
 # from its directory with the runtime dependencies of that package, and PHPUnit, which runs the tests of packages/php and
 # packages/php-ext. The released manifests of the two packages declare only what a consumer installs.
 install-php:
-	$(ONLINE) composer install --no-interaction --no-progress --prefer-dist
+	$(ONLINE) $(COMPOSER) install --no-interaction --no-progress --prefer-dist
 # install-rust installs the toolchain of rust-toolchain.toml, then downloads the crates of every Cargo.lock. CI runs the two
 # halves apart, install-rust-toolchain before its crate cache is restored and install-rust-crates after it, since a
 # restored registry replaces the crates downloaded before it.
@@ -1366,22 +1371,22 @@ install-rust-crates:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path benchmarks/rust/Cargo.toml
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path tests/interfaces/rust/Cargo.toml
 install-go:
-	$(ONLINE) go mod download
+	$(ONLINE) $(GO) mod download
 # install-flowmark은 markdown-conformance-check가 실행하는 flowmark, tests/markdown/flowmark.version이 고정한 module
 # 판을 FLOWMARK의 directory에 설치한다.
 install-flowmark:
-	$(ONLINE) GOBIN=$(dir $(FLOWMARK)) go install github.com/polyspec/flowmark/cmd/flowmark@$$(cat tests/markdown/flowmark.version)
-	$(ONLINE) go mod download github.com/polyspec/flowmark@$$(cat tests/markdown/flowmark.version)
+	$(ONLINE) GOBIN=$(dir $(FLOWMARK)) $(GO) install github.com/polyspec/flowmark/cmd/flowmark@$$(cat tests/markdown/flowmark.version)
+	$(ONLINE) $(GO) mod download github.com/polyspec/flowmark@$$(cat tests/markdown/flowmark.version)
 install-node-min:
-	$(ONLINE) ORM_NODE_MIN_INSTALL=1 node scripts/typescript/node-min.mts
+	$(ONLINE) ORM_NODE_MIN_INSTALL=1 $(NODE) scripts/typescript/node-min.mts
 # install-server-programs는 CI의 Linux runner에 make test-servers가 시작하는 server program을 설치한다
 # (scripts/ci/server-programs.mts).
 install-server-programs:
-	$(ONLINE) node scripts/ci/server-programs.mts
+	$(ONLINE) $(NODE) scripts/ci/server-programs.mts
 # install-php-extension-tools는 PHP 확장 orm_dbspec의 build가 쓰는 phpize와 php-config가 PATH의 PHP 것인지 확인하고,
 # 그 PHP의 gen_stub.php와 PHP-Parser를 .runtime/bin/gen-stub에 둔다(scripts/ci/php-extension-tools.mts).
 install-php-extension-tools:
-	$(ONLINE) node scripts/ci/php-extension-tools.mts
+	$(ONLINE) $(NODE) scripts/ci/php-extension-tools.mts
 
 # CI의 setup step은 모두 make target을 실행한다(make repo-check). ci-php-min-version은 make php-min-check의 가장 낮은
 # PHP release를 setup-php의 입력(version=x.y)으로 적는다. 각 client는 연결할 때 SQLite 3.46 미만을 거부한다.
@@ -1393,7 +1398,7 @@ ci-php-min-version:
 # The crates are checked by cargo-downloads-check of the kit.mk of @polyspec/kit, which every target that runs cargo
 # --offline runs first, so a missing crate fails with its fix instead of cargo's "retry without --offline".
 downloads-check:
-	node scripts/check/downloads.mts
+	$(NODE) scripts/check/downloads.mts
 
 # rust-driver-check는 benchmarks/rust의 native와 driver_compare를 DSN 없이 실행해 거부를 확인하고,
 # 시드된 bench database에서 한 번에 하나씩 실행해 모든 workload가 끝나는지 확인한다.
@@ -1419,7 +1424,7 @@ timing-check: cargo-downloads-check lease-tool
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/dbspec_stress --cwd packages/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- cargo build --release --locked --offline -p polyspec-orm-schema --example dbspec_stress
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/orm-schema-tests --cwd packages/rust -- $(CARGO_LEASED) cargo test --locked --offline -p polyspec-orm-schema --no-run
 	$(RUN_LONG) typescript-build -- npm run typescript:build
-	PATH="$(HOME)/.cargo/bin:$(PATH)" DBSPEC_STRESS_DOCUMENT=$(abspath $(DBSPEC_STRESS_DOCUMENT)) TIMING_GO_DBSPEC_TEST=$(abspath $(TIMING_GO_DBSPEC_TEST)) TIMING_RUST_STRESS=$(RUN_TARGET)/release/examples/dbspec_stress node --test --test-concurrency=1 tests/timing/preempted.test.mts
+	PATH="$(HOME)/.cargo/bin:$(PATH)" DBSPEC_STRESS_DOCUMENT=$(abspath $(DBSPEC_STRESS_DOCUMENT)) TIMING_GO_DBSPEC_TEST=$(abspath $(TIMING_GO_DBSPEC_TEST)) TIMING_RUST_STRESS=$(RUN_TARGET)/release/examples/dbspec_stress $(NODE) --test --test-concurrency=1 tests/timing/preempted.test.mts
 	rm -rf $(RUN_DIR)
 
 typescript-build: lease-tool
@@ -1443,6 +1448,6 @@ release-consumer release-consumer-lock: typescript-build editor-build
 # CodeMirror extension, each on the TypeScript build.
 .PHONY: editor-build
 editor-build: typescript-build
-	npm run --workspace @polyspec/dbspec-language build
-	npm run --workspace @polyspec/dbspec-lsp build
-	npm run --workspace @polyspec/dbspec-codemirror build
+	$(NPM) run --workspace @polyspec/dbspec-language build
+	$(NPM) run --workspace @polyspec/dbspec-lsp build
+	$(NPM) run --workspace @polyspec/dbspec-codemirror build
