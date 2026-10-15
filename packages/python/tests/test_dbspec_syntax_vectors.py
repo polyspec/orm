@@ -43,7 +43,7 @@ def vector_inputs(cases):
             }
             inputs.append(
                 (
-                    f"{section}/{case['id']}",
+                    f"{section}.{case['id']}",
                     join(main, case.get("crlf") is True, case.get("mixed") is True),
                     documents,
                 )
@@ -57,7 +57,7 @@ def vector_inputs(cases):
             for j, other in enumerate(everything):
                 if j != i:
                     documents[header_name(other)] = join(other, False)
-            inputs.append((f"sets/{case['id']}/{i + 1}", join(lines, False), documents))
+            inputs.append((f"sets.{case['id']}.{i + 1}", join(lines, False), documents))
     for case in cases["hashes"]:
         for name in case["documents"]:
             documents = {
@@ -67,7 +67,7 @@ def vector_inputs(cases):
             }
             inputs.append(
                 (
-                    f"hashes/{case['id']}/{name}",
+                    f"hashes.{case['id']}.{name}",
                     join(case["documents"][name], False),
                     documents,
                 )

@@ -463,9 +463,9 @@ for c in shared["positions"]:
 
 # syntax_inputs gives the input of every analysis that syntax.json names, by its id, as
 # scripts/dbspec/syntax-vectors.mts derives it from cases.json: the main document of each canonical, normalize and
-# invalid case ("<section>/<id>"), each document of a sets case with the parsing documents and the other documents of
-# the case by header name ("sets/<id>/<place>", 1-based), and each document of a hashes case with the others
-# ("hashes/<id>/<name>").
+# invalid case ("<section>.<id>"), each document of a sets case with the parsing documents and the other documents of
+# the case by header name ("sets.<id>.<place>", 1-based), and each document of a hashes case with the others
+# ("hashes.<id>.<name>").
 def syntax_inputs():
     inputs = {}
     for kind in ["canonical", "normalize", "invalid"]:
@@ -477,7 +477,7 @@ def syntax_inputs():
                 for name, ls in c["documents"].items()
                 if name != c["main"]
             }
-            inputs[f"{kind}/{c['id']}"] = (
+            inputs[f"{kind}.{c['id']}"] = (
                 join(c["documents"][c["main"]], crlf, mixed),
                 docs,
             )
@@ -490,7 +490,7 @@ def syntax_inputs():
             for j, other in enumerate(every):
                 if j != i:
                     docs[header_name(other)] = join(other, False, False)
-            inputs[f"sets/{c['id']}/{i + 1}"] = (join(ls, False, False), docs)
+            inputs[f"sets.{c['id']}.{i + 1}"] = (join(ls, False, False), docs)
     for c in shared["hashes"]:
         for name, ls in c["documents"].items():
             docs = {
@@ -498,7 +498,7 @@ def syntax_inputs():
                 for other, o in c["documents"].items()
                 if other != name
             }
-            inputs[f"hashes/{c['id']}/{name}"] = (join(ls, False, False), docs)
+            inputs[f"hashes.{c['id']}.{name}"] = (join(ls, False, False), docs)
     return inputs
 
 

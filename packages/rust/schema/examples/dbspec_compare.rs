@@ -215,16 +215,16 @@ fn read_syntax(path: &str) -> Result<Vec<String>, String> {
 }
 
 /// The input of every analysis that syntax.json names, by its id, as scripts/dbspec/syntax-vectors.mts derives it
-/// from cases.json: the main document of each canonical, normalize and invalid case ("<section>/<id>"), each document
-/// of a sets case with the parsing documents and the other documents of the case by header name ("sets/<id>/<place>",
-/// 1-based), and each document of a hashes case with the others ("hashes/<id>/<name>").
+/// from cases.json: the main document of each canonical, normalize and invalid case ("<section>.<id>"), each document
+/// of a sets case with the parsing documents and the other documents of the case by header name ("sets.<id>.<place>",
+/// 1-based), and each document of a hashes case with the others ("hashes.<id>.<name>").
 fn syntax_inputs(cases: &SharedCases) -> BTreeMap<String, (String, BTreeMap<String, String>)> {
     let mut inputs = BTreeMap::new();
     for (kind, list) in [("canonical", &cases.canonical), ("normalize", &cases.normalize), ("invalid", &cases.invalid)] {
         for case in list {
             let set =
                 case.documents.iter().filter(|(name, _)| **name != case.main).map(|(name, lines)| (name.clone(), join(lines, case.crlf, case.mixed))).collect();
-            inputs.insert(format!("{kind}/{}", case.id), (join(&case.documents[&case.main], case.crlf, case.mixed), set));
+            inputs.insert(format!("{kind}.{}", case.id), (join(&case.documents[&case.main], case.crlf, case.mixed), set));
         }
     }
     for case in &cases.sets {
@@ -236,13 +236,13 @@ fn syntax_inputs(cases: &SharedCases) -> BTreeMap<String, (String, BTreeMap<Stri
                     set.insert(other.name.clone(), join(&other.lines, false, false));
                 }
             }
-            inputs.insert(format!("sets/{}/{}", case.id, i + 1), (join(&document.lines, false, false), set));
+            inputs.insert(format!("sets.{}.{}", case.id, i + 1), (join(&document.lines, false, false), set));
         }
     }
     for case in &cases.hashes {
         for (name, lines) in &case.documents {
             let set = case.documents.iter().filter(|(other, _)| *other != name).map(|(other, l)| (other.clone(), join(l, false, false))).collect();
-            inputs.insert(format!("hashes/{}/{name}", case.id), (join(lines, false, false), set));
+            inputs.insert(format!("hashes.{}.{name}", case.id), (join(lines, false, false), set));
         }
     }
     inputs

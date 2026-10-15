@@ -114,7 +114,7 @@ func syntaxInputs(t *testing.T) []syntaxInput {
 					documents[name] = c.join(lines)
 				}
 			}
-			inputs = append(inputs, syntaxInput{id: section.name + "/" + c.ID, text: c.join(main), documents: documents})
+			inputs = append(inputs, syntaxInput{id: section.name + "." + c.ID, text: c.join(main), documents: documents})
 		}
 	}
 	for _, c := range vectors.Sets {
@@ -129,7 +129,7 @@ func syntaxInputs(t *testing.T) []syntaxInput {
 					documents[syntaxHeaderName(t, other)] = joinLines(other, false)
 				}
 			}
-			inputs = append(inputs, syntaxInput{id: fmt.Sprintf("sets/%s/%d", c.ID, i+1), text: joinLines(lines, false), documents: documents})
+			inputs = append(inputs, syntaxInput{id: fmt.Sprintf("sets.%s.%d", c.ID, i+1), text: joinLines(lines, false), documents: documents})
 		}
 	}
 	for _, c := range vectors.Hashes {
@@ -145,7 +145,7 @@ func syntaxInputs(t *testing.T) []syntaxInput {
 					documents[other] = joinLines(lines, false)
 				}
 			}
-			inputs = append(inputs, syntaxInput{id: "hashes/" + c.ID + "/" + name, text: joinLines(c.Documents[name], false), documents: documents})
+			inputs = append(inputs, syntaxInput{id: "hashes." + c.ID + "." + name, text: joinLines(c.Documents[name], false), documents: documents})
 		}
 	}
 	return inputs
@@ -174,15 +174,16 @@ func checkSyntaxVectors(t *testing.T, analyze func(string, map[string]string) An
 	seen := map[string]bool{}
 	for _, in := range inputs {
 		seen[in.id] = true
-		expected, ok := want[in.id]
-		if !ok {
-			t.Errorf("%s: syntax.json has no tokens for this case", in.id)
-			continue
-		}
-		got := analyze(in.text, in.documents).Tokens
-		if len(got) != len(expected) || (len(got) > 0 && !reflect.DeepEqual(got, expected)) {
-			t.Errorf("%s: tokens differ\n got %v\nwant %v", in.id, got, expected)
-		}
+		t.Run(in.id, func(t *testing.T) {
+			expected, ok := want[in.id]
+			if !ok {
+				t.Fatal("syntax.json has no tokens for this case")
+			}
+			got := analyze(in.text, in.documents).Tokens
+			if len(got) != len(expected) || (len(got) > 0 && !reflect.DeepEqual(got, expected)) {
+				t.Errorf("tokens differ\n got %v\nwant %v", got, expected)
+			}
+		})
 	}
 	if len(seen) != len(want) {
 		for id := range want {

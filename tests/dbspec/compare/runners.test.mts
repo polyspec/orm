@@ -88,9 +88,9 @@ const mutations: Mutation[] = [
   { file: 'mermaid', location: 'import[0].mermaid', problem: 'is missing', edit: ['delete', '/import/0/mermaid'] },
   { file: 'mermaid', location: 'invalid[0].mermaid[0]', problem: 'is not a string', edit: ['set', '/invalid/0/mermaid/0', 0] },
   { file: 'syntax', location: 'cases', problem: 'is missing', edit: ['delete', '/cases'] },
-  { file: 'syntax', location: 'cases[0]', problem: 'is not an object', edit: ['set', '/cases/0', 'canonical/x'] },
+  { file: 'syntax', location: 'cases[0]', problem: 'is not an object', edit: ['set', '/cases/0', 'canonical.x'] },
   { file: 'syntax', location: 'cases[0].id', problem: 'is not a string', edit: ['set', '/cases/0/id', 1] },
-  { file: 'syntax', location: 'cases[1].id', problem: 'names no input of the shared cases', edit: ['set', '/cases/1/id', 'canonical/no-such-case'] },
+  { file: 'syntax', location: 'cases[1].id', problem: 'names no input of the shared cases', edit: ['set', '/cases/1/id', 'canonical.no-such-case'] },
   // Every runner reads every vector file through its schema (tests/dbspec/schema), so a rule of the schema that no
   // runner needs for its own output is refused in the same form as the others.
   { file: 'cases', location: 'invalid', problem: 'is empty', edit: ['set', '/invalid', []] },

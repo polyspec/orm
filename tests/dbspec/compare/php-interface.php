@@ -303,9 +303,9 @@ function dbspec_write_positions(string $dbspec, array $cases): void
 
 /**
  * The input of every analysis that syntax.json names, by its id, as scripts/dbspec/syntax-vectors.mts derives it from
- * cases.json: the main document of each canonical, normalize and invalid case ("<section>/<id>"), each document of a
- * sets case with the parsing documents and the other documents of the case by header name ("sets/<id>/<place>",
- * 1-based), and each document of a hashes case with the others ("hashes/<id>/<name>").
+ * cases.json: the main document of each canonical, normalize and invalid case ("<section>.<id>"), each document of a
+ * sets case with the parsing documents and the other documents of the case by header name ("sets.<id>.<place>",
+ * 1-based), and each document of a hashes case with the others ("hashes.<id>.<name>").
  *
  * @param array<string, list<array<string, mixed>>> $cases
  * @return array<string, array{0: string, 1: array<string, string>}>
@@ -321,7 +321,7 @@ function dbspec_syntax_inputs(array $cases): array
                     $set[$name] = dbspec_join($lines, $case['crlf'], $case['mixed']);
                 }
             }
-            $inputs["$kind/{$case['id']}"] = [dbspec_join($case['documents'][$case['main']], $case['crlf'], $case['mixed']), $set];
+            $inputs["$kind.{$case['id']}"] = [dbspec_join($case['documents'][$case['main']], $case['crlf'], $case['mixed']), $set];
         }
     }
     foreach ($cases['sets'] as $case) {
@@ -336,7 +336,7 @@ function dbspec_syntax_inputs(array $cases): array
                     $set[$other['name']] = dbspec_join($other['lines'], false, false);
                 }
             }
-            $inputs["sets/{$case['id']}/" . ($i + 1)] = [dbspec_join($document['lines'], false, false), $set];
+            $inputs["sets.{$case['id']}." . ($i + 1)] = [dbspec_join($document['lines'], false, false), $set];
         }
     }
     foreach ($cases['hashes'] as $case) {
@@ -347,7 +347,7 @@ function dbspec_syntax_inputs(array $cases): array
                     $set[$other] = dbspec_join($otherLines, false, false);
                 }
             }
-            $inputs["hashes/{$case['id']}/$name"] = [dbspec_join($lines, false, false), $set];
+            $inputs["hashes.{$case['id']}.$name"] = [dbspec_join($lines, false, false), $set];
         }
     }
     return $inputs;

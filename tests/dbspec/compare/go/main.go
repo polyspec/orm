@@ -75,9 +75,9 @@ type syntaxInput struct {
 
 // syntaxInputs gives the input of every analysis that syntax.json names, by its id, as
 // scripts/dbspec/syntax-vectors.mts derives it from cases.json: the main document of each canonical, normalize and
-// invalid case ("<section>/<id>"), each document of a sets case with the parsing documents and the other documents
-// of the case by header name ("sets/<id>/<place>", 1-based), and each document of a hashes case with the others
-// ("hashes/<id>/<name>").
+// invalid case ("<section>.<id>"), each document of a sets case with the parsing documents and the other documents
+// of the case by header name ("sets.<id>.<place>", 1-based), and each document of a hashes case with the others
+// ("hashes.<id>.<name>").
 func syntaxInputs(all sharedCases) map[string]syntaxInput {
 	inputs := map[string]syntaxInput{}
 	for _, kind := range []struct {
@@ -91,7 +91,7 @@ func syntaxInputs(all sharedCases) map[string]syntaxInput {
 					set[name] = join(lines, c.CRLF, c.Mixed)
 				}
 			}
-			inputs[kind.name+"/"+c.ID] = syntaxInput{Text: join(c.Documents[c.Main], c.CRLF, c.Mixed), Documents: set}
+			inputs[kind.name+"."+c.ID] = syntaxInput{Text: join(c.Documents[c.Main], c.CRLF, c.Mixed), Documents: set}
 		}
 	}
 	for _, c := range all.Sets {
@@ -106,7 +106,7 @@ func syntaxInputs(all sharedCases) map[string]syntaxInput {
 					set[other.Name] = join(other.Lines, false, false)
 				}
 			}
-			inputs[fmt.Sprintf("sets/%s/%d", c.ID, i+1)] = syntaxInput{Text: join(d.Lines, false, false), Documents: set}
+			inputs[fmt.Sprintf("sets.%s.%d", c.ID, i+1)] = syntaxInput{Text: join(d.Lines, false, false), Documents: set}
 		}
 	}
 	for _, c := range all.Hashes {
@@ -117,7 +117,7 @@ func syntaxInputs(all sharedCases) map[string]syntaxInput {
 					set[other] = join(l, false, false)
 				}
 			}
-			inputs["hashes/"+c.ID+"/"+name] = syntaxInput{Text: join(lines, false, false), Documents: set}
+			inputs["hashes."+c.ID+"."+name] = syntaxInput{Text: join(lines, false, false), Documents: set}
 		}
 	}
 	return inputs

@@ -62,7 +62,7 @@ foreach ($styles as $name => $chain) {
     foreach ($values as $vname => $v) {
         $enc = encode($chain, $v);
         $out[] = [
-            'name' => "$name/$vname",
+            'name' => "$name.$vname",
             'styles' => $chain,
             'value' => $v,
             // maps with only int keys are still maps in the value model (keys become strings) unless sequential
@@ -89,7 +89,7 @@ $yamlCore = [
 ];
 foreach ($yamlCore as $vname => [$text, $v]) {
     $out[] = [
-        'name' => "yaml_core/$vname",
+        'name' => "yaml_core.$vname",
         'styles' => ['yaml'],
         'value' => $v,
         'encoded_b64' => base64_encode($text),

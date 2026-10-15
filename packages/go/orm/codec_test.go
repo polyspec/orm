@@ -127,52 +127,52 @@ func TestCodecVectors(t *testing.T) {
 	}
 	out := map[string]*string{}
 	for _, v := range f.Vectors {
-		want := canon(t, jsonNumbers(reNumber(v.Value)))
-		var raw any
-		if v.EncodedB64 != nil {
-			b, err := base64.StdEncoding.DecodeString(*v.EncodedB64)
-			if err != nil {
-				t.Fatal(err)
+		t.Run(v.Name, func(t *testing.T) {
+			want := canon(t, jsonNumbers(reNumber(v.Value)))
+			var raw any
+			if v.EncodedB64 != nil {
+				b, err := base64.StdEncoding.DecodeString(*v.EncodedB64)
+				if err != nil {
+					t.Fatal(err)
+				}
+				raw = string(b)
 			}
-			raw = string(b)
-		}
-		styles := codecStages(v.Styles)
-		got, err := Decode(styles, raw)
-		if err != nil {
-			t.Errorf("%s: decode: %v", v.Name, err)
-			continue
-		}
-		value, present := got.Data()
-		if !present {
-			value = nil
-		}
-		if g := canon(t, value); g != want {
-			t.Errorf("%s: decoded %s want %s", v.Name, g, want)
-		}
-		enc, err := Encode(styles, got)
-		if err != nil {
-			t.Errorf("%s: encode: %v", v.Name, err)
-			continue
-		}
-		var encB64 *string
-		switch e := enc.(type) {
-		case string:
-			s := base64.StdEncoding.EncodeToString([]byte(e))
-			encB64 = &s
-		case []byte:
-			s := base64.StdEncoding.EncodeToString(e)
-			encB64 = &s
-		}
-		out[v.Name] = encB64
-		if v.Deterministic && ((encB64 == nil) != (v.EncodedB64 == nil) || (encB64 != nil && *encB64 != *v.EncodedB64)) {
-			t.Errorf("%s: encoded %v want %v", v.Name, deref(encB64), deref(v.EncodedB64))
-		}
-		// round trip through our own decoder
-		back, err := Decode(styles, enc)
-		backValue, _ := back.Data()
-		if err != nil || canon(t, backValue) != want {
-			t.Errorf("%s: round trip %s (%v)", v.Name, canon(t, backValue), err)
-		}
+			styles := codecStages(v.Styles)
+			got, err := Decode(styles, raw)
+			if err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			value, present := got.Data()
+			if !present {
+				value = nil
+			}
+			if g := canon(t, value); g != want {
+				t.Errorf("decoded %s want %s", g, want)
+			}
+			enc, err := Encode(styles, got)
+			if err != nil {
+				t.Fatalf("encode: %v", err)
+			}
+			var encB64 *string
+			switch e := enc.(type) {
+			case string:
+				s := base64.StdEncoding.EncodeToString([]byte(e))
+				encB64 = &s
+			case []byte:
+				s := base64.StdEncoding.EncodeToString(e)
+				encB64 = &s
+			}
+			out[v.Name] = encB64
+			if v.Deterministic && ((encB64 == nil) != (v.EncodedB64 == nil) || (encB64 != nil && *encB64 != *v.EncodedB64)) {
+				t.Errorf("encoded %v want %v", deref(encB64), deref(v.EncodedB64))
+			}
+			// round trip through our own decoder
+			back, err := Decode(styles, enc)
+			backValue, _ := back.Data()
+			if err != nil || canon(t, backValue) != want {
+				t.Errorf("round trip %s (%v)", canon(t, backValue), err)
+			}
+		})
 	}
 	if dir := os.Getenv("ORM_CODEC_OUT"); dir != "" {
 		b, err := json.MarshalIndent(out, "", "  ")

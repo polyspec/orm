@@ -195,7 +195,7 @@ fn vector_inputs(cases: &Value) -> Vec<(String, String, BTreeMap<String, String>
         for case in cases[kind].as_array().unwrap_or_else(|| panic!("{kind} cases are listed")) {
             let id = case["id"].as_str().unwrap();
             let (text, set) = declared(case);
-            inputs.push((format!("{kind}/{id}"), text, set));
+            inputs.push((format!("{kind}.{id}"), text, set));
         }
     }
     for case in cases["sets"].as_array().expect("sets cases are listed") {
@@ -215,7 +215,7 @@ fn vector_inputs(cases: &Value) -> Vec<(String, String, BTreeMap<String, String>
                     set.insert(name, text);
                 }
             }
-            inputs.push((format!("sets/{id}/{}", index + 1), joined(lines, Ends::Lf), set));
+            inputs.push((format!("sets.{id}.{}", index + 1), joined(lines, Ends::Lf), set));
         }
     }
     for case in cases["hashes"].as_array().expect("hashes cases are listed") {
@@ -228,7 +228,7 @@ fn vector_inputs(cases: &Value) -> Vec<(String, String, BTreeMap<String, String>
                     set.insert(other.clone(), joined(other_lines, Ends::Lf));
                 }
             }
-            inputs.push((format!("hashes/{id}/{name}"), joined(lines, Ends::Lf), set));
+            inputs.push((format!("hashes.{id}.{name}"), joined(lines, Ends::Lf), set));
         }
     }
     inputs

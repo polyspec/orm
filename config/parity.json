@@ -168,6 +168,7 @@
       "id": "codec", "kind": "suite", "profile": "client",
       "file": "tests/codec/vectors.json", "cases": "$.vectors[*].name",
       "bindings": [
+        { "implementation": "go", "test": "packages/go/orm/codec_test.go", "symbol": "TestCodecVectors" },
         { "implementation": "php", "test": "packages/php/tests/CodecVectorsTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/codec-vector.mjs" },
         { "implementation": "python", "test": "packages/python/tests/codec_vector.py" },
@@ -340,6 +341,7 @@
       "id": "dbspec-syntax", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/syntax.json", "cases": "$.cases[*].id",
       "bindings": [
+        { "implementation": "go", "test": "packages/go/engine/dbspec/syntax_vectors_test.go", "symbol": "TestSharedSyntaxVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecAnalyzeTest.php" },
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecAnalyzeTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-analyze.mjs" },
