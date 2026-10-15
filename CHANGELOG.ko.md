@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1911275887ff247bfe99215a26fbcb2d813b7a96d583a9a2df0d4047395289df -->
+<!-- source-sha256: 73ab5dc3c09a4b79e21b3778f3a8ac19ccdebb71c390c860427a6b8b304a1a79 -->
 # 변경 이력
 
 ## Unreleased
 
+- MySQL이 다른 database처럼 client가 encode한 hex를 쓴다. (#T103)
 - probe와 인용 검사가 한 statement의 fault 순서를 기록한다. (#T101)
 - AGENTS가 0.0.x 개발의 local link 규칙으로 kit 문서를 안내한다. (#T186)
 - Python conformance target이 run의 database에서 case harness로 실행된다. (#T148-3-6-1)
