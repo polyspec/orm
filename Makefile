@@ -589,9 +589,14 @@ dbspec-rust-check/unicode: cargo-downloads-check
 dbspec-rust-check/apply-cleanup: cargo-downloads-check
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
-# dbspec-rust-check/show-create는 shown_checks(mysql.rs)가 tests/dbspec/show-create.json의 모든 case를 기대한 본문으로 읽는지 본다.
-dbspec-rust-check/show-create: cargo-downloads-check
+# dbspec-rust-check/show-create는 shown_checks(mysql.rs)가 tests/dbspec/show-create.json의 모든 case를 기대한 본문으로 읽는지,
+# 그리고 공개 MySQL introspection(read_catalog)이 그 catalog에서 case마다 기대한 check, 미지원 객체, error를 내는지 본다.
+dbspec-rust-check/show-create: dbspec-rust-check/show-create/unit dbspec-rust-check/show-create/vectors
+.PHONY: dbspec-rust-check/show-create/unit dbspec-rust-check/show-create/vectors
+dbspec-rust-check/show-create/unit: cargo-downloads-check
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --lib show_create_tests -- --nocapture
+dbspec-rust-check/show-create/vectors: cargo-downloads-check
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --test dbspec_show_create -- --nocapture
 
 .PHONY: rust-send-savepoint-check
 # 부분의 실행 directory는 top target의 것이다($@에 /가 있으면 directory가 한 단계 더 생긴다).

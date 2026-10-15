@@ -369,7 +369,7 @@
         { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecShowCreateTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-show-create.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_show_create.py" },
-        { "implementation": "rust", "test": "packages/rust/schema/src/dbspec/introspect/mysql.rs", "symbol": "dbspec::introspect::mysql::show_create_tests::every_show_create_case_reads_to_its_expected_body" }
+        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_show_create.rs", "symbol": "show_create_vectors" }
       ]
     },
     {
