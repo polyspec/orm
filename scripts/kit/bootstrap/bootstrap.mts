@@ -24,7 +24,8 @@ function bootstrap(root: string, running: string, print: (text: string) => void)
 try {
   bootstrap(process.cwd(), process.versions.node, text => console.log(`[bootstrap] ${text}`));
 } catch (error) {
+  if (!(error instanceof Error)) throw error;
   // declaredToolchain, the checks above and the installs fail with an Error.
-  console.error(`[bootstrap] ${(error as Error).message}`);
+  console.error(`[bootstrap] ${error.message}`);
   process.exit(1);
 }

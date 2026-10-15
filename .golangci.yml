@@ -16,3 +16,13 @@ linters:
       # The Go of a module is its go directive at the pin of kit (S4); a toolchain line equal to it is removed by go mod tidy.
       toolchain-forbidden: true
       go-debug-forbidden: true
+    staticcheck:
+      # The default checks of golangci-lint 2 (.golangci.reference.yml) without ST1005, "error strings should not be
+      # capitalized": a polyspec error string is a cross-port message of the repository's spec, which every port returns
+      # byte for byte, so it keeps the spec's capitalization (K164).
+      checks: ["all", "-ST1000", "-ST1003", "-ST1016", "-ST1020", "-ST1021", "-ST1022", "-ST1005"]
+issues:
+  # Every finding is reported: the default caps of 3 issues of the same text and 50 of one linter hid 118 of 121 findings
+  # in a repository (K164).
+  max-issues-per-linter: 0
+  max-same-issues: 0

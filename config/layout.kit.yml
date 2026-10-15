@@ -3,7 +3,9 @@
 # reads an extends: target only from the folder of the config that names it. Change it in kit, never in a copy.
 #
 # A repository overrides a rule by its id: a field it names replaces the field of this file, so an override of paths
-# repeats the list below and adds its own entries, each S9 exception with its reason in a comment right above it.
+# repeats the list below and adds its own entries, each S9 exception with its reason in a comment right above it. The root
+# files are the exception: a repository names only its own, in `vars: { root_files: "{a,b}" }` of layout-root-files, a glob
+# alternation that the template root-files adds to the list of kit, and never overrides the paths of that rule.
 version: 1
 
 templates:
@@ -38,18 +40,10 @@ templates:
       - "!packages/{{vars.component}}/js"
     message: "S5: a component with ports holds packages/<component>/<runtime>/, the runtime one of go, php, php-ext, python, rust, ts, js"
 
-rules:
-  # S5: the root folders of every monorepo, and the dot folders of Git, GitHub and kit.
-  - id: layout-root-folders
-    kind: dir_absent
-    level: error
-    root_only: true
-    paths: ["*", "!packages", "!contracts", "!docs", "!scripts", "!tests", "!examples", "!benchmarks", "!config", "!.github", "!.githooks", "!.kit", "!.mise"]
-    message: "S5: the root holds only packages/, contracts/, docs/, scripts/, tests/, examples/, benchmarks/ and config/"
-
-  # S5: the root files that kit defines or reads: the documents, the manifests of the TypeScript infrastructure and the
-  # toolchain files of toolchain-declared.mts and of mise (mise.toml, mise.lock).
-  - id: layout-root-files
+  # S5: the root files that kit defines or reads: the documents, the manifests of the TypeScript infrastructure, the
+  # development composer.json and composer.lock of a Composer monorepo (K167), the toolchain files of toolchain-declared.mts and of mise (mise.toml, mise.lock), and the files of the repository in
+  # vars.root_files, a glob alternation such as "{tsconfig.build.json}" (K145).
+  - id: root-files
     kind: file_absent
     level: error
     root_only: true
@@ -68,6 +62,8 @@ rules:
       - "!kit.json"
       - "!package.json"
       - "!package-lock.json"
+      - "!composer.json"
+      - "!composer.lock"
       - "!tsconfig.json"
       - "!.gitignore"
       - "!.gitattributes"
@@ -88,7 +84,32 @@ rules:
       - "!.oxlintrc.json"
       - "!knip.json"
       - "!.editorconfig"
-    message: "S5: a file at the root that the layout does not declare; move it into a root folder or declare it in config/layout.yml"
+      - "!{{vars.root_files}}"
+    message: "S5: a file at the root that the layout does not declare; move it into a root folder or declare it in vars.root_files of layout-root-files in config/layout.yml"
+
+rules:
+  # S5: the root folders of every monorepo, and the dot folders of Git, GitHub and kit.
+  - id: layout-root-folders
+    kind: dir_absent
+    level: error
+    root_only: true
+    paths: ["*", "!packages", "!contracts", "!docs", "!scripts", "!tests", "!examples", "!benchmarks", "!config", "!.github", "!.githooks", "!.kit", "!.mise"]
+    message: "S5: the root holds only packages/, contracts/, docs/, scripts/, tests/, examples/, benchmarks/ and config/"
+
+  # S5: the root files of kit and of the repository (the template root-files). A repository sets only vars.root_files, a
+  # glob alternation of its own files; "{}" names none.
+  - extends_template: root-files
+    id: layout-root-files
+    vars: { root_files: "{}" }
+
+  # K145: an override of the paths of layout-root-files would replace the list of kit, and drop each root file that kit adds
+  # later without a finding; a repository declares its own root files in vars.root_files.
+  - id: layout-root-files-additive
+    kind: yaml_path_absent
+    level: error
+    paths: "config/layout.yml"
+    path: "$.rules[?@.id == 'layout-root-files'].paths"
+    message: "K145: config/layout.yml overrides the paths of layout-root-files, which drops the root files of kit; name the files of the repository in vars: { root_files: \"{a,b}\" } instead"
 
   # S5: packages/ holds the runtime ports of the main spec; a repository adds its components to the list.
   - id: layout-packages

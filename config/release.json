@@ -56,10 +56,6 @@
     "packages/dbspec-codemirror/package.json": "archive",
     "packages/dbspec-vscode/package.json": "version"
   },
-  "buildBackend": {
-    "requirement": "setuptools==84.0.0",
-    "sha256": "51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670"
-  },
   "notReleased": {
     "package.json": "the private npm workspace root: it installs packages/ts as a workspace and takes @polyspec/ordered-json from its GitHub release through overrides",
     "composer.json": "the private Composer root: it installs packages/php as a path repository and takes polyspec/ordered-json from its GitHub release zip",
@@ -74,8 +70,7 @@
     "tests/go.mod": "the Go module of the runners, physical tests and tool programs under tests/, which go.work joins to packages/go",
     "examples/go.mod": "the Go module of the examples and their output test, which go.work joins to packages/go",
     "tests/release-consumer/npm/package.json": "the npm consumer project of the release archives",
-    "tests/release-consumer/composer/composer.json": "the Composer consumer project of the release archives",
-    "config/php-lint/composer.json": "the PHP lint project of @polyspec/kit (phpcs and PHPStan), which install-tools installs into var/tools/php-lint"
+    "tests/release-consumer/composer/composer.json": "the Composer consumer project of the release archives"
   },
   "goModules": {
     "packages/go": "github.com/polyspec/orm/packages/go"
