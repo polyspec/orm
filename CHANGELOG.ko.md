@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: bddb676636a1820dd02b70882bae2209e57fde84184da31fc35041412b40c0a6 -->
+<!-- source-sha256: 934977da9a2ab2362dd16273dbad677de2ea339f48689572da35ba5c3d28613e -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP client가 YAML 1.2.2 표로 core schema를 해석하는 fork min-0-max/yaml v1.0.0-p1로 YAML을 읽는다. consumer는 docs/packaging.md처럼 fork의 vcs repository를 선언한다. (#T142-1-1)
 - repository 검사가 Makefile을 모든 target을 prerequisite, recipe와 함께 이름 짓는 reader 하나로 읽는다. (#T137-1-4-2-2)
 - repository 검사가 workflow의 run text와 Makefile recipe를 줄이나 pattern이 아니라 shell 명령으로 읽는다. (#T137-1-4-2-1)
 - Rust show-create vector가 공개 catalog 경로로 실행되고, 각 case는 id로 이름 붙은 trial이다. (#T148-2-1)
