@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import { caseTest } from '../../tests/testcase.mts';
 import { execFileSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
-import { chmod, mkdtemp, mkdir, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, mkdir, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { packageDirectory } from './packages.mts';
+import { packageDirectoryOf } from './packages.mts';
 import { checkCoverage, databases, executeCoverage, languages, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
 
@@ -94,7 +94,7 @@ function contract(kind = 'database'): SampleManifest {
   return { features: [{ id: 'sample', status: 'implemented',
     clients: Object.fromEntries(languages.map(language => [language, 'pass'])),
     coverage: { kind, cases: ['first', 'second'],
-      owners: Object.fromEntries(languages.map(language => [language, { part: packageDirectory[language as keyof typeof packageDirectory],
+      owners: Object.fromEntries(languages.map(language => [language, { part: packageDirectoryOf(language),
         tests: [ownerTests[language] ?? ''], commands: {} }])),
       dependents: [{ id: 'service', language: 'go', part: 'packages/go/model',
         tests: [dependentTest], cases: ['first'], commands: {} }] } }] };
@@ -110,7 +110,7 @@ function complete(kind = 'database'): Reports {
     return [structuredClone(report), structuredClone(report)];
   };
   for (const language of languages) for (const database of kind === 'database' ? databases : ['none']) {
-    reports[`sample/owner/${language}/${database}`] = make('owner', packageDirectory[language as keyof typeof packageDirectory], [ownerTests[language] ?? ''], language, database, ['first', 'second']);
+    reports[`sample/owner/${language}/${database}`] = make('owner', packageDirectoryOf(language), [ownerTests[language] ?? ''], language, database, ['first', 'second']);
     if (language === 'go') reports[`sample/dependent/service/go/${database}`] = make('dependent', 'packages/go/model', [dependentTest], language, database, ['first'], 'service');
   }
   return reports;
@@ -349,7 +349,7 @@ caseTest('invented JSON success from an arbitrary command is not execution evide
   for (const language of languages) {
     // @ts-expect-error: a shell command in place of native test commands is the invalid contract under test.
     defined(defined(manifest.features[0].coverage.owners[language]).commands).none =
-      `node -e 'process.stdout.write(${JSON.stringify(report('owner', packageDirectory[language as keyof typeof packageDirectory], [ownerTests[language] ?? ''], language, ['first', 'second']))})'`;
+      `node -e 'process.stdout.write(${JSON.stringify(report('owner', packageDirectoryOf(language), [ownerTests[language] ?? ''], language, ['first', 'second']))})'`;
   }
   // @ts-expect-error: a shell command in place of native test commands is the invalid contract under test.
   defined(defined(manifest.features[0].coverage.dependents[0]).commands).none =

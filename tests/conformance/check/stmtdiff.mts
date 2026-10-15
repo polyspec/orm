@@ -22,7 +22,7 @@ export function changeLine(change: Change): string {
 export function diff(expected: Statement[], got: Statement[]): Change[] {
   const n = expected.length;
   const m = got.length;
-  const lcs = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
+  const lcs = Array.from({ length: n + 1 }, () => Array.from({ length: m + 1 }, () => 0));
   const at = (i: number, j: number): number => lcs[i]?.[j] ?? 0;
   const same = (i: number, j: number): boolean => expected[i]?.key === got[j]?.key;
   for (let i = n - 1; i >= 0; i--) {

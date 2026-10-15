@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
-import { AFTER_GROUP_CHECK, CI_PASSED_STEP, CI_PASSED_STEPS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
+import { AFTER_GROUP_CHECK, CI_PASSED_STEPS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
 import { fixlessMessageErrors } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
@@ -354,7 +354,8 @@ caseTest('the CI groups run every target of CHECK_TARGETS in exactly one job', C
   const makefile = text('Makefile');
   const { groups, targets } = ciGroups(makefile);
   assert.ok(groups.length > 1, 'the Makefile declares more than one CI group');
-  assert.deepEqual(groups.flatMap(group => targets[group]).sort(), [...checkTargets(makefile)].sort());
+  const byCodeUnit = (a: string, b: string) => (a < b ? -1 : Number(a > b));
+  assert.deepEqual(groups.flatMap(group => targets[group] ?? []).sort(byCodeUnit), [...checkTargets(makefile)].sort(byCodeUnit));
   assert.ok(workflow.includes('        run: make check-run GROUP=${{ matrix.group }}\n'), 'ci.yml runs make check-run for the group of its matrix');
   assert.deepEqual(ciCheckTargetErrors(workflow, makefile), []);
 });
@@ -725,7 +726,6 @@ caseTest('the files of one run live in its run directory and a TypeScript build 
 // lease case는 Makefile 밖의 명령과 최소 단위를 검사한다.
 caseTest('commands outside the Makefile build into the shared Rust target directory only under its lease', COMPUTE, () => {
   const { packageUnits } = runUnits();
-  const files = new Set(trackedFiles('*'));
   const commands = [...makeRecipes(text('Makefile')), ...featureUnits(), ...packageUnits].flatMap(unit => unit.commands.map(command => ({ command, dialect: unit.dialect })));
   const scripts = reachedScripts(commands, readScript, { throughLong: true });
   assert.deepEqual(unleasedCargoErrors([...featureUnits(), ...packageUnits, ...scripts]), []);
@@ -1130,7 +1130,6 @@ caseTest('a build tool outside run-long or under a deadline fails', COMPUTE, () 
 const runUnits = () => {
   const recipes = makeRecipes(text('Makefile'));
   const packageUnits = Object.entries(readPackage(join(repository.pathname, 'package.json')).scripts ?? {}).map(([name, command]) => ({ name: `package.json ${name}`, commands: [command], dialect: 'sh' as const }));
-  const files = new Set(trackedFiles('*'));
   const commands = [...recipes, ...featureUnits(), ...packageUnits].flatMap(unit => unit.commands.map(command => ({ command, dialect: unit.dialect })));
   return { recipes, packageUnits, scripts: reachedScripts(commands, readScript) };
 };
@@ -1254,7 +1253,6 @@ caseTest('no check puts a deadline on a long operation', COMPUTE, () => {
   const makefile = text('Makefile');
   const variables = makeVariables(makefile);
   const { recipes, packageUnits } = runUnits();
-  const files = new Set(trackedFiles('*'));
   const commands = [...recipes, ...featureUnits(), ...packageUnits].flatMap(unit => unit.commands.map(command => ({ command, dialect: unit.dialect })));
   const scripts = reachedScripts(commands, readScript, { throughLong: true });
   assert.ok(scripts.some(unit => unit.name === 'scripts/package-check.mts'), 'the scripts under run-long are checked');

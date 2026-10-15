@@ -23,7 +23,9 @@ caseTest('a result never drops an undefined field or writes a non-finite number 
   assert.throws(() => resultValue({ missing: undefined }), /undefined conformance result/);
   assert.throws(() => resultValue([Number.NaN]), /non-finite conformance result/);
   assert.throws(() => resultValue(StyledValue.value({ missing: undefined })), { code: 'CODEC_ENCODE' });
-  assert.throws(() => resultValue([, 1]), /sparse conformance result/);
+  const sparse: unknown[] = [];
+  sparse[1] = 1;
+  assert.throws(() => resultValue(sparse), /sparse conformance result/);
   assert.throws(() => resultValue({ [Symbol('hidden')]: 1 }), /symbol-keyed conformance result/);
   const hidden = Object.defineProperty({}, 'hidden', { value: 1 });
   assert.throws(() => resultValue(hidden), /non-enumerable conformance result/);
@@ -50,7 +52,7 @@ caseTest('unexpected vector errors preserve their cause and write vectors use a 
     return true;
   });
   let transactionCalled = false;
-  const value = await executeVector('write', async () => 7, async (task: () => any) => {
+  const value = await executeVector('write', async () => 7, async (task: () => Promise<unknown>) => {
     transactionCalled = true;
     return task();
   });

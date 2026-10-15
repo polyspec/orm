@@ -101,7 +101,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const root = resolve(import.meta.dirname, '..', '..');
   const version = (await readFile(join(root, 'VERSION'), 'utf8')).trim();
   const errors = [...await versionErrors(root),
-    ...changelogErrors(version, Object.fromEntries(await Promise.all(CHANGELOGS.map(async path => [path, await readFile(join(root, path), 'utf8')]))))];
+    ...changelogErrors(version, Object.fromEntries(await Promise.all(CHANGELOGS.map(async (path): Promise<[string, string]> => [path, await readFile(join(root, path), 'utf8')]))))];
   for (const error of errors) console.error(`version: ${error}`);
   if (errors.length === 0) console.log(`version: ${DECLARATIONS.length} declarations agree on ${version}; ${CHANGELOGS.join(' and ')} start with ## Unreleased`);
   log.end(errors.length ? `${errors.length} declaration(s) differ; each is listed above` : undefined);

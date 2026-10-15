@@ -27,7 +27,7 @@ function changeText(change: Change): string {
 /** diffStatements는 expected를 got으로 바꾸는 가장 작은 더하기와 빼기를 expected의 순서대로 돌려준다. */
 export function diffStatements(expected: Statement[], got: Statement[]): Change[] {
   const n = expected.length, m = got.length;
-  const lcs = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
+  const lcs = Array.from({ length: n + 1 }, () => Array.from({ length: m + 1 }, () => 0));
   const at = (i: number, j: number): number => lcs[i]?.[j] ?? 0;
   for (let i = n - 1; i >= 0; i--) {
     for (let j = m - 1; j >= 0; j--) {

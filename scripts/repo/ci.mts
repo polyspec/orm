@@ -81,8 +81,8 @@ export function ciGroups(makefile: string): { groups: string[]; targets: Record<
 // matrixGroups는 job의 strategy.matrix.group 목록이다. 없으면 null이다.
 export function matrixGroups(job: WorkflowJob): string[] | null {
   const strategy = job.value['strategy'];
-  const matrix = typeof strategy === 'object' && strategy !== null ? (strategy as Record<string, unknown>)['matrix'] : undefined;
-  const list = typeof matrix === 'object' && matrix !== null ? (matrix as Record<string, unknown>)['group'] : undefined;
+  const matrix = typeof strategy === 'object' && strategy !== null && 'matrix' in strategy ? strategy.matrix : undefined;
+  const list = typeof matrix === 'object' && matrix !== null && 'group' in matrix ? matrix.group : undefined;
   return Array.isArray(list) ? list.map(String) : null;
 }
 

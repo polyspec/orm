@@ -74,7 +74,7 @@ caseTest('the version of each Rust package in a lockfile and each version pin of
 // 거부한다.
 caseTest('the changelogs keep ## Unreleased at the top above the released versions', COMPUTE, async () => {
   const version = (await readFile(join(root, 'VERSION'), 'utf8')).trim();
-  const files = Object.fromEntries(await Promise.all(CHANGELOGS.map(async path => [path, await readFile(join(root, path), 'utf8')])));
+  const files = Object.fromEntries(await Promise.all(CHANGELOGS.map(async (path): Promise<[string, string]> => [path, await readFile(join(root, path), 'utf8')])));
   assert.deepEqual(changelogErrors(version, files), []);
   const pair = (text: string) => ({ 'CHANGELOG.md': `# Changelog\n\n${text}`, 'CHANGELOG.ko.md': `# 변경 이력\n\n${text}` });
   // release PR 0.0.2: VERSION은 0.0.2이고 `## Unreleased`는 `## 0.0.2`가 되며 그 위에 빈 `## Unreleased`가 온다.

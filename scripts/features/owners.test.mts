@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { caseTest } from '../../tests/testcase.mts';
 import * as ownerSelection from './owners.mts';
@@ -100,8 +99,8 @@ const targets = (selected: { target: string }[]) => selected.map(item => item.ta
 caseTest('a changed document selects the documentation checks', 5000, async () => {
   const selected = targets(selectTargets(inputs, ['docs/plans/execution-checklist.md']));
   for (const target of ['documents-check', 'docs-rules-check', 'docs-check', 'docs-verify-idempotent'])
-    assert.ok(selected.includes(target), `selected ${selected}`);
-  assert.ok(!selected.includes('rust-check'), `selected ${selected}`);
+    assert.ok(selected.includes(target), `selected ${selected.join(', ')}`);
+  assert.ok(!selected.includes('rust-check'), `selected ${selected.join(', ')}`);
 });
 
 caseTest('a declared pattern matches by path segment', 5000, async () => {

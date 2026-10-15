@@ -53,7 +53,10 @@ export function phpVersionErrors(declared: string, minimum: string | undefined, 
     const minimumStep = workflowSteps(workflow).some(step => step.id === 'php-min' &&
       step.run === MINIMUM_STEP);
     const readsFile = (step: WorkflowStep) => step.with['php-version-file'] === '.php-version';
-    const readsMinimum = (step: WorkflowStep) => /^\$\{\{\s*steps\.php-min\.outputs\.version\s*\}\}$/.test(String(step.with['php-version'] ?? ''));
+    const readsMinimum = (step: WorkflowStep) => {
+      const version = step.with['php-version'];
+      return typeof version === 'string' && /^\$\{\{\s*steps\.php-min\.outputs\.version\s*\}\}$/.test(version);
+    };
     for (const step of steps) {
       // 검사의 PHP는 debugger와 coverage driver 없이 실행한다: Xdebug는 hot-path gate의 비율을 바꾼다.
       if (step.with['coverage'] !== 'none')
@@ -139,7 +142,8 @@ export function goVersionErrors(workflows: Record<string, string>) {
 //   - running은 declared와 major.minor가 같다. patch는 상관없다.
 export function composerVersionErrors(miseToml: string, workflows: Record<string, string>, running: string): string[] {
   const errors: string[] = [];
-  const declared: unknown = (parseToml(miseToml)['tools'] as Record<string, unknown> | undefined)?.['http:composer'];
+  const tools: unknown = parseToml(miseToml)['tools'];
+  const declared = typeof tools === 'object' && tools !== null && 'http:composer' in tools ? tools['http:composer'] : undefined;
   const version = typeof declared === 'object' && declared !== null && 'version' in declared && typeof declared.version === 'string' ? declared.version : '';
   const exact = /^\d+\.\d+\.\d+$/.test(version);
   if (!exact) return [`mise.toml must declare the tool http:composer with one exact Composer release x.y.z as its version, found ${JSON.stringify(version)}; write the release that CI and the local checks run`];

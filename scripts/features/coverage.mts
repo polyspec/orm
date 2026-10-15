@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { endGroup } from '../check/step.mts';
-import { packageDirectory } from './packages.mts';
+import { packageDirectory, packageDirectoryOf } from './packages.mts';
 import { mkdir, mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
@@ -79,7 +79,7 @@ function requirements(feature: Feature, coverage: Coverage, errors: string[]): I
   for (const language of languages) {
     if (!['pass', 'partial'].includes(feature.clients?.[language] ?? '')) continue;
     const owner = coverage.owners?.[language];
-    const directory = packageDirectory[language as keyof typeof packageDirectory];
+    const directory = packageDirectoryOf(language);
     if (!owner || !validPart(owner.part) || !owner.part.startsWith(`${directory}/`) && owner.part !== directory) {
       errors.push(`${feature.id}/owner/${language}: missing owning client part`);
       continue;
@@ -209,7 +209,7 @@ function validJSON(value: string): boolean {
 // 실행 중에 단계로 내보낸다. stdout은 test event이므로 모아서 읽기만 한다. limit은 모으는
 // 출력의 최대 길이다. test 출력은 1000000자를 넘지 않고, build의 JSON message는 의존성마다
 // 한 줄이라 더 길다. timeoutMs는 실행 process의 기한이고, 장기 작업인 build는 null로 기한 없이 실행한다.
-function run(program: string, args: string[], cwd: string | undefined, timeoutMs: number | null, env: NodeJS.ProcessEnv = process.env, step: StepWriter | undefined = undefined, limit = 1_000_000): Promise<RunResult> {
+function run(program: string, args: string[], cwd: string | undefined, timeoutMs: number | null, env: NodeJS.ProcessEnv = process.env, step?: StepWriter, limit = 1_000_000): Promise<RunResult> {
   return new Promise<RunResult>((finish) => {
     const child = spawn(program, args, { cwd, env, detached: true });
     const progress = step ? stepLines(step) : null;

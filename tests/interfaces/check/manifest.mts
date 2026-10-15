@@ -135,12 +135,12 @@ export function validateProhibitions(prohibited: string[]): void {
 /** readErrorCatalog는 docs/errors.yaml의 code 목록이다. code는 대문자 이름이며 중복되지 않는다. */
 export function readErrorCatalog(root: string): Set<string> {
   const document: unknown = parseYaml(readFileSync(join(root, 'docs/errors.yaml'), 'utf8'));
-  const entries = document !== null && typeof document === 'object' && 'codes' in document && Array.isArray(document.codes) ? document.codes : [];
+  const entries: unknown[] = document !== null && typeof document === 'object' && 'codes' in document && Array.isArray(document.codes) ? document.codes : [];
   if (entries.length === 0) throw new Error('error catalog has no codes');
   const codes = new Set<string>();
   for (const entry of entries) {
     const value: unknown = entry !== null && typeof entry === 'object' && 'code' in entry ? entry.code : '';
-    const code = value === null || value === undefined ? '' : String(value);
+    const code = typeof value === 'string' ? value : JSON.stringify(value ?? '');
     if (!/^[A-Z][A-Z0-9_]*$/.test(code) || codes.has(code)) throw new Error(`invalid or duplicate error code ${JSON.stringify(code)}`);
     codes.add(code);
   }

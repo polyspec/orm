@@ -8,7 +8,7 @@
 // not read.
 import { spawnSync } from 'node:child_process';
 import { closeSync, openSync, rmSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
 const DIALECTS = ['mysql', 'postgres', 'sqlite'] as const;
@@ -40,9 +40,8 @@ function run(program: string, args: string[], { input, text, env }: { input?: st
 }
 
 // The client of the checkout, built by make typescript-build: the bench model and the host codecs.
-const client = join(root, 'packages/ts/dist');
-const { connect, SCHEMA } = await import(join(client, 'models/models.js'));
-const { blindIndex, hostEncode } = await import(join(client, 'index.js'));
+const { connect, SCHEMA } = await import('../packages/ts/dist/models/models.js');
+const { blindIndex, hostEncode } = await import('../packages/ts/dist/index.js');
 
 // install installs the manifest of contracts/fixtures/bench/bench.dbs on the database of a DSN.
 async function install(source: string): Promise<void> {
@@ -53,15 +52,19 @@ async function install(source: string): Promise<void> {
 // AES_KEY, BLIND_INDEX_KEY and AES_KEY_VERSION are the keys of the bench data, which the bench clients read.
 const AES_KEY = 'bench-salt', BLIND_INDEX_KEY = 'bench-blind-index', AES_KEY_VERSION = 1, AUTHORS = 100000;
 
+// hex is the value of a host codec as hex text; any other value stops the seed.
+function hex(value: string | Uint8Array | null): string {
+  return typeof value === 'string' && /^[0-9A-Fa-f]+$/.test(value) ? value : fail(`bench-db: a host codec gave ${String(value)}, not hex text`);
+}
+
 // aesUpdates is the transaction that sets the AES and blind-index columns of every author: the email and phone in the
 // authenticated host format (aes then hex) and their HMAC indexes. The values are hex, so they are written as literals.
 function aesUpdates(quote: (name: string) => string, begin: string): string {
   const lines = [begin];
   for (let seq = 1; seq <= AUTHORS; seq++) {
     const email = `user${seq}@example.com`, phone = `010-${String(seq).padStart(8, '0')}`;
-    const values = [hostEncode(email, ['aes', 'hex'], AES_KEY), hostEncode(phone, ['aes', 'hex'], AES_KEY), blindIndex(email, BLIND_INDEX_KEY), blindIndex(phone, BLIND_INDEX_KEY)];
-    for (const value of values) if (typeof value !== 'string' || !/^[0-9A-Fa-f]+$/.test(value)) fail(`bench-db: a host codec gave ${String(value)}, not hex text`);
-    const [aesEmail, aesPhone, emailIndex, phoneIndex] = values;
+    const [aesEmail, aesPhone, emailIndex, phoneIndex] = [hostEncode(email, ['aes', 'hex'], AES_KEY), hostEncode(phone, ['aes', 'hex'], AES_KEY),
+      blindIndex(email, BLIND_INDEX_KEY), blindIndex(phone, BLIND_INDEX_KEY)].map(hex);
     lines.push(`UPDATE ${quote('author')} SET ${quote('aes_hex_email')} = '${aesEmail}', ${quote('aes_hex_phone')} = '${aesPhone}', ${quote('email_blind_index')} = '${emailIndex}', ` +
       `${quote('phone_blind_index')} = '${phoneIndex}', ${quote('aes_key_version')} = ${AES_KEY_VERSION} WHERE ${quote('seq')} = ${seq};`);
   }

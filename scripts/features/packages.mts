@@ -7,3 +7,10 @@ export const packageDirectory = {
   rust: 'packages/rust',
   typescript: 'packages/ts',
 };
+
+/** packageDirectoryOf is the package directory of a client language; a language that has no package throws. */
+export function packageDirectoryOf(language: string): string {
+  const directory = new Map<string, string>(Object.entries(packageDirectory)).get(language);
+  if (directory === undefined) throw new Error(`no package implements the client language ${language}`);
+  return directory;
+}

@@ -142,7 +142,7 @@ export function failures(): Failures {
         reports.push(text);
         if (reports.length > FAILURE_LINES) reports.shift();
       }
-      if (failureLine(text) && /the errors reported above$/.test(inner)) {
+      if (failureLine(text) && inner.endsWith('the errors reported above')) {
         failed.push(...reports);
         reports.length = 0;
       }

@@ -462,7 +462,8 @@ async function start(p: Paths): Promise<void> {
   const chosen = spawnSync(process.execPath, [join(ROOT, 'scripts/free-ports.mts'), '6'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] });
   const free = chosen.status === 0 ? chosen.stdout.trim().split(/\s+/).filter(Boolean) : [];
   if (free.length !== 6) throw new TestServerError(`test-servers: scripts/free-ports.mts chose ${free.length} ports, not 6; run node scripts/free-ports.mts 6 to see why`);
-  const [mysql, postgres, mysqlReplica, postgresReplica, proxysql, pgbouncer] = free.map(checkedPort) as [number, number, number, number, number, number];
+  const [mysql, postgres, mysqlReplica, postgresReplica, proxysql, pgbouncer] = free.map(checkedPort);
+  if (mysql === undefined || postgres === undefined || mysqlReplica === undefined || postgresReplica === undefined || proxysql === undefined || pgbouncer === undefined) throw new TestServerError('test-servers: scripts/free-ports.mts chose fewer than 6 ports');
   const ports: Ports = { mysql, postgres, mysqlReplica, postgresReplica, proxysql, pgbouncer };
   holdExclusive(p);
   mkdirSync(p.dir, { recursive: true });

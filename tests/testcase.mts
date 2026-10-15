@@ -131,14 +131,14 @@ export function sections() {
   let open: { name: string; started: number; timer?: NodeJS.Timeout } | null = null;
   let lastError = '';
   const elapsed = () => duration(performance.now() - (open?.started ?? performance.now()));
-  const write = process.stderr.write.bind(process.stderr) as (chunk: string | Uint8Array, ...rest: unknown[]) => boolean;
-  process.stderr.write = ((chunk: string | Uint8Array, ...rest: unknown[]) => {
+  const write = process.stderr.write.bind(process.stderr);
+  process.stderr.write = (chunk: string | Uint8Array, ...rest: unknown[]): boolean => {
     if (open) {
       const line = String(chunk).split('\n').map(text => text.trim()).filter(Boolean).at(-1);
       if (line) lastError = line;
     }
-    return write(chunk, ...rest);
-  }) as typeof process.stderr.write;
+    return Reflect.apply(write, undefined, [chunk, ...rest]) === true;
+  };
   process.on('uncaughtExceptionMonitor', error => {
     if (open) lastError = (error instanceof Error ? error.message : String(error)).split('\n')[0] ?? '';
   });

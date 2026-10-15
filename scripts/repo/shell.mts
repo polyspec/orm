@@ -3,7 +3,7 @@
 // package.json and the command lines of the scripts of scripts/. A rule of scripts/repo looks at each simple command
 // (a segment) that such text runs.
 import { parse } from 'unbash';
-import type { CommandNode, CompoundList, PipelineNode, Script, Statement } from 'unbash';
+import type { CompoundList, PipelineNode, Script, Statement } from 'unbash';
 
 /**
  * The language a command text is written in. `sh` is a shell command or script. `make` is a recipe line of the Makefile:
@@ -90,7 +90,7 @@ function walk(tree: Script, text: string, visit: (node: PipelineNode | Statement
       case 'While': body(command.clause); body(command.body); return;
       case 'If': body(command.clause); body(command.then); node(command.else); return;
       case 'Case': for (const item of command.items) body(item.body); return;
-      case 'Function': case 'Coproc': node(command.body as CommandNode | CompoundList); return;
+      case 'Function': case 'Coproc': node(command.body); return;
       default: throw new Error(`the shell reader does not know the node ${(command as { type: string }).type}: ${text}`);
     }
   };

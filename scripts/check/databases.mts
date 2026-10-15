@@ -149,7 +149,7 @@ function sqliteAmount(db: import('node:sqlite').DatabaseSync): string {
 // DECIMAL_POSTGRES_DSN and DECIMAL_SQLITE_DSN to <directory>/decimal-env. The databases are new for this run: one that
 // exists already is another run's, and create refuses it.
 async function createDecimal(mysqlBench: string, postgresBench: string, decimal: string, directory: string, env: NodeJS.ProcessEnv): Promise<boolean> {
-  const { connect, SCHEMA } = await import(join(root, 'packages/ts/dist/models/decimal_fixture/models.js'));
+  const { connect, SCHEMA } = await import('../../packages/ts/dist/models/decimal_fixture/models.js');
   const { DatabaseSync } = await import('node:sqlite');
   const mysql = withDatabase(mysqlBench, decimal);
   const postgres = withDatabase(postgresBench, decimal);
