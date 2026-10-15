@@ -482,7 +482,7 @@ PYTHON_VENV = $(abspath packages/python/.venv)
 install-python:
 	$(MAKE) --no-print-directory install-tools
 	$(MAKE) --no-print-directory python-venv DIR=$(PYTHON_VENV)
-	$(ONLINE) python3 -m pip --python $(PYTHON_VENV)/bin/python install --quiet --editable 'packages/python[test]'
+	$(ONLINE) python3 -m pip --python $(PYTHON_VENV)/bin/python install --quiet --editable packages/python --group packages/python/pyproject.toml:test
 # python-venv-check checks that the venv of install-python exists and runs the Python release of mise.toml. A missing venv
 # or another release fails without a download or a repair, and names the fix: remove the venv and run make install.
 .PHONY: python-venv-check
