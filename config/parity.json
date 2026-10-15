@@ -35,8 +35,25 @@
     {
       "name": "python",
       "runner": "python",
-      "roots": ["packages/python"],
+      "roots": ["packages/python", "tests/conformance", "tests/dbspec/compare", "tests/interfaces"],
       "tests": ["packages/python/tests/coverage_*.py"],
+      "support": [
+        "packages/python/tests/__init__.py",
+        "packages/python/tests/case_database.py",
+        "packages/python/tests/conformance_case.py",
+        "packages/python/tests/coverage_case.py",
+        "packages/python/tests/dbspec_apply_runner.py",
+        "packages/python/tests/dbspec_cases_reader.py",
+        "packages/python/tests/dbspec_introspect_runner.py",
+        "packages/python/tests/dbspec_mermaid.py",
+        "packages/python/tests/dbspec_plans.py",
+        "packages/python/tests/dbspec_vectors_reader.py",
+        "packages/python/tests/testcase.py",
+        "packages/python/tests/vector_case.py",
+        "tests/conformance/runner_python.py",
+        "tests/dbspec/compare/python.py",
+        "tests/interfaces/python.py"
+      ],
       "command": "packages/python/.venv/bin/python",
       "env": []
     },
@@ -82,6 +99,12 @@
       "implementations": ["rust"],
       "reason": "Each test here checks the structure of the Rust implementation itself: its planner, codecs, build tool and schema modules. The shared interface has no counterpart for them, so the profile holds the rust implementation only.",
       "spec": ["contracts/interfaces.json#/languages/rust"]
+    },
+    {
+      "name": "python-internal",
+      "implementations": ["python"],
+      "reason": "The Python tests of the implementation's own structure: its harness, packaging, installation, driver adapters and helpers. They check code that implements no shared vector or interface, so no other implementation has a counterpart and only python binds them.",
+      "spec": ["docs/spec/parity.md#implementation-internal-tests"]
     }
   ],
   "suites": [
@@ -981,7 +1004,271 @@
     {"id": "rust-integration-coverage-transactions-coverage-transaction-rollback", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/coverage_transactions.rs", "id": "coverage_transactions::coverage_transaction_rollback"}]},
     {"id": "rust-integration-coverage-transactions-coverage-transaction-savepoint", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/coverage_transactions.rs", "id": "coverage_transactions::coverage_transaction_savepoint"}]},
     {"id": "rust-integration-result-chains-generated-model-result-chains-preserve-assigned-values", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/result_chains.rs", "id": "result_chains::generated_model_result_chains_preserve_assigned_values"}]},
-    {"id": "rust-benchmark-native-insert-email-is-an-aes-hex-envelope", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "benchmarks/rust/src/native.rs", "id": "tests::insert_email_is_an_aes_hex_envelope"}]}
+    {"id": "rust-benchmark-native-insert-email-is-an-aes-hex-envelope", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "benchmarks/rust/src/native.rs", "id": "tests::insert_email_is_an_aes_hex_envelope"}]},
+    {
+      "id": "py-codec-vector", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/codec_vector.py", "id": "test_error_cases" }]
+    },
+    {
+      "id": "py-connection-config", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/connection_config.py", "id": "test_statement_timeout" }]
+    },
+    {
+      "id": "py-connection-pool", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/connection_pool.py", "id": "test_options" }]
+    },
+    {
+      "id": "py-connection-utc", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/connection_utc.py", "id": "test_connections_use_utc" }]
+    },
+    {
+      "id": "py-coverage-case-test", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_case_test.py", "id": "test_runs_requested_cases_in_order" }]
+    },
+    {
+      "id": "py-dbspec-apply", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/dbspec_apply.py", "id": "test_sqlite_scenarios" }]
+    },
+    {
+      "id": "py-dbspec-cases", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/dbspec_cases.py", "id": "test_position_is_frozen_with_tuple_path" }]
+    },
+    {
+      "id": "py-decimal-model-db", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/decimal_model_db.py", "id": "test_setters" }]
+    },
+    {
+      "id": "py-mysql-session", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/mysql_session.py", "id": "test_session_sql_mode" }]
+    },
+    {
+      "id": "py-mysql-tls", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/mysql_tls.py", "id": "test_parameters" }]
+    },
+    {
+      "id": "py-replica", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/replica.py", "id": "test_read_only" }]
+    },
+    {
+      "id": "py-schema-inspection", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/schema_inspection.py", "id": "test_sqlite" }]
+    },
+    {
+      "id": "py-test-add-tables-and-columns", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_add_tables_and_columns.py", "id": "test_adds_the_new_table_and_the_nullable_column" }]
+    },
+    {
+      "id": "py-test-add-tables-steps", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_add_tables_steps.py", "id": "test_a_new_table_and_a_nullable_column_are_added_as_one_plan" }]
+    },
+    {
+      "id": "py-test-aes-rotate", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_aes_rotate.py", "id": "test_rotates_every_row_not_at_the_current_version" }]
+    },
+    {
+      "id": "py-test-aggregate-numeric-driver-values", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_aggregate_numeric_driver_values.py", "id": "test_decimal_and_text_give_the_same_value" }]
+    },
+    {
+      "id": "py-test-alias-columns", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_alias_columns.py", "id": "test_alias_column_is_keyed_by_its_snake_case_name" }]
+    },
+    {
+      "id": "py-test-collection", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_collection.py", "id": "test_get_has_and_fetched_read_the_stored_key" }]
+    },
+    {
+      "id": "py-test-dbspec-analyze", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_dbspec_analyze.py", "id": "test_header_only" }]
+    },
+    {
+      "id": "py-test-dbspec-cases-reader", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_dbspec_cases_reader.py", "id": "test_rejects_missing_and_unknown_fields" }]
+    },
+    {
+      "id": "py-test-dbspec-render-dialect", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_dbspec_render_dialect.py", "id": "test_unknown_dialect_is_a_type_error" }]
+    },
+    {
+      "id": "py-test-dbspec-syntax-file", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_dbspec_syntax_file.py", "id": "test_the_file_holds_a_case_for_every_input" }]
+    },
+    {
+      "id": "py-test-decimal-model-sqlite-ddl", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_decimal_model_sqlite_ddl.py", "id": "test_a_sqlite_decimal_column_is_scaled_integer_storage" }]
+    },
+    {
+      "id": "py-test-driver-cells", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_driver_cells.py", "id": "test_decimal_and_newdecimal_cells_are_their_exact_text" }]
+    },
+    {
+      "id": "py-test-driver-errors", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_driver_errors.py", "id": "test_a_duplicate_unique_key_is_duplicate_key" }]
+    },
+    {
+      "id": "py-test-event-placeholders", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_event_placeholders.py", "id": "test_clock_and_secret_binds_are_shown_as_placeholders" }]
+    },
+    {
+      "id": "py-test-install-lock", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_install_lock.py", "id": "test_install_python_installs_the_lock_with_hashes" }]
+    },
+    {
+      "id": "py-test-installed-differences", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_installed_differences.py", "id": "test_an_equal_set_has_no_difference" }]
+    },
+    {
+      "id": "py-test-introspect-messages", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_introspect_messages.py", "id": "test_a_column_without_check_is_quoted_as_the_empty_string" }]
+    },
+    {
+      "id": "py-test-key-prefix", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_key_prefix.py", "id": "test_key_prefix_names_resolve_without_a_scan" }]
+    },
+    {
+      "id": "py-test-load-set", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_load_set.py", "id": "test_returns_the_documents_with_the_external_ones_marked" }]
+    },
+    {
+      "id": "py-test-markdown", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_markdown.py", "id": "test_parse_markdown_dsn" }]
+    },
+    {
+      "id": "py-test-model-fields", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_model_fields.py", "id": "test_field_types" }]
+    },
+    {
+      "id": "py-test-model-json-text", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_model_json_text.py", "id": "test_a_row_writes_the_stored_ordered_json_text_in_row_order" }]
+    },
+    {
+      "id": "py-test-mysql-found-rows", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_mysql_found_rows.py", "id": "test_connection_asks_for_found_rows" }]
+    },
+    {
+      "id": "py-test-new-values", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_new_values.py", "id": "test_created_model_writes_its_attached_value" }]
+    },
+    {
+      "id": "py-test-no-path-change", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_no_path_change.py", "id": "test_refuses_a_path_change" }]
+    },
+    {
+      "id": "py-test-orm-gen", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_orm_gen.py", "id": "test_generated_module_imports_and_builds_the_model" }]
+    },
+    {
+      "id": "py-test-packaging", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_packaging.py", "id": "test_every_package_data_key_names_a_package_under_src" }]
+    },
+    {
+      "id": "py-test-placeholders", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_placeholders.py", "id": "test_question_marks_become_format_markers_in_order" }]
+    },
+    {
+      "id": "py-test-query-methods", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_query_methods.py", "id": "test_every_query_method_is_declared_and_typed" }]
+    },
+    {
+      "id": "py-test-related-output", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_related_output.py", "id": "test_relation_model_is_written_under_its_relation_name" }]
+    },
+    {
+      "id": "py-test-remove-columns", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_remove_columns.py", "id": "test_keys_and_the_added_column_only" }]
+    },
+    {
+      "id": "py-test-request-hook", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_request_hook.py", "id": "test_without_hook" }]
+    },
+    {
+      "id": "py-test-requires-python", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_requires_python.py", "id": "test_requires_python_is_the_minor_release_of_mise_python" }]
+    },
+    {
+      "id": "py-test-rollback-fault", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_rollback_fault.py", "id": "test_the_fault_reports_the_next_failed_rollback" }]
+    },
+    {
+      "id": "py-test-row-lock-event", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_row_lock_event.py", "id": "test_row_lock_take_names_the_row_lock_table" }]
+    },
+    {
+      "id": "py-test-schema-inspection", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_schema_inspection.py", "id": "test_stats_report_the_pool_of_the_db" }]
+    },
+    {
+      "id": "py-test-schema-install-uses", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_schema_install_uses.py", "id": "test_a_schema_text_with_use_lines_is_a_schema_text" }]
+    },
+    {
+      "id": "py-test-schema-install", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_schema_install.py", "id": "test_a_database_that_differs_from_the_set_is_config" }]
+    },
+    {
+      "id": "py-test-schema-utils", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_schema_utils.py", "id": "test_schema_returns_the_schema_tools_of_the_connection" }]
+    },
+    {
+      "id": "py-test-sqlite-version", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_sqlite_version.py", "id": "test_refuses_older_than_3_46" }]
+    },
+    {
+      "id": "py-test-sqlite", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_sqlite.py", "id": "test_write_cycle" }]
+    },
+    {
+      "id": "py-test-statement-fault-entry", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_statement_fault_entry.py", "id": "test_the_package_entry_point_does_not_export_the_fault" }]
+    },
+    {
+      "id": "py-test-styled-sql-null", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_styled_sql_null.py", "id": "test_root_row_reads_sql_null_as_styled_value" }]
+    },
+    {
+      "id": "py-test-subqueries", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_subqueries.py", "id": "test_read_total_is_the_sum_of_the_correlated_rows" }]
+    },
+    {
+      "id": "py-test-subscriber-error", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_subscriber_error.py", "id": "test_an_orm_error_of_a_subscriber" }]
+    },
+    {
+      "id": "py-test-terminal-by", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_terminal_by.py", "id": "test_terminal_by_after_a_condition_counts_the_joined_rows" }]
+    },
+    {
+      "id": "py-test-testcase", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_testcase.py", "id": "test_go_duration_form" }]
+    },
+    {
+      "id": "py-test-utils-statements", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_utils_statements.py", "id": "test_advisory_lock_statement_uses_numbered_markers" }]
+    },
+    {
+      "id": "py-test-utils", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_utils.py", "id": "test_local_value_is_readable_inside_the_transaction" }]
+    },
+    {
+      "id": "py-test-values", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_values.py", "id": "test_ir_carry_name_and_parameters" }]
+    },
+    {
+      "id": "py-result-python", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "tests/conformance/result_python.py", "id": "test_encodes_the_go_layout" }]
+    },
+    {
+      "id": "py-test-python-extractor", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "tests/interfaces/test_python_extractor.py", "id": "test_public_names_match_the_symbol_file" }]
+    },
+    {
+      "id": "py-test-python-natives", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "tests/interfaces/test_python_natives.py", "id": "test_every_entity_rule_names_a_python_method_of_the_snapshot" }]
+    },
+    {
+      "id": "py-ir-answers", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/ir_answers.py", "id": "one" }]
+    }
   ],
   "errors": {
     "profile": "client",
