@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c4744b90e520b65d81d2f13ae262c176926964ac4ca7fdb591384fb3d5f68cd7 -->
+<!-- source-sha256: caad8ffa6601e983759b52ac272d981bab494b083b032a74586ec8f910d6d9e8 -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript build가 project reference로 language package를 LSP보다 먼저 build한다. (#T187)
 - dialect 사실이 각 database에서 RESTRICT 검사의 행 순서를 기록한다. (#T100)
 - PHP rollback test가 session 수가 아니라 connection id로 session을 찾는다. (#T53)
 - PHP extension이 자기 package에서 dbspec sets와 schema-definition suite를 실행한다. (#T111)

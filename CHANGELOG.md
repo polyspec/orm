@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The TypeScript build orders the language package before the LSP by project references. (#T187)
 - The dialect facts record the row order of RESTRICT checks on each database. (#T100)
 - A PHP rollback test finds its session by connection id, not by a count of sessions. (#T53)
 - The PHP extension runs the dbspec sets and schema-definition suites from its own package. (#T111)
