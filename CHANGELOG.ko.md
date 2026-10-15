@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 793f1613ac2da94f0b91872f49d71b82b189f7b94f9d46a08c22ff4ab06835ee -->
+<!-- source-sha256: ed93c56cdeb7574d40b6a7625c80cd06c6aa9409b6b8f1241510d19699d02d1e -->
 # 변경 이력
 
 ## Unreleased
 
+- parity가 PHP extension을 build하고 모든 PHP binding을 통과한다. (#T148-3-8)
 - Python conformance runner가 test로 실행된다. (#T148-3-6)
 - feature-coverage binding이 모든 case를 id로 실행한다. (#T148-3-5)
 - 각 parity binding이 suite 하나를 실행한다. (#T148-3-4)
