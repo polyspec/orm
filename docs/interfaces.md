@@ -199,7 +199,7 @@ Utilities that change data open a transaction when none is active and join the a
 
 ## 7. Planning and assembly — IF-18 to IF-20
 
-`Request` contains the schema hash, IR version, entity, predicate tree, relation requests, projection, and parameter count. Parameter values are stored separately from the request shape. The client planner produces an immutable plan with dialect-specific SQL and positional assembly metadata. The four planners produce the same SQL for the same request; the conformance vectors check this.
+`Request` contains the schema hash, IR version, entity, predicate tree, relation requests, projection, and parameter count. Parameter values are stored separately from the request shape. The client planner produces an immutable plan with dialect-specific SQL and positional assembly metadata. The five planners produce the same SQL for the same request; the conformance vectors check this.
 
 Assembly uses `{alias, column, output_name, index}`. Join aliases remain separate from the root namespace. Duplicate output names return `COLUMN_ALIAS_CONFLICT`. A schema hash mismatch returns `SCHEMA_HASH_MISMATCH` before execution.
 
@@ -300,7 +300,7 @@ flowchart LR
 
 The verification suite checks the manifest, generated symbols, stored fields, request shape, state transitions, error codes, codec vectors, relation results, and database results. It also checks document pairs, static Pages output with its Mermaid sources, and repeated-build bytes.
 
-The interface check rejects a declared or called `multi_statement` method in Go, PHP, Rust, and TypeScript source. Its source mutation cases verify both failures. The CI workflow runs the generated Go model, interface, and schema checks; a test fails if any command is removed.
+The interface check rejects a declared or called `multi_statement` method in Go, PHP, Rust, TypeScript, and Python source. Its source mutation cases verify both failures. The CI workflow runs the generated Go model, interface, and schema checks; a test fails if any command is removed.
 
 A passing symbol check proves the declared surface only. A passing conformance vector proves the tested input and result. A feature is complete only when all supported clients, required databases, tests, documents, and Pages checks pass.
 
@@ -393,7 +393,7 @@ while MySQL TINYINT and SQLite INTEGER storage return integer 0/1 rather than
 inventing a distinct native boolean type. SQLite storage class is owner-tested.
 These are bind semantics, not protection from column/server coercion: mutation
 execution still needs schema validation, strict post-write verification and
-rollback/conflict handling. Native Rust tooling does not prove four-client writes.
+rollback/conflict handling. Native Rust tooling does not prove the writes of every client.
 
 ### Rust row-edit baselines
 
@@ -487,7 +487,7 @@ transaction, compare the original descriptor/row, then perform typed writes.
 The descriptor is not a complete physical schema revision and cannot detect ABA.
 Prepared native types may be data-dependent; compare projection names and the
 native descriptor, not prepared type names as schema revisions. Rust native
-tooling scope does not establish four-client mutation conformance.
+tooling scope does not establish the mutation conformance of every client.
 
 ### Qualified Rust table pages
 

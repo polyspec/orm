@@ -1,8 +1,8 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 0a9b297b5e5794cca3728af9d85fbcfa83b02b0ca4412a42f8795d8a769a8edf -->
+<!-- source-sha256: d1d8688782080c37ddc5cd8cc0ce841c6b3199315ec9737f6717f153816aa4fb -->
 # 사용법
 
-하나의 dbspec document set에서 Go·PHP·Rust·TypeScript 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
+하나의 dbspec document set에서 Go·PHP·Rust·TypeScript·Python 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
 대상 DB는 MySQL 8(기본), PostgreSQL 12+, SQLite 3.46+.
 
 쿼리는 생성된 모델에서 시작하고 `connect`로 열린 데이터베이스 연결을 받는다. 트랜잭션 콜백 안에서 `connect`를 호출하지 않은 모델은 활성 트랜잭션을 사용한다.
@@ -172,7 +172,7 @@ await master.utils().schema().install(SCHEMA);
 
 ## 5. 읽기
 
-메서드 명칭은 공통이며 표기만 다르다(PHP·TypeScript `camelCase` / Go `PascalCase` / Rust `snake_case`).
+메서드 명칭은 공통이며 표기만 다르다(PHP·TypeScript `camelCase` / Go `PascalCase` / Rust·Python `snake_case`).
 
 ```php
 $rows = (new Author)->connect($slave1)
@@ -214,7 +214,7 @@ const rows = await new Author().connect(slave1)
 - PHP 생성 모델 getter도 스타일이 없는 컬럼을 조회하거나 대입하지 않고 읽으면 `COLUMN_UNSELECTED`를 반환하며, 선택한 SQL NULL과 명시적으로 대입한 값은 계속 읽을 수 있다.
 - 종단 작업: `get`은 행 하나를 반환하며 일치하는 행이 없으면 `NO_ROWS`를 반환한다. `gets`는 컬렉션을 반환하며 일치하는 행이 없으면 빈 컬렉션이다. `getCount`는 개수를 반환한다.
 - 컬렉션은 PK 또는 `keyName<Col>()`을 키로 하는 순서 있는 맵이다. `first()`, `count()`, `toArray()`를 제공하며 순회하면 `key => row`가 나온다.
-- `toArray()`는 컬렉션 순서대로 행을 맵 목록으로 반환한다. Go는 `rows.ToArray()`, Rust는 `rows.to_array()`, PHP는 `$rows->toArray()`, TypeScript는 `rows.toArray()`를 사용한다. 순회는 키와 키 타입을 유지한다.
+- `toArray()`는 컬렉션 순서대로 행을 맵 목록으로 반환한다. Go는 `rows.ToArray()`, Rust는 `rows.to_array()`, PHP는 `$rows->toArray()`, TypeScript는 `rows.toArray()`, Python은 `rows.to_array()`를 사용한다. 순회는 키와 키 타입을 유지한다.
 
 ### 집계와 그룹
 
@@ -439,7 +439,7 @@ $b->getJsonSetting()['a'];
 - `transaction`은 연결에서의 transaction 번호다: 바깥 begin마다(deadlock 뒤의 재시도와 foreign key를 끈 채 table을 다시 만드는 SQLite transaction 포함) 1부터 다음 번호를 받고, begin부터 commit이나 rollback까지의 모든 statement가 그 번호를 가진다. transaction 밖의 statement는 번호가 없다.
 - `error`는 statement가 끝난 오류이며 operation이 보고하는 code를 가진다. 성공하면 없다. 돌려받은 행을 decode하지 못한 것은 statement의 오류가 아니다.
 
-client는 statement가 끝난 뒤 operation이 이어지기 전에 subscriber를 등록 순서대로 동기 호출한다. 연결의 모든 handle(Go `WithContext`, TypeScript `withSignal`, Rust clone)이 subscriber를 공유한다. subscriber가 없으면 client는 목록이 빈 것만 확인한다. subscriber는 실패하면 안 된다: subscriber가 오류를 돌려주거나(Go, Rust) 예외를 던지면(PHP, TypeScript) 남은 subscriber는 실행되지 않고 operation은 그 오류를 cause로 가진 `SUBSCRIBER`로 실패한다. statement의 효과는 남으며, transaction 안에서는 callback이 그 오류를 받는다.
+client는 statement가 끝난 뒤 operation이 이어지기 전에 subscriber를 등록 순서대로 동기 호출한다. 연결의 모든 handle(Go `WithContext`, TypeScript `withSignal`, Python `with_request_hook`, Rust clone)이 subscriber를 공유한다. subscriber가 없으면 client는 목록이 빈 것만 확인한다. subscriber는 실패하면 안 된다: subscriber가 오류를 돌려주거나(Go, Rust) 예외를 던지면(PHP, TypeScript, Python) 남은 subscriber는 실행되지 않고 operation은 그 오류를 cause로 가진 `SUBSCRIBER`로 실패한다. statement의 효과는 남으며, transaction 안에서는 callback이 그 오류를 받는다.
 
 모든 client는 같은 transaction 제어 statement를 실행한다:
 

@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 77f95e750eebbf2b13dfff086bd72013adbfb2a6fbb030e2b3adfa7dd9faeb09 -->
+<!-- source-sha256: 585ba1057a7aea3ab8758776a65ca84759a782db3512848ef46e2916a0e000ed -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -200,7 +200,7 @@ classDiagram
 
 ## 7. 계획과 조립 — IF-18 ~ IF-20
 
-`Request`는 schema hash, IR version, entity, predicate tree, relation request, projection, parameter count를 포함한다. parameter 값은 request shape와 분리한다. 클라이언트 플래너는 dialect SQL과 위치 기반 조립 정보를 포함한 immutable plan을 만든다. 네 플래너는 같은 요청에서 같은 SQL을 만들며, conformance 벡터가 이를 검사한다.
+`Request`는 schema hash, IR version, entity, predicate tree, relation request, projection, parameter count를 포함한다. parameter 값은 request shape와 분리한다. 클라이언트 플래너는 dialect SQL과 위치 기반 조립 정보를 포함한 immutable plan을 만든다. 다섯 플래너는 같은 요청에서 같은 SQL을 만들며, conformance 벡터가 이를 검사한다.
 
 조립은 `{alias, column, output_name, index}`를 사용한다. join alias는 root namespace와 분리한다. 출력 이름이 중복되면 `COLUMN_ALIAS_CONFLICT`다. schema hash가 다르면 실행 전에 `SCHEMA_HASH_MISMATCH`다.
 
@@ -301,7 +301,7 @@ flowchart LR
 
 검증 도구는 manifest, 생성 symbol, 저장 필드, request shape, 상태 전이, 오류 code, codec vector, relation 결과, database 결과를 검사한다. 문서 쌍, Mermaid 소스를 포함한 정적 Pages 결과, 반복 빌드 byte도 검사한다.
 
-인터페이스 검사는 Go, PHP, Rust, TypeScript 소스에 `multi_statement` 메서드가 선언되거나 호출되면 실패한다. 소스 변경 사례는 두 실패를 검증한다. CI 작업은 생성 Go 모델, 인터페이스, 스키마 검사를 실행하며 명령이 하나라도 제거되면 테스트가 실패한다.
+인터페이스 검사는 Go, PHP, Rust, TypeScript, Python 소스에 `multi_statement` 메서드가 선언되거나 호출되면 실패한다. 소스 변경 사례는 두 실패를 검증한다. CI 작업은 생성 Go 모델, 인터페이스, 스키마 검사를 실행하며 명령이 하나라도 제거되면 테스트가 실패한다.
 
 symbol 검사 통과는 선언된 표면만 증명한다. 적합성 벡터 통과는 검사한 입력과 결과만 증명한다. 모든 지원 client, 필요한 database, 테스트, 문서, Pages 검사를 통과해야 기능을 완료로 표시한다.
 
@@ -384,7 +384,7 @@ Boolean bind는 SQLx bool을 사용하며 PostgreSQL grid는 Boolean을 유지�
 MySQL TINYINT·SQLite INTEGER 저장은 별도 네이티브 boolean 타입을 만들어내지
 않고 정수 0/1을 반환한다. SQLite 저장 클래스는 소유 테스트로 검증한다.
 이는 bind 의미이며 컬럼/서버 강제 변환 방지가 아니다. 변경 실행은 스키마 검증·
-엄격한 쓰기 후 검증·rollback/충돌 처리가 필요하다. Rust 도구는 4클라이언트 쓰기
+엄격한 쓰기 후 검증·rollback/충돌 처리가 필요하다. Rust 도구는 모든 클라이언트의 쓰기
 근거가 아니다.
 
 ### Rust 행 편집 기준
@@ -465,7 +465,7 @@ scale·바이너리·생성 컬럼 원본 값이 포함된다. 이 순수 API는
 descriptor/원본 행을 비교한 뒤 타입형 쓰기를 수행해야 한다. descriptor는 완전한
 물리 스키마 revision이 아니며 ABA를 감지하지 못한다. prepared 타입은 데이터에
 의존할 수 있으므로 스키마 revision으로 삼지 않고 projection 이름과 네이티브
-descriptor를 비교한다. Rust 네이티브 범위는 4클라이언트 변경 적합성 근거가 아니다.
+descriptor를 비교한다. Rust 네이티브 범위는 모든 클라이언트의 변경 적합성 근거가 아니다.
 
 ### 한정된 Rust 테이블 페이지
 

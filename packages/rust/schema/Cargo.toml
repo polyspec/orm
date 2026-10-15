@@ -62,6 +62,11 @@ path = "tests/dbspec_set.rs"
 harness = false
 
 [[test]]
+name = "dbspec_set_parse"
+path = "tests/dbspec_set_parse.rs"
+harness = false
+
+[[test]]
 name = "dbspec_show_create"
 path = "tests/dbspec_show_create.rs"
 harness = false

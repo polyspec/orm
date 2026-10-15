@@ -137,12 +137,14 @@ func TestInsertPartsFixture(t *testing.T) {
 		t.Fatal("insert_parts.json has no cases")
 	}
 	for _, c := range doc.Cases {
-		if c.Operation != "insert_parts" {
-			t.Fatalf("%s: unknown operation %q", c.ID, c.Operation)
-		}
-		got := insertParts(c.Input.Rows, insertChunk(c.Input.Driver, c.Input.Columns))
-		if !slices.Equal(got, c.Expected) {
-			t.Errorf("%s: parts %v, want %v", c.ID, got, c.Expected)
-		}
+		t.Run(c.ID, func(t *testing.T) {
+			if c.Operation != "insert_parts" {
+				t.Fatalf("unknown operation %q", c.Operation)
+			}
+			got := insertParts(c.Input.Rows, insertChunk(c.Input.Driver, c.Input.Columns))
+			if !slices.Equal(got, c.Expected) {
+				t.Errorf("parts %v, want %v", got, c.Expected)
+			}
+		})
 	}
 }

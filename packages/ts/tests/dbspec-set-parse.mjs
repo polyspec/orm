@@ -42,15 +42,16 @@ assert.ok(Array.isArray(vectors.cases) && vectors.cases.length > 0, 'set-parse.j
 
 for (const [index, c] of vectors.cases.entries()) {
   const where = `cases[${index}]`;
-  exactKeys(c, ['name', 'owned', 'external', 'documents'], where);
+  exactKeys(c, ['id', 'name', 'owned', 'external', 'documents'], where);
   c.documents.forEach((d, i) => {
     exactKeys(d, ['name', 'external', 'parsed', 'diagnostics'], `${where}.documents[${i}]`);
     d.diagnostics.forEach((x, j) => wantDiagnostic(x, `${where}.documents[${i}].diagnostics[${j}]`));
   });
-  for (const [entry, parse] of [['node', parseDbspecSet], ['browser', browserParseDbspecSet]]) {
-    caseTest(`set-parse ${c.name} ${entry}`, COMPUTE, () => {
+  // One test for each case, named by its id, runs the case through the Node and the browser entry.
+  caseTest(c.id, COMPUTE, () => {
+    for (const [entry, parse] of [['node', parseDbspecSet], ['browser', browserParseDbspecSet]]) {
       const got = parse(c.owned, c.external);
-      assert.equal(got.length, c.documents.length, 'one result per text');
+      assert.equal(got.length, c.documents.length, `${entry}: one result per text`);
       got.forEach((d, i) => {
         const want = c.documents[i];
         assert.equal(d.name ?? '', want.name, `documents[${i}].name`);
@@ -63,6 +64,6 @@ for (const [index, c] of vectors.cases.entries()) {
         }
         assert.deepEqual(d.diagnostics.map((x, j) => stated(x, want.diagnostics[j] ?? {})), want.diagnostics, `documents[${i}].diagnostics`);
       });
-    });
-  }
+    }
+  });
 }

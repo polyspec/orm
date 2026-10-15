@@ -17,7 +17,6 @@ import {
 } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { DATABASE, sections } from '../../../tests/testcase.mts';
-import * as modelModule from '../dist/model.js';
 import { caseName, mysqlConnection, postgresClient, relatedDsn, withCaseDatabase } from './case-database.mjs';
 
 /** Drops the table of a case through the pooler's single database; a failure names the table. */
@@ -565,7 +564,7 @@ async function bindLimitSplitting(db) {
 
 /**
  * A multi-row insert runs as power-of-two parts in row order inside one transaction (docs/protocol.md "Relation
- * steps", contracts/fixtures/insert_parts.json): batches of 1 to 40 rows use the six statements of 1, 2, 4, 8, 16
+ * steps"; the shared cases of contracts/fixtures/insert_parts.json run in insert-parts.mjs): batches of 1 to 40 rows use the six statements of 1, 2, 4, 8, 16
  * and 32 rows, 13 rows run as parts of 8, 4 and 1 and keep their order and ascending keys, and a failing part
  * leaves no row of the call.
  */
@@ -594,12 +593,6 @@ async function insertParts(db) {
   failing[8][CORE].setValue('name', null);
   check(await code(new Service().connect(db).creates(failing)) !== null, 'a null name in the second part fails');
   check(await new Service().connect(db).getCount() === before, 'the failing call leaves no row');
-  const fixture = JSON.parse(await readFile(join(root, 'contracts/fixtures/insert_parts.json'), 'utf8'));
-  for (const c of fixture.cases) {
-    check(c.operation === 'insert_parts', `insert_parts ${c.id}: operation ${c.operation}`);
-    const got = modelModule.insertParts(c.input.rows, c.input.columns, c.input.driver);
-    check(JSON.stringify(got) === JSON.stringify(c.expected), `insert_parts ${c.id}: ${JSON.stringify(got)}, want ${JSON.stringify(c.expected)}`);
-  }
 }
 
 /** A MySQL install inside a transaction returns CONFIG: schema statements commit implicitly. */

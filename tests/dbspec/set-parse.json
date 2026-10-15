@@ -2,6 +2,7 @@
   "schema": 1,
   "cases": [
     {
+      "id": "owned-uses-external",
       "name": "an owned document uses an external one",
       "owned": [
         "dbspec 1 shop\n\nuse core { account }\n\ntable item {\n  seq i64\n  account_seq i64\n  primary key (seq)\n  index ix_item_account (account_seq)\n  foreign key fk_item_account (account_seq) references account (seq) on delete restrict on update restrict\n}\n"
@@ -25,6 +26,7 @@
       ]
     },
     {
+      "id": "repeated-name",
       "name": "a repeated name is the later text's diagnostic and that text is not parsed",
       "owned": [
         "dbspec 1 core\n\ntable account {\n  seq i64\n  primary key (seq)\n}\n",
@@ -54,6 +56,7 @@
       ]
     },
     {
+      "id": "failed-header",
       "name": "a failed header has no name and carries the header diagnostic",
       "owned": [
         "table x {}\n"
@@ -75,6 +78,7 @@
       ]
     },
     {
+      "id": "use-outside-set",
       "name": "a use of a document outside the set is the document's diagnostic",
       "owned": [
         "dbspec 1 lone\n\nuse missing { thing }\n\ntable t {\n  id i64\n  primary key (id)\n}\n"
@@ -96,6 +100,7 @@
       ]
     },
     {
+      "id": "byte-order-mark",
       "name": "a byte order mark stops before the header, so the text has no name",
       "owned": [
         "﻿dbspec 1 bom\n\ntable t {\n  id i64\n  primary key (id)\n}\n"
@@ -117,6 +122,7 @@
       ]
     },
     {
+      "id": "bare-cr-in-header",
       "name": "a bare carriage return in the header line leaves the text without a name",
       "owned": [
         "dbspec 1 crhead\rx\n\ntable t {\n  id i64\n  primary key (id)\n}\n"
@@ -138,6 +144,7 @@
       ]
     },
     {
+      "id": "bare-cr-after-header",
       "name": "a bare carriage return after the header keeps the name",
       "owned": [
         "dbspec 1 crlater\n\ntable t {\r  id i64\n  primary key (id)\n}\n"

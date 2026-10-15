@@ -58,7 +58,7 @@ per database.
 
 The probes are Go tests in shared `tests/`; the conformance checker
 (`tests/conformance/check`) is cross-language infrastructure and is TypeScript.
-The facts belong to the databases, not to a client, so one runner states
+The facts belong to the databases, not to a client, so the Go probes state
 them once. The module already links the MySQL (`go-sql-driver/mysql`),
 PostgreSQL (`pgx`) and SQLite (`modernc.org/sqlite`) drivers, and Go's
 error types expose the MySQL error number and PostgreSQL SQLSTATE that the

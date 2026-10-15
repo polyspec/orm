@@ -1,7 +1,7 @@
 <!-- doc-id: usage -->
 # Usage
 
-Generate Go, PHP, Rust, and TypeScript clients from one dbspec document set and execute the same statement as the same SQL in each client.
+Generate Go, PHP, Rust, TypeScript, and Python clients from one dbspec document set and execute the same statement as the same SQL in each client.
 Supported databases are MySQL 8 by default, PostgreSQL 12+, and SQLite 3.46+.
 
 A query starts with a generated model and receives an opened database connection through `connect`. Inside a transaction callback, a model without `connect` uses the active transaction.
@@ -171,7 +171,7 @@ Each client caches plans by request shape. `connection.utils().schema().install(
 
 ## 5. Reading
 
-Method names are shared; only spelling differs (PHP and TypeScript `camelCase` / Go `PascalCase` / Rust `snake_case`).
+Method names are shared; only spelling differs (PHP and TypeScript `camelCase` / Go `PascalCase` / Rust and Python `snake_case`).
 
 ```php
 $rows = (new Author)->connect($slave1)
@@ -213,7 +213,7 @@ const rows = await new Author().connect(slave1)
 - PHP generated model getters also return `COLUMN_UNSELECTED` when a non-styled column was neither selected nor assigned; selected SQL NULL and explicitly assigned values remain readable.
 - Terminals: `get` returns one row and `NO_ROWS` when no row matches. `gets` returns a collection, which is empty when no row matches. `getCount` returns a count.
 - A collection is an ordered map keyed by PK or `keyName<Col>()`: `first()`, `count()`, and `toArray()` are available, and iteration yields `key => row`.
-- `toArray()` returns the rows as a list of maps in collection order: Go `rows.ToArray()`, Rust `rows.to_array()`, PHP `$rows->toArray()`, and TypeScript `rows.toArray()`. Iteration keeps the keys and their types.
+- `toArray()` returns the rows as a list of maps in collection order: Go `rows.ToArray()`, Rust `rows.to_array()`, PHP `$rows->toArray()`, TypeScript `rows.toArray()`, and Python `rows.to_array()`. Iteration keeps the keys and their types.
 
 ### Aggregates and groups
 
@@ -438,7 +438,7 @@ Every client publishes one event for each statement it sends to the database: th
 - `transaction` is the number of the transaction on the connection: every outermost begin, including a retry after a deadlock and the SQLite transaction that rebuilds tables with foreign keys off, takes the next number from 1, and every statement from its begin to its commit or rollback carries it; a statement outside a transaction has none.
 - `error` is the error the statement ended with, with the code the operation reports; none on success. A failure to decode returned rows is not an error of the statement.
 
-The client calls the subscribers synchronously, in registration order, after the statement ends and before the operation continues. Every handle of the connection (Go `WithContext`, TypeScript `withSignal`, a Rust clone) shares them. With no subscriber the client only finds the list empty. A subscriber must not fail: when one returns an error (Go, Rust) or throws (PHP, TypeScript), the remaining subscribers do not run and the operation fails with `SUBSCRIBER`, whose cause is that error; the statement keeps its effect, and inside a transaction the callback receives the error.
+The client calls the subscribers synchronously, in registration order, after the statement ends and before the operation continues. Every handle of the connection (Go `WithContext`, TypeScript `withSignal`, a Rust clone, Python `with_request_hook`) shares them. With no subscriber the client only finds the list empty. A subscriber must not fail: when one returns an error (Go, Rust) or throws (PHP, TypeScript, Python), the remaining subscribers do not run and the operation fails with `SUBSCRIBER`, whose cause is that error; the statement keeps its effect, and inside a transaction the callback receives the error.
 
 Every client sends the same transaction control statements:
 

@@ -40,35 +40,48 @@ fn check_diagnostics(got: &[Diagnostic], want: &Value, what: &str) {
     }
 }
 
-/// Every case of set-parse.json gives its documents and set diagnostics.
-#[test]
-fn shared_set_parse_vectors() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
+/// One trial for each case of set-parse.json, `shared_set_parse_vectors::<id>`: the case gives its documents and no set
+/// diagnostics.
+fn shared_set_parse_vectors() -> Vec<polyspec_orm_testcase::Trial> {
     let path = vectors_path();
     let file: Value = serde_json::from_slice(&std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).unwrap();
     assert_eq!(file["schema"], 1, "set-parse.json schema");
     let cases = file["cases"].as_array().expect("cases are listed");
     assert!(!cases.is_empty(), "cases are not empty");
-    for case in cases {
-        let name = case["name"].as_str().expect("a case has a name");
-        let owned = texts(&case["owned"], name);
-        let external = texts(&case["external"], name);
-        let owned: Vec<&str> = owned.iter().map(String::as_str).collect();
-        let external: Vec<&str> = external.iter().map(String::as_str).collect();
-        let got = dbspec::parse_set(&owned, &external);
-        assert!(case.get("diagnostics").is_none(), "{name}: a case has no set diagnostics");
-        let want = case["documents"].as_array().expect("documents are listed");
-        assert_eq!(got.len(), want.len(), "{name}: documents");
-        for (i, (g, w)) in got.iter().zip(want).enumerate() {
-            let what = format!("{name}: document {i}");
-            assert_eq!(g.name.as_deref().unwrap_or(""), w["name"].as_str().unwrap(), "{what}: name");
-            assert_eq!(g.external, w["external"].as_bool().unwrap(), "{what}: external");
-            assert_eq!(g.document.is_some(), w["parsed"].as_bool().unwrap(), "{what}: parsed");
-            if let Some(document) = &g.document {
-                assert_eq!(document.external, g.external, "{what}: document external");
-            }
-            check_diagnostics(&g.diagnostics, &w["diagnostics"], &what);
+    cases
+        .iter()
+        .map(|case| {
+            let id = case["id"].as_str().expect("a case has an id").to_owned();
+            let case = case.clone();
+            polyspec_orm_testcase::trial(format!("shared_set_parse_vectors::{id}"), polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE), move || {
+                check_case(&case)
+            })
+        })
+        .collect()
+}
+
+fn check_case(case: &Value) {
+    let name = case["name"].as_str().expect("a case has a name");
+    let owned = texts(&case["owned"], name);
+    let external = texts(&case["external"], name);
+    let owned: Vec<&str> = owned.iter().map(String::as_str).collect();
+    let external: Vec<&str> = external.iter().map(String::as_str).collect();
+    let got = dbspec::parse_set(&owned, &external);
+    assert!(case.get("diagnostics").is_none(), "{name}: a case has no set diagnostics");
+    let want = case["documents"].as_array().expect("documents are listed");
+    assert_eq!(got.len(), want.len(), "{name}: documents");
+    for (i, (g, w)) in got.iter().zip(want).enumerate() {
+        let what = format!("{name}: document {i}");
+        assert_eq!(g.name.as_deref().unwrap_or(""), w["name"].as_str().unwrap(), "{what}: name");
+        assert_eq!(g.external, w["external"].as_bool().unwrap(), "{what}: external");
+        assert_eq!(g.document.is_some(), w["parsed"].as_bool().unwrap(), "{what}: parsed");
+        if let Some(document) = &g.document {
+            assert_eq!(document.external, g.external, "{what}: document external");
         }
+        check_diagnostics(&g.diagnostics, &w["diagnostics"], &what);
     }
-    polyspec_orm_testcase::step(format_args!("{} set parse cases", cases.len()));
+}
+
+fn main() {
+    polyspec_orm_testcase::run(shared_set_parse_vectors());
 }

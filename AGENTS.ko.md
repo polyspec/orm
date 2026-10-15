@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: bc379afdc00c5a12a7ccba75cc02b241638a397c22405913e0c1dd9ac96389bb -->
+<!-- source-sha256: 4d083a4f233f3aad482b33e7e96dfc5c785b5cad5e2cbaab23fb68c3cd2b6397 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -174,8 +174,8 @@ orm 자신의 규칙만 적는다.
   멈춘 case를 끊는 timer, database나 다른 process가 하는 일의 제한, 시간 동작 자체를 확인하는
   테스트는 wall-clock 시간을 잰다.
 - 완료 결과 없이 미완료 항목 수를 늘리기 전에 진행 중인 작업을 완료한다. 지속 적용할 개발 규칙은 이 파일에 두고 구체 산출물과 증거는 체크리스트에 둔다. 체크리스트 검사는 번호 없는 정책·상태 서술을 거부한다.
-- Go, PHP, Rust, TypeScript는 하나의 동작 계약을 공유한다. 데이터베이스 의존 기능은 모든 클라이언트의 MySQL, PostgreSQL, SQLite 실행 증거가 필요하다. 데이터베이스 비의존 기능은 모든 클라이언트의 동등한 실행 사례가 필요하다. 환경 부재나 실행되지 않은 사례는 실패다.
-- Go, PHP, Rust, TypeScript 출력에 선언된 벡터만 정확히 들어 있고 각 결과가 같을 때만 적합성 기대값을 기록한다. 거부된 기록은 기대값 파일을 변경하지 않는다.
+- Go, PHP, Rust, TypeScript, Python은 하나의 동작 계약을 공유한다. 데이터베이스 의존 기능은 모든 클라이언트의 MySQL, PostgreSQL, SQLite 실행 증거가 필요하다. 데이터베이스 비의존 기능은 모든 클라이언트의 동등한 실행 사례가 필요하다. 환경 부재나 실행되지 않은 사례는 실패다.
+- Go, PHP, Rust, TypeScript, Python 출력에 선언된 벡터만 정확히 들어 있고 각 결과가 같을 때만 적합성 기대값을 기록한다. 거부된 기록은 기대값 파일을 변경하지 않는다.
 - 적합성 비교와 기록은 비어 있지 않고 중복 없는 벡터 이름 및 각 데이터베이스 기대값 파일에서 정확히 같은 벡터 이름을 요구한다. 누락되거나 추가된 이름은 오류다.
 - 공통 계획·방언·스키마·오류 동작은 `packages/go/engine/*`, `packages/go/cmd/orm-gen`, 계약 문서에서 정의한다. 클라이언트 동작은 소유하는 `packages/<runtime>/*` 폴더에 구현하고 공통 검증은 `tests/*`, `schema/*`, `scripts/*`에 둔다. 지원하는 모든 클라이언트에서 필요한 실행 사례가 통과하기 전에는 기능을 완료하지 않는다.
 - 기능 coverage 증거는 현재 검사에서 실행한 명령의 정확한 사례 ID와 결과·데이터베이스 상태가 같은 두 번의 실행에서 얻는다. 이름만 있는 테스트 파일이나 저장된 출력은 실행 증거가 아니다. coverage 검사기는 `make feature-coverage`에서, 그 변경 반례 테스트는 `make feature-unit-check`에서 실행한다. `make check`는 검증 명령을 각 명령이 선언한 `shard`(cargo로 Rust를 build하고 실행하는 명령은 `rust`)에 따라 `make feature-verify-rust`와 `make feature-verify-other`에서 실행하고, `make feature-check`는 그 셋을 실행한다.
@@ -186,7 +186,7 @@ orm 자신의 규칙만 적는다.
 - 기존 외부 도구나 라이브러리가 이미 하는 일을 다시 만들지 않는다. 그 생태계의 표준 도구를 있는 그대로 사용하고(예: Python interpreter, 환경, lock은 uv, PHP 의존성은 Composer), 그 도구가 만드는 symbolic link처럼 자기 동작을 받아들인다. 이 저장소의 규칙은 이 저장소가 만드는 것을 다스린다.
 - 경로는 선언적으로(추적 파일에 이름을 적어) 또는 발견(discovery)으로(문서나 script가 밝힌 발견 규칙에 따라) 정하며, 상대 경로로 정하지 않는다.
 - 하나의 `0.0.18` 버전을 개발한다. 공개 클라이언트는 드라이버 인자를 따로 받지 않고 URI scheme이 데이터베이스를 선택하는 DSN URI 하나를 받는다. 실행 시 orm은 클라이언트 라이브러리뿐이며 계획과 실행은 그것을 부르는 프로세스 안에서 이뤄진다.
-- 각 dbspec parser는 `identity` 컬럼이 유일한 기본 키 컬럼이고 type이 `i64`가 아니면 거부한다. 네 클라이언트는 동일한 허용·거부 스키마 사례를 실행한다.
+- 각 dbspec parser는 `identity` 컬럼이 유일한 기본 키 컬럼이고 type이 `i64`가 아니면 거부한다. 모든 dbspec 구현(Go, PHP, PHP extension, TypeScript, Python, Rust)은 동일한 허용·거부 스키마 사례를 실행한다.
 - SQLite 실제 스키마 가져오기는 `INTEGER PRIMARY KEY AUTOINCREMENT`만 부호 있는 `i64` 자동 키로 바꾸고 일반 `INTEGER`는 `i32`로 유지한다.
 - 모든 변환은 idempotent하다. parse한 canonical source를 emit하면 byte 단위로 같고, 같은 입력으로 operation을 반복하면 같은 결과와 상태가 된다.
 - 이름은 그것이 하는 일을 말하고, 한 개념은 모든 client에서 한 이름을 쓴다. 이름, prefix, suffix가 동작을 고르지 않는다. 동작은 명시적으로 선언한다.

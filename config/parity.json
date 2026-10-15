@@ -536,6 +536,29 @@
         { "implementation": "rust", "test": "packages/rust/tests/tests/markdown_conformance.rs", "symbol": "markdown_conformance" },
         { "implementation": "typescript", "test": "packages/ts/tests/markdown_conformance.mjs" }
       ]
+    },
+    {
+      "id": "insert-parts", "kind": "suite", "profile": "client",
+      "file": "contracts/fixtures/insert_parts.json", "cases": "$.cases[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "packages/go/orm/shape_test.go", "symbol": "TestInsertPartsFixture" },
+        { "implementation": "php", "test": "packages/php/tests/InsertPartsTest.php", "symbol": "InsertPartsTest::test_case" },
+        { "implementation": "typescript", "test": "packages/ts/tests/insert-parts.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_insert_parts.py" },
+        { "implementation": "rust", "test": "packages/rust/orm/src/model.rs", "symbol": "model::insert_parts_cases" }
+      ]
+    },
+    {
+      "id": "dbspec-set-parse", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/set-parse.json", "cases": "$.cases[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "packages/go/engine/dbspec/parseset_test.go", "symbol": "TestParseSetVectors" },
+        { "implementation": "php", "test": "packages/php/tests/DbspecSetParseTest.php", "symbol": "DbspecSetParseTest::test_set_parse" },
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecSetParseTest.php", "symbol": "DbspecSetParseTest::test_set_parse" },
+        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-set-parse.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/test_dbspec_set_parse.py" },
+        { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_set_parse.rs", "symbol": "shared_set_parse_vectors" }
+      ]
     }
   ],
   "errors": {
@@ -544,8 +567,8 @@
   },
   "languageLists": [
     { "file": "tests/interfaces/contracts/validate.go", "pattern": "^var languages = \\[\\]string\\{(.*)\\}$", "profile": "client" },
-    { "file": "scripts/features/build.mts", "pattern": "^const clients = \\[(.*)\\];$", "profile": "client" },
-    { "file": "scripts/features/check.mts", "pattern": "^const clients = \\[(.*)\\];$", "profile": "client" },
+    { "file": "scripts/features/build.mts", "pattern": "^const clients = \\[(.*)\\] as const;$", "profile": "client" },
+    { "file": "scripts/features/check.mts", "pattern": "^const clients = \\[(.*)\\] as const;$", "profile": "client" },
     { "file": "scripts/features/coverage.mts", "pattern": "^export const languages = \\[(.*)\\];$", "profile": "client" },
     { "file": "scripts/decimal-physical-check.mts", "pattern": "^const languages = \\[(.*)\\];$", "profile": "client" },
     { "file": "tests/conformance/check/main.mts", "pattern": "^export const requiredLanguages = \\[(.*)\\];$", "profile": "client" },
