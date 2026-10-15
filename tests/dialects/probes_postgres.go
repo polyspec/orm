@@ -229,6 +229,13 @@ func postgresProbes() []Probe {
 		p("check.name_table_scope", "CHECK names are scoped to their table", func(e *Env) {
 			e.Exec("CREATE TABLE t1 (a int, CONSTRAINT ck CHECK (a > 0))", "CREATE TABLE t2 (a int, CONSTRAINT ck CHECK (a > 0))")
 		}),
+		p("order.null_last_asc", "an order puts NULL last ascending and first descending; ASC NULLS FIRST and DESC NULLS LAST put it first ascending and last descending", func(e *Env) {
+			e.Exec("CREATE TABLE t (a int)", "INSERT INTO t VALUES (2), (NULL), (1)")
+			e.WantRows("SELECT a FROM t ORDER BY a ASC", "1,2,NULL")
+			e.WantRows("SELECT a FROM t ORDER BY a DESC", "NULL,2,1")
+			e.WantRows("SELECT a FROM t ORDER BY a ASC NULLS FIRST", "NULL,1,2")
+			e.WantRows("SELECT a FROM t ORDER BY a DESC NULLS LAST", "2,1,NULL")
+		}),
 		p("unique.nulls_not_distinct_option", "a unique key accepts several NULLs unless declared NULLS NOT DISTINCT (23505)", func(e *Env) {
 			e.Exec("CREATE TABLE t (a int UNIQUE)", "INSERT INTO t VALUES (NULL), (NULL)", "CREATE TABLE u (a int UNIQUE NULLS NOT DISTINCT)", "INSERT INTO u VALUES (NULL)")
 			e.Fails("INSERT INTO u VALUES (NULL)", "23505")

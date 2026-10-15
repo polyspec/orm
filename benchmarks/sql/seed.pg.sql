@@ -22,3 +22,7 @@ SELECT setval(pg_get_serial_sequence('"service_member"', 'seq'), (SELECT MAX("se
 -- (vector hex_malformed, docs/codec.md "Decoding is exact").
 INSERT INTO "hex_cell" ("seq", "label", "value") VALUES (1, 'white-space', ' 4F'), (2, 'odd-length', '686');
 SELECT setval(pg_get_serial_sequence('"hex_cell"', 'seq'), (SELECT MAX("seq") FROM "hex_cell"));
+
+-- The authors of service 100 hold a price unless their seq is a multiple of 3, so an order
+-- on price meets NULL and values (vector order_nulls, docs/dialects.md).
+UPDATE "author" SET "price" = "seq" % 7 WHERE "service_seq" = 100 AND "seq" % 3 <> 0;

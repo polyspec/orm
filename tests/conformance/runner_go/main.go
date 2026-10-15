@@ -924,6 +924,35 @@ func run() (status int) {
 		clockVectors(run, db)
 	}
 
+	// the seed prices the authors of service 100 except a seq that is a multiple of 3 (benchmarks/sql/seed.*.sql)
+	run("order_nulls", func() (any, error) {
+		asc, err := author().RemoveAllColumns().AddColumnPrice().
+			ServiceSeq(100).AndLtSeq(500).OrderByPriceAsc().OrderBySeqAsc().Gets()
+		if err != nil {
+			return nil, err
+		}
+		desc, err := author().RemoveAllColumns().AddColumnPrice().
+			ServiceSeq(100).AndLtSeq(500).OrderByPriceDesc().OrderBySeqAsc().Gets()
+		if err != nil {
+			return nil, err
+		}
+		perParent := map[string]any{}
+		for _, order := range []string{"asc", "desc"} {
+			child := model.Author().MatchSeqWithUserSeq().RemoveAllColumns().AddColumnPrice()
+			if order == "asc" {
+				child.OrderByPriceAsc()
+			} else {
+				child.OrderByPriceDesc()
+			}
+			users, err := model.User().Connect(db).Relations(child.OrderBySeqAsc().GroupLimit(2)).Seq(100).Gets()
+			if err != nil {
+				return nil, err
+			}
+			perParent[order] = users.ToArray()
+		}
+		return map[string]any{"asc": asc.ToArray(), "desc": desc.ToArray(), "limit_per_parent": perParent}, nil
+	})
+
 	vectors, err := selectVectors(declared, selected)
 	check(err)
 	for _, v := range vectors {

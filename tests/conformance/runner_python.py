@@ -1086,6 +1086,53 @@ def main():
 
     run("clock_compare_six_digits", clock_compare_six_digits)
 
+    def order_nulls():
+        # the seed prices the authors of service 100 except a seq that is a multiple of 3 (benchmarks/sql/seed.*.sql)
+        def priced():
+            return (
+                author()
+                .remove_all_columns()
+                .add_column_price()
+                .service_seq(100)
+                .and_lt_seq(500)
+            )
+
+        asc = [
+            r.to_array()
+            for r in priced().order_by_price_asc().order_by_seq_asc().gets().values()
+        ]
+        desc = [
+            r.to_array()
+            for r in priced().order_by_price_desc().order_by_seq_asc().gets().values()
+        ]
+        per_parent = {}
+        for order in ("asc", "desc"):
+            child = (
+                Author()
+                .match_seq_with_user_seq()
+                .remove_all_columns()
+                .add_column_price()
+            )
+            if order == "asc":
+                child.order_by_price_asc()
+            else:
+                child.order_by_price_desc()
+            users = (
+                User()
+                .connect(db)
+                .relations(child.order_by_seq_asc().group_limit(2))
+                .seq(100)
+                .gets()
+            )
+            per_parent[order] = [u.to_array() for u in users.values()]
+        return {
+            "asc": asc,
+            "desc": desc,
+            "limit_per_parent": per_parent,
+        }
+
+    run("order_nulls", order_nulls)
+
     db.close()
     unknown = [name for name in SELECTED if name not in declared]
     if unknown:
