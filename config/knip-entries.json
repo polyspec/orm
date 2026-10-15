@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "comment": "What make runs or spawns that knip cannot see from the manifests (scripts/kit/lint-ts.mts adds these to knip.json).",
+  "entries": {
+    "docs/.vitepress/config.mts": "the VitePress configuration of the site under docs/, which make docs-build runs with vitepress build docs",
+    "docs/.vitepress/theme/index.ts": "the VitePress theme of the site under docs/, which VitePress loads by its path",
+    "tests/conformance/runner_typescript.mts": "the TypeScript conformance runner, which tests/conformance/check/main.mts spawns",
+    "tests/dbspec/apply/typescript.mts": "the TypeScript apply runner, which the Go physical apply tests spawn",
+    "tests/dbspec/compare/typescript.mts": "the TypeScript compare runner, which tests/dbspec/compare/runners.mts spawns",
+    "tests/dbspec/compare/check.mts": "the dbspec comparison check, which make runs with node",
+    "tests/dbspec/introspect/typescript.mts": "the TypeScript introspect runner, which the Go physical introspect tests spawn",
+    "tests/dbspec/stress.mts": "the writer of the stress documents, which make runs with node",
+    "tests/go-run.mts": "the Go test runner, which the repository checks and the CI spawn",
+    "tests/interfaces/typescript.mts": "the TypeScript declaration extractor, which tests/interfaces/check spawns with its own TypeScript"
+  },
+  "workspaces": {
+    "packages/ts": {
+      "reason": "the TypeScript client @polyspec/orm, a workspace of the root package.json",
+      "entries": {
+        "src/index.ts": "the . export of @polyspec/orm, built to dist/index.js",
+        "tests/*.mjs": "the TypeScript client tests, each run by node from a make target (ts-check/test, client-unit-check, client-db-check and the feature checks of contracts/features.json)",
+        "tests/*.ts": "the type tests of the TypeScript client, which tsc checks through packages/ts/tsconfig.json and orm-gen scans for the models",
+        "src/bin/orm-gen.ts": "the orm-gen command, the bin of @polyspec/orm",
+        "src/testing.ts": "the ./testing export of @polyspec/orm under the orm-test condition",
+        "src/dbspec/entry.ts": "the ./dbspec export of @polyspec/orm",
+        "src/tools/cli.ts": "the dbspec tool command that the dbspec checks run from packages/ts/dist",
+        "src/models/markdown_fixture/models.ts": "the generated models of the Markdown fixture, which the markdown tests load from dist"
+      }
+    },
+    "packages/dbspec-language": {
+      "reason": "the dbspec language service, a workspace of the root package.json",
+      "entries": {
+        "src/index.ts": "the . export of @polyspec/dbspec-language, built to dist/index.js",
+        "src/cli/main.ts": "the dbspec-language command, built by src/cli/tsconfig.json and run by the dbspec-language checks"
+      }
+    },
+    "packages/dbspec-vscode": {
+      "reason": "the VS Code extension of dbspec, a workspace of the root package.json",
+      "entries": {
+        "tests/integration/run.mjs": "the VS Code integration test, which make dbspec-vscode-check runs",
+        "tests/integration/suite/index.cjs": "the suite that @vscode/test-electron loads by path from tests/integration/run.mjs"
+      }
+    }
+  },
+  "ignoreDependencies": {
+    "vue": "the Vue of VitePress, which the site theme (docs/.vitepress/theme/index.ts) imports; vitepress pins it",
+    "mysql2": "the MySQL driver of the TypeScript client (packages/ts), which the root's database checks import through the workspace",
+    "pg": "the PostgreSQL driver of the TypeScript client (packages/ts), which the root's database checks import through the workspace",
+    "@polyspec/ordered-json": "the ordered JSON of the TypeScript client (packages/ts), which the conformance result check imports through the workspace"
+  },
+  "binaries": {
+    "sqlite3": "the SQLite shell that make decimal-bench-sqlite runs (scripts/decimal-bench-sqlite.mts)",
+    "mkfifo": "the POSIX tool that the tests of scripts/features/coverage and scripts/test-servers use to block a child on a pipe",
+    "brew": "Homebrew, which scripts/php/php-min.mts uses to find the lowest supported PHP on macOS",
+    "rustc": "the Rust compiler whose version scripts/repo/check.test.mts reads",
+    "mysql": "the MySQL client that make test-servers and its tests run",
+    "mysqld": "the MySQL server that make test-servers starts",
+    "pg_ctl": "the PostgreSQL control tool that make test-servers runs",
+    "mysql_tzinfo_to_sql": "the MySQL tool that loads the time zone tables for make test-servers"
+  }
+}
