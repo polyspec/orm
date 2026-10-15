@@ -201,6 +201,7 @@ func renderPHP(version string, spans []span) []byte {
 func renderTS(version string, spans []span) []byte {
 	var b strings.Builder
 	b.WriteString(comment("// ", version))
+	b.WriteString("\nimport { present } from '../present.js';\n")
 	b.WriteString("\n/** Go의 unicode 표가 담은 word rune의 닫힌 구간 [lo, hi]이며 오름차순이다. */\n")
 	b.WriteString("export const WORD_RANGES: ReadonlyArray<readonly [number, number]> = [\n")
 	for _, s := range spans {
@@ -211,7 +212,7 @@ func renderTS(version string, spans []span) []byte {
 	b.WriteString("export function containsWordRune(cp: number): boolean {\n")
 	b.WriteString("  let lo = 0;\n  let hi = WORD_RANGES.length;\n")
 	b.WriteString("  while (lo < hi) {\n    const mid = (lo + hi) >>> 1;\n")
-	b.WriteString("    const [first, last] = WORD_RANGES[mid]!;\n")
+	b.WriteString("    const [first, last] = present(WORD_RANGES[mid], 'WORD_RANGES[mid]');\n")
 	b.WriteString("    if (cp < first) hi = mid;\n    else if (cp > last) lo = mid + 1;\n    else return true;\n  }\n")
 	b.WriteString("  return false;\n}\n")
 	return []byte(b.String())

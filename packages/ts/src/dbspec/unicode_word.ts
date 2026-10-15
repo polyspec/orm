@@ -1,7 +1,8 @@
-import { present } from '../present.js';
 // 생성 파일이다. Unicode 17.0.0의 word rune 표다.
 // unicode.IsLetter 또는 unicode.IsDigit이 참인 code point의 닫힌 구간이며 오름차순이고 서로 겹치지 않는다.
 // `go run ./tests/dbspec/unicode -write`가 쓴다. 직접 고치지 않는다.
+
+import { present } from '../present.js';
 
 /** Go의 unicode 표가 담은 word rune의 닫힌 구간 [lo, hi]이며 오름차순이다. */
 export const WORD_RANGES: ReadonlyArray<readonly [number, number]> = [
