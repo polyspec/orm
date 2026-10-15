@@ -228,6 +228,8 @@ caseTest('owner-check creates the databases of its run for a target that reads t
   assert.equal(usesTestEnv(makefile, 'uses'), true);
   assert.equal(usesTestEnv(makefile, 'plain'), false);
   assert.equal(usesTestEnv(makefile, 'absent'), false);
+  // A target whose name holds a slash, such as testcase-check/go, is looked up like any other (T137-1-4-2-2).
+  assert.equal(usesTestEnv(`${makefile}part/db:\n\t$(WITH_TEST_ENV) go test ./b\n`, 'part/db'), true);
   assert.deepEqual(environmentFile("export BENCH_MYSQL_DSN='mysql://root@127.0.0.1:1/orm_owner_1_ab_bench?timezone=%2B00:00'\n\nexport A='b c'\n"),
     { BENCH_MYSQL_DSN: 'mysql://root@127.0.0.1:1/orm_owner_1_ab_bench?timezone=%2B00:00', A: 'b c' });
   assert.throws(() => environmentFile('A=b\n'), /unexpected environment line: A=b/);
