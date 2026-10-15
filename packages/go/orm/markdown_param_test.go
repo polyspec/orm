@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // bindVectors is tests/bind/vectors.json: the shared cases of the bind paths that
@@ -27,6 +28,7 @@ type bindVectors struct {
 // TestBindMessageVectors writes each message case of tests/bind/vectors.json as an
 // IR executor message parameter (docs/protocol.md §5 "Parameters").
 func TestBindMessageVectors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	raw, err := os.ReadFile("../../../tests/bind/vectors.json")
 	if err != nil {
 		t.Fatal(err)
