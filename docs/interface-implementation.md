@@ -47,6 +47,6 @@ Structure checks compare the common methods and stored fields first, then report
 | Rust | `packages/rust/orm` plans and executes through sqlx; `polyspec-orm-build` generates models | `packages/rust/tests/src`, `packages/rust/orm/src/*_test.rs` | `tests/conformance/runner_rust.rs`, `tests/interfaces/rust` |
 | TypeScript | `packages/ts/src` plans and executes through native drivers; generated models are under `packages/ts/src/models` | `packages/ts/tests` | `tests/conformance/runner_typescript.mts`, `tests/interfaces/typescript.mts` |
 
-Each owner test is kept in its client directory. Conformance compares the five outputs and does not replace owner tests; `tests/interfaces/check` verifies the shared declarations and generated artifacts.
+Each owner test is kept in its client directory. An implementation-internal test checks that implementation's own structure; the shared interface has no counterpart. Conformance compares the five outputs and does not replace owner tests; `tests/interfaces/check` verifies the shared declarations and generated artifacts.
 
 These results verify the listed interfaces and scenarios. They do not prove equivalence of every function body or every possible input. Overall progress is tracked in the [checklist](plans/execution-checklist.md).

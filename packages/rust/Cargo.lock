@@ -1535,6 +1535,7 @@ dependencies = [
  "bigdecimal",
  "futures-util",
  "polyspec-orm",
+ "polyspec-orm-build",
  "polyspec-orm-case-clock",
  "polyspec-orm-schema",
  "polyspec-orm-testcase",

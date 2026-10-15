@@ -35,6 +35,8 @@ live-db = ["dep:polyspec-orm", "dep:sqlx", "dep:tokio", "dep:url", "dep:futures-
 # test case가 시작, 결과, 경과 시간과 자기 기한을 보고한다.
 polyspec-orm-testcase = { path = "../testcase" }
 polyspec-orm-case-clock = { path = "../case-clock" }
+# The live-db tests need the feature of this crate: a self dev-dependency enables it for the test targets only.
+polyspec-orm-build = { path = ".", features = ["live-db"] }
 
 [[test]]
 name = "catalog"
