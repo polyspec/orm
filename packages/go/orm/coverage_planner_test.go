@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/engine"
+	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/engine/plan"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/orm"
@@ -29,8 +30,10 @@ type plannerSlot struct {
 	Param *int   `json:"param,omitempty"`
 	Type  string `json:"type,omitempty"`
 	// Precision is the fraction digits of a datetime or time slot.
-	Precision *int     `json:"precision,omitempty"`
-	KeyTypes  []string `json:"key_types,omitempty"`
+	Precision *int `json:"precision,omitempty"`
+	// Length is the n of a varchar(n) param slot.
+	Length   *int     `json:"length,omitempty"`
+	KeyTypes []string `json:"key_types,omitempty"`
 }
 
 // compilePlannerCase는 planner fixture case의 input에 그 case의 schema 문서의
@@ -98,6 +101,10 @@ func compilePlannerCase(t *testing.T, id string) {
 				if slot.ColType == "datetime" || slot.ColType == "time" {
 					precision := slot.Precision
 					s.Precision = &precision
+				}
+				if slot.From == "param" && slot.ColType == "varchar" {
+					length := slot.Length
+					s.Length = &length
 				}
 				slots = append(slots, s)
 			}
@@ -515,4 +522,84 @@ func TestCoveragePlannerRejectsScalarColumnSubqueryWithoutKeyOrder(t *testing.T)
 func TestCoveragePlannerRejectsInSubqueryLimit(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_in_subquery_limit")
+}
+
+// paramUseOut is one use of a parameter as planner.json writes it: the slot's logical type and, for a
+// column slot, the column with its length, precision, scale and nullability.
+type paramUseOut struct {
+	Type      string  `json:"type"`
+	Column    *string `json:"column,omitempty"`
+	Length    *int    `json:"length,omitempty"`
+	Null      *bool   `json:"null,omitempty"`
+	Precision *int    `json:"precision,omitempty"`
+	Scale     *int    `json:"scale,omitempty"`
+}
+
+// paramUsesCase validates the request of a param_uses case of planner.json and compares
+// ir.ParamUses with the expected uses of each parameter.
+func paramUsesCase(t *testing.T, id string) {
+	t.Helper()
+	c := featureFixture(t, "planner", id, "param_uses")
+	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", filepath.FromSlash(c.Schema)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var request ir.Request
+	decodeFixture(t, c.Input, &request)
+	request.ManifestHash = m.ManifestHash
+	if err := ir.Validate(m, &request); err != nil {
+		t.Fatal(err)
+	}
+	got := [][]paramUseOut{}
+	for _, uses := range ir.ParamUses(m, &request) {
+		list := []paramUseOut{}
+		for _, u := range uses {
+			out := paramUseOut{Type: u.Type}
+			if f := u.Column; f != nil {
+				out.Column, out.Length, out.Null, out.Precision, out.Scale = &f.Name, &f.Length, &f.Null, &f.Precision, &f.Scale
+			}
+			list = append(list, out)
+		}
+		got = append(got, list)
+	}
+	var expected struct {
+		Uses [][]paramUseOut `json:"uses"`
+	}
+	decodeFixture(t, c.Expected, &expected)
+	gotJSON, _ := json.Marshal(got)
+	wantJSON, _ := json.Marshal(expected.Uses)
+	if string(gotJSON) != string(wantJSON) {
+		t.Fatalf("param uses:\n got %s\nwant %s", gotJSON, wantJSON)
+	}
+}
+
+// TestCoveragePlannerParamUsesColumnFunction: a parameter compared with a column function takes the
+// function's result type, or the column when the result has the column's type.
+func TestCoveragePlannerParamUsesColumnFunction(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	paramUsesCase(t, "param_uses_column_function")
+}
+
+// TestCoveragePlannerParamUsesInterval: the interval of a relative time function is i32, or f64 for seconds.
+func TestCoveragePlannerParamUsesInterval(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	paramUsesCase(t, "param_uses_interval")
+}
+
+// TestCoveragePlannerParamUsesContains: the value of contains and contains_binary is text.
+func TestCoveragePlannerParamUsesContains(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	paramUsesCase(t, "param_uses_contains")
+}
+
+// TestCoveragePlannerParamUsesIfParent: the value of if_parent takes the parent column.
+func TestCoveragePlannerParamUsesIfParent(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	paramUsesCase(t, "param_uses_if_parent")
+}
+
+// TestCoveragePlannerParamUsesOptimistic: the value of optimistic takes its column.
+func TestCoveragePlannerParamUsesOptimistic(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	paramUsesCase(t, "param_uses_optimistic")
 }

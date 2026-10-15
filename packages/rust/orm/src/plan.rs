@@ -61,6 +61,8 @@ pub struct BindSlot {
     pub key_types: Vec<String>,
     pub precision: i64,
     pub scale: i64,
+    /// varchar(n) slot의 n이다: 값은 n 글자 이하다.
+    pub length: i64,
 }
 
 #[derive(Debug, Clone, Default)]

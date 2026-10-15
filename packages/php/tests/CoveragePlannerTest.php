@@ -10,6 +10,7 @@ require_once __DIR__ . '/coverage_cases.php';
 use Polyspec\Orm\Engine;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\RuntimeModel;
+use Polyspec\Orm\Validator;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
@@ -44,6 +45,10 @@ function plannerCase(string $root, array $fixture, string $id): void
                 }
                 $type = $slot['col_type'] ?? '';
                 $out = ['from' => $slot['from']];
+                // A varchar param slot carries its length.
+                if ($slot['from'] === 'param' && $type === 'varchar') {
+                    $out['length'] = $slot['length'] ?? 0;
+                }
                 if ($slot['from'] === 'param') {
                     $out['param'] = $slot['param'];
                 }
@@ -59,6 +64,31 @@ function plannerCase(string $root, array $fixture, string $id): void
         ], $plan['steps']);
         Assert::assertTrue($statements === $case['expected'][$dialect], "$dialect $id statements " . json_encode($statements));
     }
+}
+
+/** Validates the request of a param_uses case and compares the uses of each parameter. */
+function paramUsesCase(string $root, array $fixture, string $id): void
+{
+    $found = array_values(array_filter($fixture['cases'], static fn(array $c): bool => $c['id'] === $id));
+    Assert::assertTrue(count($found) === 1, "planner.json has " . count($found) . " cases $id");
+    $case = $found[0];
+    Assert::assertTrue($case['operation'] === 'param_uses', "case $id has operation {$case['operation']}");
+    $model = RuntimeModel::build(RuntimeModel::files(["$root/{$case['schema']}"]));
+    $request = ['manifest_hash' => $model->manifestHash] + $case['input'];
+    $validator = new Validator($model);
+    $validator->validate($request);
+    // key는 fixture의 정렬된 key 순서다.
+    $uses = array_map(static fn(array $list): array => array_map(static fn(array $u): array => $u['column'] === null
+        ? ['type' => $u['type']]
+        : [
+            'column' => $u['column']['name'],
+            'length' => $u['column']['length'] ?? 0,
+            'null' => $u['column']['nullable'],
+            'precision' => $u['column']['precision'] ?? 0,
+            'scale' => $u['column']['scale'] ?? 0,
+            'type' => $u['type'],
+        ], $list), $validator->paramUses($request));
+    Assert::assertTrue($uses === $case['expected']['uses'], "$id param uses " . json_encode($uses));
 }
 
 #[Small]
@@ -531,5 +561,40 @@ final class CoveragePlannerTest extends TestCase
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_in_subquery_limit');
+    }
+
+    public function test_param_uses_column_function(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        paramUsesCase($root, $fixture, 'param_uses_column_function');
+    }
+
+    public function test_param_uses_interval(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        paramUsesCase($root, $fixture, 'param_uses_interval');
+    }
+
+    public function test_param_uses_contains(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        paramUsesCase($root, $fixture, 'param_uses_contains');
+    }
+
+    public function test_param_uses_if_parent(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        paramUsesCase($root, $fixture, 'param_uses_if_parent');
+    }
+
+    public function test_param_uses_optimistic(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        paramUsesCase($root, $fixture, 'param_uses_optimistic');
     }
 }

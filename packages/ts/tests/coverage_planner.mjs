@@ -5,6 +5,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Engine, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { paramUses } from '../dist/engine/params.js';
+import { validate } from '../dist/engine/validate.js';
 import { repositoryRoot, runCases } from './coverage_case.mjs';
 
 const fixture = JSON.parse(await readFile(join(repositoryRoot, 'contracts/fixtures/planner.json'), 'utf8'));
@@ -26,7 +28,24 @@ function plannerSlot(slot) {
   const out = slot.from === 'param' ? { from: slot.from, param: slot.param, type: slot.col_type } : { from: slot.from, type: slot.col_type };
   // A datetime or time slot carries its fraction digits.
   if (slot.col_type === 'datetime' || slot.col_type === 'time') out.precision = slot.precision ?? 0;
+  // A varchar param slot carries its length.
+  if (slot.from === 'param' && slot.col_type === 'varchar') out.length = slot.length ?? 0;
   return out;
+}
+
+/** Validates the request of a param_uses case and compares the uses of each parameter. */
+function paramUsesCase(id) {
+  const found = fixture.cases.filter(c => c.id === id);
+  assert.equal(found.length, 1, `planner.json holds case ${id} once`);
+  const c = found[0];
+  assert.equal(c.operation, 'param_uses', `operation of case ${id}`);
+  const { manifest, model } = schemas.get(c.schema);
+  const request = { ...structuredClone(c.input), manifest_hash: manifest.manifestHash };
+  validate(model, request);
+  const uses = paramUses(model, request).map(list => list.map(u => u.column === undefined
+    ? { type: u.type }
+    : { type: u.type, column: u.column.name, length: u.column.length, null: u.column.nullable, precision: u.column.precision, scale: u.column.scale }));
+  assert.deepEqual(uses, c.expected.uses, 'param uses');
 }
 
 /** Compiles the request of a fixture case in every dialect and compares the expectation. */
@@ -117,4 +136,9 @@ await runCases('coverage_planner.mjs', {
   async planner_rejects_scalar_column_subquery_without_limit() { compileCase('planner_rejects_scalar_column_subquery_without_limit'); },
   async planner_rejects_scalar_column_subquery_without_key_order() { compileCase('planner_rejects_scalar_column_subquery_without_key_order'); },
   async planner_rejects_in_subquery_limit() { compileCase('planner_rejects_in_subquery_limit'); },
+  async param_uses_column_function() { paramUsesCase('param_uses_column_function'); },
+  async param_uses_interval() { paramUsesCase('param_uses_interval'); },
+  async param_uses_contains() { paramUsesCase('param_uses_contains'); },
+  async param_uses_if_parent() { paramUsesCase('param_uses_if_parent'); },
+  async param_uses_optimistic() { paramUsesCase('param_uses_optimistic'); },
 }, 60_000);

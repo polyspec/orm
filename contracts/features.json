@@ -4061,7 +4061,12 @@
           "planner_scalar_column_subquery",
           "planner_rejects_scalar_column_subquery_without_limit",
           "planner_rejects_scalar_column_subquery_without_key_order",
-          "planner_rejects_in_subquery_limit"
+          "planner_rejects_in_subquery_limit",
+          "param_uses_column_function",
+          "param_uses_interval",
+          "param_uses_contains",
+          "param_uses_if_parent",
+          "param_uses_optimistic"
         ],
         "owners": {
           "go": {
@@ -4143,7 +4148,12 @@
                     "planner_scalar_column_subquery",
                     "planner_rejects_scalar_column_subquery_without_limit",
                     "planner_rejects_scalar_column_subquery_without_key_order",
-                    "planner_rejects_in_subquery_limit"
+                    "planner_rejects_in_subquery_limit",
+                    "param_uses_column_function",
+                    "param_uses_interval",
+                    "param_uses_contains",
+                    "param_uses_if_parent",
+                    "param_uses_optimistic"
                   ],
                   "symbols": {
                     "planner_statement": "TestCoveragePlannerStatement",
@@ -4210,7 +4220,12 @@
                     "planner_scalar_column_subquery": "TestCoveragePlannerScalarColumnSubquery",
                     "planner_rejects_scalar_column_subquery_without_limit": "TestCoveragePlannerRejectsScalarColumnSubqueryWithoutLimit",
                     "planner_rejects_scalar_column_subquery_without_key_order": "TestCoveragePlannerRejectsScalarColumnSubqueryWithoutKeyOrder",
-                    "planner_rejects_in_subquery_limit": "TestCoveragePlannerRejectsInSubqueryLimit"
+                    "planner_rejects_in_subquery_limit": "TestCoveragePlannerRejectsInSubqueryLimit",
+                    "param_uses_column_function": "TestCoveragePlannerParamUsesColumnFunction",
+                    "param_uses_interval": "TestCoveragePlannerParamUsesInterval",
+                    "param_uses_contains": "TestCoveragePlannerParamUsesContains",
+                    "param_uses_if_parent": "TestCoveragePlannerParamUsesIfParent",
+                    "param_uses_optimistic": "TestCoveragePlannerParamUsesOptimistic"
                   }
                 }
               ]
@@ -4295,7 +4310,12 @@
                     "planner_scalar_column_subquery",
                     "planner_rejects_scalar_column_subquery_without_limit",
                     "planner_rejects_scalar_column_subquery_without_key_order",
-                    "planner_rejects_in_subquery_limit"
+                    "planner_rejects_in_subquery_limit",
+                    "param_uses_column_function",
+                    "param_uses_interval",
+                    "param_uses_contains",
+                    "param_uses_if_parent",
+                    "param_uses_optimistic"
                   ]
                 }
               ]
@@ -4380,7 +4400,12 @@
                     "planner_scalar_column_subquery",
                     "planner_rejects_scalar_column_subquery_without_limit",
                     "planner_rejects_scalar_column_subquery_without_key_order",
-                    "planner_rejects_in_subquery_limit"
+                    "planner_rejects_in_subquery_limit",
+                    "param_uses_column_function",
+                    "param_uses_interval",
+                    "param_uses_contains",
+                    "param_uses_if_parent",
+                    "param_uses_optimistic"
                   ],
                   "symbols": {
                     "planner_statement": "engine::coverage_planner::coverage_planner_statement",
@@ -4447,7 +4472,12 @@
                     "planner_scalar_column_subquery": "engine::coverage_planner::coverage_planner_scalar_column_subquery",
                     "planner_rejects_scalar_column_subquery_without_limit": "engine::coverage_planner::coverage_planner_rejects_scalar_column_subquery_without_limit",
                     "planner_rejects_scalar_column_subquery_without_key_order": "engine::coverage_planner::coverage_planner_rejects_scalar_column_subquery_without_key_order",
-                    "planner_rejects_in_subquery_limit": "engine::coverage_planner::coverage_planner_rejects_in_subquery_limit"
+                    "planner_rejects_in_subquery_limit": "engine::coverage_planner::coverage_planner_rejects_in_subquery_limit",
+                    "param_uses_column_function": "engine::coverage_planner::coverage_param_uses_column_function",
+                    "param_uses_interval": "engine::coverage_planner::coverage_param_uses_interval",
+                    "param_uses_contains": "engine::coverage_planner::coverage_param_uses_contains",
+                    "param_uses_if_parent": "engine::coverage_planner::coverage_param_uses_if_parent",
+                    "param_uses_optimistic": "engine::coverage_planner::coverage_param_uses_optimistic"
                   }
                 }
               ]
@@ -4532,7 +4562,12 @@
                     "planner_scalar_column_subquery",
                     "planner_rejects_scalar_column_subquery_without_limit",
                     "planner_rejects_scalar_column_subquery_without_key_order",
-                    "planner_rejects_in_subquery_limit"
+                    "planner_rejects_in_subquery_limit",
+                    "param_uses_column_function",
+                    "param_uses_interval",
+                    "param_uses_contains",
+                    "param_uses_if_parent",
+                    "param_uses_optimistic"
                   ]
                 }
               ]
@@ -4617,7 +4652,12 @@
                     "planner_scalar_column_subquery",
                     "planner_rejects_scalar_column_subquery_without_limit",
                     "planner_rejects_scalar_column_subquery_without_key_order",
-                    "planner_rejects_in_subquery_limit"
+                    "planner_rejects_in_subquery_limit",
+                    "param_uses_column_function",
+                    "param_uses_interval",
+                    "param_uses_contains",
+                    "param_uses_if_parent",
+                    "param_uses_optimistic"
                   ]
                 }
               ]

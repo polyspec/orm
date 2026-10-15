@@ -3,8 +3,9 @@
 //! 순서(parent slot은 -1), table)가 `expected[dialect]`와 같거나 error code가 `expected.error`와 같아야 한다.
 //! engine의 compile은 crate 안에서만 보이므로 src/engine/mod.rs가 이 file을 unit test module로 둔다.
 use super::ir_request::{members, repository, request, schema};
-use super::{compile, Dialect};
+use super::{compile, param_uses, validate, Dialect};
 use polyspec_orm_case_clock::CaseClock;
+use polyspec_orm_schema::dbspec::Type;
 use serde_json::{json, Value};
 use std::time::Duration;
 
@@ -14,13 +15,17 @@ const CPU_LIMIT: Duration = Duration::from_secs(10);
 const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)];
 
 fn case(id: &str) -> (String, Value, Value) {
+    case_of(id, "compile")
+}
+
+fn case_of(id: &str, operation: &str) -> (String, Value, Value) {
     let path = repository().join("contracts/fixtures/planner.json");
     let fixture: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display())))
         .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     assert_eq!(fixture["feature"], "planner", "{}: feature", path.display());
     let cases: Vec<&Value> = fixture["cases"].as_array().expect("fixture cases").iter().filter(|c| c["id"] == id).collect();
     let [case] = cases.as_slice() else { panic!("{}: case {id} appears {} times", path.display(), cases.len()) };
-    assert_eq!(case["operation"], "compile", "{id}: operation");
+    assert_eq!(case["operation"], operation, "{id}: operation");
     let schema = case["schema"]
         .as_str()
         .filter(|s| !s.is_empty())
@@ -55,6 +60,10 @@ fn run(id: &str) {
                                 // A datetime or time slot carries its fraction digits.
                                 if slot.col_type == "datetime" || slot.col_type == "time" {
                                     out["precision"] = json!(slot.precision);
+                                }
+                                // A varchar param slot carries its length.
+                                if slot.from == "param" && slot.col_type == "varchar" {
+                                    out["length"] = json!(slot.length);
                                 }
                                 out
                             })
@@ -549,4 +558,67 @@ fn coverage_planner_rejects_scalar_column_subquery_without_key_order() {
 fn coverage_planner_rejects_in_subquery_limit() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_rejects_in_subquery_limit");
+}
+
+/// param_uses case: validates the request and compares the uses of each parameter.
+fn run_param_uses(id: &str) {
+    let (at, input, expected) = case_of(id, "param_uses");
+    let manifest = schema(&at);
+    let request = request(&input, &manifest.manifest_hash);
+    validate(&manifest, &request).unwrap_or_else(|e| panic!("{id}: {e}"));
+    let got: Vec<Vec<Value>> = param_uses(&manifest, &request)
+        .iter()
+        .map(|uses| {
+            uses.iter()
+                .map(|u| match u.column {
+                    None => json!({"type": u.ty}),
+                    Some(f) => {
+                        let (length, precision, scale): (u32, u32, u32) = match f.ty {
+                            Type::Varchar(n) => (n.into(), 0, 0),
+                            Type::Decimal(p, s) => (0, p.into(), s.into()),
+                            Type::Time(p) | Type::DateTime(p) => (0, p.into(), 0),
+                            _ => (0, 0, 0),
+                        };
+                        json!({"type": u.ty, "column": f.name, "length": length, "null": f.nullable, "precision": precision, "scale": scale})
+                    }
+                })
+                .collect()
+        })
+        .collect();
+    assert_eq!(json!(got), expected["uses"], "{id}: param uses");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_param_uses_column_function() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run_param_uses("param_uses_column_function");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_param_uses_interval() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run_param_uses("param_uses_interval");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_param_uses_contains() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run_param_uses("param_uses_contains");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_param_uses_if_parent() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run_param_uses("param_uses_if_parent");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_param_uses_optimistic() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run_param_uses("param_uses_optimistic");
 }

@@ -1,7 +1,7 @@
 # 검사된 request를 plan으로 만든다: root와 그 join의 SELECT 문, relation마다
 # parent step의 row에 묶는 별도 statement, INSERT, UPDATE, DELETE 문
 # (docs/protocol.md).
-from polyspec.orm.engine.dialect import value_function_units
+from polyspec.orm.engine.params import function_type, interval_type
 from polyspec.orm.engine.model import Entity, Field, RuntimeModel, entity_of, field_of
 from polyspec.orm.engine.validate import conflict_key, restore_key
 from polyspec.orm.errors import OrmError
@@ -30,6 +30,7 @@ class _Slot:
         "key_types",
         "precision",
         "scale",
+        "length",
     )
 
     def __init__(self, from_, **fields):
@@ -44,6 +45,7 @@ class _Slot:
         self.key_types = None
         self.precision = None
         self.scale = None
+        self.length = None
         for key, value in fields.items():
             setattr(self, key, value)
 
@@ -64,6 +66,8 @@ class _Slot:
             out["precision"] = self.precision
         if self.scale is not None:
             out["scale"] = self.scale
+        if self.length is not None:
+            out["length"] = self.length
         return out
 
 
@@ -108,6 +112,8 @@ class _Builder:
             slot.precision = col.precision
         if col.type == "decimal":
             slot.scale = col.scale
+        if col.type == "varchar":
+            slot.length = col.length
         return self._typed(slot)
 
     def secret(self, name: str) -> str:
@@ -242,18 +248,6 @@ def _conflict_target(ent: Entity, assignments) -> list:
 
 def _style_input_type(style: str) -> str:
     return "text" if style == "ip" else "bytes"
-
-
-def _value_function_arg_type(name: str) -> str:
-    return "f64" if value_function_units.get(name) == "second" else "i32"
-
-
-def _function_type(name: str, col: Field | None) -> str:
-    if name in ("day_of_week", "year", "month"):
-        return "i64"
-    if name == "date":
-        return "date"
-    return (col.type if col is not None else None) or "string"
 
 
 def _placed_joins(group: dict, out: set) -> None:
@@ -601,7 +595,7 @@ class Planner:
             type_ = "string"
             if c.get("fn"):
                 expr = self._column_function(b, s, c["column"], c["fn"])
-                type_ = _function_type(c["fn"]["name"], col)
+                type_ = function_type(c["fn"]["name"], col)
                 col = None
             elif c.get("sub"):
                 expr = f"({self._sub_select(b, s, c['sub'])})"
@@ -810,7 +804,7 @@ class Planner:
             fn = pr["value"]
 
             def arg():
-                return b.param(fn["ps"][0], _value_function_arg_type(fn["name"]))
+                return b.param(fn["ps"][0], interval_type(fn["name"]))
 
             # ORM이 비교하는 clock은 소수 여섯 자리이고, datetime(p < 6) column은 여섯 자리로 늘린 값으로
             # 비교한다(docs/protocol.md "Clock").
@@ -828,7 +822,7 @@ class Planner:
             return f"{lhs} {_cmp(op)} {value}"
         if pr.get("fn"):
             fn_text = self._column_function(b, s, pr["column"], pr["fn"])
-            type_ = _function_type(pr["fn"]["name"], col)
+            type_ = function_type(pr["fn"]["name"], col)
             if op in ("in", "not_in"):
                 listing = ", ".join(b.param(i, type_) for i in pr["ps"])
                 keyword = " NOT IN " if op == "not_in" else " IN "

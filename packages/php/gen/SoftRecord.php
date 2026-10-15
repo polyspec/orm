@@ -23,7 +23,7 @@ final class SoftRecord extends Model
             'audit_record' => '',
             'columns' => [
                 'seq' => ['name' => 'seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => false],
-                'name' => ['name' => 'name', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false],
+                'name' => ['name' => 'name', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false, 'length' => 191],
                 'deleted_at' => ['name' => 'deleted_at', 'type' => 'datetime', 'nullable' => true, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false, 'precision' => 6],
             ],
             'unique' => [],

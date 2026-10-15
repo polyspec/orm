@@ -16,7 +16,7 @@ use Polyspec\Orm\Dbspec\Document;
  * audit, audit_record, columns, unique, indexes]이며 `audit`은 감사 table의 audit
  * column, `audit_record`는 transaction의 audit 기록을 담는 table의 이름이다. column은 [name, type, nullable, default, default_now, select,
  * codec, blind_index, pk, foreign_key]이고 decimal, time, datetime은
- * precision을, decimal은 scale도 가진다. default_now는 default가 `now`임을
+ * precision을, decimal은 scale도, varchar는 length를 가진다. default_now는 default가 `now`임을
  * 뜻한다. generated model의 meta()는 entity에 그 model을 만든 document set의
  * manifest_hash를 더한다.
  */
@@ -301,6 +301,9 @@ final class RuntimeModel
                 case 'time':
                 case 'datetime':
                     $column['precision'] = $c->type->parameters[0];
+                    break;
+                case 'varchar':
+                    $column['length'] = $c->type->parameters[0];
                     break;
             }
             $columns[$c->name] = $column;

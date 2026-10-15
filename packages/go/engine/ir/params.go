@@ -119,7 +119,7 @@ func (u *paramUses) pred(p *Pred, ent *runtimemodel.Entity) {
 	f := ent.Field(p.Column)
 	if p.Value != nil {
 		for _, i := range p.Value.Ps {
-			u.add(i, ParamUse{Type: intervalType(p.Value.Name)})
+			u.add(i, ParamUse{Type: IntervalType(p.Value.Name)})
 		}
 	}
 	if p.Op == "contains" || p.Op == "contains_binary" {
@@ -160,9 +160,9 @@ func FunctionType(name string, f *runtimemodel.Field) string {
 	return "text"
 }
 
-// intervalType is the type of the interval of a relative time function: seconds
+// IntervalType is the type of the interval of a relative time function: seconds
 // take a fraction, the other units an integer.
-func intervalType(name string) string {
+func IntervalType(name string) string {
 	if dialect.ValueFunctionUnits[name] == "second" {
 		return "f64"
 	}

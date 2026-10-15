@@ -8,6 +8,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               },
@@ -34,6 +35,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               },
@@ -60,6 +62,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               },
@@ -131,6 +134,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               }
@@ -147,6 +151,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               }
@@ -163,6 +168,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               }
@@ -203,6 +209,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               }
@@ -219,6 +226,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               }
@@ -235,6 +243,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               }
@@ -275,6 +284,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               }
@@ -291,6 +301,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               }
@@ -307,6 +318,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               }
@@ -469,6 +481,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               },
@@ -490,6 +503,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               },
@@ -511,6 +525,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               },
@@ -555,6 +570,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 1,
                 "type": "varchar"
               },
@@ -576,6 +592,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 1,
                 "type": "varchar"
               },
@@ -597,6 +614,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 1,
                 "type": "varchar"
               },
@@ -648,6 +666,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 32,
                 "param": 0,
                 "type": "varchar"
               },
@@ -674,6 +693,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 32,
                 "param": 0,
                 "type": "varchar"
               },
@@ -700,6 +720,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 32,
                 "param": 0,
                 "type": "varchar"
               },
@@ -753,6 +774,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 32,
                 "param": 0,
                 "type": "varchar"
               },
@@ -763,6 +785,7 @@
               },
               {
                 "from": "param",
+                "length": 32,
                 "param": 1,
                 "type": "varchar"
               }
@@ -779,6 +802,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 32,
                 "param": 0,
                 "type": "varchar"
               },
@@ -789,6 +813,7 @@
               },
               {
                 "from": "param",
+                "length": 32,
                 "param": 1,
                 "type": "varchar"
               }
@@ -805,6 +830,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 32,
                 "param": 0,
                 "type": "varchar"
               },
@@ -815,6 +841,7 @@
               },
               {
                 "from": "param",
+                "length": 32,
                 "param": 1,
                 "type": "varchar"
               }
@@ -994,6 +1021,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               },
@@ -1014,6 +1042,7 @@
               },
               {
                 "from": "param",
+                "length": 0,
                 "param": 4,
                 "type": "varchar"
               },
@@ -1045,6 +1074,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               },
@@ -1065,6 +1095,7 @@
               },
               {
                 "from": "param",
+                "length": 0,
                 "param": 4,
                 "type": "varchar"
               },
@@ -1101,6 +1132,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               },
@@ -1121,6 +1153,7 @@
               },
               {
                 "from": "param",
+                "length": 0,
                 "param": 4,
                 "type": "varchar"
               },
@@ -1260,11 +1293,13 @@
               },
               {
                 "from": "param",
+                "length": 0,
                 "param": 1,
                 "type": "varchar"
               },
               {
                 "from": "param",
+                "length": 0,
                 "param": 2,
                 "type": "varchar"
               },
@@ -1301,21 +1336,25 @@
               },
               {
                 "from": "param",
+                "length": 255,
                 "param": 1,
                 "type": "varchar"
               },
               {
                 "from": "param",
+                "length": 255,
                 "param": 2,
                 "type": "varchar"
               },
               {
                 "from": "param",
+                "length": 0,
                 "param": 1,
                 "type": "varchar"
               },
               {
                 "from": "param",
+                "length": 0,
                 "param": 2,
                 "type": "varchar"
               },
@@ -1357,21 +1396,25 @@
               },
               {
                 "from": "param",
+                "length": 255,
                 "param": 1,
                 "type": "varchar"
               },
               {
                 "from": "param",
+                "length": 255,
                 "param": 2,
                 "type": "varchar"
               },
               {
                 "from": "param",
+                "length": 0,
                 "param": 1,
                 "type": "varchar"
               },
               {
                 "from": "param",
+                "length": 0,
                 "param": 2,
                 "type": "varchar"
               },
@@ -1450,6 +1493,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               },
@@ -1492,6 +1536,7 @@
               },
               {
                 "from": "param",
+                "length": 0,
                 "param": 1,
                 "type": "varchar"
               },
@@ -1512,11 +1557,13 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               },
               {
                 "from": "param",
+                "length": 255,
                 "param": 1,
                 "type": "varchar"
               },
@@ -1554,6 +1601,7 @@
               },
               {
                 "from": "param",
+                "length": 0,
                 "param": 1,
                 "type": "varchar"
               },
@@ -1584,11 +1632,13 @@
             "slots": [
               {
                 "from": "param",
+                "length": 191,
                 "param": 0,
                 "type": "varchar"
               },
               {
                 "from": "param",
+                "length": 255,
                 "param": 1,
                 "type": "varchar"
               },
@@ -1626,6 +1676,7 @@
               },
               {
                 "from": "param",
+                "length": 0,
                 "param": 1,
                 "type": "varchar"
               },
@@ -2141,6 +2192,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 8,
                 "param": 0,
                 "type": "varchar"
               }
@@ -2157,6 +2209,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 8,
                 "param": 0,
                 "type": "varchar"
               },
@@ -2188,6 +2241,7 @@
             "slots": [
               {
                 "from": "param",
+                "length": 8,
                 "param": 0,
                 "type": "varchar"
               },
@@ -3238,6 +3292,7 @@
               },
               {
                 "from": "param",
+                "length": 191,
                 "param": 1,
                 "type": "varchar"
               }
@@ -3259,6 +3314,7 @@
               },
               {
                 "from": "param",
+                "length": 191,
                 "param": 1,
                 "type": "varchar"
               }
@@ -3280,6 +3336,7 @@
               },
               {
                 "from": "param",
+                "length": 191,
                 "param": 1,
                 "type": "varchar"
               }
@@ -3671,11 +3728,13 @@
             "slots": [
               {
                 "from": "param",
+                "length": 36,
                 "param": 0,
                 "type": "varchar"
               },
               {
                 "from": "param",
+                "length": 191,
                 "param": 1,
                 "type": "varchar"
               },
@@ -3733,11 +3792,13 @@
             "slots": [
               {
                 "from": "param",
+                "length": 36,
                 "param": 0,
                 "type": "varchar"
               },
               {
                 "from": "param",
+                "length": 191,
                 "param": 1,
                 "type": "varchar"
               },
@@ -3805,11 +3866,13 @@
             "slots": [
               {
                 "from": "param",
+                "length": 36,
                 "param": 0,
                 "type": "varchar"
               },
               {
                 "from": "param",
+                "length": 191,
                 "param": 1,
                 "type": "varchar"
               },
@@ -4603,6 +4666,303 @@
         }
       },
       "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "uses": [
+          [
+            {
+              "type": "i64"
+            }
+          ],
+          [
+            {
+              "type": "date"
+            }
+          ],
+          [
+            {
+              "column": "name",
+              "length": 191,
+              "null": false,
+              "precision": 0,
+              "scale": 0,
+              "type": "varchar"
+            }
+          ]
+        ]
+      },
+      "id": "param_uses_column_function",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 3,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "created_ts",
+                "fn": {
+                  "name": "year"
+                },
+                "op": "eq",
+                "p": 0
+              }
+            },
+            {
+              "pred": {
+                "column": "start_dt",
+                "conn": "and",
+                "fn": {
+                  "name": "date"
+                },
+                "op": "eq",
+                "p": 1
+              }
+            },
+            {
+              "pred": {
+                "column": "name",
+                "conn": "and",
+                "op": "eq",
+                "p": 2
+              }
+            }
+          ]
+        }
+      },
+      "operation": "param_uses",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "uses": [
+          [
+            {
+              "type": "i32"
+            }
+          ],
+          [
+            {
+              "type": "f64"
+            }
+          ]
+        ]
+      },
+      "id": "param_uses_interval",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 2,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "start_dt",
+                "op": "gt",
+                "value": {
+                  "name": "days_ago",
+                  "ps": [
+                    0
+                  ]
+                }
+              }
+            },
+            {
+              "pred": {
+                "column": "end_dt",
+                "conn": "and",
+                "op": "lt",
+                "value": {
+                  "name": "seconds_later",
+                  "ps": [
+                    1
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "operation": "param_uses",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "uses": [
+          [
+            {
+              "type": "text"
+            }
+          ],
+          [
+            {
+              "type": "text"
+            }
+          ]
+        ]
+      },
+      "id": "param_uses_contains",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 2,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "name",
+                "op": "contains",
+                "p": 0
+              }
+            },
+            {
+              "pred": {
+                "column": "photo_url",
+                "conn": "and",
+                "op": "contains_binary",
+                "p": 1
+              }
+            }
+          ]
+        }
+      },
+      "operation": "param_uses",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "uses": [
+          [
+            {
+              "column": "price",
+              "length": 0,
+              "null": true,
+              "precision": 13,
+              "scale": 3,
+              "type": "decimal"
+            }
+          ],
+          [
+            {
+              "column": "is_close",
+              "length": 0,
+              "null": false,
+              "precision": 0,
+              "scale": 0,
+              "type": "bool"
+            }
+          ]
+        ]
+      },
+      "id": "param_uses_if_parent",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 2,
+        "relations": [
+          {
+            "keys": [
+              {
+                "left": "user_seq",
+                "right": "seq"
+              }
+            ],
+            "kind": "one",
+            "query": {
+              "entity": "user",
+              "if_parent": {
+                "column": "is_close",
+                "p": 1
+              }
+            },
+            "rel": "user"
+          }
+        ],
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "price",
+                "op": "eq",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "param_uses",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "uses": [
+          [
+            {
+              "column": "name",
+              "length": 191,
+              "null": false,
+              "precision": 0,
+              "scale": 0,
+              "type": "varchar"
+            }
+          ],
+          [
+            {
+              "column": "seq",
+              "length": 0,
+              "null": false,
+              "precision": 0,
+              "scale": 0,
+              "type": "i64"
+            }
+          ],
+          [
+            {
+              "column": "updated_ts",
+              "length": 0,
+              "null": false,
+              "precision": 6,
+              "scale": 0,
+              "type": "datetime"
+            }
+          ]
+        ]
+      },
+      "id": "param_uses_optimistic",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "update",
+        "n_params": 3,
+        "optimistic": {
+          "column": "updated_ts",
+          "p": 2
+        },
+        "set": [
+          {
+            "column": "name",
+            "p": 0
+          }
+        ],
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "seq",
+                "op": "eq",
+                "p": 1
+              }
+            }
+          ]
+        }
+      },
+      "operation": "param_uses",
       "schema": "contracts/fixtures/bench/bench.dbs"
     }
   ],

@@ -23,8 +23,8 @@ final class HexCell extends Model
             'audit_record' => '',
             'columns' => [
                 'seq' => ['name' => 'seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => false],
-                'label' => ['name' => 'label', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false],
-                'value' => ['name' => 'value', 'type' => 'varchar', 'nullable' => true, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => ['hex'], 'blind_index' => '', 'pk' => false, 'foreign_key' => false],
+                'label' => ['name' => 'label', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false, 'length' => 32],
+                'value' => ['name' => 'value', 'type' => 'varchar', 'nullable' => true, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => ['hex'], 'blind_index' => '', 'pk' => false, 'foreign_key' => false, 'length' => 64],
             ],
             'unique' => [],
             'indexes' => [],

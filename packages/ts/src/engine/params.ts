@@ -110,6 +110,6 @@ export function functionType(name: string, f: Field | undefined): string {
 }
 
 /** The type of the interval of a relative time function: seconds take a fraction, the other units an integer. */
-function intervalType(name: string): string {
+export function intervalType(name: string): string {
   return valueFunctionUnits[name] === 'second' ? 'f64' : 'i32';
 }

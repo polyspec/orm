@@ -310,7 +310,7 @@ final class Planner
             $type = 'string';
             if (isset($c['fn'])) {
                 $expr = $this->columnFunction($s, $c['column'], $c['fn']);
-                $type = self::functionType($c['fn']['name'], $col);
+                $type = Validator::functionType($c['fn']['name'], $col);
                 $col = null;
             } elseif (isset($c['sub'])) {
                 $expr = '(' . $this->subSelect($b, $s, $c['sub']) . ')';
@@ -507,7 +507,7 @@ final class Planner
             $fn = $p['value']['name'];
             // ORM이 비교하는 clock은 소수 여섯 자리이고, datetime(p < 6) column은 여섯 자리로 늘린 값으로
             // 비교한다(docs/protocol.md "Clock").
-            $value = $this->d->valueFunction($fn, static fn(): string => $b->param($p['value']['ps'][0], self::valueFunctionArgType($fn)), static fn(): string => $b->now(6))
+            $value = $this->d->valueFunction($fn, static fn(): string => $b->param($p['value']['ps'][0], Validator::intervalType($fn)), static fn(): string => $b->now(6))
                 ?? throw self::err(Code::CAPABILITY_UNSUPPORTED, "$fn is not available on {$this->d->name}");
             if (($col['type'] ?? '') === 'datetime' && $fn !== 'today') {
                 $lhs = $this->d->clockOperand($lhs, $col['precision']);
@@ -516,7 +516,7 @@ final class Planner
         }
         if (isset($p['fn'])) {
             $fn = $this->columnFunction($s, $p['column'], $p['fn']);
-            $type = self::functionType($p['fn']['name'], $col);
+            $type = Validator::functionType($p['fn']['name'], $col);
             return match ($op) {
                 'in', 'not_in' => $fn . ($op === 'not_in' ? ' NOT IN ' : ' IN ') . '(' . implode(', ', array_map(static fn(int $i): string => $b->param($i, $type), $p['ps'])) . ')',
                 'between' => $fn . ' BETWEEN ' . $b->param($p['ps'][0], $type) . ' AND ' . $b->param($p['ps'][1], $type),
@@ -618,12 +618,6 @@ final class Planner
     private static function styleInputType(string $style): string
     {
         return $style === 'ip' ? 'text' : 'bytes';
-    }
-
-    /** 상대 시각 함수가 받는 간격 값의 type이다. 초는 소수를, 나머지 단위는 정수를 받는다. */
-    private static function valueFunctionArgType(string $name): string
-    {
-        return (Dialect::VALUE_FUNCTION_UNITS[$name] ?? '') === 'second' ? 'f64' : 'i32';
     }
 
     private function resolvePath(PlanScope $s, string $path): PlanScope
@@ -1040,15 +1034,6 @@ final class Planner
             $sql .= $this->renderOrder($b, $root, $q) . $this->d->limit($q['limit']['offset'] ?? 0, $q['limit']['count']);
         }
         return $sql;
-    }
-
-    private static function functionType(string $name, ?array $col): string
-    {
-        return match ($name) {
-            'day_of_week', 'year', 'month' => 'i64',
-            'date' => 'date',
-            default => $col['type'] ?? 'string',
-        };
     }
 
     private function subType(array $sub): string
