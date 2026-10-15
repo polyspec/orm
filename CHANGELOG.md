@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The MySQL migration fixture removes its temporary root and stops its servers when its setup fails. (#T183)
 - The committed Go models hold the service relation of a service region. (#T85-1)
 - The Rust value test asserts the time rule of T92. (#T92-2)
 - Go matches a bool if_parent by the column logical type, and a conformance vector pins flattened relations. (#T85)
