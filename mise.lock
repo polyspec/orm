@@ -131,7 +131,7 @@ url = "https://nodejs.org/dist/v26.12.0/node-v26.12.0-darwin-x64.tar.gz"
 version = "2.16"
 backend = "pypi:vulture"
 specifiers = ["2.16"]
-uv = { path = ".mise/locks/pypi-vulture/2.16", digest = "sha256:078c80d87b37b45aec32e4224df2baffb79eac9e80fcaf9897423de60c65a723" }
+uv = { path = ".mise/locks/pypi-vulture/2.16", digest = "sha256:23461fb4393ca76adab417d055ed62ae4225b9d83ed3521e2eb3d13fb72b93bd" }
 
 [[tools.python]]
 version = "3.14.8"
