@@ -6857,6 +6857,9 @@
         "packages/python/tests/markdown_conformance.py",
         "packages/rust/tests/tests/markdown_conformance.rs",
         "packages/ts/tests/markdown_conformance.mjs",
+        "packages/go/markdownmodel/ir_answers_test.go",
+        "packages/php/tests/IrAnswersTest.php",
+        "packages/python/tests/ir_answers.py",
         "tests/conformance/check/main.mts",
         "tests/conformance/runner_go/main.go",
         "tests/conformance/runner_go/main_test.go",
@@ -6880,6 +6883,55 @@
         "docs/protocol.md"
       ],
       "verification": [
+        {
+          "id": "ir-answers-go",
+          "command": "node tests/go-test.mts -v -timeout 0 -tags markdown ./packages/go/markdownmodel -run '^TestIRAnswers$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/markdownmodel/ir_answers_test.go",
+            "packages/go/orm/markdown.go",
+            "contracts/fixtures/ir_answers.json"
+          ]
+        },
+        {
+          "id": "ir-answers-php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/IrAnswersTest.php",
+          "shard": "other",
+          "inputs": [
+            "packages/php/tests/IrAnswersTest.php",
+            "packages/php/src/Markdown.php",
+            "contracts/fixtures/ir_answers.json"
+          ]
+        },
+        {
+          "id": "ir-answers-python",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.ir_answers",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/ir_answers.py",
+            "packages/python/src/polyspec/orm/markdown.py",
+            "contracts/fixtures/ir_answers.json"
+          ]
+        },
+        {
+          "id": "ir-answers-typescript",
+          "command": "node --conditions=orm-test packages/ts/tests/markdown_conformance.mjs --ir-answers",
+          "shard": "other",
+          "inputs": [
+            "packages/ts/tests/markdown_conformance.mjs",
+            "contracts/fixtures/ir_answers.json"
+          ]
+        },
+        {
+          "id": "ir-answers-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts ir-answers-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked -p polyspec-orm-tests --test markdown_conformance -- ir_answers::",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/tests/tests/markdown_conformance.rs",
+            "packages/rust/orm/src/markdown.rs",
+            "contracts/fixtures/ir_answers.json"
+          ]
+        },
         {
           "id": "conformance-build",
           "command": "node tests/run-long.mts go-vet/conformance -- go vet -tags ormtest ./tests/conformance/runner_go",

@@ -206,7 +206,7 @@ final class MarkdownConformanceTest extends TestCase
      *
      * @return array<string, Closure(Served): mixed>
      */
-    private static function conformance_cases(): array
+    public static function conformance_cases(): array
     {
         return [
             'insert_one' => static function (Served $s): mixed {
@@ -401,7 +401,7 @@ final class MarkdownConformanceTest extends TestCase
     }
 
     /** 결과를 JSON으로 썼다 읽고 object의 member를 이름 순서로 둔 값이다: cases.json의 expect와 같은 형태다. */
-    private static function normalize(mixed $v): mixed
+    public static function normalize(mixed $v): mixed
     {
         $sorted = static function (mixed $v) use (&$sorted): mixed {
             if (!is_array($v)) {
@@ -415,7 +415,7 @@ final class MarkdownConformanceTest extends TestCase
         return $sorted(json_decode(json_encode($v, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), true, 512, JSON_THROW_ON_ERROR));
     }
 
-    private static function json_text(mixed $v): string
+    public static function json_text(mixed $v): string
     {
         return json_encode($v, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }

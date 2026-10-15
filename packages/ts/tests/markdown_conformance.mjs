@@ -6,15 +6,21 @@
 //
 // 사용: FLOWMARK=<flowmark> node --conditions=orm-test packages/ts/tests/markdown_conformance.mjs
 // (npm run typescript:build 뒤; make markdown-conformance-check가 FLOWMARK를 준다)
+//
+// --ir-answers를 주면 flowmark 없이 contracts/fixtures/ir_answers.json의 case만 실행한다: case마다 server 대신
+// connect에 {"ok":true}, chain의 request 하나에 case의 answer를 쓰는 listener에 연결해 chain(cases.json의 case)을
+// 실행하고 결과를 expect와 비교한다(docs/protocol.md §5 Read).
+// 사용: node --conditions=orm-test packages/ts/tests/markdown_conformance.mjs --ir-answers
 import { execFile, spawn } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual, promisify } from 'node:util';
 import { after } from 'node:test';
-import { DATABASE, PROCESS, caseTest, cases } from '../../../tests/testcase.mts';
+import { COMPUTE, DATABASE, PROCESS, caseTest, cases } from '../../../tests/testcase.mts';
 import { OrmError, StyledValue } from '../dist/index.js';
 import { Logs, People, Tasks, connect } from '../dist/models/markdown_fixture/models.js';
 
@@ -237,6 +243,45 @@ function normalize(value) {
 }
 
 let served;
+/** connect에 {"ok":true}, 다음 message에 answer를 쓰는 listener다. */
+async function answeringServer(answer) {
+  const server = createServer(socket => {
+    const replies = ['{"ok":true}', answer];
+    createInterface({ input: socket }).on('line', () => {
+      if (replies.length > 0) socket.write(`${replies.shift()}\n`);
+    });
+    socket.on('error', () => {});
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  return { dsn: `markdown://127.0.0.1:${port}/conformance?token=0123456789abcdef0123456789abcdef`, close: () => new Promise(resolve => server.close(resolve)) };
+}
+
+if (process.argv.includes('--ir-answers')) {
+  const doc = JSON.parse(await readFile(fileURLToPath(new URL('../../../contracts/fixtures/ir_answers.json', import.meta.url)), 'utf8'));
+  for (const c of doc.cases) {
+    await runner.run(`ir-answers/${c.id}`, COMPUTE, async () => {
+      const chain = conformanceCases[c.chain];
+      if (chain === undefined) throw new Error(`chain ${c.chain} is no markdown conformance case`);
+      const server = await answeringServer(JSON.stringify(c.answer));
+      const db = await connect(server.dsn);
+      let got;
+      try {
+        got = normalize(await chain({ db }));
+      } catch (error) {
+        if (!(error instanceof OrmError)) throw new Error(`${c.id} failed without an orm code: ${error?.stack ?? error}`);
+        got = { error: error.code };
+      } finally {
+        await db.close();
+        await server.close();
+      }
+      if (!isDeepStrictEqual(got, c.expect)) throw new Error(`${c.id}: got ${JSON.stringify(got)}, want ${JSON.stringify(c.expect)}`);
+    });
+  }
+  runner.finish();
+  process.exit(process.exitCode ?? 0);
+}
+
 let ready = false;
 let all = [];
 await runner.run('markdown/setup', PROCESS, async ({ step }) => {

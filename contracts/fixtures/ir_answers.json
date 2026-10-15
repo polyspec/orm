@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "comment": "The read answers of an IR executor (docs/protocol.md section 5, Read): each case runs the chain of the markdown conformance case named by chain (tests/markdown/README.md) on a connection whose server answers connect with {\"ok\": true} and the chain's one request with answer, and the chain's result, the model array form of tests/markdown/README.md, equals expect. A row is a JSON object of its outputs in projection order, then each join (an object, or null) and each relation (a one relation an object or null, a many relation an array). Values use the parameter value model: a decimal is a string, a date its text, an integer or f64 a JSON number, a bool a JSON bool.",
+  "cases": [
+    {
+      "id": "one",
+      "chain": "one",
+      "answer": { "rows": [{ "id": "P1", "name": "Ann", "email": "ann@example.com", "age": 30, "active": true, "score": "1.50" }] },
+      "expect": { "id": "P1", "name": "Ann", "email": "ann@example.com", "age": 30, "active": true, "score": "1.50" }
+    },
+    {
+      "id": "one_no_rows",
+      "chain": "one_no_rows",
+      "answer": { "rows": [] },
+      "expect": { "error": "NO_ROWS" }
+    },
+    {
+      "id": "all",
+      "chain": "all",
+      "answer": { "rows": [{ "id": "P3", "name": "Cara", "age": null }, { "id": "P2", "name": "Bob", "age": 25 }, { "id": "P1", "name": "Ann", "age": 30 }] },
+      "expect": [{ "id": "P3", "name": "Cara", "age": null }, { "id": "P2", "name": "Bob", "age": 25 }, { "id": "P1", "name": "Ann", "age": 30 }]
+    },
+    {
+      "id": "count",
+      "chain": "count",
+      "answer": { "count": 2 },
+      "expect": 2
+    },
+    {
+      "id": "group_count",
+      "chain": "group_count",
+      "answer": { "rows": [{ "owner": "P1", "row_count": 2 }, { "owner": "P2", "row_count": 1 }] },
+      "expect": [{ "owner": "P1", "row_count": 2 }, { "owner": "P2", "row_count": 1 }]
+    },
+    {
+      "id": "sum",
+      "chain": "sum",
+      "answer": { "value": 16 },
+      "expect": 16
+    },
+    {
+      "id": "avg",
+      "chain": "avg",
+      "answer": { "value": 27.5 },
+      "expect": 27.5
+    },
+    {
+      "id": "paginate",
+      "chain": "paginate",
+      "answer": { "rows": [{ "id": "P3", "name": "Cara" }], "count": 3 },
+      "expect": { "items": [{ "id": "P3", "name": "Cara" }], "total_count": 3, "total_pages": 2 }
+    },
+    {
+      "id": "join",
+      "chain": "join",
+      "answer": { "rows": [{ "id": "T2", "owner": "P1", "title": "review", "people_model": { "id": "P1", "name": "Ann" } }, { "id": "T3", "owner": "P2", "title": "ship", "people_model": { "id": "P2", "name": "Bob" } }] },
+      "expect": [{ "id": "T2", "owner": "P1", "title": "review", "people_model": { "id": "P1", "name": "Ann" } }, { "id": "T3", "owner": "P2", "title": "ship", "people_model": { "id": "P2", "name": "Bob" } }]
+    },
+    {
+      "id": "relation_many",
+      "chain": "relation_many",
+      "answer": { "rows": [{ "id": "P1", "name": "Ann", "tasks_models": [{ "id": "T2", "owner": "P1", "due": null }, { "id": "T1", "owner": "P1", "due": "2026-10-01" }] }] },
+      "expect": { "id": "P1", "name": "Ann", "tasks_models": [{ "id": "T2", "owner": "P1", "due": null }, { "id": "T1", "owner": "P1", "due": "2026-10-01" }] }
+    },
+    {
+      "id": "relation_many_empty",
+      "chain": "relation_many",
+      "answer": { "rows": [{ "id": "P1", "name": "Ann", "tasks_models": [] }] },
+      "expect": { "id": "P1", "name": "Ann", "tasks_models": [] }
+    },
+    {
+      "id": "relation_one",
+      "chain": "relation_one",
+      "answer": { "rows": [{ "id": "T3", "owner": "P2", "title": "ship", "people_model": { "id": "P2", "name": "Bob" } }] },
+      "expect": { "id": "T3", "owner": "P2", "title": "ship", "people_model": { "id": "P2", "name": "Bob" } }
+    },
+    {
+      "id": "relation_one_null",
+      "chain": "relation_one",
+      "answer": { "rows": [{ "id": "T3", "owner": "P2", "title": "ship", "people_model": null }] },
+      "expect": { "id": "T3", "owner": "P2", "title": "ship", "people_model": null }
+    }
+  ]
+}

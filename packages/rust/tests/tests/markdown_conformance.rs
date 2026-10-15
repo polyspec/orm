@@ -145,13 +145,68 @@ fn markdown_conformance_case(id: &str, expect: &Value) {
     }
 }
 
-/// Each case of tests/markdown/cases.json is the trial `markdown_conformance::<id>`, in the order of the file.
+/// Runs one case of contracts/fixtures/ir_answers.json: a listener answers connect with {"ok": true} and the chain's
+/// one request with the case's answer, and the chain's result equals expect (docs/protocol.md section 5, Read).
+fn ir_answer_case(chain: &str, answer: &Value, expect: &Value) {
+    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("a current-thread runtime");
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("a listener");
+    let port = listener.local_addr().expect("its address").port();
+    let replies = [r#"{"ok":true}"#.to_owned(), answer.to_string()];
+    let server = std::thread::spawn(move || {
+        use std::io::Write;
+        let Ok((conn, _)) = listener.accept() else { return };
+        let mut writer = conn.try_clone().expect("a second handle");
+        let mut lines = std::io::BufReader::new(conn).lines();
+        for reply in replies {
+            if !matches!(lines.next(), Some(Ok(_))) {
+                return;
+            }
+            if writer.write_all(format!("{reply}\n").as_bytes()).is_err() {
+                return;
+            }
+        }
+        let _ = lines.next();
+    });
+    let token = "0123456789abcdef0123456789abcdef".to_owned();
+    let got = runtime.block_on(async {
+        let dsn = format!("markdown://127.0.0.1:{port}/conformance?token={token}");
+        let db = markdown_model::connect(&dsn, 1, Config::default()).await.expect("connect");
+        let s = Served { db, dir: PathBuf::new(), corpus: "conformance".to_owned(), port, token };
+        let got = match run_case(chain, &s).await {
+            Ok(value) => value,
+            Err(error) => json!({ "error": error.code() }),
+        };
+        s.db.close().await;
+        got
+    });
+    let _ = server.join();
+    assert!(same(&got, expect), "got {got}, want {expect}");
+}
+
+/// Each case of tests/markdown/cases.json is the trial `markdown_conformance::<id>`, in the order of the file, and each
+/// case of contracts/fixtures/ir_answers.json the trial `ir_answers::<id>`, which needs no flowmark server; the filter
+/// `ir_answers::` runs only those (make ir-answers-check/rust).
 fn main() {
+    let path = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/ir_answers.json");
+    let doc: Value = serde_json::from_str(&std::fs::read_to_string(&path).expect("ir_answers.json")).expect("ir_answers.json is JSON");
+    let answers: Vec<_> = doc["cases"]
+        .as_array()
+        .expect("cases")
+        .iter()
+        .cloned()
+        .map(|case| {
+            let id = case["id"].as_str().expect("id").to_owned();
+            polyspec_orm_testcase::trial(format!("ir_answers::{id}"), polyspec_orm_testcase::COMPUTE, move || {
+                ir_answer_case(case["chain"].as_str().expect("chain"), &case["answer"], &case["expect"])
+            })
+        })
+        .collect();
     let trials = load_cases()
         .into_iter()
         .map(|(id, expect)| {
             polyspec_orm_testcase::trial(format!("markdown_conformance::{id}"), polyspec_orm_testcase::PROCESS, move || markdown_conformance_case(&id, &expect))
         })
+        .chain(answers)
         .collect();
     polyspec_orm_testcase::run_in_order_then(trials, || {
         if let Some(shared) = SHARED.lock().unwrap_or_else(PoisonError::into_inner).take() {
