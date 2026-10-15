@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 41b741ee87b46ea0737ba1a0fce5b21e31605657805a7fc7576c0056549a9d07 -->
+<!-- source-sha256: 59cab3b56a13a8eda29360ff14b71e7fb233459a1b0a61ac68a65a8fb0bd1dd9 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1181,6 +1181,8 @@
     Evidence: origin/main의 새 worktree에서 make install-tools가 그 message로 실패했다. make toolchain-lock이 sidecar와 그 digest를 mise.lock에 썼고, 그 뒤 install-tools가 성공하며 kit-check, layout-check, dependency-policy-check, release-coverage가 통과한다.
   - [o] T181-2 dbspec의 Python connection type을 공개 type으로 둔다 (T181에 이어). 원인: T181이 Python introspect_dbspec와 apply signature의 정의되지 않은 이름 Connection을 private Protocol _Connection으로 바꿔, 공개 signature가 private type을 적고 main에서 make interface-check가 실패했다(python/Dbspec.introspect, apply, recover: want Connection, got _Connection). 완료 조건: Protocol이 polyspec.orm.dbspec.introspect의 공개 Connection이고, signature가 그것을 적으며, Python symbol이 그것을 기록하고, interface-check가 통과한다.
     Evidence: interface-check가 위의 want/got 줄로 실패했다. Connection을 export하고 그 symbol 둘(과 checker가 계산한 python snapshot hash)을 기록하자 interface-check, lint-python, python-unit-check, repository 검사가 통과한다.
+  - [o] T181-3 mise lock sidecar의 owner를 선언한다 (T181-1에 이어). 원인: T181-1이 .mise/locks/pypi-vulture/2.16/uv.lock을 owner 없이 추적해 main에서 feature-unit-check/owners가 실패했다("every tracked file selects a behaviour test or declares its scope"). 완료 조건: mise.lock을 검증하는 kit-check가 .mise/locks/**를 owner로 갖고 owners 검사가 통과한다.
+    Evidence: owners 검사가 그 경로 하나를 finding으로 적었다. contracts/check-inputs.json의 kit-check input에 .mise/locks/**를 넣자 통과하고, kit-check, layout-check, repository 검사도 통과한다.
 - [o] T156 모든 생성기가 모든 key의 모든 prefix마다 유형 있는 메서드를 선언한다. 원인: scan한 소스가 호출하는 메서드만 생성되어, 어떤 소스도 호출하지 않는 key prefix에는 메서드가 없었다(hyper U-97). 완료 조건: Go, Rust, TypeScript model이 primary key, unique key, index의 모든 prefix마다 메서드를 선언하고, Python은 같은 이름을 실행 시점에 해석하며, symbol 기록과 docs/usage.md를 갱신한다.
   - [o] T156-1 T156 이후 orm main CI를 다시 green으로 만든다 (T156에 이어). 원인: run 38502539388이 실패했다. Python key-prefix 테스트가 PYTHONPATH를 바꾸고 지워진 packages/orm-python/bin/orm-gen을 실행했고, Go와 Rust key-prefix 테스트가 testcase를 시작하지 않았으며, generator/gen_go_key_prefix_test.go가 어떤 feature에도 속하지 않았고, src/models/markdown_fixture에 key-prefix 메서드가 없었다. 완료 조건: 각각을 고치고 그 소유 검사가 통과한다.
   - [o] T156-2 Go markdown model을 다시 생성한다 (T156에 이어). 원인: run 38504701356이 go-markdown-model-generated에서 실패했다. packages/orm-go/markdownmodel에 key-prefix 메서드가 없었다. 완료 조건: go generate가 폴더를 바꾸지 않는다.
