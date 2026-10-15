@@ -30,17 +30,31 @@ caseTest('countDifferences compares counts by lower case name', COMPUTE, () => {
 const repository = new URL('..', import.meta.url).pathname;
 const platformDefault = process.platform === 'darwin' ? 2 : 0;
 
-function fixture(mysqlPort: number, replicaPort: number) {
+// earlier edits the copied script that starts the earlier servers; a case changes it to make the setup fail.
+function fixture(mysqlPort: number, replicaPort: number, earlier = (declared: string, _root: string) => declared) {
   const root = mkdtempSync('/tmp/orm-mig-');
-  for (const file of ['scripts/test-servers.mts']) {
-    mkdirSync(join(root, file, '..'), { recursive: true });
-    copyFileSync(join(repository, file), join(root, file));
+  const close = () => {
+    spawnSync(process.execPath, [join(root, 'scripts/test-servers.mts'), 'mysql-stop'], { stdio: 'ignore' });
+    // Only stop removes the socket directory that mysql-start made (the socket folder of test-servers.mts), so it is removed here.
+    // The script names its servers by its real path (Node resolves the module path); /tmp is a link on macOS.
+    rmSync(paths(realpathSync(root)).socketDir, { recursive: true, force: true });
+    rmSync(root, { recursive: true, force: true });
+  };
+  // A failed setup leaves nothing behind: the servers it started and its folders go, and the error is rethrown.
+  try {
+    for (const file of ['scripts/test-servers.mts']) {
+      mkdirSync(join(root, file, '..'), { recursive: true });
+      copyFileSync(join(repository, file), join(root, file));
+    }
+    const declared = readFileSync(join(root, 'scripts/test-servers.mts'), 'utf8');
+    assert.match(declared, /^export const MYSQL_LOWER_CASE = 1;$/m);
+    writeFileSync(join(root, 'scripts/earlier-servers.mts'), earlier(declared.replace(/^export const MYSQL_LOWER_CASE = 1;$/m, `export const MYSQL_LOWER_CASE = ${platformDefault};`), root));
+    mkdirSync(join(root, '.runtime/servers'), { recursive: true });
+    execFileSync(process.execPath, [join(root, 'scripts/earlier-servers.mts'), 'mysql-start', String(mysqlPort), String(replicaPort)], { stdio: 'ignore' });
+  } catch (error) {
+    close();
+    throw error;
   }
-  const declared = readFileSync(join(root, 'scripts/test-servers.mts'), 'utf8');
-  assert.match(declared, /^export const MYSQL_LOWER_CASE = 1;$/m);
-  writeFileSync(join(root, 'scripts/earlier-servers.mts'), declared.replace(/^export const MYSQL_LOWER_CASE = 1;$/m, `export const MYSQL_LOWER_CASE = ${platformDefault};`));
-  mkdirSync(join(root, '.runtime/servers'), { recursive: true });
-  execFileSync(process.execPath, [join(root, 'scripts/earlier-servers.mts'), 'mysql-start', String(mysqlPort), String(replicaPort)], { stdio: 'ignore' });
   const sql = (port: number, statements: string) => execFileSync('mysql', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', String(port), '-u', 'root', '-N', '-B', '-e', statements], { encoding: 'utf8' });
   return {
     root,
@@ -49,13 +63,7 @@ function fixture(mysqlPort: number, replicaPort: number) {
     // The migration takes every path as an argument, so the script of the checkout runs, with the modules it imports.
     migrate: () => spawnSync('node', [join(repository, 'scripts/test-servers-mysql.mts'), join(root, 'scripts/test-servers.mts'), join(root, '.runtime/servers'), String(mysqlPort), String(replicaPort), '1'],
       { encoding: 'utf8', env: isolatedEnvironment({ LEASE: process.env.LEASE ?? '', LEASES: join(root, '.runtime/servers.leases') }) }),
-    close: () => {
-      spawnSync(process.execPath, [join(root, 'scripts/test-servers.mts'), 'mysql-stop'], { stdio: 'ignore' });
-      // Only stop removes the socket directory that mysql-start made (the socket folder of test-servers.mts), so it is removed here.
-      // The script names its servers by its real path (Node resolves the module path); /tmp is a link on macOS.
-      rmSync(paths(realpathSync(root)).socketDir, { recursive: true, force: true });
-      rmSync(root, { recursive: true, force: true });
-    },
+    close,
   };
 }
 
@@ -145,4 +153,15 @@ caseTest('names that one lower case name would merge refuse the migration before
   } finally {
     servers.close();
   }
+});
+
+// A failed setup leaves no temporary root: the fixture stops what it started, removes its folders and rethrows the error.
+caseTest('the MySQL fixture removes its root when its setup fails', PROCESS, () => {
+  let root = '';
+  assert.throws(() => fixture(39315, 39316, (declared, at) => {
+    root = at;
+    return `process.exit(3);\n${declared}`;
+  }), /earlier-servers\.mts mysql-start/);
+  assert.ok(root);
+  assert.equal(existsSync(root), false);
 });

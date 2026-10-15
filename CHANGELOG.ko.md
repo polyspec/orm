@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 88079e68c8004cea3906e6fa3501b6cce4642cfa7b47a4ca93b7b4214174df63 -->
+<!-- source-sha256: 38dae1ef279b9bd58a86807a40564f8cea1cb8506935152819a65eedabe45f93 -->
 # 변경 이력
 
 ## Unreleased
 
+- MySQL migration fixture는 setup이 실패하면 서버를 멈추고 임시 root를 지운다. (#T183)
 - commit한 Go model이 service region의 service relation을 담는다. (#T85-1)
 - Rust value test가 T92의 time 규칙을 확인한다. (#T92-2)
 - Go가 bool if_parent를 column의 논리 type으로 맞추고, conformance vector가 평탄화한 relation을 고정한다. (#T85)
