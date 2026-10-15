@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: caad8ffa6601e983759b52ac272d981bab494b083b032a74586ec8f910d6d9e8 -->
+<!-- source-sha256: 316068f3e9679426c44c3bbfb4781e6ac76b90e7410744de5483dbcc435b2372 -->
 # 변경 이력
 
 ## Unreleased
 
+- date, time, datetime 매개변수는 모든 client에서 정규 text 형태만 받고, native 값은 CODEC_ENCODE로 거부한다. (#T89-3)
 - TypeScript build가 project reference로 language package를 LSP보다 먼저 build한다. (#T187)
 - dialect 사실이 각 database에서 RESTRICT 검사의 행 순서를 기록한다. (#T100)
 - PHP rollback test가 session 수가 아니라 connection id로 session을 찾는다. (#T53)
