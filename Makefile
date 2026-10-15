@@ -1442,7 +1442,7 @@ install-interfaces-typescript:
 	$(ONLINE) $(NPM) ci --prefix tests/interfaces/typescript --no-audit --no-fund
 # lint-ts reads tests/interfaces/typescript.mts, which imports the TypeScript that this target installs: the recipe of
 # lint-ts is the kit.mk of @polyspec/kit, so the prerequisite is added here.
-lint-ts:
+lint-ts: typescript-build
 # install-php installs the one Composer project of the repository, the development root (vendor-php): it installs packages/php
 # from its directory with the runtime dependencies of that package, and PHPUnit, which runs the tests of packages/php and
 # packages/php-ext. The released manifests of the two packages declare only what a consumer installs.
