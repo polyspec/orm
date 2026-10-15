@@ -10,10 +10,10 @@ from polyspec.orm.dbspec.introspect_mysql import read_mysql
 from polyspec.orm.dbspec.introspect_postgres import read_postgres
 from polyspec.orm.dbspec.introspect_sqlite import read_sqlite
 
-__all__ = ["introspect_catalog", "introspect_dbspec"]
+__all__ = ["Connection", "introspect_catalog", "introspect_dbspec"]
 
 
-class _Connection(Protocol):
+class Connection(Protocol):
     """A connection of this client: execute(sql, values) returns the list of rows."""
 
     def execute(self, sql: str, values: list) -> list: ...
@@ -22,7 +22,7 @@ class _Connection(Protocol):
 _READERS = {"mysql": read_mysql, "postgres": read_postgres, "sqlite": read_sqlite}
 
 
-def introspect_dbspec(connection: _Connection, dialect: str, name: str) -> dict:
+def introspect_dbspec(connection: Connection, dialect: str, name: str) -> dict:
     """연결의 현재 database(MySQL), 현재 schema(PostgreSQL) 또는 main
     database(SQLite)를 `name`의 dbspec 문서 하나로 읽는다. catalog query의 수는
     table 수에 의존하지 않는다. connection은 execute(sql, values)로 rows의 list를
