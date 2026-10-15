@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7da168a364e5749851524c7d8464bb8b77d2b3199ee8e3811a7c2ea56ad8a074 -->
+<!-- source-sha256: b6944a2425229eff731f9c89e252386ecd2b82dead95a8932a090d4e861a8220 -->
 # 변경 이력
 
 ## Unreleased
 
+- begin 메시지가 모든 client에서 read-only 옵션을 포함한다. (#T107)
 - commit에서 바뀐 read는 다시 시도하지 않고 거부한다. (#T106)
 - TypeScript와 Python이 Go만큼 엄격하게 request shape를 decode한다. (#T110)
 - ip 인코더가 공백을 자르지 않고 거부한다. (#T109)

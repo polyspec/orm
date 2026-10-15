@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The begin message carries the read-only option in every client. (#T107)
 - A changed read at commit is refused, not retried. (#T106)
 - TypeScript and Python decode a request's shape as strictly as Go. (#T110)
 - The ip encoder refuses white space instead of trimming it. (#T109)
