@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: bc8ac243fe279dd24f22c47b01dbffe006a75c160c6a011388778ac1b3828009 -->
+<!-- source-sha256: 0a7628c65823c8da0a73b5d8c81561b7cefe972ed48e8511ff42ec45d00db4ac -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -44,7 +44,7 @@ import하지 않으면 `orm.Open`은 필요한 import를 포함한 `CONFIG`를 �
 - SQLite datetime은 UTC 기준 `YYYY-MM-DD HH:MM:SS` text이고 `datetime(p)` 컬럼은 정확히 p자리 소수를, `time(p)` 컬럼의 time은 `HH:MM:SS`와 정확히 p자리 소수를 가진다(renderer의 CHECK가 요구한다). 실행기는 bind slot이 싣는 p로 그 형식을 bind한다. 삽입이 생략한 `default now` 컬럼 값은 실행기가 UTC 시각으로 채운다. datetime이나 time 컬럼과 비교하거나 대입하는 문자열도 같은 형식으로 바꾼다. `YYYY-MM-DD[ T]HH:MM:SS[.f]`나 `HH:MM:SS[.f]`는 0으로 p자리까지 채우고, p자리 뒤의 자리는 0이어야 하며 버려지고 0이 아니면 `CODEC_ENCODE`를 반환한다. `Z`나 `±HH:MM`을 포함한 문자열은 UTC로 변환한다. date 컬럼은 `YYYY-MM-DD`를 받는다. 그 밖의 문자열은 `CODEC_ENCODE`를 반환한다. 클라이언트는 MySQL과 PostgreSQL에서도 datetime과 time 값을 이 text 형식으로 bind한다. `time(p)` 컬럼은 소수 정확히 p자리의 text로 읽으며, 그 text는 데이터베이스가 쓴다. MySQL은 `CAST(c AS CHAR)`, PostgreSQL은 p = 0이면 `to_char(c, 'HH24:MI:SS')`, 그 밖에는 `substr(to_char(c, 'HH24:MI:SS.US'), 1, 9 + p)`이다. PostgreSQL은 `time` 값을 `CAST(CAST(? AS text) AS time)`로 bind한다. conformance vector `datetime_p0_roundtrip`과 `time_p3_roundtrip`이 그런 값을 삽입하고 같은 매개변수로 다시 읽어 비교하고, planner case `planner_time_select`와 `planner_time_insert`가 statement를 고정한다.
 - `decimal(P,S)` 컬럼은 MySQL에서 `DECIMAL(P,S)`, PostgreSQL에서 `NUMERIC(P,S)`, SQLite에서 `DECIMALINT(P,S)`를 사용한다. SQLite는 정확한 값을 10^S배 한 부호 있는 정수로 저장하고, 실행기는 읽을 때 생성 모델의 고정 소수부 자릿수 십진 문자열로 변환한다. 선언은 `1 ≤ P ≤ 18`, `0 ≤ S ≤ P`를 요구하므로 배율 정수가 부호 있는 64비트 정수 범위에 들어간다. 정수 decimal의 매니페스트에도 `scale: 0`을 명시한다. 잘못된 텍스트, 초과 자릿수, 소수부 손실, 맞지 않는 저장 셀은 `CODEC_ENCODE` 또는 `CODEC_DECODE`로 실패한다.
 - `jsontext` 컬럼은 모든 방언에서 텍스트다. PostgreSQL은 `text`, MySQL은 `LONGTEXT`, SQLite는 TEXT다. 저장한 텍스트를 그대로 반환하므로 멤버 순서, 중복 키, 빈 객체와 빈 배열의 구분이 유지된다. ORM에는 JSON 경로 조건과 JSON 인덱스가 없으며, 데이터베이스 안에서 질의하는 데이터는 컬럼이나 자식 테이블로 만든다.
-- `uuid` 컬럼은 PostgreSQL에서 네이티브 `uuid`, MySQL에서 `char(36)`, SQLite에서 TEXT다. 클라이언트는 uuid 값을 텍스트로 bind한다.
+- `uuid` 컬럼은 PostgreSQL에서 네이티브 `uuid`, MySQL에서 `char(36)`, SQLite에서 TEXT다. 클라이언트는 uuid 값을 텍스트로 bind한다. 모든 planner는 PostgreSQL `uuid` 컬럼을 `CAST(col AS text)`로 읽고 값을 `CAST(CAST(? AS text) AS uuid)`로 bind한다(conformance vector `uuid_roundtrip`).
 - MySQL은 TEXT, BLOB, JSON, geometry 컬럼의 리터럴 기본값을 식 형식 `DEFAULT ('value')`로 기록하며 MySQL 8.0.13 이상이 필요하다. import는 이를 리터럴로 다시 읽는다.
 - Boolean은 PostgreSQL `boolean`, MySQL `BOOLEAN`/`TINYINT(1)`의 숫자 `0`/`1` 기본값, SQLite INTEGER 0/1을 사용한다. 정수가 아니라 boolean을 bind한다.
 - CHECK 표현식은 PostgreSQL과 SQLite에서 선언한 표현식을 그대로 생성한다. MySQL은 predicate를 반환하는 `CASE` CHECK 정의를 거부하므로 명시적인 boolean 비교로 감싼다. `NULL`은 `UNKNOWN`으로 유지되어 표준 CHECK 의미를 보존한다. MySQL CHECK 이름은 table이 아니라 database 범위이지만, renderer는 모든 CHECK 이름을 접두어 없이 그대로 쓴다. schema 검사는 제약·인덱스·생성 이름을 모두 전체 schema에서 유일하고 63바이트 이하로 유지하므로, 더 긴 생성 이름은 그것을 만드는 column이나 setting의 `name.length` 오류이며 줄이거나 hash를 붙이지 않는다([dbspec 이름](dbspec.md#names)).

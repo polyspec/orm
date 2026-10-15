@@ -45,6 +45,10 @@ export interface Dialect {
   readTime(col: string, precision: number): string;
   /** A time(p) value bound as its text: PostgreSQL casts the text to time. */
   writeTime(ph: string): string;
+  /** A uuid column read as its text: PostgreSQL casts the uuid to text. */
+  readUuid(col: string): string;
+  /** A uuid value bound as its text: PostgreSQL casts the text to uuid. */
+  writeUuid(ph: string): string;
   /** column에 쓰는 database clock이며 precision은 column의 소수 자리다. */
   now(precision: number): string;
   /** On write, the codec stage runs in SQL; every other stage runs in the executor. */
@@ -129,6 +133,8 @@ const mysql: Dialect = {
   upsert: (_, assigns) => ` ON DUPLICATE KEY UPDATE ${assigns}`,
   readTime: col => `CAST(${col} AS CHAR)`,
   writeTime: ph => ph,
+  readUuid: col => col,
+  writeUuid: ph => ph,
   readExpr(col, stages) {
     let expr = col;
     for (let i = stages.length - 1; i >= 0; i--) {
@@ -190,6 +196,8 @@ const postgres: Dialect = {
   writeExpr: ph => ph,
   readTime: (col, precision) => (precision === 0 ? `to_char(${col}, 'HH24:MI:SS')` : `substr(to_char(${col}, 'HH24:MI:SS.US'), 1, ${9 + precision})`),
   writeTime: ph => `CAST(CAST(${ph} AS text) AS time)`,
+  readUuid: col => `CAST(${col} AS text)`,
+  writeUuid: ph => `CAST(CAST(${ph} AS text) AS uuid)`,
   now: () => 'CURRENT_TIMESTAMP',
   handlesStage: () => false,
   decodesStage: () => false,
@@ -248,6 +256,8 @@ const sqlite: Dialect = {
   writeExpr: ph => ph,
   readTime: col => col,
   writeTime: ph => ph,
+  readUuid: col => col,
+  writeUuid: ph => ph,
   now: () => 'CURRENT_TIMESTAMP',
   handlesStage: () => false,
   decodesStage: () => false,

@@ -67,6 +67,8 @@ await runCases('coverage_planner.mjs', {
   async planner_bind_types_insert() { compileCase('planner_bind_types_insert'); },
   async planner_time_select() { compileCase('planner_time_select'); },
   async planner_time_insert() { compileCase('planner_time_insert'); },
+  async planner_uuid_select() { compileCase('planner_uuid_select'); },
+  async planner_uuid_insert() { compileCase('planner_uuid_insert'); },
   async planner_clock_compare() { compileCase('planner_clock_compare'); },
   async planner_clock_insert() { compileCase('planner_clock_insert'); },
   async planner_parent_key_types() { compileCase('planner_parent_key_types'); },

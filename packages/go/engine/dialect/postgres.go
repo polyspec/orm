@@ -83,3 +83,6 @@ func (Postgres) RowLock(mode string) (string, bool) {
 		return "", false
 	}
 }
+
+func (Postgres) ReadUUID(col string) string { return "CAST(" + col + " AS text)" }
+func (Postgres) WriteUUID(ph string) string { return "CAST(CAST(" + ph + " AS text) AS uuid)" }

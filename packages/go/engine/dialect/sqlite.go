@@ -85,3 +85,6 @@ func (SQLite) RowLock(mode string) (string, bool) {
 		return "", false
 	}
 }
+
+func (SQLite) ReadUUID(col string) string { return col }
+func (SQLite) WriteUUID(ph string) string { return ph }

@@ -11,7 +11,7 @@ use Polyspec\Orm\Registry;
 use Polyspec\Orm\Schema;
 
 /** The manifestHash of the document set the models were generated from. */
-const MANIFEST_HASH = 'sha256:b621d52e823c050cb92b7cd5005919504611223f640c71430327a4e5e67019aa';
+const MANIFEST_HASH = 'sha256:1a91aae4209ba2c778335adecf8c79efce1c1b7bf07ab18720a076b88ace69f7';
 
 /** The manifest text of the document set the models were generated from. */
 const MANIFEST_TEXT = 'dbspec 1 bench
@@ -205,6 +205,12 @@ table upsert_cell {
   primary key (seq)
   unique uq_upsert_cell_code (code)
 }
+
+table uuid_cell {
+  seq i64 identity
+  id uuid
+  primary key (seq)
+}
 ';
 
 /** The generated schema value: install takes it to create the tables and register the set. */
@@ -236,3 +242,4 @@ Registry::register(HexCell::class);
 Registry::register(TimeCell::class);
 Registry::register(ClockCell::class);
 Registry::register(UpsertCell::class);
+Registry::register(UuidCell::class);

@@ -656,6 +656,7 @@ export class Planner {
   /** A column read with its SQL-side read stages; a time(p) column reads as its p-digit text. */
   private readColumn(qcol: string, col: Column): string {
     const expr = this.d.readExpr(qcol, this.readSqlStyles(styles(col)));
+    if (col.type === 'uuid') return this.d.readUuid(expr);
     return col.type === 'time' ? this.d.readTime(expr, col.precision ?? 0) : expr;
   }
 
@@ -668,6 +669,7 @@ export class Planner {
     const ph = first === undefined ? b.colParam(i, col) : b.param(i, styleInputType(first));
     b.last().host_styles = host;
     if (first === undefined && col.type === 'time') return this.d.writeTime(ph);
+    if (first === undefined && col.type === 'uuid') return this.d.writeUuid(ph);
     return this.d.writeExpr(ph, sql);
   }
 

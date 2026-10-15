@@ -1871,6 +1871,145 @@
               {
                 "from": "param",
                 "param": 0,
+                "type": "uuid"
+              }
+            ],
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`id` AS `a__id` FROM `uuid_cell` AS `a` WHERE `a`.`id` = ?",
+            "tables": [
+              "uuid_cell"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "uuid"
+              }
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", CAST(\"a\".\"id\" AS text) AS \"a__id\" FROM \"uuid_cell\" AS \"a\" WHERE \"a\".\"id\" = CAST(CAST($1 AS text) AS uuid)",
+            "tables": [
+              "uuid_cell"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "uuid"
+              }
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"id\" AS \"a__id\" FROM \"uuid_cell\" AS \"a\" WHERE \"a\".\"id\" = ?",
+            "tables": [
+              "uuid_cell"
+            ]
+          }
+        ]
+      },
+      "id": "planner_uuid_select",
+      "input": {
+        "entity": "uuid_cell",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "id",
+                "op": "eq",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "uuid"
+              }
+            ],
+            "sql": "INSERT INTO `uuid_cell` (`id`) VALUES (?)",
+            "tables": [
+              "uuid_cell"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "uuid"
+              }
+            ],
+            "sql": "INSERT INTO \"uuid_cell\" (\"id\") VALUES (CAST(CAST($1 AS text) AS uuid)) RETURNING \"seq\"",
+            "tables": [
+              "uuid_cell"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "uuid"
+              }
+            ],
+            "sql": "INSERT INTO \"uuid_cell\" (\"id\") VALUES (?) RETURNING \"seq\"",
+            "tables": [
+              "uuid_cell"
+            ]
+          }
+        ]
+      },
+      "id": "planner_uuid_insert",
+      "input": {
+        "entity": "uuid_cell",
+        "ir_version": 1,
+        "kind": "insert",
+        "n_params": 1,
+        "set": [
+          {
+            "column": "id",
+            "p": 0
+          }
+        ]
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
                 "type": "i32"
               }
             ],

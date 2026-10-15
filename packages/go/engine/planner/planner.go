@@ -513,6 +513,9 @@ func (p *Planner) selectGroupCountList(b *builder, sb *strings.Builder, s *scope
 		if col.Type == "time" {
 			expr = p.D.ReadTime(expr, col.Precision)
 		}
+		if col.Type == "uuid" {
+			expr = p.D.ReadUUID(expr)
+		}
 		out := s.alias + "__" + name
 		sb.WriteString(expr + " AS " + p.D.Quote(out))
 		*outNames = append(*outNames, out)
@@ -570,6 +573,9 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 			expr = e
 			if col.Type == "time" {
 				expr = p.D.ReadTime(expr, col.Precision)
+			}
+			if col.Type == "uuid" {
+				expr = p.D.ReadUUID(expr)
 			}
 			styles = p.clientStyles(col.Codec)
 		}
@@ -963,6 +969,9 @@ func (p *Planner) renderValue(b *builder, col *runtimemodel.Field, i int) (strin
 		b.binds[len(b.binds)-1].HostStyles = host
 		if col.Type == "time" {
 			ph = p.D.WriteTime(ph)
+		}
+		if col.Type == "uuid" {
+			ph = p.D.WriteUUID(ph)
 		}
 		return ph, nil
 	}

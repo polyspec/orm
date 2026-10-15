@@ -189,3 +189,9 @@ table upsert_cell {
   primary key (seq)
   unique uq_upsert_cell_code (code)
 }
+
+table uuid_cell {
+  seq i64 identity
+  id uuid
+  primary key (seq)
+}

@@ -117,6 +117,14 @@ class _Dialect:
         """time(p) 값을 text로 bind한다. PostgreSQL은 text를 time으로 cast한다."""
         return ph
 
+    def read_uuid(self, col: str) -> str:
+        """uuid column을 text로 읽는다. PostgreSQL은 uuid를 text로 cast한다."""
+        return col
+
+    def write_uuid(self, ph: str) -> str:
+        """uuid 값을 text로 bind한다. PostgreSQL은 text를 uuid로 cast한다."""
+        return ph
+
     def now(self, precision: int) -> str:
         return "CURRENT_TIMESTAMP"
 
@@ -264,6 +272,12 @@ class PostgresDialect(_Dialect):
 
     def write_time(self, ph):
         return f"CAST(CAST({ph} AS text) AS time)"
+
+    def read_uuid(self, col):
+        return f"CAST({col} AS text)"
+
+    def write_uuid(self, ph):
+        return f"CAST(CAST({ph} AS text) AS uuid)"
 
     def nulls_order(self, desc):
         return " NULLS LAST" if desc else " NULLS FIRST"

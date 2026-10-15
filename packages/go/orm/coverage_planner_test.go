@@ -214,6 +214,18 @@ func TestCoveragePlannerTimeInsert(t *testing.T) {
 	compilePlannerCase(t, "planner_time_insert")
 }
 
+// TestCoveragePlannerUuidSelect는 PostgreSQL uuid column을 text로 읽고 비교하는 값을 text에서 cast한다.
+func TestCoveragePlannerUuidSelect(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_uuid_select")
+}
+
+// TestCoveragePlannerUuidInsert는 PostgreSQL uuid 값을 text에서 cast해 쓴다.
+func TestCoveragePlannerUuidInsert(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_uuid_insert")
+}
+
 // TestCoveragePlannerClockCompare는 값 함수의 clock을 여섯 자리로 bind하고, SQLite에서 datetime(p < 6)
 // column을 여섯 자리로 늘려 비교한다.
 func TestCoveragePlannerClockCompare(t *testing.T) {

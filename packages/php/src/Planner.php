@@ -591,6 +591,9 @@ final class Planner
     private function readColumn(string $qcol, array $col): string
     {
         $expr = $this->d->readExpr($qcol, $this->readSqlStyles($col));
+        if ($col['type'] === 'uuid') {
+            return $this->d->readUuid($expr);
+        }
         return $col['type'] === 'time' ? $this->d->readTime($expr, $col['precision'] ?? 0) : $expr;
     }
 
@@ -601,7 +604,11 @@ final class Planner
         $host = array_values(array_filter($col['codec'], fn(string $st): bool => in_array($st, RuntimeModel::HOST_STAGES, true) && !$this->d->handlesStyle($st)));
         if ($styles === []) {
             $ph = $b->colParam($i, $col, '', $host);
-            return $col['type'] === 'time' ? $this->d->writeTime($ph) : $ph;
+            return match ($col['type']) {
+                'time' => $this->d->writeTime($ph),
+                'uuid' => $this->d->writeUuid($ph),
+                default => $ph,
+            };
         }
         // SQL 쪽 style 함수가 감싸는 값의 type은 그 함수 입력의 type이다.
         return $this->d->writeExpr($b->param($i, self::styleInputType($styles[0]), '', $host), $styles);

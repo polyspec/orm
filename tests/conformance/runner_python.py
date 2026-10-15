@@ -62,7 +62,7 @@ def parse_args(args):
 # Set by main() from the arguments; importing this module parses nothing.
 DSN, MODELS_DIR, SELECTED = None, None, []
 bench = Author = CompositeAccount = Service = ServiceMember = ServiceRegion = None
-User = SoftRecord = Task = HexCell = TimeCell = ClockCell = UpsertCell = None
+User = SoftRecord = Task = HexCell = TimeCell = ClockCell = UpsertCell = UuidCell = None
 
 log = []
 transactions = {}
@@ -282,7 +282,8 @@ def load_models():
         HexCell, \
         TimeCell, \
         ClockCell, \
-        UpsertCell
+        UpsertCell, \
+        UuidCell
     # The models generated from contracts/fixtures/bench/bench.dbs are compiled from their source and
     # registered as models; the client itself is the one installed into the interpreter.
     source = os.path.join(MODELS_DIR, "models.py")
@@ -309,6 +310,7 @@ def load_models():
     TimeCell = bench.TimeCell
     ClockCell = bench.ClockCell
     UpsertCell = bench.UpsertCell
+    UuidCell = bench.UuidCell
 
 
 def main():
@@ -335,6 +337,7 @@ def main():
         "time_p3_roundtrip",
         "upsert_one_key",
         "affected_counts",
+        "uuid_roundtrip",
         "clock_truncate_write",
         "clock_compare_six_digits",
     }
@@ -1078,6 +1081,22 @@ def main():
         }
 
     run("upsert_one_key", upsert_one_key)
+
+    # A PostgreSQL uuid column is read as its text and a uuid value is bound as text cast to uuid, in one form in
+    # every planner (docs/dialects.md); the vector inserts, reads the row back by the same value and deletes it.
+    def uuid_roundtrip():
+        created = (
+            UuidCell()
+            .connect(db)
+            .set_id("0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5")
+            .create()
+        )
+        mask([created.get_seq()])
+        rows = UuidCell().connect(db).id("0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5").gets()
+        created.delete()
+        return picks(rows, "id")
+
+    run("uuid_roundtrip", uuid_roundtrip)
 
     # A write counts each written row once (docs/protocol.md "Write"): an upsert is 1 whether it inserts or updates,
     # and an update counts the row it matched even when the row already holds the value. The count is read through
