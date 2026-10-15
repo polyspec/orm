@@ -19,6 +19,8 @@ final class DbState
     public bool $rollbackFault = false;
     /** Polyspec\Orm\Testing\Faults::failNextStatement가 설정하는 test fault다. 다음 statement 하나를 보내지 않고 이 오류로 끝낸다. 그 test entry point만 설정한다. */
     public ?OrmException $statementFault = null;
+    /** The executor clock that Testing\Faults::fixClock fixed, or null for the wall clock. */
+    public ?\DateTimeImmutable $fixedClock = null;
     /** @var array<string, true> 이 연결에 등록된 set의 manifest hash다. */
     public array $sets = [];
     /** @var array<int, \Closure(StatementEvent): void> statement event subscriber다. 등록 순서이고 key는 등록 번호다. */

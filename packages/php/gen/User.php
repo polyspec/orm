@@ -27,7 +27,7 @@ final class User extends Model
             ],
             'unique' => [],
             'indexes' => [],
-            'manifest_hash' => 'sha256:6b97fb31e729ecb3a5032a1fc7c2cae93b59b7a7cedd718d7004ce31586fb875',
+            'manifest_hash' => 'sha256:06318b2325cc8123b21339f72401aadbe5966c261f476dbe758062574a595ae5',
         ];
     }
 

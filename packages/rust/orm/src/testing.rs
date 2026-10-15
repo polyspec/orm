@@ -39,3 +39,13 @@ pub(crate) fn take_statement_fault(db: &Db) -> Option<Error> {
     let fault = db.inner.statement_fault.lock().unwrap().take()?;
     Some(Error::Engine { code: fault.code, msg: fault.message })
 }
+
+/// `db`의 connection과 그 모든 clone의 executor clock을 `clock` 시각으로 고정한다. `clock`은 UTC의
+/// `YYYY-MM-DD HH:MM:SS.ffffff` text다(docs/protocol.md "Test clock").
+///
+/// 형식이 다르면 panic하고 아무것도 설정하지 않는다.
+pub fn fix_clock(db: &Db, clock: &str) {
+    let parsed = chrono::NaiveDateTime::parse_from_str(clock, "%Y-%m-%d %H:%M:%S%.6f");
+    assert!(parsed.is_ok() && clock.len() == 26, "fix_clock: the clock is not YYYY-MM-DD HH:MM:SS.ffffff");
+    *db.inner.fixed_clock.lock().unwrap() = Some(clock.to_owned());
+}

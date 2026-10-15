@@ -130,6 +130,16 @@ func postgresProbes() []Probe {
 			e.Exec("CREATE TABLE t (v time)", "INSERT INTO t VALUES ('24:00:00')")
 			e.Fails("INSERT INTO t VALUES ('25:00:00')", "22008")
 		}),
+		p("now.precision_rounds", "a clock written into timestamp(p < 6) rounds: .784706 becomes the next second, and a statement_timestamp() default rounds the same way", func(e *Env) {
+			e.Want("SELECT '2026-06-01 12:34:32.784706'::timestamp(6)::timestamp(0)::text", "2026-06-01 12:34:33")
+			e.Exec("CREATE TABLE t (z int, a timestamp(0) DEFAULT statement_timestamp(), b timestamp(6) DEFAULT statement_timestamp())", "INSERT INTO t (z) VALUES (1)")
+			e.Want("SELECT a = date_trunc('second', b + interval '0.5 second') FROM t", "true")
+		}),
+		p("now.compare_six_digits", "a timestamp(0) value compares with a timestamp(6) clock at six digits: the same second with a fraction is later", func(e *Env) {
+			e.Exec("CREATE TABLE t (a timestamp(0))", "INSERT INTO t VALUES ('2026-06-01 12:34:32')")
+			e.Want("SELECT COUNT(*) FROM t WHERE a < CAST('2026-06-01 12:34:32.784706' AS timestamp(6))", "1")
+			e.Want("SELECT COUNT(*) FROM t WHERE a >= CAST('2026-06-01 12:34:32.784706' AS timestamp(6))", "0")
+		}),
 		p("now.transaction_start", "now() returns the transaction start time for every statement of the transaction", func(e *Env) {
 			e.Exec("BEGIN")
 			first := e.Value("SELECT now()::text")

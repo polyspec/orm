@@ -43,7 +43,7 @@ final class Markdown
             'manifest_hash' => $request['manifest_hash'],
             'request' => $request,
             'params' => $params,
-            'now' => (new \DateTimeImmutable('now', $db->zone()))->format('Y-m-d H:i:s.u'),
+            'now' => $db->clock()->format('Y-m-d H:i:s.u'),
         ];
         return [$db->markdownSession()->call($message), $model];
     }

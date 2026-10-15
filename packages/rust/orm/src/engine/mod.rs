@@ -169,8 +169,8 @@ mod tests {
         }
     }
 
-    // SQLite insert는 assign하지 않은 `default now` column에 executor clock을 column의 소수
-    // 자리로 bind한다(여러 row insert는 row마다). MySQL과 PostgreSQL은 database default에 맡긴다.
+    // SQLite와 PostgreSQL insert는 assign하지 않은 `default now` column에 executor clock을 column의
+    // 소수 자리로 bind한다(여러 row insert는 row마다). MySQL은 database default에 맡긴다.
     #[test]
     fn sqlite_insert_binds_the_clock_for_default_now() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -198,7 +198,8 @@ mod tests {
         let mysql = compile(&manifest, Dialect::MySql, &insert(vec![], 1)).unwrap();
         assert_eq!(mysql.steps[0].sql, "INSERT INTO `clock_event` (`label`) VALUES (?)");
         let postgres = compile(&manifest, Dialect::Postgres, &insert(vec![], 1)).unwrap();
-        assert_eq!(postgres.steps[0].sql, r#"INSERT INTO "clock_event" ("label") VALUES ($1) RETURNING "seq""#);
+        assert_eq!(postgres.steps[0].sql, r#"INSERT INTO "clock_event" ("label", "created_ts") VALUES ($1, $2) RETURNING "seq""#);
+        assert_eq!(slots(&postgres.steps[0]), [("param".to_owned(), 0), ("now".to_owned(), 6)]);
         let mut assigned = insert(vec![], 2);
         assigned.set.push(ir::Assign { column: "created_ts".into(), p: Some(1), ..Default::default() });
         let explicit = compile(&manifest, Dialect::Sqlite, &assigned).unwrap();

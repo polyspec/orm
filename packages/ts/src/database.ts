@@ -404,6 +404,11 @@ export function armStatementFault(db: Db, code: string, message: string): void {
   db['shared'].statementFault = { code, message };
 }
 
+/** Fixes the executor clock of db's connection at micros, the microseconds since the epoch in UTC. */
+export function armFixedClock(db: Db, micros: number): void {
+  db['shared'].fixedClock = micros;
+}
+
 /** Transaction control statement kinds, which the statement fault does not refuse. */
 const CONTROL_KINDS: ReadonlySet<StatementKind> = new Set<StatementKind>(['begin', 'commit', 'rollback', 'savepoint', 'release', 'rollback_to']);
 
@@ -413,7 +418,7 @@ export class Db {
   // point의 failNextRollback이 설정하는 test fault다.
   // events는 subscriber 목록과 transaction 번호이고, rowLockTable은 SQLite row lock table을 이 연결에서
   // 만들었는지다.
-  private readonly shared: { closed: boolean; rollbackFault: boolean; statementFault: { code: string; message: string } | null; events: Subscribers; rowLockTable: boolean } = { closed: false, rollbackFault: false, statementFault: null, events: new Subscribers(), rowLockTable: false };
+  private readonly shared: { closed: boolean; rollbackFault: boolean; statementFault: { code: string; message: string } | null; fixedClock: number | null; events: Subscribers; rowLockTable: boolean } = { closed: false, rollbackFault: false, statementFault: null, fixedClock: null, events: new Subscribers(), rowLockTable: false };
   public readonly signal: AbortSignal | undefined = undefined;
   /** The hook of the handle (withRequestHook); a connection has none. */
   public readonly requestHook: RequestHook | undefined = undefined;
@@ -1032,6 +1037,11 @@ export class Db {
    * executor clock이다: wall clock의 microsecond를 connection zone(UTC)의 text로 쓰고 6자리
    * 소수를 precision 자리로 자른다. micros는 statement마다 한 번 읽은 wallMicros 값이다.
    */
+  /** The executor clock in microseconds: the clock that the test entry point fixed, or the wall clock. */
+  public clockMicros(): number {
+    return this.shared.fixedClock ?? wallMicros();
+  }
+
   public now(micros: number, precision: number): string {
     const text = formatInstant(new Date(Math.floor(micros / 1000)), this.zone).slice(0, 20) + String(micros % 1_000_000).padStart(6, '0');
     return precision === 0 ? text.slice(0, 19) : text.slice(0, 20 + precision);
@@ -1083,7 +1093,7 @@ export class Db {
           break;
         case 'now':
           // One statement reads the clock once, so its clock columns are equal.
-          clock ??= wallMicros();
+          clock ??= this.clockMicros();
           push(this.now(clock, slot.precision ?? 6), NOW);
           break;
         default:

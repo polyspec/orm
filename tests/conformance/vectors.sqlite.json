@@ -2869,6 +2869,154 @@
           }
         ]
       }
+    },
+    {
+      "name": "clock_truncate_write",
+      "chain": "FixClock(db, '2026-06-01 12:34:56.999999'); ClockCell setLabel('write')-\u003ecreate() leaving at0, at3 and at6 to default now; getBySeq(seq): at0 and at3 equal at6 truncated to 0 and 3 digits; delete()",
+      "expect": {
+        "result": {
+          "p0_truncated": true,
+          "p3_truncated": true
+        },
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "BEGIN IMMEDIATE",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "write",
+              "$NOW",
+              "$NOW",
+              "$NOW"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"clock_cell\" (\"label\", \"at0\", \"at3\", \"at6\") VALUES (?, ?, ?, ?) RETURNING \"seq\"",
+            "tables": [
+              "clock_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"label\" AS \"a__label\", \"a\".\"at0\" AS \"a__at0\", \"a\".\"at3\" AS \"a__at3\", \"a\".\"at6\" AS \"a__at6\" FROM \"clock_cell\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0",
+            "tables": [
+              "clock_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"clock_cell\" WHERE \"clock_cell\".\"seq\" = ?",
+            "tables": [
+              "clock_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "clock_compare_six_digits",
+      "chain": "FixClock(db, '2026-06-01 12:34:56.999999'); ClockCell create() with at0 12:34:56, at3 12:34:56.999; label('compare')-\u003eandGeAt0(now())-\u003egetCount() and -\u003eandLtAt3(now())-\u003egetCount(): the columns compare with the clock at six digits; delete()",
+      "expect": {
+        "result": {
+          "at0_ge_now": 0,
+          "at3_lt_now": 1
+        },
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "BEGIN IMMEDIATE",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "compare",
+              "2026-06-01 12:34:56",
+              "2026-06-01 12:34:56.999",
+              "2026-06-01 12:34:56.000000"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"clock_cell\" (\"label\", \"at0\", \"at3\", \"at6\") VALUES (?, ?, ?, ?) RETURNING \"seq\"",
+            "tables": [
+              "clock_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "compare",
+              "$NOW"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"clock_cell\" AS \"a\" WHERE \"a\".\"label\" = ? AND (\"a\".\"at0\" || '.000000') \u003e= ?",
+            "tables": [
+              "clock_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "compare",
+              "$NOW"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"clock_cell\" AS \"a\" WHERE \"a\".\"label\" = ? AND (\"a\".\"at3\" || '000') \u003c ?",
+            "tables": [
+              "clock_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"clock_cell\" WHERE \"clock_cell\".\"seq\" = ?",
+            "tables": [
+              "clock_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          }
+        ]
+      }
     }
   ]
 }

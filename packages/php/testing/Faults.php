@@ -44,4 +44,21 @@ final class Faults
             $db->state->statementFault = new OrmException($code, $message);
         }, null, Db::class))($db);
     }
+
+    /**
+     * connection의 executor clock을 $clock 시각으로 고정한다. $clock은 UTC의 `YYYY-MM-DD HH:MM:SS.ffffff` text다
+     * (docs/protocol.md "Test clock"). 형식이 다르면 \InvalidArgumentException이고 아무것도 설정하지 않는다.
+     */
+    public static function fixClock(Db $db, string $clock): void
+    {
+        $t = preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6}$/D', $clock) === 1
+            ? \DateTimeImmutable::createFromFormat('!Y-m-d H:i:s.u', $clock, new \DateTimeZone('UTC'))
+            : false;
+        if ($t === false || $t->format('Y-m-d H:i:s.u') !== $clock) {
+            throw new \InvalidArgumentException('fixClock needs a YYYY-MM-DD HH:MM:SS.ffffff clock');
+        }
+        (\Closure::bind(static function (Db $db) use ($t): void {
+            $db->state->fixedClock = $t;
+        }, null, Db::class))($db);
+    }
 }

@@ -240,8 +240,8 @@ fn datetime_precision(col: &Field) -> u8 {
     }
 }
 
-/// column에 쓰거나 column과 비교하는 `now` slot의 소수 자리: `datetime(p)` column은 p,
-/// 그 밖의 column은 6이다. executor는 한 statement의 clock을 slot마다 이 자리로 버린다.
+/// column에 쓰는 `now` slot의 소수 자리: `datetime(p)` column은 p, 그 밖의 column은 6이다.
+/// executor는 한 statement의 clock을 slot마다 이 자리로 버린다. 비교하는 clock은 6자리다.
 fn clock_precision(col: &Field) -> u8 {
     match col.ty {
         Type::DateTime(p) => p,
@@ -851,12 +851,16 @@ impl<'m> Planner<'m> {
                 Some(i) => cell.borrow_mut().param(i, value_function_arg_type(&v.name)),
                 None => String::new(),
             };
-            let precision = clock_precision(col);
-            let mut now = || cell.borrow_mut().now(precision);
+            // A clock that the ORM compares keeps six fraction digits; a datetime(p < 6) column
+            // compares as its value extended to six digits (docs/protocol.md "Clock").
+            let mut now = || cell.borrow_mut().now(6);
             let value = self
                 .d
                 .value_function(&v.name, &mut arg, &mut now)
                 .ok_or_else(|| err(codes::CAPABILITY_UNSUPPORTED, format!("{} is not available on {}", v.name, self.d.name())))?;
+            if let (Type::DateTime(p), false) = (col.ty, v.name == "today") {
+                lhs = self.d.clock_operand(&lhs, p);
+            }
             return Ok(format!("{lhs} {} {value}", cmp(&pr.op)));
         }
         if let Some(f) = &pr.r#fn {
@@ -1164,7 +1168,7 @@ impl<'m> Planner<'m> {
     }
 
     /// insert가 사용자 assignment 외에 쓰는 column: AES key version, audit column,
-    /// sub-second clock이 없는 dialect에서 assign되지 않은 `default now` column(field 순서).
+    /// executor clock을 쓰는 dialect(host_now)에서 assign되지 않은 `default now` column(field 순서).
     fn managed_insert_columns<'e>(&self, ent: &'e Entity, set: &[ir::Assign]) -> Result<Vec<Managed<'e>>> {
         let mut out = Vec::new();
         let version = aes_version_column(ent);
@@ -1188,8 +1192,8 @@ impl<'m> Planner<'m> {
     }
 
     /// updated와 soft delete가 `datetime(p)` column에 쓰는 statement 시각이다.
-    /// sub-second clock이 없는 dialect는 executor의 microsecond clock을 bind하고,
-    /// 나머지는 column의 소수 자리로 dialect의 database clock을 쓴다.
+    /// executor clock을 쓰는 dialect(host_now)는 column의 소수 자리로 자른 clock을 bind하고,
+    /// MySQL은 CURRENT_TIMESTAMP(p)로 database clock을 쓴다.
     fn statement_time(&self, b: &mut Builder, col: &Field) -> String {
         if self.d.host_now() {
             b.now(clock_precision(col))

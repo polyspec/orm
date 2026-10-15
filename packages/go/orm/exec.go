@@ -133,6 +133,9 @@ func (d *DB) localTime(v any) any {
 
 // now is the executor clock as UTC wall-clock text.
 func (d *DB) now() time.Time {
+	if t := d.m.fixedClock.Load(); t != nil {
+		return t.In(d.location)
+	}
 	return time.Now().In(d.location).Truncate(time.Microsecond)
 }
 

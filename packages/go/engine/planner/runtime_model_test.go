@@ -116,9 +116,9 @@ func TestI16FieldPlansAsI16(t *testing.T) {
 	}
 }
 
-// insert가 빼먹은 default column은 database default를 받는다. 단 SQLite의
-// clock은 millisecond만 가지므로 `default now` column에는 executor의
-// microsecond clock을 now slot으로 쓴다(docs/protocol.md).
+// insert가 빼먹은 default column은 database default를 받는다. 단 executor clock을
+// 쓰는 dialect(PostgreSQL, SQLite)는 `default now` column에 executor clock을 now
+// slot으로 쓴다(docs/protocol.md "Clock").
 func TestInsertLeavesDefaultsToTheDatabase(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, d := range []dialect.Dialect{dialect.MySQL{}, dialect.Postgres{}, dialect.SQLite{}} {

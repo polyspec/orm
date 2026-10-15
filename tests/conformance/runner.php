@@ -6,8 +6,10 @@ declare(strict_types=1);
 
 require dirname(__DIR__, 2) . '/packages/php/tests/autoload.php';
 require __DIR__ . '/result_php_helpers.php';
+require dirname(__DIR__, 2) . '/packages/php/testing/Faults.php';
 
 use Polyspec\Orm\Tests\Model\Author;
+use Polyspec\Orm\Tests\Model\ClockCell;
 use Polyspec\Orm\Tests\Model\CompositeAccount;
 use Polyspec\Orm\Tests\Model\HexCell;
 use Polyspec\Orm\Tests\Model\TimeCell;
@@ -26,6 +28,7 @@ use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\StatementEvent;
 use Polyspec\Orm\StyledValue;
+use Polyspec\Orm\Testing\Faults;
 
 $dsn = null;
 $selected = [];
@@ -155,7 +158,7 @@ $db->subscribe(static function (StatementEvent $e): void {
 $out = [];
 /** @var array<string, callable> vector 이름별 chain, 선언 순서 */
 $vectors = [];
-$writeVectors = array_fill_keys(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip'], true);
+$writeVectors = array_fill_keys(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'clock_truncate_write', 'clock_compare_six_digits'], true);
 
 /** vector를 선언한다. 선택된 vector는 모든 선언이 끝난 뒤 선언 순서대로 실행한다. */
 function vector(string $name, callable $fn): void
@@ -520,6 +523,36 @@ vector('time_p3_roundtrip', function () use ($db, $at): array {
     $rows = (new TimeCell)($db)->clock('10:11:12.345')->gets();
     $created->delete();
     return picks($rows, 'clock');
+});
+
+// One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now` hold that
+// clock truncated to their digits, and a datetime(p) column compares with a clock at six digits. The executor clock is
+// fixed at .999999 through the test entry point, so a rounding clock shows as the next second; MySQL writes its own
+// clock, CURRENT_TIMESTAMP(p), which truncates. These vectors come last because the fixed clock stays on the connection.
+vector('clock_truncate_write', function () use ($db): array {
+    Faults::fixClock($db, '2026-06-01 12:34:56.999999');
+    $created = (new ClockCell)($db)->setLabel('write')->create();
+    mask([$created->getSeq()]);
+    $row = (new ClockCell)($db)->getBySeq($created->getSeq());
+    $row->delete();
+    $at6 = $row->getAt6();
+    return [
+        'p0_truncated' => $row->getAt0()->format('Y-m-d H:i:s.u') === $at6->format('Y-m-d H:i:s') . '.000000',
+        'p3_truncated' => $row->getAt3()->format('Y-m-d H:i:s.u') === $at6->format('Y-m-d H:i:s.v') . '000',
+    ];
+});
+vector('clock_compare_six_digits', function () use ($db): array {
+    Faults::fixClock($db, '2026-06-01 12:34:56.999999');
+    $utc = new DateTimeZone('UTC');
+    $created = (new ClockCell)($db)->setLabel('compare')
+        ->setAt0(new DateTimeImmutable('2026-06-01 12:34:56', $utc))
+        ->setAt3(new DateTimeImmutable('2026-06-01 12:34:56.999', $utc))
+        ->setAt6(new DateTimeImmutable('2026-06-01 12:34:56', $utc))->create();
+    mask([$created->getSeq()]);
+    $geNow = (new ClockCell)($db)->label('compare')->andGeAt0(Orm::now())->getCount();
+    $ltNow = (new ClockCell)($db)->label('compare')->andLtAt3(Orm::now())->getCount();
+    $created->delete();
+    return ['at0_ge_now' => $geNow, 'at3_lt_now' => $ltNow];
 });
 
 foreach (array_keys($selected) as $name) {

@@ -325,6 +325,10 @@ pub(crate) struct DbInner {
     /// `test-faults`가 있는 build만 가진다.
     #[cfg(feature = "test-faults")]
     pub(crate) statement_fault: Mutex<Option<crate::testing::StatementFault>>,
+    /// `polyspec_orm::testing::fix_clock`이 고정하는 executor clock이다(`YYYY-MM-DD HH:MM:SS.ffffff`).
+    /// feature `test-faults`가 있는 build만 가진다.
+    #[cfg(feature = "test-faults")]
+    pub(crate) fixed_clock: Mutex<Option<String>>,
 }
 
 /// A database connection. Cloning is cheap and keeps the identity.
@@ -493,6 +497,8 @@ impl Db {
                 rollback_fault: AtomicBool::new(false),
                 #[cfg(feature = "test-faults")]
                 statement_fault: Mutex::new(None),
+                #[cfg(feature = "test-faults")]
+                fixed_clock: Mutex::new(None),
             }),
             hook: None,
         };
@@ -594,14 +600,13 @@ impl Db {
         Ok(plan)
     }
 
-    /// The executor clock in the connection time zone. PostgreSQL receives the
-    /// offset because its columns store instants.
+    /// The executor clock in the connection time zone (UTC), with six fraction digits.
     pub(crate) fn now_text(&self) -> String {
-        let now = self.inner.zone.now();
-        if self.inner.dialect == Some(Dialect::Postgres) {
-            return now.format("%Y-%m-%d %H:%M:%S%.6f%:z").to_string();
+        #[cfg(feature = "test-faults")]
+        if let Some(clock) = self.inner.fixed_clock.lock().unwrap().clone() {
+            return clock;
         }
-        now.format(SQLITE_DATETIME).to_string()
+        self.inner.zone.now().format(SQLITE_DATETIME).to_string()
     }
 
     /// Writes a datetime or date value in the text form SQLite stores, so a

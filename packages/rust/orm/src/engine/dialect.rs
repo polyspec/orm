@@ -136,9 +136,22 @@ impl Dialect {
         }
     }
 
-    /// Whether ORM-written timestamps come from the executor clock.
+    /// Whether ORM-written timestamps come from the executor clock (a `now` slot truncated to the
+    /// column's fraction digits): SQLite has no sub-second clock function, and a PostgreSQL clock
+    /// rounds into timestamp(p < 6) (docs/protocol.md "Clock").
     pub fn host_now(self) -> bool {
-        self == Dialect::Sqlite
+        self != Dialect::MySql
+    }
+
+    /// A datetime(p) column as it compares with the six-digit clock of a value function: SQLite
+    /// compares text, so a column with p < 6 is extended with zeros to six fraction digits; MySQL
+    /// and PostgreSQL compare values.
+    pub fn clock_operand(self, col: &str, precision: u8) -> String {
+        match (self, precision) {
+            (Dialect::Sqlite, 0) => format!("({col} || '.000000')"),
+            (Dialect::Sqlite, p) if p < 6 => format!("({col} || '{}')", "0".repeat(6 - usize::from(p))),
+            _ => col.to_owned(),
+        }
     }
 
     /// The row lock suffix; SQLite locks through the executor.
@@ -258,7 +271,10 @@ impl Dialect {
         match (self, name) {
             (Dialect::MySql, "now") => return Some("NOW(6)".into()),
             (Dialect::MySql, "today") => return Some("CURDATE()".into()),
-            (Dialect::Postgres, "now") => return Some("now()".into()),
+            // The executor clock is bound, so one statement has one clock: now() is the
+            // transaction start and statement_timestamp() the statement start
+            // (postgres.now.transaction_start).
+            (Dialect::Postgres, "now") => return Some(format!("CAST({} AS timestamp(6))", now())),
             (Dialect::Postgres, "today") => return Some("CURRENT_DATE".into()),
             (Dialect::Sqlite, "now") => return Some(now()),
             (Dialect::Sqlite, "today") => return Some(format!("date({})", now())),
@@ -281,7 +297,8 @@ impl Dialect {
                     _ => "months",
                 };
                 let cast = if field == "secs" { "double precision" } else { "integer" };
-                format!("(now(){op}make_interval({field} => CAST({} AS {cast})))", arg())
+                let clock = format!("CAST({} AS timestamp(6))", now());
+                format!("({clock}{op}make_interval({field} => CAST({} AS {cast})))", arg())
             }
             Dialect::Sqlite => {
                 // datetime returns whole seconds: append the six fraction

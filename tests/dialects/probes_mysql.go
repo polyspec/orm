@@ -154,6 +154,20 @@ func mysqlProbes() []Probe {
 			minutes, _ := strconv.Atoi(e.Value("SELECT TIMESTAMPDIFF(MINUTE, (SELECT d FROM t WHERE z = 'utc'), (SELECT d FROM t WHERE z = 'kst'))"))
 			e.Check(minutes >= 539 && minutes <= 541, "difference %d minutes", minutes)
 		}),
+		p("now.precision_truncates", "CURRENT_TIMESTAMP(p) and a DATETIME(p) DEFAULT CURRENT_TIMESTAMP(p) truncate the statement clock to p digits", func(e *Env) {
+			e.Exec(utc, "SET TIMESTAMP = UNIX_TIMESTAMP('2026-06-01 12:34:32') + 0.784706",
+				"CREATE TABLE t (z int, a datetime DEFAULT CURRENT_TIMESTAMP, b datetime(3) DEFAULT CURRENT_TIMESTAMP(3))", "INSERT INTO t (z) VALUES (1)")
+			e.Want("SELECT CAST(CURRENT_TIMESTAMP(0) AS CHAR)", "2026-06-01 12:34:32")
+			e.Want("SELECT CAST(a AS CHAR) FROM t", "2026-06-01 12:34:32")
+			e.Want("SELECT CAST(b AS CHAR) FROM t", "2026-06-01 12:34:32.784")
+		}),
+		p("now.compare_six_digits", "a DATETIME(0) value compares with NOW(6) at six digits: the same second with a fraction is later", func(e *Env) {
+			e.Exec(utc, "SET TIMESTAMP = UNIX_TIMESTAMP('2026-06-01 12:34:32') + 0.784706",
+				"CREATE TABLE t (a datetime)", "INSERT INTO t VALUES ('2026-06-01 12:34:32')")
+			e.Want("SELECT CAST(NOW(6) AS CHAR)", "2026-06-01 12:34:32.784706")
+			e.Want("SELECT COUNT(*) FROM t WHERE a < NOW(6)", "1")
+			e.Want("SELECT COUNT(*) FROM t WHERE a >= NOW(6)", "0")
+		}),
 		p("time.interval_range", "TIME is an interval from -838:59:59 to 838:59:59; 839:00:00 is rejected (1292)", func(e *Env) {
 			e.Exec("CREATE TABLE t (v time)", "INSERT INTO t VALUES ('838:59:59')")
 			e.Fails("INSERT INTO t VALUES ('839:00:00')", "1292")

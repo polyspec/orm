@@ -2,9 +2,17 @@
 # [tool.setuptools.packages.find]가 이 package를 배포에서 빼므로, process는 client의 source
 # tree(packages/python/src)를 path에 둘 때만 이것을 import한다. package entry point
 # polyspec.orm은 이것을 export하지 않는다.
-from polyspec.orm.database import Db, _arm_rollback_fault, _arm_statement_fault
+import datetime
+import re
 
-__all__ = ["fail_next_rollback", "fail_next_statement"]
+from polyspec.orm.database import (
+    Db,
+    _arm_fixed_clock,
+    _arm_rollback_fault,
+    _arm_statement_fault,
+)
+
+__all__ = ["fail_next_rollback", "fail_next_statement", "fix_clock"]
 
 
 def fail_next_rollback(db: Db) -> None:
@@ -24,3 +32,19 @@ def fail_next_statement(db: Db, code: str, message: str) -> None:
     if not isinstance(message, str) or not message:
         raise ValueError("fail_next_statement needs a nonempty message")
     _arm_statement_fault(db, code, message)
+
+
+def fix_clock(db: Db, clock: str) -> None:
+    """db의 connection의 executor clock을 clock 시각으로 고정한다. clock은 UTC의 `YYYY-MM-DD HH:MM:SS.ffffff`
+    text다(docs/protocol.md "Test clock"). 형식이 다르면 ValueError이며 아무것도 설정하지 않는다."""
+    if not isinstance(clock, str) or not re.fullmatch(
+        r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6}", clock
+    ):
+        raise ValueError("fix_clock needs a YYYY-MM-DD HH:MM:SS.ffffff clock")
+    instant = datetime.datetime.strptime(clock, "%Y-%m-%d %H:%M:%S.%f").replace(
+        tzinfo=datetime.timezone.utc
+    )
+    delta = instant - datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+    _arm_fixed_clock(
+        db, (delta.days * 86400 + delta.seconds) * 1_000_000 + delta.microseconds
+    )

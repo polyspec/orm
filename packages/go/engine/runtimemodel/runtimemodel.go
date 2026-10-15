@@ -86,8 +86,8 @@ type Field struct {
 	// Default는 선언된 default가 있음을 뜻한다. column을 빼먹은 insert는
 	// database default를 받는다.
 	Default bool
-	// DefaultNow는 default가 `now`임을 뜻한다. sub-second clock이 없는
-	// dialect(SQLite)는 이 column을 뺀 insert에 executor clock을 bind한다.
+	// DefaultNow는 default가 `now`임을 뜻한다. executor clock을 쓰는 dialect(PostgreSQL,
+	// SQLite)는 이 column을 뺀 insert에 executor clock을 bind한다.
 	DefaultNow bool
 	// SelectExplicit인 field는 default select set에서 빠진다.
 	SelectExplicit bool

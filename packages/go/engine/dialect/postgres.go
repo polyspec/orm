@@ -60,7 +60,8 @@ func (Postgres) WriteExpr(ph func() string, _ []string) (string, int) {
 	return ph(), 1
 }
 
-func (Postgres) HostNow() bool { return false }
+func (Postgres) HostNow() bool                         { return true }
+func (Postgres) ClockOperand(col string, _ int) string { return col }
 func (Postgres) ReadTime(col string, precision int) string {
 	if precision == 0 {
 		return "to_char(" + col + ", 'HH24:MI:SS')"

@@ -61,6 +61,19 @@ func (SQLite) HostNow() bool                     { return true }
 func (SQLite) ReadTime(col string, _ int) string { return col }
 func (SQLite) WriteTime(ph string) string        { return ph }
 
+// ClockOperand extends a datetime(p < 6) text to six fraction digits, so it compares
+// with the six-digit clock as the value it is: `col || '.000000'` for p = 0 and the
+// missing zeros for 0 < p < 6.
+func (SQLite) ClockOperand(col string, precision int) string {
+	switch {
+	case precision >= 6:
+		return col
+	case precision == 0:
+		return "(" + col + " || '.000000')"
+	}
+	return "(" + col + " || '" + strings.Repeat("0", 6-precision) + "')"
+}
+
 // SQLite has no row-lock clause. Each executor implements the common lock
 // modes with an ORM-owned transaction-scoped lock row; the SQL suffix remains
 // empty because the physical lock is acquired by the adapter.

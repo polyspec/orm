@@ -1,8 +1,8 @@
 // The clock of datetime(6) columns, on SQLite, MySQL and PostgreSQL, with the
 // fixtures contracts/fixtures/clock.dbs and clock_mark.dbs. An insert
 // that omits created_ts (default now) takes the database clock on MySQL and
-// PostgreSQL and binds the client clock of the `now` slot on SQLite, whose
-// database clock has milliseconds only; either way the stored fraction holds
+// binds the client clock of the `now` slot on SQLite, whose database clock has
+// milliseconds only, and on PostgreSQL, whose clock rounds into timestamp(p < 6); either way the stored fraction holds
 // microseconds. A clock with millisecond resolution stores every value as
 // `.mmm000`. Each case runs on a case database of its own on the servers of
 // ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN, or a new SQLite file

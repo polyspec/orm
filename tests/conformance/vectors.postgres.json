@@ -1071,11 +1071,12 @@
           {
             "binds": [
               7,
+              "$NOW",
               36500
             ],
             "error": null,
             "kind": "select",
-            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = $1 AND \"a\".\"start_dt\" \u003e (now() - make_interval(days =\u003e CAST($2 AS integer)))",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = $1 AND \"a\".\"start_dt\" \u003e (CAST($2 AS timestamp(6)) - make_interval(days =\u003e CAST($3 AS integer)))",
             "tables": [
               "author"
             ],
@@ -1084,11 +1085,12 @@
           {
             "binds": [
               7,
+              "$NOW",
               1200
             ],
             "error": null,
             "kind": "select",
-            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = $1 AND \"a\".\"start_dt\" \u003c (now() + make_interval(months =\u003e CAST($2 AS integer)))",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = $1 AND \"a\".\"start_dt\" \u003c (CAST($2 AS timestamp(6)) + make_interval(months =\u003e CAST($3 AS integer)))",
             "tables": [
               "author"
             ],
@@ -1265,11 +1267,13 @@
               "{\"a\":1}",
               "a:1:{s:1:\"k\";s:1:\"v\";}",
               "dbc465e76bc8f462fdfa67f87db87fcc749b2ae4341aa20f5a72f6b84b11b339",
-              1
+              1,
+              "$NOW",
+              "$NOW"
             ],
             "error": null,
             "kind": "insert",
-            "sql": "INSERT INTO \"author\" (\"name\", \"user_seq\", \"service_seq\", \"service_region_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"price\", \"ip\", \"aes_hex_email\", \"json_setting\", \"serialize_data\", \"email_blind_index\", \"aes_key_version\") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING \"seq\"",
+            "sql": "INSERT INTO \"author\" (\"name\", \"user_seq\", \"service_seq\", \"service_region_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"price\", \"ip\", \"aes_hex_email\", \"json_setting\", \"serialize_data\", \"email_blind_index\", \"aes_key_version\", \"created_ts\", \"updated_ts\") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING \"seq\"",
             "tables": [
               "author"
             ],
@@ -1291,12 +1295,13 @@
             "binds": [
               "cycle-2",
               3,
+              "$NOW",
               "$SEQ",
               "$TS"
             ],
             "error": null,
             "kind": "update",
-            "sql": "UPDATE \"author\" SET \"name\" = $1, \"read_count\" = \"author\".\"read_count\" + $2, \"updated_ts\" = CURRENT_TIMESTAMP WHERE \"author\".\"seq\" = $3 AND \"author\".\"updated_ts\" = $4",
+            "sql": "UPDATE \"author\" SET \"name\" = $1, \"read_count\" = \"author\".\"read_count\" + $2, \"updated_ts\" = $3 WHERE \"author\".\"seq\" = $4 AND \"author\".\"updated_ts\" = $5",
             "tables": [
               "author"
             ],
@@ -1375,11 +1380,13 @@
               1,
               "2026-06-01 00:00:00.000000",
               "2026-06-01 00:00:00.000000",
-              1
+              1,
+              "$NOW",
+              "$NOW"
             ],
             "error": null,
             "kind": "insert",
-            "sql": "INSERT INTO \"author\" (\"name\", \"user_seq\", \"service_seq\", \"service_region_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_key_version\") VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING \"seq\"",
+            "sql": "INSERT INTO \"author\" (\"name\", \"user_seq\", \"service_seq\", \"service_region_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_key_version\", \"created_ts\", \"updated_ts\") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING \"seq\"",
             "tables": [
               "author"
             ],
@@ -2838,6 +2845,154 @@
             "sql": "DELETE FROM \"time_cell\" WHERE \"time_cell\".\"seq\" = $1",
             "tables": [
               "time_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "clock_truncate_write",
+      "chain": "FixClock(db, '2026-06-01 12:34:56.999999'); ClockCell setLabel('write')-\u003ecreate() leaving at0, at3 and at6 to default now; getBySeq(seq): at0 and at3 equal at6 truncated to 0 and 3 digits; delete()",
+      "expect": {
+        "result": {
+          "p0_truncated": true,
+          "p3_truncated": true
+        },
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "BEGIN",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "write",
+              "$NOW",
+              "$NOW",
+              "$NOW"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"clock_cell\" (\"label\", \"at0\", \"at3\", \"at6\") VALUES ($1, $2, $3, $4) RETURNING \"seq\"",
+            "tables": [
+              "clock_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"label\" AS \"a__label\", \"a\".\"at0\" AS \"a__at0\", \"a\".\"at3\" AS \"a__at3\", \"a\".\"at6\" AS \"a__at6\" FROM \"clock_cell\" AS \"a\" WHERE \"a\".\"seq\" = $1 LIMIT 1 OFFSET 0",
+            "tables": [
+              "clock_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"clock_cell\" WHERE \"clock_cell\".\"seq\" = $1",
+            "tables": [
+              "clock_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "clock_compare_six_digits",
+      "chain": "FixClock(db, '2026-06-01 12:34:56.999999'); ClockCell create() with at0 12:34:56, at3 12:34:56.999; label('compare')-\u003eandGeAt0(now())-\u003egetCount() and -\u003eandLtAt3(now())-\u003egetCount(): the columns compare with the clock at six digits; delete()",
+      "expect": {
+        "result": {
+          "at0_ge_now": 0,
+          "at3_lt_now": 1
+        },
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "BEGIN",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "compare",
+              "2026-06-01 12:34:56",
+              "2026-06-01 12:34:56.999",
+              "2026-06-01 12:34:56.000000"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"clock_cell\" (\"label\", \"at0\", \"at3\", \"at6\") VALUES ($1, $2, $3, $4) RETURNING \"seq\"",
+            "tables": [
+              "clock_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "compare",
+              "$NOW"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"clock_cell\" AS \"a\" WHERE \"a\".\"label\" = $1 AND \"a\".\"at0\" \u003e= CAST($2 AS timestamp(6))",
+            "tables": [
+              "clock_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "compare",
+              "$NOW"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"clock_cell\" AS \"a\" WHERE \"a\".\"label\" = $1 AND \"a\".\"at3\" \u003c CAST($2 AS timestamp(6))",
+            "tables": [
+              "clock_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"clock_cell\" WHERE \"clock_cell\".\"seq\" = $1",
+            "tables": [
+              "clock_cell"
             ],
             "transaction": 1
           },

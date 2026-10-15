@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: c5d13d2483cd83355c373f14bc8b7325f2d9c8f054f0b4e2e9e7af0d8f3f326a -->
+<!-- source-sha256: fc82b902aeb76810fba5de8e4bab666344e4a736e9e38548fd2df0efe52610a2 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -9,7 +9,7 @@
 ```json
 {
   "ir_version": 1,
-  "manifest_hash": "sha256:6b97fb31e729ecb3a5032a1fc7c2cae93b59b7a7cedd718d7004ce31586fb875",
+  "manifest_hash": "sha256:06318b2325cc8123b21339f72401aadbe5966c261f476dbe758062574a595ae5",
   "kind": "one | all | count | group_count | sum | avg | paginate | insert | update | delete | restore | restart_identity",
   "entity": "author",
   "columns": Columns,
@@ -168,7 +168,7 @@ PostgreSQL identity는 명시한 key를 지나 나아가지 않으므로 다시 
 
 - `tables`는 statement가 가리키는 table을 정렬하고 중복을 뺀 목록이다: 쓰기의 대상 table, select의 root table, join한 table, subquery의 table이다. relation step은 자기 table을 쓴다.
 - `bind_slots.from`은 `param`(요청 매개변수. 포함 검색 값에는 `transform`, AES·hex·IP 단계에는 `host_styles`가 있다), `secret`(AES 키), `config`(AES 키 버전), `parent`(관계 키 값), `now`(UTC의 클라이언트 시각), `audit`(트랜잭션 audit 기록의 primary key. `name`은 audit 기록 테이블이다) 중 하나다. `audit` 슬롯이 있는 쓰기를 audit 값을 가진 트랜잭션 밖에서 실행하거나 audit 기록이 `name`과 다른 테이블의 행이면 데이터베이스에 닿기 전에 `CONFIG`로 실패한다.
-- **Clock.** 이것이 유일한 clock 규칙이며 [dialects](dialects.ko.md)와 [plans](plans.ko.md)는 이 규칙을 따른다. 모든 연결은 `datetime(p)`를 UTC로 읽고 쓴다. `now` slot은 마이크로초 해상도의 UTC 클라이언트 wall clock을 소수 여섯 자리로 자른 `datetime` 텍스트이며, statement는 clock을 한 번 읽으므로 그 statement의 `now` slot은 모두 같다. ORM이 쓰거나 비교하는 clock은 마이크로초를 유지한다. update 시각과 soft delete는 column이 선언한 소수 자릿수로 clock을 대입한다: MySQL은 `p > 0`이면 `CURRENT_TIMESTAMP(p)`, PostgreSQL은 `CURRENT_TIMESTAMP`, SQLite는 `now` slot이다. MySQL `now` value function과 그 상대 형식은 `NOW(6)`, PostgreSQL은 `now()`를 쓴다. SQLite에는 마이크로초 clock이 없으므로 SQLite dialect는 update 시각, soft delete, `now` 함수에 `now` slot을 bind하고, 상대 형식을 `now` slot에 간격을 적용한 `datetime` 뒤에 두 번째 `now` slot의 소수 여섯 자리를 붙인 형태로 render하며, insert가 빼먹은 `default now` 컬럼마다 `now` slot을 bind한다. MySQL과 PostgreSQL의 insert는 그런 컬럼을 database default에 맡긴다. plan history는 tool clock을 소수 여섯 자리로 유지한다([plans](plans.ko.md#apply)).
+- **Clock.** 이것이 유일한 clock 규칙이며 [dialects](dialects.ko.md)와 [plans](plans.ko.md)는 이 규칙을 따른다. 모든 연결은 `datetime(p)`를 UTC로 읽고 쓴다. `now` slot은 마이크로초 해상도의 UTC 클라이언트 wall clock을 소수 여섯 자리로 자른 `datetime` 텍스트이며, statement는 clock을 한 번 읽으므로 그 statement의 `now` slot은 모두 같고 statement의 clock 값은 하나다. ORM이 쓰는 clock은 column이 선언한 소수 자릿수로 자르고, 비교하는 clock은 여섯 자리를 유지한다. MySQL에서 update 시각과 soft delete는 statement clock을 자르는 `CURRENT_TIMESTAMP(p)`(p = 0이면 `CURRENT_TIMESTAMP`)를 대입하고(`mysql.now.precision_truncates`), insert는 `default now` 컬럼을 database default에 맡기며, `now` value function과 그 상대 형식은 `NOW(6)`를 쓴다. `datetime(p)` 컬럼은 `NOW(6)`와 값으로 비교한다(`mysql.now.compare_six_digits`). PostgreSQL은 clock을 `timestamp(p < 6)`에 반올림하고(`postgres.now.precision_rounds`) `now()`는 statement 시작이 아니라 transaction 시작이므로(`postgres.now.transaction_start`), PostgreSQL dialect는 update 시각, soft delete, insert가 빼먹은 모든 `default now` 컬럼에 p로 자른 `now` slot을 bind하고, `now` value function과 그 상대 형식에는 여섯 자리 `now` slot을 `CAST(<slot> AS timestamp(6))`로 bind한다. `timestamp(p)` 컬럼은 그것과 값으로 비교한다(`postgres.now.compare_six_digits`). DDL default `statement_timestamp()`는 raw SQL을 위해 남는다. SQLite에는 마이크로초 clock이 없으므로 SQLite dialect는 update 시각, soft delete, insert가 빼먹은 모든 `default now` 컬럼에 p로 자른 `now` slot을 bind하고, `now` 함수에는 여섯 자리로 bind하며, 상대 형식을 `now` slot에 간격을 적용한 `datetime` 뒤에 두 번째 `now` slot의 소수 여섯 자리를 붙인 형태로 render한다. SQLite는 text로 비교하므로 clock과 비교하는 `datetime(p < 6)` 컬럼은 여섯 자리로 늘린다: p = 0이면 `col || '.000000'`, 그 밖에는 `col` 뒤에 0을 6 − p개 붙인다. conformance vector `clock_truncate_write`와 `clock_compare_six_digits`는 test entry point가 고정한 clock으로 실행한다([3.3](#_3-3-test-clock)). plan history는 tool clock을 소수 여섯 자리로 유지한다([plans](plans.ko.md#apply)).
 - 행은 위치로 읽는다. `assemble.columns[].styles`는 클라이언트가 디코딩할 코덱 단계이며, SQL 단계는 이미 적용되어 있다.
 - `assemble.key`는 컬렉션 식별자다. 기본 키의 모든 구성 요소이거나 `group_count` 행의 그룹 컬럼이다.
 - `group_count` 행은 선택한 그룹 컬럼의 선언된 타입을 보존한다. 불리언 그룹 값은 JSON 불리언이며 데이터베이스 불리언 값이 잘못되면 디코딩에 실패한다.
@@ -217,6 +217,20 @@ fault는 각 클라이언트의 test entry point에만 있다. DSN, 설정 값, 
 | Python | `polyspec.orm.testing.fail_next_statement(db, code, message)` | `fail_next_rollback`과 같은 package이며 `polyspec.orm`의 어느 module도 import하지 않는다 |
 
 statement fault는 `Db`에 설정되며 `Db`가 실행하는 statement에만 적용된다. 모든 구현의 dbspec apply, recover, rollback, finalize와 introspection은 호출자가 넘긴 driver 연결 위에서 `Db` 밖에서 실행하므로 이를 소비하지 않는다: Go `packages/go/engine/dbspec/apply.go:138,159,200,282`(`Execer`)와 `packages/go/engine/dbspec/introspect.go:37`(`Querier`), Rust `packages/rust/orm/src/dbspec/apply.rs:296,313,331,347`(`ApplyConnection`)와 `packages/rust/orm/src/dbspec.rs:52`(`CatalogQuerier`), TypeScript `packages/ts/src/dbspec/apply.ts:720,737,768,820`(`Connection`)와 `packages/ts/src/dbspec/introspect.ts:33`, Python `packages/python/src/polyspec/orm/dbspec/apply.py:703,718,743,802`와 `packages/python/src/polyspec/orm/dbspec/introspect.py:16`(`Connection`), PHP `packages/php/src/Dbspec/PlanApply.php:102,118,149,212`와 `packages/php/src/Dbspec/Dbspec.php:161,588`(`\PDO`), PHP 확장 `orm_dbspec`은 `packages/php-ext/stubs/orm_dbspec.stub.php:553,591,594,597,600`(`\PDO`)이며 구현은 `packages/php-ext/src/apply.c`와 `introspect.c`에 있다.
+
+### 3.3 Test clock
+
+test는 자기 클라이언트의 test entry point로 연결의 executor clock을 고정한다. entry point는 3.1과 3.2의 fault와 같은 entry point다. entry point는 데이터베이스와 clock, 즉 UTC text `YYYY-MM-DD HH:MM:SS.ffffff`를 받는다. 다른 형식의 clock은 클라이언트의 programmer-error 신호(3.2)로 거부하고 아무것도 고정하지 않는다. 그 뒤로 연결과 그 모든 handle의 `now` slot, 그리고 IR executor message의 `now`는 wall clock 대신 그 clock이며, 연결이 닫힐 때까지 유지된다. 데이터베이스 clock(MySQL `CURRENT_TIMESTAMP(p)`, `NOW(6)`)은 고정되지 않는다. DSN, 설정 값, 환경 변수는 clock을 고정하지 않는다.
+
+| 클라이언트 | Entry point | production build가 제외하는 방법 |
+|---|---|---|
+| Go | `orm.FixClock(db, clock)` | `FailNextRollback`과 같은 파일이며 build tag `ormtest`가 있을 때만 compile한다 |
+| Rust | `polyspec_orm::testing::fix_clock(&db, clock)` | `fail_next_rollback`과 같은 module이며 cargo feature `test-faults`가 있을 때만 compile한다 |
+| TypeScript | `@polyspec/orm/testing`의 `fixClock(db, clock)` | `failNextRollback`과 같은 subpath이며 condition `orm-test`에서만 export한다 |
+| PHP | `Polyspec\Orm\Testing\Faults::fixClock($db, $clock)` | `failNextRollback`과 같은 class이며 package autoloader가 연결하지 않는 `testing/Faults.php`에 있다 |
+| Python | `polyspec.orm.testing.fix_clock(db, clock)` | `fail_next_rollback`과 같은 package이며 `polyspec.orm`의 어느 module도 import하지 않는다 |
+
+conformance runner도 같은 곳에서 가져온다: Go runner는 `-tags ormtest`로, Rust runner는 feature `polyspec-orm/test-faults`로 build하고, TypeScript runner는 `dist/testing.js`를 path로 import하며, PHP runner는 `testing/Faults.php`를 require하고, Python runner는 `polyspec.orm.testing`을 import한다.
 
 ## 4. 클라이언트 안의 계획
 
