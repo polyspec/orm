@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A single-stage text stage list stores the text alike in every client. (#T108)
 - A relative time outside 0001 to 9999 is NULL on every database. (#T98)
 - The dbspec check and the IR validator read one meet table per client. (#T96-1)
 - A joined child excludes soft-deleted rows on every database. (#T95)
