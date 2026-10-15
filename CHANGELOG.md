@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The TypeScript symbol record holds the contains methods of CompositeAccount. (#T79-1-1)
 - push-gate starts the Node.js release of mise.toml again. (#T181-4)
 - A statement reads one clock value at the column precision on every database. (#T93)
 - Every client binds datetime and time values with exactly p fraction digits. (#T92)

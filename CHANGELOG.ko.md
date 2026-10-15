@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 267aaf14ee165ee83c519ec227234c97c8958a0bcce377458c6cad56d0f03fce -->
+<!-- source-sha256: 15e466cc73c1fbeafe0039a43793d3c5662adc5270e42f170612cbdd57b8536e -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript symbol 기록이 CompositeAccount의 contains method를 담는다. (#T79-1-1)
 - push-gate가 다시 mise.toml의 Node.js release로 시작한다. (#T181-4)
 - statement가 모든 database에서 column 정밀도의 clock 값 하나를 읽는다. (#T93)
 - 모든 client가 datetime과 time 값을 정확히 p자리 소수로 bind한다. (#T92)

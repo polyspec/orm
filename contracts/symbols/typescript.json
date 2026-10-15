@@ -3028,6 +3028,8 @@
   "packages/ts/src/models/models.ts::ClockCell.sumSeq": "public sumSeq(): this",
   "packages/ts/src/models/models.ts::CompositeAccount": "class CompositeAccount",
   "packages/ts/src/models/models.ts::CompositeAccount#field.andAccountId": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this",
+  "packages/ts/src/models/models.ts::CompositeAccount#field.andLbName": "(v0: string) =\u003e this",
+  "packages/ts/src/models/models.ts::CompositeAccount#field.andLkName": "(v0: string) =\u003e this",
   "packages/ts/src/models/models.ts::CompositeAccount#field.entity": "EntityDef",
   "packages/ts/src/models/models.ts::CompositeAccount#field.getAesHexEmail": "\u003cT = unknown\u003e() =\u003e T",
   "packages/ts/src/models/models.ts::CompositeAccount#field.getAuthorModels": "\u003cT = unknown\u003e() =\u003e T",
