@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Rust show-create vectors run through the public catalog path, each case a trial named by its id. (#T148-2-1)
 ## 0.0.18
 
 - The Unicode table generator emits the TypeScript lookup as a checked read. (#T180-2)
