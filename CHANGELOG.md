@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Generated setters take text for date, time and datetime in every client. (#T189)
 - The documents name every declared client in their tables and set enumerations, and the docs rules check them. (#T77-11-1)
 - The documents name every implementation of config/parity.json, and the docs rules refuse a stale count. (#T77-11)
 - make check and CI run the PHP extension's dbspec suites. (#T188)

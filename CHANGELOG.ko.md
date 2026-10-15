@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 106a760a283590e2c2926784a9c6b3352df619e38587bfdd0ca93cdd11ab60ff -->
+<!-- source-sha256: 952d5b60daf085339ca2fdc99c04f07c42c6b5baaba38156f20512deab4780e2 -->
 # 변경 이력
 
 ## Unreleased
 
+- 생성된 setter가 모든 client에서 date, time, datetime에 text를 받는다. (#T189)
 - 문서의 표와 집합 나열이 선언된 모든 client를 적으며, 문서 규칙이 이를 검사한다. (#T77-11-1)
 - 문서가 config/parity.json의 모든 구현을 적으며, 문서 규칙이 낡은 개수를 거부한다. (#T77-11)
 - make check와 CI가 PHP extension의 dbspec suite를 실행한다. (#T188)
