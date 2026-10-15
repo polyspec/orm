@@ -845,7 +845,7 @@ feature-verify-other: feature-check/build
 FEATURE_STRESS_MYSQL_HELPERS = dbspec-apply-stress-mysql
 FEATURE_STRESS_PG_SQLITE_HELPERS = dbspec-stress dbspec-apply-stress-pg-sqlite
 FEATURE_STRESS_HELPERS = $(FEATURE_STRESS_MYSQL_HELPERS) $(FEATURE_STRESS_PG_SQLITE_HELPERS)
-FEATURE_SUITE_HELPERS = bench-database case-database conformance-result conformance-runners
+FEATURE_SUITE_HELPERS = bench-database case-database conformance-result conformance-runners python-test-harness
 feature-helper-check: feature-check/build
 	$(WITH_TEST_ENV) node scripts/features/check.mts --run --helpers $(addprefix --without-helper ,$(FEATURE_STRESS_HELPERS) $(FEATURE_SUITE_HELPERS))
 feature-stress-mysql-check:

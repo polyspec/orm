@@ -439,7 +439,7 @@ $b->getJsonSetting()['a'];
 - `transaction`은 연결에서의 transaction 번호다: 바깥 begin마다(deadlock 뒤의 재시도와 foreign key를 끈 채 table을 다시 만드는 SQLite transaction 포함) 1부터 다음 번호를 받고, begin부터 commit이나 rollback까지의 모든 statement가 그 번호를 가진다. transaction 밖의 statement는 번호가 없다.
 - `error`는 statement가 끝난 오류이며 operation이 보고하는 code를 가진다. 성공하면 없다. 돌려받은 행을 decode하지 못한 것은 statement의 오류가 아니다.
 
-client는 statement가 끝난 뒤 operation이 이어지기 전에 subscriber를 등록 순서대로 동기 호출한다. 연결의 모든 handle(Go `WithContext`, TypeScript `withSignal`, Python `with_request_hook`, Rust clone)이 subscriber를 공유한다. subscriber가 없으면 client는 목록이 빈 것만 확인한다. subscriber는 실패하면 안 된다: subscriber가 오류를 돌려주거나(Go, Rust) 예외를 던지면(PHP, TypeScript, Python) 남은 subscriber는 실행되지 않고 operation은 그 오류를 cause로 가진 `SUBSCRIBER`로 실패한다. statement의 효과는 남으며, transaction 안에서는 callback이 그 오류를 받는다.
+client는 statement가 끝난 뒤 operation이 이어지기 전에 subscriber를 등록 순서대로 동기 호출한다. 연결의 모든 handle(Go `WithContext`, TypeScript `withSignal`, 복제한 Rust 값, Python `with_request_hook`)이 subscriber를 공유한다. subscriber가 없으면 client는 목록이 빈 것만 확인한다. subscriber는 실패하면 안 된다: subscriber가 오류를 돌려주거나(Go, Rust) 예외를 던지면(PHP, TypeScript, Python) 남은 subscriber는 실행되지 않고 operation은 그 오류를 cause로 가진 `SUBSCRIBER`로 실패한다. statement의 효과는 남으며, transaction 안에서는 callback이 그 오류를 받는다.
 
 모든 client는 같은 transaction 제어 statement를 실행한다:
 

@@ -56,9 +56,13 @@ class RequestHookTest(unittest.TestCase):
             ROOT / "contracts" / "fixtures" / "request_hook.dbs",
         )
 
+    def database(self) -> str:
+        """The DSN of the case's database: a new SQLite file. The feature coverage (coverage_request_hook.py) gives
+        a case database of the selected dialect instead."""
+        return f"sqlite://{os.path.join(self.dir, f'{self._testMethodName}.sqlite3')}"
+
     def setUp(self):
-        path = os.path.join(self.dir, f"{self._testMethodName}.sqlite3")
-        self.db = Db.connect_schema(f"sqlite://{path}", self.models.SCHEMA)
+        self.db = Db.connect_schema(self.database(), self.models.SCHEMA)
         self.addCleanup(self.db.close)
         self.db.utils().schema().install(self.models.SCHEMA)
         for part, label in (("a", "a1"), ("a", "a2"), ("b", "b1")):
@@ -310,9 +314,13 @@ class InsertPartsTest(unittest.TestCase):
             ROOT / "contracts" / "fixtures" / "request_hook.dbs",
         )
 
+    def database(self) -> str:
+        """The DSN of the case's database: a new SQLite file. The feature coverage (coverage_request_hook.py) gives
+        a case database of the selected dialect instead."""
+        return f"sqlite://{os.path.join(self.dir, f'{self._testMethodName}.sqlite3')}"
+
     def setUp(self):
-        path = os.path.join(self.dir, f"{self._testMethodName}.sqlite3")
-        self.db = Db.connect_schema(f"sqlite://{path}", self.models.SCHEMA)
+        self.db = Db.connect_schema(self.database(), self.models.SCHEMA)
         self.addCleanup(self.db.close)
         self.db.utils().schema().install(self.models.SCHEMA)
 

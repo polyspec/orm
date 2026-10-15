@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 73a5272c1784f9befbe53802a6304ee433e0f9de6135d5dbbc14701d378ef1d1 -->
+<!-- source-sha256: 0c6ef48e72330735d28a3a39d61b2d66951daa115be7a9f68762d4f15c337fa4 -->
 # 기능 coverage 검증
 
 `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -10,7 +10,7 @@ Go와 Rust의 `symbols`는 각 공통 사례 ID를 선언한 소스 파일의 �
 데이터베이스 실행마다 검사기는 같은 URI에 대해 테스트 직전과 직후 상태 판독기를 실행한다. 상태 digest는 검사기가 직접 기록하며 테스트 출력은 제공할 수 없다. 각 테스트 묶음은 프로세스마다 10분 제한으로 두 번 실행한다. 두 실행에서 선언된 사례만 관찰하고 결과가 같아야 한다. 데이터베이스 상태는 각 실행 전후와 실행 사이에 같아야 한다. 환경, 테스트 이벤트, 데이터베이스 테이블 또는 상태 판독이 빠지면 실패한다. 검사기는 저장된 보고서를 읽지 않는다.
 
 `scripts/features/coverage.test.mts`의 테스트는 필요한 차원을 하나씩 바꾸고 만들어 낸 JSON 성공, 누락된 소유자, 사용자, 테스트 경로, client, 데이터베이스, 사례, 반복 실행, 상태 비교 또는 선언되지 않은 결과에서 실패를 요구한다. 주장한 모든 동작에 현재 실행 증거가 생길 때까지 `make feature-check`는 실패한다. 검사기 자체 테스트가 성공해도 client 동작의 완료를 주장하지 않는다.
-`make feature-coverage`는 `make check`처럼 모든 기능의 coverage를 한 번 실행하고, `make feature-check`는 그것을 모든 검증 명령과 함께 실행한다. `.runtime/servers/env`의 test 환경 아래에서 `node scripts/features/coverage.mts --feature <id>`는 그 기능의 coverage spec만 실행한다: 소유자와 사용자를 데이터베이스마다 두 번. `<id>`는 `scripts/features/check.mts --feature`처럼 `contracts/features.json`의 기능 `id`다. 없는 id는 아무것도 실행하지 않는 대신 고를 수 있는 id 목록과 함께 실패한다. 예를 들어 `node scripts/features/coverage.mts --feature dsn_connection`은 DSN 연결 기능만 실행한다. DSN 기능은 세 데이터베이스에서 네 client의 읽기 전용 소유 사례와 Go·Rust client 부분의 생성 모델 사용 사례를 실행한다. 선택한 URI는 `ORM_FEATURE_DSN`으로 전달하고 검사기는 두 실행의 전후 데이터베이스 상태를 읽는다.
+`make feature-coverage`는 `make check`처럼 모든 기능의 coverage를 한 번 실행하고, `make feature-check`는 그것을 모든 검증 명령과 함께 실행한다. `.runtime/servers/env`의 test 환경 아래에서 `node scripts/features/coverage.mts --feature <id>`는 그 기능의 coverage spec만 실행한다: 소유자와 사용자를 데이터베이스마다 두 번. `<id>`는 `scripts/features/check.mts --feature`처럼 `contracts/features.json`의 기능 `id`다. 없는 id는 아무것도 실행하지 않는 대신 고를 수 있는 id 목록과 함께 실패한다. 예를 들어 `node scripts/features/coverage.mts --feature dsn_connection`은 DSN 연결 기능만 실행한다. DSN 기능은 세 데이터베이스에서 다섯 client의 읽기 전용 소유 사례와 Go·Rust client 부분의 생성 모델 사용 사례를 실행한다. 선택한 URI는 `ORM_FEATURE_DSN`으로 전달하고 검사기는 두 실행의 전후 데이터베이스 상태를 읽는다.
 
 ## Owner 검사 {#owner-checks}
 

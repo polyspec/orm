@@ -1,5 +1,5 @@
 <!-- doc-id: interface-implementation -->
-<!-- source-sha256: 73bb3d3da7956cadef7720f3357c353ac2e6fbc55033cbffd6de821e362953fb -->
+<!-- source-sha256: bd1fd9bfaf7009a774ef347acd2a7e469b407196545d2ebe21bc902613702d2d -->
 # 공통 인터페이스 구현 대조표
 
 기준: [공통 인터페이스 v1](interfaces.md), [기계 명세](../contracts/interfaces.json), [생성 도표](interfaces-model.md). 재현 명령과 검사 범위는 [검사 안내](../tests/interfaces/README.md)에 있다.
@@ -25,7 +25,7 @@ PostgreSQL·MySQL·SQLite 사례가 이 호출을 실행하고, pooler 사례는
 | 인터페이스 | 구현과 검증 |
 |---|---|
 | IF-01, IF-18, IF-32 | 각 client는 같은 planner의 이식본으로 자기 process에서 request를 계획하고 모델의 schema hash를 확인한다. conformance 벡터가 다섯 client의 계획된 SQL과 bind를 비교한다. `tests/interfaces/check`는 Go, PHP, Rust, TypeScript, Python의 request 레코드 20개를 필드 단위로 비교한다 |
-| IF-02 | 컬럼 값은 논리 타입을 유지한다. `TestConnectionsUseUTC`와 PHP·TypeScript·Rust 대응 사례가 SQLite와 서버 시간대를 KST로 설정한 MySQL·PostgreSQL에서 날짜·시각 값을 UTC로 쓰고 읽는지 검사하고 SQLite 문자열 datetime을 저장 형식인 소수 여섯 자리로 비교한다. Rust 생성 모델은 타입이 지정된 `NaiveDateTime` 값을 사용하고 integration 사례에서 같은 데이터베이스 시각 동작을 검사한다 |
+| IF-02 | 컬럼 값은 논리 타입을 유지한다. Go `TestConnectionsUseUTC`와 PHP·TypeScript·Rust·Python 대응 사례(Python `connection_utc.py`)가 SQLite와 서버 시간대를 KST로 설정한 MySQL·PostgreSQL에서 날짜·시각 값을 UTC로 쓰고 읽는지 검사하고 SQLite 문자열 datetime을 저장 형식인 소수 여섯 자리로 비교한다. Rust 생성 모델은 타입이 지정된 `NaiveDateTime` 값을 사용하고 integration 사례에서 같은 데이터베이스 시각 동작을 검사한다 |
 | IF-03 ~ IF-08 | 생성된 모델은 체인 상태를 core 객체 하나에 저장한다. `conditions_connectors`, `conditions_group`, `expression_forms`, `conditions_values`, `joins`, `errors` 벡터가 연결자, 그룹, 부정 그룹, 값 모양, 조인 배치, 잘못된 체인을 검사한다 |
 | IF-09 ~ IF-12 | 모델 메서드 23개를 언어별로 고정한다. Go는 생성 모델, PHP, TypeScript, Python은 기반 클래스, Rust는 `polyspec-orm-build` 템플릿이다. `terminal_by`와 `terminal_reuse`가 터미널과 모델 하나의 재사용을 검사한다 |
 | IF-13 ~ IF-17 | `Db.connect`, `Db.transaction`, `Db.utils`, `Utils.lock`, `SchemaUtils.install`, AES 유틸리티를 언어별로 고정한다. `transactions` 벡터와 client 트랜잭션 테스트가 savepoint, 행 잠금, 이름 잠금, 지역 값을 검사한다 |

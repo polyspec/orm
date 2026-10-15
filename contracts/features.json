@@ -59,13 +59,14 @@
         "php": "pass",
         "rust": "pass",
         "typescript": "pass",
-        "python": "planned"
+        "python": "pass"
       },
       "fixtures": [
         "packages/go/orm/test_helpers_test.go",
         "packages/go/orm/coverage_fixture_test.go",
         "packages/php/tests/coverage_cases.php",
-        "packages/php/tests/markdown_fake_server.php"
+        "packages/php/tests/markdown_fake_server.php",
+        "packages/python/tests/coverage_case.py"
       ],
       "tests": [
         "packages/go/orm/dsn_test.go",
@@ -100,7 +101,16 @@
         "packages/rust/orm/tests/unit/bind_message.rs",
         "packages/rust/orm/tests/unit/bind_vectors.rs",
         "packages/python/tests/test_markdown.py",
-        "tests/bind/vectors.json"
+        "tests/bind/vectors.json",
+        "packages/python/tests/test_sqlite_paths.py",
+        "packages/python/tests/test_sqlite_version.py",
+        "packages/python/tests/test_placeholders.py",
+        "packages/python/tests/test_driver_cells.py",
+        "packages/python/tests/mysql_tls.py",
+        "packages/python/tests/connection_config.py",
+        "packages/python/tests/replica.py",
+        "packages/python/tests/coverage_dsn.py",
+        "packages/python/tests/connection_utc.py"
       ],
       "docs": [
         "docs/config.md",
@@ -333,6 +343,56 @@
           "inputs": [
             "packages/ts/tests/idle-connection-end.mjs"
           ]
+        },
+        {
+          "id": "dsn-python",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_sqlite_paths && packages/python/.venv/bin/python -m packages.python.tests.test_sqlite_version && packages/python/.venv/bin/python -m packages.python.tests.test_placeholders && packages/python/.venv/bin/python -m packages.python.tests.test_driver_cells",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_sqlite_paths.py",
+            "packages/python/tests/test_sqlite_version.py",
+            "packages/python/tests/test_placeholders.py",
+            "packages/python/tests/test_driver_cells.py",
+            "tests/dsn/sqlite-paths.json",
+            "packages/python/src/polyspec/orm/database.py",
+            "packages/python/src/polyspec/orm/placeholders.py"
+          ]
+        },
+        {
+          "id": "dsn-mysql-tls-python",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.mysql_tls",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/mysql_tls.py",
+            "packages/python/src/polyspec/orm/database.py"
+          ]
+        },
+        {
+          "id": "connection-config-python",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.connection_config",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/connection_config.py",
+            "packages/python/src/polyspec/orm/database.py"
+          ]
+        },
+        {
+          "id": "replica-python",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.replica",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/replica.py",
+            "packages/python/src/polyspec/orm/database.py"
+          ]
+        },
+        {
+          "id": "connection-utc-python",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.connection_utc",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/connection_utc.py",
+            "packages/python/src/polyspec/orm/database.py"
+          ]
         }
       ],
       "coverage": {
@@ -510,6 +570,44 @@
                 }
               ]
             }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/coverage_dsn.py"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_dsn.py",
+                  "cases": [
+                    "dsn_connection"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_dsn.py",
+                  "cases": [
+                    "dsn_connection"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_dsn.py",
+                  "cases": [
+                    "dsn_connection"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
           }
         },
         "dependents": [
@@ -671,7 +769,7 @@
         "php": "pass",
         "rust": "pass",
         "typescript": "pass",
-        "python": "planned"
+        "python": "pass"
       },
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -680,7 +778,8 @@
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/src/coverage_env.rs",
-        "packages/ts/tests/coverage_case.mjs"
+        "packages/ts/tests/coverage_case.mjs",
+        "packages/python/tests/coverage_case.py"
       ],
       "tests": [
         "packages/go/model/model_test.go",
@@ -738,7 +837,24 @@
         "packages/rust/orm/tests/decimal_model.rs",
         "packages/ts/tests/typecheck.ts",
         "packages/ts/tests/decimal_model_type.ts",
-        "packages/ts/src/bin/orm-gen.ts"
+        "packages/ts/src/bin/orm-gen.ts",
+        "packages/python/tests/test_collection.py",
+        "packages/python/tests/test_aggregate_numeric.py",
+        "packages/python/tests/test_aggregate_numeric_driver_values.py",
+        "packages/python/tests/test_alias_columns.py",
+        "packages/python/tests/test_subqueries.py",
+        "packages/python/tests/test_terminal_by.py",
+        "packages/python/tests/test_related_output.py",
+        "packages/python/tests/test_remove_columns.py",
+        "packages/python/tests/test_model_json_text.py",
+        "packages/python/tests/test_styled_column_states.py",
+        "packages/python/tests/test_styled_sql_null.py",
+        "packages/python/tests/test_decimal_model.py",
+        "packages/python/tests/test_decimal_model_sqlite_ddl.py",
+        "packages/python/tests/decimal_model_db.py",
+        "packages/python/tests/test_model_fields.py",
+        "packages/python/tests/test_values.py",
+        "packages/python/tests/coverage_model_queries.py"
       ],
       "docs": [
         "docs/dsl.md",
@@ -1006,6 +1122,50 @@
             "packages/rust/orm/tests/value_decode.rs",
             "packages/rust/orm/tests/value_types.rs"
           ]
+        },
+        {
+          "id": "queries-python",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_collection && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric_driver_values && packages/python/.venv/bin/python -m packages.python.tests.test_alias_columns && packages/python/.venv/bin/python -m packages.python.tests.test_subqueries && packages/python/.venv/bin/python -m packages.python.tests.test_terminal_by && packages/python/.venv/bin/python -m packages.python.tests.test_related_output && packages/python/.venv/bin/python -m packages.python.tests.test_remove_columns && packages/python/.venv/bin/python -m packages.python.tests.test_model_json_text && packages/python/.venv/bin/python -m packages.python.tests.test_styled_column_states && packages/python/.venv/bin/python -m packages.python.tests.test_styled_sql_null && packages/python/.venv/bin/python -m packages.python.tests.test_values",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_collection.py",
+            "packages/python/tests/test_aggregate_numeric.py",
+            "packages/python/tests/test_aggregate_numeric_driver_values.py",
+            "packages/python/tests/test_alias_columns.py",
+            "packages/python/tests/test_subqueries.py",
+            "packages/python/tests/test_terminal_by.py",
+            "packages/python/tests/test_related_output.py",
+            "packages/python/tests/test_remove_columns.py",
+            "packages/python/tests/test_model_json_text.py",
+            "packages/python/tests/test_styled_column_states.py",
+            "packages/python/tests/test_styled_sql_null.py",
+            "packages/python/tests/test_values.py",
+            "packages/python/src/polyspec/orm/model.py",
+            "packages/python/src/polyspec/orm/core.py",
+            "contracts/fixtures/aggregate_numeric.json",
+            "contracts/fixtures/styled_column_states.json"
+          ]
+        },
+        {
+          "id": "decimal-python-unit",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_decimal_model && packages/python/.venv/bin/python -m packages.python.tests.test_decimal_model_sqlite_ddl",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_decimal_model.py",
+            "packages/python/tests/test_decimal_model_sqlite_ddl.py",
+            "packages/python/src/polyspec/orm/decimal.py",
+            "contracts/fixtures/decimal_model.json"
+          ]
+        },
+        {
+          "id": "model-fields-python",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_model_fields",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_model_fields.py",
+            "packages/python/src/polyspec/orm/generate/python.py",
+            "packages/python/src/polyspec/orm/models/models.py"
+          ]
         }
       ],
       "coverage": {
@@ -1183,6 +1343,44 @@
                 }
               ]
             }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/coverage_model_queries.py"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_model_queries.py",
+                  "cases": [
+                    "model_query_rows"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_model_queries.py",
+                  "cases": [
+                    "model_query_rows"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_model_queries.py",
+                  "cases": [
+                    "model_query_rows"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
           }
         },
         "dependents": []
@@ -1240,7 +1438,7 @@
         "php": "pass",
         "rust": "pass",
         "typescript": "pass",
-        "python": "planned"
+        "python": "pass"
       },
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -1254,7 +1452,8 @@
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/src/coverage_env.rs",
-        "packages/ts/tests/coverage_case.mjs"
+        "packages/ts/tests/coverage_case.mjs",
+        "packages/python/tests/coverage_case.py"
       ],
       "tests": [
         "packages/go/model/model_test.go",
@@ -1298,7 +1497,11 @@
         "packages/python/tests/identity_load.py",
         "packages/rust/orm/tests/identity_load.rs",
         "packages/go/orm/time_precision_test.go",
-        "packages/python/tests/test_mysql_found_rows.py"
+        "packages/python/tests/test_mysql_found_rows.py",
+        "packages/python/tests/test_new_values.py",
+        "packages/python/tests/test_insert_parts.py",
+        "packages/python/tests/test_sqlite.py",
+        "packages/python/tests/coverage_model_writes.py"
       ],
       "docs": [
         "docs/dsl.md",
@@ -1549,6 +1752,18 @@
             "packages/go/orm/time_precision_test.go",
             "contracts/fixtures/time_precision.dbs"
           ]
+        },
+        {
+          "id": "writes-python",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_new_values && packages/python/.venv/bin/python -m packages.python.tests.test_insert_parts && packages/python/.venv/bin/python -m packages.python.tests.test_sqlite",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_new_values.py",
+            "packages/python/tests/test_insert_parts.py",
+            "packages/python/tests/test_sqlite.py",
+            "packages/python/src/polyspec/orm/model_exec.py",
+            "contracts/fixtures/insert_parts.json"
+          ]
         }
       ],
       "coverage": {
@@ -1726,6 +1941,44 @@
                 }
               ]
             }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/coverage_model_writes.py"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_model_writes.py",
+                  "cases": [
+                    "model_write_cycle"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_model_writes.py",
+                  "cases": [
+                    "model_write_cycle"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_model_writes.py",
+                  "cases": [
+                    "model_write_cycle"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
           }
         },
         "dependents": []
@@ -1791,7 +2044,7 @@
         "php": "pass",
         "rust": "pass",
         "typescript": "pass",
-        "python": "planned"
+        "python": "pass"
       },
       "fixtures": [
         "packages/php/tests/deadlock_child.php",
@@ -1800,7 +2053,8 @@
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/src/coverage_env.rs",
-        "packages/ts/tests/coverage_case.mjs"
+        "packages/ts/tests/coverage_case.mjs",
+        "packages/python/tests/coverage_case.py"
       ],
       "tests": [
         "packages/go/model/model_test.go",
@@ -1836,7 +2090,12 @@
         "packages/python/tests/statement_fault.py",
         "packages/python/tests/test_statement_fault_entry.py",
         "packages/rust/orm/src/tx.rs",
-        "packages/rust/orm/src/tx_send_tests.rs"
+        "packages/rust/orm/src/tx_send_tests.rs",
+        "packages/python/tests/test_rollback_fault.py",
+        "packages/python/tests/test_utils.py",
+        "packages/python/tests/test_utils_statements.py",
+        "packages/python/tests/test_row_lock_event.py",
+        "packages/python/tests/coverage_transactions.py"
       ],
       "docs": [
         "docs/config.md",
@@ -2008,6 +2267,19 @@
           "shard": "other",
           "inputs": [
             "packages/ts/tests/sqlite-concurrency.mjs"
+          ]
+        },
+        {
+          "id": "transactions-python",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_rollback_fault && packages/python/.venv/bin/python -m packages.python.tests.test_utils && packages/python/.venv/bin/python -m packages.python.tests.test_utils_statements && packages/python/.venv/bin/python -m packages.python.tests.test_row_lock_event",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_rollback_fault.py",
+            "packages/python/tests/test_utils.py",
+            "packages/python/tests/test_utils_statements.py",
+            "packages/python/tests/test_row_lock_event.py",
+            "packages/python/src/polyspec/orm/database.py",
+            "packages/python/src/polyspec/orm/utils.py"
           ]
         }
       ],
@@ -2210,6 +2482,47 @@
                 }
               ]
             }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/coverage_transactions.py"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_transactions.py",
+                  "cases": [
+                    "transaction_rollback",
+                    "transaction_savepoint"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_transactions.py",
+                  "cases": [
+                    "transaction_rollback",
+                    "transaction_savepoint"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_transactions.py",
+                  "cases": [
+                    "transaction_rollback",
+                    "transaction_savepoint"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
           }
         },
         "dependents": []
@@ -2256,7 +2569,7 @@
         "php": "pass",
         "rust": "pass",
         "typescript": "pass",
-        "python": "planned"
+        "python": "pass"
       },
       "fixtures": [
         "contracts/fixtures/statement_events.dbs",
@@ -2265,7 +2578,8 @@
         "packages/php/tests/statement_events_run.php",
         "packages/go/orm/coverage_fixture_test.go",
         "packages/php/tests/coverage_cases.php",
-        "packages/ts/tests/coverage_case.mjs"
+        "packages/ts/tests/coverage_case.mjs",
+        "packages/python/tests/coverage_case.py"
       ],
       "tests": [
         "packages/go/orm/statement_events_test.go",
@@ -2275,7 +2589,11 @@
         "packages/rust/orm/tests/statement_events.rs",
         "packages/go/orm/coverage_statement_events_test.go",
         "packages/php/tests/CoverageStatementEventsTest.php",
-        "packages/ts/tests/coverage_statement_events.mjs"
+        "packages/ts/tests/coverage_statement_events.mjs",
+        "packages/python/tests/statement_events.py",
+        "packages/python/tests/test_event_placeholders.py",
+        "packages/python/tests/test_subscriber_error.py",
+        "packages/python/tests/coverage_statement_events.py"
       ],
       "docs": [
         "docs/usage.md",
@@ -2325,6 +2643,25 @@
             "packages/rust/orm/tests/statement_events.rs",
             "contracts/fixtures/statement_events.dbs",
             "tests/events/vectors.json"
+          ]
+        },
+        {
+          "id": "statement-events-python",
+          "command": "make python-statement-events-check",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/statement_events.py",
+            "tests/events/vectors.json"
+          ]
+        },
+        {
+          "id": "statement-events-python-unit",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_event_placeholders && packages/python/.venv/bin/python -m packages.python.tests.test_subscriber_error",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_event_placeholders.py",
+            "packages/python/tests/test_subscriber_error.py",
+            "packages/python/src/polyspec/orm/events.py"
           ]
         }
       ],
@@ -2526,6 +2863,50 @@
                 }
               ]
             }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/coverage_statement_events.py"
+            ],
+            "inputs": [
+              "packages/python/tests/case_database.py",
+              "packages/python/tests/statement_events.py",
+              "contracts/fixtures/statement_events.dbs",
+              "tests/events/vectors.json"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_statement_events.py",
+                  "cases": [
+                    "statement_events"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_statement_events.py",
+                  "cases": [
+                    "statement_events"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_statement_events.py",
+                  "cases": [
+                    "statement_events"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
           }
         },
         "dependents": []
@@ -2536,8 +2917,8 @@
       "title": "Model generation",
       "title_ko": "모델 생성",
       "status": "implemented",
-      "description": "Generate the models from the dbspec document set with the generator of each language. Go and Rust scan the sources and generate the chain methods they call; TypeScript and PHP (`--scan`) type the scanned chains, and PHP otherwise resolves chains at run time. With `--check`, the Go, PHP, and TypeScript generators compare the models with the output directory without writing.",
-      "description_ko": "언어별 생성기로 dbspec document set에서 모델을 만든다. Go와 Rust는 소스를 읽어 호출한 체인 메서드를 만들고, TypeScript와 PHP(`--scan`)는 읽은 체인에 타입을 붙이며 PHP는 그 밖에는 실행 시 체인을 해석한다. `--check`를 붙이면 Go, PHP, TypeScript 생성기는 쓰지 않고 모델을 출력 디렉터리와 비교한다.",
+      "description": "Generate the models from the dbspec document set with the generator of each language. Go and Rust scan the sources and generate the chain methods they call; TypeScript and PHP (`--scan`) type the scanned chains, and PHP otherwise resolves chains at run time. With `--check`, the Go, PHP, TypeScript, and Python generators compare the models with the output directory without writing.",
+      "description_ko": "언어별 생성기로 dbspec document set에서 모델을 만든다. Go와 Rust는 소스를 읽어 호출한 체인 메서드를 만들고, TypeScript와 PHP(`--scan`)는 읽은 체인에 타입을 붙이며 PHP는 그 밖에는 실행 시 체인을 해석한다. `--check`를 붙이면 Go, PHP, TypeScript, Python 생성기는 쓰지 않고 모델을 출력 디렉터리와 비교한다.",
       "inputs": {
         "type": "GeneratorRequest",
         "fields": [
@@ -2575,14 +2956,15 @@
         "php": "pass",
         "rust": "pass",
         "typescript": "pass",
-        "python": "planned"
+        "python": "pass"
       },
       "fixtures": [
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/common/mod.rs",
         "packages/ts/tests/coverage_case.mjs",
-        "tests/generator/php-scan-vectors.json"
+        "tests/generator/php-scan-vectors.json",
+        "packages/python/tests/coverage_case.py"
       ],
       "tests": [
         "packages/go/generator/gen_go_check_test.go",
@@ -2604,7 +2986,12 @@
         "packages/go/model/coverage_model_generation_test.go",
         "packages/php/tests/CoverageModelGenerationTest.php",
         "packages/rust/tests/tests/coverage_model_generation.rs",
-        "packages/ts/tests/coverage_model_generation.mjs"
+        "packages/ts/tests/coverage_model_generation.mjs",
+        "packages/python/tests/test_orm_gen.py",
+        "packages/python/tests/test_query_methods.py",
+        "packages/python/tests/test_packaging.py",
+        "packages/python/tests/test_requires_python.py",
+        "packages/python/tests/coverage_model_generation.py"
       ],
       "docs": [
         "docs/dsl.md",
@@ -2700,6 +3087,20 @@
           "inputs": [
             "packages/rust/build/src/generate.rs"
           ]
+        },
+        {
+          "id": "generation-python",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_orm_gen && packages/python/.venv/bin/python -m packages.python.tests.test_query_methods && packages/python/.venv/bin/python -m packages.python.tests.test_packaging && packages/python/.venv/bin/python -m packages.python.tests.test_requires_python",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_orm_gen.py",
+            "packages/python/tests/test_query_methods.py",
+            "packages/python/tests/test_packaging.py",
+            "packages/python/tests/test_requires_python.py",
+            "packages/python/src/polyspec/orm/generate/python.py",
+            "packages/python/src/polyspec/orm/bin_orm_gen.py",
+            "packages/python/pyproject.toml"
+          ]
         }
       ],
       "coverage": {
@@ -2778,6 +3179,23 @@
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_model_generation.mjs",
+                  "cases": [
+                    "model_generation_check"
+                  ]
+                }
+              ]
+            }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/coverage_model_generation.py"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_model_generation.py",
                   "cases": [
                     "model_generation_check"
                   ]
@@ -3006,7 +3424,15 @@
         "packages/python/tests/test_dbspec_set_parse.py",
         "packages/python/tests/test_dbspec_show_create.py",
         "packages/python/tests/test_dbspec_syntax_vectors.py",
-        "packages/python/tests/coverage_schema_definition.py"
+        "packages/python/tests/coverage_schema_definition.py",
+        "packages/python/tests/dbspec_introspect.py",
+        "packages/python/tests/dbspec_introspect_runner.py",
+        "packages/python/tests/dbspec_apply.py",
+        "packages/python/tests/dbspec_apply_runner.py",
+        "packages/python/tests/dbspec_cases_reader.py",
+        "packages/python/tests/dbspec_vectors_reader.py",
+        "packages/python/tests/test_dbspec_cases_reader.py",
+        "packages/python/tests/test_introspect_messages.py"
       ],
       "docs": [
         "docs/dbspec.md",
@@ -3530,7 +3956,7 @@
         "php": "pass",
         "rust": "pass",
         "typescript": "pass",
-        "python": "planned"
+        "python": "pass"
       },
       "fixtures": [
         "packages/go/model/coverage_helpers_test.go",
@@ -3553,7 +3979,8 @@
         "contracts/fixtures/external/member.dbs",
         "contracts/fixtures/external/member_v2.dbs",
         "contracts/fixtures/install/note.dbs",
-        "contracts/fixtures/install/changed_database.json"
+        "contracts/fixtures/install/changed_database.json",
+        "packages/python/tests/coverage_case.py"
       ],
       "tests": [
         "packages/go/orm/keyword_test.go",
@@ -3581,7 +4008,19 @@
         "packages/go/orm/register_test.go",
         "packages/rust/orm/tests/register.rs",
         "packages/rust/orm/tests/install.rs",
-        "packages/ts/tests/dbspec_runtime_db.mjs"
+        "packages/ts/tests/dbspec_runtime_db.mjs",
+        "packages/python/tests/test_schema_install.py",
+        "packages/python/tests/test_schema_install_uses.py",
+        "packages/python/tests/test_add_tables_and_columns.py",
+        "packages/python/tests/test_add_tables_steps.py",
+        "packages/python/tests/test_installed_differences.py",
+        "packages/python/tests/install_changed_database.py",
+        "packages/python/tests/schema_inspection.py",
+        "packages/python/tests/test_schema_inspection.py",
+        "packages/python/tests/test_schema_utils.py",
+        "packages/python/tests/test_load_set.py",
+        "packages/python/tests/case_database.py",
+        "packages/python/tests/coverage_schema_install.py"
       ],
       "docs": [
         "docs/schema.md",
@@ -3695,6 +4134,40 @@
           "shard": "other",
           "inputs": [
             "packages/ts/tests/dbspec_runtime_db.mjs"
+          ]
+        },
+        {
+          "id": "install-python",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_schema_install && packages/python/.venv/bin/python -m packages.python.tests.test_schema_install_uses && packages/python/.venv/bin/python -m packages.python.tests.test_add_tables_and_columns && packages/python/.venv/bin/python -m packages.python.tests.test_add_tables_steps && packages/python/.venv/bin/python -m packages.python.tests.test_installed_differences && packages/python/.venv/bin/python -m packages.python.tests.test_schema_inspection && packages/python/.venv/bin/python -m packages.python.tests.test_schema_utils && packages/python/.venv/bin/python -m packages.python.tests.test_load_set",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_schema_install.py",
+            "packages/python/tests/test_schema_install_uses.py",
+            "packages/python/tests/test_add_tables_and_columns.py",
+            "packages/python/tests/test_add_tables_steps.py",
+            "packages/python/tests/test_installed_differences.py",
+            "packages/python/tests/test_schema_inspection.py",
+            "packages/python/tests/test_schema_utils.py",
+            "packages/python/tests/test_load_set.py",
+            "packages/python/src/polyspec/orm/schema.py",
+            "packages/python/src/polyspec/orm/utils.py"
+          ]
+        },
+        {
+          "id": "install-changed-database-python",
+          "command": "make python-install-changed-database-check",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/install_changed_database.py",
+            "contracts/fixtures/install/changed_database.json"
+          ]
+        },
+        {
+          "id": "schema-inspection-python",
+          "command": "make python-schema-inspection-check",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/schema_inspection.py"
           ]
         }
       ],
@@ -3911,6 +4384,50 @@
                 }
               ]
             }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/coverage_schema_install.py"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_schema_install.py",
+                  "cases": [
+                    "schema_install_existing",
+                    "schema_install_partial",
+                    "schema_install_external_documents"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_schema_install.py",
+                  "cases": [
+                    "schema_install_existing",
+                    "schema_install_partial",
+                    "schema_install_external_documents"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_schema_install.py",
+                  "cases": [
+                    "schema_install_existing",
+                    "schema_install_partial",
+                    "schema_install_external_documents"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
           }
         },
         "dependents": []
@@ -3921,8 +4438,8 @@
       "title": "In-process planner",
       "title_ko": "프로세스 내 planner",
       "status": "implemented",
-      "description": "Validate a value-free request against the manifest and render the dialect SQL, bind slots, assembly metadata, and the tables each statement names in the client process. The four planners produce identical statements.",
-      "description_ko": "값이 없는 request를 manifest로 검증하고 dialect SQL, bind slot, 조립 정보, 각 statement가 가리키는 table을 client process에서 만든다. 네 planner는 같은 statement를 만든다.",
+      "description": "Validate a value-free request against the manifest and render the dialect SQL, bind slots, assembly metadata, and the tables each statement names in the client process. The five planners produce identical statements.",
+      "description_ko": "값이 없는 request를 manifest로 검증하고 dialect SQL, bind slot, 조립 정보, 각 statement가 가리키는 table을 client process에서 만든다. 다섯 planner는 같은 statement를 만든다.",
       "inputs": {
         "type": "RequestIR",
         "fields": [
@@ -4833,14 +5350,15 @@
         "php": "pass",
         "rust": "pass",
         "typescript": "pass",
-        "python": "planned"
+        "python": "pass"
       },
       "fixtures": [
         "tests/conformance/vectors.json",
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/src/coverage_env.rs",
-        "packages/ts/tests/coverage_case.mjs"
+        "packages/ts/tests/coverage_case.mjs",
+        "packages/python/tests/coverage_case.py"
       ],
       "tests": [
         "packages/go/model/model_test.go",
@@ -4850,7 +5368,9 @@
         "packages/go/model/coverage_composite_keys_test.go",
         "packages/php/tests/CoverageCompositeKeysTest.php",
         "packages/rust/tests/src/coverage_composite_keys.rs",
-        "packages/ts/tests/coverage_composite_keys.mjs"
+        "packages/ts/tests/coverage_composite_keys.mjs",
+        "packages/python/tests/test_key_prefix.py",
+        "packages/python/tests/coverage_composite_keys.py"
       ],
       "docs": [
         "docs/schema.md",
@@ -4863,6 +5383,15 @@
           "shard": "other",
           "inputs": [
             "packages/go/engine/engine_test.go"
+          ]
+        },
+        {
+          "id": "composite-python",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_key_prefix",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_key_prefix.py",
+            "packages/python/src/polyspec/orm/keys.py"
           ]
         }
       ],
@@ -5041,6 +5570,44 @@
                 }
               ]
             }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/coverage_composite_keys.py"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_composite_keys.py",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_composite_keys.py",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_composite_keys.py",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
           }
         },
         "dependents": []
@@ -5089,7 +5656,7 @@
         "php": "pass",
         "rust": "pass",
         "typescript": "pass",
-        "python": "planned"
+        "python": "pass"
       },
       "fixtures": [
         "tests/codec/aes-vectors.json",
@@ -5098,7 +5665,8 @@
         "contracts/fixtures/authenticated_encryption.json",
         "packages/go/orm/coverage_fixture_test.go",
         "packages/php/tests/coverage_cases.php",
-        "packages/ts/tests/coverage_case.mjs"
+        "packages/ts/tests/coverage_case.mjs",
+        "packages/python/tests/coverage_case.py"
       ],
       "tests": [
         "packages/go/orm/codec_test.go",
@@ -5127,7 +5695,13 @@
         "packages/python/tests/test_codec_decode_vectors.py",
         "packages/rust/orm/tests/codec_vectors.rs",
         "packages/php/tests/CodecAesVectorsTest.php",
-        "packages/rust/orm/tests/codec_aes_vectors.rs"
+        "packages/rust/orm/tests/codec_aes_vectors.rs",
+        "packages/python/tests/test_authenticated_encryption.py",
+        "packages/python/tests/test_aes_rotate.py",
+        "packages/python/tests/test_codec_aes_vectors.py",
+        "packages/python/tests/test_codec_vectors.py",
+        "packages/python/tests/codec_vector.py",
+        "packages/python/tests/coverage_authenticated_encryption.py"
       ],
       "docs": [
         "docs/codec.md",
@@ -5254,6 +5828,23 @@
             "packages/rust/orm/tests/aes_json.rs",
             "contracts/fixtures/secret_config.dbs"
           ]
+        },
+        {
+          "id": "encryption-python",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_authenticated_encryption && packages/python/.venv/bin/python -m packages.python.tests.test_aes_rotate && packages/python/.venv/bin/python -m packages.python.tests.test_codec_aes_vectors && packages/python/.venv/bin/python -m packages.python.tests.test_codec_vectors && packages/python/.venv/bin/python -m packages.python.tests.test_codec_decode_vectors",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_authenticated_encryption.py",
+            "packages/python/tests/test_aes_rotate.py",
+            "packages/python/tests/test_codec_aes_vectors.py",
+            "packages/python/tests/test_codec_vectors.py",
+            "packages/python/tests/test_codec_decode_vectors.py",
+            "packages/python/src/polyspec/orm/aes.py",
+            "packages/python/src/polyspec/orm/codec.py",
+            "tests/codec/vectors.json",
+            "tests/codec/aes-vectors.json",
+            "contracts/fixtures/authenticated_encryption.json"
+          ]
         }
       ],
       "coverage": {
@@ -5375,6 +5966,30 @@
                 }
               ]
             }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/coverage_authenticated_encryption.py"
+            ],
+            "inputs": [
+              "contracts/fixtures/authenticated_encryption.json"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_authenticated_encryption.py",
+                  "cases": [
+                    "aes_envelope_decrypt",
+                    "aes_round_trip",
+                    "aes_tamper_rejected",
+                    "aes_wrong_key_rejected",
+                    "blind_index_vector"
+                  ]
+                }
+              ]
+            }
           }
         },
         "dependents": []
@@ -5422,13 +6037,14 @@
         "php": "pass",
         "rust": "pass",
         "typescript": "pass",
-        "python": "planned"
+        "python": "pass"
       },
       "fixtures": [
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/src/coverage_env.rs",
-        "packages/ts/tests/coverage_case.mjs"
+        "packages/ts/tests/coverage_case.mjs",
+        "packages/python/tests/coverage_case.py"
       ],
       "tests": [
         "packages/go/model/chunk_test.go",
@@ -5442,7 +6058,8 @@
         "packages/ts/tests/coverage_parameter_chunking.mjs",
         "packages/rust/tests/src/result_chains.rs",
         "packages/rust/tests/build.rs",
-        "packages/rust/tests/nonnull.dbs"
+        "packages/rust/tests/nonnull.dbs",
+        "packages/python/tests/coverage_parameter_chunking.py"
       ],
       "docs": [
         "docs/protocol.md",
@@ -5671,6 +6288,44 @@
                 }
               ]
             }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/coverage_parameter_chunking.py"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_parameter_chunking.py",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_parameter_chunking.py",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_parameter_chunking.py",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
           }
         },
         "dependents": []
@@ -5724,7 +6379,7 @@
         "php": "pass",
         "rust": "pass",
         "typescript": "pass",
-        "python": "planned"
+        "python": "pass"
       },
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
@@ -5732,7 +6387,8 @@
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/src/coverage_env.rs",
-        "packages/ts/tests/coverage_case.mjs"
+        "packages/ts/tests/coverage_case.mjs",
+        "packages/python/tests/coverage_case.py"
       ],
       "tests": [
         "packages/go/engine/planner/soft_delete_test.go",
@@ -5753,7 +6409,9 @@
         "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
         "packages/rust/tests/src/coverage_constraints_and_relations.rs",
         "packages/ts/tests/coverage_constraints_and_relations.mjs",
-        "contracts/fixtures/refusal.dbs"
+        "contracts/fixtures/refusal.dbs",
+        "packages/python/tests/test_driver_errors.py",
+        "packages/python/tests/coverage_constraints_and_relations.py"
       ],
       "docs": [
         "docs/schema.md",
@@ -5819,6 +6477,15 @@
           "inputs": [
             "packages/ts/tests/driver-error.mjs",
             "contracts/fixtures/refusal.dbs"
+          ]
+        },
+        {
+          "id": "driver-error-python",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_driver_errors",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_driver_errors.py",
+            "packages/python/src/polyspec/orm/database.py"
           ]
         }
       ],
@@ -5997,6 +6664,44 @@
                 }
               ]
             }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/coverage_constraints_and_relations.py"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_constraints_and_relations.py",
+                  "cases": [
+                    "constraint_errors"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_constraints_and_relations.py",
+                  "cases": [
+                    "constraint_errors"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_constraints_and_relations.py",
+                  "cases": [
+                    "constraint_errors"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
           }
         },
         "dependents": []
@@ -6044,7 +6749,7 @@
         "php": "pass",
         "rust": "pass",
         "typescript": "pass",
-        "python": "planned"
+        "python": "pass"
       },
       "fixtures": [
         "contracts/fixtures/audit.dbs",
@@ -6059,7 +6764,8 @@
         "packages/ts/tests/restore_case.mjs",
         "packages/rust/orm/tests/common/restore_rows.rs",
         "packages/php/tests/audit_case.php",
-        "contracts/fixtures/external/board.dbs"
+        "contracts/fixtures/external/board.dbs",
+        "packages/python/tests/coverage_case.py"
       ],
       "tests": [
         "packages/php/tests/ModelTest.php",
@@ -6080,7 +6786,8 @@
         "contracts/fixtures/external/core.dbs",
         "contracts/fixtures/external/core_extra.dbs",
         "contracts/fixtures/external/member.dbs",
-        "contracts/fixtures/external/member_v2.dbs"
+        "contracts/fixtures/external/member_v2.dbs",
+        "packages/python/tests/coverage_audit_triggers.py"
       ],
       "docs": [
         "docs/dbspec.md",
@@ -6396,6 +7103,59 @@
                 }
               ]
             }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/coverage_audit_triggers.py"
+            ],
+            "inputs": [
+              "packages/python/tests/test_sqlite.py",
+              "contracts/fixtures/audit.dbs",
+              "contracts/fixtures/audit_columns.dbs",
+              "contracts/fixtures/restore.dbs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_audit_triggers.py",
+                  "cases": [
+                    "audit_history",
+                    "audit_selected_columns",
+                    "audit_transaction_entry_points",
+                    "soft_delete_restore"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_audit_triggers.py",
+                  "cases": [
+                    "audit_history",
+                    "audit_selected_columns",
+                    "audit_transaction_entry_points",
+                    "soft_delete_restore"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_audit_triggers.py",
+                  "cases": [
+                    "audit_history",
+                    "audit_selected_columns",
+                    "audit_transaction_entry_points",
+                    "soft_delete_restore"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
           }
         },
         "dependents": []
@@ -6437,13 +7197,14 @@
         "php": "pass",
         "rust": "pass",
         "typescript": "pass",
-        "python": "planned"
+        "python": "pass"
       },
       "fixtures": [
         "contracts/interfaces.json",
         "packages/go/orm/coverage_fixture_test.go",
         "packages/php/tests/coverage_cases.php",
-        "packages/ts/tests/coverage_case.mjs"
+        "packages/ts/tests/coverage_case.mjs",
+        "packages/python/tests/coverage_case.py"
       ],
       "tests": [
         "packages/go/engine/interface_test.go",
@@ -6459,7 +7220,9 @@
         "tests/interfaces/contracts/validate.go",
         "tests/interfaces/contracts/generate_test.go",
         "packages/ts/tests/package-declarations.mjs",
-        "packages/ts/src/index.ts"
+        "packages/ts/src/index.ts",
+        "packages/python/tests/coverage_interface_contract.py",
+        "tests/interfaces/python.py"
       ],
       "docs": [
         "docs/interfaces.md",
@@ -6508,6 +7271,16 @@
           "inputs": [
             "packages/ts/tests/package-declarations.mjs",
             "packages/ts/src/index.ts"
+          ]
+        },
+        {
+          "id": "interfaces-python",
+          "command": "make python-interface-unit-check",
+          "shard": "other",
+          "inputs": [
+            "tests/interfaces/python.py",
+            "tests/interfaces/test_python_extractor.py",
+            "tests/interfaces/test_python_natives.py"
           ]
         }
       ],
@@ -6611,6 +7384,29 @@
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_interface_contract.mjs",
+                  "cases": [
+                    "interface_symbols"
+                  ]
+                }
+              ]
+            }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/coverage_interface_contract.py"
+            ],
+            "inputs": [
+              "tests/interfaces/check/*.mts",
+              "contracts/interfaces.json",
+              "contracts/symbols/python.json",
+              "tests/interfaces/python.py"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_interface_contract.py",
                   "cases": [
                     "interface_symbols"
                   ]
@@ -6802,8 +7598,8 @@
       "title": "Conformance verification",
       "title_ko": "적합성 검증",
       "status": "implemented",
-      "description": "Run the same model chains in Go, PHP, Rust, and TypeScript on MySQL, PostgreSQL, and SQLite and compare the statements and results with the recorded vectors.",
-      "description_ko": "같은 모델 체인을 Go, PHP, Rust, TypeScript에서 MySQL, PostgreSQL, SQLite로 실행하고 statement와 결과를 기록된 벡터와 비교한다.",
+      "description": "Run the same model chains in Go, PHP, Rust, TypeScript, and Python on MySQL, PostgreSQL, and SQLite and compare the statements and results with the recorded vectors.",
+      "description_ko": "같은 모델 체인을 Go, PHP, Rust, TypeScript, Python에서 MySQL, PostgreSQL, SQLite로 실행하고 statement와 결과를 기록된 벡터와 비교한다.",
       "inputs": {
         "type": "ConformanceVector",
         "fields": [
@@ -6837,7 +7633,7 @@
         "php": "pass",
         "rust": "pass",
         "typescript": "pass",
-        "python": "planned"
+        "python": "pass"
       },
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -6849,7 +7645,8 @@
         "packages/ts/tests/coverage_case.mjs",
         "tests/markdown/cases.json",
         "tests/markdown/corpus/dbspec/conformance.dbs",
-        "tests/markdown/flowmark.version"
+        "tests/markdown/flowmark.version",
+        "packages/python/tests/coverage_case.py"
       ],
       "tests": [
         "packages/go/markdownmodel/conformance_test.go",
@@ -6875,7 +7672,12 @@
         "packages/ts/tests/coverage_conformance_mysql.mjs",
         "packages/ts/tests/coverage_conformance_postgres.mjs",
         "packages/ts/tests/coverage_conformance_sqlite.mjs",
-        "packages/ts/tests/conformance_case.mjs"
+        "packages/ts/tests/conformance_case.mjs",
+        "packages/python/tests/conformance_case.py",
+        "packages/python/tests/conformance_mysql.py",
+        "packages/python/tests/conformance_postgres.py",
+        "packages/python/tests/conformance_sqlite.py",
+        "packages/python/tests/coverage_conformance_verification.py"
       ],
       "docs": [
         "tests/conformance/README.md",
@@ -6967,6 +7769,15 @@
           "shard": "rust",
           "inputs": [
             "packages/rust/tests/src/conformance.rs"
+          ]
+        },
+        {
+          "id": "conformance-result-python",
+          "command": "make conformance-result-check/python",
+          "shard": "other",
+          "inputs": [
+            "tests/conformance/result_python.py",
+            "tests/conformance/runner_python.py"
           ]
         }
       ],
@@ -7176,6 +7987,50 @@
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_conformance_verification.mjs",
+                  "cases": [
+                    "conformance_vector"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/coverage_conformance_verification.py"
+            ],
+            "inputs": [
+              "tests/conformance/vectors.json",
+              "tests/conformance/vectors.postgres.json",
+              "tests/conformance/vectors.sqlite.json",
+              "tests/conformance/runner_python.py"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_conformance_verification.py",
+                  "cases": [
+                    "conformance_vector"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_conformance_verification.py",
+                  "cases": [
+                    "conformance_vector"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_conformance_verification.py",
                   "cases": [
                     "conformance_vector"
                   ],
@@ -7422,13 +8277,14 @@
         "php": "pass",
         "rust": "pass",
         "typescript": "pass",
-        "python": "planned"
+        "python": "pass"
       },
       "fixtures": [
         "contracts/fixtures/request_hook.dbs",
         "packages/ts/tests/request_hook_run.mjs",
         "packages/php/tests/request_hook_cases.php",
-        "packages/php/tests/case_database.php"
+        "packages/php/tests/case_database.php",
+        "packages/python/tests/coverage_case.py"
       ],
       "tests": [
         "packages/go/orm/request_hook_test.go",
@@ -7439,7 +8295,9 @@
         "packages/php/tests/RequestHookTest.php",
         "packages/php/tests/CoverageRequestHookTest.php",
         "packages/php/tests/request_hook_cases.php",
-        "packages/rust/orm/tests/request_hook.rs"
+        "packages/rust/orm/tests/request_hook.rs",
+        "packages/python/tests/test_request_hook.py",
+        "packages/python/tests/coverage_request_hook.py"
       ],
       "docs": [
         "docs/usage.md",
@@ -7481,6 +8339,15 @@
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/tests/request_hook.rs",
+            "contracts/fixtures/request_hook.dbs"
+          ]
+        },
+        {
+          "id": "request-hook-python",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_request_hook",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_request_hook.py",
             "contracts/fixtures/request_hook.dbs"
           ]
         }
@@ -7848,6 +8715,76 @@
                 }
               ]
             }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/coverage_request_hook.py"
+            ],
+            "inputs": [
+              "packages/python/tests/test_request_hook.py",
+              "packages/python/tests/case_database.py",
+              "contracts/fixtures/request_hook.dbs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_request_hook.py",
+                  "cases": [
+                    "without_hook",
+                    "read_filter",
+                    "insert_assign",
+                    "loaded_row_writes",
+                    "invalid_param",
+                    "restore_key",
+                    "restore_condition",
+                    "restore_no_key",
+                    "restore_rewritten_key",
+                    "restore_hook_set_key"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_request_hook.py",
+                  "cases": [
+                    "without_hook",
+                    "read_filter",
+                    "insert_assign",
+                    "loaded_row_writes",
+                    "invalid_param",
+                    "restore_key",
+                    "restore_condition",
+                    "restore_no_key",
+                    "restore_rewritten_key",
+                    "restore_hook_set_key"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_request_hook.py",
+                  "cases": [
+                    "without_hook",
+                    "read_filter",
+                    "insert_assign",
+                    "loaded_row_writes",
+                    "invalid_param",
+                    "restore_key",
+                    "restore_condition",
+                    "restore_no_key",
+                    "restore_rewritten_key",
+                    "restore_hook_set_key"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
           }
         },
         "dependents": []
@@ -8077,6 +9014,19 @@
       ],
       "tests": [],
       "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" APPLY_STRESS_DIALECTS='postgres|sqlite' dbspec-apply-stress-bench"
+    },
+    {
+      "id": "python-test-harness",
+      "paths": [
+        "packages/python/tests/testcase.py",
+        "packages/python/tests/vector_case.py",
+        "packages/python/tests/__init__.py"
+      ],
+      "tests": [
+        "packages/python/tests/test_testcase.py",
+        "packages/python/tests/test_no_path_change.py"
+      ],
+      "command": "make --no-print-directory python-unit-check"
     }
   ]
 }

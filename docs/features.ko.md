@@ -1,30 +1,30 @@
 <!-- doc-id: features -->
-<!-- source-sha256: 8508af2d042defa8e00053e78bde98fd9b2a103753cee43ed0a5d318fb0b0dbf -->
+<!-- source-sha256: 672222c7d6f54a5ed9afbd663ba17e7f2f912dfe6eaf7325e9b98698f396f28f -->
 # 기능 정의
 
 실행 기준은 저장소의 기능 manifest이다. 먼저 manifest의 `source.read_order` 경로를 읽고 선택한 기능의 모든 참조 경로를 읽는다. 각 항목은 input, output, 상태 전이, 오류, client 지원 상태, fixture, test, paired document, 실제 검증 명령을 정의한다.
 
 | ID | 기능 | 상태 | Client 지원 |
 |---|---|---|---|
-| dsn_connection | DSN URI 연결 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
-| model_queries | 모델 조회 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
-| model_writes | 모델 쓰기 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
-| transactions | 트랜잭션 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
-| statement_events | Statement event | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
-| model_generation | 모델 생성 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| dsn_connection | DSN URI 연결 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: pass |
+| model_queries | 모델 조회 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: pass |
+| model_writes | 모델 쓰기 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: pass |
+| transactions | 트랜잭션 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: pass |
+| statement_events | Statement event | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: pass |
+| model_generation | 모델 생성 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: pass |
 | schema_definition | 스키마 정의와 마이그레이션 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: pass |
-| schema_install | 스키마 설치 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| schema_install | 스키마 설치 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: pass |
 | planner | 프로세스 내 planner | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: pass |
-| composite_keys | 복합 key | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
-| authenticated_encryption | 인증 암호화 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
-| parameter_chunking | 파라미터 분할 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
-| constraints_and_relations | 제약과 관계 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
-| audit_triggers | 감사 트리거 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
-| interface_contract | 공통 인터페이스 검증 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| composite_keys | 복합 key | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: pass |
+| authenticated_encryption | 인증 암호화 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: pass |
+| parameter_chunking | 파라미터 분할 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: pass |
+| constraints_and_relations | 제약과 관계 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: pass |
+| audit_triggers | 감사 트리거 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: pass |
+| interface_contract | 공통 인터페이스 검증 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: pass |
 | performance_gate | hot-path 성능 기준 | partial | go: pass<br>php: pass<br>rust: partial<br>typescript: planned<br>python: planned |
-| conformance_verification | 적합성 검증 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| conformance_verification | 적합성 검증 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: pass |
 | catalog_connection | Rust catalog 연결 | partial | go: unsupported<br>php: unsupported<br>rust: pass<br>typescript: unsupported<br>python: planned |
-| request_hook | Request hook | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| request_hook | Request hook | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: pass |
 
 ## 현재 동작
 

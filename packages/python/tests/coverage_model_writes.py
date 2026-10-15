@@ -1,0 +1,100 @@
+# model_writes coverage: create, creates, update, upsert and delete once each with the generated CompositeAccount
+# model, as the model_writes coverage of Go, PHP, TypeScript and Rust does. It writes only composite_account, which has
+# no identity column, and deletes every row it wrote, so the database state stays as it was.
+from polyspec.orm.models import models
+from .coverage_case import (
+    error_code,
+    expect_equal,
+    feature_database,
+    run_cases,
+    with_cleanup,
+)
+
+TENANT = 990002
+
+
+def model_write_cycle():
+    driver, dsn = feature_database()
+    db = models.connect(dsn)
+    try:
+        expect_equal(db.driver, driver, "the driver")
+        account = lambda: models.CompositeAccount().connect(db)  # noqa: E731
+        expect_equal(
+            account().tenant_id(TENANT).get_count(),
+            0,
+            f"composite_account rows of tenant {TENANT} before the case",
+        )
+
+        def body():
+            created = (
+                account()
+                .set_tenant_id(TENANT)
+                .set_account_id(1)
+                .set_name("created")
+                .create()
+            )
+            expect_equal(created.get_name(), "created", "the created name")
+            inserted = account().creates(
+                [
+                    models.CompositeAccount()
+                    .set_tenant_id(TENANT)
+                    .set_account_id(i)
+                    .set_name(f"many-{i}")
+                    for i in (2, 3, 4)
+                ]
+            )
+            expect_equal(inserted, 3, "rows inserted by creates")
+            account().get_by_tenant_id_and_account_id(TENANT, 1).set_name(
+                "updated"
+            ).update()
+            expect_equal(
+                account().get_by_tenant_id_and_account_id(TENANT, 1).get_name(),
+                "updated",
+                "updated name",
+            )
+            account().set_tenant_id(TENANT).set_account_id(1).set_name(
+                "ignored"
+            ).duplication(models.CompositeAccount().set_name("upserted")).create()
+            expect_equal(
+                account().get_by_tenant_id_and_account_id(TENANT, 1).get_name(),
+                "upserted",
+                "duplication assignment",
+            )
+            expect_equal(
+                account().tenant_id(TENANT).get_count(), 4, "rows of the tenant"
+            )
+            names = [
+                a.get_name()
+                for a in account()
+                .tenant_id(TENANT)
+                .order_by_account_id_asc()
+                .gets()
+                .values()
+            ]
+            expect_equal(
+                names,
+                ["upserted", "many-2", "many-3", "many-4"],
+                "names of the tenant rows",
+            )
+            account().tenant_id(TENANT).gets().delete()
+            expect_equal(
+                error_code(
+                    lambda: account().get_by_tenant_id_and_account_id(TENANT, 1)
+                ),
+                "NO_ROWS",
+                "deleted row",
+            )
+            expect_equal(
+                account().tenant_id(TENANT).get_count(),
+                0,
+                "every row of the tenant deleted",
+            )
+
+        # A failed run leaves no row of this case either.
+        with_cleanup(body, lambda: account().tenant_id(TENANT).gets().delete())
+    finally:
+        db.close()
+
+
+if __name__ == "__main__":
+    run_cases({"model_write_cycle": model_write_cycle})

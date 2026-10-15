@@ -86,3 +86,6 @@ _.put_minus
 
 # A contract name of the symbol file (tests/interfaces), declared by every client.
 function_column
+
+# sqlite3 reads the row_factory of a connection; the native query of the coverage runner (tests/coverage_case.py) sets it.
+_.row_factory

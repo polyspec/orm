@@ -134,7 +134,7 @@ The creation spelling follows the host language. The method role, stored request
 
 `getBy<Chain>`, `getsBy<Chain>`, and `getCountBy<Chain>` apply a column chain as the condition and call the terminal. A chain is a combination of column keys, operators and connectors, so the set of chains has no bound, and no client lists them all. Each client reaches a chain in one of two ways, and the same chain gives the same rows in every client:
 
-- A client with static model types declares each chain that the model generation finds in the scanned source code. Go, Rust and TypeScript work this way. A chain that no scanned call names has no method until the code calls it and the models are generated again.
+- A client with static model types declares each chain that the model generation finds in the scanned source code. Go, Rust and TypeScript work this way, while PHP and Python resolve the name as the next item says. A chain that no scanned call names has no method until the code calls it and the models are generated again.
 - A client with dynamic model types resolves the name of the call when the call runs. PHP (`__call`) and Python (`__getattr__`) work this way. The generation scan checks the names it finds and declares no method.
 
 The shared vector `terminal_by` in `tests/conformance/vectors.json` runs `getsBy<Chain>` on the non-unique columns `service_seq` and `is_close` in every runtime client, and the rows of each client must equal the recorded result.

@@ -21,7 +21,7 @@ const manifest = readManifest();
 const ids = new Set<string>();
 // shardOf는 (cwd, command)마다 그것을 처음 선언한 검증 명령과 그 shard다.
 const shardOf = new Map<string, { shard: string; name: string }>();
-const clients = ['go', 'php', 'rust', 'typescript'] as const;
+const clients = ['go', 'php', 'rust', 'typescript', 'python'] as const;
 const VECTORS_SCHEMA = new URL('../../tests/conformance/schema/vectors.schema.json', import.meta.url).pathname;
 const FIXTURE_SCHEMA = new URL('./schema/fixture.schema.json', import.meta.url).pathname;
 const runVerification = process.argv.includes('--run');
@@ -118,6 +118,7 @@ const languageTests: Record<string, { roots: string[]; match: (file: string) => 
   php: { roots: ['packages/php/tests', 'tests/interfaces/php.php'], match: () => true },
   rust: { roots: ['packages/rust/orm/tests', 'packages/rust/build/tests', 'packages/rust/tests', 'tests/interfaces/rust'], match: (file: string) => file.endsWith('.rs') && !file.endsWith('build.rs') },
   typescript: { roots: ['packages/ts', 'tests/interfaces/typescript.mts'], match: (file: string) => file.endsWith('.test.ts') || (file.startsWith('packages/ts/tests/') && file.endsWith('.mjs')) },
+  python: { roots: ['packages/python/tests', 'tests/interfaces/python.py'], match: (file: string) => file.endsWith('.py') },
 };
 const skipDirectories = new Set(['node_modules', 'target', 'dist']);
 const walk = async (directory: string) => {
