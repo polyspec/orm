@@ -2,7 +2,7 @@
 # nested transaction rolls back only its own write through a savepoint, as the transactions coverage of Go, PHP,
 # TypeScript and Rust does. The rows are written only to composite_account and removed when the case ends.
 from polyspec.orm.models import models
-from .coverage_case import expect_equal, feature_database, run_cases, with_cleanup
+from .coverage_case import expect_equal, run_cases, with_cleanup
 
 TENANT = 990003
 
@@ -11,9 +11,9 @@ class Requested(Exception):
     """The error a callback raises to end its transaction."""
 
 
-def with_tenant(body):
+def with_tenant(item, body):
     """Opens the selected database, runs the case and removes every row of the tenant afterwards."""
-    driver, dsn = feature_database()
+    driver, dsn = item
     db = models.connect(dsn)
     try:
         expect_equal(db.driver, driver, "the driver")
@@ -49,7 +49,7 @@ def caught(run):
     return None
 
 
-def transaction_rollback():
+def transaction_rollback(item):
     def body(db):
         boom = Requested("rollback requested by the callback")
 
@@ -66,10 +66,10 @@ def transaction_rollback():
         )
         expect_equal(exists(db, 1), False, "the rolled back row exists")
 
-    with_tenant(body)
+    with_tenant(item, body)
 
 
-def transaction_savepoint():
+def transaction_savepoint(item):
     def body(db):
         boom = Requested("inner transaction failed")
         inner = []
@@ -99,7 +99,7 @@ def transaction_savepoint():
         ).delete()
         expect_equal(exists(db, 2), False, "the outer row is deleted")
 
-    with_tenant(body)
+    with_tenant(item, body)
 
 
 if __name__ == "__main__":

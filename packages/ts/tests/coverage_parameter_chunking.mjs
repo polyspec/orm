@@ -3,11 +3,10 @@
 // 확인한다. 읽기만 한다.
 import assert from 'node:assert/strict';
 import { Author, connect } from '../dist/index.js';
-import { errorCode, featureDatabase, runCases } from './coverage_case.mjs';
+import { errorCode, runCases } from './coverage_case.mjs';
 
 await runCases('coverage_parameter_chunking.mjs', {
-  async root_in_chunking() {
-    const { driver, dsn } = featureDatabase();
+  async root_in_chunking({ driver, dsn }) {
     const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
     try {
       assert.equal(db.driver, driver);

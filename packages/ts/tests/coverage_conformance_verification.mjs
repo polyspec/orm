@@ -5,14 +5,13 @@ import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { featureDatabase, repositoryRoot, runCases } from './coverage_case.mjs';
+import { repositoryRoot, runCases } from './coverage_case.mjs';
 
 const vectorFiles = { mysql: 'vectors.json', postgres: 'vectors.postgres.json', sqlite: 'vectors.sqlite.json' };
 const selected = ['conditions_values', 'relations'];
 
 await runCases('coverage_conformance_verification.mjs', {
-  async conformance_vector() {
-    const { driver, dsn } = featureDatabase();
+  async conformance_vector({ driver, dsn }) {
     const recorded = JSON.parse(await readFile(join(repositoryRoot, 'tests/conformance', vectorFiles[driver]), 'utf8'));
     const runner = join(repositoryRoot, 'tests/conformance/runner_typescript.mts');
     const args = [runner, '--dsn', dsn, ...selected.flatMap(name => ['--vector', name])];

@@ -10,8 +10,10 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 
 
 def run_cases(cases):
-    """Runs exactly the case IDs of the command line in their order; an unknown, repeated or missing ID is
-    an error before any case runs."""
+    """Runs exactly the case IDs of the command line in their order, each on every coverage item of this file (the
+    databases the manifest lists for it, or one item without a database). The output is `CASE <id> [<database>] PASS`
+    for each case that passed on a database item, and `CASE <id> PASS` for an item without one. A case takes its item
+    (driver, dsn) or None; an unknown, repeated or missing ID is an error before any case runs."""
     requested = sys.argv[1:]
     if (
         not requested
@@ -21,23 +23,37 @@ def run_cases(cases):
         raise SystemExit(
             f"usage: {Path(sys.argv[0]).name} {'|'.join(cases)}...; got {requested}"
         )
+    test = Path(sys._getframe(1).f_globals["__file__"]).resolve().relative_to(REPOSITORY_ROOT).as_posix()
+    items = feature_items(test)
     for case_id in requested:
-        cases[case_id]()
-        print(f"CASE {case_id} PASS", flush=True)
+        for item in items:
+            cases[case_id](item)
+            if item is None:
+                print(f"CASE {case_id} PASS", flush=True)
+            else:
+                print(f"CASE {case_id} [{item[0]}] PASS", flush=True)
 
 
-def feature_database() -> tuple[str, str]:
-    """The database and the DSN that the checker selected (ORM_FEATURE_DATABASE, ORM_FEATURE_DSN); a database
-    case fails without them."""
-    import os
+def feature_items(test: str):
+    """The coverage items of this test file from the feature manifest: the coverage resolver of scripts/features/coverage.mts
+    (`--items`) gives one (driver, dsn) for each database the manifest lists for the file. A file without a database
+    gives None. A DSN variable that is unset fails with its name."""
+    import json
+    import subprocess
 
-    driver = os.environ.get("ORM_FEATURE_DATABASE")
-    dsn = os.environ.get("ORM_FEATURE_DSN")
-    if driver not in ("mysql", "postgres", "sqlite") or not dsn:
-        raise AssertionError(
-            "ORM_FEATURE_DATABASE (mysql|postgres|sqlite) and ORM_FEATURE_DSN are required"
-        )
-    return driver, dsn
+    listed = subprocess.run(
+        ["node", str(REPOSITORY_ROOT / "scripts/features/coverage.mts"), "--items", test],
+        cwd=REPOSITORY_ROOT, capture_output=True, text=True, check=False,
+    )
+    if listed.returncode != 0:
+        raise AssertionError(f"coverage items of {test}: {listed.stderr.strip()}")
+    items = []
+    for item in json.loads(listed.stdout):
+        if item["database"] == "none":
+            items.append(None)
+        else:
+            items.append((item["database"], item["dsn"]))
+    return items or [None]
 
 
 def native_query(driver: str, dsn: str, statements: list[str]) -> list[list[dict]]:

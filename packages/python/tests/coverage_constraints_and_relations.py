@@ -2,11 +2,11 @@
 # as FOREIGN_KEY, CONSTRAINT and DUPLICATE_KEY and changes no row, as the constraints_and_relations coverage of Go, PHP,
 # TypeScript and Rust does.
 from polyspec.orm.models import models
-from .coverage_case import error_code, expect_equal, feature_database, run_cases
+from .coverage_case import error_code, expect_equal, run_cases
 
 
-def constraint_errors():
-    driver, dsn = feature_database()
+def constraint_errors(item):
+    driver, dsn = item
     db = models.connect(dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index")
     try:
         expect_equal(db.driver, driver, "the driver")

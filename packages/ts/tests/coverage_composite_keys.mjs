@@ -3,15 +3,14 @@
 // ON DELETE CASCADE 가 membership 을 지우는지 확인한다. 쓴 row 는 모두 지운다.
 import assert from 'node:assert/strict';
 import { CompositeAccount, CompositeMembership, connect } from '../dist/index.js';
-import { featureDatabase, runCases, withCleanup } from './coverage_case.mjs';
+import { runCases, withCleanup } from './coverage_case.mjs';
 
 // 다른 tenant 에도 account 2 가 있어야 account_id 한 성분만으로 잇는 relation 이 드러난다.
 const tenant = 990004;
 const otherTenant = 990006;
 
 await runCases('coverage_composite_keys.mjs', {
-  async composite_key_rows() {
-    const { driver, dsn } = featureDatabase();
+  async composite_key_rows({ driver, dsn }) {
     const db = await connect(dsn);
     try {
       assert.equal(db.driver, driver);

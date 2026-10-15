@@ -8,8 +8,8 @@ import sys
 import unittest
 
 
+from . import coverage_case, testcase  # noqa: E402
 from .coverage_case import REPOSITORY_ROOT, run_cases  # noqa: E402
-from . import testcase
 
 
 def run_with_arguments(ids, cases):
@@ -29,16 +29,29 @@ class CoverageCaseTest(unittest.TestCase):
     def test_runs_requested_cases_in_order(self):
         ran = []
         lines = run_with_arguments(
-            ["b", "a"], {"a": lambda: ran.append("a"), "b": lambda: ran.append("b")}
+            ["b", "a"], {"a": lambda item: ran.append("a"), "b": lambda item: ran.append("b")}
         )
         self.assertEqual(ran, ["b", "a"])
         self.assertEqual(lines, ["CASE b PASS", "CASE a PASS"])
+
+    def test_runs_each_case_on_every_database_item_of_the_file(self):
+        ran = []
+        original = coverage_case.feature_items
+        coverage_case.feature_items = lambda test: [("sqlite", "sqlite:///x"), ("mysql", "mysql://y")]
+        try:
+            lines = run_with_arguments(
+                ["a"], {"a": lambda item: ran.append(item[0])}
+            )
+        finally:
+            coverage_case.feature_items = original
+        self.assertEqual(ran, ["sqlite", "mysql"])
+        self.assertEqual(lines, ["CASE a [sqlite] PASS", "CASE a [mysql] PASS"])
 
     def test_refuses_missing_repeated_and_unknown_ids_before_any_case(self):
         ran = []
         for ids in ([], ["a", "a"], ["a", "z"]):
             with self.assertRaisesRegex(SystemExit, r"^usage: x\.py a\.\.\.; got "):
-                run_with_arguments(ids, {"a": lambda: ran.append("a")})
+                run_with_arguments(ids, {"a": lambda item: ran.append("a")})
         self.assertEqual(ran, [])
 
     def test_a_failed_case_raises_and_prints_no_pass(self):
@@ -53,7 +66,7 @@ class CoverageCaseTest(unittest.TestCase):
                 contextlib.redirect_stdout(out),
                 self.assertRaisesRegex(AssertionError, "broken"),
             ):
-                run_cases({"a": lambda: None, "b": fail})
+                run_cases({"a": lambda item: None, "b": lambda item: fail()})
         finally:
             sys.argv = argv
         self.assertEqual(out.getvalue().splitlines(), ["CASE a PASS"])

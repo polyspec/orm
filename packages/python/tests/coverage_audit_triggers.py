@@ -11,7 +11,6 @@ from polyspec.orm.errors import OrmError
 from .coverage_case import (
     REPOSITORY_ROOT,
     expect_equal,
-    feature_database,
     native_query,
     run_cases,
     table_exists,
@@ -77,10 +76,10 @@ def text_rows(driver: str, dsn: str, sql: str):
     ]
 
 
-def with_installed(fixture: str, tables, audited, body) -> None:
+def with_installed(item, fixture: str, tables, audited, body) -> None:
     """Installs the fixture on the selected database and runs body(db, driver, dsn); the tables and the trigger
     functions are dropped afterwards even when it failed. The tables do not exist before the case nor remain after."""
-    driver, dsn = feature_database()
+    driver, dsn = item
     for table in tables:
         expect_equal(
             table_exists(driver, dsn, table), False, f"table {table} before the case"
@@ -105,7 +104,7 @@ def with_installed(fixture: str, tables, audited, body) -> None:
 
 # contracts/fixtures/audit.dbs: the writes of a transaction that received an audit record (auditCase of
 # packages/ts/tests/restore_case.mjs).
-def audit_history():
+def audit_history(item):
     m = models_of("audit.dbs")
 
     def body(db, driver, dsn):
@@ -239,13 +238,13 @@ def audit_history():
             "item_history in history_id order",
         )
 
-    with_installed("audit.dbs", AUDIT_TABLES, ["item"], body)
+    with_installed(item, "audit.dbs", AUDIT_TABLES, ["item"], body)
 
 
 # Every transaction entry point takes the audit: the transaction of the connection and of a handle of it (a handle
 # that with_request_hook derives) insert the audit record whose key the audited writes write, and a nested
 # transaction takes no audit. The handle shares the audit source of its connection.
-def audit_transaction_entry_points():
+def audit_transaction_entry_points(item):
     m = models_of("audit.dbs")
 
     def body(db, driver, dsn):
@@ -304,13 +303,13 @@ def audit_transaction_entry_points():
             "audit records",
         )
 
-    with_installed("audit.dbs", AUDIT_TABLES, ["item"], body)
+    with_installed(item, "audit.dbs", AUDIT_TABLES, ["item"], body)
 
 
 # contracts/fixtures/audit_columns.dbs: card leaves secret out with exclude (secret), and tag records only label and the
 # audit columns with include (label). The audit triggers record the client's insert, update and soft delete with the
 # chosen columns only, and the history tables hold only the recorded columns.
-def audit_selected_columns():
+def audit_selected_columns(item):
     m = models_of("audit_columns.dbs")
 
     def body(db, driver, dsn):
@@ -383,13 +382,13 @@ def audit_selected_columns():
             "tag_history in history_id order",
         )
 
-    with_installed("audit_columns.dbs", AUDIT_COLUMNS_TABLES, ["card", "tag"], body)
+    with_installed(item, "audit_columns.dbs", AUDIT_COLUMNS_TABLES, ["card", "tag"], body)
 
 
 # contracts/fixtures/restore.dbs: restore brings back the soft-deleted rows of an audited table with a unique key and
 # an exclude list and of a table without audit (restoreCase of packages/ts/tests/restore_case.mjs). An audit record's
 # key may skip the numbers of failed transactions differently on each database, so it is found by its actor.
-def soft_delete_restore():
+def soft_delete_restore(item):
     m = models_of("restore.dbs")
 
     def body(db, driver, dsn):
@@ -552,7 +551,7 @@ def soft_delete_restore():
         )
         expect_equal(m.Label().connect(db).get_count(), 1, "live labels")
 
-    with_installed("restore.dbs", RESTORE_TABLES, ["membership"], body)
+    with_installed(item, "restore.dbs", RESTORE_TABLES, ["membership"], body)
 
 
 if __name__ == "__main__":

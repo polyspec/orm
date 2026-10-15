@@ -7,7 +7,8 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { errorCode, featureDatabase, runCases, withCleanup } from './coverage_case.mjs';
+import { errorCode, runCases, withCleanup } from './coverage_case.mjs';
+import { coverageItems } from '../../../scripts/features/coverage.mts';
 import { cases, COMPUTE } from '../../../tests/testcase.mts';
 
 // runCases는 명령 줄의 case ID를 읽으므로 각 호출 동안 process.argv를 바꾸고 출력을 모은다.
@@ -55,21 +56,15 @@ await run.run('coverage_case/stops-a-case-at-its-deadline', COMPUTE, async () =>
     } finally { clearTimeout(timer); }
   }), /case slow exceeded 20 ms/);
 });
-await run.run('coverage_case/requires-the-selected-database', COMPUTE, () => {
-  const saved = { ...process.env };
-  try {
-    delete process.env.ORM_FEATURE_DATABASE;
-    delete process.env.ORM_FEATURE_DSN;
-    assert.throws(() => featureDatabase(), /ORM_FEATURE_DATABASE \(mysql\|postgres\|sqlite\) and ORM_FEATURE_DSN are required/);
-    process.env.ORM_FEATURE_DATABASE = 'sqlite';
-    process.env.ORM_FEATURE_DSN = 'sqlite:///tmp/x.sqlite';
-    assert.deepEqual(featureDatabase(), { driver: 'sqlite', dsn: 'sqlite:///tmp/x.sqlite' });
-  } finally {
-    for (const key of ['ORM_FEATURE_DATABASE', 'ORM_FEATURE_DSN']) {
-      if (saved[key] === undefined) delete process.env[key];
-      else process.env[key] = saved[key];
-    }
-  }
+await run.run('coverage_case/resolves-each-listed-database', COMPUTE, () => {
+  const file = 'packages/ts/tests/a.mjs';
+  const command = (dsn_env) => [{ runner: 'node', test: file, cases: ['c'], dsn_env }];
+  const manifest = { features: [{ id: 'x', coverage: { kind: 'database', cases: ['c'], owners: { typescript: { part: 'packages/ts', tests: [file],
+    commands: { sqlite: command('DSN_S'), mysql: command('DSN_M') } } } } }] };
+  assert.throws(() => coverageItems(manifest, file, { DSN_S: 'sqlite:///x' }), /DSN_M/);
+  assert.deepEqual(coverageItems(manifest, file, { DSN_S: 's', DSN_M: 'm' }).map(item => [item.database, item.dsn]),
+    [['sqlite', 's'], ['mysql', 'm']]);
+  assert.deepEqual(coverageItems(manifest, 'packages/ts/tests/none.mjs', {}), []);
 });
 await run.run('coverage_case/reports-error-codes-and-cleanup-failures', COMPUTE, async () => {
   assert.equal(await errorCode(Promise.reject(Object.assign(new Error('bad'), { code: 'CONFIG' }))), 'CONFIG');

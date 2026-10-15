@@ -3,11 +3,11 @@
 # statement_events coverage of Go, PHP, TypeScript and Rust does. The bench database is neither read nor written.
 from . import statement_events
 from .case_database import case_database
-from .coverage_case import feature_database, run_cases
+from .coverage_case import run_cases
 
 
-def run_statement_events():
-    driver, _ = feature_database()
+def run_statement_events(item):
+    driver, _ = item
     statement_events.setUpModule()
     try:
         failures = []

@@ -3,13 +3,12 @@
 // 지우므로 database 상태는 그대로다.
 import assert from 'node:assert/strict';
 import { CompositeAccount, connect } from '../dist/index.js';
-import { errorCode, featureDatabase, runCases, withCleanup } from './coverage_case.mjs';
+import { errorCode, runCases, withCleanup } from './coverage_case.mjs';
 
 const tenant = 990002;
 
 await runCases('coverage_model_writes.mjs', {
-  async model_write_cycle() {
-    const { driver, dsn } = featureDatabase();
+  async model_write_cycle({ driver, dsn }) {
     const db = await connect(dsn);
     try {
       assert.equal(db.driver, driver);

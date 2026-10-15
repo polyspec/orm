@@ -5,7 +5,7 @@
 // MySQL, PostgreSQL, SQLite에서 각각 새 case database로 그 case를 실행한다.
 import { DATABASE } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
-import { featureDatabase, runCases } from './coverage_case.mjs';
+import { runCases } from './coverage_case.mjs';
 import { runEventCase, vectors } from './statement-events-run.mjs';
 
 /** Runs case c on a new case database of each dialect and fails with every check that failed. */
@@ -19,8 +19,7 @@ async function runOn(c, dialects) {
 }
 
 await runCases('coverage_statement_events.mjs', {
-  async statement_events() {
-    const { driver } = featureDatabase();
+  async statement_events({ driver }) {
     const failures = [];
     for (const c of vectors.cases) {
       try { await runOn(c, [driver]); } catch (error) { failures.push(error.message); }

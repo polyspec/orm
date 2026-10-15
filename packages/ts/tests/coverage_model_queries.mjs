@@ -2,11 +2,10 @@
 // database 에서 확인한다. 읽기만 한다.
 import assert from 'node:assert/strict';
 import { Author, User, connect } from '../dist/index.js';
-import { featureDatabase, runCases } from './coverage_case.mjs';
+import { runCases } from './coverage_case.mjs';
 
 await runCases('coverage_model_queries.mjs', {
-  async model_query_rows() {
-    const { driver, dsn } = featureDatabase();
+  async model_query_rows({ driver, dsn }) {
     const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
     try {
       assert.equal(db.driver, driver);

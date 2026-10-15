@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { CORE, Db, Model, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
-import { errorCode, featureDatabase, nativeQuery, repositoryRoot, runCases, tableExists, withCleanup } from './coverage_case.mjs';
+import { errorCode, nativeQuery, repositoryRoot, runCases, tableExists, withCleanup } from './coverage_case.mjs';
 import { auditCase, auditSchema, auditSource, auditText, restoreCase, restoreSchema, restoreTables } from './restore_case.mjs';
 
 const auditColumnsText = await readFile(join(repositoryRoot, 'contracts/fixtures/audit_columns.dbs'), 'utf8');
@@ -62,8 +62,7 @@ async function textRows(driver, dsn, sql) {
  * 고른 database 에 schema 를 설치하고 body(db, driver, dsn)를 실행한 뒤, 실패해도 tables 와 audited table 의
  * PostgreSQL trigger function 을 지운다. tables 는 case 전에 없어야 하고 뒤에도 남지 않는다.
  */
-async function withInstalled(schema, tables, audited, body) {
-  const { driver, dsn } = featureDatabase();
+async function withInstalled({ driver, dsn }, schema, tables, audited, body) {
   for (const table of tables) {
     assert.equal(await tableExists(driver, dsn, table), false, `table ${table} does not exist before the case`);
   }
@@ -82,15 +81,15 @@ async function withInstalled(schema, tables, audited, body) {
 
 await runCases('coverage_audit_triggers.mjs', {
   // contracts/fixtures/audit.dbs: audit 기록을 받은 transaction 의 write 를 확인한다(tests/restore_case.mjs).
-  async audit_history() {
-    await withInstalled(auditSchema(), auditTables, ['item'], (db, driver, dsn) => auditCase(db, driver, dsn));
+  async audit_history(item) {
+    await withInstalled(item, auditSchema(), auditTables, ['item'], (db, driver, dsn) => auditCase(db, driver, dsn));
   },
   // 모든 transaction 진입점이 audit 을 받는다: 연결의 transaction 과 그 연결의 withSignal handle 의 transaction 이
   // 삽입한 audit 기록의 key 를 audit 대상 write 가 쓰고, 중첩 transaction 은 audit 을 받지 않는다. withSignal handle 은
   // 연결의 audit source 를 함께 쓴다.
-  async audit_transaction_entry_points() {
+  async audit_transaction_entry_points(item) {
     const { item: Item, item_history: ItemHistory, audit: Audit } = auditModels();
-    await withInstalled(auditSchema(), auditTables, ['item'], async db => {
+    await withInstalled(item, auditSchema(), auditTables, ['item'], async db => {
       const adb = db;
       const seq = await adb.transaction(async () => {
         const row = new Item();
@@ -120,9 +119,9 @@ await runCases('coverage_audit_triggers.mjs', {
   // contracts/fixtures/audit_columns.dbs: card는 exclude (secret)로 secret을 빼고, tag는 include (label)로
   // label과 audit column만 기록한다. client가 쓴 insert, update, soft delete를 audit trigger가 고른 column만으로
   // 기록하고, history table에는 기록하는 column만 있다.
-  async audit_selected_columns() {
+  async audit_selected_columns(item) {
     const { card: Card, tag: Tag } = auditModels(auditColumnsText);
-    await withInstalled(schemaOf(auditColumnsText), auditColumnsTables, ['card', 'tag'], async (db, driver, dsn) => {
+    await withInstalled(item, schemaOf(auditColumnsText), auditColumnsTables, ['card', 'tag'], async (db, driver, dsn) => {
       const adb = db;
       let seq;
       let id;
@@ -163,7 +162,7 @@ await runCases('coverage_audit_triggers.mjs', {
   },
   // contracts/fixtures/restore.dbs: unique key 와 exclude 목록을 가진 audit table 과 audit 없는 table 의 soft delete 한
   // 행을 restore 로 되돌린다(tests/restore_case.mjs).
-  async soft_delete_restore() {
-    await withInstalled(restoreSchema(), restoreTables, ['membership'], db => restoreCase(db));
+  async soft_delete_restore(item) {
+    await withInstalled(item, restoreSchema(), restoreTables, ['membership'], db => restoreCase(db));
   },
 }, 300_000);

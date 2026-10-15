@@ -3,13 +3,12 @@
 // composite_account 에만 있고 case 가 끝날 때 모두 지운다.
 import assert from 'node:assert/strict';
 import { CompositeAccount, connect } from '../dist/index.js';
-import { featureDatabase, runCases, withCleanup } from './coverage_case.mjs';
+import { runCases, withCleanup } from './coverage_case.mjs';
 
 const tenant = 990003;
 
 /** Opens the selected database, runs the case and removes every row of the tenant afterwards. */
-async function withTenant(body) {
-  const { driver, dsn } = featureDatabase();
+async function withTenant({ driver, dsn }, body) {
   const db = await connect(dsn);
   try {
     assert.equal(db.driver, driver);
@@ -23,8 +22,8 @@ async function withTenant(body) {
 const exists = async (db, account) => await new CompositeAccount().connect(db).tenantId(tenant).andAccountId(account).getCount() === 1;
 
 await runCases('coverage_transactions.mjs', {
-  async transaction_rollback() {
-    await withTenant(async db => {
+  async transaction_rollback(item) {
+    await withTenant(item, async db => {
       const boom = new Error('rollback requested by the callback');
       let caught = null;
       try {
@@ -38,8 +37,8 @@ await runCases('coverage_transactions.mjs', {
     });
   },
 
-  async transaction_savepoint() {
-    await withTenant(async db => {
+  async transaction_savepoint(item) {
+    await withTenant(item, async db => {
       const boom = new Error('inner transaction failed');
       let inner = null;
       await db.transaction(async () => {

@@ -3,11 +3,11 @@
 # `-m packages.python.tests.coverage_dsn dsn_connection` (scripts/features/coverage.mts, coverage_case.py).
 from polyspec.orm import Db
 from polyspec.orm.models import models
-from .coverage_case import error_code, expect_equal, feature_database, run_cases
+from .coverage_case import error_code, expect_equal, run_cases
 
 
-def dsn_connection():
-    driver, dsn = feature_database()
+def dsn_connection(item):
+    driver, dsn = item
     expect_equal(
         error_code(lambda: Db.connect("invalid://database")),
         "CONFIG",

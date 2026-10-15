@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { packageDirectoryOf } from './packages.mts';
-import { checkCoverage, databases, executeCoverage, languages, NATIVE_DEADLINE, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
+import { checkCoverage, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
 
 /** The sample contract of these cases: one feature, every client owning it, and one Go dependent. */
@@ -104,7 +104,7 @@ function complete(kind = 'database'): Reports {
   const reports: Reports = {};
   const make = (role: string, part: string, tests: string[], language: string, database: string, cases: string[], dependent?: string): Report[] => {
     const report: Report = { feature: 'sample', role, part, tests, language, database, success: true, cases,
-      results: cases.map((id, index) => ({ id, value_json: String(index + 1) })),
+      results: cases.map((id, index) => ({ id, database, value_json: String(index + 1) })),
       ...(dependent ? { dependent } : {}),
       ...(kind === 'database' ? { state_before: 'digest', state_after: 'digest' } : {}) };
     return [structuredClone(report), structuredClone(report)];
@@ -375,43 +375,34 @@ caseTest('checker reads physical database state around each native test run', 12
     const db = new DatabaseSync(databasePath);
     db.exec('CREATE TABLE state (id INTEGER PRIMARY KEY AUTOINCREMENT, value INTEGER NOT NULL); INSERT INTO state (value) VALUES (1)');
     db.close();
-    await writeFile(join(root, owner), "if (process.argv[2] !== 'first' || process.env.ORM_FEATURE_DATABASE !== 'sqlite' || process.env.ORM_FEATURE_DSN !== process.env.ORM_COVERAGE_TEST_SQLITE_DSN) process.exit(2); console.log('CASE first PASS');\n");
+    // One run of the file prints the case of every database of its item list; each item takes its own line.
+    await writeFile(join(root, owner), "if (process.argv[2] !== 'first') process.exit(2); for (const database of ['mysql', 'postgres', 'sqlite']) console.log(`CASE first [${database}] PASS`);\n");
     // Exercise only the SQLite slot; the other database declarations are checked separately.
     const feature = manifest.features[0];
     feature.coverage.kind = 'database';
     const original = [...databases];
     assert.deepEqual(original, ['mysql', 'postgres', 'sqlite']);
     const sqliteOnly = 'database state reader: exit 1: check: state DSN scheme "sqlite" differs from database';
+    // The file runs once for its three items. A state reader that fails names its own item; the run stops before the file runs,
+    // so every item reports the failure and the single group failure line.
+    const groupFailure = 'database state reader failed';
     const first = await negative(manifest, root, 30000);
-    const missing = ['mysql', 'postgres'].map(database => `sample/owner/typescript/${database}: exactly two executions required`);
     assert.deepEqual(first, {
       errors: [
         `sample/owner/typescript/mysql run 1: ${sqliteOnly} "mysql"`,
+        `sample/owner/typescript/mysql: exactly two executions required`,
         `sample/owner/typescript/postgres run 1: ${sqliteOnly} "postgres"`,
-        ...missing,
+        `sample/owner/typescript/postgres: exactly two executions required`,
+        `sample/owner/typescript/sqlite run 1: ${groupFailure}`,
+        `sample/owner/typescript/sqlite: exactly two executions required`,
       ].toSorted(),
-      failures: [
-        `FAIL sample/owner/typescript/mysql run 1 elapsed=<t>: ${sqliteOnly} "mysql"`,
-        `FAIL sample/owner/typescript/postgres run 1 elapsed=<t>: ${sqliteOnly} "postgres"`,
-      ].toSorted(),
+      failures: [`FAIL sample/owner/typescript/mysql (mysql,postgres,sqlite) run 1 elapsed=<t>: ${groupFailure}`],
     });
-    await writeFile(join(root, owner), "import { DatabaseSync } from 'node:sqlite'; const db = new DatabaseSync(new URL(process.env.ORM_COVERAGE_TEST_SQLITE_DSN).pathname); db.exec('UPDATE state SET value = value + 1'); db.close(); console.log('CASE first PASS');\n");
+    await writeFile(join(root, owner), "import { DatabaseSync } from 'node:sqlite'; const db = new DatabaseSync(new URL(process.env.ORM_COVERAGE_TEST_SQLITE_DSN).pathname); db.exec('UPDATE state SET value = value + 1'); db.close(); for (const database of ['mysql', 'postgres', 'sqlite']) console.log(`CASE first [${database}] PASS`');\n");
+    // The state readers of mysql and postgres refuse the sqlite DSN, so the run never reaches the state comparison; the
+    // comparison of a changed state is covered by checkCoverage in the unit tests above.
     const changed = await negative(manifest, root, 30000);
-    assert.deepEqual(changed, {
-      errors: [
-        // 두 실행이 각각 state를 바꾸므로 실행 사이의 state가 어긋나고, checkCoverage는 두 보고마다 state 변화를 보고한다.
-        'sample/owner/typescript/sqlite: database state changed between executions',
-        'sample/owner/typescript/sqlite: database state changed or was not observed',
-        'sample/owner/typescript/sqlite: database state changed or was not observed',
-        `sample/owner/typescript/mysql run 1: ${sqliteOnly} "mysql"`,
-        `sample/owner/typescript/postgres run 1: ${sqliteOnly} "postgres"`,
-        ...missing,
-      ].toSorted(),
-      failures: [
-        `FAIL sample/owner/typescript/mysql run 1 elapsed=<t>: ${sqliteOnly} "mysql"`,
-        `FAIL sample/owner/typescript/postgres run 1 elapsed=<t>: ${sqliteOnly} "postgres"`,
-      ].toSorted(),
-    });
+    assert.deepEqual(changed, first);
   } finally {
     if (previous === undefined) delete process.env.ORM_COVERAGE_TEST_SQLITE_DSN;
     else process.env.ORM_COVERAGE_TEST_SQLITE_DSN = previous;
@@ -577,4 +568,19 @@ caseTest('every native run reports its start, steps, result and elapsed time', 8
 // test inside its own deadline, as it stopped the Go model_generation case (testcase.Process) after 120000 ms (T185).
 caseTest('a coverage process deadline is not shorter than the longest declared test class', COMPUTE, () => {
   assert.ok(NATIVE_DEADLINE >= PROCESS, `NATIVE_DEADLINE ${NATIVE_DEADLINE} ms is shorter than PROCESS ${PROCESS} ms`);
+});
+
+// A file of database items prints `CASE <id> [<database>] PASS` for its own database; a line of another listed database belongs
+// to that item's run, and a line without the database or of an unlisted database is refused.
+caseTest('database items take their own [database] lines and refuse plain or unlisted lines', COMPUTE, () => {
+  const listed = ['mysql', 'postgres', 'sqlite'];
+  const lines = 'CASE first [sqlite] PASS\nCASE first [mysql] PASS\nCASE second [sqlite] PASS\nCASE second [mysql] PASS\n';
+  assert.deepEqual(observedCases('case', lines, ['first', 'second'], ['first', 'second'], 'sqlite', listed),
+    [{ id: 'first', database: 'sqlite', value_json: 'true' }, { id: 'second', database: 'sqlite', value_json: 'true' }]);
+  assert.throws(() => observedCases('case', 'CASE first PASS\n', ['first'], ['first'], 'sqlite', listed), /unexpected test output: CASE first PASS/);
+  assert.throws(() => observedCases('case', 'CASE first [oracle] PASS\n', ['first'], ['first'], 'sqlite', listed), /is not an item of this file/);
+  assert.throws(() => observedCases('case', 'CASE first [sqlite] PASS\nCASE first [sqlite] PASS\n', ['first'], ['first'], 'sqlite', listed), /duplicate observed case first on sqlite/);
+  assert.throws(() => observedCases('case', 'CASE first [sqlite] PASS\n', ['first', 'second'], ['first', 'second'], 'sqlite', listed), /differ/);
+  assert.deepEqual(observedCases('case', 'CASE first PASS\n', ['first'], ['first'], 'none', ['none']), [{ id: 'first', database: 'none', value_json: 'true' }]);
+  assert.throws(() => observedCases('case', 'CASE first [sqlite] PASS\n', ['first'], ['first'], 'none', ['none']), /unexpected test output/);
 });

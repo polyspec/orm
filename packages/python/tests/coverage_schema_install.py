@@ -7,7 +7,7 @@ from polyspec.orm.engine import model_of_documents, parse_document_set
 from polyspec.orm.errors import OrmError
 from polyspec.orm.models import models
 from polyspec.orm.schema import Schema
-from .coverage_case import expect_equal, feature_database, run_cases, table_exists
+from .coverage_case import expect_equal, run_cases, table_exists
 
 PARTIAL = """dbspec 1 partial
 
@@ -66,9 +66,9 @@ def install_error(db, schema):
     return None
 
 
-def with_database(body):
+def with_database(item, body):
     """Opens the selected database and runs the case on it."""
-    driver, dsn = feature_database()
+    driver, dsn = item
     db = models.connect(dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index")
     try:
         expect_equal(db.driver, driver, "the driver")
@@ -77,7 +77,7 @@ def with_database(body):
         db.close()
 
 
-def schema_install_existing():
+def schema_install_existing(item):
     def body(db, driver, dsn):
         db.utils().schema().install(models.SCHEMA)
         expect_equal(
@@ -86,10 +86,10 @@ def schema_install_existing():
             "the installed tables keep their rows",
         )
 
-    with_database(body)
+    with_database(item, body)
 
 
-def schema_install_partial():
+def schema_install_partial(item):
     def body(db, driver, dsn):
         expect_equal(
             table_exists(driver, dsn, "coverage_install_missing"),
@@ -108,13 +108,13 @@ def schema_install_partial():
             "the missing table was created",
         )
 
-    with_database(body)
+    with_database(item, body)
 
 
 # The install of a set that uses an external document checks the external table in the database. A column of the
 # external document that the database lacks makes install CONFIG, and it creates no owned table. Registering reads no
 # database, so a connection with that set opens.
-def schema_install_external_documents():
+def schema_install_external_documents(item):
     def body(db, driver, dsn):
         Db.connect_schema(dsn, schema_of([EXTERNAL_MEMBER], [EXTERNAL_USER])).close()
         drifted = schema_of(
@@ -140,7 +140,7 @@ def schema_install_external_documents():
             "the rejected install created a table",
         )
 
-    with_database(body)
+    with_database(item, body)
 
 
 if __name__ == "__main__":

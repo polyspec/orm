@@ -1,11 +1,11 @@
 # model_queries coverage: the conditions, order, limit, sum and relation reads of the generated models on the seeded
 # bench database, as the model_queries coverage of Go, PHP, TypeScript and Rust does. It only reads.
 from polyspec.orm.models import models
-from .coverage_case import expect_equal, feature_database, run_cases
+from .coverage_case import expect_equal, run_cases
 
 
-def model_query_rows():
-    driver, dsn = feature_database()
+def model_query_rows(item):
+    driver, dsn = item
     db = models.connect(dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index")
     try:
         expect_equal(db.driver, driver, "the driver")

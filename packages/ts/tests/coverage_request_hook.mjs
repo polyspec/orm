@@ -3,13 +3,12 @@
 // case 의 줄뿐이다.
 import { DATABASE } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
-import { featureDatabase, runCases } from './coverage_case.mjs';
+import { runCases } from './coverage_case.mjs';
 import { cases, runOn } from './request_hook_run.mjs';
 
 const coverage = {};
 for (const [name, run] of Object.entries(cases)) {
-  coverage[name] = async () => {
-    const { driver } = featureDatabase();
+  coverage[name] = async ({ driver }) => {
     await withCaseDatabase(driver, () => {}, database => runOn(database.dsn, () => {}, run));
   };
 }

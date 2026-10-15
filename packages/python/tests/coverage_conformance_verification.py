@@ -6,7 +6,7 @@ import json
 import subprocess
 import sys
 
-from .coverage_case import REPOSITORY_ROOT, expect_equal, feature_database, run_cases
+from .coverage_case import REPOSITORY_ROOT, expect_equal, run_cases
 
 VECTOR_FILES = {
     "mysql": "vectors.json",
@@ -17,8 +17,8 @@ SELECTED = ["conditions_values", "relations"]
 MODELS = REPOSITORY_ROOT / "packages" / "python" / "src" / "polyspec" / "orm" / "models"
 
 
-def conformance_vector():
-    driver, dsn = feature_database()
+def conformance_vector(item):
+    driver, dsn = item
     recorded = json.loads(
         (REPOSITORY_ROOT / "tests" / "conformance" / VECTOR_FILES[driver]).read_text(
             encoding="utf-8"

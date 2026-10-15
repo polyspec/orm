@@ -5,7 +5,7 @@ import contextlib
 import unittest
 
 from .case_database import case_database
-from .coverage_case import feature_database, run_cases
+from .coverage_case import run_cases
 from .test_request_hook import RequestHookTest
 
 CASES = (
@@ -23,16 +23,19 @@ CASES = (
 
 
 class CoverageRequestHook(RequestHookTest):
-    """The cases of RequestHookTest on a case database of the selected dialect."""
+    """The cases of RequestHookTest on a case database of the database item the run is on (driver, set by run_case)."""
+
+    driver = ""
 
     def database(self) -> str:
-        driver, _ = feature_database()
+        driver = CoverageRequestHook.driver
         stack = contextlib.ExitStack()
         self.addCleanup(stack.close)
         return stack.enter_context(case_database(driver, self.dir, "orm_hook"))
 
 
-def run_case(name: str) -> None:
+def run_case(name: str, item) -> None:
+    CoverageRequestHook.driver = item[0]
     suite = unittest.TestSuite([CoverageRequestHook(f"test_{name}")])
     result = unittest.TestResult()
     suite.run(result)
@@ -42,4 +45,4 @@ def run_case(name: str) -> None:
 
 
 if __name__ == "__main__":
-    run_cases({name: (lambda name=name: run_case(name)) for name in CASES})
+    run_cases({name: (lambda item, name=name: run_case(name, item)) for name in CASES})

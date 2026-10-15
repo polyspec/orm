@@ -30,7 +30,7 @@ export type Manifest = { features?: Feature[] };
 /** One required execution: an owner or dependent part on one database. */
 type Item = { key: string; role: 'owner' | 'dependent'; dependent?: string; language: string; database: string; part: string; tests: string[]; cases: string[]; command: NativeCommand[] | undefined };
 /** One observed case result. */
-type CaseResult = { id: string; value_json: string };
+type CaseResult = { id: string; database: string; value_json: string };
 /** The report of one execution of an item. */
 export type Report = { feature: string; role: string; language: string; database: string; part: string; tests: string[]; success: boolean; cases: string[]; results: CaseResult[]; dependent?: string; state_before?: string | null; state_after?: string | null };
 /** The step writer of a running case or build. */
@@ -130,6 +130,37 @@ const itemPart = (item: Item): string => item.role === 'owner' ? `owner/${item.l
 // selectedParts는 selectFeatures가 만든 기능 항목마다 고른 단위다. manifest의 기능 항목은 바꾸지 않는다.
 const selectedParts = new WeakMap<Feature, Set<string>>();
 
+/** One database item of a test file: the database, its DSN variable and the DSN the variable holds (null without a database). */
+export type FileItem = { database: string; dsn_env?: string; dsn: string | null };
+
+// coverageItems is the resolver of a test file: every database item the manifest lists for the file (its owner or dependent
+// commands on each database), with the DSN its variable holds in env. A test file calls it at startup and runs its cases once
+// per item; it never reads the database from the environment of the checker. A file without a database gives one item
+// 'none'. A listed DSN variable that is unset fails with its name.
+export function coverageItems(manifest: Manifest, file: string, env: NodeJS.ProcessEnv = process.env): FileItem[] {
+  const found = new Map<string, { database: string; dsn_env?: string }>();
+  const visit = (commands: Record<string, NativeCommand[]> | undefined) => {
+    for (const [database, entries] of Object.entries(commands ?? {})) {
+      for (const entry of entries ?? []) {
+        if (entry?.test !== file) continue;
+        const prior = found.get(database);
+        if (prior && prior.dsn_env !== entry.dsn_env) throw new Error(`${file} lists ${database} with two DSN variables`);
+        found.set(database, { database, ...(entry.dsn_env ? { dsn_env: entry.dsn_env } : {}) });
+      }
+    }
+  };
+  for (const feature of manifest.features ?? []) {
+    for (const owner of Object.values(feature.coverage?.owners ?? {})) visit(owner.commands);
+    for (const dependent of feature.coverage?.dependents ?? []) visit(dependent.commands);
+  }
+  return [...found.values()].map(item => {
+    if (item.database === 'none') return { database: 'none', dsn: null };
+    const dsn = env[item.dsn_env ?? ''];
+    if (!dsn) throw new Error(`${file}: ${item.database} database DSN is not set in ${item.dsn_env}; run it through make feature-check`);
+    return { database: item.database, dsn_env: item.dsn_env, dsn };
+  });
+}
+
 // Reports in this function are constructed by executeCoverage from native test
 // events and the checker's database reader, never parsed from test JSON.
 export function checkCoverage(manifest: Manifest, reports: Record<string, Report[] | undefined>): string[] {
@@ -177,7 +208,7 @@ export function checkCoverage(manifest: Manifest, reports: Record<string, Report
               !Array.isArray(values) || values.length !== item.cases.length ||
               new Set(values.map(value => value.id)).size !== values.length ||
               values.some(value => !seen.includes(value.id) || typeof value.value_json !== 'string' ||
-                !value.value_json || !validJSON(value.value_json)))
+                value.database !== item.database || !value.value_json || !validJSON(value.value_json)))
             errors.push(`${key}: executed case IDs differ from contract`);
           if (coverage.kind === 'database' &&
               (typeof report.state_before !== 'string' || !report.state_before ||
@@ -329,18 +360,34 @@ async function nativeTest(item: Item, command: NativeCommand, root: string): Pro
   return { format: 'cargo', cwd: crate, testPath, symbols: nativeSymbols };
 }
 
-function observedCases(format: Spec['format'], output: string, requested: string[], nativeSymbols: string[] = requested): CaseResult[] {
+// observedCases reads the observed cases of one execution of an item on `database` ('none' for an item without a database).
+// A case line of a database item is `CASE <id> [<database>] PASS` and a line of an item without one is `CASE <id> PASS`.
+// The output of one run may carry the lines of every database of its file (databases lists them); the lines of the other
+// databases belong to their own items and are skipped here.
+export function observedCases(format: Spec['format'], output: string, requested: string[], nativeSymbols: string[] = requested, database = 'none', databases: string[] = [database]): CaseResult[] {
   const seen = new Set<string>();
-  const add = (id: string) => {
-    if (seen.has(id)) throw new Error(`duplicate observed case ${id}`);
-    seen.add(id);
+  const keys = new Set<string>();
+  const add = (id: string, observedDatabase = database) => {
+    const key = `${observedDatabase} ${id}`;
+    if (keys.has(key)) throw new Error(observedDatabase === 'none' ? `duplicate observed case ${id}` : `duplicate observed case ${id} on ${observedDatabase}`);
+    keys.add(key);
+    if (observedDatabase === database) seen.add(id);
   };
   if (format === 'case') {
     for (const line of output.split(/\r?\n/)) {
       if (!line) continue;
-      const match = /^CASE ([A-Za-z0-9_.-]+) PASS$/.exec(line);
-      if (!match) throw new Error(`unexpected test output: ${line}`);
-      add(match[1] ?? '');
+      const named = /^CASE ([A-Za-z0-9_.-]+) \[([a-z]+)\] PASS$/.exec(line);
+      const plain = /^CASE ([A-Za-z0-9_.-]+) PASS$/.exec(line);
+      if (database === 'none') {
+        if (!plain) throw new Error(`unexpected test output: ${line}`);
+        add(plain[1] ?? '');
+      } else if (named) {
+        if (!databases.includes(named[2] ?? '')) throw new Error(`observed case of database ${named[2]} is not an item of this file: ${line}`);
+        if (named[2] === database) add(named[1] ?? '');
+        else add(named[1] ?? '', named[2] ?? '');
+      } else {
+        throw new Error(`unexpected test output: ${line}`);
+      }
     }
   } else if (format === 'phpunit') {
     // Each case is testStarted, then testFailed or testIgnored when it did not pass, then testFinished. A case that did not
@@ -377,7 +424,7 @@ function observedCases(format: Spec['format'], output: string, requested: string
     const observed = seen.size === 0 ? 'observed no cases' : `observed cases ${[...seen].join(',')}`;
     throw new Error(`${observed} differ from ${nativeSymbols.join(',')}`);
   }
-  return requested.map(id => ({ id, value_json: 'true' }));
+  return requested.map(id => ({ id, database, value_json: 'true' }));
 }
 
 // dependencyFiles는 rustc가 test binary 옆에 쓰는 dep-info(<binary>.d)의 첫 규칙에서 그
@@ -587,7 +634,11 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
     // database가 없는 실행이 서로 기다리지 않는다. 줄 안에서는 cargo를 쓰지 않는 실행이 먼저, Rust build
     // 동안 진행하고, cargo test binary를 쓰는 실행이 그 build가 끝난 뒤 manifest의 순서대로 온다.
     // 실행마다 자기 앞뒤 state를 비교하므로 실행의 순서는 결과를 바꾸지 않는다.
-    const lanes = Map.groupBy(plans, plan => plan.item.database);
+    // A file that lists several databases runs once for them (runUnit), before the lanes; the other plans run in lanes.
+    const units = groupUnits(plans);
+    for (const unit of units) if (unit.length > 1) await runUnit(unit);
+    const singles = units.filter(unit => unit.length === 1).map(unit => unit[0] ?? null).filter((plan): plan is Plan => plan !== null);
+    const lanes = Map.groupBy(singles, plan => plan.item.database);
     await Promise.all([...lanes.values()].map(lane => runLane([...lane.filter(plan => !usesCargo(plan)), ...lane.filter(usesCargo)])));
   } finally {
     // 임시 directory를 지우기 전에 Rust build(그 directory에 binary를 복사한다)가 끝나기를 기다린다.
@@ -595,6 +646,81 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
     await rm(directory, { recursive: true, force: true });
   }
   return [...errors, ...checkCoverage(manifest, reports)];
+
+  // runUnit runs one file of several databases once per attempt. The file prints the cases of every database, and each plan
+  // takes the lines of its own database. The state of each database is read before and after that one run.
+  async function runUnit(unit: Plan[]): Promise<void> {
+    const first = unit[0];
+    const shared = builds;
+    if (!first || !shared || !first.item.command) return;
+    for (const plan of unit) reports[plan.item.key] = [];
+    const databases = unit.map(plan => plan.item.database);
+    let processes: Prepared[][];
+    try { processes = first.native.map(spec => prepared(spec, shared)); }
+    catch (error) {
+      for (const plan of unit) errors.push(`${plan.item.key}: ${error instanceof Error ? error.message : String(error)}`);
+      return;
+    }
+    const count = unit.length * 2 + processes.flat().length;
+    const dsns = unit.map(plan => plan.dsn ?? '');
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      let failure: string | undefined;
+      // A state reader failure belongs to its own database: each item reports its own, and the run stops before the file runs.
+      const planFailures = new Map<string, string>();
+      const readStates = async (): Promise<(string | null)[]> => {
+        const readings: (string | null)[] = [];
+        for (const plan of unit) {
+          try { readings.push(await state(plan.item.database, plan.dsn ?? '', timeoutMs)); }
+          catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            planFailures.set(plan.item.key, dsns.reduce((text, dsn) => (dsn ? text.replaceAll(dsn, '[redacted]') : text), message));
+            readings.push(null);
+          }
+        }
+        return readings;
+      };
+      const passed = await runCase(`${first.item.key} (${databases.join(',')}) run ${attempt}`, count * timeoutMs, async ({ step }) => {
+        try {
+          const before = await readStates();
+          if (planFailures.size) throw new Error('database state reader failed');
+          unit.forEach((plan, index) => step(`state before ${before[index]} ${plan.item.database}`));
+          let output = '';
+          for (const child of processes.flat()) {
+            step(child.label ?? `${child.program} ${first.item.key}`);
+            const result = await run(child.program, child.args, child.cwd, timeoutMs, { ...process.env, ...child.env }, step);
+            if (result.error) throw new Error(result.error);
+            output += `${result.value}\n`;
+          }
+          const after = await readStates();
+          if (planFailures.size) throw new Error('database state reader failed');
+          unit.forEach((plan, index) => step(`state after ${after[index]} ${plan.item.database}`));
+          const pending = unit.map((plan, index) => {
+            const entry = plan.item.command?.[0];
+            if (!entry) throw new Error(`no native test for ${plan.item.key}`);
+            const results = observedCases('case', output, entry.cases, entry.cases, plan.item.database, databases);
+            return { plan, results, before: before[index] ?? null, after: after[index] ?? null };
+          });
+          for (const { plan, results, before: stateBefore, after: stateAfter } of pending) {
+            const item = plan.item;
+            reports[item.key]?.push({ feature: plan.feature.id, role: item.role, language: item.language,
+              database: item.database, part: item.part, tests: item.tests, success: true,
+              cases: item.cases, results, ...(item.dependent ? { dependent: item.dependent } : {}),
+              state_before: stateBefore, state_after: stateAfter });
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          failure = dsns.reduce((text, dsn) => (dsn ? text.replaceAll(dsn, '[redacted]') : text), message);
+          throw new Error(failure);
+        }
+      });
+      if (!passed) {
+        for (const plan of unit) {
+          errors.push(`${plan.item.key} run ${attempt}: ${planFailures.get(plan.item.key) ?? failure ?? `deadline ${count * timeoutMs} ms exceeded`}`);
+        }
+        break;
+      }
+    }
+  }
 
   async function runLane(lane: Plan[]): Promise<void> {
     for (const plan of lane) {
@@ -638,7 +764,7 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
                   // stderr에 쓰는 줄이 그 사이에 끼지 않도록 Rust와 PHP는 stdout만 읽는다.
                   output += (spec.format === 'cargo' || spec.format === 'phpunit' ? result.stdout : result.value) + '\n';
                 }
-                results.push(...observedCases(spec.format, output, entry.cases, spec.format === 'case' ? entry.cases : spec.symbols));
+                results.push(...observedCases(spec.format, output, entry.cases, spec.format === 'case' ? entry.cases : spec.symbols, item.database));
               }
               const stateAfter = dsn ? await state(item.database, dsn, timeoutMs) : null;
               if (dsn) step(`state after ${stateAfter}`);
@@ -659,6 +785,31 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
         }
     }
   }
+}
+
+// groupUnits puts the plans of one file that run the same case command on several databases into one unit (runUnit);
+// every other plan is a unit of its own.
+function groupUnits(plans: Plan[]): Plan[][] {
+  const units: Plan[][] = [];
+  const byFile = new Map<string, Plan[]>();
+  for (const plan of plans) {
+    const spec = plan.native[0];
+    const groupable = plan.native.length === 1 && spec?.format === 'case' && plan.item.database !== 'none' && Boolean(plan.dsn);
+    if (!groupable || !spec || spec.format !== 'case') {
+      units.push([plan]);
+      continue;
+    }
+    const key = `${plan.item.language}\0${JSON.stringify(spec.args)}`;
+    const unit = byFile.get(key);
+    if (unit && !unit.some(other => other.item.database === plan.item.database)) unit.push(plan);
+    else if (unit) units.push([plan]);
+    else {
+      const created = [plan];
+      byFile.set(key, created);
+      units.push(created);
+    }
+  }
+  return units;
 }
 
 // selectFeatures는 featureId(check.mts --feature처럼 contracts/features.json의 id)인 기능 하나만 남긴
@@ -684,6 +835,12 @@ export function selectFeatures(manifest: Manifest, featureId: string | undefined
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const args = process.argv.slice(2);
+  // `--items <test file>` prints the coverage items of the file as JSON (coverageItems); the Python test files call it.
+  if (args[0] === '--items' && args.length === 2) {
+    const root = resolve(new URL('../..', import.meta.url).pathname);
+    console.log(JSON.stringify(coverageItems(readFeatures(root), args[1] ?? '')));
+    process.exit(0);
+  }
   const pairs: [string | undefined, string | undefined][] = [];
   for (let index = 0; index < args.length; index += 2) pairs.push([args[index], args[index + 1]]);
   if (pairs.some(([flag, value]) => !['--feature', '--part'].includes(flag ?? '') || !value) || pairs.filter(([flag]) => flag === '--feature').length > 1)

@@ -2,11 +2,10 @@
 // FOREIGN_KEY, CONSTRAINT, DUPLICATE_KEY 로 보고되고 아무 row 도 바뀌지 않는지 확인한다.
 import assert from 'node:assert/strict';
 import { Author, User, connect } from '../dist/index.js';
-import { errorCode, featureDatabase, runCases } from './coverage_case.mjs';
+import { errorCode, runCases } from './coverage_case.mjs';
 
 await runCases('coverage_constraints_and_relations.mjs', {
-  async constraint_errors() {
-    const { driver, dsn } = featureDatabase();
+  async constraint_errors({ driver, dsn }) {
     const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
     try {
       assert.equal(db.driver, driver);

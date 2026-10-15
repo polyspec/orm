@@ -2,11 +2,11 @@
 # repeated and absent values, and a limit, which the parts would change, is refused with IR_INVALID, as the
 # parameter_chunking coverage of Go, PHP, TypeScript and Rust does. It only reads.
 from polyspec.orm.models import models
-from .coverage_case import error_code, expect_equal, feature_database, run_cases
+from .coverage_case import error_code, expect_equal, run_cases
 
 
-def root_in_chunking():
-    driver, dsn = feature_database()
+def root_in_chunking(item):
+    driver, dsn = item
     db = models.connect(dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index")
     try:
         expect_equal(db.driver, driver, "the driver")

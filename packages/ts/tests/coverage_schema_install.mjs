@@ -2,7 +2,7 @@
 // 있는 문서 집합의 설치는 CONFIG 로 거부되어 없는 table 을 만들지 않는지 확인한다.
 import assert from 'node:assert/strict';
 import { Author, Db, SCHEMA, connect, dbspecManifest, parseDbspec } from '../dist/index.js';
-import { featureDatabase, runCases, tableExists } from './coverage_case.mjs';
+import { runCases, tableExists } from './coverage_case.mjs';
 
 const partial = `dbspec 1 partial
 
@@ -57,8 +57,7 @@ function schemaOf(text) {
 }
 
 /** Opens the selected database and runs the case on it. */
-async function withDatabase(body) {
-  const { driver, dsn } = featureDatabase();
+async function withDatabase({ driver, dsn }, body) {
   const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
   try {
     assert.equal(db.driver, driver);
@@ -67,15 +66,15 @@ async function withDatabase(body) {
 }
 
 await runCases('coverage_schema_install.mjs', {
-  async schema_install_existing() {
-    await withDatabase(async db => {
+  async schema_install_existing(item) {
+    await withDatabase(item, async db => {
       await db.utils().schema().install(SCHEMA);
       assert.equal(await new Author().connect(db).getCount(), 100000, 'the installed tables keep their rows');
     });
   },
 
-  async schema_install_partial() {
-    await withDatabase(async (db, driver, dsn) => {
+  async schema_install_partial(item) {
+    await withDatabase(item, async (db, driver, dsn) => {
       assert.equal(await tableExists(driver, dsn, 'coverage_install_missing'), false, 'coverage_install_missing does not exist before the case');
       let caught = null;
       try { await db.utils().schema().install(schemaOf(partial)); } catch (error) { caught = error; }
@@ -86,8 +85,8 @@ await runCases('coverage_schema_install.mjs', {
 
   // 외부 문서를 쓰는 set의 install은 외부 table을 database에서 확인한다. 외부 문서의 column이 database에 없으면
   // install이 CONFIG이며 소유한 table을 만들지 않는다. 등록은 database를 읽지 않으므로 그 set으로도 연결한다.
-  async schema_install_external_documents() {
-    await withDatabase(async (db, driver, dsn) => {
+  async schema_install_external_documents(item) {
+    await withDatabase(item, async (db, driver, dsn) => {
       const connected = await Db.connectSchema(dsn, externalSchema(externalUser));
       await connected.close();
       const drifted = externalSchema(externalUser.replace('  name varchar(191)\n', '  name varchar(191)\n  coverage_missing varchar(8) null\n'));

@@ -5,7 +5,6 @@ from polyspec.orm.models import models
 from .coverage_case import (
     error_code,
     expect_equal,
-    feature_database,
     run_cases,
     with_cleanup,
 )
@@ -13,8 +12,8 @@ from .coverage_case import (
 TENANT = 990002
 
 
-def model_write_cycle():
-    driver, dsn = feature_database()
+def model_write_cycle(item):
+    driver, dsn = item
     db = models.connect(dsn)
     try:
         expect_equal(db.driver, driver, "the driver")

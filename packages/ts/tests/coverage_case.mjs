@@ -5,6 +5,8 @@
 // top-level node:test test 를 등록한다.
 import { createRequire } from 'node:module';
 import { caseTest } from '../../../tests/testcase.mts';
+import { coverageItems } from '../../../scripts/features/coverage.mts';
+import { readFeatures } from '../../../scripts/features/manifest.mts';
 
 const require = createRequire(new URL('../package.json', import.meta.url));
 
@@ -12,16 +14,19 @@ const require = createRequire(new URL('../package.json', import.meta.url));
 export const repositoryRoot = new URL('../../..', import.meta.url).pathname;
 
 /**
- * Runs exactly the case IDs of the command line in their order; an unknown or
- * repeated ID is an error. Each case is stopped after timeoutMs of wall-clock
- * time, because it waits on a database or another process. Without an ID, each
- * case of suite (the cases of the shared vector suite the file is bound to,
- * cases by default) is a top-level node:test test named by its ID, in order.
+ * Runs the cases of the file once per coverage item of the file (every database the manifest lists for it, and the
+ * item of a file without a database). The command line gives the case IDs in their order; each requested case runs on
+ * every item, and it prints `CASE <id> [<database>] PASS` (or `CASE <id> PASS` without a database). An unknown or repeated
+ * ID is an error. Each run is stopped after timeoutMs of wall-clock time. Without an ID, each case of suite runs on each
+ * item as a node:test subtest named `<id> [<database>]`.
  */
 export async function runCases(file, cases, timeoutMs, suite = cases) {
+  const items = featureItems(file);
   const requested = process.argv.slice(2);
   if (requested.length === 0) {
-    for (const [id, body] of Object.entries(suite)) caseTest(id, timeoutMs, () => body());
+    for (const [id, body] of Object.entries(suite)) {
+      for (const item of items) caseTest(item.database === 'none' ? id : `${id} [${item.database}]`, timeoutMs, () => body(item));
+    }
     return;
   }
   if (new Set(requested).size !== requested.length ||
@@ -29,22 +34,25 @@ export async function runCases(file, cases, timeoutMs, suite = cases) {
     throw new Error(`usage: ${file} ${Object.keys(cases).join('|')}...; got ${JSON.stringify(requested)}`);
   }
   for (const id of requested) {
-    let timer;
-    const deadline = new Promise((_, reject) => {
-      timer = setTimeout(() => reject(new Error(`case ${id} exceeded ${timeoutMs} ms`)), timeoutMs);
-    });
-    try { await Promise.race([cases[id](), deadline]); } finally { clearTimeout(timer); }
-    console.log(`CASE ${id} PASS`);
+    for (const item of items) {
+      let timer;
+      const deadline = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`case ${id} exceeded ${timeoutMs} ms`)), timeoutMs);
+      });
+      try { await Promise.race([cases[id](item), deadline]); } finally { clearTimeout(timer); }
+      console.log(item.database === 'none' ? `CASE ${id} PASS` : `CASE ${id} [${item.database}] PASS`);
+    }
   }
 }
 
-/** The database and DSN the checker selected; a database case fails without them. */
-export function featureDatabase() {
-  const { ORM_FEATURE_DATABASE: driver, ORM_FEATURE_DSN: dsn } = process.env;
-  if (!['mysql', 'postgres', 'sqlite'].includes(driver) || !dsn) {
-    throw new Error('ORM_FEATURE_DATABASE (mysql|postgres|sqlite) and ORM_FEATURE_DSN are required');
-  }
-  return { driver, dsn };
+/**
+ * The coverage items of this test file from the feature manifest (scripts/features/coverage.mts coverageItems): one per
+ * database the manifest lists for the file, each with its DSN, or one item with database 'none'.
+ */
+export function featureItems(file) {
+  const items = coverageItems(readFeatures(repositoryRoot), `packages/ts/tests/${file}`);
+  // A case takes { driver, dsn, database }: driver is the database name the manifest lists.
+  return (items.length ? items : [{ database: 'none', dsn: null }]).map(item => ({ ...item, driver: item.database, dsn: item.dsn }));
 }
 
 /**
