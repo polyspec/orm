@@ -8,13 +8,21 @@
 
 import { parse as parseToml } from 'smol-toml';
 import semver from 'semver';
+import { commands, type SimpleCommand } from './shell.mts';
+import { makeRecipes } from './testcases.mts';
 import { actionSteps, environment, workflowSteps, type WorkflowStep } from './workflow.mts';
 
 // MINIMUM_SCRIPT는 composer.json require.php의 최저 release를 출력하는 script다.
 const MINIMUM_SCRIPT = 'node scripts/php/php-min.mts';
 // MINIMUM_STEP은 그 release를 setup-php의 입력으로 적는 CI step의 명령이다.
 const MINIMUM_STEP = 'make --no-print-directory ci-php-min-version >> "$GITHUB_OUTPUT"';
-const runs = (workflow: string, pattern: RegExp) => workflowSteps(workflow).some(step => pattern.test(step.run));
+// runs는 workflow의 step이 실행하는 simple command(scripts/repo/shell.mts) 중 test에 맞는 것이 있는지 돌려준다.
+const runs = (workflow: string, test: (command: SimpleCommand) => boolean) =>
+  workflowSteps(workflow).some(step => step.run !== '' && commands(step.run, 'workflow').some(test));
+// installsToolchain은 command가 인자 없는 `rustup toolchain install`, 곧 rust-toolchain.toml의 toolchain 설치인지 돌려준다.
+const installsToolchain = (command: SimpleCommand) => command.name === 'rustup' && command.args.join(' ') === 'toolchain install';
+// makes는 command가 make로 target을 실행하는지 돌려준다.
+const makes = (command: SimpleCommand, target: string) => command.name === 'make' && command.args.includes(target);
 // release는 x.y나 x.y.z를 semver version으로 읽는다(x.y는 x.y.0). 읽을 수 없으면 던진다.
 const release = (text: string): semver.SemVer => {
   const read = semver.coerce(text);
@@ -45,7 +53,7 @@ export function phpVersionErrors(declared: string, minimum: string | undefined, 
     errors.push(`.php-version ${declared.trim()} is below packages/php/composer.json require.php ${minimum}`);
   for (const [path, workflow] of Object.entries(workflows)) {
     const steps = actionSteps(workflow, 'shivammathur/setup-php');
-    if (runs(workflow, /(^|[\s;&|(])(php|composer)\s/m) && steps.length === 0)
+    if (runs(workflow, command => command.name === 'php' || command.name === 'composer') && steps.length === 0)
       errors.push(`${path} runs PHP without shivammathur/setup-php`);
     // php-min step은 composer.json의 최저 release를 output version으로 쓰고, 그 release를
     // 설치하는 setup-php step은 그 output만 읽는다.
@@ -100,17 +108,20 @@ export function rustToolchainErrors(toolchain: string, makefile: string, workflo
     errors.push('Makefile does not read PHYSICAL_RUST_TOOLCHAIN from rust-toolchain.toml');
   if (/^\s*(?:export\s+)?(?:PHYSICAL_RUST_TOOLCHAIN|RUSTUP_TOOLCHAIN)\s*[:?]?=\s*\d/m.test(makefile))
     errors.push('Makefile declares a Rust toolchain itself; rust-toolchain.toml declares it');
+  const installRecipe = makeRecipes(makefile).find(unit => unit.name === 'Makefile install-rust-toolchain')?.commands ?? [];
   for (const [path, workflow] of Object.entries(workflows)) {
     for (const action of ['dtolnay/rust-toolchain', 'actions-rust-lang/setup-rust-toolchain'])
       if (actionSteps(workflow, action).length > 0)
         errors.push(`${path} chooses a Rust toolchain with ${action}; rust-toolchain.toml declares it`);
-    if (runs(workflow, /rustup\s+default|rustup\s+toolchain\s+install\s+[A-Za-z0-9]|cargo\s+\+|RUSTUP_TOOLCHAIN/) ||
+    if (runs(workflow, command => command.assigns.includes('RUSTUP_TOOLCHAIN') ||
+          (command.name === 'rustup' && (command.args[0] === 'default' || (command.args.join(' ').startsWith('toolchain install ')))) ||
+          (command.name === 'cargo' && (command.args[0] ?? '').startsWith('+'))) ||
         environment(workflow).has('RUSTUP_TOOLCHAIN'))
       errors.push(`${path} chooses a Rust toolchain itself; rust-toolchain.toml declares it`);
-    const usesRust = runs(workflow, /(^|[\s;&|(])cargo\s/m) || actionSteps(workflow, 'Swatinem/rust-cache').length > 0;
+    const usesRust = runs(workflow, command => command.name === 'cargo') || actionSteps(workflow, 'Swatinem/rust-cache').length > 0;
     // CI의 step은 make target을 실행하므로, 인자 없는 rustup toolchain install은 make install-rust-toolchain의 recipe에 있다.
-    const installsRust = runs(workflow, /^rustup toolchain install\s*(&&|$)/m) ||
-      (runs(workflow, /^make\b.*\binstall-rust-toolchain\b/m) && /^install-rust-toolchain:[^\n]*\n(?:\t[^\n]*\n)*?\t[^\n]*\brustup toolchain install\s*\n/m.test(makefile));
+    const installsRust = runs(workflow, installsToolchain) ||
+      (runs(workflow, command => makes(command, 'install-rust-toolchain')) && installRecipe.some(line => commands(line, 'make').some(installsToolchain)));
     if (usesRust && !installsRust)
       errors.push(`${path} does not install the toolchain of rust-toolchain.toml with rustup toolchain install`);
   }
@@ -129,7 +140,8 @@ export function goVersionErrors(workflows: Record<string, string>) {
   for (const [path, workflow] of Object.entries(workflows)) {
     if (actionSteps(workflow, 'actions/setup-go').length > 0)
       errors.push(`${path} sets up Go with actions/setup-go; the Go of mise.toml is installed by make install-tools`);
-    if (runs(workflow, /(^|[\s;&|(])(go\s|make (?:check|install-go)\b)/m) && !runs(workflow, /(^|[\s;&|(])make install-tools(?![^\n]*TOOLS=)/m))
+    if (runs(workflow, command => command.name === 'go' || makes(command, 'check') || makes(command, 'install-go')) &&
+        !runs(workflow, command => makes(command, 'install-tools') && !command.args.some(arg => arg.startsWith('TOOLS='))))
       errors.push(`${path} runs Go without the Go of mise.toml; add a step that runs make install-tools`);
   }
   return errors;

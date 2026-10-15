@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
-import { andLists, type Dialect, segments, shellSegments } from './shell.mts';
-import { recipeLines } from './testcases.mts';
+import { andLists, commands, type Dialect, segments, shellSegments, type SimpleCommand, writtenFiles } from './shell.mts';
+import { makeRecipes, recipeLines } from './testcases.mts';
 import { environment, events, readWorkflow, workflowSteps, type WorkflowJob, type WorkflowStep } from './workflow.mts';
 import { CI_SETUP, stepCondition } from '../check/ci-setup.mts';
 import { parseSelection, selectChecks } from '../features/select.mts';
@@ -13,6 +13,18 @@ import { runName } from '../check/report.mts';
 
 // runSegments는 step의 run text가 실행하는 명령이다(scripts/repo/shell.mts).
 const runSegments = (step: WorkflowStep): string[] => step.run ? segments(step.run, 'workflow') : [];
+// runCommands는 step의 run text가 실행하는 simple command다(scripts/repo/shell.mts).
+const runCommands = (step: WorkflowStep): SimpleCommand[] => step.run ? commands(step.run, 'workflow') : [];
+// provides는 command가 variable을 정의하는지 돌려준다: 그 이름을 assign하거나(`NAME=…`, `export NAME=…`) `NAME=…`를
+// $GITHUB_ENV에 쓴다.
+const provides = (command: SimpleCommand, variable: string): boolean => command.assigns.includes(variable) ||
+  (command.writes.includes('$GITHUB_ENV') && command.args.some(arg => arg.startsWith(`${variable}=`)));
+// links는 command가 symbolic link를 만드는지 돌려준다: `ln`(`sudo ln`)의 `-s`나 `--symbolic`, 또는 symlink를 부르는 word.
+const links = (command: SimpleCommand): boolean => {
+  const words = command.name === 'sudo' ? command.args : [command.name ?? '', ...command.args];
+  return (words[0] === 'ln' && words.slice(1).some(word => /^-[A-Za-z]*s[A-Za-z]*$/.test(word) || word === '--symbolic')) ||
+    words.some(word => /symlink/i.test(word));
+};
 
 // repository의 make target은 step이 실행하는 명령이다. 다른 directory에서 build하는
 // make(예: `(cd /tmp/sqlite && make)`)는 검사가 아니다.
@@ -34,8 +46,7 @@ export function ciServerErrors(workflow: string, variables: readonly string[]): 
   const server = steps.findIndex(startsServers);
   if (server === -1) {
     for (const variable of variables) {
-      const named = new RegExp(`(^|[^A-Z0-9_])${variable}([^A-Z0-9_]|$)`);
-      if (!defined.has(variable) && !steps.some(step => named.test(step.run)))
+      if (!defined.has(variable) && !steps.some(step => runCommands(step).some(command => provides(command, variable))))
         errors.push(`ci.yml does not provide ${variable}, which the database checks read`);
     }
     errors.push('ci.yml does not start the database servers with make test-servers');
@@ -48,11 +59,11 @@ export function ciServerErrors(workflow: string, variables: readonly string[]): 
     if (defined.has(variable))
       errors.push(`ci.yml defines ${variable}; make test-servers defines it`);
   }
-  if (steps.some(step => />>?\s*\.runtime\/servers\/env/.test(step.run)))
+  if (steps.some(step => step.run && writtenFiles(step.run, 'workflow').includes('.runtime/servers/env')))
     errors.push('ci.yml writes .runtime/servers/env; make test-servers writes it');
   // symbolic link는 쓰지 않는다(AGENTS.md): 서버 program은 자기 package 경로에서 찾는다.
   for (const step of steps) {
-    if (/(^|[\s;&|(])ln\s+(-[A-Za-z]*s[A-Za-z]*|--symbolic)(\s|$)|symlink/im.test(step.run))
+    if (runCommands(step).some(links))
       errors.push(`ci.yml step "${step.name}" creates a symbolic link`);
   }
   return errors;
@@ -183,17 +194,9 @@ export function featureCommands(features: unknown): string[] {
   return commands;
 }
 
-// recipe는 Makefile에서 target의 recipe 명령(recipeLines)을 돌려준다. target이 없으면 undefined다.
+// recipe는 Makefile에서 target의 recipe 명령(makeRecipes)을 돌려준다. target이 없으면 undefined다.
 function recipe(makefile: string, target: string): string[] | undefined {
-  const lines = recipeLines(makefile);
-  const start = lines.findIndex(line => !line.recipe && line.text.startsWith(`${target}:`));
-  if (start === -1) return undefined;
-  const body: string[] = [];
-  for (const line of lines.slice(start + 1)) {
-    if (!line.recipe) break;
-    body.push(line.text);
-  }
-  return body;
+  return makeRecipes(makefile).find(unit => unit.name === `Makefile ${target}`)?.commands;
 }
 
 // shellCommand는 명령을 비교할 형태로 바꾼다: make의 `$$`는 `$`, `$(NAME)`은 `$NAME`이 되고,
@@ -205,23 +208,22 @@ function shellCommand(command: string, fromMakefile: boolean): string {
 }
 
 // ciDuplicateCommandErrors는 CI workflow가 make check 안에서 feature-check가 실행하는 검증 명령을
-// 다시 실행하는 step마다 오류 하나를 돌려준다. step의 줄이 그 명령과 같거나, 줄이 실행하는 make
+// 다시 실행하는 step마다 오류 하나를 돌려준다. step이 실행하는 명령(scripts/repo/shell.mts)이 그 명령과 같거나, 그 명령이 실행하는 make
 // target(CHECK_TARGETS 밖)의 명령이 모두 그 명령이면 두 번 실행한다.
 export function ciDuplicateCommandErrors(workflow: string, makefile: string, commands: string[]): string[] {
   const known = new Set(commands.map((command: string) => shellCommand(command, false)));
   const targets = new Set(checkTargets(makefile));
   const errors: string[] = [];
   for (const step of workflowSteps(workflow)) {
-    for (const line of step.run.split('\n').map(item => item.trim()).filter(Boolean)) {
-      if (known.has(shellCommand(line, false))) {
-        errors.push(`ci.yml step "${step.name}" runs ${line}, which make check runs in feature-check`);
+    for (const command of runCommands(step)) {
+      if (known.has(shellCommand(command.text, false))) {
+        errors.push(`ci.yml step "${step.name}" runs ${command.text}, which make check runs in feature-check`);
         continue;
       }
-      const make = /^make\s+(.*)$/.exec(line)?.[1];
-      if (!make) continue;
-      for (const target of make.split(/\s+/).filter(word => /^[a-z0-9-]+$/.test(word) && !targets.has(word) && word !== 'check')) {
+      if (command.name !== 'make') continue;
+      for (const target of command.args.filter(word => /^[a-z0-9][a-z0-9/-]*$/.test(word) && !targets.has(word) && word !== 'check')) {
         const body = recipe(makefile, target);
-        if (body !== undefined && body.length > 0 && body.every(command => known.has(shellCommand(command, true))))
+        if (body !== undefined && body.length > 0 && body.every(line => known.has(shellCommand(line, true))))
           errors.push(`ci.yml step "${step.name}" runs make ${target}, whose commands make check runs in feature-check`);
       }
     }

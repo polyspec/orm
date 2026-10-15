@@ -88,6 +88,7 @@ caseTest('a workflow without make test-servers names each variable it lacks', CO
     '      - run: printf "export ORM_TEST_MYSQL_DSN=x" > .runtime/servers/env\n      - name: checks',
   );
   assert.deepEqual(ciServerErrors(written, script), [
+    'ci.yml does not provide ORM_TEST_MYSQL_DSN, which the database checks read',
     'ci.yml does not provide ORM_TEST_PGBOUNCER_DSN, which the database checks read',
     'ci.yml does not start the database servers with make test-servers',
     'ci.yml writes .runtime/servers/env; make test-servers writes it',
@@ -1569,4 +1570,51 @@ caseTest('the checks read a workflow as a YAML document', COMPUTE, () => {
   assert.throws(() => readWorkflow('jobs:\n  a: {}\n  a: {}\n', 'x.yml'), /^Error: x\.yml is no YAML document: Map keys must be unique/);
   assert.throws(() => readWorkflow('    steps:\n      - run: make a\n', 'x.yml'), /^Error: x\.yml has no map of jobs$/);
   assert.throws(() => readWorkflow('jobs:\n  a:\n    steps:\n      - run: true\n', 'x.yml'), /^Error: x\.yml job a step 1 run is not a string$/);
+});
+
+// The run texts and the Makefile rules are read by the shell reader (scripts/repo/shell.mts) and the recipe reader
+// (makeRecipes): a command is a segment the text runs, never a substring of a line (T137-1-4-2-1).
+caseTest('the server checks read the commands that a step runs', COMPUTE, () => {
+  const step = (run: string) => steps.replace('      - name: database servers', `      - name: other\n        run: |\n          ${run.split('\n').join('\n          ')}\n      - name: database servers`);
+  // A comment and a quoted word run nothing.
+  for (const run of ['# ln -s is never used here', 'echo "ln -s a b"', 'echo "x >> .runtime/servers/env"'])
+    assert.deepEqual(ciServerErrors(step(run), script), [], run);
+  // A redirect that a segment of a compound command makes writes the file.
+  assert.deepEqual(ciServerErrors(step('if true; then echo x >> .runtime/servers/env; fi'), script), ['ci.yml writes .runtime/servers/env; make test-servers writes it']);
+  // A make inside a compound command runs make before the servers.
+  assert.deepEqual(ciServerErrors(step('if true; then make feature-check; fi'), script), ['ci.yml step "other" runs make before make test-servers starts the servers']);
+  // Without make test-servers, a variable is provided by a command that assigns it, never by a comment that names it.
+  const none = steps.replace('run: make test-servers', "run: 'true'");
+  assert.deepEqual(ciServerErrors(none.replace('make repo-check', '# ORM_TEST_MYSQL_DSN and ORM_TEST_PGBOUNCER_DSN come later'), script), [
+    'ci.yml does not provide ORM_TEST_MYSQL_DSN, which the database checks read',
+    'ci.yml does not provide ORM_TEST_PGBOUNCER_DSN, which the database checks read',
+    'ci.yml does not start the database servers with make test-servers',
+  ]);
+  assert.deepEqual(ciServerErrors(none.replace('make repo-check', 'export ORM_TEST_MYSQL_DSN=x\n          echo "ORM_TEST_PGBOUNCER_DSN=y" >> "$GITHUB_ENV"'), script), [
+    'ci.yml does not start the database servers with make test-servers',
+  ]);
+});
+
+caseTest('the duplicate check reads the commands that a step runs', COMPUTE, () => {
+  const make = 'CHECK_TARGETS = feature-check\nperf-check:\n\t$(WITH_TEST_ENV) node scripts/perf-test.mts\n';
+  const commands = ['node scripts/perf-test.mts'];
+  const run = (text: string) => steps.replace('make repo-check', text);
+  assert.deepEqual(ciDuplicateCommandErrors(run('set -e; node scripts/perf-test.mts'), make, commands), ['ci.yml step "checks" runs node scripts/perf-test.mts, which make check runs in feature-check']);
+  assert.deepEqual(ciDuplicateCommandErrors(run('make lint && make perf-check'), make, commands), ['ci.yml step "checks" runs make perf-check, whose commands make check runs in feature-check']);
+  assert.deepEqual(ciDuplicateCommandErrors(run('# node scripts/perf-test.mts\n          echo "make perf-check"'), make, commands), []);
+});
+
+caseTest('the toolchain checks read the commands that a step runs', COMPUTE, () => {
+  const go = (run: string) => `jobs:\n  test:\n    steps:\n      - run: make install-tools TOOLS=npm\n      - run: ${run}\n`;
+  assert.deepEqual(goVersionErrors({ 'ci.yml': go('echo go test') }), []);
+  assert.deepEqual(goVersionErrors({ 'ci.yml': go('cd a; go test ./...') }), ['ci.yml runs Go without the Go of mise.toml; add a step that runs make install-tools']);
+  assert.deepEqual(goVersionErrors({ 'ci.yml': go('cd a; go test ./...\n      - run: echo "make install-tools"') }), ['ci.yml runs Go without the Go of mise.toml; add a step that runs make install-tools']);
+  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': go('echo "php is not used"') }, '8.5'), []);
+  const viaMake = rust.replace('run: rustup toolchain install', 'run: make install-rust-toolchain');
+  for (const recipe of ['\trustup toolchain install && rustup show\n', '\t@rustup toolchain install\n'])
+    assert.deepEqual(rustToolchainErrors(toolchain, `${makefile}install-rust-toolchain:\n${recipe}`, { 'ci.yml': viaMake }, '1.98.1'), [], recipe);
+  for (const recipe of ['\t# rustup toolchain install\n\ttrue\n', '\techo rustup toolchain install\n'])
+    assert.deepEqual(rustToolchainErrors(toolchain, `${makefile}install-rust-toolchain:\n${recipe}`, { 'ci.yml': viaMake }, '1.98.1'),
+      ['ci.yml does not install the toolchain of rust-toolchain.toml with rustup toolchain install'], recipe);
+  assert.deepEqual(rustToolchainErrors(toolchain, makefile, { 'ci.yml': rust.replace('cargo test --locked', 'echo "cargo +nightly"') }, '1.98.1'), []);
 });
