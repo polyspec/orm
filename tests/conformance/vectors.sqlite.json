@@ -3285,6 +3285,204 @@
           }
         ]
       }
+    },
+    {
+      "name": "relations_flatten",
+      "chain": "relation(serviceRegion-\u003epossibleIsClose(true)-\u003eparentNode()-\u003erelation(service-\u003eparentNode()-\u003erelations(serviceMember-\u003egroupLimit(2))))-\u003eserviceSeq(7)-\u003eorderBySeqAsc()-\u003elimit(0, 8)-\u003egets(): parent and child share seq, name and service_seq, an open author has no child, and the child holds a flattened grandchild",
+      "expect": {
+        "result": [
+          {
+            "is_close": false,
+            "name": "author-6",
+            "seq": 6,
+            "service_member_seq": 7,
+            "service_region_model": null,
+            "service_region_seq": 7,
+            "service_seq": 7,
+            "user_seq": 7
+          },
+          {
+            "is_close": false,
+            "name": "author-106",
+            "seq": 106,
+            "service_member_seq": 107,
+            "service_region_model": null,
+            "service_region_seq": 7,
+            "service_seq": 7,
+            "user_seq": 107
+          },
+          {
+            "is_close": false,
+            "name": "author-206",
+            "seq": 206,
+            "service_member_seq": 207,
+            "service_region_model": null,
+            "service_region_seq": 7,
+            "service_seq": 7,
+            "user_seq": 207
+          },
+          {
+            "is_close": false,
+            "name": "author-306",
+            "seq": 306,
+            "service_member_seq": 307,
+            "service_region_model": null,
+            "service_region_seq": 7,
+            "service_seq": 7,
+            "user_seq": 307
+          },
+          {
+            "is_close": true,
+            "name": "author-406",
+            "seq": 406,
+            "service_member_models": [
+              {
+                "seq": 7,
+                "service_seq": 7,
+                "user_seq": 7
+              },
+              {
+                "seq": 107,
+                "service_seq": 7,
+                "user_seq": 107
+              }
+            ],
+            "service_member_seq": 407,
+            "service_model": {
+              "name": "service-7",
+              "seq": 7,
+              "service_member_models": [
+                {
+                  "seq": 7,
+                  "service_seq": 7,
+                  "user_seq": 7
+                },
+                {
+                  "seq": 107,
+                  "service_seq": 7,
+                  "user_seq": 107
+                }
+              ]
+            },
+            "service_region_model": {
+              "name": "module-7",
+              "seq": 7,
+              "service_member_models": [
+                {
+                  "seq": 7,
+                  "service_seq": 7,
+                  "user_seq": 7
+                },
+                {
+                  "seq": 107,
+                  "service_seq": 7,
+                  "user_seq": 107
+                }
+              ],
+              "service_model": {
+                "name": "service-7",
+                "seq": 7,
+                "service_member_models": [
+                  {
+                    "seq": 7,
+                    "service_seq": 7,
+                    "user_seq": 7
+                  },
+                  {
+                    "seq": 107,
+                    "service_seq": 7,
+                    "user_seq": 107
+                  }
+                ]
+              },
+              "service_seq": 7
+            },
+            "service_region_seq": 7,
+            "service_seq": 7,
+            "user_seq": 407
+          },
+          {
+            "is_close": false,
+            "name": "author-506",
+            "seq": 506,
+            "service_member_seq": 507,
+            "service_region_model": null,
+            "service_region_seq": 7,
+            "service_seq": 7,
+            "user_seq": 507
+          },
+          {
+            "is_close": false,
+            "name": "author-606",
+            "seq": 606,
+            "service_member_seq": 607,
+            "service_region_model": null,
+            "service_region_seq": 7,
+            "service_seq": 7,
+            "user_seq": 607
+          },
+          {
+            "is_close": false,
+            "name": "author-706",
+            "seq": 706,
+            "service_member_seq": 707,
+            "service_region_model": null,
+            "service_region_seq": 7,
+            "service_seq": 7,
+            "user_seq": 707
+          }
+        ],
+        "statements": [
+          {
+            "binds": [
+              7
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"is_close\" AS \"a__is_close\" FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ? ORDER BY \"a\".\"seq\" ASC LIMIT 8 OFFSET 0",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              7
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"name\" AS \"a__name\" FROM \"service_region\" AS \"a\" WHERE \"a\".\"seq\" IN (?)",
+            "tables": [
+              "service_region"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              7
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"service\" AS \"a\" WHERE \"a\".\"seq\" IN (?)",
+            "tables": [
+              "service"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              7
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"orm_w\".\"a__seq\", \"orm_w\".\"a__service_seq\", \"orm_w\".\"a__user_seq\" FROM (SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"user_seq\" AS \"a__user_seq\", ROW_NUMBER() OVER (PARTITION BY \"a\".\"service_seq\" ORDER BY \"a\".\"seq\" ASC) AS \"orm_rn\" FROM \"service_member\" AS \"a\" WHERE \"a\".\"service_seq\" IN (?)) AS \"orm_w\" WHERE \"orm_w\".\"orm_rn\" \u003c= 2 ORDER BY \"orm_w\".\"a__service_seq\", \"orm_w\".\"orm_rn\"",
+            "tables": [
+              "service_member"
+            ],
+            "transaction": null
+          }
+        ]
+      }
     }
   ]
 }

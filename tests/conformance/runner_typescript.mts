@@ -544,6 +544,16 @@ async function main() {
     }
     return out;
   });
+  // a flattened region of a closed author (seq, name and service_seq collide with the parent; absent for an open author) that holds a flattened service (seq and name collide) with its service members
+  await run('relations_flatten', async () => {
+    const rows = await author()
+      .removeAllColumns().addColumnName().addColumnIsClose()
+      .relation(new ServiceRegion().matchServiceRegionSeqWithSeq().possibleIsClose(true).parentNode()
+        .relation(new Service().matchServiceSeqWithSeq().parentNode()
+          .relations(new ServiceMember().matchSeqWithServiceSeq().removeAllColumns().orderBySeqAsc().groupLimit(2))))
+      .serviceSeq(7).orderBySeqAsc().limit(0, 8).gets();
+    return rows.toArray();
+  });
 
   await db.close();
   const unknown = selected.filter(name => !declared.has(name));

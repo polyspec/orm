@@ -252,7 +252,7 @@ $rows = (new Author)->connect($slave1)->serviceSeq(7)->limit(0, 20)
 | `match<L>With<R>()` | Parent column `L` equals child column `R` |
 | `alias<Name>()` | Result name of the relation |
 | `keyName<Col>()` | Key column for a many collection; the last duplicate wins |
-| `parentNode()` | Merge one-relation columns into the parent row; parent values win |
+| `parentNode()` | Merge one-relation columns into the parent row; parent values win ([protocol](protocol.md#_1-2-joins-and-relations)) |
 | `groupLimit(n)` | n rows per parent using `ROW_NUMBER() OVER (PARTITION BY …)` |
 | `possible<Col>(v)` | Load only when the parent row matches |
 | `deleteLock()` | Stop point for `delete(true)` |

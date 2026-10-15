@@ -586,6 +586,13 @@ vector('scalar_column_subquery', function () use ($db): array {
     return $out;
 });
 
+// a flattened region of a closed author (seq, name and service_seq collide with the parent; absent for an open author) that holds a flattened service (seq and name collide) with its service members
+vector('relations_flatten', fn() => $author()
+    ->removeAllColumns()->addColumnName()->addColumnIsClose()
+    ->relation((new ServiceRegion)->matchServiceRegionSeqWithSeq()->possibleIsClose(true)->parentNode()
+        ->relation((new Service)->matchServiceSeqWithSeq()->parentNode()
+            ->relations((new ServiceMember)->matchSeqWithServiceSeq()->removeAllColumns()->orderBySeqAsc()->groupLimit(2))))
+    ->serviceSeq(7)->orderBySeqAsc()->limit(0, 8)->gets()->toArray());
 
 foreach (array_keys($selected) as $name) {
     if (!isset($vectors[$name])) {
