@@ -30,6 +30,8 @@ vendors; this file states only the rules of orm.
   and in its own product code (`scripts/check`, `scripts/features`, `scripts/repo`, the clients and
   the checks of the database servers); a tool that kit lacks or gets wrong is reported to kit, never
   copied or edited here. The rules of this repository do not read the copies.
+  While polyspec versions are 0.0.x, development checkouts link installed polyspec packages to
+  their source as kit `docs/plans/local-links.md` describes; links are never committed.
 - The client packages are `packages/<runtime>` with the runtime `go`, `ts` (the TypeScript client),
   `php`, `php-ext` (the PHP extension), `python` and `rust` (S5 of PRINCIPLES.md): a folder name
   carries no repository prefix, and the distribution names (`@polyspec/orm`, `polyspec/orm`,

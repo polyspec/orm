@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 4d083a4f233f3aad482b33e7e96dfc5c785b5cad5e2cbaab23fb68c3cd2b6397 -->
+<!-- source-sha256: 4657f85d884a75612acb7c5f947124f0a7aacaecd3cf3d55fe6f81cb9756b994 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -24,6 +24,8 @@ orm 자신의 규칙만 적는다.
   `make kit-check`가 그것과 비교하는 사본이며, kit에서만 바뀐다. 이 저장소는 `config/*.json`과 자체 product
   code(`scripts/check`, `scripts/features`, `scripts/repo`, client, database server 검사)에서만 다른 저장소와 다르다.
   kit에 없거나 잘못된 도구는 kit에 알리고, 여기서 복사하거나 고치지 않는다. 이 저장소의 규칙은 사본을 읽지 않는다.
+  polyspec 버전이 0.0.x인 동안 개발 checkout은 kit `docs/plans/local-links.md`가 설명하는 대로 설치된 polyspec
+  package를 그 source에 link하며, link는 commit하지 않는다.
 - client package는 `packages/<runtime>`이고 runtime은 `go`, `ts`(TypeScript client), `php`, `php-ext`(PHP 확장),
   `python`, `rust`다(PRINCIPLES.md의 S5): folder 이름은 저장소 prefix를 갖지 않고, 배포 이름(`@polyspec/orm`,
   `polyspec/orm`, `polyspec-orm`)은 그것을 유지한다. Go module은 `github.com/polyspec/orm/packages/go`
