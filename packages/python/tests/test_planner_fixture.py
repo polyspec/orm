@@ -14,6 +14,7 @@ from polyspec.orm.engine.dialect import dialect_of  # noqa: E402
 from polyspec.orm.engine.planner import Planner  # noqa: E402
 from polyspec.orm.engine.validate import validate  # noqa: E402
 from polyspec.orm.errors import OrmError  # noqa: E402
+from . import testcase
 
 
 def _slot(slot: dict) -> dict:
@@ -67,4 +68,4 @@ class PlannerFixtureTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

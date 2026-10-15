@@ -3,6 +3,7 @@
 import tomllib
 import unittest
 from pathlib import Path
+from . import testcase
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / 'src'
@@ -34,4 +35,4 @@ class PackageDataTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

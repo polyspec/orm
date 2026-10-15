@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[3]
 
 from polyspec.orm.dbspec.introspect_mysql import _create_checks  # noqa: E402
 from .vector_case import VectorCase, vector_tests  # noqa: E402
+from . import testcase
 
 
 DATA = json.loads((ROOT / 'tests' / 'dbspec' / 'show-create.json').read_text(encoding='utf-8'))
@@ -37,4 +38,4 @@ def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: 
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

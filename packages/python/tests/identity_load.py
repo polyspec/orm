@@ -28,6 +28,7 @@ from polyspec.orm.engine import Engine, model_of_documents, parse_document_set  
 from polyspec.orm.errors import OrmError  # noqa: E402
 from polyspec.orm.schema import Schema  # noqa: E402
 from .vector_case import VectorCase, vector_tests  # noqa: E402
+from . import testcase
 
 CASES = json.loads((ROOT / 'contracts' / 'fixtures' / 'identity_load.json').read_text())
 MODEL = model_of_documents(parse_document_set([(ROOT / CASES['fixture']).read_text()]))
@@ -244,24 +245,21 @@ def execute_case(case: dict) -> list:
 
 
 def check_case(test: unittest.TestCase, case: dict) -> None:
-    """Runs one case of the file and prints its harness line `PASS|FAIL <case id> elapsed=...`."""
+    """Runs one case of the file; testcase.py reports it under the case id."""
     name = case['id']
-    started = time.monotonic()
     if case['operation'] == 'compile':
         reasons = compile_case(case)
     elif case['operation'] == 'execute':
         reasons = execute_case(case)
     else:
         reasons = [f'unknown operation {case["operation"]!r}']
-    elapsed = time.monotonic() - started
     if reasons:
-        print(f'FAIL {name} elapsed={elapsed:.3f}s: ' + '; '.join(reasons), flush=True)
         test.fail(f'{name}: ' + '; '.join(reasons))
-    print(f'PASS {name} elapsed={elapsed:.3f}s', flush=True)
 
 
 class Case(VectorCase):
     """A case of the vector file of this module."""
+    deadline = testcase.DATABASE
 
 
 def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: object) -> unittest.TestSuite:
@@ -269,6 +267,6 @@ def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: 
     tests.addTests(vector_tests(Case, CASES['cases'], check_case))
     return tests
 
+
 if __name__ == '__main__':
-    # verbosity 0은 진행 문자를 쓰지 않아 harness 줄이 줄 머리에서 시작한다.
-    unittest.main(verbosity=0)
+    testcase.main()

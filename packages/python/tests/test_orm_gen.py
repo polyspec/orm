@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -15,6 +16,7 @@ ORM_GEN = [sys.executable, '-m', 'polyspec.orm.bin_orm_gen']
 
 
 class OrmGenTest(unittest.TestCase):
+    deadline = testcase.PROCESS
     @classmethod
     def setUpClass(cls):
         tmp = tempfile.TemporaryDirectory(prefix='orm-gen-')
@@ -154,4 +156,4 @@ class OrmGenTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

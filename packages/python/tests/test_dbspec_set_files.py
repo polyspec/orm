@@ -14,6 +14,7 @@ from pathlib import Path
 
 from polyspec.orm.dbspec import read_dbspec_set
 from .vector_case import VectorCase, vector_tests
+from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 VECTORS = ROOT / 'tests' / 'dbspec' / 'set-files.json'
@@ -159,4 +160,4 @@ def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: 
     return tests
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

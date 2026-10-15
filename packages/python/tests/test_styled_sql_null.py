@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[3]
 
 from polyspec.ordered_json import parse as parse_json, stringify as stringify_json  # noqa: E402
 from polyspec.orm.styled_value import StyledValue  # noqa: E402
+from . import testcase
 
 SQL_NULL = {'kind': 'sql-null'}
 
@@ -83,4 +84,4 @@ class StyledSqlNullTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

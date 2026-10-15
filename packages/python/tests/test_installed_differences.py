@@ -6,6 +6,7 @@ from pathlib import Path
 
 
 from polyspec.orm.dbspec import installed_differences, parse_dbspec  # noqa: E402
+from . import testcase
 
 
 def document(columns: str):
@@ -41,4 +42,4 @@ class InstalledDifferencesTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

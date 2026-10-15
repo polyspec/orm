@@ -19,6 +19,7 @@ from .test_sqlite import generate_document
 
 from polyspec.orm.database import Db, _MysqlConnection, _PostgresConnection  # noqa: E402
 from polyspec.orm.errors import OrmError  # noqa: E402
+from . import testcase
 
 DOCUMENT = '''dbspec 1 refusal
 
@@ -266,4 +267,4 @@ class ServerDriverErrorTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

@@ -13,6 +13,7 @@ from .test_sqlite import generate
 ROOT = Path(__file__).resolve().parents[3]
 
 from polyspec.orm.errors import OrmError  # noqa: E402
+from . import testcase
 
 
 def tables_of(path: str) -> list:
@@ -73,4 +74,4 @@ class SchemaInstallTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

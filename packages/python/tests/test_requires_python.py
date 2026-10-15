@@ -6,6 +6,7 @@
 import tomllib
 import unittest
 from pathlib import Path
+from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = ROOT / 'packages/python'
@@ -29,4 +30,4 @@ class RequiresPythonTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

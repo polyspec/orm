@@ -6,6 +6,7 @@ from pathlib import Path
 
 
 from polyspec.orm.model import Collection  # noqa: E402
+from . import testcase
 
 
 class CollectionLookupTest(unittest.TestCase):
@@ -24,4 +25,4 @@ class CollectionLookupTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

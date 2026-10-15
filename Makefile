@@ -504,9 +504,9 @@ php-vendor-check:
 .PHONY: python-check python-unit-check python-interface-unit-check
 python-check: python-unit-check python-interface-unit-check python-model-check conformance-result-check/python
 python-unit-check: python-venv-check
-	$(PYTHON_VENV)/bin/python -m unittest discover -s packages/python/tests -t . -p 'test_*.py'
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p 'test_*.py'
 python-interface-unit-check: python-venv-check
-	cd tests/interfaces && $(PYTHON_VENV)/bin/python -m unittest discover -p 'test_*.py'
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s tests/interfaces -t tests/interfaces -p 'test_*.py'
 # python-coverage-case-check is the check of the helper coverage-runner-python (contracts/features.json): the unit test of
 # the case runner that the Python coverage tests share.
 .PHONY: python-coverage-case-check
@@ -521,7 +521,7 @@ dbspec-python-check: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_ddl
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_plans
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_mermaid
-	$(PYTHON_VENV)/bin/python -m unittest discover -s packages/python/tests -t . -p 'test_dbspec_*.py'
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p 'test_dbspec_*.py'
 dbspec-compare-check/prepare: cargo-downloads-check lease-tool python-venv-check
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_COMPARE_DOCUMENT))

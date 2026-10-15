@@ -14,6 +14,7 @@ from polyspec.orm.dbspec import parse_dbspec  # noqa: E402
 from polyspec.orm.dbspec.compare import is_schema_text  # noqa: E402
 from polyspec.orm.engine.model import model_of_documents, parse_document_set  # noqa: E402
 from polyspec.orm.schema import Schema  # noqa: E402
+from . import testcase
 
 AUDIT = ('dbspec 1 audit\n\n'
          'table audit {\n  seq i64 identity\n  action varchar(64)\n  primary key (seq)\n}\n')
@@ -65,4 +66,4 @@ class SchemaInstallUsesTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

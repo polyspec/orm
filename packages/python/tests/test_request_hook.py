@@ -16,6 +16,7 @@ PACKAGE = Path(__file__).resolve().parents[1]
 
 from polyspec.orm.database import Db  # noqa: E402
 from polyspec.orm.errors import OrmError  # noqa: E402
+from . import testcase
 
 READS = ('one', 'all', 'count', 'paginate')
 
@@ -273,4 +274,4 @@ class InsertPartsTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

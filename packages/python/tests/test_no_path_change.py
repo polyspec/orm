@@ -3,6 +3,7 @@
 import ast
 import unittest
 from pathlib import Path
+from . import testcase
 
 TESTS = Path(__file__).resolve().parent
 
@@ -35,4 +36,4 @@ class NoPathChangeTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

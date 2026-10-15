@@ -22,6 +22,7 @@ from polyspec.orm.database import Db, DbStats  # noqa: E402
 from polyspec.orm.engine import model_of_documents, parse_document_set  # noqa: E402
 from polyspec.orm.errors import OrmError  # noqa: E402
 from polyspec.orm.schema import Schema  # noqa: E402
+from . import testcase
 
 MODEL = model_of_documents(parse_document_set([(ROOT / 'contracts' / 'fixtures' / 'rollback.dbs').read_text()]))
 SCHEMA = Schema(manifest_text=MODEL.manifest_text, manifest_hash=MODEL.manifest_hash,
@@ -98,6 +99,7 @@ def role_privileges(dsn: str, role: str) -> set:
 
 
 class SchemaInspectionTest(unittest.TestCase):
+    deadline = testcase.DATABASE
     def code(self, call) -> str:
         with self.assertRaises(OrmError) as caught:
             call()
@@ -172,4 +174,4 @@ class SchemaInspectionTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

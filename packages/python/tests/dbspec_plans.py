@@ -14,6 +14,7 @@ from polyspec.orm.dbspec.plan import chain_plans, parse_plan  # noqa: E402
 from polyspec.orm.dbspec.plan_diff import diff_plan  # noqa: E402
 from polyspec.orm.dbspec.plan_steps import effect_text, plan_steps  # noqa: E402
 from .vector_case import VectorCase, vector_tests  # noqa: E402
+from . import testcase
 
 
 def _text(value) -> str:
@@ -135,4 +136,4 @@ def load_tests(loader: unittest.TestLoader, tests: unittest.TestSuite, pattern: 
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

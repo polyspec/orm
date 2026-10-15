@@ -19,6 +19,7 @@ PACKAGE = Path(__file__).resolve().parents[1]
 
 from polyspec.orm.database import Db  # noqa: E402
 from polyspec.orm.errors import OrmError  # noqa: E402
+from . import testcase
 
 FAULT_MESSAGE = 'test fault: the rollback of the transaction ran and is reported as failed'
 
@@ -29,6 +30,7 @@ def fail_next_rollback(db) -> None:
 
 
 class RollbackFaultTest(unittest.TestCase):
+    deadline = testcase.DATABASE
     @classmethod
     def setUpClass(cls):
         tmp = tempfile.TemporaryDirectory(prefix='orm-rollback-')
@@ -145,6 +147,7 @@ class RollbackFaultTest(unittest.TestCase):
 
 
 class RollbackFaultEntryTest(unittest.TestCase):
+    deadline = testcase.PROCESS
     def test_the_package_entry_point_does_not_export_the_fault(self):
         import polyspec.orm
         self.assertFalse(hasattr(polyspec.orm, 'fail_next_rollback'))
@@ -166,4 +169,4 @@ class RollbackFaultEntryTest(unittest.TestCase):
         self.assertEqual(loaded.stdout.strip(), 'False')
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()

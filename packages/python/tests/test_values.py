@@ -9,6 +9,7 @@ from polyspec.orm.codec import CodecError, decode, encode, host_decode, host_enc
 from polyspec.orm.errors import OrmError
 from polyspec.orm.styled_value import StyledValue
 from polyspec.orm.values import ColumnFunction, ValueFunction, orm
+from . import testcase
 
 
 class ValueFunctionTest(unittest.TestCase):
@@ -182,4 +183,4 @@ class CodecStageTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testcase.main()
