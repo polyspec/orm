@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0b997df9d846ecb493958d9227ce53e0ff8c4c7727f0bb72d440d8d55e7ef0e4 -->
+<!-- source-sha256: d5429c032d550be5f81df7f4c880f2ef3cefed9facdcb1fb5897afeaa0e270b8 -->
 # 변경 이력
 
 ## Unreleased
 
+- Go가 bool if_parent를 column의 논리 type으로 맞추고, conformance vector가 평탄화한 relation을 고정한다. (#T85)
 - conformance vector가 모든 database에서 scalar column subquery를 고정한다. (#T84-1)
 - conformance vector가 모든 database에서 오름차순과 내림차순 read의 NULL 순서를 고정한다. (#T82-1)
 - Go bind vector test가 deadline이 있는 case로 보고한다. (#T91-1)
