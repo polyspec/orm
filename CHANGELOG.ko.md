@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 874d455561469285d9769bc76d51edc903ef396520a90086f7b758fe5d01e939 -->
+<!-- source-sha256: dd6ea3b08a962737f60dffdbd5dd3d822b8c20f5edc216ad312b0169457b8cf9 -->
 # 변경 이력
 
 ## Unreleased
 
+- repository가 kit 0.0.47을 받고, scripts와 tests가 disable이나 cast 없이 그 TypeScript lint를 통과한다. (#T137-1-4-7)
 - go-vet-check가 tests/analyzers의 Go analyzer를 맡는다. (#T137-1-9)
 - 모든 dbspec compare runner가 자기 생태계의 validator로 tests/dbspec/schema의 공유 JSON Schema에 vector를 검증하고, runner 자신의 field 검사는 지웠다. (#T137-1-4-3)
 - repository 검사는 workflow를 YAML document로, shell 명령을 unbash parser로, Go source를 go vet이 실행하는 go/analysis analyzer로 읽는다(make go-vet-check). (#T137-1-4-2)

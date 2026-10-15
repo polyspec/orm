@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The repository takes kit 0.0.47, and the scripts and tests pass its TypeScript lint without a disable or a cast. (#T137-1-4-7)
 - go-vet-check owns the Go analyzers of tests/analyzers. (#T137-1-9)
 - Every dbspec compare runner validates the vectors against the shared JSON Schemas of tests/dbspec/schema with its ecosystem's validator; the runners' own field checks are removed. (#T137-1-4-3)
 - The repository checks read the workflows as YAML documents, the shell commands with the unbash parser, and Go source with go/analysis analyzers that go vet runs (make go-vet-check). (#T137-1-4-2)
