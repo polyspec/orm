@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 316068f3e9679426c44c3bbfb4781e6ac76b90e7410744de5483dbcc435b2372 -->
+<!-- source-sha256: adb487e0db673543245c27cd5a9fbcbbccb6de8c41a15690626c0319283ea10a -->
 # 변경 이력
 
 ## Unreleased
 
+- offset이 없는 PHP datetime이 연결 zone에서 바인딩되며, 일광 절약 시간 wall clock도 포함한다. (#T116)
 - date, time, datetime 매개변수는 모든 client에서 정규 text 형태만 받고, native 값은 CODEC_ENCODE로 거부한다. (#T89-3)
 - TypeScript build가 project reference로 language package를 LSP보다 먼저 build한다. (#T187)
 - dialect 사실이 각 database에서 RESTRICT 검사의 행 순서를 기록한다. (#T100)

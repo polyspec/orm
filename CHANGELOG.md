@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A PHP datetime without an offset binds in the connection zone, including a daylight-saving wall clock. (#T116)
 - Date, time and datetime parameters take the canonical text form in every client; a native value is refused with CODEC_ENCODE. (#T89-3)
 - The TypeScript build orders the language package before the LSP by project references. (#T187)
 - The dialect facts record the row order of RESTRICT checks on each database. (#T100)
