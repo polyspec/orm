@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- kit-check owns the mise lock sidecars beside mise.lock. (#T181-3)
 - The Python dbspec introspection and apply take a public Connection protocol. (#T181-2)
 - The lock sidecar of the vulture tool is tracked beside mise.lock, so a fresh checkout installs its tools. (#T181-1)
 - The repository takes kit 0.0.50: node is a tool of mise.toml, every recipe starts its tools by their paths, and make lint-python runs ruff and vulture and passes. (#T181)

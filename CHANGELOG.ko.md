@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2cda86fd58b77a8e83ed01a065ca3f8602f250b22fb12431b4d173eb7b387297 -->
+<!-- source-sha256: 65ddbebbe044378567d761e8cc4f58681818fc90a4270db4d13d7b3f1fb28d3c -->
 # 변경 이력
 
 ## Unreleased
 
+- kit-check가 mise.lock 옆의 mise lock sidecar를 owner로 갖는다. (#T181-3)
 - Python dbspec introspection과 apply가 공개 Connection protocol을 받는다. (#T181-2)
 - vulture 도구의 lock sidecar를 mise.lock 옆에 추적해 새 checkout이 도구를 설치한다. (#T181-1)
 - repository가 kit 0.0.50을 받는다. node는 mise.toml의 도구이고, 모든 recipe가 경로로 도구를 실행하며, make lint-python이 ruff와 vulture를 실행해 통과한다. (#T181)
