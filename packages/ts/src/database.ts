@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { bindSlotType, checkParam, transformParam } from './bind_check.js';
+import { bindSlotType, checkAssign, checkParam, transformParam } from './bind_check.js';
 import { blindIndex, decode, hostDecode, hostEncode } from './codec.js';
 import type { Assemble, BindSlot, Group, KeyReference, Plan, PlanStep, Request } from './ir.js';
 import { driverValue, isolationSql, openDriver, parseDsn, sqliteBusy, zoneOffset, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue, type Isolation, type PoolStats, type StatementDone } from './driver.js';
@@ -1069,6 +1069,7 @@ export class Db {
           let value = params[slot.param];
           // A transformed value is the text of its operator, and a host-styled value is the input of its first stage,
           // which hostEncode checks.
+          checkAssign(slot.param, value, bindSlotType(slot));
           if (!slot.transform && slot.host_styles.length === 0) checkParam(slot.param, value, bindSlotType(slot), this.zone);
           if ((slot.col_type === 'datetime' || slot.col_type === 'date' || slot.col_type === 'time') && value !== null) {
             value = timeValue(value, slot.col_type, this.zone, slot.precision ?? 0);

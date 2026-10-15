@@ -1,7 +1,7 @@
 //! bind_vectors: tests/bind/vectors.json의 bind case, parameter 값을 그 slot의 논리 type으로 검사한다(docs/protocol.md
 //! §5 "Parameters"). Go의 TestBindVectors와 같은 case다. check_param은 crate 안에서만 보이므로 src/bind_check.rs가 이
 //! file을 unit test module로 둔다.
-use super::{check_param, transform_param, ParamSlot};
+use super::{check_assign, check_param, transform_param, ParamSlot};
 use crate::db::Zone;
 use crate::{Error, Param};
 use base64::Engine as _;
@@ -43,11 +43,13 @@ fn bind_vectors() {
             precision: s["precision"].as_i64().unwrap_or(0),
             scale: s["scale"].as_i64().unwrap_or(0),
             length: s["length"].as_i64().unwrap_or(0),
+            not_null: s["not_null"].as_bool().unwrap_or(false),
+            column: "column",
         };
         let value = vector_value(&c["value"]);
         let got = match s["transform"].as_str() {
             Some(kind) => transform_param(kind, &value),
-            None => check_param(0, &value, &slot, &Zone).map(|()| value.clone()),
+            None => check_assign(0, &value, &slot).and_then(|()| check_param(0, &value, &slot, &Zone)).map(|()| value.clone()),
         };
         let ok = match (&got, c.get("code")) {
             (Err(Error::Engine { code, .. }), Some(want)) => want == code.as_str(),

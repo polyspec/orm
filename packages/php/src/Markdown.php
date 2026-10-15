@@ -36,6 +36,7 @@ final class Markdown
         $uses = $validator->paramUses($request);
         foreach ($r->params as $i => $v) {
             foreach ($uses[$i] ?? [] as $use) {
+                ParamCheck::checkAssign($i, $v, ParamCheck::useSlotType($use));
                 if ($use['column'] !== null && array_filter($use['column']['codec'], static fn(string $s): bool => Codec::isHostStyle($s)) !== []) {
                     continue;
                 }

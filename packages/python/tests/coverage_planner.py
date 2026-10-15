@@ -58,6 +58,9 @@ def planner_slot(slot: dict) -> dict:
     # A varchar param slot carries its length.
     if slot["from"] == "param" and out["type"] == "varchar":
         out["length"] = slot.get("length", 0)
+    # An assignment slot of a non-null column says so.
+    if slot.get("not_null"):
+        out["not_null"] = True
     return out
 
 
@@ -106,6 +109,7 @@ def param_uses_case(case: dict) -> None:
             if u.column is None
             else {
                 "type": u.type,
+                **({"assign": True} if u.assign else {}),
                 "column": u.column.name,
                 "length": u.column.length,
                 "null": u.column.nullable,

@@ -1184,6 +1184,21 @@ def main():
         ),
     )
 
+    # A parameter that assigns NULL to a non-null column is CODEC_ENCODE before any statement (docs/protocol.md §5
+    # "Parameters"); creates binds each row value as a parameter.
+    run(
+        "null_into_not_null",
+        lambda: {
+            "code": caught(
+                lambda: (
+                    BindCell()
+                    .connect(db)
+                    .creates([BindCell().set_label("a"), BindCell().set_label(None)])
+                )
+            )
+        },
+    )
+
     # A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/protocol.md §2).
     def contains_null():
         try:

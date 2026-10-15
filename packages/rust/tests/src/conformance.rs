@@ -836,6 +836,14 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     run!("varchar_length_rejected", rejected!(BindCell::new().connect(db).set_label("123456789").create()));
     run!("text_nul_rejected", rejected!(BindCell::new().connect(db).set_label("nul").set_body("a\u{0}b").create()));
     run!("uuid_form_rejected", rejected!(BindCell::new().connect(db).set_label("uuid").set_token("123E4567-E89B-12D3-A456-426614174000").create()));
+    // A parameter that assigns NULL to a non-null column is CODEC_ENCODE before any statement (docs/protocol.md §5
+    // "Parameters"); creates binds each row value as a parameter.
+    run!("null_into_not_null", async {
+        let mut null_row = BindCell::new();
+        polyspec_orm::core::Core::set(polyspec_orm::Model::core_mut(&mut null_row), "label", Param::Null);
+        let created = BindCell::new().connect(db).creates(vec![BindCell::new().set_label("a"), null_row]).await;
+        Ok::<Value, polyspec_orm::Error>(json!({"code": code_of(created)}))
+    });
     // A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/protocol.md §2).
     run!("contains_null", async {
         let mut q = author().service_seq(7);

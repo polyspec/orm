@@ -54,6 +54,7 @@ fn step(sql: String, types: &[&str]) -> Step {
                 precision: 0,
                 scale: 0,
                 length: 0,
+                not_null: false,
             })
             .collect(),
         assemble: None,

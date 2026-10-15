@@ -202,6 +202,15 @@ function styleInputType(style: string): string {
   return style === 'ip' ? 'text' : 'bytes';
 }
 
+/**
+ * Marks the param slots of b from start as the assignment of col and returns sql: a slot of a non-null column carries
+ * the column, and its executor refuses a NULL value.
+ */
+function markAssigned(b: Builder, start: number, col: Column, sql: string): string {
+  if (!col.nullable) for (const s of b.binds.slice(start)) if (s.from === 'param') { s.not_null = true; s.column = col.name; }
+  return sql;
+}
+
 function placedJoins(g: Group, out: Set<string>): void {
   for (const it of g.items) {
     if (it.joined) out.add(it.joined.join);
@@ -721,7 +730,8 @@ export class Planner {
     if (blindIndexSource(ent, col.name)) {
       if (a.plus_p !== undefined || a.minus_p !== undefined) fail('IR_INVALID', 'blind index assignment must use its AES source value');
       if (a.null) return 'NULL';
-      return this.renderBlindIndexValue(b, col, present(a.p, `the value of ${a.column}`));
+      const start = b.binds.length;
+      return markAssigned(b, start, col, this.renderBlindIndexValue(b, col, present(a.p, `the value of ${a.column}`)));
     }
     // table-qualified: a bare name is ambiguous inside ON CONFLICT DO UPDATE
     const q = `${this.d.quote(ent.table)}.${this.d.quote(col.name)}`;
@@ -731,7 +741,8 @@ export class Planner {
       return `CASE WHEN ${q} > ${ph} THEN ${q} - ${b.colParam(a.minus_p, col)} ELSE 0 END`;
     }
     if (a.null) return 'NULL';
-    return this.renderValue(b, col, present(a.p, `the value of ${a.column}`));
+    const start = b.binds.length;
+    return markAssigned(b, start, col, this.renderValue(b, col, present(a.p, `the value of ${a.column}`)));
   }
 
   /**

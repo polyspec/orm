@@ -13,6 +13,8 @@ import { entityOf, fieldOf, type Entity, type Field, type RuntimeModel } from '.
 export interface ParamUse {
   readonly type: string;
   readonly column?: Field;
+  /** The assignment of column (set, rows, on_duplicate): a non-null column refuses NULL. */
+  readonly assign?: boolean;
 }
 
 /**
@@ -29,7 +31,7 @@ export function paramUses(m: RuntimeModel, r: Request): ParamUse[][] {
     for (const a of r.set ?? []) u.assign(ent, a);
     for (const a of r.on_duplicate ?? []) u.assign(ent, a);
     const set = r.set ?? [];
-    for (const row of r.rows ?? []) row.forEach((i, j) => u.column(i, fieldOf(ent, present(set[j], `the assignment of row value ${j + 1}`).column)));
+    for (const row of r.rows ?? []) row.forEach((i, j) => u.assigned(i, fieldOf(ent, present(set[j], `the assignment of row value ${j + 1}`).column)));
     if (r.optimistic) u.column(r.optimistic.p, fieldOf(ent, r.optimistic.column));
   }
   return u.out;
@@ -52,7 +54,12 @@ class ParamUses {
 
   public assign(ent: Entity, a: Assignment): void {
     const f = fieldOf(ent, a.column);
-    for (const p of [a.p, a.plus_p, a.minus_p]) if (p !== undefined) this.column(p, f);
+    for (const p of [a.plus_p, a.minus_p]) if (p !== undefined) this.column(p, f);
+    if (a.p !== undefined) this.assigned(a.p, f);
+  }
+
+  public assigned(i: number, f: Field | undefined): void {
+    if (f !== undefined) this.add(i, { type: f.type, column: f, assign: true });
   }
 
   /** q를 걷는다. relation 자식이면 parent가 그 부모 entity다. */

@@ -1019,6 +1019,15 @@ func run() (status int) {
 		return map[string]any{"code": nil, "count": n}, nil
 	})
 
+	// A parameter that assigns NULL to a non-null column is CODEC_ENCODE before any statement
+	// (docs/protocol.md §5 "Parameters"); creates binds each row value as a parameter.
+	run("null_into_not_null", func() (any, error) {
+		null := model.BindCell()
+		null.Orm_().SetNull("label")
+		_, err := bindCell().Creates([]*model.BindCellModel{model.BindCell().SetLabel("a"), null})
+		return map[string]any{"code": code(err)}, nil
+	})
+
 	// The clock vectors need the test entry point of the client, which only a build
 	// with the tag ormtest has (clock_ormtest.go); conformance builds the runner with
 	// it, and the checker refuses an output that lacks a declared vector.

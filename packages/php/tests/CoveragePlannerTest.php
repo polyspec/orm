@@ -49,6 +49,10 @@ function plannerCase(string $root, array $fixture, string $id): void
                 if ($slot['from'] === 'param' && $type === 'varchar') {
                     $out['length'] = $slot['length'] ?? 0;
                 }
+                // An assignment slot of a non-null column says so.
+                if (!empty($slot['not_null'])) {
+                    $out['not_null'] = true;
+                }
                 if ($slot['from'] === 'param') {
                     $out['param'] = $slot['param'];
                 }
@@ -80,7 +84,7 @@ function paramUsesCase(string $root, array $fixture, string $id): void
     // key는 fixture의 정렬된 key 순서다.
     $uses = array_map(static fn(array $list): array => array_map(static fn(array $u): array => $u['column'] === null
         ? ['type' => $u['type']]
-        : [
+        : ($u['assign'] ? ['assign' => true] : []) + [
             'column' => $u['column']['name'],
             'length' => $u['column']['length'] ?? 0,
             'null' => $u['column']['nullable'],

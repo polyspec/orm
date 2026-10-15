@@ -288,15 +288,21 @@ final class Validator
         $this->queryUses($r, null, $out);
         foreach ([...($r['set'] ?? []), ...($r['on_duplicate'] ?? [])] as $a) {
             $col = RuntimeModel::column($ent, $a['column']);
-            foreach (['p', 'plus_p', 'minus_p'] as $field) {
+            foreach (['plus_p', 'minus_p'] as $field) {
                 if (isset($a[$field])) {
                     self::columnUse($out, $a[$field], $col);
                 }
             }
+            if (isset($a['p']) && $col !== null) {
+                self::addUse($out, $a['p'], $col['type'], $col, true);
+            }
         }
         foreach ($r['rows'] ?? [] as $row) {
             foreach ($row as $j => $i) {
-                self::columnUse($out, $i, RuntimeModel::column($ent, $r['set'][$j]['column']));
+                $col = RuntimeModel::column($ent, $r['set'][$j]['column']);
+                if ($col !== null) {
+                    self::addUse($out, $i, $col['type'], $col, true);
+                }
             }
         }
         if (isset($r['optimistic'])) {
@@ -322,10 +328,10 @@ final class Validator
     }
 
     /** @param list<list<array{type: string, column: ?array}>> $out */
-    private static function addUse(array &$out, int $i, string $type, ?array $col): void
+    private static function addUse(array &$out, int $i, string $type, ?array $col, bool $assign = false): void
     {
         if ($i >= 0 && $i < count($out)) {
-            $out[$i][] = ['type' => $type, 'column' => $col];
+            $out[$i][] = ['type' => $type, 'column' => $col, 'assign' => $assign];
         }
     }
 

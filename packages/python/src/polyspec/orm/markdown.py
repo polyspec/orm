@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from urllib.parse import parse_qsl
 
 from polyspec.orm.engine.model import Entity, RuntimeModel, entity_of, field_of
-from polyspec.orm.bind_check import check_param, use_slot_type
+from polyspec.orm.bind_check import check_assign, check_param, use_slot_type
 from polyspec.orm.engine.params import ParamUse, function_type, param_uses
 from polyspec.orm.engine.validate import validate
 from polyspec.orm.errors import OrmError
@@ -207,6 +207,7 @@ def markdown_call(ex, request: dict, params) -> tuple[dict, RuntimeModel]:
     uses = param_uses(m, request)
     for i, value in enumerate(params):
         for use in uses[i]:
+            check_assign(i, value, use_slot_type(use))
             if use.column is not None and any(
                 s in _HOST_STAGES for s in use.column.stages
             ):

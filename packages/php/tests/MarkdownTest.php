@@ -229,10 +229,12 @@ final class MarkdownTest extends TestCase
             $slot = ['type' => $c['slot']['type'], 'precision' => $c['slot']['precision'] ?? 0, 'scale' => $c['slot']['scale'] ?? 0, 'length' => $c['slot']['length'] ?? 0];
             $v = $value($c['value']);
             $transform = $c['slot']['transform'] ?? '';
-            $e = markdown_error(static function () use (&$v, $slot, $zone, $transform): void {
+            $notNull = $c['slot']['not_null'] ?? false;
+            $e = markdown_error(static function () use (&$v, $slot, $zone, $transform, $notNull): void {
                 if ($transform !== '') {
                     $v = \Polyspec\Orm\Transform::param($transform, $v);
                 } else {
+                    \Polyspec\Orm\ParamCheck::checkAssign(0, $v, ['not_null' => $notNull, 'column' => 'column']);
                     \Polyspec\Orm\ParamCheck::check(0, $v, $slot, $zone);
                 }
             });

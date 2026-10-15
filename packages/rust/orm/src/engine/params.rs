@@ -10,6 +10,8 @@ use polyspec_orm_schema::dbspec::{Entity, Field};
 pub(crate) struct ParamUse<'m> {
     pub(crate) ty: String,
     pub(crate) column: Option<&'m Field>,
+    /// column의 할당(set, rows, on_duplicate)이다: non-null column은 NULL을 거부한다.
+    pub(crate) assign: bool,
 }
 
 /// 검증한 request의 parameter마다, parameter 순서로, 그 slot들이다: 비교하거나 쓰는 column, column 함수의
@@ -25,7 +27,7 @@ pub(crate) fn param_uses<'m>(m: &'m Manifest, r: &ir::Request) -> Vec<Vec<ParamU
         for row in &r.rows {
             for (j, &i) in row.iter().enumerate() {
                 if let Some(a) = r.set.get(j) {
-                    u.column(i, ent.field(&a.column));
+                    u.assigned(i, ent.field(&a.column));
                 }
             }
         }
@@ -44,7 +46,7 @@ struct ParamUses<'m> {
 impl<'m> ParamUses<'m> {
     fn add(&mut self, i: usize, ty: String, column: Option<&'m Field>) {
         if let Some(list) = self.out.get_mut(i) {
-            list.push(ParamUse { ty, column });
+            list.push(ParamUse { ty, column, assign: false });
         }
     }
 
@@ -56,8 +58,17 @@ impl<'m> ParamUses<'m> {
 
     fn assign(&mut self, ent: &'m Entity, a: &ir::Assign) {
         let f = ent.field(&a.column);
-        for p in [a.p, a.plus_p, a.minus_p].into_iter().flatten() {
+        for p in [a.plus_p, a.minus_p].into_iter().flatten() {
             self.column(p, f);
+        }
+        if let Some(p) = a.p {
+            self.assigned(p, f);
+        }
+    }
+
+    fn assigned(&mut self, i: usize, f: Option<&'m Field>) {
+        if let (Some(f), Some(list)) = (f, self.out.get_mut(i)) {
+            list.push(ParamUse { ty: f.ty.name().to_owned(), column: Some(f), assign: true });
         }
     }
 

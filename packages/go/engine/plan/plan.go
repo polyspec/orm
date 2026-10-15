@@ -74,6 +74,9 @@ type BindSlot struct {
 	Scale     int      `json:"scale,omitempty"`
 	// Length is the n of a varchar(n) slot: a value has at most n characters.
 	Length int `json:"length,omitempty"`
+	// NotNull marks a param slot that assigns the non-null column Column (set, rows,
+	// on_duplicate, the restore set): a NULL value is CODEC_ENCODE before any statement.
+	NotNull bool `json:"not_null,omitempty"`
 }
 
 // Assemble maps result columns positionally and describes how rows attach.

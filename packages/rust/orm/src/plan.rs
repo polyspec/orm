@@ -63,6 +63,8 @@ pub struct BindSlot {
     pub scale: i64,
     /// varchar(n) slot의 n이다: 값은 n 글자 이하다.
     pub length: i64,
+    /// assignment slot이 non-null column `column`에 쓰는 값이다: NULL 값은 어떤 statement보다 먼저 CODEC_ENCODE다.
+    pub not_null: bool,
 }
 
 #[derive(Debug, Clone, Default)]

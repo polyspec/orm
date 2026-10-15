@@ -16,7 +16,7 @@ fn message_vectors() {
     for c in vectors["message"].as_array().unwrap() {
         let name = c["name"].as_str().unwrap();
         let value = Param::Str(c["value"].as_str().unwrap().to_owned());
-        let slot = ParamUse { ty: c["type"].as_str().unwrap().to_owned(), column: None };
+        let slot = ParamUse { ty: c["type"].as_str().unwrap().to_owned(), column: None, assign: false };
         let got = markdown_param(0, &value, Some(&slot), "", &Zone);
         let ok = match (&got, c.get("code")) {
             (Err(Error::Engine { code, .. }), Some(want)) => want == code.as_str(),

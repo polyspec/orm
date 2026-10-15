@@ -344,6 +344,7 @@ async fn markdown_call(ex: &Executor, req: &mut Req) -> Result<(Vec<u8>, Arc<Man
     let uses = engine::param_uses(&manifest, &req.ir);
     for (i, value) in req.params.iter().enumerate() {
         for u in &uses[i] {
+            crate::bind_check::check_assign(i, value, &crate::bind_check::use_slot_type(u))?;
             if u.column.is_some_and(|c| c.codec.iter().any(|s| matches!(s.as_str(), "aes" | "hex" | "ip"))) {
                 continue;
             }

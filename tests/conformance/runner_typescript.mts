@@ -552,6 +552,13 @@ async function main() {
   await run('text_nul_rejected', () => rejected(() => new BindCell().connect(db).setLabel('nul').setBody('a\u0000b').create()));
   await run('uuid_form_rejected', () => rejected(() => new BindCell().connect(db).setLabel('uuid').setToken('123E4567-E89B-12D3-A456-426614174000').create()));
   // A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/protocol.md §2).
+  // A parameter that assigns NULL to a non-null column is CODEC_ENCODE before any statement (docs/protocol.md §5
+  // "Parameters"); creates binds each row value as a parameter.
+  await run('null_into_not_null', async () => {
+    const nullRow = new BindCell();
+    nullRow[CORE].setValue('label', null);
+    return { code: await caught(new BindCell().connect(db).creates([new BindCell().setLabel('a'), nullRow])) };
+  });
   await run('contains_null', async () => {
     try {
       const q = author().serviceSeq(7);

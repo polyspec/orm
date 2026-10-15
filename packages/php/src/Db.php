@@ -1226,6 +1226,7 @@ final class Db
                     $v = $params[$b['param']];
                     // A transformed value is the text of its operator, and a host-styled value is the input of its
                     // first stage, which Codec::hostEncode checks.
+                    ParamCheck::checkAssign($b['param'], $v, ParamCheck::bindSlotType($b));
                     if (($b['transform'] ?? '') === '' && empty($b['host_styles'])) {
                         ParamCheck::check($b['param'], $v, ParamCheck::bindSlotType($b), $this->zone);
                     }

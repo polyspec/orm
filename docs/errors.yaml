@@ -55,7 +55,7 @@ codes:
     origin: executor
   - code: CODEC_DECODE            # styled column bytes could not be decoded (docs/codec.md)
     origin: executor
-  - code: CODEC_ENCODE           # a parameter outside its slot's logical type, before any statement (kind, range, scale and precision, time precision, length, U+0000, uuid form), or a styled input that cannot be encoded, including SQL NULL for a non-null column
+  - code: CODEC_ENCODE           # a parameter outside its slot's logical type, before any statement (kind, range, scale and precision, time precision, length, U+0000, uuid form), or a styled input that cannot be encoded, including SQL NULL for a non-null column (a NULL parameter assigned to a non-null column; raw SQL keeps DRIVER)
     origin: executor
   - code: CODEC_UNSUPPORTED       # PHP objects/references in serialize, unknown style
     origin: executor

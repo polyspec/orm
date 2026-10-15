@@ -17,6 +17,8 @@ class ParamUse:
 
     type: str
     column: Field | None = None
+    # column의 할당(set, rows, on_duplicate)이다: non-null column은 NULL을 거부한다.
+    assign: bool = False
 
 
 def param_uses(m: RuntimeModel, r: dict) -> list[list[ParamUse]]:
@@ -32,7 +34,7 @@ def param_uses(m: RuntimeModel, r: dict) -> list[list[ParamUse]]:
         u.assign(ent, a)
     for row in r.get("rows") or []:
         for j, i in enumerate(row):
-            u.column(i, field_of(ent, r["set"][j]["column"]))
+            u.assigned(i, field_of(ent, r["set"][j]["column"]))
     optimistic = r.get("optimistic")
     if optimistic:
         u.column(optimistic["p"], field_of(ent, optimistic["column"]))
@@ -54,9 +56,15 @@ class _ParamUses:
 
     def assign(self, ent: Entity, a: dict) -> None:
         f = field_of(ent, a["column"])
-        for key in ("p", "plus_p", "minus_p"):
+        for key in ("plus_p", "minus_p"):
             if a.get(key) is not None:
                 self.column(a[key], f)
+        if a.get("p") is not None:
+            self.assigned(a["p"], f)
+
+    def assigned(self, i: int, f: Field | None) -> None:
+        if f is not None:
+            self.add(i, ParamUse(f.type, f, True))
 
     def query(self, q: dict, parent: Entity | None) -> None:
         """q를 걷는다. relation 자식이면 parent가 그 부모 entity다."""

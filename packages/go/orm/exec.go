@@ -165,6 +165,11 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 		case "param":
 			// A transformed value is the text of its operator, and a host-styled value is the
 			// input of its first stage, which HostEncode checks.
+			if b.Param < len(r.params) {
+				if err := checkAssign(b.Param, r.params[b.Param], bindSlotType(&b)); err != nil {
+					return nil, nil, err
+				}
+			}
 			if b.Transform == "" && len(b.HostStyles) == 0 && b.Param < len(r.params) {
 				if err := d.checkParam(b.Param, r.params[b.Param], bindSlotType(&b)); err != nil {
 					return nil, nil, err

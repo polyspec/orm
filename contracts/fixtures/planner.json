@@ -482,6 +482,7 @@
               {
                 "from": "param",
                 "length": 191,
+                "not_null": true,
                 "param": 0,
                 "type": "varchar"
               },
@@ -504,6 +505,7 @@
               {
                 "from": "param",
                 "length": 191,
+                "not_null": true,
                 "param": 0,
                 "type": "varchar"
               },
@@ -526,6 +528,7 @@
               {
                 "from": "param",
                 "length": 191,
+                "not_null": true,
                 "param": 0,
                 "type": "varchar"
               },
@@ -667,6 +670,7 @@
               {
                 "from": "param",
                 "length": 32,
+                "not_null": true,
                 "param": 0,
                 "type": "varchar"
               },
@@ -694,6 +698,7 @@
               {
                 "from": "param",
                 "length": 32,
+                "not_null": true,
                 "param": 0,
                 "type": "varchar"
               },
@@ -721,6 +726,7 @@
               {
                 "from": "param",
                 "length": 32,
+                "not_null": true,
                 "param": 0,
                 "type": "varchar"
               },
@@ -775,6 +781,7 @@
               {
                 "from": "param",
                 "length": 32,
+                "not_null": true,
                 "param": 0,
                 "type": "varchar"
               },
@@ -803,6 +810,7 @@
               {
                 "from": "param",
                 "length": 32,
+                "not_null": true,
                 "param": 0,
                 "type": "varchar"
               },
@@ -831,6 +839,7 @@
               {
                 "from": "param",
                 "length": 32,
+                "not_null": true,
                 "param": 0,
                 "type": "varchar"
               },
@@ -1494,6 +1503,7 @@
               {
                 "from": "param",
                 "length": 191,
+                "not_null": true,
                 "param": 0,
                 "type": "varchar"
               },
@@ -1504,33 +1514,39 @@
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 2,
                 "precision": 6,
                 "type": "datetime"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 3,
                 "precision": 6,
                 "type": "datetime"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 4,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 5,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 6,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 7,
                 "type": "i64"
               },
@@ -1558,6 +1574,7 @@
               {
                 "from": "param",
                 "length": 191,
+                "not_null": true,
                 "param": 0,
                 "type": "varchar"
               },
@@ -1569,33 +1586,39 @@
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 2,
                 "precision": 6,
                 "type": "datetime"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 3,
                 "precision": 6,
                 "type": "datetime"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 4,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 5,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 6,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 7,
                 "type": "i64"
               },
@@ -1633,6 +1656,7 @@
               {
                 "from": "param",
                 "length": 191,
+                "not_null": true,
                 "param": 0,
                 "type": "varchar"
               },
@@ -1644,33 +1668,39 @@
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 2,
                 "precision": 6,
                 "type": "datetime"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 3,
                 "precision": 6,
                 "type": "datetime"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 4,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 5,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 6,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 7,
                 "type": "i64"
               },
@@ -1829,12 +1859,14 @@
             "slots": [
               {
                 "from": "param",
+                "not_null": true,
                 "param": 0,
                 "precision": 0,
                 "type": "datetime"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 1,
                 "precision": 3,
                 "type": "time"
@@ -1852,12 +1884,14 @@
             "slots": [
               {
                 "from": "param",
+                "not_null": true,
                 "param": 0,
                 "precision": 0,
                 "type": "datetime"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 1,
                 "precision": 3,
                 "type": "time"
@@ -1875,12 +1909,14 @@
             "slots": [
               {
                 "from": "param",
+                "not_null": true,
                 "param": 0,
                 "precision": 0,
                 "type": "datetime"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 1,
                 "precision": 3,
                 "type": "time"
@@ -1993,6 +2029,7 @@
             "slots": [
               {
                 "from": "param",
+                "not_null": true,
                 "param": 0,
                 "type": "uuid"
               }
@@ -2009,6 +2046,7 @@
             "slots": [
               {
                 "from": "param",
+                "not_null": true,
                 "param": 0,
                 "type": "uuid"
               }
@@ -2025,6 +2063,7 @@
             "slots": [
               {
                 "from": "param",
+                "not_null": true,
                 "param": 0,
                 "type": "uuid"
               }
@@ -2193,6 +2232,7 @@
               {
                 "from": "param",
                 "length": 8,
+                "not_null": true,
                 "param": 0,
                 "type": "varchar"
               }
@@ -2210,6 +2250,7 @@
               {
                 "from": "param",
                 "length": 8,
+                "not_null": true,
                 "param": 0,
                 "type": "varchar"
               },
@@ -2242,6 +2283,7 @@
               {
                 "from": "param",
                 "length": 8,
+                "not_null": true,
                 "param": 0,
                 "type": "varchar"
               },
@@ -3287,12 +3329,14 @@
             "slots": [
               {
                 "from": "param",
+                "not_null": true,
                 "param": 0,
                 "type": "i64"
               },
               {
                 "from": "param",
                 "length": 191,
+                "not_null": true,
                 "param": 1,
                 "type": "varchar"
               }
@@ -3309,12 +3353,14 @@
             "slots": [
               {
                 "from": "param",
+                "not_null": true,
                 "param": 0,
                 "type": "i64"
               },
               {
                 "from": "param",
                 "length": 191,
+                "not_null": true,
                 "param": 1,
                 "type": "varchar"
               }
@@ -3331,12 +3377,14 @@
             "slots": [
               {
                 "from": "param",
+                "not_null": true,
                 "param": 0,
                 "type": "i64"
               },
               {
                 "from": "param",
                 "length": 191,
+                "not_null": true,
                 "param": 1,
                 "type": "varchar"
               }
@@ -3735,37 +3783,44 @@
               {
                 "from": "param",
                 "length": 191,
+                "not_null": true,
                 "param": 1,
                 "type": "varchar"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 2,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 2,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 2,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 2,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 3,
                 "precision": 6,
                 "type": "datetime"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 3,
                 "precision": 6,
                 "type": "datetime"
@@ -3799,37 +3854,44 @@
               {
                 "from": "param",
                 "length": 191,
+                "not_null": true,
                 "param": 1,
                 "type": "varchar"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 2,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 2,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 2,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 2,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 3,
                 "precision": 6,
                 "type": "datetime"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 3,
                 "precision": 6,
                 "type": "datetime"
@@ -3873,37 +3935,44 @@
               {
                 "from": "param",
                 "length": 191,
+                "not_null": true,
                 "param": 1,
                 "type": "varchar"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 2,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 2,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 2,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 2,
                 "type": "i64"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 3,
                 "precision": 6,
                 "type": "datetime"
               },
               {
                 "from": "param",
+                "not_null": true,
                 "param": 3,
                 "precision": 6,
                 "type": "datetime"
@@ -4904,6 +4973,7 @@
         "uses": [
           [
             {
+              "assign": true,
               "column": "name",
               "length": 191,
               "null": false,

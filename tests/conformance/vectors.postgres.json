@@ -3218,6 +3218,33 @@
       }
     },
     {
+      "name": "null_into_not_null",
+      "chain": "BindCell creates([label 'a', label NULL]): the parameter that assigns NULL to the non-null label is CODEC_ENCODE before any statement",
+      "expect": {
+        "result": {
+          "code": "CODEC_ENCODE"
+        },
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "BEGIN",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "rollback",
+            "sql": "ROLLBACK",
+            "tables": [],
+            "transaction": 1
+          }
+        ]
+      }
+    },
+    {
       "name": "clock_truncate_write",
       "chain": "FixClock(db, '2026-06-01 12:34:56.999999'); ClockCell setLabel('write')-\u003ecreate() leaving at0, at3 and at6 to default now; getBySeq(seq): at0 and at3 equal at6 truncated to 0 and 3 digits; delete()",
       "expect": {

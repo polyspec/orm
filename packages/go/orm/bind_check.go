@@ -18,11 +18,14 @@ import (
 type paramSlot struct {
 	Type                     string
 	Precision, Scale, Length int
+	// NotNull marks the assignment of the non-null column Column.
+	NotNull bool
+	Column  string
 }
 
 // bindSlotType is the logical type of a param bind slot of a plan step.
 func bindSlotType(b *plan.BindSlot) paramSlot {
-	return paramSlot{Type: b.ColType, Precision: b.Precision, Scale: b.Scale, Length: b.Length}
+	return paramSlot{Type: b.ColType, Precision: b.Precision, Scale: b.Scale, Length: b.Length, NotNull: b.NotNull, Column: b.Column}
 }
 
 // useSlotType is the logical type of a parameter use of ir.ParamUses: a use of its column's
@@ -30,7 +33,7 @@ func bindSlotType(b *plan.BindSlot) paramSlot {
 // six digits.
 func useSlotType(u ir.ParamUse) paramSlot {
 	if f := u.Column; f != nil && f.Type == u.Type {
-		return paramSlot{Type: u.Type, Precision: f.Precision, Scale: f.Scale, Length: f.Length}
+		return paramSlot{Type: u.Type, Precision: f.Precision, Scale: f.Scale, Length: f.Length, NotNull: u.Assign && !f.Null, Column: f.Name}
 	}
 	s := paramSlot{Type: u.Type}
 	if u.Type == "datetime" || u.Type == "time" {
@@ -133,6 +136,15 @@ func (d *DB) checkParam(i int, v any, s paramSlot) error {
 		if text := out.(string); s.Type != "time" && (len(text) < 5 || text[4] != '-' || text[:4] == "0000" || text[0] == '-') {
 			return codecErr(CodeCodecEncode, "parameter %d (%v) is outside 0001-01-01 to 9999-12-31", i, v)
 		}
+	}
+	return nil
+}
+
+// checkAssign refuses SQL NULL as parameter i when s assigns a non-null column. It runs for
+// every slot, a host-styled or transformed one too, before any statement.
+func checkAssign(i int, v any, s paramSlot) error {
+	if _, null := v.(NullType); (v == nil || null) && s.NotNull {
+		return codecErr(CodeCodecEncode, "parameter %d assigns NULL to the non-null %s", i, s.Column)
 	}
 	return nil
 }

@@ -3,7 +3,7 @@
 // 조립한다.
 import { connect as netConnect, type Socket } from 'node:net';
 import { parse as parseJson, type Value } from '@polyspec/ordered-json';
-import { checkParam, useSlotType } from './bind_check.js';
+import { checkAssign, checkParam, useSlotType } from './bind_check.js';
 import { hostEncode } from './codec.js';
 import { decodeAssembly, formatInstant, timeValue, type Db, type Executor, type Result } from './database.js';
 import type { PoolBounds, PoolStats } from './driver.js';
@@ -302,6 +302,7 @@ async function markdownCall(ex: Executor, request: Request, params: readonly unk
   const uses = paramUses(model, request);
   params.forEach((value, i) => {
     for (const use of uses[i] ?? []) {
+      checkAssign(i, value, useSlotType(use));
       if (use.column?.stages.some(s => s === 'aes' || s === 'hex' || s === 'ip')) continue;
       checkParam(i, value, useSlotType(use), db.zone);
     }
