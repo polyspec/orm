@@ -246,6 +246,9 @@ final class MarkdownConformanceTest extends TestCase
             'group_count' => static function (Served $s): mixed {
                 return (new Tasks())->connect($s->db)->groupByOwner()->orderByOwnerAsc()->getsCount()->toArray();
             },
+            'group_count_no_rows' => static function (Served $s): mixed {
+                return (new Tasks())->connect($s->db)->owner('P9')->groupByOwner()->orderByOwnerAsc()->getsCount()->toArray();
+            },
             'sum' => static function (Served $s): mixed {
                 return (new Tasks())->connect($s->db)->sumPoints()->getSum();
             },

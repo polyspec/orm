@@ -138,6 +138,7 @@ const conformanceCases = {
   all: async s => (await new People().connect(s.db).removeAllColumns().addColumnName().addColumnAge().orderByNameDesc().gets()).toArray(),
   count: async s => new Tasks().connect(s.db).owner('P1').getCount(),
   group_count: async s => (await new Tasks().connect(s.db).groupByOwner().orderByOwnerAsc().getsCount()).toArray(),
+  group_count_no_rows: async s => (await new Tasks().connect(s.db).owner('P9').groupByOwner().orderByOwnerAsc().getsCount()).toArray(),
   sum: async s => new Tasks().connect(s.db).sumPoints().getSum(),
   avg: async s => new People().connect(s.db).avgAge().getAvg(),
   paginate: async s => {

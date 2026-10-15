@@ -517,6 +517,10 @@ def markdown_read(ex, request: dict, params) -> tuple[dict, int]:
     ):
         raise _answer_error(f"a paginate answer {_plain(answer)} has no count")
     root = MdNode(m, request, request["kind"] == "group_count")
+    if root.groups and not rows:
+        # An empty group answer has no first row to name the outputs, so they are the group_by keys and
+        # row_count, the same outputs every group row answers.
+        root.build([*(request.get("group_by") or []), "row_count"])
     main = root.rows(rows, ex.db)
     plan = {
         "manifest_hash": request["manifest_hash"],

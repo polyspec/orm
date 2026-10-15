@@ -38,6 +38,7 @@ const CASES: &[&str] = &[
     "all",
     "count",
     "group_count",
+    "group_count_no_rows",
     "sum",
     "avg",
     "paginate",
@@ -393,6 +394,7 @@ async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
         "all" => People::new().connect(db).remove_all_columns().add_column_name().add_column_age().order_by_name_desc().gets().await?.to_array()?,
         "count" => json!(Tasks::new().connect(db).owner("P1").get_count().await?),
         "group_count" => Tasks::new().connect(db).group_by_owner().order_by_owner_asc().gets_count().await?.to_array()?,
+        "group_count_no_rows" => Tasks::new().connect(db).owner("P9").group_by_owner().order_by_owner_asc().gets_count().await?.to_array()?,
         "sum" => json!(Tasks::new().connect(db).sum_points().get_sum().await?),
         "avg" => json!(People::new().connect(db).avg_age().get_avg().await?),
         "paginate" => {

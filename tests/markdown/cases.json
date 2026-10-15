@@ -23,6 +23,7 @@
         { "owner": "P2", "row_count": 1 }
       ]
     },
+    { "id": "group_count_no_rows", "expect": [] },
     { "id": "sum", "expect": 16 },
     { "id": "avg", "expect": 27.5 },
     { "id": "paginate", "expect": { "items": [{ "id": "P3", "name": "Cara" }], "total_count": 3, "total_pages": 2 } },

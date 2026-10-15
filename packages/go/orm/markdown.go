@@ -782,6 +782,13 @@ func markdownRead(ex executor, r *request) (*result, int64, error) {
 		return nil, 0, answerErr("a paginate answer %s has no count", answer)
 	}
 	root := newMarkdownNode(m, &r.ir.Query, r.ir.Kind == "group_count")
+	if root.groups && len(a.Rows) == 0 {
+		// An empty group answer has no first row to name the outputs, so they are the group_by keys and
+		// row_count, the same outputs every group row answers.
+		if err := root.build(append(slices.Clone(r.ir.Query.GroupBy), "row_count")); err != nil {
+			return nil, 0, err
+		}
+	}
 	main, err := root.rows(a.Rows)
 	if err != nil {
 		return nil, 0, err

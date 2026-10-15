@@ -301,6 +301,13 @@ func conformanceCases() map[string]caseFunc {
 			}
 			return rows.ToArray(), nil
 		},
+		"group_count_no_rows": func(s *served) (any, error) {
+			rows, err := markdownmodel.Tasks().Connect(s.db).Owner("P9").GroupByOwner().OrderByOwnerAsc().GetsCount()
+			if err != nil {
+				return nil, err
+			}
+			return rows.ToArray(), nil
+		},
 		"sum": func(s *served) (any, error) {
 			return markdownmodel.Tasks().Connect(s.db).SumPoints().GetSum()
 		},

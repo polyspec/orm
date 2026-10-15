@@ -273,6 +273,17 @@ def conformance_cases() -> dict:
             .to_array()
         )
 
+    def group_count_no_rows(s):
+        return (
+            s.models.Tasks()
+            .connect(s.db)
+            .owner("P9")
+            .group_by_owner()
+            .order_by_owner_asc()
+            .gets_count()
+            .to_array()
+        )
+
     def sum_(s):
         return s.models.Tasks().connect(s.db).sum_points().get_sum()
 
@@ -508,6 +519,7 @@ def conformance_cases() -> dict:
         "all": all_,
         "count": count,
         "group_count": group_count,
+        "group_count_no_rows": group_count_no_rows,
         "sum": sum_,
         "avg": avg,
         "paginate": paginate,
