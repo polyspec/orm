@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- MySQL contains folds only ASCII case, as PostgreSQL and SQLite do. (#T79)
 - kit-check owns the mise lock sidecars beside mise.lock. (#T181-3)
 - The Python dbspec introspection and apply take a public Connection protocol. (#T181-2)
 - The lock sidecar of the vulture tool is tracked beside mise.lock, so a fresh checkout installs its tools. (#T181-1)
