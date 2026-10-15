@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7ecc303523a8d5fd21c860dc98ce43b0c6baf7f5b43c14c73da9133489e87df7 -->
+<!-- source-sha256: eefe9ed5b8f8f68f2293e098ed291ebdc489dee48f852a3510605c8f04b1c22d -->
 # 변경 이력
 
 ## Unreleased
 
+- Python이 모든 공유 suite를 실행한다. aggregate는 범위 밖 값에 CODEC_DECODE를 답하고, percent escape가 깨진 SQLite DSN은 CONFIG이며, MySQL install은 statement event를 발행한다. (#T77-3)
 - Python codec과 apply runner가 공유 검사에서 실행되고, Python PostgreSQL apply는 lock_timeout을 $1 marker로 복원한다. (#T77-2)
 - Python test가 다른 구현처럼 공유 harness로 보고한다: deadline과 함께 RUN, STEP, PASS, FAIL, SKIP. (#T77-1)
 - PHP client가 YAML 1.2.2 표로 core schema를 해석하는 fork min-median-max/yaml v1.0.0-p1로 YAML을 읽는다. consumer는 docs/packaging.md처럼 fork의 vcs repository를 선언한다. (#T142-1-1)
