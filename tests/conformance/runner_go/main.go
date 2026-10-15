@@ -953,6 +953,33 @@ func run() (status int) {
 		return map[string]any{"asc": asc.ToArray(), "desc": desc.ToArray(), "limit_per_parent": perParent}, nil
 	})
 
+	// user 100 has the authors 99 (price NULL) and 5099 (price 3.000) under seq 10000 (benchmarks/sql/seed.*.sql)
+	run("scalar_column_subquery", func() (any, error) {
+		out := map[string]any{}
+		for _, order := range []string{"asc", "desc"} {
+			users, err := model.User().Connect(db).
+				AddColumnReadTotal(func(u *model.UserModel) orm.Model {
+					sub := model.Author().RemoveAllColumns().AddColumnName().UserSeqEqSeq(u).AndLtSeq(10000)
+					if order == "asc" {
+						sub.OrderByPriceAsc()
+					} else {
+						sub.OrderByPriceDesc()
+					}
+					return sub.OrderBySeqAsc().Limit(0, 1)
+				}).
+				Seq(100).Gets()
+			if err != nil {
+				return nil, err
+			}
+			rows := []any{}
+			for _, u := range users.Slice() {
+				rows = append(rows, []any{u.GetSeq(), u.GetReadTotal()})
+			}
+			out[order] = rows
+		}
+		return out, nil
+	})
+
 	vectors, err := selectVectors(declared, selected)
 	check(err)
 	for _, v := range vectors {

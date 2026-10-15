@@ -3235,6 +3235,56 @@
           }
         ]
       }
+    },
+    {
+      "name": "scalar_column_subquery",
+      "chain": "addColumnReadTotal(fn -\u003e removeAllColumns()-\u003eaddColumnName()-\u003euserSeqEqSeq(u)-\u003eandLtSeq(10000)-\u003eorderByPriceAsc|Desc()-\u003eorderBySeqAsc()-\u003elimit(0, 1))-\u003eseq(100)-\u003egets(): two matching authors, one with a NULL price",
+      "expect": {
+        "result": {
+          "asc": [
+            [
+              100,
+              "author-99"
+            ]
+          ],
+          "desc": [
+            [
+              100,
+              "author-5099"
+            ]
+          ]
+        },
+        "statements": [
+          {
+            "binds": [
+              10000,
+              100
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", (SELECT \"s1\".\"name\" FROM \"author\" AS \"s1\" WHERE \"s1\".\"user_seq\" = \"a\".\"seq\" AND \"s1\".\"seq\" \u003c ? ORDER BY \"s1\".\"price\" ASC, \"s1\".\"seq\" ASC LIMIT 1 OFFSET 0) AS \"a__read_total\" FROM \"user\" AS \"a\" WHERE \"a\".\"seq\" = ?",
+            "tables": [
+              "author",
+              "user"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              10000,
+              100
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", (SELECT \"s1\".\"name\" FROM \"author\" AS \"s1\" WHERE \"s1\".\"user_seq\" = \"a\".\"seq\" AND \"s1\".\"seq\" \u003c ? ORDER BY \"s1\".\"price\" DESC, \"s1\".\"seq\" ASC LIMIT 1 OFFSET 0) AS \"a__read_total\" FROM \"user\" AS \"a\" WHERE \"a\".\"seq\" = ?",
+            "tables": [
+              "author",
+              "user"
+            ],
+            "transaction": null
+          }
+        ]
+      }
     }
   ]
 }

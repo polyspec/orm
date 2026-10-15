@@ -572,6 +572,20 @@ vector('order_nulls', function () use ($author, $db): array {
     ];
 });
 
+// user 100 has the authors 99 (price NULL) and 5099 (price 3.000) under seq 10000 (benchmarks/sql/seed.*.sql)
+vector('scalar_column_subquery', function () use ($db): array {
+    $out = [];
+    foreach (['asc', 'desc'] as $order) {
+        $users = (new User)($db)->addColumnReadTotal(static function (User $u) use ($order): Author {
+            $sub = (new Author)->removeAllColumns()->addColumnName()->userSeqEqSeq($u)->andLtSeq(10000);
+            $order === 'asc' ? $sub->orderByPriceAsc() : $sub->orderByPriceDesc();
+            return $sub->orderBySeqAsc()->limit(0, 1);
+        })->seq(100)->gets()->all();
+        $out[$order] = array_map(static fn(User $u): array => [$u->getSeq(), $u->getReadTotal()], $users);
+    }
+    return $out;
+});
+
 
 foreach (array_keys($selected) as $name) {
     if (!isset($vectors[$name])) {

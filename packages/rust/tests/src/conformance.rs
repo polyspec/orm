@@ -812,5 +812,27 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         }
         Ok::<Value, polyspec_orm::Error>(json!({"asc": asc, "desc": desc, "limit_per_parent": Value::Object(per_parent)}))
     });
+    // user 100 has the authors 99 (price NULL) and 5099 (price 3.000) under seq 10000 (benchmarks/sql/seed.*.sql)
+    run!("scalar_column_subquery", async {
+        let mut out = serde_json::Map::new();
+        for order in ["asc", "desc"] {
+            let users = User::new()
+                .connect(db)
+                .add_column_read_total(move |u: &User| {
+                    let sub = Author::new().remove_all_columns().add_column_name().user_seq_eq_seq(u).and_lt_seq(10000);
+                    let sub = if order == "asc" { sub.order_by_price_asc() } else { sub.order_by_price_desc() };
+                    sub.order_by_seq_asc().limit(0, 1)
+                })
+                .seq(100)
+                .gets()
+                .await?;
+            let mut rows = Vec::new();
+            for u in users.models() {
+                rows.push(json!([u.get_seq().unwrap(), u.get_read_total()?]));
+            }
+            out.insert(order.into(), Value::Array(rows));
+        }
+        Ok::<Value, polyspec_orm::Error>(Value::Object(out))
+    });
     out
 }
