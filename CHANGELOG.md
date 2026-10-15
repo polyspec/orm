@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Every client sets one declared MySQL session sql_mode. (#T104)
 - MySQL writes hex encoded by the client, as the other databases do. (#T103)
 - Probes and a citation check record the order of faults of one statement. (#T101)
 - AGENTS points to the local links rule of kit for 0.0.x development. (#T186)
