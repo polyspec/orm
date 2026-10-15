@@ -6,6 +6,11 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "dist",
-    "rootDir": "src"
-  }
+    "rootDir": "src",
+    "tsBuildInfoFile": "./dist/tsconfig.build.tsbuildinfo"
+  },
+  "references": [
+    { "path": "../dbspec-language/tsconfig.build.json" },
+    { "path": "../dbspec-language/src/cli/tsconfig.json" }
+  ]
 }
