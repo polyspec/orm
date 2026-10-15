@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The clients report the affected count of a write by one rule, proven by a conformance vector through a test entry point. (#T88-1)
 - A conformance vector proves that an upsert names exactly one conflict key on every database. (#T87-1)
 - The MySQL migration fixture removes its temporary root and stops its servers when its setup fails. (#T183)
 - The committed Go models hold the service relation of a service region. (#T85-1)

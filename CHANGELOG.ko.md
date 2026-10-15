@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 936a086ff5f5ee21c1a3ad7adb8193a6d0c59740513ab0d5fa1956061dfc6d60 -->
+<!-- source-sha256: 5711a2be3c0573f41aa3b5f922cb8620fa799d43f652cb8d31c100d9d7d75748 -->
 # 변경 이력
 
 ## Unreleased
 
+- client가 한 규칙으로 write의 affected 수를 보고하고, test 진입점을 거친 conformance vector가 그것을 증명한다. (#T88-1)
 - conformance vector가 upsert가 모든 database에서 conflict key를 정확히 하나 적음을 증명한다. (#T87-1)
 - MySQL migration fixture는 setup이 실패하면 서버를 멈추고 임시 root를 지운다. (#T183)
 - commit한 Go model이 service region의 service relation을 담는다. (#T85-1)
