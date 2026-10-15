@@ -68,12 +68,17 @@ function typeOf(node: Node): TSType | undefined {
 function children(node: Node): Node[] {
   const out: Node[] = [];
   for (const key of visitorKeys[node.type] ?? []) {
-    const value = (node as unknown as Record<string, unknown>)[key];
+    const value: unknown = Reflect.get(node, key);
     if (Array.isArray(value)) {
-      for (const item of value) if (item !== null) out.push(item as Node);
-    } else if (value !== null && value !== undefined) out.push(value as Node);
+      for (const item of value) if (isNode(item)) out.push(item);
+    } else if (isNode(value)) out.push(value);
   }
   return out;
+}
+
+/** Whether a child value of a node is a node: an object with the string type that oxc-parser gives every node. */
+function isNode(value: unknown): value is Node {
+  return typeof value === 'object' && value !== null && 'type' in value && typeof value.type === 'string';
 }
 
 class Scanner {
@@ -91,14 +96,16 @@ class Scanner {
 
   private lookup(name: string): Value | undefined {
     for (let i = this.scopes.length - 1; i >= 0; i--) {
-      const value = this.scopes[i]!.get(name);
+      const value = this.scopes[i]?.get(name);
       if (value !== undefined) return value === hidden ? undefined : value;
     }
     return undefined;
   }
 
   private bind(name: Node, value: Value | undefined): void {
-    if (name.type === 'Identifier') this.scopes[this.scopes.length - 1]!.set(name.name, value ?? hidden);
+    const scope = this.scopes.at(-1);
+    if (scope === undefined) throw new Error('a binding is outside every scope of the scanner');
+    if (name.type === 'Identifier') scope.set(name.name, value ?? hidden);
   }
 
   /** The model class that the expression of a `new` or a type name refers to. */
@@ -138,7 +145,7 @@ class Scanner {
 
   /** The value of an expression, when it resolves to a model, a promise or a collection of models. */
   private valueOf(e: Expression): Value | undefined {
-    if (e.type === 'ParenthesizedExpression' || e.type === 'TSNonNullExpression' || e.type === 'TSSatisfiesExpression' || e.type === 'ChainExpression') return this.valueOf(e.expression as Expression);
+    if (e.type === 'ParenthesizedExpression' || e.type === 'TSNonNullExpression' || e.type === 'TSSatisfiesExpression' || e.type === 'ChainExpression') return this.valueOf(e.expression);
     if (e.type === 'TSAsExpression' || e.type === 'TSTypeAssertion') return this.typeValue(e.typeAnnotation) ?? this.valueOf(e.expression);
     if (e.type === 'AwaitExpression') {
       const inner = this.valueOf(e.argument);
@@ -198,7 +205,7 @@ class Scanner {
     const declared = this.typeValue(type);
     if (declared !== undefined || type !== undefined || fn.body === null) return declared;
     if (fn.body.type !== 'BlockStatement') return this.valueOf(fn.body);
-    const only = fn.body.body.length === 1 ? fn.body.body[0]! : undefined;
+    const only = fn.body.body.length === 1 ? fn.body.body[0] : undefined;
     return only !== undefined && only.type === 'ReturnStatement' && only.argument !== null ? this.valueOf(only.argument) : undefined;
   }
 
