@@ -28,7 +28,7 @@ jobs:
         id: node
         if: ${{ !cancelled() }}
         with:
-          node-version-file: .node-version
+          node-version-file: mise.toml
           cache: npm
       # make reads the kit.mk of @polyspec/kit, so the package is installed
       # before any other make target runs: the npm of packageManager into

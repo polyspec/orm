@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: a71b9517bfebcdb086ba6fde317f005521187c5b10a40e447fb40d6c7ef221db -->
+<!-- source-sha256: 9ec84f7b77b951ea847ee8bd44188f8e6b69b7b968ab4748297f8173a4fa7b5c -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -101,7 +101,7 @@ orm 자신의 규칙만 적는다.
   registry와 advisory database에 묻고 `config/dependency-review.json`을 쓴다.
   `make dependency-policy-check`와 `make dependency-policy-mutation-check`는 그 기록과 manifest와 lock을 읽고
   registry에 묻지 않는다.
-- 검사가 쓰는 모든 toolchain은 선언 하나로 고정하고 확인한다: `.node-version`, `packages/go/go.mod`의 `go` 줄,
+- 검사가 쓰는 모든 toolchain은 선언 하나로 고정하고 확인한다: `mise.toml`의 node, `packages/go/go.mod`의 `go` 줄,
   `mise.toml`의 Composer, `rust-toolchain.toml`은 정확한 release를, `.php-version`과 PostgreSQL major release는
   설치 도구가 허용하는 만큼 정확한 release를 적고, CI는 선언한 것을 설치하며, 실행 중인 도구가 다르면
   `make toolchain-check`와 `make repo-check`가 실패한다. 새 release는 그 release의 CI 증거와 함께 선언을 바꾸어 들인다.

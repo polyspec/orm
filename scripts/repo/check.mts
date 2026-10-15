@@ -22,7 +22,7 @@ import { readFeatures } from '../features/manifest.mts';
 import { readComposer, readPackage } from '../json/formats.mts';
 
 // repository check는 CI workflow가 database 검사의 서버와 변수를 make test-servers로 주는지,
-// 검사와 workflow가 .node-version의 Node 하나로 실행하는지 확인하는 case 하나다.
+// 검사와 workflow가 mise.toml의 Node 하나로 실행하는지 확인하는 case 하나다.
 const log = sections();
 log.begin('repo', COMPUTE);
 
@@ -62,8 +62,7 @@ failures.push(...scriptPathErrors(rootPackage.scripts ?? {}, tracked));
 // repository의 도구는 Go, PHP, Rust, TypeScript(와 shell)로 쓴다.
 failures.push(...toolingLanguageErrors(tracked));
 
-// 검사를 실행하는 Node는 .node-version이 선언한 version 하나이고, 모든 workflow가 그 file을 읽는다.
-const nodeVersionPath = join(root, '.node-version');
+// 검사를 실행하는 Node는 mise.toml이 선언한 version 하나이고, 모든 workflow가 그 file을 읽는다.
 const workflowDirectory = join(root, '.github/workflows');
 // allWorkflows holds every workflow of .github/workflows. A workflow among the copies of @polyspec/kit is kit's and make
 // kit-check holds it byte for byte, so the rules of how a workflow is written (workflows) skip it; which triggers need a
@@ -178,7 +177,7 @@ failures.push(...chainedCommandErrors(features));
 failures.push(...fullSuiteRuleErrors(Object.fromEntries(['AGENTS.md', 'AGENTS.ko.md'].map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 // 모든 workflow의 job은 .github/runner가 선언한 runner에서 실행한다.
 failures.push(...runnerErrors(existsSync(join(root, '.github/runner')) ? readFileSync(join(root, '.github/runner'), 'utf8') : '', workflows));
-failures.push(...nodeVersionErrors(existsSync(nodeVersionPath) ? readFileSync(nodeVersionPath, 'utf8') : '',
+failures.push(...nodeVersionErrors(existsSync(join(root, 'mise.toml')) ? readFileSync(join(root, 'mise.toml'), 'utf8') : '',
   rootPackage.engines?.node, workflows, process.versions.node));
 // npm은 git으로 받는 dependency 없이 release archive와 registry에서만 설치한다.
 failures.push(...npmGitSourceErrors(Object.fromEntries(tracked.filter(path => /(?:^|\/)package(?:-lock)?\.json$/.test(path)).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
