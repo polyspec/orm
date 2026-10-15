@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mts) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-15T03:23:56.069Z",
+  "reviewed": "2026-10-15T03:55:41.679Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "9b85525aacd9b299c149d3b9f153178fcfea6b5b12985fdefc02195cde5050f4",
+      "sha256": "376488f66751a7391dce6c0650f2a595add7f814a903a624ebf4340ba6c29cf6",
       "advisories": [
         {
           "package": "sprintf-js",
@@ -19,12 +19,17 @@
     },
     {
       "lock": "tests/interfaces/typescript/package-lock.json",
-      "sha256": "7e6a4f05aea550272d5a0a525279b4f98879b103193eeeb832ea003e45e8e040",
+      "sha256": "1c3ce2f8508c9a7c52df51c154be8b4f02fd56fe36ed6562038b59063753b9d3",
       "advisories": []
     },
     {
       "lock": "composer.lock",
       "sha256": "17519b1697ed4eb7b29edbfc1c9616a312fd90dcaead98ed13f72c521b3f8d88",
+      "advisories": []
+    },
+    {
+      "lock": "packages/php-ext/composer.lock",
+      "sha256": "f91d6cd1ca9276d76f39e4cd5efe0012031bc39fc9dabd343159109672b4d818",
       "advisories": []
     },
     {
@@ -394,6 +399,13 @@
       "package": "setuptools",
       "version": "84.0.0",
       "latest": "84.0.0"
+    },
+    {
+      "ecosystem": "pypi",
+      "manifest": "packages/python/pyproject.toml",
+      "package": "jsonschema-rs",
+      "version": "0.58.6",
+      "latest": "0.58.6"
     },
     {
       "ecosystem": "go",

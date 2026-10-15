@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 9ec84f7b77b951ea847ee8bd44188f8e6b69b7b968ab4748297f8173a4fa7b5c -->
+<!-- source-sha256: bc379afdc00c5a12a7ccba75cc02b241638a397c22405913e0c1dd9ac96389bb -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -202,7 +202,9 @@ orm 자신의 규칙만 적는다.
 
 - release는 version을 올리는 commit `chore(release): Release X.Y.Z (#<체크리스트 ID>)`로 시작한다. 그 commit은 작업을 담은
   commit의 CI가 성공한 뒤 `main`에 둔다: VERSION과 `config/release.json`의 `manifests`가 이름을 적은 모든 package file을
-  X.Y.Z로 바꾸고(`make version-check`), CHANGELOG.md와 CHANGELOG.ko.md에서 `## Unreleased`를 새 빈 `## Unreleased`
+  X.Y.Z로 바꾸고(`make version-check`), 그중 `composer.lock`이 있는 composer.json(`packages/php-ext`)은 그 directory에서
+  `composer update --lock`으로 다시 lock하며(lock의 content-hash가 `version`을 덮는다), 이어 `make dependency-review RECORD=1`을
+  실행하고(`make dependency-policy-check`는 낡은 lock을 실패시킨다), CHANGELOG.md와 CHANGELOG.ko.md에서 `## Unreleased`를 새 빈 `## Unreleased`
   아래의 `## X.Y.Z`로 바꾼다.
 - 그 commit의 CI(`push-gate`와 `ci-passed`)가 성공한 뒤 maintainer가 그 commit에 `vX.Y.Z`를 tag하고 같은 commit의 Go module
   tag `packages/go/vX.Y.Z`와 함께 push한다. 그 tag가 Go module `github.com/polyspec/orm/packages/go`를 release한다. tag를 만들고 옮기고 push하는 것은 maintainer뿐이다.
