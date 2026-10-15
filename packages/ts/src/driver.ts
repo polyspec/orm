@@ -649,7 +649,7 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
       // server의 RSA public key를 요청하지 않는다.
       const ssl = mysqlSsl(parsed);
       const created = mysql.createPool({
-        ...(socket ? { socketPath: socket } : { host: url.hostname, port: url.port ? Number(url.port) : undefined }),
+        ...(socket ? { socketPath: socket } : { host: url.hostname, ...(url.port ? { port: Number(url.port) } : {}) }),
         ...(ssl ? { ssl } : {}),
         user: decodeURIComponent(url.username),
         password: decodeURIComponent(url.password),
