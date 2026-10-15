@@ -130,6 +130,7 @@
       "id": "schema-definition", "kind": "suite", "profile": "dbspec",
       "file": "contracts/fixtures/schema_definition.json", "cases": "$.cases[*].id",
       "bindings": [
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/CoverageSchemaDefinitionTest.php" },
         { "implementation": "go", "test": "packages/go/orm/coverage_schema_definition_test.go", "symbol": "TestCoverageDbspecEmitRoundTrip" },
         { "implementation": "php", "test": "packages/php/tests/CoverageSchemaDefinitionTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/coverage_schema_definition.mjs" },
@@ -171,6 +172,9 @@
       "id": "codec-aes", "kind": "suite", "profile": "client",
       "file": "tests/codec/aes-vectors.json", "cases": "$.vectors[*].key",
       "bindings": [
+        { "implementation": "go", "test": "packages/go/orm/codec_test.go", "symbol": "TestCodecAESVectors" },
+        { "implementation": "php", "test": "packages/php/tests/CodecAesVectorsTest.php", "symbol": "CodecAesVectorsTest::test_vector" },
+        { "implementation": "rust", "test": "packages/rust/orm/tests/codec_aes_vectors.rs", "symbol": "aes_vectors" },
         { "implementation": "typescript", "test": "packages/ts/tests/codec-vector.mjs" },
         { "implementation": "python", "test": "packages/python/tests/codec_vector.py" }
       ]
@@ -282,6 +286,7 @@
       "id": "dbspec-sets", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/cases.json", "cases": "$.sets[*].id",
       "bindings": [
+        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecSetsTest.php", "symbol": "DbspecSetsTest::test_sets" },
         { "implementation": "go", "test": "packages/go/engine/dbspec/manifest_test.go", "symbol": "TestDocumentSets" },
         { "implementation": "php", "test": "packages/php/tests/DbspecManifestTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec.mjs" },

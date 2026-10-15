@@ -2839,6 +2839,9 @@
         "packages/php/tests/dbspec_set_cases.php",
         "packages/php/tests/DbspecSetTest.php",
         "packages/php-ext/tests/DbspecSetTest.php",
+        "packages/php/tests/dbspec_sets_cases.php",
+        "packages/php-ext/tests/DbspecSetsTest.php",
+        "packages/php-ext/tests/CoverageSchemaDefinitionTest.php",
         "packages/go/engine/dbspec/analyze_test.go",
         "packages/go/engine/dbspec/syntax_vectors_test.go",
         "packages/php/tests/DbspecAnalyzeTest.php",
@@ -2928,6 +2931,7 @@
             "packages/php/tests/dbspec_cases.php",
             "packages/php/tests/DbspecRulesTest.php",
             "packages/php/tests/DbspecManifestTest.php",
+            "packages/php/tests/dbspec_sets_cases.php",
             "packages/php/tests/DbspecRenderTest.php",
             "packages/php/tests/DbspecPlanTest.php",
             "packages/php/tests/DbspecMermaidTest.php",
@@ -3074,6 +3078,9 @@
             "packages/php/tests/DbspecApplyCleanupTest.php",
             "packages/php-ext/tests/DbspecShowCreateTest.php",
             "packages/php-ext/tests/DbspecSetTest.php",
+            "packages/php-ext/tests/DbspecSetsTest.php",
+            "packages/php-ext/tests/CoverageSchemaDefinitionTest.php",
+            "packages/php/tests/dbspec_sets_cases.php",
             "packages/php-ext/tests/DbspecSetParseTest.php",
             "packages/php/tests/dbspec_set_parse_cases.php",
             "packages/php/tests/dbspec_set_cases.php",
@@ -4766,7 +4773,9 @@
         "packages/ts/tests/coverage_authenticated_encryption.mjs",
         "contracts/fixtures/secret_config.dbs",
         "packages/python/tests/test_codec_decode_vectors.py",
-        "packages/rust/orm/tests/codec_vectors.rs"
+        "packages/rust/orm/tests/codec_vectors.rs",
+        "packages/php/tests/CodecAesVectorsTest.php",
+        "packages/rust/orm/tests/codec_aes_vectors.rs"
       ],
       "docs": [
         "docs/codec.md",
@@ -4785,6 +4794,7 @@
             "packages/go/orm/coverage_authenticated_encryption_test.go",
             "packages/go/orm/hostcodec_test.go",
             "tests/codec/vectors.json",
+            "tests/codec/aes-vectors.json",
             "tests/codec/decode-vectors.json",
             "contracts/fixtures/authenticated_encryption.json"
           ]
@@ -4813,6 +4823,24 @@
           "inputs": [
             "packages/php/tests/CodecVectorsTest.php",
             "tests/codec/vectors.json"
+          ]
+        },
+        {
+          "id": "encryption-aes-php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecAesVectorsTest.php",
+          "shard": "other",
+          "inputs": [
+            "packages/php/tests/CodecAesVectorsTest.php",
+            "tests/codec/aes-vectors.json"
+          ]
+        },
+        {
+          "id": "codec-aes-vectors-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts codec-aes-vectors-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test codec_aes_vectors",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/orm/tests/codec_aes_vectors.rs",
+            "tests/codec/aes-vectors.json"
           ]
         },
         {
