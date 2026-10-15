@@ -424,3 +424,8 @@ func (x *ServiceRegionModel) ServiceSeq[T0 argIntEq](v0 T0) *ServiceRegionModel 
 var chainServiceRegionSeq = []orm.ChainKey{{Column: "seq"}}
 
 var chainServiceRegionServiceSeq = []orm.ChainKey{{Column: "service_seq"}}
+
+// GetServiceModel returns the service relation result.
+func (x *ServiceRegionModel) GetServiceModel() (*ServiceModel, error) {
+	return orm.RelatedAs[*ServiceModel](x.m, "service_model")
+}

@@ -2841,6 +2841,7 @@
   "packages/go/model/service_region.go::ServiceRegionModel.GetName": "receiver=*ServiceRegionModel func() string",
   "packages/go/model/service_region.go::ServiceRegionModel.GetQuery": "receiver=*ServiceRegionModel func() (*orm.Statement, error)",
   "packages/go/model/service_region.go::ServiceRegionModel.GetSeq": "receiver=*ServiceRegionModel func() int64",
+  "packages/go/model/service_region.go::ServiceRegionModel.GetServiceModel": "receiver=*ServiceRegionModel func() (*ServiceModel, error)",
   "packages/go/model/service_region.go::ServiceRegionModel.GetServiceSeq": "receiver=*ServiceRegionModel func() int64",
   "packages/go/model/service_region.go::ServiceRegionModel.GetSum": "receiver=*ServiceRegionModel func() (float64, error)",
   "packages/go/model/service_region.go::ServiceRegionModel.Gets": "receiver=*ServiceRegionModel func() (*orm.Collection[*ServiceRegionModel], error)",

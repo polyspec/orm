@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 82d9f51e0cb47d671f9c642608ef66765dc5b343bac6de2d2a7135e718798778 -->
+<!-- source-sha256: 88079e68c8004cea3906e6fa3501b6cce4642cfa7b47a4ca93b7b4214174df63 -->
 # 변경 이력
 
 ## Unreleased
 
+- commit한 Go model이 service region의 service relation을 담는다. (#T85-1)
 - Rust value test가 T92의 time 규칙을 확인한다. (#T92-2)
 - Go가 bool if_parent를 column의 논리 type으로 맞추고, conformance vector가 평탄화한 relation을 고정한다. (#T85)
 - conformance vector가 모든 database에서 scalar column subquery를 고정한다. (#T84-1)
