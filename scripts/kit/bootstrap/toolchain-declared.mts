@@ -1,17 +1,20 @@
 // The toolchain versions that a checkout declares for the bootstrap and for the tools that mise does not install, read from
 // the files that declare them. Each entry names its version and the declaring file, so that an install and a check name the
 // file in a message:
-//   node         .node-version
 //   npm          packageManager of package.json: npm@<version>, optionally +sha512.<digest of the registry tarball>
-//   mise         config/toolchain.json mise: the exact version and the sha256 of the release archive of each platform, installed by
-//                the bootstrap; mise installs the tools of mise.toml at the digests of mise.lock (toolchain-mise.mts)
+//   mise         config/toolchain.json mise: the exact version and the sha256 of the release archive of each platform, which
+//                the bootstrap installs; mise installs the tools of mise.toml at the digests of mise.lock (toolchain-mise.mts),
+//                Node.js first, in the bootstrap (K171)
 //   php          config/toolchain.json php (minor releases), else .php-version
-//   pythonBackend config/toolchain.json pythonBackend: the requirement name==version of the build backend of the Python wheels and its sha256
+//   pythonBackend config/toolchain.json pythonBackend: the one declaration of the build backend of the Python wheels (K166),
+//                its requirement name==version and the sha256 of its wheel; install-tools installs it, and release-backend,
+//                release-assets and the wheel build read it here
 //   phpunit      config/toolchain.json phpunit: the exact release, installed from the composer.json and composer.lock of config/phpunit
 //   symbolExtractors config/toolchain.json symbolExtractors: the symbol extractors of the parity check that install-tools builds
-// The tools of mise.toml are read by toolchain-mise.mts, Rust by toolchain-files.mts and the PHP lint by toolchain-lint.mts,
-// after the bootstrap. A tool is declared when its file exists (node) or its config key is present; an undeclared tool is
-// absent from the result. A malformed declaration throws an error with the file, the expected form and the actual value.
+// The tools of mise.toml, Node.js among them, are read by toolchain-mise.mts, Rust by toolchain-files.mts and the PHP lint by
+// toolchain-lint.mts, after the bootstrap. A tool is declared when its key is present (php also by .php-version); an
+// undeclared tool is absent from the result. A malformed declaration throws an error with the file, the expected form and
+// the actual value.
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { isJsonList, isJsonObject, readJsonObject } from './files.mts';
@@ -33,7 +36,6 @@ export type PlatformRelease = { version: string; sha256: Record<string, string>;
 
 /** The declared toolchains of a checkout; an undeclared tool is absent. */
 export type DeclaredToolchain = {
-  node?: Declared;
   npm?: Declared & { sha512: string | undefined };
   php?: { minors: string[]; source: string };
   mise?: PlatformRelease;
@@ -121,9 +123,6 @@ export function declaredPythonBackend(root: string): DeclaredToolchain['pythonBa
 export function declaredToolchain(root: string): DeclaredToolchain {
   const config = toolchainConfig(root);
   const declared: DeclaredToolchain = {};
-  if (existsSync(path.join(root, '.node-version'))) {
-    declared.node = { version: exact('.node-version', 'the Node.js release', read(root, '.node-version').trim()), source: '.node-version' };
-  }
   if (existsSync(path.join(root, 'package.json'))) {
     const manager = readJsonObject(root, 'package.json').packageManager ?? '';
     // A packageManager that is not text is no npm declaration, whatever its text would be.

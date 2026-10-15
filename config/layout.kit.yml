@@ -67,7 +67,6 @@ templates:
       - "!tsconfig.json"
       - "!.gitignore"
       - "!.gitattributes"
-      - "!.node-version"
       - "!.python-version"
       - "!.php-version"
       - "!rust-toolchain.toml"
