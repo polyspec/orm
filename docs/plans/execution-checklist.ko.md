@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 766b14799cef368d39361993e10be19c12efeb68746d397d60bd4c2df54fd503 -->
+<!-- source-sha256: 2aaae6a227952459446ec4c3691a2b1c395ed34847eaa37d862ad710656dbc82 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1005,7 +1005,8 @@
     Evidence: CI record가 analyzer file 8개와 testdata file 11개를 적는다. 변경 뒤 make feature-unit-check/owners가 통과하고 repository와 feature 검사가 통과한다.
   - [o] T137-1-3-1 Rust model을 allow attribute 없이 생성한다 (T137-1-3에 이어). 원인: orm-build가 모든 model에 #[allow(unused_mut)]와 #[allow(clippy::new_without_default)]를 써서, allow attribute를 거부하는 consumer(kit workspace lint를 쓰는 fsm)가 실패했다. Evidence: build test generated_code_carries_no_allow_attribute가 수정 전 실패하고 수정 후 통과한다. rust-check, rust-fmt-check, interface-check가 통과한다.
   Evidence: make layout-check가 lint-cargo-lints finding을 보고하지 않는다(이전 11건). rust-check, rust-fmt-check, dbspec-rust-check, interface-check, dependency-policy-check가 통과한다.
-  - [ ] T137-1-4 언어를 넘는 infrastructure를 TypeScript로 쓴다 (T137-1에 이어). 원인: S9(layout-infrastructure-typescript, layout-infrastructure-shebang)가 scripts/와 tests/ 아래 다른 interpreter의 script 198개를 거부한다. 완료 조건: 각각을 TypeScript로 옮기거나 config/layout.yml에 이유와 함께 S9 예외로 선언한다.
+  - [o] T137-1-4 언어를 넘는 infrastructure를 TypeScript로 쓴다 (T137-1에 이어). 원인: S9(layout-infrastructure-typescript, layout-infrastructure-shebang)가 scripts/와 tests/ 아래 다른 interpreter의 script 198개를 거부한다. 완료 조건: 각각을 TypeScript로 옮기거나 config/layout.yml에 이유와 함께 S9 예외로 선언한다.
+    Evidence: 모든 하위 항목이 완료됐다. infrastructure script와 언어 간 orchestrator는 TypeScript이고(T137-1-4-1, -5, -6, -9), reader는 parser이며(-2, -2-1, -2-2), 모든 runner가 공유 schema로 vector를 읽고(-3, -3-1), kit 0.0.47 lint가 통과한다(-7, -7-1). make layout-check가 S9 finding을 보고하지 않는다.
     - [o] T137-1-4-1 JavaScript 기반 스크립트를 TypeScript로 옮긴다 (T137-1-4에 이어). 원인: scripts/와 tests/의 .mjs 스크립트와 test 82개(kit의 사본 제외)는 어떤 compiler도 검사하지 않는 타입 없는 JavaScript였고, JSON file을 JSON.parse와 손으로 쓴 field 검사로 읽었으며, 인자 해석, glob, 경로 결합, version 비교와 JSON Schema 검증기를 다시 구현했다. 완료 조건: 각각이 kit의 엄격한 option으로 tsc가 검사하는 .mts file이고(make scripts-typecheck, tsconfig.json을 소유하는 CHECK_TARGETS target), 읽는 모든 JSON file(기능 manifest, check input, npm과 Composer manifest와 lock, go test와 cargo 메시지, 실행 기록, rule registry, dbspec과 conformance vector)을 ajv가 JSON Schema로 읽으며(scripts/json/schema.mts), schema가 말할 수 없는 규칙만 code에 남는다. node:util parseArgs, minimatch, path.posix, semver가 다시 만든 구현을 대신하고, 동작과 출력은 바뀌지 않는다.
       Evidence: tsc -p tsconfig.json이 오류를 보고하지 않는다. TypeScript compare runner는 바꾸기 전과 후에 같은 27524줄을 출력하고 변형한 vector 53개를 공유 형식으로 거부한다. interface reader는 같은 3507줄의 symbol을 쓴다. 저장소, 기능, version, 문서, 규칙 검사와 scripts/, tests/의 test가 바꾸기 전부터 알려진 로컬 실패를 빼고 통과한다.
     - [o] T137-1-4-2 기반 스크립트의 손으로 쓴 해석기를 바꾼다 (T137-1-4-1에 이어). 원인: scripts/repo/ci.mts가 orm이 이미 의존하는 yaml package 대신 GitHub workflow를 줄 단위로 읽고, scripts/repo/testcases.mts가 셸 명령을 자기 segments로 나누며, scripts/repo/gosource.mts와 scripts/repo/check.mts의 Go 규칙은 Go source를 정규식으로 읽는다. S9은 언어별 검사를 그 생태계 분석기(go/analysis)의 plugin으로 둔다. 완료 조건: workflow를 YAML 문서로 읽고, 셸 명령을 관리되는 셸 파서로 나누되 모든 recipe와 스크립트에서 지금 결과와 같으며, Go 검사는 go vet이 실행하는 go/analysis analyzer다. 각각 red case를 둔다.
