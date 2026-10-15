@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: d93b45d67bb8f85c85c2461f4f8cb430e10903e14b6f65a61e3a6c5704ed35ca -->
+<!-- source-sha256: 48768e11e919ef2d7f9e6335f2f048fac58f516074fe563d3909cdccfff4b820 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.

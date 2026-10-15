@@ -24,11 +24,11 @@ func TestValidateVectors(t *testing.T) {
 	var file struct {
 		Schema string `json:"schema"`
 		Cases  []struct {
-			Name    string         `json:"name"`
+			Name string `json:"name"`
 			// Each member stays as its JSON text, so a number keeps its literal (0.0 is not 0).
 			Request map[string]json.RawMessage `json:"request"`
-			Valid   bool           `json:"valid"`
-			Error   string         `json:"error"`
+			Valid   bool                       `json:"valid"`
+			Error   string                     `json:"error"`
 		} `json:"cases"`
 	}
 	if err := json.Unmarshal(src, &file); err != nil {
