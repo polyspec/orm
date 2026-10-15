@@ -43,7 +43,7 @@
     {
       "name": "rust",
       "runner": "cargo",
-      "roots": ["packages/rust", "benchmarks/rust"],
+      "roots": ["packages/rust", "benchmarks/rust/src/driver_compare.rs", "benchmarks/rust/tests", "tests/interfaces/rust"],
       "tests": ["packages/rust/**/tests/**/coverage_*.rs"],
       "support": [
         "packages/rust/build/tests/lock_probe/mod.rs",
@@ -55,7 +55,7 @@
         "packages/rust/schema/tests/common/dbspec_cases.rs",
         "packages/rust/tests/build.rs",
         "packages/rust/tests/src/client_bench.rs",
-        "packages/rust/tests/src/coverage_env.rs",
+        "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/rust/tests/tests/common/mod.rs"
       ],
       "errors": { "file": "packages/rust/orm/src/codes.rs", "pattern": "^pub const (\\w+): &str = \"\\w+\";$" }
@@ -93,9 +93,6 @@
     "tests/markdown/*.json"
   ],
   "comparators": ["tests/conformance/check", "tests/interfaces/check"],
-  "tools": [
-    { "root": "tests/interfaces/rust", "reason": "The Rust extractor of the interface check: a single-language tool that reads the declarations of the Rust clients as syntax trees, with no test of an implementation." }
-  ],
   "testPatterns": [
     { "runner": "go", "globs": ["packages/**/*_test.go", "tests/**/*_test.go", "examples/**/*_test.go"] },
     { "runner": "cargo", "globs": ["packages/**/tests/**/*.rs", "tests/**/*.rs"] },
@@ -105,7 +102,8 @@
   ],
   "tools": [
     { "root": "packages/go/bench", "reason": "Benchmarks that measure the performance of the Go implementation; they implement no contract and run only under go test -bench, so they belong to no implementation." },
-    { "root": "tests/analyzers", "reason": "Analyzers for the Go test conventions of the repository; the tooling implements no contract, so its tests belong to no implementation." }
+    { "root": "tests/analyzers", "reason": "Analyzers for the Go test conventions of the repository; the tooling implements no contract, so its tests belong to no implementation." },
+    { "root": "benchmarks/rust/src/native.rs", "reason": "measures performance; implements no contract" }
   ],
   "units": [
     {
@@ -952,7 +950,36 @@
     { "id": "rust-benchmarks-reject-an-invalid-iterations-argument", "kind": "feature", "profile": "rust-internal", "bindings": [{ "implementation": "rust", "test": "benchmarks/rust/tests/dsn.rs", "id": "benchmarks_reject_an_invalid_iterations_argument" }] },
     { "id": "rust-benchmarks-require-the-iterations-argument", "kind": "feature", "profile": "rust-internal", "bindings": [{ "implementation": "rust", "test": "benchmarks/rust/tests/dsn.rs", "id": "benchmarks_require_the_iterations_argument" }] },
     { "id": "rust-driver-compare-reads-the-seeded-database", "kind": "feature", "profile": "rust-internal", "bindings": [{ "implementation": "rust", "test": "benchmarks/rust/tests/seeded.rs", "id": "driver_compare_reads_the_seeded_database" }] },
-    { "id": "rust-native-reads-the-seeded-database", "kind": "feature", "profile": "rust-internal", "bindings": [{ "implementation": "rust", "test": "benchmarks/rust/tests/seeded.rs", "id": "native_reads_the_seeded_database" }] }
+    { "id": "rust-native-reads-the-seeded-database", "kind": "feature", "profile": "rust-internal", "bindings": [{ "implementation": "rust", "test": "benchmarks/rust/tests/seeded.rs", "id": "native_reads_the_seeded_database" }] },
+    {"id": "rust-conformance-invalid-binds-cannot-be-rendered-as-valid-values", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/src/conformance.rs", "id": "invalid_binds_cannot_be_rendered_as_valid_values"}]},
+    {"id": "rust-conformance-invalid-derived-integers-cannot-be-reported-as-zero", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/src/conformance.rs", "id": "invalid_derived_integers_cannot_be_reported_as_zero"}]},
+    {"id": "rust-conformance-arguments-reject-missing-duplicate-and-unknown-flags", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/src/conformance.rs", "id": "arguments_reject_missing_duplicate_and_unknown_flags"}]},
+    {"id": "rust-integration-generated-nonnull-styled-setter-rejects-sql-null", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/src/integration.rs", "id": "generated_nonnull_styled_setter_rejects_sql_null"}]},
+    {"id": "rust-integration-coverage-generated-model-connection", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/src/integration.rs", "id": "coverage_generated_model_connection"}]},
+    {"id": "rust-integration-generated-fields-require-selection-or-assignment", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/src/integration.rs", "id": "generated_fields_require_selection_or_assignment"}]},
+    {"id": "rust-decimal-physical-decimal-mysql", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/decimal_physical.rs", "id": "decimal_mysql"}]},
+    {"id": "rust-decimal-physical-decimal-postgres", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/decimal_physical.rs", "id": "decimal_postgres"}]},
+    {"id": "rust-decimal-physical-decimal-sqlite", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/decimal_physical.rs", "id": "decimal_sqlite"}]},
+    {"id": "rust-decimal-physical-schema-set-mysql", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/decimal_physical.rs", "id": "schema_set_mysql"}]},
+    {"id": "rust-decimal-physical-schema-set-postgres", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/decimal_physical.rs", "id": "schema_set_postgres"}]},
+    {"id": "rust-decimal-physical-schema-set-sqlite", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/decimal_physical.rs", "id": "schema_set_sqlite"}]},
+    {"id": "rust-decimal-physical-schema-set-unregistered-mysql", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/decimal_physical.rs", "id": "schema_set_unregistered_mysql"}]},
+    {"id": "rust-decimal-physical-schema-set-unregistered-postgres", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/decimal_physical.rs", "id": "schema_set_unregistered_postgres"}]},
+    {"id": "rust-decimal-physical-schema-set-unregistered-sqlite", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/decimal_physical.rs", "id": "schema_set_unregistered_sqlite"}]},
+    {"id": "rust-decimal-physical-schema-set-edited-manifest-mysql", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/decimal_physical.rs", "id": "schema_set_edited_manifest_mysql"}]},
+    {"id": "rust-decimal-physical-schema-set-edited-manifest-postgres", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/decimal_physical.rs", "id": "schema_set_edited_manifest_postgres"}]},
+    {"id": "rust-decimal-physical-schema-set-edited-manifest-sqlite", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/decimal_physical.rs", "id": "schema_set_edited_manifest_sqlite"}]},
+    {"id": "rust-integration-coverage-composite-keys-coverage-composite-key-rows", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs", "id": "coverage_composite_keys::coverage_composite_key_rows"}]},
+    {"id": "rust-integration-coverage-constraints-and-relations-coverage-constraint-errors", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs", "id": "coverage_constraints_and_relations::coverage_constraint_errors"}]},
+    {"id": "rust-integration-coverage-model-queries-coverage-model-query-rows", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs", "id": "coverage_model_queries::coverage_model_query_rows"}]},
+    {"id": "rust-integration-coverage-model-writes-coverage-model-write-cycle", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs", "id": "coverage_model_writes::coverage_model_write_cycle"}]},
+    {"id": "rust-integration-coverage-parameter-chunking-coverage-root-in-chunking", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/coverage_parameter_chunking.rs", "id": "coverage_parameter_chunking::coverage_root_in_chunking"}]},
+    {"id": "rust-integration-coverage-schema-install-coverage-schema-install-existing", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs", "id": "coverage_schema_install::coverage_schema_install_existing"}]},
+    {"id": "rust-integration-coverage-schema-install-coverage-schema-install-partial", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs", "id": "coverage_schema_install::coverage_schema_install_partial"}]},
+    {"id": "rust-integration-coverage-schema-install-coverage-schema-install-external-documents", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs", "id": "coverage_schema_install::coverage_schema_install_external_documents"}]},
+    {"id": "rust-integration-coverage-transactions-coverage-transaction-rollback", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/coverage_transactions.rs", "id": "coverage_transactions::coverage_transaction_rollback"}]},
+    {"id": "rust-integration-coverage-transactions-coverage-transaction-savepoint", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/coverage_transactions.rs", "id": "coverage_transactions::coverage_transaction_savepoint"}]},
+    {"id": "rust-integration-result-chains-generated-model-result-chains-preserve-assigned-values", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/result_chains.rs", "id": "result_chains::generated_model_result_chains_preserve_assigned_values"}]}
   ],
   "errors": {
     "profile": "client",

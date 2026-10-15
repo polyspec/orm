@@ -1,4 +1,4 @@
-use super::Author;
+use super::model::Author;
 use polyspec_orm::StyledValue;
 
 fn tags() -> polyspec_orm::ordered_json::Value {

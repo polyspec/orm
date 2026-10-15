@@ -9,26 +9,6 @@ use std::cell::Cell;
 polyspec_orm::models!();
 
 #[cfg(test)]
-mod result_chains;
-
-#[cfg(test)]
-mod coverage_composite_keys;
-#[cfg(test)]
-mod coverage_constraints_and_relations;
-#[cfg(test)]
-mod coverage_env;
-#[cfg(test)]
-mod coverage_model_queries;
-#[cfg(test)]
-mod coverage_model_writes;
-#[cfg(test)]
-mod coverage_parameter_chunking;
-#[cfg(test)]
-mod coverage_schema_install;
-#[cfg(test)]
-mod coverage_transactions;
-
-#[cfg(test)]
 #[allow(
     dead_code,
     unused_imports,

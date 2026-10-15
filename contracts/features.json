@@ -788,7 +788,7 @@
         "contracts/fixtures/aggregate_numeric.json",
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
-        "packages/rust/tests/src/coverage_env.rs",
+        "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py"
       ],
@@ -820,7 +820,7 @@
         "packages/go/decimalmodel/decimal_physical_test.go",
         "packages/php/tests/DecimalModelTest.php",
         "packages/php/tests/DecimalModelDbTest.php",
-        "packages/rust/tests/src/decimal_physical.rs",
+        "packages/rust/tests/tests/decimal_physical.rs",
         "packages/ts/tests/decimal_model.mjs",
         "packages/ts/tests/decimal_model.test.ts",
         "packages/ts/tests/decimal_model_db.mjs",
@@ -830,10 +830,10 @@
         "packages/php/tests/UnselectedColumnTest.php",
         "packages/php/tests/UnselectedColumnDbTest.php",
         "packages/rust/orm/tests/value_types.rs",
-        "packages/rust/tests/src/result_chains.rs",
+        "packages/rust/tests/tests/integration/result_chains.rs",
         "packages/go/model/coverage_model_queries_test.go",
         "packages/php/tests/CoverageModelQueriesTest.php",
-        "packages/rust/tests/src/coverage_model_queries.rs",
+        "packages/rust/tests/tests/integration/coverage_model_queries.rs",
         "packages/ts/tests/coverage_model_queries.mjs",
         "packages/go/orm/shape_test.go",
         "packages/go/orm/styled_state_test.go",
@@ -1025,7 +1025,7 @@
           "command": ". \"$DECIMAL_ENV\" && node tests/cargo-test.mts decimal-rust-physical -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical",
           "shard": "rust",
           "inputs": [
-            "packages/rust/tests/src/decimal_physical.rs",
+            "packages/rust/tests/tests/decimal_physical.rs",
             "contracts/fixtures/dbspec-set.json",
             "packages/rust/tests/dbspec-set.json"
           ]
@@ -1275,13 +1275,13 @@
           "rust": {
             "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/tests/src/coverage_model_queries.rs"
+              "packages/rust/tests/tests/integration/coverage_model_queries.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_model_queries.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
                   "cases": [
                     "model_query_rows"
                   ],
@@ -1294,7 +1294,7 @@
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_model_queries.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
                   "cases": [
                     "model_query_rows"
                   ],
@@ -1307,7 +1307,7 @@
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_model_queries.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
                   "cases": [
                     "model_query_rows"
                   ],
@@ -1464,7 +1464,7 @@
         "contracts/fixtures/time_precision.dbs",
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
-        "packages/rust/tests/src/coverage_env.rs",
+        "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py"
       ],
@@ -1478,7 +1478,7 @@
         "packages/go/decimalmodel/decimal_physical_test.go",
         "packages/php/tests/DecimalModelTest.php",
         "packages/php/tests/DecimalModelDbTest.php",
-        "packages/rust/tests/src/decimal_physical.rs",
+        "packages/rust/tests/tests/decimal_physical.rs",
         "packages/ts/tests/decimal_model.mjs",
         "packages/ts/tests/decimal_model.test.ts",
         "packages/ts/tests/decimal_model_db.mjs",
@@ -1496,7 +1496,7 @@
         "packages/rust/orm/tests/decimal_model.rs",
         "packages/go/model/coverage_model_writes_test.go",
         "packages/php/tests/CoverageModelWritesTest.php",
-        "packages/rust/tests/src/coverage_model_writes.rs",
+        "packages/rust/tests/tests/integration/coverage_model_writes.rs",
         "packages/ts/tests/coverage_model_writes.mjs",
         "packages/go/orm/assignment_propagation_test.go",
         "packages/go/orm/restore_test.go",
@@ -1584,7 +1584,7 @@
           "command": ". \"$DECIMAL_ENV\" && node tests/cargo-test.mts decimal-rust-physical -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical",
           "shard": "rust",
           "inputs": [
-            "packages/rust/tests/src/decimal_physical.rs",
+            "packages/rust/tests/tests/decimal_physical.rs",
             "contracts/fixtures/dbspec-set.json",
             "packages/rust/tests/dbspec-set.json"
           ]
@@ -1873,13 +1873,13 @@
           "rust": {
             "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/tests/src/coverage_model_writes.rs"
+              "packages/rust/tests/tests/integration/coverage_model_writes.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_model_writes.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
                   "cases": [
                     "model_write_cycle"
                   ],
@@ -1892,7 +1892,7 @@
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_model_writes.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
                   "cases": [
                     "model_write_cycle"
                   ],
@@ -1905,7 +1905,7 @@
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_model_writes.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
                   "cases": [
                     "model_write_cycle"
                   ],
@@ -2065,7 +2065,7 @@
         "packages/go/orm/failing_driver_test.go",
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
-        "packages/rust/tests/src/coverage_env.rs",
+        "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py"
       ],
@@ -2091,7 +2091,7 @@
         "packages/go/orm/transaction_end_test.go",
         "packages/go/model/coverage_transactions_test.go",
         "packages/php/tests/CoverageTransactionsTest.php",
-        "packages/rust/tests/src/coverage_transactions.rs",
+        "packages/rust/tests/tests/integration/coverage_transactions.rs",
         "packages/ts/tests/coverage_transactions.mjs",
         "packages/go/orm/rollback_fault_test.go",
         "packages/go/orm/rollback_fault_entry_test.go",
@@ -2405,13 +2405,13 @@
           "rust": {
             "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/tests/src/coverage_transactions.rs"
+              "packages/rust/tests/tests/integration/coverage_transactions.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_transactions.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
                   "cases": [
                     "transaction_rollback",
                     "transaction_savepoint"
@@ -2426,7 +2426,7 @@
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_transactions.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
                   "cases": [
                     "transaction_rollback",
                     "transaction_savepoint"
@@ -2441,7 +2441,7 @@
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_transactions.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
                   "cases": [
                     "transaction_rollback",
                     "transaction_savepoint"
@@ -3974,7 +3974,7 @@
       "fixtures": [
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
-        "packages/rust/tests/src/coverage_env.rs",
+        "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
         "contracts/fixtures/add_tables_and_columns/changed.dbs",
         "contracts/fixtures/add_tables_and_columns/default.dbs",
@@ -4007,10 +4007,10 @@
         "packages/php/tests/case_database.php",
         "packages/ts/tests/case-database.mjs",
         "packages/go/decimalmodel/schema_set_test.go",
-        "packages/rust/tests/src/decimal_physical.rs",
+        "packages/rust/tests/tests/decimal_physical.rs",
         "packages/go/model/coverage_schema_install_test.go",
         "packages/php/tests/CoverageSchemaInstallTest.php",
-        "packages/rust/tests/src/coverage_schema_install.rs",
+        "packages/rust/tests/tests/integration/coverage_schema_install.rs",
         "packages/ts/tests/coverage_schema_install.mjs",
         "packages/go/orm/add_tables_and_columns_test.go",
         "packages/php/tests/AddTablesAndColumnsTest.php",
@@ -4298,13 +4298,13 @@
           "rust": {
             "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/tests/src/coverage_schema_install.rs"
+              "packages/rust/tests/tests/integration/coverage_schema_install.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_schema_install.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
                   "cases": [
                     "schema_install_existing",
                     "schema_install_partial",
@@ -4321,7 +4321,7 @@
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_schema_install.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
                   "cases": [
                     "schema_install_existing",
                     "schema_install_partial",
@@ -4338,7 +4338,7 @@
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_schema_install.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
                   "cases": [
                     "schema_install_existing",
                     "schema_install_partial",
@@ -5393,7 +5393,7 @@
         "tests/conformance/vectors.json",
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
-        "packages/rust/tests/src/coverage_env.rs",
+        "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py"
       ],
@@ -5404,7 +5404,7 @@
         "packages/ts/tests/model.mjs",
         "packages/go/model/coverage_composite_keys_test.go",
         "packages/php/tests/CoverageCompositeKeysTest.php",
-        "packages/rust/tests/src/coverage_composite_keys.rs",
+        "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
         "packages/ts/tests/coverage_composite_keys.mjs",
         "packages/python/tests/test_key_prefix.py",
         "packages/python/tests/coverage_composite_keys.py"
@@ -5526,13 +5526,13 @@
           "rust": {
             "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/tests/src/coverage_composite_keys.rs"
+              "packages/rust/tests/tests/integration/coverage_composite_keys.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_composite_keys.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
                   "cases": [
                     "composite_key_rows"
                   ],
@@ -5545,7 +5545,7 @@
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_composite_keys.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
                   "cases": [
                     "composite_key_rows"
                   ],
@@ -5558,7 +5558,7 @@
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_composite_keys.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
                   "cases": [
                     "composite_key_rows"
                   ],
@@ -6079,7 +6079,7 @@
       "fixtures": [
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
-        "packages/rust/tests/src/coverage_env.rs",
+        "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py"
       ],
@@ -6091,9 +6091,9 @@
         "packages/ts/tests/model.mjs",
         "packages/go/model/coverage_parameter_chunking_test.go",
         "packages/php/tests/CoverageParameterChunkingTest.php",
-        "packages/rust/tests/src/coverage_parameter_chunking.rs",
+        "packages/rust/tests/tests/integration/coverage_parameter_chunking.rs",
         "packages/ts/tests/coverage_parameter_chunking.mjs",
-        "packages/rust/tests/src/result_chains.rs",
+        "packages/rust/tests/tests/integration/result_chains.rs",
         "packages/rust/tests/build.rs",
         "packages/rust/tests/nonnull.dbs",
         "packages/python/tests/coverage_parameter_chunking.py"
@@ -6118,7 +6118,7 @@
           "inputs": [
             "packages/rust/tests/src/integration.rs",
             "contracts/fixtures/bench/bench.dbs",
-            "packages/rust/tests/src/result_chains.rs",
+            "packages/rust/tests/tests/integration/result_chains.rs",
             "packages/rust/tests/build.rs",
             "packages/rust/tests/nonnull.dbs"
           ]
@@ -6244,13 +6244,13 @@
           "rust": {
             "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/tests/src/coverage_parameter_chunking.rs"
+              "packages/rust/tests/tests/integration/coverage_parameter_chunking.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_parameter_chunking.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_parameter_chunking.rs",
                   "cases": [
                     "root_in_chunking"
                   ],
@@ -6263,7 +6263,7 @@
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_parameter_chunking.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_parameter_chunking.rs",
                   "cases": [
                     "root_in_chunking"
                   ],
@@ -6276,7 +6276,7 @@
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_parameter_chunking.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_parameter_chunking.rs",
                   "cases": [
                     "root_in_chunking"
                   ],
@@ -6423,7 +6423,7 @@
         "contracts/fixtures/refusal.dbs",
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
-        "packages/rust/tests/src/coverage_env.rs",
+        "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py"
       ],
@@ -6444,7 +6444,7 @@
         "packages/ts/tests/driver-error.mjs",
         "packages/go/model/coverage_constraints_and_relations_test.go",
         "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
-        "packages/rust/tests/src/coverage_constraints_and_relations.rs",
+        "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
         "packages/ts/tests/coverage_constraints_and_relations.mjs",
         "contracts/fixtures/refusal.dbs",
         "packages/python/tests/test_driver_errors.py",
@@ -6620,13 +6620,13 @@
           "rust": {
             "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/tests/src/coverage_constraints_and_relations.rs"
+              "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_constraints_and_relations.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
                   "cases": [
                     "constraint_errors"
                   ],
@@ -6639,7 +6639,7 @@
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_constraints_and_relations.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
                   "cases": [
                     "constraint_errors"
                   ],
@@ -6652,7 +6652,7 @@
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/src/coverage_constraints_and_relations.rs",
+                  "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
                   "cases": [
                     "constraint_errors"
                   ],
@@ -8898,7 +8898,7 @@
     {
       "id": "rust-test-helpers",
       "paths": [
-        "packages/rust/tests/src/coverage_env.rs",
+        "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/rust/tests/tests/common/mod.rs",
         "packages/rust/orm/tests/common/*.rs"
       ],

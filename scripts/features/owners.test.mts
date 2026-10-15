@@ -46,7 +46,7 @@ caseTest('a shared helper selects its own check and no feature', 5000, async () 
     ['packages/ts/tests/coverage_case.mjs', 'coverage-runner-typescript'],
     ['packages/php/tests/autoload.php', 'php-test-autoload'],
     ['packages/go/orm/test_helpers_test.go', 'go-test-helpers'],
-    ['packages/rust/tests/src/coverage_env.rs', 'rust-test-helpers'],
+    ['packages/rust/tests/tests/integration/coverage_env.rs', 'rust-test-helpers'],
   ];
   for (const [path, helper] of helped) {
     assert.deepEqual(await selectOwners(manifest, root, [path]), [], path);

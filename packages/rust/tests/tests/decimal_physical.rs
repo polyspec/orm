@@ -303,5 +303,3 @@ async fn schema_set_edited_manifest_sqlite() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     schema_set_edited_manifest("sqlite").await;
 }
-
-fn main() {}
