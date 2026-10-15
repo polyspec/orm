@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 2f108924fce92c53fc963533c08547231b2d0cc511fe71687d590bc076b43954 -->
+<!-- source-sha256: b10260944c4718d8f65305ab0a55c6a7de18b0fb8fd49cf8ffcef55656ad8d14 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1007,6 +1007,7 @@
     - [ ] T137-1-4-2-1 남은 run text와 Makefile 규칙을 parser로 읽는다 (T137-1-4-2에 이어). 원인: T137-1-4-2 뒤에도 ciDuplicateCommandErrors는 step run text의 줄을 feature 명령과 문자열로 비교하고, scripts/repo/toolchains.mts의 runs()와 ciServerErrors는 step의 run 값과 Makefile text에 정규식을 적용한다. 완료 조건: 각각 명령을 scripts/repo/shell.mts로, Makefile을 recipe reader로 읽고, 각각 red case가 있다.
     - [o] T137-1-4-3 모든 compare runner가 dbspec vector를 공유 JSON Schema로 읽는다 (T137-1-4-1에 이어). 원인: TypeScript runner는 tests/dbspec/*.json을 tests/dbspec/schema/로 읽지만 Go, PHP, PHP 확장, Python, Rust runner는 자기 field 검사를 두어 형식이 여섯 번 적힌다. 완료 조건: 각 runner가 자기 생태계의 JSON Schema validator로 같은 schema를 검증하고 거부를 tests/dbspec/compare/runners.test.mts의 공유 형식으로 보고하며, 자기 field 검사를 지운다.
       Evidence: Go(santhosh-tekuri/jsonschema 6.0.3), PHP와 PHP extension(opis/json-schema 2.6.0), Python(jsonschema-rs 0.58.6), Rust(jsonschema 0.58.6) runner가 tests/dbspec/schema/로 검증하고 공유 형식으로 쓰며, 자기 field 검사는 지웠다. RED: runners.test.mts의 새 mutation 10개 중 8개를 TypeScript가 아닌 runner 다섯이 모두 받아들였고(실패 40건, 모두 exit 0), 변경 뒤 통과한다. dbspec-compare-check(runner 379/379, 12 실행 일치)와 Go, TypeScript, PHP, PHP extension, Rust, Python의 dbspec 검사가 통과한다.
+    - [ ] T137-1-4-3-1 PHP runner가 vector file의 schema 거부를 모두 보고한다 (T137-1-4-3에 이어). 원인: opis/json-schema 2.6.0은 모든 오류를 모으는 mode에서 첫 거부 property에서 properties keyword를 멈춰 검사한 property를 기록하지 않으므로, additionalProperties가 그 뒤 property를 모두 unknown으로 보고한다. 그래서 PHP와 PHP extension runner는 기본 mode로 file의 첫 거부만 보고하고, 다른 runner는 모두 보고한다. 완료 조건: 재현과 함께 upstream에 결함을 보고하고, release가 고치면 PHP runner가 모든 거부를 공유 형식으로 보고한다. 그때까지 tests/dbspec/vectors.php가 그 한계를 적는다.
     - [o] T137-1-4-4 S9 예외를 이유와 함께 선언한다 (T137-1-4-1에 이어). 원인: make layout-check가 언어별 harness(tests/conformance, tests/dbspec, tests/interfaces의 언어별 runner), engine dialect 규칙의 Go test(tests/dialects), Node에 없는 운영체제 호출이 필요한 Go program(tests/lease, tests/new-session, tests/stop-process), codec vector의 PHP 생성기를 보고하는데, S9에서 각각은 자기 생태계의 test나 도구다. 완료 조건: config/layout.yml이 각각을 그 위 주석의 이유와 함께 예외로 선언하고, layout-check는 T137-1-4-5와 T137-1-4-6이 옮길 스크립트만 보고한다.
       Evidence: make layout-check는 S9을 scripts/의 스크립트 19개와 두 orchestrator tests/conformance/check, tests/interfaces/check에만 보고한다. AES vector가 어디 있는지만 출력하고 아무도 실행하지 않던 tests/codec/gen-aes.sh는 예외로 선언하는 대신 지웠다.
     - [o] T137-1-4-5 scripts/의 셸과 PHP 스크립트를 TypeScript로 옮긴다 (T137-1-4-1에 이어). 원인: scripts/의 셸 스크립트 18개와 PHP 스크립트 2개는 다른 interpreter의 기반 스크립트다(S9). 완료 조건: 각각이 같은 동작의 .mts 스크립트이고, 호출하는 곳이 그것을 실행하며, layout-check가 그 무엇도 보고하지 않는다.
