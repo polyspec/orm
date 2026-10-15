@@ -3,7 +3,7 @@
 // package.json and the command lines of the scripts of scripts/. A rule of scripts/repo looks at each simple command
 // (a segment) that such text runs.
 import { parse } from 'unbash';
-import type { CompoundList, PipelineNode, Script, Statement } from 'unbash';
+import type { CompoundList, PipelineNode, Redirection, Script, Statement } from 'unbash';
 
 /**
  * The language a command text is written in. `sh` is a shell command or script. `make` is a recipe line of the Makefile:
@@ -144,6 +144,49 @@ export function andLists(text: string, dialect: Dialect): string[][] {
       current.push(original(text, mapped, command.pos, command.end));
       if (node.operators[index] !== '&&') { if (current.length > 1) out.push(current); current = []; }
     });
+  });
+  return out;
+}
+
+/**
+ * A simple command as the shell runs it: its original text, its program (the first word after the assignments), its
+ * arguments as the shell reads each word (quotes removed, an assignment argument as its text), the names it assigns (its
+ * prefix `NAME=value` and the assignment arguments of a builtin such as `export NAME=value`) and the files its own output
+ * redirects write.
+ */
+export type SimpleCommand = { text: string; name: string | undefined; args: string[]; assigns: string[]; writes: string[] };
+
+const OUTPUT = new Set(['>', '>>', '>|', '&>', '&>>']);
+// written returns the targets of the output redirects among the redirections, as the shell reads each target word.
+const written = (redirections: readonly Redirection[]): string[] =>
+  redirections.flatMap(item => item.type === 'Redirect' && OUTPUT.has(item.operator) && item.target ? [item.target.value] : []);
+
+/** commands returns each simple command that a command text runs, in the order and the places that segments reads. */
+export function commands(text: string, dialect: Dialect): SimpleCommand[] {
+  const { tree, mapped } = script(text, dialect);
+  const out: SimpleCommand[] = [];
+  walk(tree, text, node => {
+    if (node.type !== 'Command') return;
+    out.push({
+      text: original(text, mapped, node.pos, node.end),
+      name: node.name?.value,
+      args: node.args.map(arg => arg.type === 'Word' ? arg.value : arg.text),
+      assigns: [...node.prefix, ...node.args].flatMap(item => item.type === 'Assignment' ? [item.name] : []),
+      writes: written(node.redirects),
+    });
+  });
+  return out;
+}
+
+/**
+ * writtenFiles returns the target of each output redirect in a command text, of a simple command and of a compound
+ * command (`{ ...; } >> file`), as the shell reads each target word.
+ */
+export function writtenFiles(text: string, dialect: Dialect): string[] {
+  const { tree } = script(text, dialect);
+  const out: string[] = [];
+  walk(tree, text, node => {
+    if (node.type === 'Command' || node.type === 'Redirected') out.push(...written(node.redirects));
   });
   return out;
 }
