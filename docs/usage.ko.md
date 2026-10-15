@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 63b9eab8628f089f5d0e17a5d8d332836719e8ce10aa1fe025c787c928f7ecd3 -->
+<!-- source-sha256: bef331edd5a8b03bb17d6fb426bac0031258123017ab9eb31a0b1c2d2fa9a622 -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript·Python 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
@@ -377,7 +377,7 @@ const row = await new Membership().connect(master).setTeamId(1).setMemberId(2).s
 ## 8. 스타일 컬럼
 
 `gz_*`, `json_*`, `jsons_*`, `base64_*`, `serialize_*`는 클라이언트 출력에서 저장 바이트가 아니라 **디코딩한 값**을 사용한다
-(Go `any`, Rust `serde_json::Value`, PHP `mixed`). MySQL은 `aes_hex_*`와 `ip`를 SQL 함수로 처리하고,
+(Go `any` · Rust `serde_json::Value` · PHP `mixed`). MySQL은 `aes_hex_*`와 `ip`를 SQL 함수로 처리하고,
 PostgreSQL·SQLite 실행기는 같은 바이트를 만든다([codec.md](codec.md)).
 
 ```php
