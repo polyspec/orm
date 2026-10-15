@@ -5,8 +5,7 @@ import sys
 import unittest
 from pathlib import Path
 
-# Run as a script, the runner's folder is the first entry of sys.path.
-import runner_python as runner
+from . import runner_python as runner
 
 ROOT = Path(__file__).resolve().parents[2]
 RUNNER = ROOT / "tests" / "conformance" / "runner_python.py"

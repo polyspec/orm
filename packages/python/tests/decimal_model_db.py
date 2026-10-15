@@ -3,7 +3,8 @@
 # generated setters refuse an inexact decimal with CODEC_ENCODE (setters), and a row written and read in a transaction
 # keeps the exact decimal text in the model, its array and the database storage, then rolls back and leaves the
 # database as it was (round_trip). DECIMAL_<DIALECT>_DSN names the database, and a missing one fails the run.
-# Usage: python -m packages.python.tests.decimal_model_db --dialect mysql|postgres|sqlite
+# Each test builds its own models. `python -m packages.python.tests.decimal_model_db --dialect <name>` runs the
+# round trip of one dialect, as scripts/decimal-physical-check.mts does; without it every dialect runs.
 import os
 import sys
 import tempfile
@@ -16,30 +17,28 @@ from .test_sqlite import generate
 
 ROOT = Path(__file__).resolve().parents[3]
 DIALECTS = ("mysql", "postgres", "sqlite")
-STATE = {}
 
 
 class Rollback(Exception):
     """Ends the round-trip transaction so that it rolls back."""
 
 
-def setUpModule():
-    STATE["dir"] = tempfile.TemporaryDirectory(prefix="orm-decimal-db-")
-    STATE["models"] = generate(
-        os.path.join(STATE["dir"].name, "models"),
-        ROOT / "contracts" / "fixtures" / "dbspec-set.json",
-    )
-
-
-def tearDownModule():
-    STATE["dir"].cleanup()
-
-
 class DecimalModelDbTest(unittest.TestCase):
     deadline = testcase.DATABASE
+    # The dialects that test_round_trip runs; the entry point narrows it to the one it names.
+    dialects = DIALECTS
+
+    def setUp(self):
+        # Each test generates its own models, so no test depends on the state of another.
+        self.directory = tempfile.TemporaryDirectory(prefix="orm-decimal-db-")
+        self.addCleanup(self.directory.cleanup)
+        self.models = generate(
+            os.path.join(self.directory.name, "models"),
+            ROOT / "contracts" / "fixtures" / "dbspec-set.json",
+        )
 
     def test_setters(self):
-        case = STATE["models"].DecimalCase
+        case = self.models.DecimalCase
         for invalid in ("1.00001", "1000000000.0000", "NaN", 48.045):
             with self.assertRaises(
                 OrmError, msg=f"invalid decimal {invalid!r}"
@@ -51,7 +50,11 @@ class DecimalModelDbTest(unittest.TestCase):
         self.assertEqual(raised.exception.code, "CODEC_ENCODE")
 
     def test_round_trip(self):
-        dialect = STATE["dialect"]
+        for dialect in self.dialects:
+            with self.subTest(dialect=dialect):
+                self.round_trip(dialect)
+
+    def round_trip(self, dialect):
         variable = f"DECIMAL_{dialect.upper()}_DSN"
         dsn = os.environ.get(variable)
         if not dsn:
@@ -59,7 +62,7 @@ class DecimalModelDbTest(unittest.TestCase):
                 f"{variable} is required; run the test through its make target, which reads the environment of "
                 f"make test-servers"
             )
-        models = STATE["models"]
+        models = self.models
         case = models.DecimalCase
         db = models.connect(dsn)
         try:
@@ -112,13 +115,14 @@ class DecimalModelDbTest(unittest.TestCase):
 
 if __name__ == "__main__":
     arguments = sys.argv[1:]
-    if (
+    if arguments and (
         len(arguments) != 2
         or arguments[0] != "--dialect"
         or arguments[1] not in DIALECTS
     ):
         raise SystemExit(
-            "usage: python -m packages.python.tests.decimal_model_db --dialect mysql|postgres|sqlite"
+            "usage: python -m packages.python.tests.decimal_model_db [--dialect mysql|postgres|sqlite]"
         )
-    STATE["dialect"] = arguments[1]
+    if arguments:
+        DecimalModelDbTest.dialects = (arguments[1],)
     testcase.main(argv=sys.argv[:1])
