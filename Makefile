@@ -905,10 +905,20 @@ php-min-check:
 php-without-mysql-check:
 	$(RUN_LONG) php-without-mysql -- node scripts/php-without-mysql.mts
 
-client-db-check: lease-tool python-statement-fault-check python-identity-load-check python-schema-inspection-check
+client-db-check: lease-tool python-statement-fault-check python-identity-load-check python-schema-inspection-check python-statement-events-check python-install-changed-database-check
 	$(HOLD_TYPESCRIPT)
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANES=parallel node scripts/client-db-test.mts
 
+# python-install-changed-database-check runs every case of contracts/fixtures/install/changed_database.json with the
+# Python client on SQLite, MySQL and PostgreSQL (packages/python/tests/install_changed_database.py).
+.PHONY: python-install-changed-database-check
+python-install-changed-database-check: python-venv-check
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.install_changed_database
+# python-statement-events-check runs every case of tests/events/vectors.json with the Python client on SQLite, MySQL and
+# PostgreSQL (packages/python/tests/statement_events.py).
+.PHONY: python-statement-events-check
+python-statement-events-check: python-venv-check
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.statement_events
 # python-statement-fault-check runs the Python statement fault cases on SQLite, MySQL and PostgreSQL; it
 # needs the database variables of make test-servers (WITH_TEST_ENV).
 .PHONY: python-statement-fault-check

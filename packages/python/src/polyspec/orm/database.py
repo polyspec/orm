@@ -71,6 +71,10 @@ def _sqlite_path(url) -> str:
     """sqlite:// DSN의 percent-decoding한 경로. 잘못된 escape, UTF-8이 아닌 경로,
     NUL byte는 CONFIG 오류이다."""
     path = url.path
+    # unquote keeps a % without two hexadecimal digits as text, so the escape is checked before it decodes.
+    if re.search(r'%(?![0-9A-Fa-f]{2})', path):
+        raise OrmError('CONFIG', 'sqlite DSN path has a % without two hexadecimal digits '
+                                 'or is not UTF-8 after percent-decoding')
     try:
         from urllib.parse import unquote
         path = unquote(path, errors='strict')
