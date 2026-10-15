@@ -8,6 +8,8 @@ src=$(cd "$(dirname "$0")/../src" && pwd)
 command -v phpize >/dev/null || { echo "build.sh: phpize is not on PATH; install the PHP development files of .php-version (setup-php gives them in CI)" >&2; exit 1; }
 command -v php-config >/dev/null || { echo "build.sh: php-config is not on PATH; install the PHP development files of .php-version" >&2; exit 1; }
 mkdir -p "$(dirname "$out")"
+# The build changes into its directory, so a relative path is made absolute first.
+out=$(cd "$(dirname "$out")" && pwd)/$(basename "$out")
 work="$out.build.$$"
 rm -rf "$work"
 trap 'rm -rf "$work"' EXIT

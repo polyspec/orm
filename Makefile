@@ -1066,6 +1066,22 @@ conformance-check/run: lease-tool conformance-python-models
 # checkout을 build한 binary는 FLOWMARK=<그 경로>로 줄 수 있다.
 FLOWMARK ?= $(abspath .runtime/bin/flowmark)
 .PHONY: markdown-conformance-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript install-flowmark
+# parity-prepare builds what the bindings of config/parity.json load before kit's parity-check runs them, into the
+# directory of this make run: the PHP extension that the php-extension implementation loads
+# (ORM_PARITY_PHP_EXTENSION) and the conformance runner that the Rust conformance bindings start
+# (ORM_PROGRAM_CONFORMANCE, polyspec_orm_testcase::program). parity-check also passes FLOWMARK to the
+# markdown-conformance bindings. The database bindings read the test servers and the bench databases from the
+# environment of the run.
+PARITY_RUN_DIR = $(abspath .runtime/run)/parity-check-$(shell echo $$PPID)
+.PHONY: parity-prepare
+parity-prepare: lease-tool
+	mkdir -p $(PARITY_RUN_DIR)
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PARITY_RUN_DIR)/orm_dbspec.so
+	$(RUN_LONG) rust-build/parity-conformance --cwd packages/rust -- $(CARGO_LEASED) node $(abspath scripts/cargo-build-copy.mts) $(PARITY_RUN_DIR)/target debug/conformance -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm-tests --bin conformance
+parity-check: parity-prepare
+parity-check: export FLOWMARK := $(FLOWMARK)
+parity-check: export ORM_PARITY_PHP_EXTENSION = $(PARITY_RUN_DIR)/orm_dbspec.so
+parity-check: export ORM_PROGRAM_CONFORMANCE = $(PARITY_RUN_DIR)/target/debug/conformance
 markdown-conformance-check: markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript
 markdown-conformance-check/go:
 	FLOWMARK=$(FLOWMARK) $(GO_TEST) -tags markdown ./packages/go/markdownmodel -run '^TestMarkdownConformance$$' -count=1

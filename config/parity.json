@@ -22,7 +22,7 @@
       "runner": "php",
       "roots": ["packages/php-ext"],
       "tests": ["packages/php-ext/tests/Coverage*Test.php"],
-      "args": ["-d", "extension=.runtime/parity/php-extension/orm_dbspec.so"]
+      "args": ["-d", "extension=${ORM_PARITY_PHP_EXTENSION}"]
     },
     {
       "name": "typescript",
@@ -213,7 +213,7 @@
       "file": "tests/conformance/vectors.json", "cases": "$.vectors[*].name",
       "bindings": [
         { "implementation": "go", "test": "packages/go/model/coverage_conformance_verification_test.go", "symbol": "TestCoverageConformanceMySQL" },
-        { "implementation": "php", "test": "packages/php/tests/CoverageConformanceVerificationTest.php" },
+        { "implementation": "php", "test": "packages/php/tests/CoverageConformanceVerificationTest.php", "symbol": "CoverageConformanceVerificationTest::test_mysql" },
         { "implementation": "typescript", "test": "packages/ts/tests/coverage_conformance_mysql.mjs" },
         { "implementation": "python", "test": "packages/python/tests/conformance_mysql.py" },
         { "implementation": "rust", "test": "packages/rust/tests/tests/coverage_conformance_verification.rs", "symbol": "conformance_mysql" }
@@ -224,7 +224,7 @@
       "file": "tests/conformance/vectors.postgres.json", "cases": "$.vectors[*].name",
       "bindings": [
         { "implementation": "go", "test": "packages/go/model/coverage_conformance_verification_test.go", "symbol": "TestCoverageConformancePostgres" },
-        { "implementation": "php", "test": "packages/php/tests/CoverageConformanceVerificationTest.php" },
+        { "implementation": "php", "test": "packages/php/tests/CoverageConformanceVerificationTest.php", "symbol": "CoverageConformanceVerificationTest::test_postgres" },
         { "implementation": "typescript", "test": "packages/ts/tests/coverage_conformance_postgres.mjs" },
         { "implementation": "python", "test": "packages/python/tests/conformance_postgres.py" },
         { "implementation": "rust", "test": "packages/rust/tests/tests/coverage_conformance_verification.rs", "symbol": "conformance_postgres" }
@@ -235,7 +235,7 @@
       "file": "tests/conformance/vectors.sqlite.json", "cases": "$.vectors[*].name",
       "bindings": [
         { "implementation": "go", "test": "packages/go/model/coverage_conformance_verification_test.go", "symbol": "TestCoverageConformanceSQLite" },
-        { "implementation": "php", "test": "packages/php/tests/CoverageConformanceVerificationTest.php" },
+        { "implementation": "php", "test": "packages/php/tests/CoverageConformanceVerificationTest.php", "symbol": "CoverageConformanceVerificationTest::test_sqlite" },
         { "implementation": "typescript", "test": "packages/ts/tests/coverage_conformance_sqlite.mjs" },
         { "implementation": "python", "test": "packages/python/tests/conformance_sqlite.py" },
         { "implementation": "rust", "test": "packages/rust/tests/tests/coverage_conformance_verification.rs", "symbol": "conformance_sqlite" }
@@ -509,7 +509,7 @@
       "file": "tests/events/vectors.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/statement_events_test.go", "symbol": "TestStatementEvents" },
-        { "implementation": "php", "test": "packages/php/tests/CoverageStatementEventsTest.php" },
+        { "implementation": "php", "test": "packages/php/tests/StatementEventsTest.php", "symbol": "StatementEventsTest::test_case" },
         { "implementation": "typescript", "test": "packages/ts/tests/coverage_statement_events.mjs" },
         { "implementation": "python", "test": "packages/python/tests/statement_events.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/statement_events.rs", "symbol": "statement_events" }

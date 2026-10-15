@@ -1,8 +1,8 @@
 <?php
 // Statement events on SQLite, MySQL and PostgreSQL: every case of the shared
 // vector tests/events/vectors.json in a case database of its own
-// (statement_events_run.php), one test method per database with the vector's
-// case ids as its data sets, and the vector's server_transactions on
+// (statement_events_run.php), one data set per case id that runs the case on each
+// database in turn, and the vector's server_transactions on
 // PostgreSQL. The test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN
 // is unset.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/StatementEventsTest.php [--filter <method or data set>]
@@ -36,25 +36,17 @@ final class StatementEventsTest extends TestCase
         with_case_database($driver, static function (string $text): void {}, static fn(string $dsn) => runCase($case, $driver, $dsn));
     }
 
-    /** @param array<string, mixed> $case */
+    /**
+     * The case on SQLite, MySQL and PostgreSQL in turn, each in a case database of its own.
+     *
+     * @param array<string, mixed> $case
+     */
     #[DataProvider('cases')]
-    public function test_sqlite(array $case): void
+    public function test_case(array $case): void
     {
-        self::runOn('sqlite', $case);
-    }
-
-    /** @param array<string, mixed> $case */
-    #[DataProvider('cases')]
-    public function test_mysql(array $case): void
-    {
-        self::runOn('mysql', $case);
-    }
-
-    /** @param array<string, mixed> $case */
-    #[DataProvider('cases')]
-    public function test_postgres(array $case): void
-    {
-        self::runOn('postgres', $case);
+        foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
+            self::runOn($driver, $case);
+        }
     }
 
     public function test_server_transactions(): void

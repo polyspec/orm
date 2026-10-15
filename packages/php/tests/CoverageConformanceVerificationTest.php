@@ -1,17 +1,18 @@
 <?php
 declare(strict_types=1);
-// conformance_verification feature coverage: PHP conformance runner를 고른
-// database에서 읽기 전용 vector conditions_values와 relations만으로 실행하고,
-// 각 출력이 그 database의 기록된 expect와 JSON 값으로 같은지 확인한다
-// (tests/conformance/vectors.json은 MySQL, vectors.<database>.json은 나머지).
+// conformance_verification: the PHP conformance runner runs every vector of a dialect once on the seeded bench
+// database of that dialect (BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN, BENCH_SQLITE_DSN, which make run-databases and
+// make check create), and each vector is one data set, named by the vector, whose output must equal the recorded
+// expect as a JSON value (tests/conformance/vectors.json for MySQL, vectors.<dialect>.json for the others).
+// test_conformance_vector is the feature coverage (contracts/features.json): it runs the read-only vectors
+// conditions_values and relations on the database that ORM_FEATURE_DATABASE and ORM_FEATURE_DSN select.
 
 require_once __DIR__ . '/coverage_cases.php';
 
 use PHPUnit\Framework\Assert;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
-
-const CONFORMANCE_VECTORS = ['conditions_values', 'relations'];
 
 /** 두 JSON 값이 같은지 비교한다: 배열은 순서대로, object는 key 집합과 값으로, 수는 값으로. */
 function sameJson(mixed $a, mixed $b): bool
@@ -49,9 +50,86 @@ function sameJson(mixed $a, mixed $b): bool
     return $a === $b;
 }
 
+const CONFORMANCE_VECTORS = ['conditions_values', 'relations'];
+
 #[Large]
 final class CoverageConformanceVerificationTest extends TestCase
 {
+    /** @var array<string, stdClass> the runner output of each dialect, read once per process */
+    private static array $outputs = [];
+
+    private static function file(string $driver): string
+    {
+        return dirname(__DIR__, 3) . '/tests/conformance/' . ($driver === 'mysql' ? 'vectors.json' : "vectors.$driver.json");
+    }
+
+    /** @return iterable<string, array{string, mixed}> */
+    private static function vectors(string $driver): iterable
+    {
+        foreach (coverageJson(self::file($driver), false)->vectors as $vector) {
+            yield $vector->name => [$vector->name, $vector->expect];
+        }
+    }
+
+    public static function mysqlVectors(): iterable
+    {
+        return self::vectors('mysql');
+    }
+
+    public static function postgresVectors(): iterable
+    {
+        return self::vectors('postgres');
+    }
+
+    public static function sqliteVectors(): iterable
+    {
+        return self::vectors('sqlite');
+    }
+
+    /** The output of the runner over every vector of the dialect on its bench database. */
+    private static function runnerOutput(string $driver): stdClass
+    {
+        if (isset(self::$outputs[$driver])) {
+            return self::$outputs[$driver];
+        }
+        $variable = 'BENCH_' . strtoupper($driver) . '_DSN';
+        $dsn = getenv($variable);
+        if (!is_string($dsn) || $dsn === '') {
+            throw new RuntimeException("$variable is required, and database tests never skip; run make databases-create, which seeds the bench databases and writes their DSNs");
+        }
+        $root = dirname(__DIR__, 3);
+        [$status, $stdout, $stderr] = coverageProcess([PHP_BINARY, "$root/tests/conformance/runner.php", '--dsn', $dsn], $root);
+        if ($status !== 0) {
+            throw new RuntimeException(str_replace($dsn, '[dsn]', "conformance runner exited $status: $stderr$stdout"));
+        }
+        return self::$outputs[$driver] = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
+    }
+
+    private static function check(string $driver, string $name, mixed $expect): void
+    {
+        $output = self::runnerOutput($driver);
+        Assert::assertTrue(property_exists($output, $name), "the runner gave no output for $name");
+        Assert::assertTrue(sameJson($output->$name, $expect), "vector $name differs from " . basename(self::file($driver)) . ': ' . json_encode($output->$name));
+    }
+
+    #[DataProvider('mysqlVectors')]
+    public function test_mysql(string $name, mixed $expect): void
+    {
+        self::check('mysql', $name, $expect);
+    }
+
+    #[DataProvider('postgresVectors')]
+    public function test_postgres(string $name, mixed $expect): void
+    {
+        self::check('postgres', $name, $expect);
+    }
+
+    #[DataProvider('sqliteVectors')]
+    public function test_sqlite(string $name, mixed $expect): void
+    {
+        self::check('sqlite', $name, $expect);
+    }
+
     public function test_conformance_vector(): void
     {
         [$driver, $dsn] = coverageDatabase();
