@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4638cac03b32871b0cf14c73b63a398ffd6a58fe1676a52b270ea8e289553769 -->
+<!-- source-sha256: 0b3cd4384765c0d3692d2431f61c00c8b280dd9caac46d2b9bb25773128be9f0 -->
 # 변경 이력
 
 ## Unreleased
 
+- Python이 MySQL과 PostgreSQL에서 time과 date 셀을 읽는다. (#T117)
 - toArray가 모든 client에서 datetime과 time을 소수 여섯 자리로 쓴다. (#T121)
 - optimistic update가 Go와 Rust에서 읽은 행의 version을 정규 text로 바인딩한다. (#T89-3-2)
 - conformance runner가 date, time, datetime 입력을 정규 text로 보낸다. (#T89-3-1)
