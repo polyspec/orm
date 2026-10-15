@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: d4454a167f0fcff9451210910d6a1f78d03b6c84a25cc2741601ccdcdda3c4d2 -->
+<!-- source-sha256: 961c46b04044708f5bc3009e0c817ec640889a9de34b6b0e1e345a16bb40ef0b -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1069,8 +1069,9 @@
     Evidence: client-unit-check, codec-check, dbspec-php-check, dbspec-php-extension-check, php-min-check, interface-check, dependency-policy-check가 통과한다. PHPUnit이 각 공유 vector case를 그 id로 이름 붙인다.
     - [o] T148-1-1 PHP 개발 도구를 저장소 root에 설치한다 (T148-1에 이어). 원인: T148-1이 PHPUnit을 위해 packages/php와 packages/php-ext에 각자 Composer project를 주어, 릴리스되는 composer.json이 repositories(ordered-json package와 packages/php path), require-dev, platform 설정을 선언했고, v0.0.16의 make release-assets가 이를 거부했다: 릴리스 zip은 repository를 선언하지 않는다. 완료 조건: 개발 root(vendor-php)가 PHPUnit과 path repository의 packages/php를 설치하고, 두 package의 test는 자기 phpunit.xml.dist로 vendor-php/bin/phpunit을 실행하며, 두 package lock을 지우고, 릴리스 manifest는 소비자가 설치하는 것만 선언하며, make release-assets가 archive를 만든다.
       Evidence: client-unit-check와 dbspec-php-extension-check가 vendor-php/bin/phpunit으로 통과하고, commit의 로컬 tag에서 make release-assets TAG=v0.0.16이 모든 archive를 쓴다.
-  - [!] T148-2 Go, TypeScript, Python, Rust에서 모든 공유 vector case를 그 id로 보고한다 (T148에 이어). 원인: 각각 vector 파일을 test 하나 안에서 순회한다. 완료 조건: Go `t.Run(<id>)`, TypeScript는 id마다 top-level test, Python은 unittest load_tests로 case마다 id가 case id인 TestCase, Rust는 id로 이름 지은 libtest-mimic trial이다. method 이름을 생성하지 않는다.
+  - [o] T148-2 Go, TypeScript, Python, Rust에서 모든 공유 vector case를 그 id로 보고한다 (T148에 이어). 원인: 각각 vector 파일을 test 하나 안에서 순회한다. 완료 조건: Go `t.Run(<id>)`, TypeScript는 id마다 top-level test, Python은 unittest load_tests로 case마다 id가 case id인 TestCase, Rust는 id로 이름 지은 libtest-mimic trial이다. method 이름을 생성하지 않는다.
     우회. Cause: Go, TypeScript, Python, Rust가 Rust show-create case를 빼고 모든 공유 vector case를 그 id로 보고한다. Rust show-create case는 orm 설계 결정(T148-2-1)을 기다린다. Retry: T148-2-1이 결정될 때.
+    Evidence: retry 조건이 충족됐다. T148-2-1로 Go(t.Run), TypeScript(id마다 test 하나), Python(load_tests), Rust(libtest-mimic trial)가 모든 공유 vector case를 id로 보고하고, T148-2-2가 옮긴 Rust vector를 실행한다.
     - [o] T148-2-1 Rust show-create case를 그 id로 보고한다 (T148-2에 이어). 원인: Rust는 tests/dbspec/show-create.json을 crate 밖에서 보이지 않는 shown_checks로 읽고 lib unit test 하나로 확인한다. libtest는 unit test 이름에 하이픈 id를 쓸 수 없고, 공개 경로 read_catalog는 읽은 본문을 dbspec 문서로 바꾸므로 vector를 표현하지 못한다(kit 판정: spec 단위가 공개 경로보다 넓으며 orm의 설계 문제다). 완료 조건: orm이 SHOW CREATE reader가 API의 어디에 속하는지 정하고, Rust binding이 각 case를 그 id로 보고한다.
       Evidence: SHOW CREATE reader는 Go, TypeScript, Python처럼 MySQL introspection의 private으로 둔다. tests/dbspec/show-create.json은 각 case를 공개 경로(catalog_queries, catalog_followups, read_catalog)로 기술하고, 새 libtest-mimic target packages/rust/schema/tests/dbspec_show_create.rs가 그것을 trial show_create_vectors::<id>로 실행한다. 이전 binding은 9 case 모두 R3 "not executed"였고(0 passed, 6 filtered out), 새 binding에서 kit의 cargo 명령은 9건 통과한다. dbspec-rust-check/show-create, repository, feature, owners, layout 검사가 통과한다.
     - [o] T148-2-2 옮긴 Rust vector를 workspace에서 실행하고 측정 시간은 경고한다 (T148-2에 이어). 원인: main CI가 실패했다: T148-2의 검증 명령이 ORM_RUST_TEST_FEATURES의 workspace feature와 함께 -p polyspec-orm을 썼고, packages/rust/schema/tests/dbspec_plan.rs가 CPU 시간으로 case를 실패시켰다. Evidence: planner-rust-validate, codec-vectors-rust, encryption-codec-rust가 통과하고 저장소 검사가 통과한다.
