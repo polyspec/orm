@@ -133,13 +133,14 @@ export default defineConfig({
       };
       // Source links stay valid in GitHub Markdown and in the static site.
       md.core.ruler.after('inline', 'repository-links', state => {
-        const page = pageEnv(state.env);
         const visit = (tokens: readonly Token[]): void => {
           for (const token of tokens) {
             if (token.children) visit(token.children);
             if (token.type !== 'link_open') continue;
             const href = token.attrGet('href');
             if (!href || /^(?:[a-z]+:|\/\/|#)/i.test(href)) continue;
+            // A link of a page reads the page fields of env; markdown-it also parses inline text (a title) without them.
+            const page = pageEnv(state.env);
             const [name = href, suffix = ''] = href.split(/(?=[?#])/s, 2);
             const koreanPage = page.relativePath.startsWith('ko/') || page.path.endsWith('.ko.md');
             // Rewritten Korean pages resolve relative links from their .ko.md source directory.

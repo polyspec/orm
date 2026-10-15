@@ -1229,7 +1229,7 @@ docs-dbs-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	npm run --workspace @polyspec/dbspec-language build
-	node_modules/.bin/tsc -p docs/.vitepress/tsconfig.json
+	$(RUN_LONG) docs-typecheck -- node_modules/.bin/tsc -p docs/.vitepress/tsconfig.json
 	node --test tests/docs/dbs-fence.test.mts
 
 # markdown-table-check compares the table "Markdown IR executor" of docs/dialects.md and docs/dialects.ko.md with the
