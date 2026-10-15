@@ -43,9 +43,11 @@
     {
       "name": "rust",
       "runner": "cargo",
-      "roots": ["packages/rust", "benchmarks/rust/src/driver_compare.rs", "benchmarks/rust/tests", "tests/interfaces/rust"],
+      "roots": ["packages/rust", "benchmarks/rust", "tests/interfaces/rust"],
       "tests": ["packages/rust/**/tests/**/coverage_*.rs"],
       "support": [
+        "packages/rust/tests/tests/integration/main.rs",
+        "tests/interfaces/rust/src/main.rs",
         "packages/rust/build/tests/lock_probe/mod.rs",
         "packages/rust/build/tests/row_insert_identity/expression.rs",
         "packages/rust/orm/tests/common/audit_rows.rs",
@@ -95,15 +97,14 @@
   "comparators": ["tests/conformance/check", "tests/interfaces/check"],
   "testPatterns": [
     { "runner": "go", "globs": ["packages/**/*_test.go", "tests/**/*_test.go", "examples/**/*_test.go"] },
-    { "runner": "cargo", "globs": ["packages/**/tests/**/*.rs", "tests/**/*.rs"] },
+    { "runner": "cargo", "globs": ["packages/**/tests/**/*.rs", "tests/**/*.rs", "benchmarks/rust/src/native.rs"] },
     { "runner": "node", "globs": ["packages/ts/tests/**/*.mjs", "tests/*/**/*.mjs"] },
     { "runner": "php", "globs": ["packages/php/tests/**/*.php", "packages/php-ext/tests/**/*.php", "tests/**/*.php"] },
     { "runner": "python", "globs": ["packages/python/tests/**/*.py", "tests/**/*.py"] }
   ],
   "tools": [
     { "root": "packages/go/bench", "reason": "Benchmarks that measure the performance of the Go implementation; they implement no contract and run only under go test -bench, so they belong to no implementation." },
-    { "root": "tests/analyzers", "reason": "Analyzers for the Go test conventions of the repository; the tooling implements no contract, so its tests belong to no implementation." },
-    { "root": "benchmarks/rust/src/native.rs", "reason": "measures performance; implements no contract" }
+    { "root": "tests/analyzers", "reason": "Analyzers for the Go test conventions of the repository; the tooling implements no contract, so its tests belong to no implementation." }
   ],
   "units": [
     {
@@ -979,7 +980,8 @@
     {"id": "rust-integration-coverage-schema-install-coverage-schema-install-external-documents", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs", "id": "coverage_schema_install::coverage_schema_install_external_documents"}]},
     {"id": "rust-integration-coverage-transactions-coverage-transaction-rollback", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/coverage_transactions.rs", "id": "coverage_transactions::coverage_transaction_rollback"}]},
     {"id": "rust-integration-coverage-transactions-coverage-transaction-savepoint", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/coverage_transactions.rs", "id": "coverage_transactions::coverage_transaction_savepoint"}]},
-    {"id": "rust-integration-result-chains-generated-model-result-chains-preserve-assigned-values", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/result_chains.rs", "id": "result_chains::generated_model_result_chains_preserve_assigned_values"}]}
+    {"id": "rust-integration-result-chains-generated-model-result-chains-preserve-assigned-values", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/result_chains.rs", "id": "result_chains::generated_model_result_chains_preserve_assigned_values"}]},
+    {"id": "rust-benchmark-native-insert-email-is-an-aes-hex-envelope", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "benchmarks/rust/src/native.rs", "id": "tests::insert_email_is_an_aes_hex_envelope"}]}
   ],
   "errors": {
     "profile": "client",
