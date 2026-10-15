@@ -118,7 +118,7 @@ function dbspec_syntax_inputs(array $cases): array
                     $documents[$name] = dbspec_syntax_join($lines, $crlf, $mixed);
                 }
             }
-            $inputs[] = ["$section/{$c['id']}", dbspec_syntax_join($c['documents'][$c['main']], $crlf, $mixed), $documents];
+            $inputs[] = ["$section.{$c['id']}", dbspec_syntax_join($c['documents'][$c['main']], $crlf, $mixed), $documents];
         }
     }
     foreach ($cases['sets'] as $c) {
@@ -136,7 +136,7 @@ function dbspec_syntax_inputs(array $cases): array
                     $documents[$words[2]] = dbspec_syntax_join($other, false);
                 }
             }
-            $inputs[] = ["sets/{$c['id']}/" . ($i + 1), dbspec_syntax_join($lines, false), $documents];
+            $inputs[] = ["sets.{$c['id']}." . ($i + 1), dbspec_syntax_join($lines, false), $documents];
         }
     }
     foreach ($cases['hashes'] as $c) {
@@ -147,7 +147,7 @@ function dbspec_syntax_inputs(array $cases): array
                     $documents[$other] = dbspec_syntax_join($lines, false);
                 }
             }
-            $inputs[] = ["hashes/{$c['id']}/$name", dbspec_syntax_join($c['documents'][$name], false), $documents];
+            $inputs[] = ["hashes.{$c['id']}.$name", dbspec_syntax_join($c['documents'][$name], false), $documents];
         }
     }
     return $inputs;

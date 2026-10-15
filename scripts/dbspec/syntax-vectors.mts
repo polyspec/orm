@@ -49,7 +49,7 @@ export function vectorInputs(cases: Cases): Input[] {
       for (const [name, lines] of Object.entries(c.documents)) {
         if (name !== c.main) documents[name] = join(lines, c.crlf === true, c.mixed === true);
       }
-      inputs.push({ id: `${section}/${c.id}`, text: join(main, c.crlf === true, c.mixed === true), documents });
+      inputs.push({ id: `${section}.${c.id}`, text: join(main, c.crlf === true, c.mixed === true), documents });
     }
   }
   for (const c of cases.sets) {
@@ -60,7 +60,7 @@ export function vectorInputs(cases: Cases): Input[] {
       all.forEach((other, j) => {
         if (j !== i) documents[headerName(other)] = join(other, false);
       });
-      inputs.push({ id: `sets/${c.id}/${i + 1}`, text: join(lines, false), documents });
+      inputs.push({ id: `sets.${c.id}.${i + 1}`, text: join(lines, false), documents });
     });
   }
   for (const c of cases.hashes) {
@@ -69,7 +69,7 @@ export function vectorInputs(cases: Cases): Input[] {
       for (const [other, lines] of Object.entries(c.documents)) {
         if (other !== name) documents[other] = join(lines, false);
       }
-      inputs.push({ id: `hashes/${c.id}/${name}`, text: join(c.documents[name] ?? [], false), documents });
+      inputs.push({ id: `hashes.${c.id}.${name}`, text: join(c.documents[name] ?? [], false), documents });
     }
   }
   return inputs;

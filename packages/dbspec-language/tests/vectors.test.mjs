@@ -127,13 +127,13 @@ function setTree(c) {
 }
 
 /**
- * The text and the set of the document a syntax vector id names: `<group>/<case>` for a canonical, normalize or
- * invalid case (its main document), `hashes/<case>/<document>`, and `sets/<case>/<place>` for the document at that
+ * The text and the set of the document a syntax vector id names: `<group>.<case>` for a canonical, normalize or
+ * invalid case (its main document), `hashes.<case>.<document>`, and `sets.<case>.<place>` for the document at that
  * 1-based place of a sets case, whose set is the one resolveSet gives from the case's file tree. A repeated document
  * name is the one diagnostic resolveSet gives there: the case's name.duplicate errors at the later documents.
  */
 function syntaxCase(id) {
-  const parts = id.split('/');
+  const parts = id.split('.');
   const group = parts[0];
   if (group === 'hashes') {
     const c = cases.hashes.find(x => x.id === parts[1]);
@@ -141,7 +141,7 @@ function syntaxCase(id) {
     return { text: join(c.documents[parts[2]], false), set: setOf(c, parts[2]) };
   }
   if (group === 'sets') {
-    const c = cases.sets.find(x => x.id === parts.slice(1, -1).join('/'));
+    const c = cases.sets.find(x => x.id === parts.slice(1, -1).join('.'));
     assert.ok(c, `sets case ${id}`);
     const place = Number(parts.at(-1));
     const root = setTree(c);
@@ -159,7 +159,7 @@ function syntaxCase(id) {
       rmSync(root, { recursive: true, force: true });
     }
   }
-  const caseId = parts.slice(1).join('/');
+  const caseId = parts.slice(1).join('.');
   const c = cases[group].find(x => x.id === caseId);
   assert.ok(c, `${group} case ${caseId}`);
   return { text: textOf(c, c.main), set: setOf(c, c.main) };
