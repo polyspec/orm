@@ -1,7 +1,31 @@
-import { defineConfig } from 'vitepress';
+import { defineConfig, type UserConfig } from 'vitepress';
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { dbsFences, dbsInfo, renderDbs } from './dbs';
+
+/** The markdown-it instance that VitePress gives markdown.config, and the token of its token streams. */
+type Markdown = Parameters<NonNullable<NonNullable<UserConfig['markdown']>['config']>>[0];
+type Token = Parameters<NonNullable<Markdown['renderer']['rules']['fence']>>[0][number];
+
+/**
+ * The page fields of the env that VitePress gives markdown-it: markdown-it types env as any, so each field is checked.
+ */
+function pageEnv(env: unknown): { relativePath: string; path: string } {
+  if (typeof env !== 'object' || env === null) throw new Error('markdown-it env is not the page env of VitePress');
+  const relativePath: unknown = Reflect.get(env, 'relativePath');
+  const path: unknown = Reflect.get(env, 'path');
+  if (typeof relativePath !== 'string' || typeof path !== 'string') {
+    throw new Error('markdown-it env names no relativePath and path strings of VitePress');
+  }
+  return { relativePath, path };
+}
+
+/** The renderer rule `name` that markdown-it defines, which a wrapper calls. */
+function rule(md: Markdown, name: string): NonNullable<Markdown['renderer']['rules'][string]> {
+  const found = md.renderer.rules[name];
+  if (found === undefined) throw new Error(`markdown-it defines no renderer rule ${name}`);
+  return found;
+}
 
 const base = process.env.VITEPRESS_BASE || '/orm/';
 if (!/^\/(?:[a-zA-Z0-9_-]+\/)*$/.test(base)) throw new Error('Invalid VITEPRESS_BASE');
@@ -95,32 +119,33 @@ export default defineConfig({
       // Vue compiles each page as a template, so `{{` in Markdown text or code would run as an
       // interpolation. VitePress marks fenced code v-pre; inline code, indented code and text that
       // holds `{{` are marked here, so Markdown always shows `{{` as written.
-      for (const rule of ['code_inline', 'code_block'] as const) {
-        const render = md.renderer.rules[rule]!;
-        md.renderer.rules[rule] = (tokens, index, options, env, self) => {
-          tokens[index].attrSet('v-pre', '');
+      for (const name of ['code_inline', 'code_block']) {
+        const render = rule(md, name);
+        md.renderer.rules[name] = (tokens, index, options, env, self) => {
+          tokens[index]?.attrSet('v-pre', '');
           return render(tokens, index, options, env, self);
         };
       }
-      const text = md.renderer.rules.text!;
+      const text = rule(md, 'text');
       md.renderer.rules.text = (tokens, index, options, env, self) => {
         const html = text(tokens, index, options, env, self);
         return html.includes('{{') ? `<span v-pre>${html}</span>` : html;
       };
       // Source links stay valid in GitHub Markdown and in the static site.
       md.core.ruler.after('inline', 'repository-links', state => {
-        const visit = tokens => {
+        const page = pageEnv(state.env);
+        const visit = (tokens: readonly Token[]): void => {
           for (const token of tokens) {
             if (token.children) visit(token.children);
             if (token.type !== 'link_open') continue;
             const href = token.attrGet('href');
             if (!href || /^(?:[a-z]+:|\/\/|#)/i.test(href)) continue;
-            const [name, suffix = ''] = href.split(/(?=[?#])/s, 2);
-            const koreanPage = state.env.relativePath.startsWith('ko/') || state.env.path.endsWith('.ko.md');
+            const [name = href, suffix = ''] = href.split(/(?=[?#])/s, 2);
+            const koreanPage = page.relativePath.startsWith('ko/') || page.path.endsWith('.ko.md');
             // Rewritten Korean pages resolve relative links from their .ko.md source directory.
-            const sourcePath = state.env.relativePath.startsWith('ko/')
-              ? path.join(docs, state.env.relativePath.slice('ko/'.length).replace(/\.md$/, '.ko.md'))
-              : state.env.path;
+            const sourcePath = page.relativePath.startsWith('ko/')
+              ? path.join(docs, page.relativePath.slice('ko/'.length).replace(/\.md$/, '.ko.md'))
+              : page.path;
             let target = path.resolve(href.startsWith('/') ? docs : path.dirname(sourcePath), '.' + (href.startsWith('/') ? name : '/' + name));
             if (koreanPage && !existsSync(target)) target = path.resolve(docs, name);
             if (!koreanPage && target.startsWith(docs + path.sep) && target.endsWith('.ko.md')) {
@@ -139,7 +164,7 @@ export default defineConfig({
               continue;
             }
             if (target.startsWith(docs + path.sep) && (target.endsWith('.md') || !path.extname(target))) continue;
-            if (!target.startsWith(root + path.sep) || !existsSync(target)) throw new Error(`${state.env.relativePath}: missing source link ${href}`);
+            if (!target.startsWith(root + path.sep) || !existsSync(target)) throw new Error(`${page.relativePath}: missing source link ${href}`);
             const kind = statSync(target).isDirectory() ? 'tree' : 'blob';
             const relative = path.relative(root, target).split(path.sep).map(encodeURIComponent).join('/');
             token.attrSet('href', `${repo}/${kind}/main/${relative}${suffix}`);
@@ -149,14 +174,17 @@ export default defineConfig({
       });
       // A Mermaid fence stays its source: the theme renders it in the reader's browser
       // (theme/index.ts), and without JavaScript the source is shown.
-      const fence = md.renderer.rules.fence!;
+      const fence = rule(md, 'fence');
       md.renderer.rules.fence = (tokens, index, options, env, self) => {
         const token = tokens[index];
+        if (token === undefined) throw new Error(`markdown-it renders a fence at ${index} past its ${tokens.length} tokens`);
         // A dbs fence is rendered from the language service's tokens (dbs.ts); a diagnostic fails the build.
         if (dbsInfo(token.info) !== null) {
           const fences = dbsFences(tokens);
-          const own = fences.find(f => f.text === token.content && f.line === token.map![0] + 1)!;
-          return renderDbs(own, fences, env.relativePath, md.utils.escapeHtml);
+          const line = token.map === null ? null : token.map[0] + 1;
+          const own = fences.find(f => f.text === token.content && f.line === line);
+          if (own === undefined) throw new Error(`${pageEnv(env).relativePath}: a dbs fence is missing from the fences of its page`);
+          return renderDbs(own, fences, pageEnv(env).relativePath, md.utils.escapeHtml);
         }
         if (token.info.trim() !== 'mermaid') return fence(tokens, index, options, env, self);
         return `<pre class="mermaid" v-pre>${md.utils.escapeHtml(token.content)}</pre>`;

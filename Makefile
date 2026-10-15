@@ -1223,11 +1223,13 @@ docs-verify-idempotent:
 docs-rules-check:
 	npm run docs:rules-check
 
-# docs-dbs-check runs the unit cases of the dbs fence (docs/.vitepress/dbs.ts) after building the packages it reads.
+# docs-dbs-check runs the unit cases of the dbs fence (docs/.vitepress/dbs.ts) after building the packages it reads, and
+# type-checks the site's TypeScript with docs/.vitepress/tsconfig.json, the project that make lint-ts also judges it by.
 docs-dbs-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	npm run --workspace @polyspec/dbspec-language build
+	node_modules/.bin/tsc -p docs/.vitepress/tsconfig.json
 	node --test tests/docs/dbs-fence.test.mts
 
 # markdown-table-check compares the table "Markdown IR executor" of docs/dialects.md and docs/dialects.ko.md with the
