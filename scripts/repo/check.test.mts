@@ -22,7 +22,7 @@ import { readWorkflow } from './workflow.mts';
 import { stringify } from 'yaml';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
-import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
+import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, makeTargets, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
 
 // yamlSteps writes steps (the values of a workflow's steps) as the list under a job's steps:, six spaces deep.
 const yamlSteps = (steps: unknown[]) => stringify(steps).split('\n').map(line => line ? `      ${line}` : line).join('\n');
@@ -507,6 +507,10 @@ caseTest('a workflow that runs a verification command of feature-check again fai
     'ci.yml step "checks" runs node scripts/perf-test.mts, which make check runs in feature-check',
   ]);
   assert.deepEqual(ciDuplicateCommandErrors(steps.replace('make repo-check', 'make check\n          make fuzz-check'), make, commands), []);
+  // A target whose name holds a slash is a target of the Makefile too (makeTargets, T137-1-4-2-2).
+  assert.deepEqual(ciDuplicateCommandErrors(steps.replace('make repo-check', 'make check\n          make perf-check/run'), `${make}perf-check/run:\n\tnode scripts/perf-test.mts\n`, commands), [
+    'ci.yml step "checks" runs make perf-check/run, whose commands make check runs in feature-check',
+  ]);
 });
 
 // helper 실행 case(G5.120)는 make check가 helper check마다 한 번 실행하는지 본다: 저장소의 Makefile, feature contract와
@@ -541,6 +545,12 @@ caseTest('make check runs the check of every helper once', COMPUTE, () => {
   assert.deepEqual(helperRunErrors(manifest, make('suite nested seed seedts', 'stress'), setup), []);
   const twice = (id: string, places: string) => `make check runs the check of helper ${id} 2 times: ${places}; run it once, and add a helper whose check a target or setup step of make check runs to FEATURE_SUITE_HELPERS, which make feature-helper-check leaves out`;
   assert.deepEqual(helperRunErrors(manifest, make('suite', 'stress'), setup), [
+    twice('nested', 'make helper-check; make nested-check, a target of make check'),
+    twice('seed', 'make helper-check; the setup step databases/create of make check (scripts/check/databases.mts runs scripts/seed.sh)'),
+    twice('seedts', 'make helper-check; the setup step databases/create of make check (scripts/check/databases.mts runs scripts/seedts.mts)'),
+  ]);
+  // A prerequisite on a continuation line is a prerequisite too (makeTargets, T137-1-4-2-2).
+  assert.deepEqual(helperRunErrors(manifest, make('suite', 'stress').replace('outer-check: nested-check', 'outer-check: suite-check \\\n  nested-check'), setup), [
     twice('nested', 'make helper-check; make nested-check, a target of make check'),
     twice('seed', 'make helper-check; the setup step databases/create of make check (scripts/check/databases.mts runs scripts/seed.sh)'),
     twice('seedts', 'make helper-check; the setup step databases/create of make check (scripts/check/databases.mts runs scripts/seedts.mts)'),
@@ -722,6 +732,41 @@ caseTest('the files of one run live in its run directory and a TypeScript build 
     'Makefile:3 names a fixed file that runs would share; put the file of one run into $(RUN_DIR): TIMING = .runtime/timing/dbspec.test',
   ]);
   assert.deepEqual(typescriptHolderErrors(makefile), ['Makefile bare builds the TypeScript client without holding its build output; start the recipe with $(HOLD_TYPESCRIPT)']);
+  // A target holds the build through a prerequisite that holds it, as ts-check/types does through ts-check/hold; a target
+  // whose name holds a slash is checked like any other (T137-1-4-2-2).
+  const parts = 'ts/hold: tool\n\t$(HOLD_TYPESCRIPT)\nts/types: ts/hold\n\tnpm run typescript:check\nts/later: ts/types\n\tnpm run typescript:test\nts/bare: tool\n\tnpm run typescript:test\n';
+  assert.deepEqual(typescriptHolderErrors(parts), ['Makefile ts/bare builds the TypeScript client without holding its build output; start the recipe with $(HOLD_TYPESCRIPT)']);
+});
+
+// Makefile 읽기 case는 make가 읽는 대로 target마다 선행 target과 recipe를 돌려주는지 본다(T137-1-4-2-2).
+caseTest('the Makefile reader names every target with its prerequisites and recipe', COMPUTE, () => {
+  const makefile = [
+    '.PHONY: a b/c',
+    'A := 1',
+    'a: b/c d \\',
+    '  e | f',
+    '\techo a \\',
+    '\t  more',
+    'b/c x/y: ; echo inline',
+    '\techo c',
+    '# comment',
+    'p/%: RUN_DIR = /tmp/$@',
+    'p/%:',
+    '\techo $*',
+    'B = 2',
+    '\techo after-variable',
+    'z::',
+    '',
+  ].join('\n');
+  assert.deepEqual(makeTargets(makefile), [
+    { target: '.PHONY', prerequisites: ['a', 'b/c'], commands: [] },
+    { target: 'a', prerequisites: ['b/c', 'd', 'e', 'f'], commands: ['echo a \\\n  more'] },
+    { target: 'b/c', prerequisites: [], commands: ['echo inline', 'echo c'] },
+    { target: 'x/y', prerequisites: [], commands: ['echo inline', 'echo c'] },
+    { target: 'p/%', prerequisites: [], commands: ['echo $*'] },
+    { target: 'z', prerequisites: [], commands: [] },
+  ]);
+  assert.deepEqual(makeRecipes(makefile).map(unit => unit.name), ['Makefile a', 'Makefile b/c', 'Makefile x/y', 'Makefile p/%', 'Makefile']);
 });
 
 // lease case는 Makefile 밖의 명령과 최소 단위를 검사한다.

@@ -9,6 +9,7 @@ import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { readComposer, readComposerPackages, readNpmLock } from '../json/formats.mts';
+import { makeTargets } from '../repo/testcases.mts';
 
 // NPM_ROOTS는 npm ci로 설치하는 package directory다. 저장소 root는 packages/ts를 workspace로 함께 설치한다.
 export const NPM_ROOTS = ['.'];
@@ -97,15 +98,13 @@ const OFFLINE = ['CARGO_NET_OFFLINE := true', 'GOPROXY := off', 'npm_config_offl
 // 명령과 $(ONLINE)은 install target(install, install-*)의 recipe에만 있다.
 export function offlineMakeErrors(makefile: string) {
   const errors = OFFLINE.filter(setting => !makefile.split('\n').includes(`export ${setting}`)).map(setting => `Makefile does not export ${setting}`);
-  let target = null;
-  for (const line of makefile.split('\n')) {
-    const rule = /^([\w./%-]+):(?!=)/.exec(line);
-    if (rule) target = rule[1];
-    if (!line.startsWith('\t') || !target) continue;
-    const command = line.trim();
+  for (const { target, commands } of makeTargets(makefile)) {
     if (/^install(?:-[\w-]+)?$/.test(target)) continue;
-    if (command.includes('$(ONLINE)')) errors.push(`Makefile ${target} runs $(ONLINE) outside an install target: ${command}`);
-    else if (DOWNLOAD.test(command)) errors.push(`Makefile ${target} downloads (${command}) outside an install target; make install downloads what the checks read`);
+    for (const recipe of commands) {
+      const command = recipe.trim();
+      if (command.includes('$(ONLINE)')) errors.push(`Makefile ${target} runs $(ONLINE) outside an install target: ${command}`);
+      else if (DOWNLOAD.test(command)) errors.push(`Makefile ${target} downloads (${command}) outside an install target; make install downloads what the checks read`);
+    }
   }
   return errors;
 }

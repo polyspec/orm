@@ -239,34 +239,76 @@ export function longDeadlineErrors(units: Unit[]): string[] {
   return errors;
 }
 
-// recipeLines는 Makefile의 줄(lines, tab으로 시작하는 recipe 줄과 그 밖의 줄)을 make가 읽는 대로 돌려준다: recipe 줄은
-// `\`로 끝나면 다음 줄과 이어지는 명령 하나이고(make는 이은 줄 첫머리의 tab 하나를 뗀다), 다른 줄은 그대로다.
-// recipe 줄은 앞의 tab 없이 { recipe: true, text }, 다른 줄은 { recipe: false, text }다.
+// recipeLines는 Makefile의 줄(lines, tab으로 시작하는 recipe 줄과 그 밖의 줄)을 make가 읽는 대로 돌려준다: 줄이
+// `\`로 끝나면 다음 줄과 이어진다. recipe 줄은 이은 그대로 명령 하나이고(make는 이은 줄 첫머리의 tab 하나를 뗀다),
+// 다른 줄은 make처럼 이음과 그 둘레의 공백을 공백 하나로 바꾼다. recipe 줄은 앞의 tab 없이 { recipe: true, text },
+// 다른 줄은 { recipe: false, text }다.
 export function recipeLines(makefile: string): { recipe: boolean; text: string }[] {
   const out: { recipe: boolean; text: string }[] = [];
   const lines = makefile.split('\n');
+  // An odd number of backslashes at the end continues the line; an even number is escaped backslashes.
+  const continues = (text: string) => /(?:^|[^\\])(?:\\\\)*\\$/.test(text);
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index] ?? '';
-    if (!line.startsWith('\t')) { out.push({ recipe: false, text: line }); continue; }
+    if (!line.startsWith('\t')) {
+      let text = line;
+      while (continues(text) && index + 1 < lines.length) text = `${text.slice(0, -1).trimEnd()} ${(lines[++index] ?? '').trimStart()}`;
+      out.push({ recipe: false, text });
+      continue;
+    }
     const command = [line.slice(1)];
-    // An odd number of backslashes at the end continues the line; an even number is escaped backslashes.
-    while (/(?:^|[^\\])(?:\\\\)*\\$/.test(command.at(-1) ?? '') && index + 1 < lines.length) command.push((lines[++index] ?? '').replace(/^\t/, ''));
+    while (continues(command.at(-1) ?? '') && index + 1 < lines.length) command.push((lines[++index] ?? '').replace(/^\t/, ''));
     out.push({ recipe: true, text: command.join('\n') });
   }
   return out;
 }
 
-// makeRecipes는 Makefile의 target마다 recipe 명령(recipeLines)을 단위 하나로 돌려준다. 변수 정의(`:=`, `=`)는 target이
-// 아니다.
-export function makeRecipes(makefile: string): Unit[] {
-  const units: Unit[] = [];
+/** A rule of a Makefile: its target, its prerequisites (normal and order-only) and its recipe commands. */
+export type MakeTarget = { target: string; prerequisites: string[]; commands: string[] };
+
+// makeEntries는 Makefile을 make가 읽는 대로(recipeLines) 규칙마다 { targets, prerequisites, commands }로 돌려준다.
+// 규칙 줄은 `targets: prerequisites`나 `targets:: prerequisites`이고, `;` 뒤는 그 recipe의 첫 명령이며, `|` 뒤의
+// order-only 선행 target도 선행 target이다. 변수 정의(`=`, `:=`, `::=`, `?=`, `+=`)와 target별 변수
+// (`target: NAME = value`), 지시어(ifeq, include, export 같은)는 규칙이 아니다: 그 뒤의 recipe 줄은 이름 없는
+// 항목(targets [])에 들어간다. 빈 줄과 주석은 recipe를 끝내지 않는다.
+function makeEntries(makefile: string): { targets: string[]; prerequisites: string[]; commands: string[] }[] {
+  const entries: { targets: string[]; prerequisites: string[]; commands: string[] }[] = [];
+  const directive = /^(?:ifeq|ifneq|ifdef|ifndef|else|endif|include|-include|sinclude|define|endef|export|unexport|override|undefine|vpath|private)\b/;
   for (const { recipe, text } of recipeLines(makefile)) {
-    const target = recipe ? null : /^([A-Za-z0-9_.-]+):(?!=)/.exec(text);
-    if (target) units.push({ name: `Makefile ${target[1] ?? ''}`, commands: [], dialect: 'make' });
-    else if (recipe && units.length) units.at(-1)?.commands.push(text);
-    else if (!recipe && text.trim() !== '' && !text.startsWith('#')) units.push({ name: 'Makefile', commands: [], dialect: 'make' });
+    if (recipe) {
+      entries.at(-1)?.commands.push(text);
+      continue;
+    }
+    const line = text.replace(/(?:^|\s)#.*$/, '');
+    if (line.trim() === '') continue;
+    const rule = directive.test(line.trimStart()) ? null : /^([^:=#;\t][^:=#;]*?)\s*::?(?!=)(.*)$/.exec(line);
+    const [head, rest] = rule ? [(rule[2] ?? '').split(';')[0] ?? '', (rule[2] ?? '').includes(';') ? (rule[2] ?? '').slice((rule[2] ?? '').indexOf(';') + 1).trim() : undefined] : ['', undefined];
+    if (!rule || head.includes('=')) {
+      entries.push({ targets: [], prerequisites: [], commands: [] });
+      continue;
+    }
+    entries.push({
+      targets: (rule[1] ?? '').trim().split(/\s+/),
+      prerequisites: head.trim().split(/\s+/).filter(word => word !== '' && word !== '|'),
+      commands: rest ? [rest] : [],
+    });
   }
-  return units.filter(unit => unit.commands.length);
+  return entries;
+}
+
+// makeTargets는 Makefile의 규칙마다 target 하나씩, 그 선행 target과 recipe 명령을 돌려준다(makeEntries). target의
+// 이름은 make가 쓰는 그대로다: `/`를 담은 하위 target(testcase-check/go), pattern 규칙(`%`), 특수 target(.PHONY).
+// 이 module과 scripts/repo/ci.mts, scripts/features/owners.mts의 Makefile 읽기는 모두 이것을 쓴다.
+export function makeTargets(makefile: string): MakeTarget[] {
+  return makeEntries(makefile).flatMap(({ targets, prerequisites, commands }) => targets.map(target => ({ target, prerequisites, commands })));
+}
+
+// makeRecipes는 Makefile의 target마다 recipe 명령(makeTargets)을 단위 하나로 돌려준다. 규칙이 아닌 줄 뒤의 recipe 줄은
+// 이름 `Makefile`인 단위다. recipe가 없는 target은 단위가 아니다.
+export function makeRecipes(makefile: string): Unit[] {
+  return makeEntries(makefile)
+    .flatMap(({ targets, commands }) => (targets.length ? targets.map(target => `Makefile ${target}`) : ['Makefile']).map(name => ({ name, commands, dialect: 'make' as const })))
+    .filter(unit => unit.commands.length);
 }
 
 // reachedScripts는 명령(commands: {command, dialect})이 tests/run-long.mts 밖에서 실행하는 scripts/의 shell
@@ -424,13 +466,22 @@ export function unpublishedOutputErrors(makefile: string): string[] {
 }
 
 // typescriptHolderErrors는 TypeScript client를 build하는(TSC_BUILD, npm의 typescript:build, typescript:test,
-// typescript:check, 그것을 하는 scripts/client-db-test.mts) make target 가운데 첫 줄에서 그 build 출력의 보유
-// ($(HOLD_TYPESCRIPT))를 얻지 않는 것마다 오류 하나를 돌려준다.
+// typescript:check, 그것을 하는 scripts/client-db-test.mts) make target 가운데 그 build 출력의 보유
+// ($(HOLD_TYPESCRIPT))를 얻지 않는 것마다 오류 하나를 돌려준다. target은 recipe의 첫 줄에서 보유를 얻거나, 보유를
+// 얻는 선행 target(ts-check/types의 ts-check/hold)을 통해 얻는다: make는 선행 target을 먼저 실행한다.
 export function typescriptHolderErrors(makefile: string): string[] {
   const builds = /\$\(TSC_BUILD\)|typescript:(?:build|test|check)\b|client-db-test\.sh|tests\/conformance\/check run\b/;
-  return makeRecipes(makefile)
-    .filter(unit => unit.name !== 'Makefile' && unit.commands.some(command => builds.test(command)) && (unit.commands[0] ?? '').trim() !== '$(HOLD_TYPESCRIPT)')
-    .map(unit => `${unit.name} builds the TypeScript client without holding its build output; start the recipe with $(HOLD_TYPESCRIPT)`);
+  const targets = makeTargets(makefile);
+  const rules = new Map(targets.map(rule => [rule.target, rule]));
+  const holds = (target: string, seen = new Set<string>()): boolean => {
+    const rule = rules.get(target);
+    if (!rule || seen.has(target)) return false;
+    seen.add(target);
+    return (rule.commands[0] ?? '').trim() === '$(HOLD_TYPESCRIPT)' || rule.prerequisites.some(prerequisite => holds(prerequisite, seen));
+  };
+  return targets
+    .filter(rule => rule.commands.some(command => builds.test(command)) && !holds(rule.target))
+    .map(rule => `Makefile ${rule.target} builds the TypeScript client without holding its build output; start the recipe with $(HOLD_TYPESCRIPT)`);
 }
 
 // unleasedCargoErrors는 Makefile 밖의 명령(검증 명령, script, package.json script)이 공유 Rust target

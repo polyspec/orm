@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
 import { andLists, commands, type Dialect, segments, shellSegments, type SimpleCommand, writtenFiles } from './shell.mts';
-import { makeRecipes, recipeLines } from './testcases.mts';
+import { makeRecipes, makeTargets } from './testcases.mts';
 import { environment, events, readWorkflow, workflowSteps, type WorkflowJob, type WorkflowStep } from './workflow.mts';
 import { CI_SETUP, stepCondition } from '../check/ci-setup.mts';
 import { parseSelection, selectChecks } from '../features/select.mts';
@@ -231,13 +231,9 @@ export function ciDuplicateCommandErrors(workflow: string, makefile: string, com
   return errors;
 }
 
-// makeRules는 Makefile의 규칙 `target: prerequisites`마다 target과 그 선행 target이다. pattern 규칙(`%`)과 target별
-// 변수 정의는 뺀다.
+// makeRules는 Makefile의 규칙(makeTargets)마다 target과 그 선행 target이다. pattern 규칙(`%`)은 뺀다.
 function makeRules(makefile: string): Map<string, string[]> {
-  const rules = new Map<string, string[]>();
-  for (const match of makefile.matchAll(/^([a-z0-9][a-z0-9/-]*):(?!=)([^=\n]*)$/gm))
-    rules.set(match[1] ?? '', (match[2] ?? '').trim().split(/\s+/).filter((word: string) => /^[a-z0-9][a-z0-9/-]*$/.test(word)));
-  return rules;
+  return new Map(makeTargets(makefile).filter(rule => !rule.target.includes('%')).map(rule => [rule.target, rule.prerequisites]));
 }
 
 // expandFunctions는 expand 뒤에 남은 make 함수 `$(addprefix <prefix>,<words>)`를 그 결과 단어로 바꾼다.
@@ -611,16 +607,8 @@ export function ciSetupErrors(workflows: Record<string, string>, { setup, runner
 // runnerIdentity로 판단하고, make 변수는 정의로 풀어 본다.
 export function independentTestErrors(makefile: string): string[] {
   const variables = makeVariables(makefile);
-  const recipes: { target: string | null; commands: string[] }[] = [];
-  for (const { recipe, text } of recipeLines(makefile)) {
-    const target = recipe ? null : /^([A-Za-z0-9_./-]+):(?!=)/.exec(text);
-    if (target) recipes.push({ target: target[1] ?? '', commands: [] });
-    else if (recipe && recipes.length) recipes.at(-1)?.commands.push(text);
-    else if (!recipe && text.trim() !== '' && !text.startsWith('#')) recipes.push({ target: null, commands: [] });
-  }
   const errors: string[] = [];
-  for (const { target, commands } of recipes) {
-    if (!target) continue;
+  for (const { target, commands } of makeTargets(makefile)) {
     const tests = new Set(commands.filter(command => checkLine(expand(command, variables), 'make')));
     if (tests.size >= 2)
       errors.push(`Makefile ${target} runs ${tests.size} independent tests in one recipe, whose first failure stops the others; split them into parts ${target}/<part>: ${[...tests].map(test => test.slice(0, 80)).join(' | ')}`);

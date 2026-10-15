@@ -75,6 +75,11 @@ caseTest('the Makefile runs every check offline and downloads only in the instal
     'Makefile rust-fetch downloads (cargo fetch --locked) outside an install target; make install downloads what the checks read',
     'Makefile build runs $(ONLINE) outside an install target: $(ONLINE) go build ./...',
   ]);
+  // A rule of two targets is read as make reads it (makeTargets of scripts/repo/testcases.mts, T137-1-4-2-2).
+  assert.deepEqual(offlineMakeErrors(`${exports}install-x:\n\tnpm ci\nfetch/a fetch/b:\n\tcurl -O x\n`), [
+    'Makefile fetch/a downloads (curl -O x) outside an install target; make install downloads what the checks read',
+    'Makefile fetch/b downloads (curl -O x) outside an install target; make install downloads what the checks read',
+  ]);
   assert.deepEqual(offlineMakeErrors('check:\n\ttrue\n'), [
     'Makefile does not export CARGO_NET_OFFLINE := true', 'Makefile does not export GOPROXY := off',
     'Makefile does not export npm_config_offline := true', 'Makefile does not export COMPOSER_DISABLE_NETWORK := 1',
