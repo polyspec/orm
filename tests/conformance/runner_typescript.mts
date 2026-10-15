@@ -529,6 +529,21 @@ async function main() {
       limit_per_parent: perParent,
     };
   });
+  // user 100 has the authors 99 (price NULL) and 5099 (price 3.000) under seq 10000 (benchmarks/sql/seed.*.sql)
+  await run('scalar_column_subquery', async () => {
+    const out: Record<string, unknown> = {};
+    for (const order of ['asc', 'desc']) {
+      const users = await new User().connect(db)
+        .addColumnReadTotal(u => {
+          const sub = new Author().removeAllColumns().addColumnName().userSeqEqSeq(u).andLtSeq(10000);
+          if (order === 'asc') sub.orderByPriceAsc(); else sub.orderByPriceDesc();
+          return sub.orderBySeqAsc().limit(0, 1);
+        })
+        .seq(100).gets();
+      out[order] = users.values().map(u => [u.getSeq(), u.getReadTotal()]);
+    }
+    return out;
+  });
 
   await db.close();
   const unknown = selected.filter(name => !declared.has(name));

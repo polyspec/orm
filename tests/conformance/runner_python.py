@@ -1133,6 +1133,31 @@ def main():
 
     run("order_nulls", order_nulls)
 
+    def scalar_column_subquery():
+        # user 100 has the authors 99 (price NULL) and 5099 (price 3.000) under seq 10000 (benchmarks/sql/seed.*.sql)
+        out = {}
+        for order in ("asc", "desc"):
+
+            def sub(u, order=order):
+                child = (
+                    Author()
+                    .remove_all_columns()
+                    .add_column_name()
+                    .user_seq_eq_seq(u)
+                    .and_lt_seq(10000)
+                )
+                if order == "asc":
+                    child.order_by_price_asc()
+                else:
+                    child.order_by_price_desc()
+                return child.order_by_seq_asc().limit(0, 1)
+
+            users = User().connect(db).add_column_read_total(sub).seq(100).gets()
+            out[order] = [[u.get_seq(), u.get_read_total()] for u in users.values()]
+        return out
+
+    run("scalar_column_subquery", scalar_column_subquery)
+
     db.close()
     unknown = [name for name in SELECTED if name not in declared]
     if unknown:
