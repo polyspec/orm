@@ -5,6 +5,7 @@
 
 ## 0.0.18
 
+- The Python wheel carries no test extra: the tests' JSON Schema validator is a PEP 735 dependency group; the TypeScript build keeps its incremental record out of the tree. (#T180-1)
 - The TypeScript packages and the site pass the lint of kit 0.0.47 at the root's strictness; packages/ts builds through TypeScript project references. (#T137-1-4-7-1)
 - orm-gen's TypeScript output reads entities and columns with checks that throw naming them, with no non-null assertion or cast, so generated models pass the lint of kit 0.0.47; Core.jsonColumn reads an ordered_json column. (#T179)
 - The repository takes kit 0.0.47, and the scripts and tests pass its TypeScript lint without a disable or a cast. (#T137-1-4-7)
