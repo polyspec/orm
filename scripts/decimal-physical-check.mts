@@ -4,7 +4,7 @@ import { errorMessage } from '../tests/errors.mts';
 import { parseGoTestEvent } from './json/formats.mts';
 
 const databases = ['mysql', 'postgres', 'sqlite'];
-const languages = ['go', 'php', 'rust', 'typescript'];
+const languages = ['go', 'php', 'rust', 'typescript', 'python'];
 
 function command(language: string, database: string): [string, string[]] {
   const id = `decimal_${database}`;
@@ -18,6 +18,12 @@ function command(language: string, database: string): [string, string[]] {
   }
   if (language === 'rust') {
     return ['cargo', ['test', '--offline', '--locked', '--manifest-path', 'packages/rust/Cargo.toml', '-p', 'polyspec-orm-tests', '--bin', 'decimal_physical', id, '--', '--exact', '--include-ignored']];
+  }
+  if (language === 'python') {
+    // ORM_PYTHON is the Python of the venv that make install-python builds.
+    const python = process.env['ORM_PYTHON'];
+    if (!python) throw new Error('ORM_PYTHON is required; run the check through make decimal-physical-check');
+    return [python, ['-m', 'packages.python.tests.decimal_model_db', '--dialect', database]];
   }
   return ['node', ['packages/ts/tests/decimal_model_db.mjs', '--dialect', database]];
 }
@@ -37,6 +43,13 @@ function observed(language: string, database: string, output: string): boolean {
     const finished = [...output.matchAll(/^##teamcity\[testFinished name='([^']*)'/gm)].map(match => match[1]);
     const wanted = ['generate', 'setters', 'round_trip'].map(name => `test_${name} with data set "${database}"`);
     return JSON.stringify(finished) === JSON.stringify(wanted) && !/^##teamcity\[test(?:Failed|Ignored) /m.test(output);
+  }
+  // The Python test writes a RUN and a PASS or FAIL line per case, the tests of a class in name order. Both cases pass
+  // and no other result line is written.
+  if (language === 'python') {
+    const results = output.split('\n').filter((line: string) => /^(?:PASS|FAIL) /.test(line)).map((line: string) => line.split(' ').slice(0, 2).join(' '));
+    const wanted = ['round_trip', 'setters'].map(name => `PASS __main__.DecimalModelDbTest.test_${name}`);
+    return JSON.stringify(results) === JSON.stringify(wanted);
   }
   // TypeScript test는 case마다 RUN과 PASS 줄을 쓴다. 정해진 case가 모두 통과하고 다른 결과 줄이 없어야 한다.
   const cases = ['setters', 'round_trip'].map(name => `decimal_db/${database}/${name}`);
