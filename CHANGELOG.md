@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- orm-gen's TypeScript output reads entities and columns with checks that throw naming them, with no non-null assertion or cast, so generated models pass the lint of kit 0.0.47; Core.jsonColumn reads an ordered_json column. (#T179)
 - The repository takes kit 0.0.47, and the scripts and tests pass its TypeScript lint without a disable or a cast. (#T137-1-4-7)
 - go-vet-check owns the Go analyzers of tests/analyzers. (#T137-1-9)
 - Every dbspec compare runner validates the vectors against the shared JSON Schemas of tests/dbspec/schema with its ecosystem's validator; the runners' own field checks are removed. (#T137-1-4-3)

@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: fe1e61faffbe2779b44d345860d020487793db626e22395041108cea2218f39d -->
+<!-- source-sha256: bac4eb63ede5ee6a645c7433cb63c861dfa1d42351a3e0fbe4d9704142b3613f -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1141,6 +1141,8 @@
     Evidence: CI record가 종료 event 17 ms 뒤 "quick server still runs after stopPid"를 적는다. 상태 판정으로 test-servers.test가 로컬에서 9건 통과하고, stopPid case는 3회 중 3회 통과한다.
 - [o] T178 모든 client에서 ordered-json 0.0.9를 쓴다. 원인: ordered-json 0.0.9에는 limepie가 import 속도에 필요한 Python parser(T1.41)가 있는데, orm은 PHP(zip URL), TypeScript, Python wheel의 Requires-Dist에서 ordered-json 0.0.8을 정확히 고정해 consumer가 바꿀 수 없다(kit과 limepie가 보고). 완료 조건: PHP, TypeScript, Python, Rust, Go client가 0.0.9를 요구하고(Go는 새 module 경로 github.com/polyspec/ordered-json/packages/go로, Python은 sha256을 붙인 wheel URL로), lock과 dependency review를 기록하며, 각 client의 codec과 JSON 검사가 통과한다.
   Evidence: 내려받은 wheel의 sha256이 bc4d26a9…f01d다. test server에서 JSON, codec, AES case의 go test가 통과하고, PHP hostcodec unit 61건, Rust codec test 8건, python-unit-check, TypeScript codec vector가 통과한다. review 뒤 dependency-policy-check가 통과한다.
+- [o] T179 TypeScript orm-gen backend가 검사한 읽기를 생성한다 (fsm을 위해 kit이 보고). 원인: 생성된 TypeScript가 entity를 `entities.get(..)!`로, column을 `column(..) as T`로 읽어, kit 0.0.47의 lint가 모든 consumer의 생성 model을 거부한다. 완료 조건: 생성 code가 entity를 이름을 대며 throw하는 guard로 찾고, column 값을 typeof/instanceof로 검사해 column 이름을 댄 TypeError를 던지며, ordered_json column은 TypeScript model runtime의 검사한 accessor Core.jsonColumn으로 읽는다(contracts/interfaces.json에서 Core는 internal이다). 생성 signature는 바뀌지 않고, test가 생성 출력의 검사하지 않은 읽기를 거부한다.
+  Evidence: packages/ts/tests/generate.mjs의 새 uncheckedReads 검사가 이전 generator에서 검사하지 않은 읽기 90개로 실패했고 지금 통과한다. styled-value/json-column이 ordered-json 값과 SQL NULL을 받아들이고 plain object를 author.json_setting을 댄 TypeError로 거부한다. 다시 생성한 model이 oxlint와 models-scan을 통과하고, contracts/symbols/typescript.json의 export된 model class key는 바뀌지 않았다.
 - [o] T156 모든 생성기가 모든 key의 모든 prefix마다 유형 있는 메서드를 선언한다. 원인: scan한 소스가 호출하는 메서드만 생성되어, 어떤 소스도 호출하지 않는 key prefix에는 메서드가 없었다(hyper U-97). 완료 조건: Go, Rust, TypeScript model이 primary key, unique key, index의 모든 prefix마다 메서드를 선언하고, Python은 같은 이름을 실행 시점에 해석하며, symbol 기록과 docs/usage.md를 갱신한다.
   - [o] T156-1 T156 이후 orm main CI를 다시 green으로 만든다 (T156에 이어). 원인: run 38502539388이 실패했다. Python key-prefix 테스트가 PYTHONPATH를 바꾸고 지워진 packages/orm-python/bin/orm-gen을 실행했고, Go와 Rust key-prefix 테스트가 testcase를 시작하지 않았으며, generator/gen_go_key_prefix_test.go가 어떤 feature에도 속하지 않았고, src/models/markdown_fixture에 key-prefix 메서드가 없었다. 완료 조건: 각각을 고치고 그 소유 검사가 통과한다.
   - [o] T156-2 Go markdown model을 다시 생성한다 (T156에 이어). 원인: run 38504701356이 go-markdown-model-generated에서 실패했다. packages/orm-go/markdownmodel에 key-prefix 메서드가 없었다. 완료 조건: go generate가 폴더를 바꾸지 않는다.
