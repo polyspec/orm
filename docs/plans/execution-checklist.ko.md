@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: b3a4e23a884204713382d775d3147792233f5ce006eb89910572279e3cd0c86e -->
+<!-- source-sha256: b1fa33749b9cb25e3eb10fa76e74fa60a965449f55d6dd6d20d4fe13ed77c1f0 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1212,6 +1212,8 @@
   Evidence: case "the MySQL fixture removes its root when its setup fails"가 복사한 `mysql-start`를 exit 3으로 끝나게 한다. RED: 수정 전에는 `existsSync(root)`에서 `true !== false`로 실패했다. 수정 후 `make test-servers-check`가 15개 모두 통과하고 /tmp/orm-mig-* folder가 남지 않는다.
 - [o] T184 kit 0.0.53을 받는다. 원인: 다른 polyspec repository가 모두 kit 0.0.53으로 옮겼다(kit K131). 0.0.53은 K188(knip hint 없음), K189(review의 allow-remote), K190과 K195(sibling wheel), K191(owner-check가 import로 test를 고름), K192(추적하는 mise sidecar), K193(PHP를 쓰면 .php-version, orm은 이미 있음)을 가져온다. 완료 조건: package.json과 package-lock.json이 공개된 integrity로 0.0.53을 받고, make kit-sync가 copy를 쓰며, 검사가 통과한다.
   Evidence: lock이 sha512-b5N/8uNp…EQ==로 v0.0.53을 받는다. kit-sync가 scripts/kit/kit-bootstrap.mk, .github/workflows/release.yml, config/layout.kit.yml을 썼다. dependency-review RECORD=1이 registry dependency 65개와 lock 10개를 기록했다. kit-check, dependency-policy-check, release-coverage, toolchain-check, layout-check, interface-check, go-model-check, go-vet-check, Go engine test, lint-python, lint-ts, client-unit-check, rust-fmt-check가 통과한다.
+- [o] T185 coverage process의 기한을 선언할 수 있는 가장 긴 test 등급으로 둔다 (T184에 이어). 원인: scripts/features/coverage.mts가 coverage run의 모든 native test process에 DATABASE 등급(120000 ms)을 주었는데, test는 자기가 선언한 등급으로 자기 작업의 기한을 지킨다. Go model_generation case는 testcase.Process(300000 ms)를 선언하고 cold build에서 orm-gen을 실행하므로, ci run 38715909724가 그 case를 자기 기한 안인 120000 ms에서 멈췄다. 완료 조건: 바깥 기한 NATIVE_DEADLINE이 PROCESS보다 짧지 않고, 짧으면 실패하는 case가 있다.
+  Evidence: NATIVE_DEADLINE이 DATABASE일 때 scripts/features/coverage.test.mts의 새 case가 "NATIVE_DEADLINE 120000 ms is shorter than PROCESS 300000 ms"로 실패했고, PROCESS로 바꾸자 통과한다. make feature-unit-check/coverage가 통과한다.
 - [o] T156 모든 생성기가 모든 key의 모든 prefix마다 유형 있는 메서드를 선언한다. 원인: scan한 소스가 호출하는 메서드만 생성되어, 어떤 소스도 호출하지 않는 key prefix에는 메서드가 없었다(hyper U-97). 완료 조건: Go, Rust, TypeScript model이 primary key, unique key, index의 모든 prefix마다 메서드를 선언하고, Python은 같은 이름을 실행 시점에 해석하며, symbol 기록과 docs/usage.md를 갱신한다.
   - [o] T156-1 T156 이후 orm main CI를 다시 green으로 만든다 (T156에 이어). 원인: run 38502539388이 실패했다. Python key-prefix 테스트가 PYTHONPATH를 바꾸고 지워진 packages/orm-python/bin/orm-gen을 실행했고, Go와 Rust key-prefix 테스트가 testcase를 시작하지 않았으며, generator/gen_go_key_prefix_test.go가 어떤 feature에도 속하지 않았고, src/models/markdown_fixture에 key-prefix 메서드가 없었다. 완료 조건: 각각을 고치고 그 소유 검사가 통과한다.
   - [o] T156-2 Go markdown model을 다시 생성한다 (T156에 이어). 원인: run 38504701356이 go-markdown-model-generated에서 실패했다. packages/orm-go/markdownmodel에 key-prefix 메서드가 없었다. 완료 조건: go generate가 폴더를 바꾸지 않는다.

@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
-import { DATABASE, runCase, runLong, stepLines } from '../../tests/testcase.mts';
+import { PROCESS, runCase, runLong, stepLines } from '../../tests/testcase.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { readFeatures } from './manifest.mts';
 import { parseGoTestEvent } from '../json/formats.mts';
@@ -524,9 +524,10 @@ const usesCargo = (plan: Plan): boolean => plan.native.some(spec => spec.format 
 // executeCoverage의 기한이다.
 // timeoutMs: 실행 하나가 띄우는 process 하나의 기한이다. process는 build된 binary로, database
 // 하나의 catalog digest를 읽는 state reader이거나, 선언된 case를 실행하는 test binary다. 그
-// case는 database에 연결해 자기 database를 만들고 지우며 정해진 statement를 실행하므로
-// DATABASE 등급(2분)이다. 그 앞의 build는 장기 작업이므로 기한이 없다.
-export async function executeCoverage(manifest: Manifest, root: string, timeoutMs = DATABASE): Promise<string[]> {
+// case는 자기 등급(testcase.Start, caseTest)으로 자기 기한을 지키므로, 이 기한은 멈춘 process를 끝내는 바깥
+// 경계이며 선언할 수 있는 가장 긴 등급 PROCESS(5분)보다 짧지 않다. 그 앞의 build는 장기 작업이므로 기한이 없다.
+export const NATIVE_DEADLINE = PROCESS;
+export async function executeCoverage(manifest: Manifest, root: string, timeoutMs = NATIVE_DEADLINE): Promise<string[]> {
   const reports: Record<string, Report[]> = {};
   const errors: string[] = [];
   const plans: Plans = Object.assign([] as Plan[], { root });

@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A feature coverage process runs up to the longest test class, so a test is stopped by its own deadline. (#T185)
 - The repository takes kit 0.0.53. (#T184)
 - Every planner reads and binds a PostgreSQL uuid in one form. (#T92-1)
 - The clients report the affected count of a write by one rule, proven by a conformance vector through a test entry point. (#T88-1)
