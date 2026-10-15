@@ -9,7 +9,7 @@
 // Each --vector selects one vector by name; without one every vector runs.
 // The models embed the manifest of contracts/fixtures/bench/bench.dbs.
 import {
-  AesKeyring, Author, BindCell, CORE, ClockCell, type Collection, type Model, CompositeAccount, HexCell, Service, TimeCell, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, UpsertCell, User, UuidCell, connect, orm,
+  AesKeyring, Author, BindCell, CORE, ClockCell, type Collection, type Model, CompositeAccount, HexCell, Service, TimeCell, DayCell, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, UpsertCell, User, UuidCell, connect, orm,
 } from '../../packages/ts/dist/index.js';
 import { fixClock, lastAffected } from '../../packages/ts/dist/testing.js';
 import { parseArgs } from 'node:util';
@@ -133,7 +133,7 @@ async function main() {
     log.push({ sql: e.sql, binds: e.binds.map(norm), kind: e.kind, tables: [...e.tables], transaction, error: e.error === null ? null : code(e.error) });
   });
   const out: Record<string, { statements: Logged[]; result: unknown }> = {};
-  const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'upsert_one_key', 'affected_counts', 'uuid_roundtrip', 'clock_truncate_write', 'clock_compare_six_digits']);
+  const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'date_roundtrip', 'date_null', 'upsert_one_key', 'affected_counts', 'uuid_roundtrip', 'clock_truncate_write', 'clock_compare_six_digits']);
   const declared = new Set<string>();
   const run = async (name: string, fn: () => Promise<unknown>) => {
     declared.add(name);
@@ -542,6 +542,21 @@ async function main() {
     const rows = await new TimeCell().connect(db).clock('10:11:12.345').gets();
     await created.delete();
     return picks(rows, 'clock');
+  });
+  // A date and a time(0) column read back as their text form (the driver's date and time values are the codec's input).
+  await run('date_roundtrip', async () => {
+    const created = await new DayCell().connect(db).setLabel('date').setDay('2026-06-01').setAtTime('10:11:12').create();
+    mask([created.getSeq()]);
+    const rows = await new DayCell().connect(db).label('date').gets();
+    await created.delete();
+    return picks(rows, 'day', 'at_time');
+  });
+  await run('date_null', async () => {
+    const created = await new DayCell().connect(db).setLabel('nil').create();
+    mask([created.getSeq()]);
+    const rows = await new DayCell().connect(db).label('nil').gets();
+    await created.delete();
+    return picks(rows, 'day', 'at_time');
   });
   // An upsert has exactly one conflict key (docs/protocol.md 1): upsert_cell leaves its identity primary key out, so the
   // unique key on code is the one key that can meet the row; an insert that does not assign code is IR_INVALID before

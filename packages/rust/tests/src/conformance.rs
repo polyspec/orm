@@ -10,7 +10,8 @@ use std::sync::{Arc, Mutex};
 polyspec_orm::models!();
 
 use model::{
-    Author, BindCell, ClockCell, CompositeAccount, HexCell, Service, ServiceMember, ServiceRegion, SoftRecord, Task, TimeCell, UpsertCell, User, UuidCell,
+    Author, BindCell, ClockCell, CompositeAccount, DayCell, HexCell, Service, ServiceMember, ServiceRegion, SoftRecord, Task, TimeCell, UpsertCell, User,
+    UuidCell,
 };
 use polyspec_orm::{AesKeyring, Collection, Db, Model, Null, Param};
 use serde_json::{json, Map, Value};
@@ -825,6 +826,29 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             let rows = TimeCell::new().connect(db).clock("10:11:12.345").gets().await?;
             created.delete(false).await?;
             Ok::<Value, polyspec_orm::Error>(picks(&rows, &["clock"]))
+        })
+        .retry(0)
+    );
+    // A date and a time(0) column read back as their text form (the driver's date and time values are the codec's input).
+    run!(
+        "date_roundtrip",
+        db.transaction(async || {
+            let created = DayCell::new().connect(db).set_label("date").set_day("2026-06-01")?.set_at_time("10:11:12").create().await?;
+            mask(shared, &[created.get_seq().unwrap()], &[]);
+            let rows = DayCell::new().connect(db).label("date").gets().await?;
+            created.delete(false).await?;
+            Ok::<Value, polyspec_orm::Error>(picks(&rows, &["day", "at_time"]))
+        })
+        .retry(0)
+    );
+    run!(
+        "date_null",
+        db.transaction(async || {
+            let created = DayCell::new().connect(db).set_label("nil").create().await?;
+            mask(shared, &[created.get_seq().unwrap()], &[]);
+            let rows = DayCell::new().connect(db).label("nil").gets().await?;
+            created.delete(false).await?;
+            Ok::<Value, polyspec_orm::Error>(picks(&rows, &["day", "at_time"]))
         })
         .retry(0)
     );

@@ -13,6 +13,7 @@ use Polyspec\Orm\Tests\Model\BindCell;
 use Polyspec\Orm\Tests\Model\ClockCell;
 use Polyspec\Orm\Tests\Model\CompositeAccount;
 use Polyspec\Orm\Tests\Model\HexCell;
+use Polyspec\Orm\Tests\Model\DayCell;
 use Polyspec\Orm\Tests\Model\TimeCell;
 use Polyspec\Orm\Tests\Model\Service;
 use Polyspec\Orm\Tests\Model\ServiceMember;
@@ -132,6 +133,22 @@ function pick(?Model $m, string ...$names): ?array
     return $out;
 }
 
+// dateOnly writes a date cell as its YYYY-MM-DD text, the form every other runner returns for a date column.
+function dateOnly(array $rows): array
+{
+    foreach ($rows as $i => $row) {
+        if ($row === null) {
+            continue;
+        }
+        if ($row['day'] instanceof DateTimeInterface) {
+            $rows[$i]['day'] = $row['day']->format('Y-m-d');
+        } elseif (is_string($row['day']) && preg_match('/^\d{4}-\d{2}-\d{2} /', $row['day']) === 1) {
+            $rows[$i]['day'] = substr($row['day'], 0, 10);
+        }
+    }
+    return $rows;
+}
+
 function picks(Collection $c, string ...$names): array
 {
     return array_map(static fn(Model $m): ?array => pick($m, ...$names), $c->all());
@@ -161,7 +178,7 @@ $db->subscribe(static function (StatementEvent $e): void {
 $out = [];
 /** @var array<string, callable> vector 이름별 chain, 선언 순서 */
 $vectors = [];
-$writeVectors = array_fill_keys(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'upsert_one_key', 'affected_counts', 'uuid_roundtrip', 'clock_truncate_write', 'clock_compare_six_digits'], true);
+$writeVectors = array_fill_keys(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'date_roundtrip', 'date_null', 'upsert_one_key', 'affected_counts', 'uuid_roundtrip', 'clock_truncate_write', 'clock_compare_six_digits'], true);
 
 /** vector를 선언한다. 선택된 vector는 모든 선언이 끝난 뒤 선언 순서대로 실행한다. */
 function vector(string $name, callable $fn): void
@@ -593,6 +610,23 @@ vector('time_p3_roundtrip', function () use ($db, $at): array {
     $rows = (new TimeCell)($db)->clock('10:11:12.345')->gets();
     $created->delete();
     return picks($rows, 'clock');
+});
+
+// A date and a time(0) column read back as their text form (the driver's date and time values are the codec's input).
+vector('date_roundtrip', function () use ($db): array {
+    $created = (new DayCell)($db)->setLabel('date')->setDay('2026-06-01')->setAtTime('10:11:12')->create();
+    mask([$created->getSeq()]);
+    $rows = (new DayCell)($db)->label('date')->gets();
+    $created->delete();
+    return dateOnly(picks($rows, 'day', 'at_time'));
+});
+
+vector('date_null', function () use ($db): array {
+    $created = (new DayCell)($db)->setLabel('nil')->create();
+    mask([$created->getSeq()]);
+    $rows = (new DayCell)($db)->label('nil')->gets();
+    $created->delete();
+    return dateOnly(picks($rows, 'day', 'at_time'));
 });
 
 // An upsert has exactly one conflict key (docs/protocol.md 1): upsert_cell leaves its identity primary key out, so the

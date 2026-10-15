@@ -162,6 +162,29 @@ func pick(m orm.Model, names ...string) map[string]any {
 	return out
 }
 
+// dateOnly writes a date cell as its YYYY-MM-DD text, whether the driver gave a time or the datetime text of it, the form every other runner returns for a date column.
+func dateOnly(rows []any) []any {
+	for _, r := range rows {
+		m, ok := r.(map[string]any)
+		if !ok || m == nil {
+			continue
+		}
+		switch v := m["day"].(type) {
+		case time.Time:
+			m["day"] = v.Format("2006-01-02")
+		case *time.Time:
+			if v != nil {
+				m["day"] = v.Format("2006-01-02")
+			}
+		case string:
+			if len(v) > 10 && v[10] == ' ' {
+				m["day"] = v[:10]
+			}
+		}
+	}
+	return rows
+}
+
 func picks[T orm.Model](c *orm.Collection[T], names ...string) []any {
 	out := []any{}
 	for _, m := range c.Slice() {
@@ -284,7 +307,7 @@ func run() (status int) {
 	writeVectors := map[string]bool{
 		"write_cycle": true, "now_defaults": true, "required_columns": true,
 		"creates_and_save": true, "delete_recursive": true, "contains_ascii_fold": true, "contains_binary_code_point": true,
-		"datetime_p0_roundtrip": true, "time_p3_roundtrip": true, "upsert_one_key": true, "uuid_roundtrip": true, "affected_counts": true,
+		"datetime_p0_roundtrip": true, "time_p3_roundtrip": true, "date_roundtrip": true, "date_null": true, "upsert_one_key": true, "uuid_roundtrip": true, "affected_counts": true,
 		"clock_truncate_write": true, "clock_compare_six_digits": true,
 	}
 	// vector는 선언 순서대로 모은 뒤, 선택을 검사하고 그 순서로 실행한다.
@@ -1070,6 +1093,45 @@ func run() (status int) {
 			return nil, err
 		}
 		return picks(rows, "clock"), nil
+	})
+
+	// A date and a time(0) column read back as their text form (the driver's date and time values are the codec's input).
+	dayCell := func() *model.DayCellModel { return model.DayCell().Connect(db) }
+	run("date_roundtrip", func() (any, error) {
+		day := "2026-06-01"
+		atTime := "10:11:12"
+		row, err := dayCell().SetLabel("date").SetDay(&day).SetAtTime(&atTime)
+		if err != nil {
+			return nil, err
+		}
+		created, err := row.Create()
+		if err != nil {
+			return nil, err
+		}
+		mask([]int64{created.GetSeq()})
+		rows, err := dayCell().Label("date").Gets()
+		if err != nil {
+			return nil, err
+		}
+		if err := created.Delete(); err != nil {
+			return nil, err
+		}
+		return dateOnly(picks(rows, "day", "at_time")), nil
+	})
+	run("date_null", func() (any, error) {
+		created, err := dayCell().SetLabel("nil").Create()
+		if err != nil {
+			return nil, err
+		}
+		mask([]int64{created.GetSeq()})
+		rows, err := dayCell().Label("nil").Gets()
+		if err != nil {
+			return nil, err
+		}
+		if err := created.Delete(); err != nil {
+			return nil, err
+		}
+		return dateOnly(picks(rows, "day", "at_time")), nil
 	})
 
 	// An upsert has exactly one conflict key (docs/protocol.md 1): upsert_cell

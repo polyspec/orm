@@ -3220,6 +3220,140 @@
       }
     },
     {
+      "name": "date_roundtrip",
+      "chain": "DayCell setLabel('date')-\u003esetDay('2026-06-01')-\u003esetAtTime('10:11:12')-\u003ecreate(), label('date')-\u003egets() picking day and at_time, delete(): a date and a time(0) cell read back as their text form",
+      "expect": {
+        "result": [
+          {
+            "at_time": "10:11:12",
+            "day": "2026-06-01"
+          }
+        ],
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "BEGIN IMMEDIATE",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "date",
+              "2026-06-01",
+              "10:11:12"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"day_cell\" (\"label\", \"day\", \"at_time\") VALUES (?, ?, ?) RETURNING \"seq\"",
+            "tables": [
+              "day_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "date"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"label\" AS \"a__label\", \"a\".\"day\" AS \"a__day\", \"a\".\"at_time\" AS \"a__at_time\" FROM \"day_cell\" AS \"a\" WHERE \"a\".\"label\" = ?",
+            "tables": [
+              "day_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"day_cell\" WHERE \"day_cell\".\"seq\" = ?",
+            "tables": [
+              "day_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "date_null",
+      "chain": "DayCell setLabel('nil')-\u003ecreate(), label('nil')-\u003egets() picking day and at_time, delete(): unset date and time cells read back as null",
+      "expect": {
+        "result": [
+          {
+            "at_time": null,
+            "day": null
+          }
+        ],
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "BEGIN IMMEDIATE",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "nil"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"day_cell\" (\"label\") VALUES (?) RETURNING \"seq\"",
+            "tables": [
+              "day_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "nil"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"label\" AS \"a__label\", \"a\".\"day\" AS \"a__day\", \"a\".\"at_time\" AS \"a__at_time\" FROM \"day_cell\" AS \"a\" WHERE \"a\".\"label\" = ?",
+            "tables": [
+              "day_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"day_cell\" WHERE \"day_cell\".\"seq\" = ?",
+            "tables": [
+              "day_cell"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          }
+        ]
+      }
+    },
+    {
       "name": "upsert_one_key",
       "chain": "UpsertCell setCode('k1')-\u003esetLabel('first')-\u003eduplication(setLabel('second'))-\u003ecreate() inserts, the same with setLabel('other') updates on the one conflict key code, code('k1')-\u003egets() picking label after each; setLabel('none') without code is IR_INVALID before any statement; delete()",
       "expect": {

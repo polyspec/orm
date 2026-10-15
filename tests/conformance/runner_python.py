@@ -62,9 +62,9 @@ def parse_args(args):
 # Set by main() from the arguments; importing this module parses nothing.
 DSN, MODELS_DIR, SELECTED = None, None, []
 bench = Author = CompositeAccount = Service = ServiceMember = ServiceRegion = None
-User = SoftRecord = Task = HexCell = TimeCell = ClockCell = UpsertCell = UuidCell = (
-    BindCell
-) = None
+User = SoftRecord = Task = HexCell = TimeCell = DayCell = ClockCell = UpsertCell = (
+    UuidCell
+) = BindCell = None
 
 log = []
 transactions = {}
@@ -283,6 +283,7 @@ def load_models():
         Task, \
         HexCell, \
         TimeCell, \
+        DayCell, \
         ClockCell, \
         UpsertCell, \
         UuidCell, \
@@ -311,6 +312,7 @@ def load_models():
         bench.HexCell,
     )
     TimeCell = bench.TimeCell
+    DayCell = bench.DayCell
     ClockCell = bench.ClockCell
     UpsertCell = bench.UpsertCell
     UuidCell = bench.UuidCell
@@ -339,6 +341,8 @@ def main():
         "contains_binary_code_point",
         "datetime_p0_roundtrip",
         "time_p3_roundtrip",
+        "date_roundtrip",
+        "date_null",
         "upsert_one_key",
         "affected_counts",
         "uuid_roundtrip",
@@ -1161,6 +1165,33 @@ def main():
         return picks(rows, "clock")
 
     run("time_p3_roundtrip", time_p3_roundtrip)
+
+    # A date and a time(0) column read back as their text form; the driver's own types (a date, a timedelta from
+    # PyMySQL, a datetime.time from psycopg) are the codec's input, so the rows come back as text.
+    def date_roundtrip():
+        created = (
+            DayCell()
+            .connect(db)
+            .set_label("date")
+            .set_day("2026-06-01")
+            .set_at_time("10:11:12")
+            .create()
+        )
+        mask([created.get_seq()])
+        rows = DayCell().connect(db).label("date").gets()
+        created.delete()
+        return picks(rows, "day", "at_time")
+
+    run("date_roundtrip", date_roundtrip)
+
+    def date_null():
+        created = DayCell().connect(db).set_label("nil").create()
+        mask([created.get_seq()])
+        rows = DayCell().connect(db).label("nil").gets()
+        created.delete()
+        return picks(rows, "day", "at_time")
+
+    run("date_null", date_null)
 
     # An upsert has exactly one conflict key (docs/protocol.md 1): upsert_cell leaves its identity primary key out, so
     # the unique key on code is the one key that can meet the row; an insert that does not assign code is IR_INVALID

@@ -11,7 +11,7 @@ use Polyspec\Orm\Registry;
 use Polyspec\Orm\Schema;
 
 /** The manifestHash of the document set the models were generated from. */
-const MANIFEST_HASH = 'sha256:6b243f5910037ab61aca570f15bcb9c94461a80690ec6ed9546fecaf51e5af29';
+const MANIFEST_HASH = 'sha256:a26e0390c07bd97f6907d6d4588636778e3073086eceb3cd7bcf7e693f875e30';
 
 /** The manifest text of the document set the models were generated from. */
 const MANIFEST_TEXT = 'dbspec 1 bench
@@ -198,6 +198,14 @@ table clock_cell {
   primary key (seq)
 }
 
+table day_cell {
+  seq i64 identity
+  label varchar(8)
+  day date null
+  at_time time(0) null
+  primary key (seq)
+}
+
 table upsert_cell {
   seq i64 identity
   code varchar(16)
@@ -249,6 +257,7 @@ Registry::register(Task::class);
 Registry::register(HexCell::class);
 Registry::register(TimeCell::class);
 Registry::register(ClockCell::class);
+Registry::register(DayCell::class);
 Registry::register(UpsertCell::class);
 Registry::register(UuidCell::class);
 Registry::register(BindCell::class);

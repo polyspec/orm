@@ -290,6 +290,21 @@ def _fraction(digits, precision: int):
     return "" if precision == 0 else "." + all_digits[:precision]
 
 
+def _native_time_text(value):
+    """A driver TIME value as HH:MM:SS.ffffff text, or None outside 00:00:00 to 23:59:59.999999."""
+    import datetime
+
+    if isinstance(value, datetime.timedelta):
+        if value < datetime.timedelta(0) or value >= datetime.timedelta(days=1):
+            return None
+        hours, rest = divmod(value.seconds, 3600)
+        minutes, seconds = divmod(rest, 60)
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}.{value.microseconds:06d}"
+    if value.tzinfo is not None:
+        return None
+    return f"{value.hour:02d}:{value.minute:02d}:{value.second:02d}.{value.microsecond:06d}"
+
+
 def _time_form(value, col_type: str, zone: str, precision: int):
     """date, time, datetime text를 값 형태(docs/dbspec.md "Runtime model")로 읽는다:
     `YYYY-MM-DD`, `HH:MM:SS`, p자리 소수의 `YYYY-MM-DD HH:MM:SS`. offset이 있는
@@ -317,6 +332,12 @@ def _time_form(value, col_type: str, zone: str, precision: int):
         return (
             text if col_type == "date" else _time_form(text, col_type, zone, precision)
         )
+    if isinstance(value, (datetime.timedelta, datetime.time)):
+        # PyMySQL reads a TIME cell as timedelta and psycopg as datetime.time; neither is a date.
+        if col_type != "time":
+            return None
+        text = _native_time_text(value)
+        return None if text is None else _time_form(text, col_type, zone, precision)
     if not isinstance(value, str):
         return None
     if col_type == "date":

@@ -182,6 +182,14 @@ table clock_cell {
   primary key (seq)
 }
 
+table day_cell {
+  seq i64 identity
+  label varchar(8)
+  day date null
+  at_time time(0) null
+  primary key (seq)
+}
+
 table upsert_cell {
   seq i64 identity
   code varchar(16)

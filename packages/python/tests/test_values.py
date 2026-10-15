@@ -66,6 +66,57 @@ class NaiveDatetimeTest(unittest.TestCase):
             time.tzset()
 
 
+class NativeTimeReadTest(unittest.TestCase):
+    """PyMySQL reads a TIME cell as timedelta and psycopg as datetime.time; a DATE cell is a date. read_time
+    takes each as the text form, and a value it cannot read is CODEC_DECODE, never another exception."""
+
+    def test_driver_time_and_date_cells_read_as_text(self):
+        import datetime
+        from polyspec.orm.database import read_time
+
+        cases = [
+            (
+                datetime.timedelta(
+                    hours=10, minutes=11, seconds=12, microseconds=345000
+                ),
+                "time",
+                3,
+                "10:11:12.345",
+            ),
+            (
+                datetime.timedelta(hours=10, minutes=11, seconds=12),
+                "time",
+                0,
+                "10:11:12",
+            ),
+            (datetime.time(10, 11, 12, 345000), "time", 3, "10:11:12.345"),
+            (datetime.time(0, 0, 0), "time", 0, "00:00:00"),
+            (datetime.date(2026, 6, 1), "date", 0, "2026-06-01"),
+        ]
+        for value, col_type, precision, text in cases:
+            with self.subTest(value=repr(value), col_type=col_type):
+                self.assertEqual(read_time(value, col_type, "+00:00", precision), text)
+
+    def test_driver_time_cells_outside_the_form_are_codec_decode(self):
+        import datetime
+        from polyspec.orm.database import read_time
+
+        cases = [
+            (datetime.timedelta(hours=24), "time", 3),
+            (datetime.timedelta(seconds=-1), "time", 3),
+            (datetime.timedelta(hours=1, microseconds=5), "time", 0),
+            (datetime.time(10, 11, 12, 1), "time", 0),
+            (datetime.timedelta(days=1), "date", 0),
+            (object(), "date", 0),
+            (object(), "time", 0),
+        ]
+        for value, col_type, precision in cases:
+            with self.subTest(value=repr(value), col_type=col_type):
+                with self.assertRaises(OrmError) as caught:
+                    read_time(value, col_type, "+00:00", precision)
+                self.assertEqual(caught.exception.code, "CODEC_DECODE")
+
+
 class HostCodecTest(unittest.TestCase):
     def test_ip_round_trip(self):
         for address in ["127.0.0.1", "255.255.255.255", "2001:db8::1", "::1", "fe80::"]:

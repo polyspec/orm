@@ -8,7 +8,7 @@ A client renders the model built with the [DSL](dsl.md) into the request below, 
 ```json
 {
   "ir_version": 1,
-  "manifest_hash": "sha256:6b243f5910037ab61aca570f15bcb9c94461a80690ec6ed9546fecaf51e5af29",
+  "manifest_hash": "sha256:a26e0390c07bd97f6907d6d4588636778e3073086eceb3cd7bcf7e693f875e30",
   "kind": "one | all | count | group_count | sum | avg | paginate | insert | update | delete | restore | restart_identity",
   "entity": "author",
   "columns": Columns,
