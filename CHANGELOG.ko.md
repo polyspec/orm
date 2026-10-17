@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5d922c4f2179526edda44119b896099e1d343ac6ca4961145a665ee49a44c2fc -->
+<!-- source-sha256: de8226d4478af094051b20f0775282ab8e55bb0be3fa5c762c1133e99f0b3e4f -->
 # 변경 이력
 
 ## Unreleased
 - features의 `clients` flag를 contracts/features.json, schema와 scripts/features에서 없앴고, contracts/rules.json의 `tests.language-parity`가 parity check를 쓴다. (#T77-10-2)
+- Go dialect physical test 파일 열 개와 probe_test.go가 schema_definition feature에 속하며, 정적 feature 검사가 통과한다. (#T198-1)
 - PHP conformance runner와 result helper가 packages/php/testing/conformance에 있으며, PHP result helper test가 거기서 불러온다. (#T77-9-2-1)
 - Go conformance runner, dbspec Go program, Go symbol extractor와 dialect physical test가 packages/go/internal에 있으며, Go adapter는 cross-language 도구를 제외하고 tests/ 아래에 남지 않는다. (#T77-9-1)
 

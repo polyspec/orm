@@ -3298,6 +3298,16 @@
         "packages/python/tests/coverage_case.py"
       ],
       "tests": [
+        "packages/go/internal/dialects/apply_clients_physical_test.go",
+        "packages/go/internal/dialects/apply_physical_test.go",
+        "packages/go/internal/dialects/ddl_physical_test.go",
+        "packages/go/internal/dialects/facts_physical_test.go",
+        "packages/go/internal/dialects/introspect_compare_physical_test.go",
+        "packages/go/internal/dialects/introspect_physical_test.go",
+        "packages/go/internal/dialects/plans_physical_test.go",
+        "packages/go/internal/dialects/probe_test.go",
+        "packages/go/internal/dialects/schema_documents_physical_test.go",
+        "packages/go/internal/dialects/sqlite_filename_physical_test.go",
         "packages/php/tests/DbspecApplyCleanupTest.php",
         "packages/php/tests/DbspecApplyTest.php",
         "packages/php/tests/dbspec_cases.php",
