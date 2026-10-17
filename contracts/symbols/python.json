@@ -16,6 +16,7 @@
   "packages/python/src/polyspec/orm/bind_check.py::check_param": "def check_param(i: int, value, slot: ParamSlot, zone: str) -\u003e None",
   "packages/python/src/polyspec/orm/bind_check.py::transform_param": "def transform_param(kind: str, value)",
   "packages/python/src/polyspec/orm/bind_check.py::use_slot_type": "def use_slot_type(use: ParamUse) -\u003e ParamSlot",
+  "packages/python/src/polyspec/orm/canonical.py::canonical_request": "def canonical_request(request: dict, params) -\u003e tuple[dict, list]",
   "packages/python/src/polyspec/orm/clock.py::wall_micros": "def wall_micros() -\u003e int",
   "packages/python/src/polyspec/orm/codec.py::CodecError": "class CodecError(Exception)",
   "packages/python/src/polyspec/orm/codec.py::blind_index": "def blind_index(value, key: str)",
