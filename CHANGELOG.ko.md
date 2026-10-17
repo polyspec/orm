@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0f8932bf578e805a73e6a77933208abfebed8c6689e1ef3c29ffe116e360d216 -->
+<!-- source-sha256: 7f72f0a729a2407ac5c11901b7e3dff2605c467f42286ac93599b10363d8c634 -->
 # 변경 이력
 
 ## Unreleased
 - Go 성능 gate는 tools root인 packages/go/bench의 benchmark다. 이 root는 어떤 구현에도 속하지 않으므로 그 go-internal parity unit을 없앴다. gate는 performance_gate feature로 계속 실행된다. (#T77-8-1-1)
+- 열린 행 T77-33은 physical fixture timestamp가 실행 시각 상대값이라 day_of_week와 days_ago 기대값이 결정적이지 않음을 기록한다.
 - physical query-form test가 MySQL, PostgreSQL, SQLite에서 실행된다. MySQL DSN은 DB 이름과 함께 한 번 변환되고, 제거된 distance case는 빠지며, day_of_week 개수는 픽스처를 따른다(T77-26, T77-27).
 - MySQL DSN은 DB 이름과 함께 한 번 변환되어 physical query-form test가 MySQL에서 실행된다(T77-26).
 - 열린 행 T77-30, T77-31, T77-32는 TypeScript parity unit 실패 세 가지를 첫 오류 줄로 기록한다(T77-30 setDay 선언, T77-31 SQLite 파일, T77-32 재귀 node:test run).
