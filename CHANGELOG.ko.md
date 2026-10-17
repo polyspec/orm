@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: da428e930d1e9d40bd6280f7f275de848796d5256b1f4a6e671dfbecfc6db0a7 -->
+<!-- source-sha256: 320e616629a0b74f20d936958a251e21a0086c1403e116de22cd9a777e1e438b -->
 # 변경 이력
 
 ## Unreleased
 - Go 성능 gate는 tools root인 packages/go/bench의 benchmark다. 이 root는 어떤 구현에도 속하지 않으므로 그 go-internal parity unit을 없앴다. gate는 performance_gate feature로 계속 실행된다. (#T77-8-1-1)
+- client surface symbol은 선언되어 있다. live 선언 검사가 선언되지 않은 공개 symbol을 찾지 않는다(T77-8-1-3).
 - dbspec symbol은 선언되어 있다. live 선언 검사가 선언되지 않은 공개 symbol을 찾지 않는다(T77-8-1-2).
 - PHP와 TypeScript adapter는 packages/php와 packages/ts에 있다. 상위 행은 하위 네 항목과 함께 닫힌다(T77-9-2).
 - parity 선언 규칙 R4부터 R10까지 main에서 통과한다. 선언되지 않은 suite, 묶이지 않은 test 파일, root와 문서 수, 오래된 client 목록을 선언했다(T148-3-7).
