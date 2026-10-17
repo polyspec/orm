@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 917e22dc6a72debebbb22f6fffdd31d57a937ceefafb48a0243a99f8c794bd77 -->
+<!-- source-sha256: fc16bd6185c5f60b01db261aefe2b5166ef57e449e0cfc555c5ab7d4716f0a10 -->
 # 변경 이력
 
 ## Unreleased
 - Go 성능 gate는 tools root인 packages/go/bench의 benchmark다. 이 root는 어떤 구현에도 속하지 않으므로 그 go-internal parity unit을 없앴다. gate는 performance_gate feature로 계속 실행된다. (#T77-8-1-1)
+- The SQLite concurrency unit cleans up after its cases run (T77-31).
 - The TypeScript generate unit expects the text-form setter declared in docs/dbspec.md (T77-30).
 - vendor된 kit 복사본이 @polyspec/kit 0.0.53과 일치하며, K208 trust wrapper를 담는다(T77-36).
 - 열린 행 T77-35는 각 go-orm parity unit이 orm 패키지 전체를 두 번 실행하며, unit은 자기 test만 실행해야 함을 기록한다.

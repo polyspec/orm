@@ -3,6 +3,7 @@
 
 ## Unreleased
 - The Go performance gate is a benchmark of the tools root packages/go/bench, which belongs to no implementation, so its go-internal parity unit is removed; the gate still runs as the performance_gate feature. (#T77-8-1-1)
+- The SQLite concurrency unit cleans up after its cases run (T77-31).
 - The TypeScript generate unit expects the text-form setter declared in docs/dbspec.md (T77-30).
 - The vendored kit copies match @polyspec/kit 0.0.53, which carries the K208 trust wrapper (T77-36).
 - Open row T77-35 records that each go-orm parity unit runs the whole orm package twice, and the unit should run only its own tests.

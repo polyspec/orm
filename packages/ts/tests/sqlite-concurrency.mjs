@@ -10,6 +10,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { after } from 'node:test';
 import { OrmError, SCHEMA, Service, connect } from '../dist/index.js';
 import { PROCESS, caseTest } from '../../../tests/testcase.mts';
 
@@ -117,16 +118,17 @@ const tests = {
 
 // 각 case의 기한은 PROCESS다. 가장 큰 case가 writer process 6개를 띄우고 각각 transaction
 // 40개를 commit한다.
-try {
-  for (const [name, test] of Object.entries(tests)) {
-    caseTest(`sqlite-concurrency/${name}`, PROCESS, async () => {
-      const before = failures;
-      current = name;
-      await test();
-      if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
-    });
-  }
-} finally {
+// node:test runs each case after this module body returns, so the directory is removed by an after hook that
+// runs when all the cases have finished, not in a finally block here (which would remove it before they run).
+after(async () => {
   await rm(work, { recursive: true, force: true });
+  if (failures > 0) process.exitCode = 1;
+});
+for (const [name, test] of Object.entries(tests)) {
+  caseTest(`sqlite-concurrency/${name}`, PROCESS, async () => {
+    const before = failures;
+    current = name;
+    await test();
+    if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
+  });
 }
-if (failures > 0) process.exitCode = 1;
