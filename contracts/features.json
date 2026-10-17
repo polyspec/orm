@@ -54,13 +54,17 @@
           "when": "the server ended the connection (a killed session, a restart, an idle limit) or the connection broke; the statement fails with this code and is not sent again"
         }
       ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "pass",
-        "typescript": "pass",
-        "python": "pass"
-      },
+      "parity": [
+        "go-internal-packages-go-model-coverage-dsn",
+        "go-internal-packages-go-orm-coverage-dsn",
+        "php-internal-coverage-dsn-dsn-connection",
+        "py-cov-dsn-dsn-connection",
+        "rust-coverage-dsn-connection",
+        "rust-integration-coverage-generated-model-connection",
+        "rust-integration-generated-fields-require-selection-or-assignment",
+        "rust-integration-generated-nonnull-styled-setter-rejects-sql-null",
+        "ts-coverage_dsn"
+      ],
       "fixtures": [
         "packages/go/orm/test_helpers_test.go",
         "packages/go/orm/coverage_fixture_test.go",
@@ -775,13 +779,13 @@
           "when": "an IN list is empty"
         }
       ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "pass",
-        "typescript": "pass",
-        "python": "pass"
-      },
+      "parity": [
+        "go-internal-packages-go-model-coverage-model-queries",
+        "php-internal-coverage-model-queries-model-query-rows",
+        "py-cov-model-queries-model-query-rows",
+        "rust-integration-coverage-model-queries-coverage-model-query-rows",
+        "ts-coverage_model_queries"
+      ],
       "fixtures": [
         "tests/conformance/vectors.json",
         "packages/php/tests/autoload.php",
@@ -1451,13 +1455,13 @@
           "when": "restore names a key that no row has"
         }
       ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "pass",
-        "typescript": "pass",
-        "python": "pass"
-      },
+      "parity": [
+        "go-internal-packages-go-model-coverage-model-writes",
+        "php-internal-coverage-model-writes-model-write-cycle",
+        "py-cov-model-writes-model-write-cycle",
+        "rust-integration-coverage-model-writes-coverage-model-write-cycle",
+        "ts-coverage_model_writes"
+      ],
       "fixtures": [
         "tests/conformance/vectors.json",
         "contracts/fixtures/decimal_model.json",
@@ -2057,13 +2061,16 @@
           "when": "a test fault armed through the test entry point reported the rollback of a transaction whose callback failed as failed after the rollback ran; it is the rollback error of a ROLLBACK error"
         }
       ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "pass",
-        "typescript": "pass",
-        "python": "pass"
-      },
+      "parity": [
+        "go-internal-packages-go-model-coverage-transactions",
+        "php-internal-coverage-transactions-transaction-rollback",
+        "php-internal-coverage-transactions-transaction-savepoint",
+        "py-cov-transactions-transaction-rollback",
+        "py-cov-transactions-transaction-savepoint",
+        "rust-integration-coverage-transactions-coverage-transaction-rollback",
+        "rust-integration-coverage-transactions-coverage-transaction-savepoint",
+        "ts-coverage_transactions"
+      ],
       "fixtures": [
         "packages/php/tests/deadlock_child.php",
         "contracts/fixtures/rollback.dbs",
@@ -2582,13 +2589,12 @@
           "when": "a subscriber returned an error or threw; the error is its cause"
         }
       ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "pass",
-        "typescript": "pass",
-        "python": "pass"
-      },
+      "parity": [
+        "go-internal-packages-go-orm-coverage-statement-events",
+        "php-internal-coverage-statement-events-statement-events",
+        "py-cov-statement-events-statement-events",
+        "statement-events"
+      ],
       "fixtures": [
         "contracts/fixtures/statement_events.dbs",
         "tests/events/vectors.json",
@@ -2969,13 +2975,13 @@
           "when": "a document of the set breaks a dbspec rule"
         }
       ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "pass",
-        "typescript": "pass",
-        "python": "pass"
-      },
+      "parity": [
+        "go-internal-packages-go-model-coverage-model-generation",
+        "php-internal-coverage-model-generation-model-generation-check",
+        "py-cov-model-generation-model-generation-check",
+        "rust-coverage-model-generation-check",
+        "ts-coverage_model_generation"
+      ],
       "fixtures": [
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
@@ -3271,13 +3277,9 @@
           "when": "a database connection is invalid"
         }
       ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "pass",
-        "typescript": "pass",
-        "python": "pass"
-      },
+      "parity": [
+        "schema-definition"
+      ],
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
         "tests/dbspec/cases.json",
@@ -3970,13 +3972,19 @@
           "when": "addTablesAndColumns found a difference between the existing tables of the document set and the set other than a missing table, a missing column that is null or has a default or a missing index; a missing unique key is such a difference, because it can fail on the existing rows"
         }
       ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "pass",
-        "typescript": "pass",
-        "python": "pass"
-      },
+      "parity": [
+        "go-internal-packages-go-model-coverage-schema-install",
+        "php-internal-coverage-schema-install-schema-install-existing",
+        "php-internal-coverage-schema-install-schema-install-external-documents",
+        "php-internal-coverage-schema-install-schema-install-partial",
+        "py-cov-schema-install-schema-install-existing",
+        "py-cov-schema-install-schema-install-external-documents",
+        "py-cov-schema-install-schema-install-partial",
+        "rust-integration-coverage-schema-install-coverage-schema-install-existing",
+        "rust-integration-coverage-schema-install-coverage-schema-install-external-documents",
+        "rust-integration-coverage-schema-install-coverage-schema-install-partial",
+        "ts-coverage_schema_install"
+      ],
       "fixtures": [
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
@@ -4497,13 +4505,9 @@
           "when": "a function name is unknown"
         }
       ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "pass",
-        "typescript": "pass",
-        "python": "pass"
-      },
+      "parity": [
+        "planner"
+      ],
       "fixtures": [
         "contracts/fixtures/planner.json",
         "contracts/fixtures/restore_keys.dbs",
@@ -5392,13 +5396,13 @@
           "when": "a tuple condition has the wrong width"
         }
       ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "pass",
-        "typescript": "pass",
-        "python": "pass"
-      },
+      "parity": [
+        "go-internal-packages-go-model-coverage-composite-keys",
+        "php-internal-coverage-composite-keys-composite-key-rows",
+        "py-cov-composite-keys-composite-key-rows",
+        "rust-integration-coverage-composite-keys-coverage-composite-key-rows",
+        "ts-coverage_composite_keys"
+      ],
       "fixtures": [
         "tests/conformance/vectors.json",
         "packages/go/model/coverage_helpers_test.go",
@@ -5698,13 +5702,14 @@
           "when": "a value cannot be decoded"
         }
       ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "pass",
-        "typescript": "pass",
-        "python": "pass"
-      },
+      "parity": [
+        "authenticated-encryption",
+        "py-cov-authenticated-encryption-aes-envelope-decrypt",
+        "py-cov-authenticated-encryption-aes-round-trip",
+        "py-cov-authenticated-encryption-aes-tamper-rejected",
+        "py-cov-authenticated-encryption-aes-wrong-key-rejected",
+        "py-cov-authenticated-encryption-blind-index-vector"
+      ],
       "fixtures": [
         "tests/codec/aes-vectors.json",
         "tests/codec/vectors.json",
@@ -6079,13 +6084,13 @@
           "when": "an IN list is empty"
         }
       ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "pass",
-        "typescript": "pass",
-        "python": "pass"
-      },
+      "parity": [
+        "go-internal-packages-go-model-coverage-parameter-chunking",
+        "php-internal-coverage-parameter-chunking-root-in-chunking",
+        "py-cov-parameter-chunking-root-in-chunking",
+        "rust-integration-coverage-parameter-chunking-coverage-root-in-chunking",
+        "ts-coverage_parameter_chunking"
+      ],
       "fixtures": [
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
@@ -6421,13 +6426,13 @@
           "when": "a trigger, such as an immutable or audit trigger, refuses a write, or the driver reports another error that the catalog does not list"
         }
       ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "pass",
-        "typescript": "pass",
-        "python": "pass"
-      },
+      "parity": [
+        "go-internal-packages-go-model-coverage-constraints-and-relations",
+        "php-internal-coverage-constraints-and-relations-constraint-errors",
+        "py-cov-constraints-and-relations-constraint-errors",
+        "rust-integration-coverage-constraints-and-relations-coverage-constraint-errors",
+        "ts-coverage_constraints_and_relations"
+      ],
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
         "contracts/fixtures/refusal.dbs",
@@ -6791,13 +6796,22 @@
           "when": "a transaction has audit values on a connection without an audit source, a source or transaction value is not a column of the audit record table, the sets of the connection name no or several audit record tables, or an audited table is written outside a transaction with audit values"
         }
       ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "pass",
-        "typescript": "pass",
-        "python": "pass"
-      },
+      "parity": [
+        "go-internal-packages-go-orm-coverage-audit-triggers",
+        "php-internal-coverage-audit-columns-audit-selected-columns",
+        "php-internal-coverage-audit-triggers-audit-history",
+        "php-internal-coverage-audit-triggers-audit-transaction-entry-points",
+        "php-internal-coverage-audit-triggers-soft-delete-restore",
+        "py-cov-audit-triggers-audit-history",
+        "py-cov-audit-triggers-audit-selected-columns",
+        "py-cov-audit-triggers-audit-transaction-entry-points",
+        "py-cov-audit-triggers-soft-delete-restore",
+        "rust-coverage-audit-history",
+        "rust-coverage-audit-selected-columns",
+        "rust-coverage-audit-transaction-entry-points",
+        "rust-coverage-soft-delete-restore",
+        "ts-coverage_audit_triggers"
+      ],
       "fixtures": [
         "contracts/fixtures/audit.dbs",
         "contracts/fixtures/audit_columns.dbs",
@@ -7239,13 +7253,13 @@
           "when": "a language's extracted declarations differ from the manifest, or a component diagram differs from the manifest"
         }
       ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "pass",
-        "typescript": "pass",
-        "python": "pass"
-      },
+      "parity": [
+        "go-internal-packages-go-orm-coverage-interface-contract",
+        "php-internal-coverage-interface-contract-interface-symbols",
+        "py-cov-interface-contract-interface-symbols",
+        "rust-coverage-interface-symbols",
+        "ts-coverage_interface_contract"
+      ],
       "fixtures": [
         "contracts/interfaces.json",
         "packages/go/orm/coverage_fixture_test.go",
@@ -7470,8 +7484,8 @@
       "title": "Hot-path performance standard",
       "title_ko": "hot-path 성능 기준",
       "status": "partial",
-      "description": "The Go client and the PHP client measure hot-path latency as a ratio to the raw driver on the seeded MySQL bench database, and make perf-check prints each ratio and warns when a workload exceeds its recorded reference; a measurement never fails it. The Rust bench harness measures without a reference, and the TypeScript standard is not built.",
-      "description_ko": "Go와 PHP 클라이언트는 seed한 MySQL 벤치 데이터베이스에서 hot-path 지연 시간을 순수 드라이버와의 비율로 재며, make perf-check는 비율을 출력하고 작업량이 기록한 기준값을 넘으면 경고한다. 측정은 그것을 실패시키지 않는다. Rust 벤치 도구는 기준값 없이 측정만 하고 TypeScript 기준은 만들지 않았다.",
+      "description": "The PHP client measures hot-path latency as a ratio to the raw driver on the seeded MySQL bench database, and make perf-check prints each ratio and warns when a workload exceeds its recorded reference; a measurement never fails it. The Rust bench harness measures without a reference, and the TypeScript standard is not built.",
+      "description_ko": "PHP 클라이언트는 seed한 MySQL 벤치 데이터베이스에서 hot-path 지연 시간을 순수 드라이버와의 비율로 재며, make perf-check는 비율을 출력하고 작업량이 기록한 기준값을 넘으면 경고한다. 측정은 그것을 실패시키지 않는다. Rust 벤치 도구는 기준값 없이 측정만 하고 TypeScript 기준은 만들지 않았다.",
       "inputs": {
         "type": "BenchmarkDatabase",
         "fields": [
@@ -7497,13 +7511,10 @@
           "when": "a workload's client/native ratio exceeds its recorded bound; the runner prints the measured pair and the bound"
         }
       ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "partial",
-        "typescript": "planned",
-        "python": "planned"
-      },
+      "parity": [
+        "php-internal-coverage-performance-gate-hot-path-gate",
+        "rust-coverage-hot-path-gate"
+      ],
       "fixtures": [
         "docs/perf-raw-go-native.txt",
         "docs/perf-raw-rust-native.txt",
@@ -7579,26 +7590,6 @@
           "hot_path_gate"
         ],
         "owners": {
-          "go": {
-            "part": "packages/go/bench",
-            "tests": [
-              "packages/go/bench/coverage_performance_gate_test.go"
-            ],
-            "commands": {
-              "none": [
-                {
-                  "runner": "go",
-                  "test": "packages/go/bench/coverage_performance_gate_test.go",
-                  "cases": [
-                    "hot_path_gate"
-                  ],
-                  "symbols": {
-                    "hot_path_gate": "TestCoveragePerformanceGate"
-                  }
-                }
-              ]
-            }
-          },
           "php": {
             "part": "packages/php/tests",
             "tests": [
@@ -7675,13 +7666,13 @@
           "when": "a runner cannot connect or another run holds the lock"
         }
       ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "pass",
-        "typescript": "pass",
-        "python": "pass"
-      },
+      "parity": [
+        "conformance-mysql",
+        "conformance-postgres",
+        "conformance-sqlite",
+        "py-cov-conformance-verification-conformance-vector",
+        "ts-coverage_conformance_verification"
+      ],
       "fixtures": [
         "tests/conformance/vectors.json",
         "tests/conformance/vectors.postgres.json",
@@ -7834,12 +7825,6 @@
           "tests/conformance/vectors.json",
           "tests/conformance/vectors.postgres.json",
           "tests/conformance/vectors.sqlite.json"
-        ],
-        "required_clients": [
-          "go",
-          "php",
-          "rust",
-          "typescript"
         ],
         "required_databases": [
           "mysql",
@@ -8127,13 +8112,10 @@
           "when": "the DSN, the table reference or a limit is invalid, or a read-only statement writes"
         }
       ],
-      "clients": {
-        "go": "unsupported",
-        "php": "unsupported",
-        "rust": "pass",
-        "typescript": "unsupported",
-        "python": "planned"
-      },
+      "parity": [
+        "rust-coverage-catalog-read",
+        "rust-coverage-catalog-row-mutation"
+      ],
       "fixtures": [
         "packages/rust/tests/tests/common/mod.rs"
       ],
@@ -8319,13 +8301,54 @@
           "when": "the request the hook changed is invalid, such as a parameter index outside the parameters; no statement runs"
         }
       ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "pass",
-        "typescript": "pass",
-        "python": "pass"
-      },
+      "parity": [
+        "go-internal-packages-go-orm-coverage-request-hook",
+        "php-internal-coverage-request-hook-insert-assign",
+        "php-internal-coverage-request-hook-invalid-param",
+        "php-internal-coverage-request-hook-loaded-row-writes",
+        "php-internal-coverage-request-hook-read-filter",
+        "php-internal-coverage-request-hook-restore-condition",
+        "php-internal-coverage-request-hook-restore-hook-set-key",
+        "php-internal-coverage-request-hook-restore-key",
+        "php-internal-coverage-request-hook-restore-no-key",
+        "php-internal-coverage-request-hook-restore-rewritten-key",
+        "php-internal-coverage-request-hook-without-hook",
+        "py-cov-request-hook-insert-assign",
+        "py-cov-request-hook-invalid-param",
+        "py-cov-request-hook-loaded-row-writes",
+        "py-cov-request-hook-read-filter",
+        "py-cov-request-hook-restore-condition",
+        "py-cov-request-hook-restore-hook-set-key",
+        "py-cov-request-hook-restore-key",
+        "py-cov-request-hook-restore-no-key",
+        "py-cov-request-hook-restore-rewritten-key",
+        "py-cov-request-hook-without-hook",
+        "rust-coverage-request-hook-insert-assign",
+        "rust-coverage-request-hook-invalid-param",
+        "rust-coverage-request-hook-loaded-row-writes",
+        "rust-coverage-request-hook-read-filter",
+        "rust-coverage-request-hook-restore-condition",
+        "rust-coverage-request-hook-restore-hook-set-key",
+        "rust-coverage-request-hook-restore-key",
+        "rust-coverage-request-hook-restore-no-key",
+        "rust-coverage-request-hook-restore-rewritten-key",
+        "rust-coverage-request-hook-without-hook",
+        "rust-creates-parts-order",
+        "rust-creates-parts-rollback",
+        "rust-creates-parts-shapes",
+        "rust-insert-assign",
+        "rust-invalid-param",
+        "rust-loaded-row-writes",
+        "rust-read-filter",
+        "rust-reads-params",
+        "rust-restore-condition",
+        "rust-restore-hook-set-key",
+        "rust-restore-key",
+        "rust-restore-no-key",
+        "rust-restore-rewritten-key",
+        "rust-without-hook",
+        "ts-coverage_request_hook"
+      ],
       "fixtures": [
         "contracts/fixtures/request_hook.dbs",
         "packages/ts/tests/request_hook_run.mjs",

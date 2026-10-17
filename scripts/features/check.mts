@@ -6,7 +6,7 @@ import { errorCode, errorMessage } from '../../tests/errors.mts';
 import type { Check } from './select.mts';
 import { manifestInputErrors } from './owners.mts';
 import { readFeatures, type FeatureManifest } from './manifest.mts';
-import { clientLanguages } from './languages.mts';
+import { clientLanguages, unitTests, unknownParityUnits } from './languages.mts';
 import { JsonError, readJsonFile, SchemaError } from '../json/schema.mts';
 import { parseSelection, selectChecks, selectionErrors, SHARDS } from './select.mts';
 
@@ -109,10 +109,9 @@ for (const feature of manifest.features) {
   }
 }
 
-// tests.language-parity: every client claim names a test of that language and
-// every language test file belongs to a feature. A shared vector contract
-// covers all clients because the conformance comparator fails when one
-// language does not run the declared vectors.
+// tests.language-parity (the parity check of @polyspec/kit reads config/parity.json): every language test file belongs to a
+// feature. A shared vector contract covers all clients because the conformance comparator fails when one language does not
+// run the declared vectors.
 const languageTests: Record<string, { roots: string[]; match: (file: string) => boolean }> = {
   // packages/go/testcase is the case harness of every Go test, checked by make testcase-check, not a feature of the client.
   go: { roots: ['packages/go'], match: (file: string) => file.endsWith('_test.go') && !file.startsWith('packages/go/testcase/') },
@@ -148,7 +147,6 @@ for (const [language, spec] of Object.entries(languageTests)) {
   }
   existing[language] = files;
 }
-const claimsLanguage = (language: string, relative: string) => (languageTests[language]?.roots ?? []).some((directory: string) => relative === directory || relative.startsWith(directory + '/'));
 const listedByFeatures = new Set<string>();
 for (const feature of manifest.features) {
   for (const relative of [...feature.fixtures, ...feature.tests]) listedByFeatures.add(relative);
@@ -159,11 +157,16 @@ for (const helper of manifest.helpers ?? []) for (const relative of [...helper.p
 const tracked = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
 errors.push(...manifestInputErrors(manifest, tracked));
 for (const feature of manifest.features) {
-  for (const language of clients) {
-    const status = feature.clients[language];
-    const backed = feature.tests.some((relative: string) => claimsLanguage(language, relative)) || Boolean(feature.vector_contract);
-    if ((status === 'pass' || status === 'partial') && !backed) errors.push(`${feature.id}: clients.${language} ${status} names no test of that language`);
-    if (feature.status === 'implemented' && status !== 'pass') errors.push(`${feature.id}: implemented feature is not pass in ${language}`);
+  for (const id of unknownParityUnits(feature.parity)) errors.push(`${feature.id}: parity unit ${id} is not declared in config/parity.json`);
+  // Each owner or dependent test of a language is bound by a parity unit of that language that the feature names.
+  const parts = [
+    ...Object.entries(feature.coverage?.owners ?? {}).map(([language, owner]) => ({ language, tests: owner.tests, role: 'owner' })),
+    ...(feature.coverage?.dependents ?? []).map(dependent => ({ language: dependent.language, tests: dependent.tests, role: `dependent ${dependent.id}` })),
+  ];
+  for (const { language, tests, role } of parts) {
+    if (!clients.includes(language)) continue;
+    const bound = feature.parity.some(id => unitTests(id, language).some(test => tests.includes(test)));
+    if (!bound) errors.push(`${feature.id}: the ${role} of ${language} is bound by no parity unit of that feature`);
   }
 }
 for (const [language, files] of Object.entries(existing)) {

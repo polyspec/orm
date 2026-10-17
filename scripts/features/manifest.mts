@@ -3,9 +3,7 @@
 import { resolve } from 'node:path';
 import { parseJson, readJsonFile } from '../json/schema.mts';
 
-/** A client status of a feature. */
-export type ClientStatus = 'planned' | 'partial' | 'pass' | 'unsupported';
-/** A language of the clients. */
+/** A language of the clients (the client profile of config/parity.json). */
 export type Language = 'go' | 'php' | 'rust' | 'typescript' | 'python';
 /** A verification command of a feature. */
 export type Verification = { id: string; command: string; shard: string; inputs?: string[]; cwd?: string; environment?: 'linux-runner' };
@@ -20,12 +18,12 @@ export type CoverageDependent = { id: string; language: Language; part: string; 
 /** The coverage of a feature. */
 export type Coverage = { kind: 'database' | 'independent'; cases: string[]; owners: Partial<Record<Language, CoverageOwner>>; dependents: CoverageDependent[] };
 /** The vector contract of a feature. */
-export type VectorContract = { source: string; required_clients: string[]; required_databases: string[]; database_expectations: string[]; minimum_vectors: number };
+export type VectorContract = { source: string; required_databases: string[]; database_expectations: string[]; minimum_vectors: number };
 /** A feature of the manifest. */
 export type ManifestFeature = {
   id: string; title: string; title_ko: string; status: 'planned' | 'partial' | 'implemented'; description: string; description_ko: string;
   inputs: { type: string; fields: string[] }; outputs: { type: string; fields: string[] }; state: string[]; errors: { code: string; when: string }[];
-  clients: Record<Language, ClientStatus>; fixtures: string[]; tests: string[]; docs: string[]; verification: Verification[];
+  parity: string[]; fixtures: string[]; tests: string[]; docs: string[]; verification: Verification[];
   coverage?: Coverage; public_constraints?: string[]; vector_contract?: VectorContract;
 };
 /** A helper that several features use. */

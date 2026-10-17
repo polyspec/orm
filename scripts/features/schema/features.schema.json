@@ -29,11 +29,10 @@
       "required": ["type", "fields"],
       "properties": { "type": { "type": "string" }, "fields": { "type": "array", "items": { "type": "string" } } }
     },
-    "clientStatus": { "enum": ["planned", "partial", "pass", "unsupported"] },
     "feature": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "title", "title_ko", "status", "description", "description_ko", "inputs", "outputs", "state", "errors", "clients", "fixtures", "tests", "docs", "verification"],
+      "required": ["id", "title", "title_ko", "status", "description", "description_ko", "inputs", "outputs", "state", "errors", "parity", "fixtures", "tests", "docs", "verification"],
       "properties": {
         "id": { "$ref": "#/$defs/text" },
         "title": { "type": "string" },
@@ -53,17 +52,12 @@
             "properties": { "code": { "type": "string" }, "when": { "type": "string" } }
           }
         },
-        "clients": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["go", "php", "rust", "typescript", "python"],
-          "properties": {
-            "go": { "$ref": "#/$defs/clientStatus" },
-            "php": { "$ref": "#/$defs/clientStatus" },
-            "rust": { "$ref": "#/$defs/clientStatus" },
-            "typescript": { "$ref": "#/$defs/clientStatus" },
-            "python": { "$ref": "#/$defs/clientStatus" }
-          }
+        "parity": {
+          "description": "The ids of the parity units of config/parity.json that bind this feature's tests; the languages of the feature are the client implementations those units bind.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/text" }
         },
         "fixtures": { "$ref": "#/$defs/paths" },
         "tests": { "$ref": "#/$defs/paths" },
@@ -102,10 +96,9 @@
     "vectorContract": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["source", "required_clients", "required_databases", "database_expectations", "minimum_vectors"],
+      "required": ["source", "required_databases", "database_expectations", "minimum_vectors"],
       "properties": {
         "source": { "const": "tests/conformance/vectors.json" },
-        "required_clients": { "const": ["go", "php", "rust", "typescript"] },
         "required_databases": { "const": ["mysql", "postgres", "sqlite"] },
         "database_expectations": { "$ref": "#/$defs/paths", "type": "array", "minItems": 3, "maxItems": 3 },
         "minimum_vectors": { "type": "integer", "minimum": 1 }

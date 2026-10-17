@@ -9,7 +9,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { PROCESS, runCase, runLong, stepLines } from '../../tests/testcase.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { readFeatures } from './manifest.mts';
-import { clientLanguages } from './languages.mts';
+import { clientLanguages, featureLanguages } from './languages.mts';
 import { parseGoTestEvent } from '../json/formats.mts';
 import { programEnvironment, readBinaries } from '../../tests/cargo-test.mts';
 
@@ -25,7 +25,7 @@ export type Dependent = { id: string; language: string; part: string; tests: str
 /** The coverage declaration of a feature. */
 export type Coverage = { kind: string; cases: string[]; owners?: Record<string, Owner>; dependents?: Dependent[] };
 /** A feature contract of contracts/features.json. */
-export type Feature = { id: string; status?: string; clients?: Record<string, string>; coverage?: Coverage; tests?: string[] };
+export type Feature = { id: string; status?: string; parity?: string[]; coverage?: Coverage; tests?: string[] };
 /** The feature manifest, contracts/features.json. */
 export type Manifest = { features?: Feature[] };
 /** One required execution: an owner or dependent part on one database. */
@@ -52,9 +52,8 @@ type Plan = { feature: Feature; item: Item; native: Spec[]; dsn: string | null |
 type Prepared = { program: string; args: string[]; cwd?: string | undefined; label?: string; env?: Record<string, string> };
 
 export const languages = clientLanguages();
-// implementedLanguages are the clients that an implemented feature passes in. Python declares its support feature by
-// feature (contracts/features.json), so a Python owner is required only where the feature declares Python pass or partial.
-export const implementedLanguages = ['go', 'php', 'rust', 'typescript'];
+// claimedLanguages are the client languages of a feature: the ones its parity units bind. Each claimed language needs an owner.
+const claimedLanguages = (feature: Feature): Set<string> => new Set(featureLanguages(feature.parity ?? []));
 export const databases = ['mysql', 'postgres', 'sqlite'];
 
 const validPart = (part: unknown): part is string => typeof part === 'string' && part !== '' &&
@@ -70,15 +69,15 @@ const stateReader = resolve(checkerRoot, 'tests/conformance/check/main.mts');
 function requirements(feature: Feature, coverage: Coverage, errors: string[]): Item[] {
   const required = coverage.kind === 'database' ? databases : ['none'];
   const items: Item[] = [];
+  const claimed = claimedLanguages(feature);
   if (!coverage.owners || typeof coverage.owners !== 'object' || Array.isArray(coverage.owners))
     errors.push(`${feature.id}: missing owners`);
   for (const language of Object.keys(coverage.owners ?? {})) {
-    if (!languages.includes(language) || !['pass', 'partial'].includes(feature.clients?.[language] ?? ''))
-      errors.push(`${feature.id}/owner/${language}: undeclared owning client`);
+    if (!claimed.has(language)) errors.push(`${feature.id}/owner/${language}: undeclared owning client`);
   }
   if (!Array.isArray(coverage.dependents)) errors.push(`${feature.id}: missing dependents declaration`);
   for (const language of languages) {
-    if (!['pass', 'partial'].includes(feature.clients?.[language] ?? '')) continue;
+    if (!claimed.has(language)) continue;
     const owner = coverage.owners?.[language];
     const directory = packageDirectoryOf(language);
     if (!owner || !validPart(owner.part) || !owner.part.startsWith(`${directory}/`) && owner.part !== directory) {
@@ -103,7 +102,7 @@ function requirements(feature: Feature, coverage: Coverage, errors: string[]): I
       continue;
     }
     dependentIds.add(dependent.id);
-    if (!languages.includes(dependent.language) || !['pass', 'partial'].includes(feature.clients?.[dependent.language] ?? '') ||
+    if (!claimed.has(dependent.language) ||
         !validPart(dependent.part) || dependent.part === 'tests/conformance' ||
         dependent.part.startsWith('tests/conformance/') ||
         dependent.part === coverage.owners?.[dependent.language]?.part ||
@@ -221,8 +220,8 @@ export function checkCoverage(manifest: Manifest, reports: Record<string, Report
         if (coverage.kind === 'database' && executions[0]?.state_before !== executions[1]?.state_before)
           errors.push(`${key}: database state changed between executions`);
     }
-    if (feature.status === 'implemented' && implementedLanguages.some(language => feature.clients?.[language] !== 'pass'))
-      errors.push(`${feature.id}: implemented feature lacks a passing client`);
+    if (feature.status === 'implemented' && languages.some(language => !claimedLanguages(feature).has(language)))
+      errors.push(`${feature.id}: implemented feature lacks a parity unit in a client language`);
   }
   for (const key of Object.keys(reports)) {
     if (!expected.has(key)) errors.push(`${key}: undeclared execution report`);

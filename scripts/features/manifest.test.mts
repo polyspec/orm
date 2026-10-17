@@ -36,7 +36,7 @@ caseTest('the schema of contracts/features.json refuses a manifest outside its s
   const { title: _title, ...untitled } = first;
   assert.ok(refused({ ...manifest, features: [untitled] }).includes('/features/0'));
   assert.ok(refused(withFeature(feature => ({ ...feature, status: 'done' }))).includes('/features/0/status'));
-  assert.ok(refused(withFeature(feature => ({ ...feature, clients: { ...feature.clients, go: 'yes' } }))).includes('/features/0/clients/go'));
+  assert.ok(refused(withFeature(feature => ({ ...feature, parity: [] }))).includes('/features/0/parity'));
   assert.ok(refused(withFeature(feature => ({ ...feature, status: 'implemented', tests: [] }))).includes('/features/0/tests'));
   assert.ok(refused(withFeature(feature => ({ ...feature, status: 'implemented', docs: [] }))).includes('/features/0/docs'));
   assert.ok(refused(withFeature(feature => ({ ...feature, status: 'partial', verification: [] }))).includes('/features/0/verification'));

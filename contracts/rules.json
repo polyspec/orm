@@ -116,9 +116,9 @@
     },
     {
       "id": "tests.language-parity",
-      "source": "contracts/features.json and the language test files",
-      "checker": "feature-check",
-      "failure": "a client pass or partial claim names no test of that language, an implemented feature is not pass in every client, or a language test file belongs to no feature"
+      "source": "config/parity.json and contracts/features.json",
+      "checker": "parity-check",
+      "failure": "a language test file that config/parity.json does not declare, or a parity unit binding that the parity check cannot run"
     },
     {
       "id": "status.evidence",
