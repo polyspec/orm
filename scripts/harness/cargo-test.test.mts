@@ -1,14 +1,14 @@
 // tests/cargo-test.mts의 인자 해석 test다. cargo test option과 test 이름 filter, binary 인자를 나누고, cargo의
 // JSON message에서 test binary와 그 package directory만 읽는다.
 import assert from 'node:assert/strict';
-import { executables, programEnvironment, programs, split } from './cargo-test.mts';
+import { executables, programEnvironment, programs, split } from '../../tests/cargo-test.mts';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isolatedEnvironment } from './environment.mts';
-import { caseTest, COMPUTE, PROCESS } from './testcase.mts';
+import { isolatedEnvironment } from '../../tests/environment.mts';
+import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 
 caseTest('cargo-test splits options, name filters and test binary arguments', COMPUTE, () => {
   assert.deepEqual(split(['cargo', '+1.98.1', 'test', '--locked', '--features', 'a,b', '--test', 'x', 'codec', '--', '--nocapture']),
@@ -60,7 +60,7 @@ caseTest('cargo-test runs every test binary after a failed one and names the fai
     writeFileSync(join(base, 'bin/cargo'), `#!/bin/sh\ncat ${join(base, 'messages.json')}\n`, { mode: 0o755 });
     // 가짜 lease는 `--` 뒤의 명령을 그대로 실행한다.
     writeFileSync(join(base, 'lease'), '#!/bin/sh\nwhile [ "$1" != -- ]; do shift; done\nshift\nexec "$@"\n', { mode: 0o755 });
-    const result = spawnSync(process.execPath, [fileURLToPath(new URL('./cargo-test.mts', import.meta.url)), 'stub', '--', 'cargo', 'test'],
+    const result = spawnSync(process.execPath, [fileURLToPath(new URL('../../tests/cargo-test.mts', import.meta.url)), 'stub', '--', 'cargo', 'test'],
       { encoding: 'utf8', env: isolatedEnvironment({ PATH: `${join(base, 'bin')}:${process.env.PATH}`, LEASE: join(base, 'lease'), CARGO_LEASES: join(base, 'leases') }) });
     assert.equal(result.status, 4, result.stdout + result.stderr);
     assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['one', 'two', 'three']);
@@ -85,7 +85,7 @@ caseTest('cargo reuses what another checkout built into a shared target, and a t
       for (const file of ['Cargo.toml', 'src/main.rs']) utimesSync(join(base, name, file), old, old);
     };
     // cargo는 case가 주는 toolchain(rust-toolchain.toml의 channel)과 offline 설정만 받는다.
-    const channel = /^channel = "(.*)"$/m.exec(readFileSync(new URL('../rust-toolchain.toml', import.meta.url), 'utf8'))?.[1];
+    const channel = /^channel = "(.*)"$/m.exec(readFileSync(new URL('../../rust-toolchain.toml', import.meta.url), 'utf8'))?.[1];
     assert.ok(channel, 'rust-toolchain.toml declares a channel');
     const toolchain = channel;
     const env = (target: string) => isolatedEnvironment({ PATH: `${process.env.HOME}/.cargo/bin:${process.env.PATH}`, RUSTUP_TOOLCHAIN: toolchain, CARGO_NET_OFFLINE: 'true', CARGO_TARGET_DIR: target });
@@ -108,7 +108,7 @@ caseTest('cargo reuses what another checkout built into a shared target, and a t
 // target directory guard case(G5.46)는 command line의 CARGO_TARGET_DIR이 이 checkout 밖을 가리키면 make가 아무것도
 // 실행하지 않고 그 이유를 적고 멈추는지, 이 checkout 안의 directory는 받는지 확인한다.
 caseTest('make refuses a Rust target directory outside its checkout', PROCESS, () => {
-  const repo = fileURLToPath(new URL('..', import.meta.url));
+  const repo = fileURLToPath(new URL('../..', import.meta.url));
   const make = (target?: string) => spawnSync('make', ['-n', '--no-print-directory', 'version-check', ...(target ? [`CARGO_TARGET_DIR=${target}`] : [])], { cwd: repo, encoding: 'utf8', env: isolatedEnvironment() });
   const other = make(join(tmpdir(), 'another-checkout', 'packages', 'rust', 'target'));
   assert.notEqual(other.status, 0, 'make ran with the target directory of another checkout');
@@ -133,7 +133,7 @@ caseTest('cargo-test fails when the name filters select no test in any test bina
     writeFileSync(join(base, 'messages.json'), `${messages.join('\n')}\n`);
     writeFileSync(join(base, 'bin/cargo'), `#!/bin/sh\ncat ${join(base, 'messages.json')}\n`, { mode: 0o755 });
     writeFileSync(join(base, 'lease'), '#!/bin/sh\nwhile [ "$1" != -- ]; do shift; done\nshift\nexec "$@"\n', { mode: 0o755 });
-    const run = (filter: string) => spawnSync(process.execPath, [fileURLToPath(new URL('./cargo-test.mts', import.meta.url)), 'stub', '--', 'cargo', 'test', filter],
+    const run = (filter: string) => spawnSync(process.execPath, [fileURLToPath(new URL('../../tests/cargo-test.mts', import.meta.url)), 'stub', '--', 'cargo', 'test', filter],
       { encoding: 'utf8', env: isolatedEnvironment({ PATH: `${join(base, 'bin')}:${process.env.PATH}`, LEASE: join(base, 'lease'), CARGO_LEASES: join(base, 'leases') }) });
     const none = run('no_such_name');
     assert.equal(none.status, 1, none.stdout + none.stderr);

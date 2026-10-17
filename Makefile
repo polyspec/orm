@@ -258,9 +258,9 @@ testcase-check: testcase-check/go testcase-check/node testcase-check/runners tes
 testcase-check/go:
 	$(GO_TEST) ./packages/go/testcase -count=1
 testcase-check/node:
-	$(NODE) --test tests/testcase.test.mts
+	$(NODE) --test scripts/harness/testcase.test.mts
 testcase-check/runners:
-	$(NODE) --test tests/go-test.test.mts tests/cargo-test.test.mts
+	$(NODE) --test scripts/harness/go-test.test.mts scripts/harness/cargo-test.test.mts
 testcase-check/rust: cargo-downloads-check
 	cd packages/rust && $(CARGO_TEST) testcase-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-testcase
 

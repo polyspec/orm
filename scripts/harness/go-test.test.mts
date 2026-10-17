@@ -6,10 +6,10 @@ import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { buildArguments, packages, testEvents } from './go-test.mts';
-import { isolatedEnvironment } from './environment.mts';
-import { caseTest, COMPUTE, PROCESS } from './testcase.mts';
-import { execFailure } from './errors.mts';
+import { buildArguments, packages, testEvents } from '../../tests/go-test.mts';
+import { isolatedEnvironment } from '../../tests/environment.mts';
+import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
+import { execFailure } from '../../tests/errors.mts';
 
 caseTest('the build step keeps packages and build flags and runs no test', COMPUTE, () => {
   assert.deepEqual(buildArguments(['-v', '-timeout', '0', '-tags', 'physical', './tests/dialects', '-run', '^(TestA|TestB)$', '-count=1']),
@@ -37,7 +37,7 @@ case "$*" in
 esac
 `);
     await chmod(join(dir, 'go'), 0o755);
-    const script = new URL('./go-test.mts', import.meta.url).pathname;
+    const script = new URL('../../tests/go-test.mts', import.meta.url).pathname;
     const run = async (extra: Record<string, string>) => {
       try {
         const { stdout } = await promisify(execFile)(process.execPath, [script, '-v', '-timeout', '0', './engine', '-count=1'],
@@ -71,7 +71,7 @@ caseTest('a go test run whose -run selects no test fails', PROCESS, async () => 
   try {
     await writeFile(join(dir, 'go.mod'), 'module example.com/empty\n\ngo 1.21\n');
     await writeFile(join(dir, 'a_test.go'), 'package empty\n\nimport "testing"\n\nfunc TestPresent(t *testing.T) {}\n');
-    const script = new URL('./go-test.mts', import.meta.url).pathname;
+    const script = new URL('../../tests/go-test.mts', import.meta.url).pathname;
     const run = async (pattern: string) => {
       try {
         const { stdout, stderr } = await promisify(execFile)(process.execPath, [script, '-v', '-timeout', '0', '-run', pattern, '-count=1', '.'], { cwd: dir, env: isolatedEnvironment({ GOFLAGS: '', GOWORK: 'off', GOPROXY: 'off' }) });

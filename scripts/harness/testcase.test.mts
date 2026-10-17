@@ -6,11 +6,11 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { isolatedEnvironment } from './environment.mts';
-import { execFailure } from './errors.mts';
-import { caseTest, COMPUTE, duration, PROCESS } from './testcase.mts';
+import { isolatedEnvironment } from '../../tests/environment.mts';
+import { execFailure } from '../../tests/errors.mts';
+import { caseTest, COMPUTE, duration, PROCESS } from '../../tests/testcase.mts';
 
-const harness = new URL('./testcase.mts', import.meta.url).href;
+const harness = new URL('../../tests/testcase.mts', import.meta.url).href;
 const elapsed = 'elapsed=[0-9.]+(µs|ms|s|m[0-9.]+s)';
 
 // inOrder는 output에 patterns가 이 순서로 한 줄씩 나타나는지 확인한다.
@@ -140,7 +140,7 @@ await new Promise(resolve => setTimeout(resolve, 60000));
 // 끝까지 실행되어 출력 줄, 종료 코드 0과 PASS를 보고하는지, 실패한 명령은 종료 코드와 오류 출력을
 // 보고하는지, 기한 인자는 받지 않는지 확인한다. 같은 build는 기한 1초의 run-case에서 실패한다.
 caseTest('testcase/run-long', PROCESS, async () => {
-  const runLongScript = new URL('./run-long.mts', import.meta.url).pathname;
+  const runLongScript = new URL('../../tests/run-long.mts', import.meta.url).pathname;
   const run = async (args: string[]) => {
     try {
       const { stdout, stderr } = await promisify(execFile)(process.execPath, [runLongScript, ...args]);

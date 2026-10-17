@@ -137,7 +137,8 @@
       "spec": ["contracts/features.json#/features"]
     },
     {"name": "php-internal", "implementations": ["php"], "reason": "An implementation-internal test checks the structure of the PHP implementation; the contract has no counterpart for it.", "spec": ["docs/spec/parity.md#implementation-internal-tests"]},
-    {"name": "php-extension-internal", "implementations": ["php-extension"], "reason": "An implementation-internal test of the PHP extension orm_dbspec: it checks the extension's own cleanup after a failing PDO, its name rendering, its apply path and the agreement of its class declarations with the PHP client and the stub. The shared dbspec suites bind the results these tests reach; no other implementation has a counterpart for these methods.", "spec": ["docs/spec/parity.md#implementation-internal-tests"]}
+    {"name": "php-extension-internal", "implementations": ["php-extension"], "reason": "An implementation-internal test of the PHP extension orm_dbspec: it checks the extension's own cleanup after a failing PDO, its name rendering, its apply path and the agreement of its class declarations with the PHP client and the stub. The shared dbspec suites bind the results these tests reach; no other implementation has a counterpart for these methods.", "spec": ["docs/spec/parity.md#implementation-internal-tests"]},
+    {"name": "set-consumers", "implementations": ["php", "typescript"], "reason": "The two clients whose tests run over the document sets of contracts/fixtures: the PHP and TypeScript tests generate or load the decimal and bench documents through their set. Go and Rust read their own copies of the decimal manifest, and Python generates the bench models in make, with no test over the set.", "spec": ["contracts/features.json#/features"]}
   ],
   "suites": [
     "contracts/fixtures/**/*.json",
@@ -160,7 +161,15 @@
   "tools": [
     { "root": "packages/go/bench", "reason": "Benchmarks that measure the performance of the Go implementation; they implement no contract and run only under go test -bench, so they belong to no implementation." },
     { "root": "tests/analyzers", "reason": "Analyzers for the Go test conventions of the repository; the tooling implements no contract, so its tests belong to no implementation." },
-    {"root": "tests/codec", "reason": "The PHP generator of tests/codec/vectors.json, which the codec suites read; the generator is single-language tooling that implements no contract."}
+    {"root": "tests/codec", "reason": "The PHP generator of tests/codec/vectors.json, which the codec suites read; the generator is single-language tooling that implements no contract."},
+    { "root": "packages/dbspec-codemirror", "reason": "The CodeMirror adapter of the dbspec editor stack: JavaScript over @polyspec/dbspec-language, with no grammar and no contract of its own." },
+    { "root": "packages/dbspec-language", "reason": "The dbspec language service of the editor stack: diagnostics, tokens, folding and formatting over the parser of the TypeScript runtime; it implements no contract of its own." },
+    { "root": "packages/dbspec-lsp", "reason": "The dbspec language server of the editor stack, which serves every editor over @polyspec/dbspec-language; it implements no contract of its own." },
+    { "root": "packages/dbspec-vscode", "reason": "The VS Code extension of the editor stack: its manifest and bundle, which hold no grammar and implement no contract." },
+    { "root": "scripts", "reason": "The repository scripts: the tooling of the checks, builds, installs and releases; it implements no contract, so its tests belong to no implementation." },
+       { "root": "tests/cli", "reason": "The test of the command-line install of dbspec-fmt: the editor-stack tooling, which implements no contract." },
+    { "root": "tests/docs", "reason": "The test of the dbs fence of the documentation site: the tooling of the site, which implements no contract." },
+    { "root": "tests/timing", "reason": "The test of the timing harness of the clients: the measurement tooling, which implements no contract." }
   ],
   "units": [
     {"id": "ts-browser-entry", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/browser-entry.mjs", "id": "the subpath module reaches no Node module, undeclared package or Node global"}]},
@@ -1653,7 +1662,45 @@
     {"id": "php-extension-internal-declarations-declarations", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DeclarationsTest.php", "id": "DeclarationsTest::test_declarations"}]},
     {"id": "php-extension-internal-declarations-client", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DeclarationsTest.php", "id": "DeclarationsTest::test_client"}]},
     {"id": "php-extension-internal-declarations-package", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DeclarationsTest.php", "id": "DeclarationsTest::test_package"}]},
-    {"id": "php-extension-internal-declarations-mirrors", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DeclarationsTest.php", "id": "DeclarationsTest::test_mirrors"}]}
+    {"id": "php-extension-internal-declarations-mirrors", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DeclarationsTest.php", "id": "DeclarationsTest::test_mirrors"}]},
+    {
+      "id": "ir-answers", "kind": "suite", "profile": "client",
+      "file": "contracts/fixtures/ir_answers.json", "cases": "$.cases[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "packages/go/markdownmodel/ir_answers_test.go", "symbol": "TestIRAnswers" },
+        { "implementation": "php", "test": "packages/php/tests/IrAnswersTest.php", "symbol": "IrAnswersTest::test_ir_answer" },
+        { "implementation": "typescript", "test": "packages/ts/tests/markdown_conformance.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/ir_answers.py" },
+        { "implementation": "rust", "test": "packages/rust/tests/tests/markdown_conformance.rs", "symbol": "ir_answers" }
+      ]
+    },
+    {
+      "id": "mysql-session", "kind": "suite", "profile": "client",
+      "file": "tests/dsn/mysql-session.json", "cases": "$.sql_mode.~",
+      "bindings": [
+        { "implementation": "go", "test": "packages/go/orm/mysql_tls_test.go", "symbol": "TestMySQLSessionSQLMode" },
+        { "implementation": "php", "test": "packages/php/tests/MysqlTlsTest.php", "symbol": "MysqlTlsTest::test_session_sql_mode" },
+        { "implementation": "typescript", "test": "packages/ts/tests/mysql_tls.mjs" },
+        { "implementation": "python", "test": "packages/python/tests/mysql_session.py" },
+        { "implementation": "rust", "test": "packages/rust/orm/tests/mysql_tls.rs", "symbol": "session_sql_mode_is_the_declared_one" }
+      ]
+    },
+    {
+      "id": "dbspec-set-decimal", "kind": "suite", "profile": "set-consumers",
+      "file": "contracts/fixtures/dbspec-set.json", "cases": "$.documents[*]",
+      "bindings": [
+        { "implementation": "php", "test": "packages/php/tests/SchemaSetTest.php" },
+        { "implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs" }
+      ]
+    },
+    {
+      "id": "dbspec-set-bench", "kind": "suite", "profile": "set-consumers",
+      "file": "contracts/fixtures/bench/dbspec-set.json", "cases": "$.documents[*]",
+      "bindings": [
+        { "implementation": "php", "test": "packages/php/tests/OrmGenScanTest.php" },
+        { "implementation": "typescript", "test": "packages/ts/tests/models-scan.mjs" }
+      ]
+    }
   ],
   "errors": {
     "profile": "client",
