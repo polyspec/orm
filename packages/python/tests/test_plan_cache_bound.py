@@ -9,6 +9,8 @@ from polyspec.orm.database import Db, _hooked
 from polyspec.orm.engine import Engine, model_of_documents, parse_document_set
 from polyspec.orm.errors import OrmError
 
+from . import testcase
+
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURE = json.loads((ROOT / "contracts" / "fixtures" / "identity_load.json").read_text())
 MODEL = model_of_documents(parse_document_set([(ROOT / FIXTURE["fixture"]).read_text()]))
@@ -58,4 +60,4 @@ class PlanCacheBoundTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    testcase.main()
