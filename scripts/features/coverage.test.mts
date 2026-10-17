@@ -58,9 +58,10 @@ caseTest('selecting coverage parts requires only those parts', 1000, async () =>
   const selected = selectFeatures(manifest, 'statement_events', ['owner/php']);
   assert.deepEqual(checkCoverage(selected, {}).toSorted(),
     databases.map(database => `statement_events/owner/php/${database}: no executed report`).toSorted());
-  assert.equal(checkCoverage(selectFeatures(manifest, 'statement_events'), {}).length, 4 * databases.length);
+  // statement_events의 manifest는 다섯 owner(go, php, rust, typescript, python)를 가지며 각 owner는 세 database마다 항목이 있다.
+  assert.equal(checkCoverage(selectFeatures(manifest, 'statement_events'), {}).length, 5 * databases.length);
   assert.throws(() => selectFeatures(manifest, 'statement_events', ['owner/cobol']),
-    { message: 'unknown coverage part owner/cobol of statement_events; valid parts: owner/go, owner/php, owner/rust, owner/typescript' });
+    { message: 'unknown coverage part owner/cobol of statement_events; valid parts: owner/go, owner/php, owner/rust, owner/typescript, owner/python' });
   assert.throws(() => selectFeatures(manifest, undefined, ['owner/php']), { message: '--part needs --feature' });
 });
 
@@ -308,6 +309,24 @@ const PASSED = ["testStarted name='test_first'", "testFinished name='test_first'
 // `cargo test --no-run`에서 FIFO를 읽을 때까지, 곧 PHP case가 그 FIFO에 쓸 때까지 기다린 뒤 실제 cargo를 실행한다. manifest에서
 // Rust 소유자가 PHP 소유자보다 앞에 있으므로, build가 끝난 뒤에야 실행을 시작하거나 줄의 순서대로만 실행하면 build와 PHP
 // case가 서로를 기다려 case의 기한에 실패한다.
+// exportLease sets LEASE and CARGO_LEASES as make exports them. The lease program is a stub that runs the command after
+// `--`: these cases assert the build gate and the execution, not the exclusion of the lease. It returns the restore.
+async function exportLease(root: string): Promise<() => void> {
+  await mkdir(join(root, 'lease-bin'), { recursive: true });
+  const program = join(root, 'lease-bin/lease');
+  await writeFile(program, '#!/bin/sh\nwhile [ "$1" != "--" ]; do shift; done\nshift\nexec "$@"\n');
+  await chmod(program, 0o755);
+  const saved = { LEASE: process.env.LEASE, CARGO_LEASES: process.env.CARGO_LEASES };
+  process.env.LEASE = program;
+  process.env.CARGO_LEASES = join(root, 'leases');
+  return () => {
+    for (const [name, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  };
+}
+
 caseTest('coverage runs without cargo proceed while the Rust test build runs', 120000, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-overlap-')));
   const rustFile = 'packages/rust/orm/src/lib.rs';
@@ -320,7 +339,9 @@ caseTest('coverage runs without cargo proceed while the Rust test build runs', 1
       php: { part: 'packages/php/tests', tests: [phpFile], commands: { none: [{ runner: 'php', test: phpFile, cases: ['first'] }] } },
     } } }] };
   const path = process.env.PATH;
+  let restoreLease = (): void => {};
   try {
+    restoreLease = await exportLease(root);
     const realCargo = execFileSync('sh', ['-c', 'command -v cargo']).toString().trim();
     await mkdir(join(root, 'bin'), { recursive: true });
     execFileSync('mkfifo', [fifo]);
@@ -336,6 +357,7 @@ caseTest('coverage runs without cargo proceed while the Rust test build runs', 1
     assert.deepEqual(await executeCoverage(manifest, root, 30000), []);
   } finally {
     process.env.PATH = path;
+    restoreLease();
     await rm(root, { recursive: true, force: true });
   }
 });
@@ -417,7 +439,9 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', 12
     { language: 'php', part: 'packages/php/tests', file: 'packages/php/tests/OwnerTest.php', runner: 'php', id: 'first' },
     { language: 'rust', part: 'packages/rust/orm', file: 'packages/rust/orm/src/lib.rs', runner: 'cargo', symbol: 'tests::first' },
   ];
+  let restoreLease = (): void => {};
   try {
+    restoreLease = await exportLease(root);
     for (const item of cases) await mkdir(join(root, item.file, '..'), { recursive: true });
     await writeFile(join(root, 'packages/go/orm/go.mod'), 'module example.com/coverage\n\ngo 1.22\n');
     await writeFile(join(root, defined(cases[0]).file), 'package orm\nimport "testing"\nfunc TestFirst(t *testing.T) {}\n');
@@ -490,7 +514,10 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', 12
       errors: [`sample/owner/go/none run 1: ${message}`, 'sample/owner/go/none: exactly two executions required'].toSorted(),
       failures: [`FAIL sample/owner/go/none run 1 elapsed=<t>: ${message}`],
     });
-  } finally { await rm(root, { recursive: true, force: true }); }
+  } finally {
+    restoreLease();
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 // A Python owner runs on the interpreter that make names in ORM_PYTHON, as its module of the test package from the checkout
