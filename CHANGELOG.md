@@ -3,6 +3,7 @@
 
 ## Unreleased
 - The Go performance gate is a benchmark of the tools root packages/go/bench, which belongs to no implementation, so its go-internal parity unit is removed; the gate still runs as the performance_gate feature. (#T77-8-1-1)
+- The generated-model symbols are declared: the live declaration check finds no undeclared public symbol (T77-8-1-4).
 - The client-surface symbols are declared: the live declaration check finds no undeclared public symbol (T77-8-1-3).
 - The dbspec symbols are declared: the live declaration check finds no undeclared public symbol (T77-8-1-2).
 - The PHP and TypeScript adapters live in packages/php and packages/ts; the parent row closes with its four sub-items (T77-9-2).
