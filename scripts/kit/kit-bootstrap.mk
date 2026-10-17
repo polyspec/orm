@@ -35,5 +35,5 @@ endif
 # one source for every npm that installs or changes the lock: npm ci of install-packages, and npm install, npm audit fix and npm
 # dedupe of dependency-review UPDATE=1 (K189).
 install-packages dependency-review: export npm_config_allow_remote := root
-install-packages: ## Install the packages of package-lock.json, @polyspec/kit included, with the npm of var/tools; ONLINE
+install-packages: ## Install the packages of package-lock.json, @polyspec/kit included, with the npm of var/tools; never builds or links; ONLINE
 	$(ONLINE) $(NPM) ci

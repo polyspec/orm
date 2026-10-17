@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b800e5bccd5bb2721a52a3af4fd7b87edfec1648a5753788527aa1691bc75c85 -->
+<!-- source-sha256: 404d633ba3c2ec103a18cd66ab96045316d643c40a858bf18ab5306a15bf55f0 -->
 # 변경 이력
 
 ## Unreleased
 - Go 성능 gate는 tools root인 packages/go/bench의 benchmark다. 이 root는 어떤 구현에도 속하지 않으므로 그 go-internal parity unit을 없앴다. gate는 performance_gate feature로 계속 실행된다. (#T77-8-1-1)
+- vendor된 kit 복사본이 @polyspec/kit 0.0.53과 일치하며, K208 trust wrapper를 담는다(T77-36).
 - 열린 행 T77-35는 각 go-orm parity unit이 orm 패키지 전체를 두 번 실행하며, unit은 자기 test만 실행해야 함을 기록한다.
 - TestConnectionsUseUTC는 명세의 UTC datetime 형식을 보내며, native time.Time은 CODEC_ENCODE로 거절된다(T77-34).
 - TestConnectionsUseUTC가 프로토콜이 정한 텍스트 형식으로 datetime을 보내어 orm 패키지 unit이 통과한다(T77-34).
