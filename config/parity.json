@@ -141,7 +141,7 @@
     {"name": "set-consumers", "implementations": ["php", "typescript"], "reason": "The two clients whose tests run over the document sets of contracts/fixtures: the PHP and TypeScript tests generate or load the decimal and bench documents through their set. Go and Rust read their own copies of the decimal manifest, and Python generates the bench models in make, with no test over the set.", "spec": ["contracts/features.json#/features"]}
   ],
   "suites": [
-    "contracts/fixtures/**/*.json",
+    "contracts/fixtures/**/!(dbspec-set).json",
     "tests/codec/*.json",
     "tests/conformance/*.json",
     "tests/dbspec/*.json",
