@@ -32,6 +32,11 @@ export interface SetHost {
    * there.
    */
   lstat(path: string): SetHostEntry | null;
+  /**
+   * The kind of the entry that `path` names, following a symbolic link (POSIX `stat`), or null when no entry is there.
+   * It examines the intermediate component of an external path that is a symbolic link to a directory.
+   */
+  stat(path: string): SetHostEntry | null;
   /** The names that the directory lists: each the UTF-8 bytes of a POSIX name, or the string of a Windows name. */
   list(directory: string): readonly (Uint8Array | string)[];
   /**
@@ -132,6 +137,15 @@ function examine(host: SetHost, path: string): SetHostEntry | null | Error {
   }
 }
 
+/** stat of an intermediate component that is a symbolic link, or the error that the host threw. */
+function followed(host: SetHost, path: string): SetHostEntry | null | Error {
+  try {
+    return host.stat(path);
+  } catch (thrown) {
+    return thrown instanceof Error ? thrown : new Error(String(thrown));
+  }
+}
+
 /** Opens the file once and reads its bytes and its identity from that handle, or gives why it cannot. */
 function readOnce(host: SetHost, path: string): { bytes: Uint8Array; identity: string } | { failure: string } {
   try {
@@ -186,9 +200,10 @@ function readSetFile(host: SetHost, prefix: string, path: string): Uint8Array | 
 /**
  * Step 3 for one path with the normal form: every prefix of its joined path that ends after a segment, examined
  * without following a symbolic link, each segment other than `..` compared with the names its directory lists before
- * its lstat. Returns the first error, or null.
+ * its lstat. An intermediate prefix of an external path that is a link is examined through it (stat). Returns the
+ * first error, or null.
  */
-function examinePath(host: SetHost, entry: DbspecSetPath, prefix: string): ResolveError | null {
+function examinePath(host: SetHost, entry: DbspecSetPath, prefix: string, external: boolean): ResolveError | null {
   const segments = entry.written.split('/');
   const fileError = (detail: string): ResolveError => error('set.file', entry.path, `${entry.path}: ${detail}`);
   let parent = rootOf(prefix);
@@ -203,7 +218,9 @@ function examinePath(host: SetHost, entry: DbspecSetPath, prefix: string): Resol
         return fileError(`${parent} cannot be listed: ${reason(thrown)}`);
       }
     }
-    const stat = examine(host, current);
+    const lstat = examine(host, current);
+    if (lstat instanceof Error) return fileError(`${current} cannot be examined: ${lstat.message}`);
+    const stat = lstat === 'symlink' && external && !last ? followed(host, current) : lstat;
     if (stat instanceof Error) return fileError(`${current} cannot be examined: ${stat.message}`);
     if (stat === null) return fileError(`${current} does not exist`);
     if (stat === 'symlink') return error('set.symlink', entry.path, `${entry.path}: ${current} is a symbolic link`);
@@ -235,8 +252,9 @@ function readListed(host: SetHost, owner: Owner): { files: ListedFile[] } | { er
   const entries = [...owner.documents, ...owner.external];
   const stepThree: ResolveError[] = [];
   const passed: DbspecSetPath[] = [];
-  for (const entry of entries) {
-    const found: DbspecSetError | ResolveError | null = entry.error ?? examinePath(host, entry, owner.prefix);
+  for (const [index, entry] of entries.entries()) {
+    const external = index >= owner.documents.length;
+    const found: DbspecSetError | ResolveError | null = entry.error ?? examinePath(host, entry, owner.prefix, external);
     if (found === null) passed.push(entry);
     else stepThree.push(error(found.rule, found.path, found.message));
   }

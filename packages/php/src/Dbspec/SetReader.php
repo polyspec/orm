@@ -96,7 +96,7 @@ final class SetReader
                     continue;
                 }
                 $joined = $prefix . $written;
-                $error = $this->examine($root, $prefix, $written, $joined);
+                $error = $this->examine($root, $prefix, $written, $joined, $list === 'external');
                 if ($error !== null) {
                     $errors[] = $error;
                     continue;
@@ -153,11 +153,11 @@ final class SetReader
     /**
      * What $path names without following a symbolic link: 'link', 'dir', 'file' (a regular file), 'other',
      * or null when it cannot be examined. On Windows PHP's lstat reports a symbolic link and a junction,
-     * the name surrogates that PHP can see, as a link.
+     * the name surrogates that PHP can see, as a link. With $follow, the target of a link is examined (stat).
      */
-    private function kind(string $path): ?string
+    private function kind(string $path, bool $follow = false): ?string
     {
-        $stat = @lstat($path);
+        $stat = $follow ? @stat($path) : @lstat($path);
         if ($stat === false) {
             return null;
         }
@@ -402,9 +402,10 @@ final class SetReader
 
     /**
      * Step 3 for one path that has its normal form: each prefix of the joined path that ends after a
-     * written segment is listed by its directory (a segment other than `..`) and examined with lstat.
+     * written segment is listed by its directory (a segment other than `..`) and examined with lstat. An
+     * intermediate component of an external path that is a link is examined through it (stat).
      */
-    private function examine(string $root, string $prefix, string $written, string $joined): ?SetError
+    private function examine(string $root, string $prefix, string $written, string $joined, bool $external): ?SetError
     {
         $segments = explode('/', $written);
         $last = count($segments) - 1;
@@ -422,6 +423,9 @@ final class SetReader
                 }
             }
             $kind = $this->kind($component);
+            if ($kind === 'link' && $external && $i < $last) {
+                $kind = $this->kind($component, true);
+            }
             if ($kind === null) {
                 return new SetError('set.file', $joined, "$joined: $component cannot be examined");
             }

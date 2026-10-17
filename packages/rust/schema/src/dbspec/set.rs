@@ -99,7 +99,7 @@ pub fn read_set(path: &Path) -> Result<Set, Vec<SetError>> {
         let mut joined = prefix.clone();
         joined.push(written);
         let joined = PathBuf::from(joined);
-        match tree.components(&prefix, written, &joined) {
+        match tree.components(&prefix, written, &joined, external) {
             Ok(()) => passed.push((external, joined)),
             Err(e) => errors.push(e),
         }
@@ -187,29 +187,42 @@ struct Tree {
     listings: HashMap<OsString, Result<Vec<OsString>, String>>,
 }
 
+/// The kind of an entry whose metadata is `meta`.
+fn kind_of(meta: &std::fs::Metadata) -> Kind {
+    let kind = meta.file_type();
+    if kind.is_symlink() {
+        Kind::Symlink
+    } else if kind.is_dir() {
+        Kind::Dir
+    } else if kind.is_file() {
+        Kind::File
+    } else {
+        Kind::Other
+    }
+}
+
 impl Tree {
     /// `lstat`: on Windows the standard library reports a reparse point whose tag is a name
     /// surrogate (a symbolic link or a junction) as a symbolic link.
     fn kind(&mut self, path: &OsStr) -> Result<Kind, String> {
         self.kinds
             .entry(path.to_os_string())
-            .or_insert_with(|| {
-                std::fs::symlink_metadata(path)
-                    .map(|meta| {
-                        let kind = meta.file_type();
-                        if kind.is_symlink() {
-                            Kind::Symlink
-                        } else if kind.is_dir() {
-                            Kind::Dir
-                        } else if kind.is_file() {
-                            Kind::File
-                        } else {
-                            Kind::Other
-                        }
-                    })
-                    .map_err(|e| e.to_string())
-            })
+            .or_insert_with(|| std::fs::symlink_metadata(path).map(|meta| kind_of(&meta)).map_err(|e| e.to_string()))
             .clone()
+    }
+
+    /// `stat`: the kind of the entry that `path` names, following a symbolic link.
+    fn followed_kind(&self, path: &OsStr) -> Result<Kind, String> {
+        std::fs::metadata(path).map(|meta| kind_of(&meta)).map_err(|e| e.to_string())
+    }
+
+    /// The kind of `path` for step 3: `lstat`, except that an intermediate component of an external
+    /// path that is a symbolic link is examined through it.
+    fn component_kind(&mut self, path: &OsStr, external: bool, last: bool) -> Result<Kind, String> {
+        match self.kind(path) {
+            Ok(Kind::Symlink) if external && !last => self.followed_kind(path),
+            other => other,
+        }
     }
 
     /// Whether the directory `dir` lists `name`, compared as the platform's own units.
@@ -227,9 +240,9 @@ impl Tree {
 
     /// Step 3 for one path in its normal form: each prefix of the joined path that ends after a
     /// segment of `written`, examined with `lstat`; every one but the last is a directory, the last
-    /// is a regular file, none is a symbolic link, and each segment other than `..` is a name that
-    /// its directory lists.
-    fn components(&mut self, prefix: &OsStr, written: &str, joined: &Path) -> Result<(), SetError> {
+    /// is a regular file, none is a symbolic link except an intermediate component of an external
+    /// path, and each segment other than `..` is a name that its directory lists.
+    fn components(&mut self, prefix: &OsStr, written: &str, joined: &Path, external: bool) -> Result<(), SetError> {
         let shown = joined.display();
         let segments: Vec<&str> = written.split('/').collect();
         let mut dir = platform::root(prefix);
@@ -238,7 +251,7 @@ impl Tree {
             current.push(segment);
             let component = Path::new(&current).display().to_string();
             let last = index + 1 == segments.len();
-            match self.kind(&current) {
+            match self.component_kind(&current, external, last) {
                 Err(e) => return Err(error(RULE_SET_FILE, joined, format!("{shown}: {component} cannot be examined: {e}"))),
                 Ok(Kind::Symlink) => return Err(error(RULE_SET_SYMLINK, joined, format!("{shown}: {component} is a symbolic link"))),
                 Ok(Kind::File) if last => {}

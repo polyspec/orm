@@ -1,7 +1,7 @@
 // The node:fs host of resolveSet (set.ts), which the command line passes. It examines without following a symbolic
 // link, lists a POSIX directory by the bytes of its names and opens each file once, taking its bytes and its identity
 // from that handle, as the set reader of @polyspec/orm does (docs/dbspec.md "Document sets", steps 1, 3 and 4).
-import { closeSync, constants, fstatSync, lstatSync, openSync, readdirSync, readFileSync } from 'node:fs';
+import { closeSync, constants, fstatSync, lstatSync, openSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import type { SetHost, SetHostEntry } from '../set.js';
 
 const WINDOWS = process.platform === 'win32';
@@ -23,6 +23,19 @@ export const nodeSetHost: SetHost = Object.freeze({
     }
     // Node reports a Windows reparse point whose tag is a symbolic link or a junction as a symbolic link.
     if (stat.isSymbolicLink()) return 'symlink';
+    if (stat.isDirectory()) return 'directory';
+    if (stat.isFile()) return 'file';
+    return 'other';
+  },
+  stat(path: string): SetHostEntry | null {
+    let stat;
+    try {
+      stat = statSync(path);
+    } catch (thrown) {
+      const code = thrown instanceof Error && 'code' in thrown ? thrown.code : undefined;
+      if (code === 'ENOENT' || code === 'ENOTDIR') return null;
+      throw thrown;
+    }
     if (stat.isDirectory()) return 'directory';
     if (stat.isFile()) return 'file';
     return 'other';

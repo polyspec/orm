@@ -123,7 +123,7 @@ for (const c of vectors.cases) {
     const failed = [];
     for (const p of [...c.want.documents, ...c.want.external]) {
       if (p === target.path) continue;
-      const text = treeBytes(c.tree, posix.normalize(p)).toString('utf8');
+      const text = treeBytes(c.tree, followDirectories(c.tree, posix.normalize(p))).toString('utf8');
       if (text.startsWith('dbspec 1 ')) expected[text.slice('dbspec 1 '.length, text.indexOf('\n'))] = text;
       else failed.push(`${root}/${p}`);
     }

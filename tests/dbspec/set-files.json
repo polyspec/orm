@@ -332,6 +332,32 @@
       }
     },
     {
+      "id": "external-through-linked-directory",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "real/x.dbs": {
+          "file": "dbspec 1 x\n"
+        },
+        "app/sub": {
+          "symlink": "../real"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs\"], \"external\": [\"sub/x.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "documents": [
+          "app/shop.dbs"
+        ],
+        "external": [
+          "app/sub/x.dbs"
+        ]
+      }
+    },
+    {
       "id": "set-file-symlink",
       "tree": {
         "app/shop.dbs": {

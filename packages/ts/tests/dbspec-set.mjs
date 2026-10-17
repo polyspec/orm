@@ -73,9 +73,21 @@ assert.ok(Array.isArray(vectors.cases) && vectors.cases.length > 0, 'set-files.j
 const all = vectors.cases.map(readCase);
 assert.equal(new Set(all.map(c => c.id)).size, all.length, 'case ids are unique');
 
-/** The bytes that the tree entry at `path` holds, following hard links to the file they name. */
+/**
+ * The bytes that the tree entry at `path` holds, following hard links to the file they name. A path below a symbolic
+ * link to a directory holds the bytes of the file that it reaches.
+ */
 function treeBytes(tree, path) {
   const entry = tree[path];
+  if (entry === undefined) {
+    const segments = path.split('/');
+    for (let i = 1; i < segments.length; i++) {
+      const link = segments.slice(0, i).join('/');
+      if (tree[link] !== undefined && 'symlink' in tree[link]) {
+        return treeBytes(tree, posix.normalize(posix.join(posix.dirname(link), tree[link].symlink)) + path.slice(link.length));
+      }
+    }
+  }
   assert.ok(entry !== undefined, `tree path ${path} exists`);
   if ('file' in entry) return Buffer.from(entry.file, 'utf8');
   if ('hex' in entry) return Buffer.from(entry.hex, 'hex');

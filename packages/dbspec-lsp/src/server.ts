@@ -37,6 +37,7 @@ export function startServer(connection: Connection): void {
   // The Node host with the open buffers: a listed file that is open is read from its buffer, its identity from disk.
   const host: SetHost = {
     lstat: path => nodeSetHost.lstat(path),
+    stat: path => nodeSetHost.stat(path),
     list: directory => nodeSetHost.list(directory),
     open: path => {
       const file = nodeSetHost.open(path);

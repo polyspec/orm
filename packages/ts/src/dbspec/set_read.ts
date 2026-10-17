@@ -3,7 +3,7 @@
 // through parseSet (set_file.ts). It is Node-only, so the browser entry (entry.ts) does not reach it.
 import { present } from '../present.js';
 import { inspect } from 'node:util';
-import { closeSync, constants, fstatSync, lstatSync, openSync, readdirSync, readFileSync, type Stats } from 'node:fs';
+import { closeSync, constants, fstatSync, lstatSync, openSync, readdirSync, readFileSync, statSync, type Stats } from 'node:fs';
 import {
   parseSetOn,
   setError,
@@ -76,6 +76,16 @@ function examine(path: string): Stats | Error {
   }
 }
 
+/** stat of one intermediate component of an external path that is a symbolic link: the directory it names. */
+function examineFollowed(path: string): Stats | Error {
+  try {
+    return statSync(path);
+  } catch (error) {
+    if (error instanceof Error) return error;
+    throw error;
+  }
+}
+
 /** Opens the file once and reads its bytes and its identity from that handle. */
 function readOnce(path: string): { bytes: Uint8Array; identity: string } | { failure: string } {
   let fd: number;
@@ -123,9 +133,10 @@ function readSetFile(path: string): Uint8Array | DbspecSetError {
 
 /**
  * Step 3 for one path with the normal form: every prefix of its joined path that ends after a segment, examined
- * without following a symbolic link. Returns the first error, or null.
+ * without following a symbolic link, except that an intermediate prefix of an external path that is a link is
+ * examined through it. Returns the first error, or null.
  */
-function examinePath(entry: DbspecSetPath, prefix: string): DbspecSetError | null {
+function examinePath(entry: DbspecSetPath, prefix: string, external: boolean): DbspecSetError | null {
   const segments = entry.written.split('/');
   const fileError = (detail: string): DbspecSetError => setError('set.file', entry.path, `${entry.path}: ${detail}`);
   let parent = rootOf(prefix);
@@ -143,7 +154,9 @@ function examinePath(entry: DbspecSetPath, prefix: string): DbspecSetError | nul
         return fileError(`${parent} cannot be listed: ${reason(error)}`);
       }
     }
-    const stat = examine(current);
+    const lstat = examine(current);
+    if (lstat instanceof Error) return fileError(`${current} cannot be examined: ${reason(lstat)}`);
+    const stat = external && !last && lstat.isSymbolicLink() ? examineFollowed(current) : lstat;
     if (stat instanceof Error) return fileError(`${current} cannot be examined: ${reason(stat)}`);
     if (stat.isSymbolicLink()) return setError('set.symlink', entry.path, `${entry.path}: ${current} is a symbolic link`);
     if (last && !stat.isFile()) return fileError(`${current} is not a regular file`);
@@ -169,8 +182,8 @@ export function readDbspecSet(path: string): DbspecSetResult {
   // Step 3: the normal form, then the components of each path, in order.
   const stepThree: DbspecSetError[] = [];
   const passed: DbspecSetPath[] = [];
-  for (const entry of entries) {
-    const error = entry.error ?? examinePath(entry, prefix);
+  for (const [index, entry] of entries.entries()) {
+    const error = entry.error ?? examinePath(entry, prefix, index >= parsed.documents.length);
     if (error === null) passed.push(entry);
     else stepThree.push(error);
   }

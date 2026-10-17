@@ -117,6 +117,7 @@ def build_tree(root, entries):
     """Writes the tree under `root` in its written order and gives each regular file's bytes by its tree
     path (a hard link has the bytes of its file)."""
     contents = {}
+    links = {}
     for path, kind, value in entries:
         target = os.path.join(root, *path.split("/"))
         os.makedirs(os.path.dirname(target), exist_ok=True)
@@ -131,6 +132,9 @@ def build_tree(root, entries):
                 target,
                 target_is_directory=os.path.isdir(resolved),
             )
+            links[path] = posixpath.normpath(
+                posixpath.join(posixpath.dirname(path), value)
+            )
             continue
         else:
             if value not in contents:
@@ -143,6 +147,11 @@ def build_tree(root, entries):
         with open(target, "xb") as handle:
             handle.write(data)
         contents[path] = data
+    # A file reached through a symbolic link to a directory is also listed under the link's tree path.
+    for link, target in links.items():
+        for file in list(contents):
+            if file.startswith(target + "/"):
+                contents[link + file[len(target) :]] = contents[file]
     return contents
 
 

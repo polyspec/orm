@@ -120,14 +120,14 @@ static str system_error(DWORD code)
     return s.s == NULL ? fmt("error %u", (size_t)code) : s;
 }
 
-static set_kind path_kind(str path)
+static set_kind path_kind(str path, bool follow)
 {
     wchar_t *w = wide(path);
     if (w == NULL) {
         return KIND_NONE;
     }
     HANDLE h = CreateFileW(w, FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
-        FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+        FILE_FLAG_BACKUP_SEMANTICS | (follow ? 0 : FILE_FLAG_OPEN_REPARSE_POINT), NULL);
     if (h == INVALID_HANDLE_VALUE) {
         return KIND_NONE;
     }
@@ -138,7 +138,7 @@ static set_kind path_kind(str path)
     if (!ok) {
         return KIND_NONE;
     }
-    if ((info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) && IsReparseTagNameSurrogate(info.ReparseTag)) {
+    if (!follow && (info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) && IsReparseTagNameSurrogate(info.ReparseTag)) {
         return KIND_LINK;
     }
     if (info.FileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
@@ -220,10 +220,10 @@ static bool open_file(str path, const smap *seen, str *identity, str *bytes, str
 
 #else
 
-static set_kind path_kind(str path)
+static set_kind path_kind(str path, bool follow)
 {
     struct stat st;
-    if (lstat(cpath(path), &st) != 0) {
+    if ((follow ? stat(cpath(path), &st) : lstat(cpath(path), &st)) != 0) {
         return KIND_NONE;
     }
     if (S_ISLNK(st.st_mode)) {
@@ -643,8 +643,9 @@ static const char *normal_form(str written, bool documents)
 }
 
 /* Step 3 for one path that has its normal form: each prefix of the joined path that ends after a written segment is
- * listed by its directory (a segment other than `..`) and examined with lstat. */
-static bool examine(set_reader *r, str root, str prefix, str written, str joined, set_error *error)
+ * listed by its directory (a segment other than `..`) and examined with lstat. An intermediate component of an
+ * external path that is a link is examined through it (stat). */
+static bool examine(set_reader *r, str root, str prefix, str written, str joined, bool external, set_error *error)
 {
     strs segments = strs_split(written, '/');
     str directory = root;
@@ -663,8 +664,11 @@ static bool examine(set_reader *r, str root, str prefix, str written, str joined
                 return false;
             }
         }
-        set_kind kind = path_kind(component);
+        set_kind kind = path_kind(component, false);
         bool last = i == segments.n - 1;
+        if (kind == KIND_LINK && external && !last) {
+            kind = path_kind(component, true);
+        }
         if (kind == KIND_NONE) {
             *error = mkerror("set.file", joined, fmt("%S: %S cannot be examined", joined, component));
             return false;
@@ -707,7 +711,7 @@ static bool read_set(str path, set_files *documents, set_files *external, set_er
     if (memchr(path.s, 0, path.n) != NULL) {
         FAIL1("set.file", "%S: the path contains a NUL byte", path);
     }
-    set_kind kind = path_kind(trimmed(root));
+    set_kind kind = path_kind(trimmed(root), false);
     if (kind == KIND_NONE) {
         FAIL1("set.file", "%S: the root %S cannot be examined", path, root);
     }
@@ -724,7 +728,7 @@ static bool read_set(str path, set_files *documents, set_files *external, set_er
     if (listed == 0) {
         FAIL1("set.file", "%S: " SET_NAME " is not a name that %S lists", path, root);
     }
-    kind = path_kind(path);
+    kind = path_kind(path, false);
     if (kind == KIND_NONE) {
         FAIL1("set.file", "%S: the set file cannot be examined", path);
     }
@@ -762,7 +766,7 @@ static bool read_set(str path, set_files *documents, set_files *external, set_er
                 continue;
             }
             str joined = fmt("%S%S", prefix, written);
-            if (!examine(&r, root, prefix, written, joined, &error)) {
+            if (!examine(&r, root, prefix, written, joined, list == 1, &error)) {
                 PUSH(*errors, error);
                 continue;
             }

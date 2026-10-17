@@ -104,7 +104,7 @@ func ReadSet(path string) (Set, []SetError) {
 				continue
 			}
 			joined := prefix + written
-			if failure := r.examinePath(prefix, root, written, joined); failure != nil {
+			if failure := r.examinePath(prefix, root, written, joined, list.external); failure != nil {
 				errs = append(errs, *failure)
 				continue
 			}
@@ -247,8 +247,10 @@ func (r *setReader) readSetFile(path, root, last string) ([]byte, *SetError) {
 
 // examinePath is step 3 after the normal form: each prefix of the joined path
 // that ends after a segment of the written path. A segment other than `..` is
-// first compared with the names its directory lists, then examined.
-func (r *setReader) examinePath(prefix, root, written, joined string) *SetError {
+// first compared with the names its directory lists, then examined. An
+// intermediate component of an external path may be a symbolic link to a
+// directory, which is followed; every other link is refused.
+func (r *setReader) examinePath(prefix, root, written, joined string, external bool) *SetError {
 	fail := func(rule, message string) *SetError {
 		return &SetError{Rule: rule, Path: joined, Message: joined + ": " + message}
 	}
@@ -269,6 +271,11 @@ func (r *setReader) examinePath(prefix, root, written, joined string) *SetError 
 		if err != nil {
 			return fail(RuleSetFile, fmt.Sprintf("%s cannot be examined: %v", component, err))
 		}
+		if kind == kindSymlink && external && i < len(segments)-1 {
+			if kind, err = examineFollowed(component); err != nil {
+				return fail(RuleSetFile, fmt.Sprintf("%s cannot be examined: %v", component, err))
+			}
+		}
 		if kind == kindSymlink {
 			return fail(RuleSetSymlink, component+" is a symbolic link")
 		}
@@ -282,6 +289,22 @@ func (r *setReader) examinePath(prefix, root, written, joined string) *SetError 
 		directory = component
 	}
 	return nil
+}
+
+// examineFollowed examines path following a symbolic link (stat), for an
+// intermediate component of an external path.
+func examineFollowed(path string) (entryKind, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return kindOther, err
+	}
+	switch {
+	case info.IsDir():
+		return kindDirectory, nil
+	case info.Mode().IsRegular():
+		return kindRegular, nil
+	}
+	return kindOther, nil
 }
 
 // readListedFile opens path once and takes its bytes and its identity from

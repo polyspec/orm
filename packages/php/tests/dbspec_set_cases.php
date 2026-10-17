@@ -78,6 +78,7 @@ function dbspec_set_cases(string $root): array
 function dbspec_set_tree(string $dir, array $tree): array
 {
     $bytes = [];
+    $links = [];
     foreach ($tree as $path => $entry) {
         $path = (string) $path;
         $target = "$dir/$path";
@@ -100,10 +101,32 @@ function dbspec_set_tree(string $dir, array $tree): array
             'file' => $bytes[$path] = $value,
             'hex' => $bytes[$path] = (string) hex2bin($value),
             'hardlink' => $bytes[$path] = $bytes[$value] ?? throw new RuntimeException("hard link $path names no earlier file $value"),
-            'symlink' => null,
+            'symlink' => $links[$path] = dbspec_set_resolve(dirname($path) . '/' . $value),
         };
     }
+    // A file reached through a symbolic link to a directory is also listed under the link's tree path.
+    foreach ($links as $link => $target) {
+        foreach ($bytes as $file => $content) {
+            if (str_starts_with($file, "$target/")) {
+                $bytes[$link . substr($file, strlen($target))] = $content;
+            }
+        }
+    }
     return $bytes;
+}
+
+/** The tree path that a path names, its `.` and `..` segments resolved lexically. */
+function dbspec_set_resolve(string $path): string
+{
+    $out = [];
+    foreach (explode('/', $path) as $segment) {
+        if ($segment === '..') {
+            array_pop($out);
+        } elseif ($segment !== '.' && $segment !== '') {
+            $out[] = $segment;
+        }
+    }
+    return implode('/', $out);
 }
 
 /** A result of a set reader described for comparison: the files with their bytes, or the errors. */

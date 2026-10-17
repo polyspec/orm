@@ -187,9 +187,11 @@ def _is_link(status: os.stat_result) -> bool:
     return stat.S_ISLNK(status.st_mode)
 
 
-def _lstat(path: str, report: str) -> os.stat_result:
+def _lstat(path: str, report: str, follow: bool = False) -> os.stat_result:
+    """The status of `path` without following a symbolic link at its last component, or, with
+    `follow`, the status of the entry that it names (stat)."""
     try:
-        return os.lstat(_os_path(path))
+        return (os.stat if follow else os.lstat)(_os_path(path))
     except FileNotFoundError:
         raise _Failure("set.file", report, f"{report}: {path} is missing") from None
     except OSError as error:
@@ -384,6 +386,9 @@ def _check_path(path: str, prefix: str, written: str, is_external: bool) -> str:
         if segment != "..":
             _listed(directory, segment, component, joined)
         status = _lstat(component, joined)
+        if _is_link(status) and is_external and not last:
+            # An intermediate component of an external path may be a link to a directory: it is followed.
+            status = _lstat(component, joined, follow=True)
         if _is_link(status):
             raise _Failure(
                 "set.symlink", joined, f"{joined}: {component} is a symbolic link"

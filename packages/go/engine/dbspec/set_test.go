@@ -142,9 +142,11 @@ func setTree(raw []byte) ([]setTreePath, error) {
 }
 
 // buildSetTree creates the tree under root with real symbolic and hard links and
-// returns the bytes of each regular file by its tree path.
+// returns the bytes of each regular file by its tree path. A file reached through
+// a symbolic link to a directory is also listed under the link's tree path.
 func buildSetTree(root string, tree []setTreePath) (map[string][]byte, error) {
 	contents := map[string][]byte{}
+	links := map[string]string{}
 	for _, p := range tree {
 		full := root + "/" + p.path
 		if err := os.MkdirAll(filepath.Dir(filepath.FromSlash(full)), 0o755); err != nil {
@@ -167,6 +169,7 @@ func buildSetTree(root string, tree []setTreePath) (map[string][]byte, error) {
 				return nil, err
 			}
 		case e.Symlink != nil:
+			links[p.path] = path.Clean(path.Join(path.Dir(p.path), *e.Symlink))
 			if err := os.Symlink(filepath.FromSlash(*e.Symlink), full); err != nil {
 				return nil, err
 			}
@@ -181,7 +184,18 @@ func buildSetTree(root string, tree []setTreePath) (map[string][]byte, error) {
 			contents[p.path] = b
 		}
 	}
-	return contents, nil
+	files := make(map[string][]byte, len(contents))
+	for k, b := range contents {
+		files[k] = b
+	}
+	for link, target := range links {
+		for k, b := range contents {
+			if strings.HasPrefix(k, target+"/") {
+				files[link+k[len(target):]] = b
+			}
+		}
+	}
+	return files, nil
 }
 
 // TestReadSetVectors runs every case of tests/dbspec/set-files.json through ReadSet.
