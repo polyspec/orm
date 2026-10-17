@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 738260243970e75a5c847a37b31a52beb5f9532b011c3ee5d98196dbede28b9d -->
+<!-- source-sha256: 57c2c9a108992967001f2c95901f07055ce836b65391826f9349dfe14fb192d7 -->
 # 변경 이력
 
 ## Unreleased
+- Go dialect physical test 파일 열 개와 probe_test.go가 schema_definition feature에 속하며, 정적 feature 검사가 통과한다. (#T198-1)
 - Python conformance runner, Python dbspec comparator, Python와 Rust interface extractor가 packages/python과 packages/rust의 testing/ 아래에 있고, Python test는 packages/python/tests에 있으며, layout, parity support 목록과 interface 검사기가 새 경로를 가리킨다. (#T77-9-3)
 - collection-identity, plan-cache와 dialect probe test, Go coverage gate와 추적되는 fixture tests/collection/keys.json이 feature verification 명령의 입력이라서, 추적되는 모든 file이 행동 test를 고른다. (#T198-2)
 - PHP와 TypeScript dbspec adapter가 packages/php, packages/php-ext, packages/ts의 testing/dbspec에 있으며, comparator, Go physical test와 layout이 새 경로를 가리킨다. (#T77-9-2-4)
