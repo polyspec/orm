@@ -10,6 +10,7 @@
 - The PHP and TypeScript adapters live in packages/php and packages/ts; the parent row closes with its four sub-items (T77-9-2).
 - The three feature checks pass on main: the Go and PHP dbspec test files that the T77-9-4 landings added belong to schema_definition (T198).
 - The conformance result Python check runs in module mode, so its packages import resolves (T77-17).
+- The repository convention tests pass: the Python thin-slice is the Python client example, the Rust cases and the TypeScript plan-cache test follow the shared testcase package (T77-18).
 - The parity declaration rules R4 to R10 pass on main: the undeclared suites, the unbound test files, the root and document counts, and the stale client lists are declared (T148-3-7).
 - The parity declarations bind the test files added by the T77-9-4 landings to their units and the php support list, so every declaration holds again (T148-3).
 - The PHP conformance binding checks that every declared vector is run and that the vector files name the same set (T77-9-4-3).

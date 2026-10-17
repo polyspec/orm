@@ -2,7 +2,7 @@
 # stdout: the result as JSON. stderr: p50 of the generated client and of the
 # same SQL through PyMySQL directly.
 #
-#   python3 examples/thin-slice/python/main.py
+#   python3 packages/python/examples/thin_slice/main.py
 import json
 import os
 import sys

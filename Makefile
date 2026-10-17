@@ -1031,7 +1031,7 @@ case-database-check: php-vendor-check lease-tool
 PYTHON_MODELS_DIR = packages/python/src/polyspec/orm/models
 .PHONY: python-model-check
 python-model-check: python-venv-check
-	$(PYTHON_VENV)/bin/orm-gen gen --check --set contracts/fixtures/bench/dbspec-set.json --out $(PYTHON_MODELS_DIR) --scan examples/thin-slice/python/main.py
+	$(PYTHON_VENV)/bin/orm-gen gen --check --set contracts/fixtures/bench/dbspec-set.json --out $(PYTHON_MODELS_DIR) --scan packages/python/examples/thin_slice/main.py
 
 # CONFORMANCE_PY_MODELS is the model directory that the Python conformance runner imports. The venv orm-gen writes it from
 # contracts/fixtures/bench/bench.dbs into a temporary directory and renames it into place (an atomic publish of build output).

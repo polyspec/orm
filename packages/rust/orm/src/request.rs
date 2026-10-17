@@ -419,6 +419,7 @@ mod plan_cache_tests {
     /// (1, 2, 4 ... 512), so 300 lengths give at most ten distinct plan-cache keys.
     #[test]
     fn in_list_keys_are_bounded_by_bucket() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let mut keys = HashSet::new();
         for n in 1..=300usize {
             let list: Vec<Param> = (0..n as i64).map(Param::I64).collect();

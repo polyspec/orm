@@ -2,8 +2,8 @@
 // power of two by repeating its last value, and the parameters are renumbered by the walk of the request, so lengths
 // 1 to 300 of one statement share at most ten keys, one per bucket.
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import { canonicalize } from '../dist/engine/canonical.js';
+import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 
 function inRequest(n) {
   const ps = Array.from({ length: n }, (_, i) => i);
@@ -11,7 +11,7 @@ function inRequest(n) {
   return { request: { ir_version: 1, manifest_hash: 'h', kind: 'all', entity: 'load_probe', where: { items: [{ pred: { column: 'seq', op: 'in', ps } }] }, n_params: n }, params };
 }
 
-test('IN lists of lengths 1 to 300 share at most ten plan cache keys', () => {
+caseTest('IN lists of lengths 1 to 300 share at most ten plan cache keys', COMPUTE, () => {
   const keys = new Set();
   for (let n = 1; n <= 300; n++) {
     const { request, params } = inRequest(n);
@@ -20,7 +20,7 @@ test('IN lists of lengths 1 to 300 share at most ten plan cache keys', () => {
   }
 });
 
-test('an IN list pads to its bucket by repeating its last value and renumbers its parameters', () => {
+caseTest('an IN list pads to its bucket by repeating its last value and renumbers its parameters', COMPUTE, () => {
   const request = { ir_version: 1, manifest_hash: 'h', kind: 'all', entity: 'load_probe', where: { items: [{ pred: { column: 'seq', op: 'in', ps: [0, 1, 2] } }, { pred: { column: 'label', op: 'eq', p: 3 } }] }, n_params: 4 };
   const out = canonicalize(request, ['a', 'b', 'c', 'tail']);
   assert.deepEqual(out.request.where.items[0].pred.ps, [0, 1, 2, 3]);
@@ -30,7 +30,7 @@ test('an IN list pads to its bucket by repeating its last value and renumbers it
   assert.equal(request.where.items[0].pred.ps.length, 3, 'the input request is not changed');
 });
 
-test('a parameter index past the parameters is IR_INVALID', () => {
+caseTest('a parameter index past the parameters is IR_INVALID', COMPUTE, () => {
   const request = { ir_version: 1, manifest_hash: 'h', kind: 'all', entity: 'load_probe', where: { items: [{ pred: { column: 'seq', op: 'in', ps: [7] } }] }, n_params: 1 };
   assert.throws(() => canonicalize(request, ['a']), (error) => error.code === 'IR_INVALID');
 });
