@@ -1,5 +1,5 @@
 // The codec value checks that no vector file holds, as one case.
-import { CodecError, StyledValue, blindIndex, decodeCodec, encodeCodec, hostDecode, hostEncode } from '../dist/index.js';
+import { CodecError, StyledValue, blindIndex, decode, encode, hostDecode, hostEncode } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { check, same } from './codec_case.mjs';
 
@@ -7,20 +7,20 @@ import { check, same } from './codec_case.mjs';
 check('codec values', wrong => {
   if (blindIndex('member@example.test', 'blind-key') !== '1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8') wrong.push('blind index');
   for (const [name, operation, code] of [
-    ['bad JSON', () => decodeCodec(['ordered_json'], '{bad'), 'CODEC_DECODE'],
-    ['bad base64', () => decodeCodec(['serialize', 'base64'], '@@@'), 'CODEC_DECODE'],
-    ['serialized object', () => decodeCodec(['serialize'], 'O:8:"stdClass":0:{}'), 'CODEC_UNSUPPORTED'],
-    ['bad zlib', () => decodeCodec(['serialize', 'gz'], 'not zlib'), 'CODEC_DECODE'],
-    ['unknown style', () => encodeCodec(['unknown'], StyledValue.value('value')), 'CODEC_UNSUPPORTED'],
-    ['unknown encode style', () => encodeCodec(['filepart', 'serialize'], StyledValue.value({})), 'CODEC_UNSUPPORTED'],
-    ['unknown decode style', () => decodeCodec(['filepart'], 'a:0:{}'), 'CODEC_UNSUPPORTED'],
-    ['duplicate YAML key', () => decodeCodec(['yaml'], 'a: 1\na: 2\n'), 'CODEC_DECODE'],
-    ['multiple YAML documents', () => decodeCodec(['yaml'], '---\na: 1\n---\na: 2\n'), 'CODEC_DECODE'],
-    ['YAML alias', () => decodeCodec(['yaml'], 'a: &x [1]\nb: *x\n'), 'CODEC_DECODE'],
-    ['YAML custom tag', () => decodeCodec(['yaml'], 'a: !custom value\n'), 'CODEC_DECODE'],
-    ['YAML non-finite number', () => decodeCodec(['yaml'], 'value: .inf\n'), 'CODEC_DECODE'],
-    ['YAML boolean map key', () => decodeCodec(['yaml'], 'true: value\n'), 'CODEC_DECODE'],
-    ['invalid YAML order', () => encodeCodec(['serialize', 'yaml'], StyledValue.value({})), 'CODEC_UNSUPPORTED'],
+    ['bad JSON', () => decode(['ordered_json'], '{bad'), 'CODEC_DECODE'],
+    ['bad base64', () => decode(['serialize', 'base64'], '@@@'), 'CODEC_DECODE'],
+    ['serialized object', () => decode(['serialize'], 'O:8:"stdClass":0:{}'), 'CODEC_UNSUPPORTED'],
+    ['bad zlib', () => decode(['serialize', 'gz'], 'not zlib'), 'CODEC_DECODE'],
+    ['unknown style', () => encode(['unknown'], StyledValue.value('value')), 'CODEC_UNSUPPORTED'],
+    ['unknown encode style', () => encode(['filepart', 'serialize'], StyledValue.value({})), 'CODEC_UNSUPPORTED'],
+    ['unknown decode style', () => decode(['filepart'], 'a:0:{}'), 'CODEC_UNSUPPORTED'],
+    ['duplicate YAML key', () => decode(['yaml'], 'a: 1\na: 2\n'), 'CODEC_DECODE'],
+    ['multiple YAML documents', () => decode(['yaml'], '---\na: 1\n---\na: 2\n'), 'CODEC_DECODE'],
+    ['YAML alias', () => decode(['yaml'], 'a: &x [1]\nb: *x\n'), 'CODEC_DECODE'],
+    ['YAML custom tag', () => decode(['yaml'], 'a: !custom value\n'), 'CODEC_DECODE'],
+    ['YAML non-finite number', () => decode(['yaml'], 'value: .inf\n'), 'CODEC_DECODE'],
+    ['YAML boolean map key', () => decode(['yaml'], 'true: value\n'), 'CODEC_DECODE'],
+    ['invalid YAML order', () => encode(['serialize', 'yaml'], StyledValue.value({})), 'CODEC_UNSUPPORTED'],
   ]) {
     try {
       operation();
@@ -48,28 +48,28 @@ check('codec values', wrong => {
   }
 
   const orderedText = '{"b":1,"a":[],"c":{},"n":1.50}';
-  const orderedRead = decodeCodec(['ordered_json'], orderedText);
+  const orderedRead = decode(['ordered_json'], orderedText);
   if (!(orderedRead instanceof StyledValue) || orderedRead.kind !== 'value' || !(orderedRead.payload() instanceof JsonValue) || stringifyJson(orderedRead.payload()) !== orderedText) {
     wrong.push(`json read: ${orderedRead instanceof StyledValue && orderedRead.kind === 'value' ? stringifyJson(orderedRead.payload()) : String(orderedRead)}`);
   }
   for (const [name, value] of [['ordered-json value', parseJson(orderedText)], ['common value model with a nested ordered-json value', { b: 1, a: [], c: {}, n: parseJson('1.50') }]]) {
-    const written = encodeCodec(['ordered_json'], StyledValue.value(value));
+    const written = encode(['ordered_json'], StyledValue.value(value));
     if (written !== orderedText) { wrong.push(`json write of ${name}: ${written}`); }
   }
   for (const value of [Number.NaN, { a: undefined }, new Uint8Array([1])]) {
-    try { encodeCodec(['ordered_json'], StyledValue.value(value)); wrong.push(`json write of ${String(value)}: expected CODEC_ENCODE`); }
+    try { encode(['ordered_json'], StyledValue.value(value)); wrong.push(`json write of ${String(value)}: expected CODEC_ENCODE`); }
     catch (error) { if (error?.code !== 'CODEC_ENCODE') { wrong.push(`json write: ${String(error)} want CODEC_ENCODE`); } }
   }
-  try { encodeCodec(['serialize'], StyledValue.value(parseJson('{}'))); wrong.push('serialize of an ordered-json value: expected CODEC_ENCODE'); }
+  try { encode(['serialize'], StyledValue.value(parseJson('{}'))); wrong.push('serialize of an ordered-json value: expected CODEC_ENCODE'); }
   catch (error) { if (!(error instanceof CodecError) || error.code !== 'CODEC_ENCODE') { wrong.push(`serialize of an ordered-json value: ${String(error)}`); } }
-  if (!same(decodeCodec(['yaml'], '1: value\n').payload(), { 1: 'value' })) {
+  if (!same(decode(['yaml'], '1: value\n').payload(), { 1: 'value' })) {
     wrong.push('YAML integer map key: expected string key');
   }
   for (const [name, stage] of [['gz', 'gz'], ['base64', 'base64']]) {
-    const written = encodeCodec([stage], StyledValue.value('stored text'));
-    const read = decodeCodec([stage], written);
+    const written = encode([stage], StyledValue.value('stored text'));
+    const read = decode([stage], written);
     if (read.kind !== 'value' || read.payload() !== 'stored text') { wrong.push(`${name} of a string: ${String(read.payload())}`); }
-    try { encodeCodec([stage], StyledValue.value({ a: 1 })); wrong.push(`${name} of a map: expected CODEC_ENCODE`); }
+    try { encode([stage], StyledValue.value({ a: 1 })); wrong.push(`${name} of a map: expected CODEC_ENCODE`); }
     catch (error) { if (!(error instanceof CodecError) || error.code !== 'CODEC_ENCODE') { wrong.push(`${name} of a map: ${String(error)}`); } }
   }
 

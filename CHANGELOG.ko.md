@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2922b617c3cf6980075833dc5c33f7d5c01ff63d588d03945251248bda73ca45 -->
+<!-- source-sha256: cabb206015b8ba7c94af63dddff9d3a823c255a3498350d76df3d310b3a26e00 -->
 # 변경 이력
 
 ## Unreleased
+- TypeScript client가 codec 함수를 `decode`와 `encode`로 export한다. Go, PHP, Rust, Python이 쓰는 이름이며, `decodeCodec`과 `encodeCodec` 별칭은 없앴다. (#T77-8-1-1)
 - TypeScript conformance runner, result helper와 그 test가 packages/ts(testing/conformance와 tests)에 있으며, parity check가 거기서 읽는다. (#T77-9-2-2)
 - features의 `clients` flag를 contracts/features.json, schema와 scripts/features에서 없앴고, contracts/rules.json의 `tests.language-parity`가 parity check를 쓴다. (#T77-10-2)
 - Go dialect physical test 파일 열 개와 probe_test.go가 schema_definition feature에 속하며, 정적 feature 검사가 통과한다. (#T198-1)

@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The TypeScript client exports the codec functions as `decode` and `encode`, the names that Go, PHP, Rust and Python use; the aliases `decodeCodec` and `encodeCodec` are removed. (#T77-8-1-1)
 - The TypeScript conformance runner, its result helper and the result helper test live in packages/ts (testing/conformance and tests), and the parity check reads them there. (#T77-9-2-2)
 - The features' `clients` flags are removed from contracts/features.json, the schema and scripts/features, and `tests.language-parity` in contracts/rules.json uses the parity check. (#T77-10-2)
 - The ten Go dialect physical test files and probe_test.go belong to the schema_definition feature, and the static feature check passes. (#T198-1)

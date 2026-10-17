@@ -1,7 +1,7 @@
 // The shared codec vectors (tests/codec/vectors.json): each vector is one case named by the vector.
 import { after } from 'node:test';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { StyledValue, decodeCodec, encodeCodec, hostEncode } from '../dist/index.js';
+import { StyledValue, decode, encode, hostEncode } from '../dist/index.js';
 import { Value as JsonValue } from '@polyspec/ordered-json';
 import { check, same, shown, stagesOf } from './codec_case.mjs';
 
@@ -15,7 +15,7 @@ for (const vector of vectors) check(vector.name, wrong => {
     try {
       // A list of host stages only (ip) encodes with the host encode and no key.
       const host = vector.styles.every(style => ['aes', 'hex', 'ip'].includes(style));
-      const encoded = host ? hostEncode(vector.value, vector.styles, '') : encodeCodec(stagesOf(vector.styles), StyledValue.value(vector.value));
+      const encoded = host ? hostEncode(vector.value, vector.styles, '') : encode(stagesOf(vector.styles), StyledValue.value(vector.value));
       wrong.push(`encode gave ${shown(encoded)} want ${vector.encode_error}`);
     } catch (error) {
       if (error?.code !== vector.encode_error) wrong.push(`encode ${String(error)} want ${vector.encode_error}`);
@@ -25,7 +25,7 @@ for (const vector of vectors) check(vector.name, wrong => {
   const raw = vector.encoded_b64 === null ? null : Buffer.from(vector.encoded_b64, 'base64');
   let decoded;
   try {
-    decoded = decodeCodec(stagesOf(vector.styles), raw);
+    decoded = decode(stagesOf(vector.styles), raw);
   } catch (error) {
     wrong.push(`decode ${String(error)}`);
     return;
@@ -43,14 +43,14 @@ for (const vector of vectors) check(vector.name, wrong => {
   if (!same(payload, vector.value)) {
     wrong.push(`decoded ${shown(payload)} want ${JSON.stringify(vector.value)}`);
   }
-  const encoded = encodeCodec(stagesOf(vector.styles), decoded);
+  const encoded = encode(stagesOf(vector.styles), decoded);
   const encodedBase64 = encoded === null ? null : Buffer.from(encoded).toString('base64');
   output[vector.name] = encodedBase64;
   const integralFloat = vector.name.endsWith('.integral_float') && vector.styles.includes('serialize');
   if (vector.deterministic && !integralFloat && encodedBase64 !== vector.encoded_b64) {
     wrong.push(`encoded ${encodedBase64} want ${vector.encoded_b64}`);
   }
-  const roundTrip = decodeCodec(stagesOf(vector.styles), encoded);
+  const roundTrip = decode(stagesOf(vector.styles), encoded);
   if (!(roundTrip instanceof StyledValue) || roundTrip.kind !== kind || !same(kind === 'value' ? roundTrip.payload() : null, vector.value)) {
     wrong.push(`round trip ${shown(roundTrip)} want ${JSON.stringify(vector.value)}`);
   }
