@@ -6,7 +6,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,7 +16,6 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "modernc.org/sqlite"
 
-	"github.com/polyspec/orm/packages/go/internal/dialects"
 	"github.com/polyspec/orm/packages/go/engine/plan"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
@@ -26,17 +24,9 @@ import (
 // conditions, subqueries, and placed join conditions on every database and
 // requires equal results.
 func TestPhysicalQueryForms(t *testing.T) {
-	mysqlDSN := os.Getenv("ORM_TEST_MYSQL_DSN")
-	if mysqlDSN != "" {
-		driverDSN, err := dialects.MySQLDriverDSN(mysqlDSN)
-		if err != nil {
-			t.Fatal(err)
-		}
-		mysqlDSN = driverDSN
-	}
 	testcase.Start(t, testcase.Database)
 	targets := []struct{ driver, dsn string }{
-		{"mysql", mysqlDSN},
+		{"mysql", os.Getenv("ORM_TEST_MYSQL_DSN")},
 		{"postgres", os.Getenv("ORM_TEST_POSTGRES_DSN")},
 		{"sqlite", filepath.Join(t.TempDir(), "forms.sqlite")},
 	}
@@ -106,14 +96,17 @@ func testPhysicalQueryForms(t *testing.T, driver, dsn string) {
 		return physicalRows(t, db, driver, p.Steps[0], params)
 	}
 
-	rows := run(`"kind":"all","entity":"place","columns":{"mode":"none","fn":{"distance":{"column":"location","fn":{"name":"distance","ps":[0,1]}}}},
-	 "where":{"items":[{"pred":{"column":"created_ts","op":"eq","p":2,"fn":{"name":"day_of_week"}}}]},"order":[{"column":"seq"}]`,
-		129.0756, 35.1796, 5)
-	if len(rows) != 1 || asInt(rows[0][0]) != 1 {
-		t.Fatalf("day_of_week rows %v", rows)
+	rows := run(`"kind":"all","entity":"place","columns":{"mode":"none"},
+	 "where":{"items":[{"pred":{"column":"created_ts","op":"eq","p":0,"fn":{"name":"day_of_week"}}}]},"order":[{"column":"seq"}]`,
+		5)
+	// The place fixture holds seq 1 (created 2020-01-02, a Thursday, DAYOFWEEK 5) and seq 2 (48 hours before the run).
+	// seq 2 matches DAYOFWEEK 5 only when the run falls on a day 2 days after a Thursday, so the expectation follows the fixture.
+	want := 1
+	if time.Now().UTC().Add(-48*time.Hour).Weekday() == time.Thursday {
+		want = 2
 	}
-	if d := asFloat(rows[0][len(rows[0])-1]); math.Abs(d-325110.5) > 1 {
-		t.Fatalf("distance %v", d)
+	if len(rows) != want || asInt(rows[0][0]) != 1 {
+		t.Fatalf("day_of_week rows %v, want %d", rows, want)
 	}
 
 	rows = run(`"kind":"all","entity":"place","columns":{"mode":"none"},

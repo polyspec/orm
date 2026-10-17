@@ -3,6 +3,7 @@
 
 ## Unreleased
 - The Go performance gate is a benchmark of the tools root packages/go/bench, which belongs to no implementation, so its go-internal parity unit is removed; the gate still runs as the performance_gate feature. (#T77-8-1-1)
+- The physical query-form test runs on MySQL, PostgreSQL and SQLite: the MySQL DSN converts once with its database name, the retired distance case is removed, and the day_of_week count follows the fixture (T77-26, T77-27).
 - The physical query-form test runs on MySQL: the MySQL DSN converts once with its database name (T77-26).
 - Open rows T77-30, T77-31 and T77-32 record three TypeScript parity unit failures by their first error lines (T77-30 setDay declaration, T77-31 SQLite file, T77-32 recursive node:test run).
 - Open rows T77-26 and T77-27 record the physical query-form test failures found by the parity run (MySQL DSN form, place.location).
