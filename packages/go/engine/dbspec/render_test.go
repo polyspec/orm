@@ -80,7 +80,7 @@ func TestRenderVectors(t *testing.T) {
 	for _, c := range loadDDL(t).Cases {
 		t.Run(c.ID, func(t *testing.T) {
 			for _, dialect := range []Dialect{DialectMySQL, DialectPostgres, DialectSQLite} {
-				runTimed(t, "render/"+c.ID+"/"+string(dialect), 5*time.Second, func() error {
+				runTimed(t, c.ID, 5*time.Second, func() error {
 					documents, err := parseDDLSet(c)
 					if err != nil {
 						return err

@@ -188,7 +188,7 @@ func TestRuleDiagnostics(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, c := range ruleCases {
 		t.Run(c.id, func(t *testing.T) {
-			runTimed(t, "rule/"+c.id, 5*time.Second, func() error {
+			runTimed(t, c.id, 5*time.Second, func() error {
 				text := ""
 				if c.lines != nil {
 					text = joinLines(c.lines, false)
@@ -228,7 +228,7 @@ func TestEncodingAndLimitDiagnostics(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.id, func(t *testing.T) {
-			runTimed(t, "limit/"+c.id, 10*time.Second, func() error {
+			runTimed(t, c.id, 10*time.Second, func() error {
 				return expectDiagnostics(c.text, nil, c.want)
 			})
 		})
@@ -322,7 +322,7 @@ func TestCanonicalForms(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.id, func(t *testing.T) {
-			runTimed(t, "canonical/"+c.id, 5*time.Second, func() error {
+			runTimed(t, c.id, 5*time.Second, func() error {
 				got, err := emitStable(joinLines(c.input, false), docSet(c.set))
 				if err != nil {
 					return err
@@ -394,7 +394,7 @@ func TestStateMachineRules(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, c := range cases {
 		t.Run(c.id, func(t *testing.T) {
-			runTimed(t, "rule/"+c.id, 5*time.Second, func() error {
+			runTimed(t, c.id, 5*time.Second, func() error {
 				return expectDiagnostics(joinLines(c.lines, false), nil, c.errors)
 			})
 		})
@@ -748,7 +748,7 @@ func TestMarkdownStorageRules(t *testing.T) {
 				history = standardHistory
 			}
 			lines := markdownDoc(columns, key, history, c.settings...)
-			runTimed(t, "rule/"+c.id, 5*time.Second, func() error {
+			runTimed(t, c.id, 5*time.Second, func() error {
 				return expectDiagnostics(joinLines(lines, false), nil, c.want(lines))
 			})
 		})

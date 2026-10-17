@@ -88,7 +88,7 @@ func TestCanonicalLiteral(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.id, func(t *testing.T) {
-			runTimed(t, "literal/"+c.id, 5*time.Second, func() error {
+			runTimed(t, c.id, 5*time.Second, func() error {
 				got, ok := CanonicalLiteral(c.typ, c.text)
 				if got != c.want || ok != c.ok {
 					return fmt.Errorf("CanonicalLiteral(%s, %q) = (%q, %t), want (%q, %t)", c.typ, c.text, got, ok, c.want, c.ok)

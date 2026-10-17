@@ -70,7 +70,7 @@ func TestManifestVectors(t *testing.T) {
 	}
 	for _, c := range vectors.Hashes {
 		t.Run(c.ID, func(t *testing.T) {
-			runTimed(t, "hashes/"+c.ID, 5*time.Second, func() error {
+			runTimed(t, c.ID, 5*time.Second, func() error {
 				documents, err := c.parseSet()
 				if err != nil {
 					return err
@@ -88,7 +88,7 @@ func TestManifestVectors(t *testing.T) {
 
 func TestManifestRejectsRepeatedDocumentName(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	runTimed(t, "manifest/repeated-name", 5*time.Second, func() error {
+	runTimed(t, "manifest-repeated-name", 5*time.Second, func() error {
 		text := strings.Join([]string{"dbspec 1 shop", "", "table users {", "  id i64 identity", "  primary key (id)", "}", ""}, "\n")
 		first, _, diagnostics := Parse(text, nil)
 		if err := expectDocument(first, diagnostics); err != nil {
@@ -166,7 +166,7 @@ func TestDocumentSets(t *testing.T) {
 	}
 	for _, c := range vectors.Sets {
 		t.Run(c.ID, func(t *testing.T) {
-			runTimed(t, "sets/"+c.ID, 5*time.Second, func() error {
+			runTimed(t, c.ID, 5*time.Second, func() error {
 				// 각 문서는 다른 소유 문서, 외부 문서, parsing 문서를 집합으로 parse한다.
 				all := append(slices.Clone(c.Documents), c.External...)
 				var documents []*Document

@@ -182,7 +182,7 @@ func jsonEqual(what string, got, want any) error {
 }
 
 func checkMermaidExport(t *testing.T, c mermaidExportCase) {
-	runTimed(t, "mermaid/export/"+c.ID, 5*time.Second, func() error {
+	runTimed(t, c.ID, 5*time.Second, func() error {
 		set := map[string]string{}
 		for name, lines := range c.Documents {
 			set[name] = mermaidJoin(lines)
@@ -204,7 +204,7 @@ func checkMermaidExport(t *testing.T, c mermaidExportCase) {
 }
 
 func checkMermaidImport(t *testing.T, c mermaidImportCase) {
-	runTimed(t, "mermaid/import/"+c.ID, 5*time.Second, func() error {
+	runTimed(t, c.ID, 5*time.Second, func() error {
 		d, dropped, diagnostics := ImportMermaid(mermaidJoin(c.Mermaid), "imported")
 		if len(diagnostics) > 0 {
 			return fmt.Errorf("import: %v", diagnostics)
@@ -221,7 +221,7 @@ func checkMermaidImport(t *testing.T, c mermaidImportCase) {
 }
 
 func checkMermaidInvalid(t *testing.T, c mermaidInvalidCase) {
-	runTimed(t, "mermaid/invalid/"+c.ID, 5*time.Second, func() error {
+	runTimed(t, c.ID, 5*time.Second, func() error {
 		_, _, diagnostics := ImportMermaid(mermaidJoin(c.Mermaid), "imported")
 		var got [][]any
 		for _, d := range diagnostics {
@@ -232,7 +232,7 @@ func checkMermaidInvalid(t *testing.T, c mermaidInvalidCase) {
 }
 
 func checkMermaidRoundTrip(t *testing.T, c mermaidRoundTripCase) {
-	runTimed(t, "mermaid/round_trip/"+c.ID, 5*time.Second, func() error {
+	runTimed(t, c.ID, 5*time.Second, func() error {
 		source, diagnostics, err := ReadFile(filepath.Join("..", "..", "..", "..", c.Path))
 		if err != nil {
 			return err

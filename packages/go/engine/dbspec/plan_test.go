@@ -194,7 +194,7 @@ func TestPlanInvalidVectors(t *testing.T) {
 }
 
 func checkPlanCase(t *testing.T, c planCase) {
-	runTimed(t, "plan/"+c.ID, 5*time.Second, func() error {
+	runTimed(t, c.ID, 5*time.Second, func() error {
 		source, err := planSourceOf(c.Source)
 		if err != nil {
 			return err
@@ -237,7 +237,7 @@ func checkPlanCase(t *testing.T, c planCase) {
 }
 
 func checkPlanInvalid(t *testing.T, c planInvalidCase) {
-	runTimed(t, "plan/invalid/"+c.ID, 5*time.Second, func() error {
+	runTimed(t, c.ID, 5*time.Second, func() error {
 		source, err := planSourceOf(c.Source)
 		if err != nil {
 			return err
@@ -275,7 +275,7 @@ func TestPlanChains(t *testing.T) {
 }
 
 func checkPlanChain(t *testing.T, c planChainCase) {
-	runTimed(t, "plan/chain/"+c.ID, 5*time.Second, func() error {
+	runTimed(t, c.ID, 5*time.Second, func() error {
 		var plans []*Plan
 		for i, lines := range c.Plans {
 			p, diagnostics := ParsePlan(strings.Join(lines, "\n") + "\n")
@@ -321,7 +321,7 @@ func TestPlanParseErrors(t *testing.T) {
 }
 
 func checkPlanParse(t *testing.T, c planParseCase) {
-	runTimed(t, "plan/parse/"+c.ID, 5*time.Second, func() error {
+	runTimed(t, c.ID, 5*time.Second, func() error {
 		_, diagnostics := ParsePlan(strings.Join(c.Plan, "\n") + "\n")
 		var got [][]any
 		for _, d := range diagnostics {
@@ -349,7 +349,7 @@ func TestCompareSchemas(t *testing.T) {
 }
 
 func checkComparison(t *testing.T, c comparisonCase) {
-	runTimed(t, "plan/comparison/"+c.ID, 5*time.Second, func() error {
+	runTimed(t, c.ID, 5*time.Second, func() error {
 		source, _, diagnostics := Parse(strings.Join(c.Source, "\n")+"\n", nil)
 		if len(diagnostics) > 0 {
 			return fmt.Errorf("parse source: %v", diagnostics)

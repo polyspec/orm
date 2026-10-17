@@ -121,7 +121,7 @@ func TestFailingCaseFixture(t *testing.T) {
 func TestCaseHarnessReportsOnlyFailure(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	names := failingCaseNames(t)
-	runTimed(t, "harness/only-failure", 2*time.Minute, func() error {
+	runTimed(t, "harness-only-failure", 2*time.Minute, func() error {
 		command := exec.Command("go", "test", "-run", "^TestFailingCaseFixture$", "-count=1", "-v", ".")
 		command.Env = append(os.Environ(), failingCaseFixture+"=1")
 		output, err := command.CombinedOutput()

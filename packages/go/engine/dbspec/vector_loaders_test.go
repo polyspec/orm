@@ -75,9 +75,9 @@ func TestVectorLoadersRejectMalformedVectors(t *testing.T) {
 		{"ddl.json", "cases[0].statements", "is missing", func(o map[string]any) { delete(vectorCaseOf(o, "cases", 0), "statements") }},
 	}
 	for _, m := range mutations {
-		t.Run(m.file+"/"+m.location, func(t *testing.T) {
+		t.Run(m.file+":"+m.location, func(t *testing.T) {
 			r, object := readVectorFile(t, m.file)
-			runTimed(t, "vectors/"+m.file+"/"+m.location, 5*time.Second, func() error {
+			runTimed(t, m.file+":"+m.location, 5*time.Second, func() error {
 				m.change(object)
 				want := r.path + ": " + m.location + " " + m.problem
 				if err := decoders[m.file](r, object); err == nil || err.Error() != want {
