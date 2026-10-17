@@ -16,6 +16,9 @@ import (
 )
 
 // withoutBenchDSN은 ORM_BENCH_MYSQL_DSN을 뺀 환경이다. empty면 빈 값으로 둔다.
+// pythonThinSlice is the Python client example of the thin slice; it lives in the Python package, relative to this directory.
+var pythonThinSlice = filepath.Join("..", "packages", "python", "examples", "thin_slice", "main.py")
+
 func withoutBenchDSN(empty bool) []string {
 	var env []string
 	for _, kv := range os.Environ() {
@@ -41,7 +44,7 @@ func TestExamplesRequireBenchDSN(t *testing.T) {
 		programs["php/"+name] = []string{"php", filepath.Join(name, "php", "main.php")}
 		if name == "thin-slice" {
 			programs["ts/"+name] = []string{"node", filepath.Join(name, "ts", "main.mts")}
-			programs["python/"+name] = []string{"python3", filepath.Join(name, "python", "main.py")}
+			programs["python/"+name] = []string{"python3", pythonThinSlice}
 		}
 	}
 	for name, args := range programs {

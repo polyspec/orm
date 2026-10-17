@@ -43,7 +43,7 @@ func TestExampleOutputsAreIdentical(t *testing.T) {
 			if name == "thin-slice" {
 				// The TypeScript and Python programs run on the Node and the venv interpreter that install-python makes.
 				tsOut := runExample(t, c, "ts", "node", filepath.Join(name, "ts", "main.mts"))
-				pyOut := runExample(t, c, "python", filepath.Join("..", "packages", "python", ".venv", "bin", "python"), filepath.Join(name, "python", "main.py"))
+				pyOut := runExample(t, c, "python", filepath.Join("..", "packages", "python", ".venv", "bin", "python"), filepath.Join("..", "packages", "python", "examples", "thin_slice", "main.py"))
 				if !bytes.Equal(goOut, tsOut) {
 					t.Errorf("%s: go and ts outputs differ\n--- go\n%s\n--- ts\n%s", name, goOut, tsOut)
 				}
