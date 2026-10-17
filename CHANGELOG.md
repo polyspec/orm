@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The error catalogs of TypeScript and Python are exported as `codes`, as Go, PHP and Rust export theirs. The public API of the clients is declared as units in config/parity.json, and interface-check checks the error catalog units of every client against docs/errors.yaml. (#T77-8)
 - The Rust model generator checks its generated files with `Builder::check`, as the Go `orm-gen gen --check` does; the thin-slice demo has TypeScript and Python programs, whose stdout the output comparison checks against Go; and the styled value types of TypeScript and Python are in docs/codec.md and docs/dbspec.md. (#T148-3-7-5)
 - Every TypeScript and Python error site uses the generated catalog constants, and a drift test fails on a stale catalog. (#T148-3-7-3)
 - The TypeScript and Python clients name every error code through a generated catalog, which the parity check compares with docs/errors.yaml. (#T77-4)

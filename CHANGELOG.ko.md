@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 44e625d9398b81d4d2cab903cc50619dc3caf9924fc909d28e6bb34712c078ee -->
+<!-- source-sha256: ec6a4a3fe3d5f3ac41d9ef54e44c9eb752fa3dfa262d5a1a05a92fafa4aaf2dd -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript와 Python의 오류 catalog가 `codes`로 export되며, Go, PHP, Rust가 export하는 방식과 같다. client의 공개 API는 config/parity.json의 단위로 선언되고, interface-check가 모든 client의 오류 catalog 단위를 docs/errors.yaml과 비교한다. (#T77-8)
 - Rust model generator가 `Builder::check`로 생성된 file을 검사한다. 이는 Go의 `orm-gen gen --check`와 같다. thin-slice 데모에 TypeScript와 Python 프로그램이 생겼고, 그 stdout은 출력 비교가 Go와 대조한다. TypeScript와 Python의 styled value type은 docs/codec.md와 docs/dbspec.md에 있다. (#T148-3-7-5)
 - TypeScript와 Python의 모든 오류 지점이 생성된 catalog 상수를 쓰며, 오래된 catalog에서 drift test가 실패한다. (#T148-3-7-3)
 - TypeScript와 Python client가 생성된 catalog로 모든 오류 code를 적으며, parity 검사가 이를 docs/errors.yaml과 비교한다. (#T77-4)
