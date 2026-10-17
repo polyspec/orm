@@ -1,5 +1,5 @@
 <!-- doc-id: tests-interfaces-readme -->
-<!-- source-sha256: 66ec697d4a28302a93e308f1dbaa3bd5b23751f8d4c87f02c7cd6edfdb506a75 -->
+<!-- source-sha256: 82f6306233432680f25c85daaf7295d18e5b3cd68e1266def8588146db5e9b69 -->
 # 공통 인터페이스 검사
 
 [contracts/interfaces.json](../../contracts/interfaces.json)이 인터페이스 구조를 정의한다. [인터페이스 구조 문서](../../docs/interfaces.ko.md)와 함께 변경한다.
@@ -17,7 +17,7 @@
 - 금지 심볼은 취소와 커서 페이지처럼 삭제되었거나 지원하지 않는 동작을 거부한다.
 - 소스 변이 검사는 메서드 누락, 인자 추가, 반환 타입 변경, 필드 타입 변경, receiver 변경, 선언되지 않은 상태를 검사기가 거부하는지 확인한다.
 
-검사기는 각 언어의 선언을 그 언어 자신의 추출기(`tests/interfaces/go`, `php.php`, `rust`, `typescript.mts`, `python.py`)로 읽는 TypeScript program(`tests/interfaces/check/main.mts`)이다. entity 단위 규칙은 dbspec 문서의 entity 순서로 펼치며 그 순서를 TypeScript client build에서 읽으므로 `npm run typescript:build`(또는 `make typescript-build`)를 먼저 실행한다. `make interface-check`는 그것을 build한다.
+검사기는 각 언어의 선언을 그 언어 자신의 추출기(`packages/go/internal/symbols`, `php.php`, `rust`, `typescript.mts`, `python.py`)로 읽는 TypeScript program(`tests/interfaces/check/main.mts`)이다. entity 단위 규칙은 dbspec 문서의 entity 순서로 펼치며 그 순서를 TypeScript client build에서 읽으므로 `npm run typescript:build`(또는 `make typescript-build`)를 먼저 실행한다. `make interface-check`는 그것을 build한다.
 
 데이터베이스 없이 구조 검사를 실행한다.
 

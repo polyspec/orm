@@ -3,7 +3,7 @@
 //
 // A symbol is exported when its name is exported and, for a method or a field, so is its receiver or struct type.
 //
-// Usage: go run ./tests/interfaces/go <root> <directory>...
+// Usage: go run ./packages/go/internal/symbols <root> <directory>...
 package main
 
 import (
@@ -24,7 +24,7 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./tests/interfaces/go <root> <directory>...")
+		fmt.Fprintln(os.Stderr, "usage: go run ./packages/go/internal/symbols <root> <directory>...")
 		os.Exit(2)
 	}
 	symbols, err := goSymbols(os.Args[1], os.Args[2:])

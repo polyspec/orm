@@ -7335,7 +7335,7 @@
             ],
             "inputs": [
               "tests/interfaces/check/*.mts",
-              "tests/interfaces/go/*.go",
+              "packages/go/internal/symbols/*.go",
               "contracts/interfaces.json",
               "contracts/symbols/go.json"
             ],
@@ -7361,7 +7361,7 @@
             ],
             "inputs": [
               "tests/interfaces/check/*.mts",
-              "tests/interfaces/go/*.go",
+              "packages/go/internal/symbols/*.go",
               "contracts/interfaces.json",
               "contracts/symbols/php.json",
               "tests/interfaces/php.php"
@@ -7385,7 +7385,7 @@
             ],
             "inputs": [
               "tests/interfaces/check/*.mts",
-              "tests/interfaces/go/*.go",
+              "packages/go/internal/symbols/*.go",
               "contracts/interfaces.json",
               "contracts/symbols/rust.json",
               "tests/interfaces/rust/**"
@@ -7412,7 +7412,7 @@
             ],
             "inputs": [
               "tests/interfaces/check/*.mts",
-              "tests/interfaces/go/*.go",
+              "packages/go/internal/symbols/*.go",
               "contracts/interfaces.json",
               "contracts/symbols/typescript.json",
               "tests/interfaces/typescript.mts"

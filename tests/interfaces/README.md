@@ -16,7 +16,7 @@ The checker verifies these requirements:
 - Prohibited symbols reject removed or unsupported operations such as cancellation and cursor pages.
 - Source mutations verify that the checker rejects missing methods, additional parameters, changed return types, changed field types, changed receivers, and undeclared state.
 
-The checker is a TypeScript program (`tests/interfaces/check/main.mts`) that reads each language's declarations with that language's own extractor (`tests/interfaces/go`, `php.php`, `rust`, `typescript.mts`, `python.py`). It expands the per-entity rules in the entity order of the dbspec document, which it reads from the TypeScript client build, so `npm run typescript:build` (or `make typescript-build`) comes first; `make interface-check` builds it.
+The checker is a TypeScript program (`tests/interfaces/check/main.mts`) that reads each language's declarations with that language's own extractor (`packages/go/internal/symbols`, `php.php`, `rust`, `typescript.mts`, `python.py`). It expands the per-entity rules in the entity order of the dbspec document, which it reads from the TypeScript client build, so `npm run typescript:build` (or `make typescript-build`) comes first; `make interface-check` builds it.
 
 Run the structure checks without a database:
 

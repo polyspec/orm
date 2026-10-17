@@ -97,7 +97,6 @@ rules:
       - "!tests/dbspec/input.php"
       # The symbol extractors of one language read its declarations with its own parser (Go's go/parser, PHP's tokens,
       # Python's ast, Rust's syn), with the tests of the Python extractor.
-      - "!tests/interfaces/go/**"
       # The Go tests of the interface manifest contracts/interfaces.json: they read it and refuse a native adapter that
       # drifts from its logical signature, as a test of the Go tests module.
       - "!tests/interfaces/contracts/**"

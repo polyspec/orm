@@ -1,5 +1,5 @@
 // native 선언을 각 언어의 추출기로 읽는다. 추출기는 그 언어 자신의 parser로 선언을 읽는 program이다: Go(go/parser,
-// tests/interfaces/go), PHP(Reflection, tests/interfaces/php.php), Rust(syn, tests/interfaces/rust), TypeScript(TypeScript
+// packages/go/internal/symbols), PHP(Reflection, tests/interfaces/php.php), Rust(syn, tests/interfaces/rust), TypeScript(TypeScript
 // compiler API, tests/interfaces/typescript.mts), Python(ast, tests/interfaces/python.py). Go와 Rust의 추출기는 이 실행의
 // 임시 directory에 build한 실행 file이다. 금지된 multi_statement 호출은 source text에서 찾는다.
 import { spawn } from 'node:child_process';
@@ -58,14 +58,14 @@ export async function extract(signal: AbortSignal | undefined, root: string, lan
 }
 
 /**
- * buildGo는 Go symbol 추출기(tests/interfaces/go)를 directory에 build하고 그 실행 file을 돌려준다. compiler의 출력은 step
+ * buildGo는 Go symbol 추출기(packages/go/internal/symbols)를 directory에 build하고 그 실행 file을 돌려준다. compiler의 출력은 step
  * 줄로 보인다.
  */
 export async function buildGo(step: Step, root: string, directory: string): Promise<string> {
   const executable = join(directory, 'polyspec-orm-interface-symbols-go');
   const lines = stepLines(step);
-  step('run go build -o <directory> ./tests/interfaces/go');
-  const output = await run('go', ['build', '-o', executable, './tests/interfaces/go'], { cwd: root, onOutput: chunk => lines.write(chunk) });
+  step('run go build -o <directory> ./packages/go/internal/symbols');
+  const output = await run('go', ['build', '-o', executable, './packages/go/internal/symbols'], { cwd: root, onOutput: chunk => lines.write(chunk) });
   lines.flush();
   if (output.code !== 0) throw new Error(`go build: ${exitText(output)}`);
   return executable;
