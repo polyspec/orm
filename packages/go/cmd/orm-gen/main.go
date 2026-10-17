@@ -2,7 +2,7 @@
 // 언어의 오류 코드 file을 만든다.
 //
 //	orm-gen gen --set <dbspec-set.json> --lang go --out <directory> [--scan <package pattern>...] [--check]
-//	orm-gen errors --lang go|php|rust --out <file> [--yaml docs/errors.yaml]
+//	orm-gen errors --lang go|php|rust|typescript|python --out <file> [--yaml docs/errors.yaml]
 package main
 
 import (
@@ -32,7 +32,7 @@ func main() {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: orm-gen gen --set <dbspec-set.json> --lang go --out <directory> [--scan <package pattern>...] [--check]")
-	fmt.Fprintln(os.Stderr, "       orm-gen errors --lang go|php|rust --out <file> [--yaml docs/errors.yaml]")
+	fmt.Fprintln(os.Stderr, "       orm-gen errors --lang go|php|rust|typescript|python --out <file> [--yaml docs/errors.yaml]")
 	os.Exit(2)
 }
 

@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The TypeScript and Python clients name every error code through a generated catalog, which the parity check compares with docs/errors.yaml. (#T77-4)
 - The Rust ir-answers check compiles on main. (#T190)
 - Python reads time and date cells on MySQL and PostgreSQL. (#T117)
 - toArray writes datetime and time with six fraction digits in every client. (#T121)

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f01f984922bc89c8f441b11d00387a5dd14f41f47bbcf7c9af03f7e91bde6495 -->
+<!-- source-sha256: a8bff136e9164c36239f4e3dd63fba04af1e7bae865a1a58b86117339d489944 -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript와 Python client가 생성된 catalog로 모든 오류 code를 적으며, parity 검사가 이를 docs/errors.yaml과 비교한다. (#T77-4)
 - Rust ir-answers 검사가 main에서 컴파일된다. (#T190)
 - Python이 MySQL과 PostgreSQL에서 time과 date 셀을 읽는다. (#T117)
 - toArray가 모든 client에서 datetime과 time을 소수 여섯 자리로 쓴다. (#T121)

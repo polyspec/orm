@@ -412,7 +412,7 @@ The same statement produces the same result on all three databases, although sta
 | Execute a compiled statement, such as a load with its keys | `execute` on the connection ([execute a compiled statement](#execute-a-compiled-statement)) |
 | Change every request of a handle before planning | `withRequestHook` on the connection ([request hook](#request-hook)) |
 | View SQL without executing | `getQuery()` on a connected model ([dsl.md](dsl.md)) |
-| Error constants | `orm-gen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
+| Error constants | `orm-gen errors --lang go\|php\|rust\|typescript\|python --out …` ([errors.yaml](errors.yaml)) |
 | Install a schema | `connection.utils().schema().install(...)` ([schema.md](schema.md#_4-schema-installation)) |
 | Add the missing tables, columns and indexes of an installed set | `connection.utils().schema().addTablesAndColumns(...)` ([schema.md](schema.md#_5-adding-tables-and-columns)) |
 

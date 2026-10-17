@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: bef331edd5a8b03bb17d6fb426bac0031258123017ab9eb31a0b1c2d2fa9a622 -->
+<!-- source-sha256: 28c219b3ab86c896d641c25f93cd0e7cf0e9fcd8ae4061cb3d191ebbb369673e -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript·Python 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
@@ -413,7 +413,7 @@ $b->getJsonSetting()['a'];
 | key를 지킨 적재처럼 compile한 statement 실행 | 연결의 `execute`([compile한 statement 실행](#execute-a-compiled-statement)) |
 | handle의 모든 request를 plan 전에 바꾸기 | 연결의 `withRequestHook`([request hook](#request-hook)) |
 | 실행 없이 SQL 보기 | 연결한 모델의 `getQuery()` ([dsl.md](dsl.md)) |
-| 에러 코드 상수 | `orm-gen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
+| 에러 코드 상수 | `orm-gen errors --lang go\|php\|rust\|typescript\|python --out …` ([errors.yaml](errors.yaml)) |
 | 스키마 설치 | `connection.utils().schema().install(...)` ([schema.md](schema.md#_4-schema-installation)) |
 | 설치한 set에 빠진 테이블, 컬럼, index 추가 | `connection.utils().schema().addTablesAndColumns(...)` ([schema.md](schema.md#_5-adding-tables-and-columns)) |
 

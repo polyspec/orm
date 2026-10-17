@@ -48,7 +48,8 @@
         "packages/ts/tests/restore_case.mjs",
         "packages/ts/tests/statement-events-run.mjs"
       ],
-      "args": ["--conditions=orm-test"]
+      "args": ["--conditions=orm-test"],
+      "errors": { "file": "packages/ts/src/codes.ts", "pattern": "^export const (\\w+) = '\\w+';$" }
     },
     {
       "name": "python",
@@ -73,7 +74,8 @@
         "tests/interfaces/python.py"
       ],
       "command": "packages/python/.venv/bin/python",
-      "env": []
+      "env": [],
+      "errors": { "file": "packages/python/src/polyspec/orm/codes.py", "pattern": "^(\\w+) = \"\\w+\"$" }
     },
     {
       "name": "rust",
@@ -205,6 +207,7 @@
     {"id": "ts-coverage_transactions", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/coverage_transactions.mjs", "id": "transaction_rollback [sqlite]"}]},
     {"id": "ts-driver-error", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/driver-error.mjs", "id": "driver-error/trigger_refused/sqlite"}]},
     {"id": "ts-generate-scan", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/generate-scan.mjs", "id": "generate-scan/non_model_call"}]},
+    {"id": "ts-code-catalog", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/code-catalog.mjs", "id": "code-catalog/matches-errors-yaml"}]},
     {"id": "ts-generate", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/generate.mjs", "id": "generate"}]},
     {"id": "ts-group_rows", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/group_rows.mjs", "id": "group_rows/owner"}]},
     {"id": "ts-idle-connection-end", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/idle-connection-end.mjs", "id": "idle-connection-end/postgres"}]},
@@ -1220,6 +1223,10 @@
     {
       "id": "py-test-markdown", "kind": "feature", "profile": "python-internal",
       "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_markdown.py", "id": "test_parse_markdown_dsn" }]
+    },
+    {
+      "id": "py-test-code-catalog", "kind": "feature", "profile": "python-internal",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_code_catalog.py", "id": "test_codes_match_errors_yaml" }]
     },
     {
       "id": "py-test-model-fields", "kind": "feature", "profile": "python-internal",
