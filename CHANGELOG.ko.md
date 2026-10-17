@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d0a4dc9e8bc0447f848e6336f374c3f9907e027d7a48a9258456d582d3e043d3 -->
+<!-- source-sha256: 64958a901c9376bb55dfee6ea6320680418cbbf5de723b4b76db3c1bb6791a72 -->
 # 변경 이력
 
 ## Unreleased
+- TypeScript와 PHP interface extractor가 packages/ts/testing/interfaces와 packages/php/testing/interfaces에 있으며, TypeScript extractor project도 그 옆에 있다. interface 검사기, layout과 의존성 기록이 새 경로를 가리킨다. (#T77-9-2-3)
 - TypeScript client가 codec 함수를 `decode`와 `encode`로 export한다. Go, PHP, Rust, Python이 쓰는 이름이며, `decodeCodec`과 `encodeCodec` 별칭은 없앴다. (#T77-8-1-1)
 - TypeScript conformance runner, result helper와 그 test가 packages/ts(testing/conformance와 tests)에 있으며, parity check가 거기서 읽는다. (#T77-9-2-2)
 - features의 `clients` flag를 contracts/features.json, schema와 scripts/features에서 없앴고, contracts/rules.json의 `tests.language-parity`가 parity check를 쓴다. (#T77-10-2)

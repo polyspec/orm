@@ -18,7 +18,7 @@
       ]
     },
     {
-      "lock": "tests/interfaces/typescript/package-lock.json",
+      "lock": "packages/ts/testing/interfaces/typescript/package-lock.json",
       "sha256": "1c3ce2f8508c9a7c52df51c154be8b4f02fd56fe36ed6562038b59063753b9d3",
       "advisories": []
     },
@@ -339,7 +339,7 @@
     },
     {
       "ecosystem": "npm",
-      "manifest": "tests/interfaces/typescript/package.json",
+      "manifest": "packages/ts/testing/interfaces/typescript/package.json",
       "package": "typescript",
       "version": "6.0.3",
       "latest": "7.0.2"

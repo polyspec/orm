@@ -20,8 +20,8 @@
     {
       "tool": "typescript",
       "channel": "6.0.3",
-      "scope": "tests/interfaces/typescript",
-      "reason": "tests/interfaces/typescript.mts reads the declarations of the TypeScript client with the JavaScript API of the compiler (createSourceFile, the printer and the node factory), which TypeScript 7.0 does not ship",
+      "scope": "packages/ts/testing/interfaces/typescript",
+      "reason": "packages/ts/testing/interfaces/typescript.mts reads the declarations of the TypeScript client with the JavaScript API of the compiler (createSourceFile, the printer and the node factory), which TypeScript 7.0 does not ship",
       "retry": "TypeScript ships its stable JavaScript API (announced for 7.1)"
     },
     {

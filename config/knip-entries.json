@@ -9,8 +9,7 @@
     "tests/dbspec/compare/check.mts": "the dbspec comparison check, which make runs with node",
     "tests/dbspec/introspect/typescript.mts": "the TypeScript introspect runner, which the Go physical introspect tests spawn",
     "tests/dbspec/stress.mts": "the writer of the stress documents, which make runs with node",
-    "tests/go-run.mts": "the Go test runner, which the repository checks and the CI spawn",
-    "tests/interfaces/typescript.mts": "the TypeScript declaration extractor, which tests/interfaces/check spawns with its own TypeScript"
+    "tests/go-run.mts": "the Go test runner, which the repository checks and the CI spawn"
   },
   "workspaces": {
     "packages/ts": {
@@ -19,6 +18,7 @@
         "tests/*.mjs": "the TypeScript client tests, each run by node from a make target (ts-check/test, client-unit-check, client-db-check and the feature checks of contracts/features.json)",
         "tests/*.ts": "the type tests of the TypeScript client, which tsc checks through packages/ts/tsconfig.json and orm-gen scans for the models",
         "testing/conformance/runner_typescript.mts": "the TypeScript conformance runner, which tests/conformance/check/main.mts spawns",
+        "testing/interfaces/typescript.mts": "the TypeScript declaration extractor, which tests/interfaces/check spawns with its own TypeScript",
         "src/tools/cli.ts": "the dbspec tool command that the dbspec checks run from packages/ts/dist",
         "src/models/markdown_fixture/models.ts": "the generated models of the Markdown fixture, which the markdown tests load from dist",
         "src/models/decimal_fixture/models.ts": "the generated models of the decimal fixture, which the decimal tests load from dist"

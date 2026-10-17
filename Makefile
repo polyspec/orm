@@ -1439,14 +1439,14 @@ rust-check/clippy-test-faults: lease-tool
 .PHONY: docs-ci
 .PHONY: install install-interfaces-typescript install-php install-rust install-rust-toolchain install-rust-crates install-go install-node-min install-server-programs install-php-extension-tools ci-php-min-version downloads-check
 install: install-php install-rust install-go install-node-min install-php-extension-tools install-python install-flowmark install-interfaces-typescript
-# install-interfaces-typescript installs the TypeScript 6.0.3 that tests/interfaces/typescript.mts reads declarations with
+# install-interfaces-typescript installs the TypeScript 6.0.3 that packages/ts/testing/interfaces/typescript.mts reads declarations with
 # (config/toolchain.json exceptions): TypeScript 7.0 ships no JavaScript API of its compiler.
 # install-packages also installs the TypeScript of tests/interfaces from its lock, so a fresh install leaves lint-ts with what it reads.
 install-packages: install-interfaces-typescript
 
 install-interfaces-typescript:
-	$(ONLINE) $(NPM) ci --prefix tests/interfaces/typescript --no-audit --no-fund
-# lint-ts reads tests/interfaces/typescript.mts, which imports the TypeScript that this target installs: the recipe of
+	$(ONLINE) $(NPM) ci --prefix packages/ts/testing/interfaces/typescript --no-audit --no-fund
+# lint-ts reads packages/ts/testing/interfaces/typescript.mts, which imports the TypeScript that this target installs: the recipe of
 # lint-ts is the kit.mk of @polyspec/kit, so the prerequisite is added here.
 lint-ts: typescript-build
 # install-php installs the one Composer project of the repository, the development root (vendor-php): it installs packages/php

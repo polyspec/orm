@@ -97,7 +97,6 @@ rules:
       # The Go tests of the interface manifest contracts/interfaces.json: they read it and refuse a native adapter that
       # drifts from its logical signature, as a test of the Go tests module.
       - "!tests/interfaces/contracts/**"
-      - "!tests/interfaces/php.php"
       - "!tests/interfaces/python.py"
       - "!tests/interfaces/test_python_extractor.py"
       - "!tests/interfaces/test_python_natives.py"

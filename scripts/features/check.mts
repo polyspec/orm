@@ -115,9 +115,9 @@ for (const feature of manifest.features) {
 const languageTests: Record<string, { roots: string[]; match: (file: string) => boolean }> = {
   // packages/go/testcase is the case harness of every Go test, checked by make testcase-check, not a feature of the client.
   go: { roots: ['packages/go'], match: (file: string) => file.endsWith('_test.go') && !file.startsWith('packages/go/testcase/') },
-  php: { roots: ['packages/php/tests', 'tests/interfaces/php.php'], match: () => true },
+  php: { roots: ['packages/php/tests', 'packages/php/testing/interfaces/php.php'], match: () => true },
   rust: { roots: ['packages/rust/orm/tests', 'packages/rust/build/tests', 'packages/rust/tests', 'tests/interfaces/rust'], match: (file: string) => file.endsWith('.rs') && !file.endsWith('build.rs') },
-  typescript: { roots: ['packages/ts', 'tests/interfaces/typescript.mts'], match: (file: string) => file.endsWith('.test.ts') || (file.startsWith('packages/ts/tests/') && file.endsWith('.mjs')) },
+  typescript: { roots: ['packages/ts', 'packages/ts/testing/interfaces/typescript.mts'], match: (file: string) => file.endsWith('.test.ts') || (file.startsWith('packages/ts/tests/') && file.endsWith('.mjs')) },
   python: { roots: ['packages/python/tests', 'tests/interfaces/python.py'], match: (file: string) => file.endsWith('.py') },
 };
 const skipDirectories = new Set(['node_modules', 'target', 'dist']);

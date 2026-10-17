@@ -80,7 +80,7 @@ jobs:
       - name: install Node dependencies
         id: node-modules
         if: ${{ !cancelled() }}
-        # The interface checks read the TypeScript declarations with the TypeScript 6 of tests/interfaces/typescript; it is
+        # The interface checks read the TypeScript declarations with the TypeScript 6 of packages/ts/testing/interfaces/typescript; it is
         # a second make, since a make that names other targets reads kit.mk, which install-packages installs.
         run: make install-packages && make install-interfaces-typescript
       - name: setup of the CI group

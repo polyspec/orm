@@ -166,7 +166,7 @@ caseTest('the extension declarations are checked against the contract', PROCESS,
   const check = async (stubSource: string, snapshotSource: string, manifest: Manifest): Promise<string> => {
     const dir = mkdtempSync(join(tmpdir(), 'orm-interface-test-'));
     try {
-      for (const [path, content] of [[stubPath, stubSource], [symbolsPath, snapshotSource], ['tests/interfaces/php.php', readFileSync(join(root, 'tests/interfaces/php.php'), 'utf8')]] as const) {
+      for (const [path, content] of [[stubPath, stubSource], [symbolsPath, snapshotSource], ['packages/php/testing/interfaces/php.php', readFileSync(join(root, 'packages/php/testing/interfaces/php.php'), 'utf8')]] as const) {
         mkdirSync(dirname(join(dir, path)), { recursive: true });
         writeFileSync(join(dir, path), content);
       }

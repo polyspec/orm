@@ -15,7 +15,7 @@
 
 /node_modules/
 /packages/*/node_modules/
-/tests/interfaces/typescript/node_modules/
+/packages/ts/testing/interfaces/typescript/node_modules/
 /vendor-php/
 /docs/.vitepress/cache/
 /docs/.vitepress/dist/

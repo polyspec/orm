@@ -1,0 +1,11 @@
+{
+  "name": "orm-interfaces-typescript",
+  "private": true,
+  "description": "The TypeScript compiler that packages/ts/testing/interfaces/typescript.mts reads declarations with: its JavaScript API (createSourceFile, the printer and the node factory) exists in TypeScript 6 and not in 7.0, so this project pins 6.0.3 by the exception of config/toolchain.json",
+  "engines": {
+    "node": ">=26.12.0"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3"
+  }
+}

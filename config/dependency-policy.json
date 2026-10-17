@@ -15,15 +15,15 @@
   ],
   "npmLocks": [
     "package-lock.json",
-    "tests/interfaces/typescript/package-lock.json"
+    "packages/ts/testing/interfaces/typescript/package-lock.json"
   ],
   "exceptions": [
     {
       "ecosystem": "npm",
-      "manifest": "tests/interfaces/typescript/package.json",
+      "manifest": "packages/ts/testing/interfaces/typescript/package.json",
       "package": "typescript",
-      "reason": "tests/interfaces/typescript.mts reads the declarations of the TypeScript client with the JavaScript API of the compiler (createSourceFile, the printer and the node factory), which TypeScript 7.0 does not ship; typescript 6.0.3 is the latest release with that API, the same exception as config/toolchain.json.",
-      "removalCondition": "TypeScript ships its stable JavaScript API (announced for 7.1) and tests/interfaces/typescript.mts reads the declarations through it.",
+      "reason": "packages/ts/testing/interfaces/typescript.mts reads the declarations of the TypeScript client with the JavaScript API of the compiler (createSourceFile, the printer and the node factory), which TypeScript 7.0 does not ship; typescript 6.0.3 is the latest release with that API, the same exception as config/toolchain.json.",
+      "removalCondition": "TypeScript ships its stable JavaScript API (announced for 7.1) and packages/ts/testing/interfaces/typescript.mts reads the declarations through it.",
       "verification": [
         "make interface-check"
       ]

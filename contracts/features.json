@@ -7280,9 +7280,9 @@
       "tests": [
         "packages/go/engine/interface_test.go",
         "packages/go/orm/shape_test.go",
-        "tests/interfaces/php.php",
+        "packages/php/testing/interfaces/php.php",
         "tests/interfaces/rust/src/main.rs",
-        "tests/interfaces/typescript.mts",
+        "packages/ts/testing/interfaces/typescript.mts",
         "packages/go/orm/coverage_interface_contract_test.go",
         "packages/php/tests/CoverageInterfaceContractTest.php",
         "packages/rust/orm/tests/coverage_interface_contract.rs",
@@ -7318,7 +7318,7 @@
           "shard": "other",
           "inputs": [
             "tests/interfaces/check/*.mts",
-            "tests/interfaces/php.php",
+            "packages/php/testing/interfaces/php.php",
             "contracts/interfaces.json",
             "contracts/symbols/php-extension.json",
             "packages/php-ext/stubs/orm_dbspec.stub.php",
@@ -7397,7 +7397,7 @@
               "packages/go/internal/symbols/*.go",
               "contracts/interfaces.json",
               "contracts/symbols/php.json",
-              "tests/interfaces/php.php"
+              "packages/php/testing/interfaces/php.php"
             ],
             "commands": {
               "none": [
@@ -7448,7 +7448,7 @@
               "packages/go/internal/symbols/*.go",
               "contracts/interfaces.json",
               "contracts/symbols/typescript.json",
-              "tests/interfaces/typescript.mts"
+              "packages/ts/testing/interfaces/typescript.mts"
             ],
             "commands": {
               "none": [
