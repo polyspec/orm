@@ -4351,6 +4351,17 @@
           }
         ]
       }
+    },
+    {
+      "name": "relation_null_key",
+      "chain": "relation keyed by the nullable column price (keyNamePrice) over the authors of user 100: key_by names a nullable column, which the IR refuses as IR_INVALID (docs/dialects.md key_by row: key_by names a non-null column, IR_INVALID otherwise)",
+      "expect": {
+        "statements": [],
+        "result": {
+          "error": "IR_INVALID",
+          "message": "IR_INVALID: key_by price is nullable"
+        }
+      }
     }
   ]
 }

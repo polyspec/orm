@@ -509,7 +509,7 @@ func run() (status int) {
 			Relations(model.Author().MatchSeqWithUserSeq().KeyNamePrice()).
 			Seq(100).Gets()
 		if err != nil {
-			return nil, err
+			return map[string]any{"error": code(err), "message": err.Error()}, nil
 		}
 		return rows.Len(), nil
 	})

@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1485f42de388550dcf7cf3911304b0c5bb7f2a0f90d1e4e430347c8df1e050b3 -->
+<!-- source-sha256: 52e6812d41db17e712fae61912e80c5ed6677bbb9101d9e07b5af232992f4c3e -->
 # 변경 이력
 
 ## Unreleased
@@ -8,6 +8,7 @@
 - Go dbspec subtest가 평탄한 case 이름을 보고한다. subtest 이름에 "/"가 없음을 TestSubtestNamesAreFlat이 검사한다(T77-9-4-2).
 - PHP dbspec test가 plans.json을 하나의 helper dbspec_plan_cases.php로 읽고, 프로세스마다 파일을 한 번만 연다(T77-9-4-7).
 - Rust conformance binding이 vector 파일의 모든 vector를 선언하며, 각 파일의 이름이 선언되었는지 test가 검사한다(T77-9-4-5).
+- NULL collection key vector relation_null_key는 IR 거절(IR_INVALID, key_by가 nullable column을 이름)을 SQLite, MySQL, PostgreSQL에 기록하고, 다섯 runner는 거절을 결과로 돌려준다(T77-6-1-7).
 - Python conformance runner에 NULL collection key handler relation_null_key가 생긴다(T77-6-1-6).
 - TypeScript conformance runner에 NULL collection key handler relation_null_key가 생긴다(T77-6-1-5).
 - Rust conformance runner에 NULL collection key handler relation_null_key가 생긴다(T77-6-1-4).

@@ -244,8 +244,12 @@ async function main() {
     return rows.length;
   });
   await run('relation_null_key', async () => {
-    const rows = await new User().connect(db).relations(new Author().matchSeqWithUserSeq().keyNamePrice()).seq(100).gets();
-    return rows.values().length;
+    try {
+      const rows = await new User().connect(db).relations(new Author().matchSeqWithUserSeq().keyNamePrice()).seq(100).gets();
+      return rows.values().length;
+    } catch (e) {
+      return { error: code(e), message: errorMessage(e) };
+    }
   });
   await run('subqueries', async () => {
     const users = await new User().connect(db)

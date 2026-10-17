@@ -489,8 +489,11 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             .relations(Author::new().match_seq_with_user_seq().key_name_price())
             .seq(100)
             .gets()
-            .await?;
-        Ok::<Value, polyspec_orm::Error>(json!(rows.len()))
+            .await;
+        match rows {
+            Ok(rows) => Ok::<Value, polyspec_orm::Error>(json!(rows.len())),
+            Err(e) => Ok(json!({"error": code(&e), "message": e.to_string()})),
+        }
     });
     run!("subqueries", async {
         let users = User::new()

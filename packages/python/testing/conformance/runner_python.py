@@ -613,13 +613,16 @@ def main():
     run("relation_empty", relation_empty)
 
     def relation_null_key():
-        rows = (
-            User()
-            .connect(db)
-            .relations(Author().match_seq_with_user_seq().key_name_price())
-            .seq(100)
-            .gets()
-        )
+        try:
+            rows = (
+                User()
+                .connect(db)
+                .relations(Author().match_seq_with_user_seq().key_name_price())
+                .seq(100)
+                .gets()
+            )
+        except Exception as error:  # noqa: BLE001 - every library error is the result of the vector
+            return {"error": code_of(error), "message": str(error)}
         return len(rows.values())
 
     run("relation_null_key", relation_null_key)

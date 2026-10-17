@@ -7,6 +7,7 @@
 - The Go dbspec subtests report flat case names: no subtest name contains "/", checked by TestSubtestNamesAreFlat (T77-9-4-2).
 - The PHP dbspec tests read plans.json through one helper, dbspec_plan_cases.php, which opens the file once per process (T77-9-4-7).
 - The Rust conformance binding declares every vector of the vector files and a test checks that each file name is declared (T77-9-4-5).
+- The NULL collection key vector relation_null_key records its IR refusal (IR_INVALID, key_by names a nullable column) on SQLite, MySQL and PostgreSQL, and the five runners return the refusal as a result (T77-6-1-7).
 - The Python conformance runner has the NULL collection key handler relation_null_key (T77-6-1-6).
 - The TypeScript conformance runner has the NULL collection key handler relation_null_key (T77-6-1-5).
 - The Rust conformance runner has the NULL collection key handler relation_null_key (T77-6-1-4).
