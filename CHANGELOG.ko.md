@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f7773322e16be496718051fef3790dfe6ff8d98fb18ff4ca3d5ed8699ed109f3 -->
+<!-- source-sha256: c6697797ecb52ec10b3f853d0d59bf943e9d95b57cf78fcf785c1bfc45a7b263 -->
 # 변경 이력
 
 ## Unreleased
 - Go 성능 gate는 tools root인 packages/go/bench의 benchmark다. 이 root는 어떤 구현에도 속하지 않으므로 그 go-internal parity unit을 없앴다. gate는 performance_gate feature로 계속 실행된다. (#T77-8-1-1)
+- TypeScript engine unit이 bench entity 순서의 day_cell을 기대하여 exit 0이 된다(T77-21).
 - parity-check가 unit을 실행하기 전에 빠진 bench DSN을 알린다(T77-20).
 - interface self-test가 실행 전에 빠진 TypeScript checker 의존성을 이름으로 알린다(T77-19).
 - contracts/interfaces.json 이전은 계획과 함께 보류한다(T77-8-1-5).
