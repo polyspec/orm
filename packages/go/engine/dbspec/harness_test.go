@@ -65,15 +65,15 @@ func failingCaseNames(t *testing.T) []string {
 	m := loadMermaidVectors(t)
 	p := loadPlanVectors(t)
 	return []string{
-		"mermaid/export/" + m.Export[0].ID,
-		"mermaid/import/" + m.Import[0].ID,
-		"mermaid/invalid/" + m.Invalid[0].ID,
-		"mermaid/round_trip/" + m.RoundTrip[0].ID,
-		"plan/" + p.Cases[0].ID,
-		"plan/invalid/" + p.Invalid[0].ID,
-		"plan/chain/" + p.Chains[0].ID,
-		"plan/parse/" + p.Parse[0].ID,
-		"plan/comparison/" + p.Comparisons[1].ID,
+		m.Export[0].ID,
+		m.Import[0].ID,
+		m.Invalid[0].ID,
+		m.RoundTrip[0].ID,
+		p.Cases[0].ID,
+		p.Invalid[0].ID,
+		p.Chains[0].ID,
+		p.Parse[0].ID,
+		p.Comparisons[1].ID,
 	}
 }
 

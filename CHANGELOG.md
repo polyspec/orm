@@ -3,6 +3,7 @@
 
 ## Unreleased
 - The Go performance gate is a benchmark of the tools root packages/go/bench, which belongs to no implementation, so its go-internal parity unit is removed; the gate still runs as the performance_gate feature. (#T77-8-1-1)
+- The dbspec harness test expects the flat case ids that the harness prints, so the dbspec package exits 0 (T77-23).
 - make exports the bench DSNs of the run TEST_ENV to the parity units, which previously ran without them (T77-22).
 - The TypeScript engine unit expects day_cell in the bench entity order, so it exits 0 (T77-21).
 - parity-check names the missing bench DSN before it runs its units (T77-20).
