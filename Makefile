@@ -815,7 +815,7 @@ feature-unit-check: feature-unit-check/docs feature-unit-check/coverage feature-
 feature-unit-check/docs:
 	$(NODE) scripts/features/build.mts --check
 feature-unit-check/coverage:
-	$(NODE) --test scripts/features/coverage.test.mts
+	$(NODE) --test scripts/features/coverage.test.mts scripts/features/languages.test.mts
 feature-unit-check/owners:
 	$(NODE) --test scripts/features/owners.test.mts scripts/features/manifest.test.mts
 feature-unit-check/select:

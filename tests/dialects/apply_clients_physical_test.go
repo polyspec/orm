@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -28,8 +29,32 @@ const runnerDeadline = 2 * time.Minute
 // 1분을 더 준다.
 const pairDeadline = 3*runnerDeadline + time.Minute
 
-// applyClients는 tests/dbspec/apply의 runner를 가진 client다.
-var applyClients = []string{"go", "php", "typescript", "rust", "php-extension", "python"}
+// applyClients는 tests/dbspec/apply의 runner를 가진 client다: config/parity.json의 dbspec profile이 정한다.
+var applyClients = dbspecLanguages()
+
+// dbspecLanguages는 config/parity.json의 dbspec profile implementation을 읽는다. 이 test는 package directory에서
+// 실행되므로 경로는 tests/dialects 기준이다.
+func dbspecLanguages() []string {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "config", "parity.json"))
+	if err != nil {
+		panic(err)
+	}
+	var parity struct {
+		Profiles []struct {
+			Name            string   `json:"name"`
+			Implementations []string `json:"implementations"`
+		} `json:"profiles"`
+	}
+	if err := json.Unmarshal(raw, &parity); err != nil {
+		panic(err)
+	}
+	for _, profile := range parity.Profiles {
+		if profile.Name == "dbspec" {
+			return profile.Implementations
+		}
+	}
+	panic("config/parity.json has no dbspec profile")
+}
 
 // TestApplyChainAcrossClients는 한 client가 적용한 chain을 다른 client가 이어
 // 적용하는지 모든 순서쌍에서 확인한다(docs/plans.md "Apply"). 세 database에서

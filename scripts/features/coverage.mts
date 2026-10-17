@@ -9,6 +9,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { PROCESS, runCase, runLong, stepLines } from '../../tests/testcase.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { readFeatures } from './manifest.mts';
+import { clientLanguages } from './languages.mts';
 import { parseGoTestEvent } from '../json/formats.mts';
 import { programEnvironment, readBinaries } from '../../tests/cargo-test.mts';
 
@@ -50,7 +51,7 @@ type Plan = { feature: Feature; item: Item; native: Spec[]; dsn: string | null |
 /** A process of a planned execution. */
 type Prepared = { program: string; args: string[]; cwd?: string | undefined; label?: string; env?: Record<string, string> };
 
-export const languages = ['go', 'php', 'python', 'rust', 'typescript'];
+export const languages = clientLanguages();
 // implementedLanguages are the clients that an implemented feature passes in. Python declares its support feature by
 // feature (contracts/features.json), so a Python owner is required only where the feature declares Python pass or partial.
 export const implementedLanguages = ['go', 'php', 'rust', 'typescript'];

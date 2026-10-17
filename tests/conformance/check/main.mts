@@ -28,6 +28,7 @@ import { acquireHolderLock, HolderLockRefused, holderRunning, removeDeadLock } f
 import { COMPUTE, runCase, runLong, stepLines, type Step } from '../../testcase.mts';
 import { errorMessage } from '../../errors.mts';
 import { checkJson } from '../../../scripts/json/schema.mts';
+import { clientLanguages } from '../../../scripts/features/languages.mts';
 import { readCounters, restoreCounters } from './counters.mts';
 import { openStateDatabase, type StateDatabase } from './database.mts';
 import { compact, decodeExact, encode, equalJSON, equalValues, type Json, type JsonObject } from './json.mts';
@@ -51,7 +52,7 @@ export const languageDeadline = 2 * runnerDeadline + 6 * stateDeadline;
 // compareDeadline: 다섯 output을 vector 기대값과 비교하는 memory 안의 계산이다.
 const compareDeadline = COMPUTE;
 
-export const requiredLanguages = ['go', 'php', 'rust', 'typescript', 'python'];
+export const requiredLanguages = clientLanguages();
 
 /** The database a run uses and the vectors it selects; an empty selection is every vector. */
 export type Target = { driver: string; dsn: string; selected: string[] };

@@ -3,6 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { COMPUTE, sections } from '../../tests/testcase.mts';
 import { readFeatures } from './manifest.mts';
+import { clientLanguages } from './languages.mts';
 import { errorCode } from '../../tests/errors.mts';
 
 // feature 문서 build는 manifest를 읽어 두 문서를 만들거나 비교하는 case 하나다.
@@ -11,7 +12,7 @@ log.begin(process.argv.includes('--check') ? 'feature-docs-check' : 'feature-doc
 
 const root = resolve(new URL('../..', import.meta.url).pathname);
 const manifest = readFeatures(root);
-const clients = ['go', 'php', 'rust', 'typescript', 'python'] as const;
+const clients = clientLanguages();
 const table = (ko: boolean) => manifest.features.map(feature => `| ${feature.id} | ${ko ? feature.title_ko : feature.title} | ${feature.status} | ${clients.map(client => `${client}: ${feature.clients[client]}`).join('<br>')} |`).join('\n');
 const descriptions = (ko: boolean) => manifest.features.map(feature => `- \`${feature.id}\`: ${ko ? feature.description_ko : feature.description}`).join('\n');
 // The document pair carries the markers of the documents check of @polyspec/kit (make documents-check): the doc-id, and in the Korean document the sha256 of the English one.

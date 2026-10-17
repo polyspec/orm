@@ -2410,14 +2410,7 @@
     "catalog": { "file": "docs/errors.yaml", "pattern": "^codes:$|^  - code: (\\w+)(?:\\s+#.*)?$|^    origin: \\w+$" }
   },
   "languageLists": [
-    { "file": "tests/interfaces/contracts/validate.go", "pattern": "^var languages = \\[\\]string\\{(.*)\\}$", "profile": "client" },
-    { "file": "scripts/features/build.mts", "pattern": "^const clients = \\[(.*)\\] as const;$", "profile": "client" },
-    { "file": "scripts/features/check.mts", "pattern": "^const clients = \\[(.*)\\] as const;$", "profile": "client" },
-    { "file": "scripts/features/coverage.mts", "pattern": "^export const languages = \\[(.*)\\];$", "profile": "client" },
-    { "file": "scripts/decimal-physical-check.mts", "pattern": "^const languages = \\[(.*)\\];$", "profile": "client" },
-    { "file": "tests/conformance/check/main.mts", "pattern": "^export const requiredLanguages = \\[(.*)\\];$", "profile": "client" },
-    { "file": "tests/conformance/check/result.physical.test.mts", "pattern": "^const resultRunnerLanguages = \\[(.*)\\];$", "profile": "client" },
-    { "file": "tests/dialects/apply_clients_physical_test.go", "pattern": "^var applyClients = \\[\\]string\\{(.*)\\}$", "profile": "dbspec" }
+    { "file": "tests/interfaces/contracts/validate.go", "pattern": "^var languages = \\[\\]string\\{(.*)\\}$", "profile": "client" }
   ],
   "documents": {
     "globs": ["AGENTS.md", "AGENTS.ko.md", "README.md", "README.ko.md", "docs/*.md", "tests/**/README*.md", "packages/**/README*.md"],

@@ -6,6 +6,7 @@ import { errorCode, errorMessage } from '../../tests/errors.mts';
 import type { Check } from './select.mts';
 import { manifestInputErrors } from './owners.mts';
 import { readFeatures, type FeatureManifest } from './manifest.mts';
+import { clientLanguages } from './languages.mts';
 import { JsonError, readJsonFile, SchemaError } from '../json/schema.mts';
 import { parseSelection, selectChecks, selectionErrors, SHARDS } from './select.mts';
 
@@ -21,7 +22,7 @@ const manifest = readManifest();
 const ids = new Set<string>();
 // shardOf는 (cwd, command)마다 그것을 처음 선언한 검증 명령과 그 shard다.
 const shardOf = new Map<string, { shard: string; name: string }>();
-const clients = ['go', 'php', 'rust', 'typescript', 'python'] as const;
+const clients = clientLanguages();
 const VECTORS_SCHEMA = new URL('../../tests/conformance/schema/vectors.schema.json', import.meta.url).pathname;
 const FIXTURE_SCHEMA = new URL('./schema/fixture.schema.json', import.meta.url).pathname;
 const runVerification = process.argv.includes('--run');
