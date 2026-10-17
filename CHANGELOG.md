@@ -3,6 +3,7 @@
 
 ## Unreleased
 - The Go performance gate is a benchmark of the tools root packages/go/bench, which belongs to no implementation, so its go-internal parity unit is removed; the gate still runs as the performance_gate feature. (#T77-8-1-1)
+- The physical query-form test reads the ORM_TEST DSN names of the sibling physical tests (T77-24).
 - parity-check names the missing flowmark binary and its install step before it runs the markdown conformance units (T77-25).
 - The dbspec harness test expects the flat case ids that the harness prints, so the dbspec package exits 0 (T77-23).
 - make exports the bench DSNs of the run TEST_ENV to the parity units, which previously ran without them (T77-22).

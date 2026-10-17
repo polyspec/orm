@@ -27,14 +27,14 @@ import (
 func TestPhysicalQueryForms(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	targets := []struct{ driver, dsn string }{
-		{"mysql", os.Getenv("ORM_MIGRATION_MYSQL_DSN")},
-		{"postgres", os.Getenv("ORM_MIGRATION_POSTGRES_DSN")},
+		{"mysql", os.Getenv("ORM_TEST_MYSQL_DSN")},
+		{"postgres", os.Getenv("ORM_TEST_POSTGRES_DSN")},
 		{"sqlite", filepath.Join(t.TempDir(), "forms.sqlite")},
 	}
 	for _, target := range targets {
 		t.Run(target.driver, func(t *testing.T) {
 			if target.dsn == "" {
-				t.Fatalf("ORM_MIGRATION_%s_DSN is required; physical DB tests never skip; run the test through its make target, which reads the environment of make test-servers", strings.ToUpper(target.driver))
+				t.Fatalf("ORM_TEST_%s_DSN is required; physical DB tests never skip; run the test through its make target, which reads the environment of make test-servers", strings.ToUpper(target.driver))
 			}
 			testPhysicalQueryForms(t, target.driver, target.dsn)
 		})
