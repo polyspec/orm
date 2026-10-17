@@ -4,7 +4,6 @@
 //! `cargo test --test integration`.
 polyspec_orm::models!();
 
-mod result_chains;
 mod coverage_composite_keys;
 mod coverage_constraints_and_relations;
 mod coverage_env;
@@ -13,3 +12,4 @@ mod coverage_model_writes;
 mod coverage_parameter_chunking;
 mod coverage_schema_install;
 mod coverage_transactions;
+mod result_chains;
