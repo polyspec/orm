@@ -17,6 +17,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/polyspec/orm/packages/go/engine/plan"
+	"github.com/polyspec/orm/packages/go/internal/dialects"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
@@ -25,8 +26,16 @@ import (
 // requires equal results.
 func TestPhysicalQueryForms(t *testing.T) {
 	testcase.Start(t, testcase.Database)
+	mysqlDSN := os.Getenv("ORM_TEST_MYSQL_DSN")
+	if mysqlDSN != "" {
+		driverDSN, err := dialects.MySQLDriverDSN(mysqlDSN)
+		if err != nil {
+			t.Fatal(err)
+		}
+		mysqlDSN = driverDSN
+	}
 	targets := []struct{ driver, dsn string }{
-		{"mysql", os.Getenv("ORM_TEST_MYSQL_DSN")},
+		{"mysql", mysqlDSN},
 		{"postgres", os.Getenv("ORM_TEST_POSTGRES_DSN")},
 		{"sqlite", filepath.Join(t.TempDir(), "forms.sqlite")},
 	}
