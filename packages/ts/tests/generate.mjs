@@ -71,7 +71,7 @@ caseTest('generate', PROCESS, async () => {
     const typedText = await readFile(join(typed, 'models.ts'), 'utf8');
     for (const read of uncheckedReads(typedText)) check(false, `unchecked read in the generated type models: ${read}`);
     for (const declaration of [
-      'getSmall(): number', 'setSmall(value: number): this', 'getDay(): string | null', 'setDay(value: string | Date | null): this',
+      'getSmall(): number', 'setSmall(value: number): this', 'getDay(): string | null', 'setDay(value: string | null): this',
       'getClock(): string', 'setClock(value: string): this', 'getStamp(): string', 'getId(): string', 'getBody(): string',
       'getBlob(): Uint8Array', 'getRatio(): number', 'plusSmall(n: number): this',
     ]) check(typedText.includes(`public ${declaration} {`), `declaration ${declaration}`);
