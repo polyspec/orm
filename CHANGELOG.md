@@ -3,6 +3,7 @@
 
 ## Unreleased
 - The Go performance gate is a benchmark of the tools root packages/go/bench, which belongs to no implementation, so its go-internal parity unit is removed; the gate still runs as the performance_gate feature. (#T77-8-1-1)
+- The Go conformance runner has the NULL collection key handler relation_null_key; its expectation is recorded with the database runs (T77-6-1-2).
 - The generated-file check is kit's pre-commit hook: config/generated.json declares the repository's paths and exceptions, and the local hook and staged check are removed (T77-16).
 - The codec, collection and AES public symbols are recomputed from a fresh extraction and none stays undeclared; the Korean model_generation sentence now names Rust as the English one does (T77-8-1-1).
 - The performance gate names only the parity units that exist: its dropped Go unit and Go owner are removed, and the static check passes (T77-15).

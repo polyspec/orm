@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 73068c56a6d59fa94bf06d1e678d0b879da782fa7ef06d93b4f94f5149ac87a9 -->
+<!-- source-sha256: b7cc73c0da159b0392040aba026749eeb4e0b00c03d523e351aad60b1ed53dc8 -->
 # 변경 이력
 
 ## Unreleased
 - Go 성능 gate는 tools root인 packages/go/bench의 benchmark다. 이 root는 어떤 구현에도 속하지 않으므로 그 go-internal parity unit을 없앴다. gate는 performance_gate feature로 계속 실행된다. (#T77-8-1-1)
+- Go conformance runner에 NULL collection key handler relation_null_key가 생긴다. 기대값은 database 실행과 함께 기록한다(T77-6-1-2).
 - 생성 파일 검사는 kit의 pre-commit hook이다. config/generated.json이 저장소의 경로와 예외를 선언하고, 로컬 hook과 staged 검사는 지운다(T77-16).
 - codec, collection, AES 공개 symbol을 새 추출로 다시 계산했고 선언되지 않은 것은 없다. model_generation의 한국어 문장이 영어와 같이 Rust를 적는다(T77-8-1-1).
 - performance gate는 존재하는 parity unit만 명명한다. 뺀 Go unit과 Go owner를 지웠고 정적 검사가 통과한다(T77-15).

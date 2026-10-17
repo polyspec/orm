@@ -504,6 +504,15 @@ func run() (status int) {
 		}
 		return rows.Len(), nil
 	})
+	run("relation_null_key", func() (any, error) {
+		rows, err := model.User().Connect(db).
+			Relations(model.Author().MatchSeqWithUserSeq().KeyNamePrice()).
+			Seq(100).Gets()
+		if err != nil {
+			return nil, err
+		}
+		return rows.Len(), nil
+	})
 	run("subqueries", func() (any, error) {
 		users, err := model.User().Connect(db).
 			AddColumnReadTotal(func(u *model.UserModel) orm.Model {
