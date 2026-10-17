@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The TypeScript conformance runner, its result helper and the result helper test live in packages/ts (testing/conformance and tests), and the parity check reads them there. (#T77-9-2-2)
 - The features' `clients` flags are removed from contracts/features.json, the schema and scripts/features, and `tests.language-parity` in contracts/rules.json uses the parity check. (#T77-10-2)
 - The ten Go dialect physical test files and probe_test.go belong to the schema_definition feature, and the static feature check passes. (#T198-1)
 - The PHP conformance runner and its result helpers live in packages/php/testing/conformance, and the PHP result-helper test loads them from there. (#T77-9-2-1)

@@ -991,7 +991,7 @@ conformance-result-check/php: php-vendor-check
 conformance-result-check/typescript: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
-	$(NODE) --test tests/conformance/result_typescript.test.mts
+	$(NODE) --test packages/ts/tests/result_typescript.test.mts
 conformance-result-check/go:
 	$(GO_TEST) ./packages/go/internal/conformance -count=1
 conformance-result-check/python: python-venv-check

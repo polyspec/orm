@@ -10,11 +10,11 @@
 // The models embed the manifest of contracts/fixtures/bench/bench.dbs.
 import {
   AesKeyring, Author, BindCell, CORE, ClockCell, type Collection, type Model, CompositeAccount, HexCell, Service, TimeCell, DayCell, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, UpsertCell, User, UuidCell, connect, orm,
-} from '../../packages/ts/dist/index.js';
-import { fixClock, lastAffected } from '../../packages/ts/dist/testing.js';
+} from '../../dist/index.js';
+import { fixClock, lastAffected } from '../../dist/testing.js';
 import { parseArgs } from 'node:util';
 import { derivedInteger, executeVector, resultValue } from './result_typescript.mts';
-import { errorMessage } from '../errors.mts';
+import { errorMessage } from '../../../../tests/errors.mts';
 
 const usage = 'usage: runner_typescript.mts --dsn URI [--vector NAME]...';
 

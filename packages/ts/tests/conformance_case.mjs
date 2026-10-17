@@ -1,6 +1,6 @@
 // The conformance vectors of one dialect as node:test tests (coverage_conformance_<dialect>.mjs). The file creates a
 // bench database of its own on the server of the test servers (ORM_RUN_<DIALECT>_DSN, ORM_RUN_SQLITE_QUERY), seeds it
-// with scripts/bench-db.mts as make check seeds its bench databases, runs tests/conformance/runner_typescript.mts over
+// with scripts/bench-db.mts as make check seeds its bench databases, runs packages/ts/testing/conformance/runner_typescript.mts over
 // every vector once, and makes each vector of tests/conformance a top-level test named by the vector that compares its
 // output with the recorded expectation of the dialect (tests/conformance/check/main.mts load, exact JSON values). The
 // database is dropped after the tests, also when one fails.
@@ -75,7 +75,7 @@ export async function conformanceSuite(dialect) {
   let output;
   let failure;
   try {
-    const { stdout } = await promisify(execFile)(process.execPath, ['tests/conformance/runner_typescript.mts', '--dsn', bench.dsn],
+    const { stdout } = await promisify(execFile)(process.execPath, ['packages/ts/testing/conformance/runner_typescript.mts', '--dsn', bench.dsn],
       { cwd: repositoryRoot, maxBuffer: 256 * 1024 * 1024, timeout: RUNNER_TIMEOUT });
     output = decodeExact(stdout);
     assert.ok(output instanceof Map, 'the runner prints an object of vectors');

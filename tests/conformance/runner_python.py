@@ -370,7 +370,7 @@ def main():
 
     cols = ["seq", "name", "is_close", "is_display", "read_count"]
 
-    # The vectors below follow tests/conformance/runner_typescript.mts, one function per vector.
+    # The vectors below follow packages/ts/testing/conformance/runner_typescript.mts, one function per vector.
     run(
         "conditions_connectors",
         lambda: picks(

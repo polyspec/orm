@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { caseTest } from '../testcase.mts';
+import { caseTest } from '../../../tests/testcase.mts';
 import { parse } from '@polyspec/ordered-json';
-import { StyledValue } from '../../packages/ts/dist/index.js';
-import { derivedInteger, executeVector, resultValue } from './result_typescript.mts';
+import { StyledValue } from '../dist/index.js';
+import { derivedInteger, executeVector, resultValue } from '../testing/conformance/result_typescript.mts';
 
 // 각 case의 기한 1 s: case는 memory 안에서 result 값 몇 개를 쓰고 비교한다.
 caseTest('ordered-json numbers and styled states remain exact in result output', 1000, () => {

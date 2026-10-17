@@ -13,7 +13,7 @@ const selected = ['conditions_values', 'relations'];
 await runCases('coverage_conformance_verification.mjs', {
   async conformance_vector({ driver, dsn }) {
     const recorded = JSON.parse(await readFile(join(repositoryRoot, 'tests/conformance', vectorFiles[driver]), 'utf8'));
-    const runner = join(repositoryRoot, 'tests/conformance/runner_typescript.mts');
+    const runner = join(repositoryRoot, 'packages/ts/testing/conformance/runner_typescript.mts');
     const args = [runner, '--dsn', dsn, ...selected.flatMap(name => ['--vector', name])];
     let stdout;
     try {

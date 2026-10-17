@@ -7711,7 +7711,7 @@
         "tests/conformance/check/styled-expectations.test.mts",
         "tests/conformance/check/rust-group.physical.test.mts",
         "packages/php/testing/conformance/runner.php",
-        "tests/conformance/runner_typescript.mts",
+        "packages/ts/testing/conformance/runner_typescript.mts",
         "packages/rust/tests/src/conformance.rs",
         "packages/go/model/coverage_conformance_verification_test.go",
         "packages/php/tests/CoverageConformanceVerificationTest.php",
@@ -9061,10 +9061,10 @@
       "paths": [
         "packages/php/tests/ConformanceResultTest.php",
         "packages/php/testing/conformance/result_php_helpers.php",
-        "tests/conformance/result_typescript.mts"
+        "packages/ts/testing/conformance/result_typescript.mts"
       ],
       "tests": [
-        "tests/conformance/result_typescript.test.mts"
+        "packages/ts/tests/result_typescript.test.mts"
       ],
       "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" conformance-result-check"
     },
@@ -9072,7 +9072,7 @@
       "id": "conformance-runners",
       "paths": [
         "packages/php/testing/conformance/runner.php",
-        "tests/conformance/runner_typescript.mts"
+        "packages/ts/testing/conformance/runner_typescript.mts"
       ],
       "tests": [],
       "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" conformance-check"

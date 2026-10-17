@@ -321,7 +321,7 @@ async function runOne(context: Context, root: string, target: Target, output: st
       return runCommand(context, root, output, runnerDeadline, 'php', [...(zone === '' ? [] : ['-d', `date.timezone=${zone}`]), 'packages/php/testing/conformance/runner.php', ...flags]);
     }
     case 'typescript':
-      return runCommand(context, root, output, runnerDeadline, 'node', ['tests/conformance/runner_typescript.mts', ...flags]);
+      return runCommand(context, root, output, runnerDeadline, 'node', ['packages/ts/testing/conformance/runner_typescript.mts', ...flags]);
     case 'rust':
       if (runners.rust === '') throw new Error('rust runner is not built');
       return runCommand(context, root, output, runnerDeadline, runners.rust, flags);
