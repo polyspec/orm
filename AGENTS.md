@@ -246,7 +246,7 @@ vendors; this file states only the rules of orm.
 
 - A generated file is never tracked in git. This covers dependency installs (`node_modules/`, `vendor/`, `vendor-php/`, `.venv/`, `venv/`), build output (`dist/`, `target/`, `*.egg-info/`, `*.vsix`), caches (`__pycache__/`, `*.pyc`, `docs/.vitepress/cache/`), test run artifacts (`.runtime/`, `var/`, `*.test`), and tool downloads (`var/tools/`).
 - The only exceptions are files the repository deliberately needs, and they are named here: the committed lock `.kit/kit.lock.json` and the test fixtures under `tests/*/fixtures/`.
-- Each covered path has a `.gitignore` entry. `make staged-check` refuses a staged path that matches a covered pattern and is not a named exception, and `.githooks/pre-commit` runs it before every commit.
+- Each covered path has a `.gitignore` entry. The kit pre-commit hook refuses a staged generated path, and the repository declares its own patterns and named exceptions in `config/generated.json`.
 
 ## Releases
 

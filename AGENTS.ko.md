@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 195753229b41767b3ffa9f901df9ed268bb3e7b6bdfc3cecf7974236ff1647d5 -->
+<!-- source-sha256: 64933e994f474d45c1a66659548fdc2111269abae96a16cad05417978b759b46 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -204,7 +204,7 @@ orm 자신의 규칙만 적는다.
 
 - 생성 파일은 git에 추적하지 않는다. 여기에는 의존성 설치물(`node_modules/`, `vendor/`, `vendor-php/`, `.venv/`, `venv/`), 빌드 산출물(`dist/`, `target/`, `*.egg-info/`, `*.vsix`), 캐시(`__pycache__/`, `*.pyc`, `docs/.vitepress/cache/`), 테스트 실행 산출물(`.runtime/`, `var/`, `*.test`), 도구 다운로드(`var/tools/`)가 포함된다.
 - 예외는 저장소가 의도적으로 필요로 하는 파일뿐이며 여기에 이름을 적는다. 커밋된 lock `.kit/kit.lock.json`과 `tests/*/fixtures/` 아래의 테스트 fixture다.
-- 덮이는 각 경로에는 `.gitignore` 항목이 있다. `make staged-check`는 덮이는 패턴에 맞는 staged 경로가 명명된 예외가 아니면 거절하며, `.githooks/pre-commit`이 커밋마다 이를 실행한다.
+- 덮이는 각 경로에는 `.gitignore` 항목이 있다. kit의 pre-commit hook이 생성 경로의 staged 추가를 거절하며, 저장소는 자기 패턴과 명명된 예외를 `config/generated.json`에 선언한다.
 
 ## Release
 
