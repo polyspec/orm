@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cb64f5f4c82c711d675af73f16b1288f8e7d3a0ba4051e006e6f2663eaea1cb6 -->
+<!-- source-sha256: ae24639719b233b4a9bdcccb87ead7639063898dbfb07f7bcf92b166acf73128 -->
 # 변경 이력
 
 ## Unreleased
+- collection-identity, plan-cache와 dialect probe test, Go coverage gate와 추적되는 fixture tests/collection/keys.json이 feature verification 명령의 입력이라서, 추적되는 모든 file이 행동 test를 고른다. (#T198-2)
 - PHP와 TypeScript dbspec adapter가 packages/php, packages/php-ext, packages/ts의 testing/dbspec에 있으며, comparator, Go physical test와 layout이 새 경로를 가리킨다. (#T77-9-2-4)
 - `make -s feature-unit-check/docs`가 통과한다: docs/features.md와 docs/features.ko.md를 contracts/features.json에서 다시 생성했다. (#T198-3)
 - TypeScript와 PHP interface extractor가 packages/ts/testing/interfaces와 packages/php/testing/interfaces에 있으며, TypeScript extractor project도 그 옆에 있다. interface 검사기, layout과 의존성 기록이 새 경로를 가리킨다. (#T77-9-2-3)

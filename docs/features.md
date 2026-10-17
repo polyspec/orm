@@ -20,7 +20,7 @@ The executable source is the repository feature manifest. Read the manifest, the
 | constraints_and_relations | Constraints and relations | implemented | go, php, typescript, python, rust |
 | audit_triggers | Audit triggers | implemented | go, php, typescript, python, rust |
 | interface_contract | Common interface verification | implemented | go, php, typescript, python, rust |
-| performance_gate | Hot-path performance standard | partial | php, rust |
+| performance_gate | Hot-path performance standard | partial | go, php, rust |
 | conformance_verification | Conformance verification | implemented | go, php, typescript, python, rust |
 | catalog_connection | Rust catalog connection | partial | rust |
 | request_hook | Request hook | implemented | go, php, typescript, python, rust |

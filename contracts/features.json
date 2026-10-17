@@ -1188,6 +1188,42 @@
             "packages/python/src/polyspec/orm/generate/python.py",
             "packages/python/src/polyspec/orm/models/models.py"
           ]
+        },
+        {
+          "id": "collection-identity-go",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionKeyIdentityFromFixture|TestCollectionKeyNullIsCodecDecodeFromFixture)$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/orm/collection_identity_test.go",
+            "tests/collection/keys.json"
+          ]
+        },
+        {
+          "id": "collection-identity-php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionIdentityTest.php",
+          "shard": "other",
+          "inputs": [
+            "packages/php/tests/CollectionIdentityTest.php",
+            "tests/collection/keys.json"
+          ]
+        },
+        {
+          "id": "collection-identity-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts collection-identity-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test collection_identity",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/orm/tests/collection_identity.rs",
+            "tests/collection/keys.json"
+          ]
+        },
+        {
+          "id": "collection-identity-typescript",
+          "command": "node packages/ts/tests/collection_identity.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/ts/tests/collection_identity.mjs",
+            "tests/collection/keys.json"
+          ]
         }
       ],
       "coverage": {
@@ -3772,6 +3808,15 @@
             "packages/php-ext/src/**",
             "packages/php-ext/scripts/build.sh"
           ]
+        },
+        {
+          "id": "dialects-probe-go",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/internal/dialects -run '^(TestProbeIDs|TestProbeCitations|TestRestrictRowOrder)$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/internal/dialects/paths.go",
+            "packages/go/internal/dialects/probe_test.go"
+          ]
         }
       ],
       "coverage": {
@@ -4674,6 +4719,30 @@
             "packages/rust/orm/tests/ir_validate.rs",
             "packages/rust/orm/tests/unit/ir_request.rs",
             "tests/ir/validate.json"
+          ]
+        },
+        {
+          "id": "plan-cache-go",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestPlanCacheBoundedByInListShape|TestCanonicalizePadsInListAndRejectsOutOfRangeParam)$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/orm/plan_cache_test.go"
+          ]
+        },
+        {
+          "id": "plan-cache-php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/PlanCacheBoundTest.php",
+          "shard": "other",
+          "inputs": [
+            "packages/php/tests/PlanCacheBoundTest.php"
+          ]
+        },
+        {
+          "id": "plan-cache-typescript",
+          "command": "node packages/ts/tests/plan-cache-in.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/ts/tests/plan-cache-in.mjs"
           ]
         }
       ],
@@ -7523,7 +7592,8 @@
       ],
       "parity": [
         "php-internal-coverage-performance-gate-hot-path-gate",
-        "rust-coverage-hot-path-gate"
+        "rust-coverage-hot-path-gate",
+        "go-internal-coverage-performance-gate-hot-path-gate"
       ],
       "fixtures": [
         "docs/perf-raw-go-native.txt",
@@ -7600,6 +7670,26 @@
           "hot_path_gate"
         ],
         "owners": {
+          "go": {
+            "part": "packages/go/bench",
+            "tests": [
+              "packages/go/bench/coverage_performance_gate_test.go"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "go",
+                  "test": "packages/go/bench/coverage_performance_gate_test.go",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "symbols": {
+                    "hot_path_gate": "TestCoveragePerformanceGate"
+                  }
+                }
+              ]
+            }
+          },
           "php": {
             "part": "packages/php/tests",
             "tests": [
