@@ -76,7 +76,9 @@
     "feature-stress-mysql-check": {"scope": "suite", "needs": ["go", "databases"]},
     "feature-stress-pg-sqlite-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "databases"]},
     "go-test-check": {"scope": "suite", "needs": ["go", "databases"]},
-    "python-check": {"scope": "owner", "needs": ["python", "databases"], "inputs": ["mise.toml", "packages/python/**", "tests/interfaces/contracts/python_signature_test.go", "tests/interfaces/test_*.py", "packages/python/testing/interfaces/python.py", "packages/python/tests/conformance_result.py", "packages/python/testing/conformance/runner_python.py", "tests/dbspec/show-create.json", "tests/dbspec/cases.json", "contracts/fixtures/planner.json", "tests/ir/validate.json", "tests/codec/decode-vectors.json"]}
+    "python-check": {"scope": "owner", "needs": ["python", "databases"], "inputs": ["mise.toml", "packages/python/**", "tests/interfaces/contracts/python_signature_test.go", "tests/interfaces/test_*.py", "packages/python/testing/interfaces/python.py", "packages/python/tests/conformance_result.py", "packages/python/testing/conformance/runner_python.py", "tests/dbspec/show-create.json", "tests/dbspec/cases.json", "contracts/fixtures/planner.json", "tests/ir/validate.json", "tests/codec/decode-vectors.json"]},
+    "parity-declarations-check": {"scope": "suite", "needs": ["node-modules"]},
+    "parity-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "php-extension-tools", "python", "node-modules", "databases"]}
   },
   "paths": {
     ".github/runner": {"scope": "suite", "reason": "it names the runner image of every job of the CI workflow, so it changes the machine that runs every target"},

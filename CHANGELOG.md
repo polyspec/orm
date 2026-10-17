@@ -6,6 +6,7 @@
 - The parity declarations bind the test files added by the T77-9-4 landings to their units and the php support list, so every declaration holds again (T148-3).
 - The PHP conformance binding checks that every declared vector is run and that the vector files name the same set (T77-9-4-3).
 - The TypeScript conformance suites run every declared vector, and a test checks that each dialect's declared set equals the runner's (T77-9-4-4).
+- The push gate runs parity-declarations-check and parity-check: both are in CHECK_TARGETS, the CI groups and the check inputs (T77-12).
 - The Python conformance bindings read the runner at its moved path, packages/python/testing/conformance/runner_python.py (T77-9-4-6).
 - The Go dbspec subtests report flat case names: no subtest name contains "/", checked by TestSubtestNamesAreFlat (T77-9-4-2).
 - The PHP dbspec tests read plans.json through one helper, dbspec_plan_cases.php, which opens the file once per process (T77-9-4-7).

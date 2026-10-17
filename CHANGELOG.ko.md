@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d4d55fb5ebf411e7fb504dc121983a7ebe3a80ee5701968b4d4e4a219f54bf0c -->
+<!-- source-sha256: 90446bbf9fae8c61e00caabc57d98a189d324aa1dbaa91c7e08e638af4ac82ad -->
 # 변경 이력
 
 ## Unreleased
@@ -7,6 +7,7 @@
 - T77-9-4 landing이 추가한 test 파일을 각 unit과 php support 목록에 묶어, 모든 선언이 다시 성립한다(T148-3).
 - PHP conformance binding은 선언된 모든 vector가 실행되고 vector 파일들이 같은 이름 집합을 가지는지 검사한다(T77-9-4-3).
 - TypeScript conformance suite는 선언된 모든 vector를 실행하며, dialect별 선언 집합이 runner의 집합과 같은지 test가 검사한다(T77-9-4-4).
+- push gate가 parity-declarations-check와 parity-check를 실행한다. 두 검사는 CHECK_TARGETS, CI group, check inputs에 있다(T77-12).
 - Python conformance binding이 옮겨진 runner 경로 packages/python/testing/conformance/runner_python.py를 읽는다(T77-9-4-6).
 - Go dbspec subtest가 평탄한 case 이름을 보고한다. subtest 이름에 "/"가 없음을 TestSubtestNamesAreFlat이 검사한다(T77-9-4-2).
 - PHP dbspec test가 plans.json을 하나의 helper dbspec_plan_cases.php로 읽고, 프로세스마다 파일을 한 번만 연다(T77-9-4-7).
