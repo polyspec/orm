@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 17b8bd5c4f3002beb83041d2442550e200bf3fccc5baa1a369ee0e89a60e2861 -->
+<!-- source-sha256: 412a0207254371dc4dfb7dd0480fd2bf237642be48ae766c169fbdea2ec86cab -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -866,7 +866,7 @@
       - [ ] T77-8-1-1 step 2가 선언하지 않은 codec, collection, AES 공개 symbol을 분류한다: 다섯 client에 대응이 있으면 unit, 없으면 이유와 함께 native_only다. 원인: step 2는 unit 16개를 선언했다. codec decode와 encode(TypeScript가 이름을 바꾼다), collection key type, 모든 client가 공유하지 않는 member가 남아 있다. 완료 기준: 그 module의 선언되지 않은 공개 symbol마다 api unit 또는 이유를 적은 native_only 항목이 있고, 선언과 interface 단위 test가 통과한다.
       - [ ] T77-8-1-2 dbspec 공개 symbol(reader, set, plan, schema)을 같은 방식으로 분류한다. 원인: client의 선언되지 않은 공개 symbol 대부분이 dbspec module에 있다. 완료 기준: T77-8-1-1과 같다.
       - [ ] T77-8-1-3 client 표면(Db, Model, Utils, Schema, request, engine, markdown)을 같은 방식으로 분류한다. 원인: client module의 나머지 공개 symbol이 선언되지 않았다. 완료 기준: T77-8-1-1과 같다.
-      - [ ] T77-8-1-4 bench set의 생성된 model을 같은 방식으로 분류한다. 원인: client마다 생성된 model class가 entity별로 반복되며 선언되지 않았다. 완료 기준: T77-8-1-1과 같다.
+      - [~] T77-8-1-4 bench set의 생성된 model을 같은 방식으로 분류한다. 원인: client마다 생성된 model class가 entity별로 반복되며 선언되지 않았다. 완료 기준: T77-8-1-1과 같다. 진행: TypeScript와 Python의 생성된 model symbol(kit id 2277개; Go, PHP, Rust는 bench set의 entity class를 생성하지 않아 unit이 될 수 없다)은 config/parity.json의 native_only 항목이며, 각각 이유와 contracts/interfaces.json의 anchor를 가진다. make parity-declarations-check 종료 코드 0. 여섯 id는 unresolved로 선언되지 않은 채 남는다: TypeScript connect wrapper, Python orm.models.models.connect, 그리고 entity별이 아닌 Python module 상수 MANIFEST_TEXT, MANIFEST_HASH, SCHEMA, model. 이 항목은 그 여섯 개가 결정되면 완료된다.
       - [ ] T77-8-1-5 step 4: contracts/interfaces.json의 rule, record, owner를 config/parity.json으로 옮기고 이전 사본을 지워 interface-check가 목록 하나만 읽게 한다. 호환 계층을 만들지 않는다. 원인: contracts/interfaces.json에 아직 이름 규칙이 있다. 완료 기준: 두 번째 목록이 남지 않고, interface 단위 test가 통과한다.
       - [ ] T77-8-1-6 step 5: 전체 parity-check를 마지막 묶음에서 실행하고 종료 코드와 finding을 기록한다. 원인: 모든 row가 끝날 때까지 미룬다(K206~K208 landed).
   - [~] T77-9 각 언어의 test는 자기 package에 있다. 원인: `tests/codec/check.php`, `tests/conformance/runner*`, `tests/dbspec/{compare,apply,introspect}/<lang>`, `tests/dialects`의 Go `introspect.json` 읽기, `tests/interfaces/<lang>`는 package 밖에 있는데, Rust conformance runner만 package 안에 있다. 완료 기준: 모든 언어 adapter가 자기 package로 옮겨 가고, `tests/` 아래에는 공유 vector와 언어 간 comparator만 남는다. parity 검사는 package 밖의 기능 test를 거절한다. suite마다 구현별 binding이 하나 있고, 그 binding이 모든 case를 실행하고 case마다 보고한다(T77의 선언에서 발견). 지금은 Go와 Rust coverage test가 case마다 함수 하나이고, Go dbspec subtest는 `canonical/<id>`로 중첩되며, Go, PHP, TypeScript, Rust conformance binding은 vector 일부만 실행한다. Python conformance는 comparator가 구동하는 program(`tests/conformance/runner_python.py`)이고, PHP는 plans.json을 여러 file에서 나눠 읽는다.
