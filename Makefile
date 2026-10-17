@@ -1100,7 +1100,12 @@ parity-prepare: lease-tool
 	$(RUN_LONG) rust-build/parity-conformance --cwd packages/rust -- $(CARGO_LEASED) node $(abspath scripts/cargo-build-copy.mts) $(PARITY_RUN_DIR)/target debug/conformance -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm-tests --bin conformance
 parity-check: parity-prepare
 # interface-check runs first: it reads the API units of config/parity.json and the symbol snapshots that parity-check reads.
-parity-check: interface-check
+# parity-bench-env-check names each bench DSN a parity-check run needs that the environment does not set, so a run without the
+# bench databases stops at the missing variable instead of failing every unit with the same message. run-databases sets them.
+parity-bench-env-check:
+	@for v in BENCH_MYSQL_DSN BENCH_POSTGRES_DSN BENCH_SQLITE_DSN; do test -n "$$(printenv $$v)" || { echo "parity-bench-env-check: $$v is not set; run make run-databases TARGETS=parity-check, which creates the bench databases and their DSNs"; exit 1; }; done
+
+parity-check: parity-bench-env-check interface-check
 parity-check: export FLOWMARK := $(FLOWMARK)
 parity-check: export ORM_PARITY_PHP_EXTENSION = $(PARITY_RUN_DIR)/orm_dbspec.so
 parity-check: export ORM_PROGRAM_CONFORMANCE = $(PARITY_RUN_DIR)/target/debug/conformance

@@ -3,6 +3,7 @@
 
 ## Unreleased
 - The Go performance gate is a benchmark of the tools root packages/go/bench, which belongs to no implementation, so its go-internal parity unit is removed; the gate still runs as the performance_gate feature. (#T77-8-1-1)
+- parity-check names the missing bench DSN before it runs its units (T77-20).
 - The interface self-test names the missing TypeScript checker dependency before it runs (T77-19).
 - The move of contracts/interfaces.json is held with its plan (T77-8-1-5).
 - The generated-model symbols are declared: the live declaration check finds no undeclared public symbol (T77-8-1-4).
