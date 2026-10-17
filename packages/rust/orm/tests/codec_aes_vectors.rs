@@ -2,7 +2,7 @@
 //! libtest-mimic trial `aes_vectors::<name>` per vector: the aes hex host stages round-trip the plain text with the
 //! key, and the fixed envelope decodes to the plain text.
 
-use polyspec_orm::codec::{host_decode, host_encode};
+use polyspec_orm::codec::{blind_index, host_decode, host_encode};
 use polyspec_orm::{Param, Val};
 use polyspec_orm_testcase::Trial;
 
@@ -14,13 +14,29 @@ struct File {
 #[derive(serde::Deserialize)]
 struct Vector {
     name: String,
+    #[serde(default)]
+    op: String,
     key: String,
+    #[serde(default)]
     plain: String,
+    #[serde(default)]
     envelope_hex: String,
+    #[serde(default)]
+    error: Option<String>,
 }
 
 fn vector_case(v: &Vector) {
     let styles = vec!["aes".to_string(), "hex".to_string()];
+    if let Some(want) = &v.error {
+        // An error vector names the code of its op (encode, decode or blind_index) with an empty or wrong key.
+        let got = match v.op.as_str() {
+            "encode" => host_encode(&Param::Str(v.plain.clone()), &styles, &v.key).err(),
+            "decode" => host_decode(&Val::Str(v.envelope_hex.clone()), &styles, &v.key).err(),
+            _ => blind_index(&Param::Str(v.plain.clone()), &v.key).err(),
+        };
+        assert_eq!(got.as_ref().map(|e| e.code()), Some(want.as_str()), "{} with key {:?}", v.op, v.key);
+        return;
+    }
     let Param::Str(encoded) = host_encode(&Param::Str(v.plain.clone()), &styles, &v.key).expect("encode") else { panic!("aes hex must produce text") };
     assert_eq!(host_decode(&Val::Str(encoded), &styles, &v.key).expect("round trip"), Val::Str(v.plain.clone()), "round trip");
     assert_eq!(host_decode(&Val::Str(v.envelope_hex.clone()), &styles, &v.key).expect("fixed envelope"), Val::Str(v.plain.clone()), "fixed envelope");

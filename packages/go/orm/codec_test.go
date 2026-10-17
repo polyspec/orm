@@ -213,10 +213,30 @@ func TestCodecVectors(t *testing.T) {
 // and the AES v2 envelope (hex) that the key gives the text with a fixed nonce.
 type aesVector struct {
 	Name        string `json:"name"`
+	Op          string `json:"op"`
 	Key         string `json:"key"`
 	Plain       string `json:"plain"`
 	NonceHex    string `json:"nonce_hex"`
 	EnvelopeHex string `json:"envelope_hex"`
+	Error       string `json:"error"`
+}
+
+// aesErrorCode returns the code of the error that the vector's op raises
+// ("" when it raises none): an error vector names an encode, a decode or a
+// blind_index with an empty or wrong key.
+func aesErrorCode(v aesVector) string {
+	styles := []string{"aes", "hex"}
+	switch v.Op {
+	case "encode":
+		_, err := HostEncode(v.Plain, styles, v.Key)
+		return ErrorCode(err)
+	case "decode":
+		_, err := HostDecode(v.EnvelopeHex, styles, v.Key)
+		return ErrorCode(err)
+	default:
+		_, err := BlindIndex(v.Plain, v.Key)
+		return ErrorCode(err)
+	}
 }
 
 // TestCodecAESVectors: for every vector of tests/codec/aes-vectors.json, a
@@ -242,6 +262,12 @@ func TestCodecAESVectors(t *testing.T) {
 			continue
 		}
 		t.Run(v.Name, func(t *testing.T) {
+			if v.Error != "" {
+				if got := aesErrorCode(v); got != v.Error {
+					t.Errorf("%s with key %q: got %q, want %s", v.Op, v.Key, got, v.Error)
+				}
+				return
+			}
 			encoded, err := HostEncode(v.Plain, styles, v.Key)
 			if err != nil {
 				t.Fatalf("encode: %v", err)

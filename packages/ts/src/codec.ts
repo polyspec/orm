@@ -22,7 +22,7 @@ function plainBytes(value: unknown): Buffer {
 /** Returns the stable lowercase HMAC-SHA256 index for plaintext. */
 export function blindIndex(value: unknown, key: string): string | null {
   if (value === null) return null;
-  if (key === '') throw new CodecError(codes.CODEC_ENCODE, 'secret blind_index not configured');
+  if (key === '') throw new CodecError(codes.CONFIG, 'secret blind_index not configured');
   const input = plainBytes(value);
   return createHmac('sha256', key).update(input).digest('hex');
 }
@@ -34,7 +34,7 @@ export function hostEncode(value: unknown, styles: readonly string[], aesKey: st
   for (const style of styles) {
     switch (style) {
       case 'aes': {
-        if (aesKey === '') throw new CodecError(codes.CODEC_ENCODE, 'secret aes not configured');
+        if (aesKey === '') throw new CodecError(codes.CONFIG, 'secret aes not configured');
         const nonce = randomBytes(12);
         const cipher = createCipheriv('aes-256-gcm', aesV2Key(aesKey), nonce);
         cipher.setAAD(Buffer.from('ORM-AES2\0'));
@@ -64,7 +64,7 @@ export function hostDecode(raw: string | Uint8Array | null, styles: readonly str
         break;
       }
       case 'aes': {
-        if (aesKey === '') throw new CodecError(codes.CODEC_DECODE, 'secret aes not configured');
+        if (aesKey === '') throw new CodecError(codes.CONFIG, 'secret aes not configured');
         const prefix = Buffer.from('ORM-AES2\0');
         if (!current.subarray(0, prefix.length).equals(prefix)) throw new CodecError(codes.CODEC_DECODE, 'aes: unsupported ciphertext format');
         if (current.length < prefix.length + 12 + 16) throw new CodecError(codes.CODEC_DECODE, 'aes: truncated v2 envelope');
@@ -126,7 +126,7 @@ function unpackIp(value: Buffer): string {
 }
 
 export class CodecError extends Error {
-  public constructor(public readonly code: typeof codes.CODEC_DECODE | typeof codes.CODEC_ENCODE | typeof codes.CODEC_UNSUPPORTED, message: string) {
+  public constructor(public readonly code: typeof codes.CONFIG | typeof codes.CODEC_DECODE | typeof codes.CODEC_ENCODE | typeof codes.CODEC_UNSUPPORTED, message: string) {
     super(`${code}: ${message}`);
   }
 }

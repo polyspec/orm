@@ -124,6 +124,17 @@ def check_vector(test: unittest.TestCase, vector: dict) -> None:
 
 
 def check_aes_vector(test: unittest.TestCase, vector: dict) -> None:
+    if "error" in vector:
+        # An error vector names the code of its op (encode, decode or blind_index) with an empty or wrong key.
+        with test.assertRaises(CodecError) as raised:
+            if vector["op"] == "encode":
+                host_encode(vector["plain"], ["aes", "hex"], vector["key"])
+            elif vector["op"] == "decode":
+                host_decode(vector["envelope_hex"], ["aes", "hex"], vector["key"])
+            else:
+                blind_index(vector["plain"], vector["key"])
+        test.assertEqual(raised.exception.code, vector["error"])
+        return
     encoded = host_encode(vector["plain"], ["aes", "hex"], vector["key"])
     decoded = host_decode(encoded, ["aes", "hex"], vector["key"])
     test.assertEqual(decoded, vector["plain"])

@@ -38,7 +38,7 @@ _AES_PREFIX = b"ORM-AES2\x00"
 class CodecError(Exception):
     """A codec failure with its stable error code."""
 
-    CODES = (codes.CODEC_DECODE, codes.CODEC_ENCODE, codes.CODEC_UNSUPPORTED)
+    CODES = (codes.CONFIG, codes.CODEC_DECODE, codes.CODEC_ENCODE, codes.CODEC_UNSUPPORTED)
 
     def __init__(self, code: str, message: str):
         super().__init__(f"{code}: {message}")
@@ -60,7 +60,7 @@ def blind_index(value, key: str):
     if value is None:
         return None
     if key == "":
-        raise CodecError(codes.CODEC_ENCODE, "secret blind_index not configured")
+        raise CodecError(codes.CONFIG, "secret blind_index not configured")
     return hmac.new(key.encode("utf-8"), _as_bytes(value), hashlib.sha256).hexdigest()
 
 
@@ -128,7 +128,7 @@ def host_encode(value, styles, aes_key: str):
     for style in styles:
         if style == "aes":
             if aes_key == "":
-                raise CodecError(codes.CODEC_ENCODE, "secret aes not configured")
+                raise CodecError(codes.CONFIG, "secret aes not configured")
             nonce = os.urandom(12)
             encrypted = AESGCM(_aes_v2_key(aes_key)).encrypt(
                 nonce, current, _AES_PREFIX
@@ -162,7 +162,7 @@ def host_decode(raw, styles, aes_key: str):
             current = bytes.fromhex(source)
         elif style == "aes":
             if aes_key == "":
-                raise CodecError(codes.CODEC_DECODE, "secret aes not configured")
+                raise CodecError(codes.CONFIG, "secret aes not configured")
             if not current.startswith(_AES_PREFIX):
                 raise CodecError(codes.CODEC_DECODE, "aes: unsupported ciphertext format")
             if len(current) < len(_AES_PREFIX) + 12 + 16:
