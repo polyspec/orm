@@ -16,6 +16,9 @@ type request struct {
 	// audit은 write가 실행되는 transaction의 audit 기록이며 없으면 nil이다.
 	audit *auditRecord
 	err   error
+	// canonical marks ir and params as canonicalize left them, so plan does not
+	// rewrite them again; a root IN part is built from canonical values and keeps it.
+	canonical bool
 	// nodes maps each model of the statement to the IR node it produced;
 	// assembly uses it to create child models.
 	joins     map[string]*Core

@@ -81,7 +81,11 @@ func (d *DB) plan(r *request) (*cached, error) {
 	if err != nil {
 		return nil, err
 	}
-	r.ir.NParams = len(r.params)
+	if !r.canonical {
+		if err := canonicalize(r); err != nil {
+			return nil, err
+		}
+	}
 	key := shapeKey(&r.ir)
 	d.m.planMu.RLock()
 	c, ok := d.plans[key]
