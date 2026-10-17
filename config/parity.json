@@ -5,7 +5,7 @@
     {
       "name": "go",
       "runner": "go",
-      "roots": ["packages/go/cmd", "packages/go/decimalmodel", "packages/go/engine", "packages/go/generator", "packages/go/internal", "packages/go/markdownmodel", "packages/go/model", "packages/go/orm", "packages/go/procevent", "packages/go/testcase", "tests/interfaces/contracts", "tests/dbspec/unicode", "examples"],
+      "roots": ["packages/go/cmd", "packages/go/decimalmodel", "packages/go/engine", "packages/go/generator", "packages/go/internal", "packages/go/markdownmodel", "packages/go/model", "packages/go/orm", "packages/go/procevent", "packages/go/testcase", "examples"],
       "tests": ["packages/go/{cmd,decimalmodel,engine,generator,internal,markdownmodel,model,orm,procevent,testcase}/**/coverage_*_test.go"],
       "support": ["packages/go/engine/dbspec/case_clock_test.go", "packages/go/engine/dbspec/vector_reader_test.go", "packages/go/model/coverage_helpers_test.go", "packages/go/orm/coverage_fixture_test.go", "packages/go/orm/failing_driver_test.go", "packages/go/orm/schema_helpers_test.go", "packages/go/orm/statement_events_export_test.go", "packages/go/orm/test_helpers_test.go"],
       "args": ["-tags", "physical,ormtest,markdown,featurecoverage"],

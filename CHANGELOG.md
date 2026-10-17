@@ -2,6 +2,8 @@
 # Changelog
 
 ## Unreleased
+- The Go conformance runner, the dbspec Go programs, the Go symbol extractor and the dialect physical tests live in packages/go/internal, and no Go adapter stays under tests/ except the cross-language tools. (#T77-9-1)
+
 
 - The error catalogs of TypeScript and Python are exported as `codes`, as Go, PHP and Rust export theirs. The public API of the clients is declared as units in config/parity.json, and interface-check checks the error catalog units of every client against docs/errors.yaml. (#T77-8)
 - The Rust model generator checks its generated files with `Builder::check`, as the Go `orm-gen gen --check` does; the thin-slice demo has TypeScript and Python programs, whose stdout the output comparison checks against Go; and the styled value types of TypeScript and Python are in docs/codec.md and docs/dbspec.md. (#T148-3-7-5)

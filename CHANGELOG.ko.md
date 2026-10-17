@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ec6a4a3fe3d5f3ac41d9ef54e44c9eb752fa3dfa262d5a1a05a92fafa4aaf2dd -->
+<!-- source-sha256: ca17350b82cb5f61d10a94cc75663b97b0933a07b4894ac34653c08481fbf9f7 -->
 # 변경 이력
 
 ## Unreleased
+- Go conformance runner, dbspec Go program, Go symbol extractor와 dialect physical test가 packages/go/internal에 있으며, Go adapter는 cross-language 도구를 제외하고 tests/ 아래에 남지 않는다. (#T77-9-1)
+
 
 - TypeScript와 Python의 오류 catalog가 `codes`로 export되며, Go, PHP, Rust가 export하는 방식과 같다. client의 공개 API는 config/parity.json의 단위로 선언되고, interface-check가 모든 client의 오류 catalog 단위를 docs/errors.yaml과 비교한다. (#T77-8)
 - Rust model generator가 `Builder::check`로 생성된 file을 검사한다. 이는 Go의 `orm-gen gen --check`와 같다. thin-slice 데모에 TypeScript와 Python 프로그램이 생겼고, 그 stdout은 출력 비교가 Go와 대조한다. TypeScript와 Python의 styled value type은 docs/codec.md와 docs/dbspec.md에 있다. (#T148-3-7-5)
