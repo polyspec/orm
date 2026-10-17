@@ -1112,7 +1112,12 @@ endif
 parity-bench-env-check:
 	@set -a; test -f $(abspath $(TEST_ENV)) && . $(abspath $(TEST_ENV)); set +a; for v in BENCH_MYSQL_DSN BENCH_POSTGRES_DSN BENCH_SQLITE_DSN; do test -n "$$(printenv $$v)" || { echo "parity-bench-env-check: $$v is not set; run make run-databases TARGETS=parity-check, which creates the bench databases and their DSNs"; exit 1; }; done
 
-parity-check: parity-bench-env-check interface-check
+# flowmark-check names the flowmark binary that the markdown conformance units read (FLOWMARK) before parity-check runs them;
+# install-flowmark builds it from the version pinned in tests/markdown/flowmark.version.
+flowmark-check:
+	test -x $(FLOWMARK) || { echo "flowmark-check: $(FLOWMARK) is missing; run make install-flowmark, which builds the version pinned in tests/markdown/flowmark.version"; exit 1; }
+
+parity-check: parity-bench-env-check flowmark-check interface-check
 parity-check: export FLOWMARK := $(FLOWMARK)
 parity-check: export ORM_PARITY_PHP_EXTENSION = $(PARITY_RUN_DIR)/orm_dbspec.so
 parity-check: export ORM_PROGRAM_CONFORMANCE = $(PARITY_RUN_DIR)/target/debug/conformance
