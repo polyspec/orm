@@ -7594,8 +7594,7 @@
       ],
       "parity": [
         "php-internal-coverage-performance-gate-hot-path-gate",
-        "rust-coverage-hot-path-gate",
-        "go-internal-coverage-performance-gate-hot-path-gate"
+        "rust-coverage-hot-path-gate"
       ],
       "fixtures": [
         "docs/perf-raw-go-native.txt",
@@ -7672,26 +7671,6 @@
           "hot_path_gate"
         ],
         "owners": {
-          "go": {
-            "part": "packages/go/bench",
-            "tests": [
-              "packages/go/bench/coverage_performance_gate_test.go"
-            ],
-            "commands": {
-              "none": [
-                {
-                  "runner": "go",
-                  "test": "packages/go/bench/coverage_performance_gate_test.go",
-                  "cases": [
-                    "hot_path_gate"
-                  ],
-                  "symbols": {
-                    "hot_path_gate": "TestCoveragePerformanceGate"
-                  }
-                }
-              ]
-            }
-          },
           "php": {
             "part": "packages/php/tests",
             "tests": [
