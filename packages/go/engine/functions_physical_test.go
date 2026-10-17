@@ -90,11 +90,12 @@ func testPhysicalQueryForms(t *testing.T, driver, dsn string) {
 		}
 		return fmt.Sprintf("'POINT(%g %g)'", lon, lat)
 	}
-	recent := time.Now().UTC().Add(-48 * time.Hour).Format("2006-01-02 15:04:05")
+	// The fixture timestamps and the reference instant are fixed, so the expectations do not depend on the run day.
+	clock := time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC)
 	exec("INSERT INTO owner VALUES (1, 'kim bakery', 900), (2, 'lee market', 100)")
 	exec("INSERT INTO place VALUES " +
 		"(1, 1, 'seoul hall', 1000, " + pointValue(126.978, 37.5665) + ", '2020-01-02 10:00:00'), " +
-		"(2, 2, 'busan hall', 50, " + pointValue(129.0756, 35.1796) + ", '" + recent + "')")
+		"(2, 2, 'busan hall', 50, " + pointValue(129.0756, 35.1796) + ", '2026-10-15 09:00:00')")
 	exec("INSERT INTO visit VALUES (1, 1, 30, 1), (2, 1, 20, 1), (3, 1, 99, 0), (4, 2, 5, 1)")
 	exec("INSERT INTO membership VALUES (1, 10, 'owner'), (1, 11, 'member'), (2, 10, 'member')")
 
@@ -102,22 +103,20 @@ func testPhysicalQueryForms(t *testing.T, driver, dsn string) {
 	run := func(body string, params ...any) [][]any {
 		t.Helper()
 		p := formsCompile(t, e, body)
-		return physicalRows(t, db, driver, p.Steps[0], params)
+		return physicalRows(t, db, driver, p.Steps[0], clock, params)
 	}
 
 	rows := run(`"kind":"all","entity":"place","columns":{"mode":"none"},
 	 "where":{"items":[{"pred":{"column":"created_ts","op":"eq","p":0,"fn":{"name":"day_of_week"}}}]},"order":[{"column":"seq"}]`,
 		5)
-	// The place fixture holds seq 1 (created 2020-01-02, a Thursday, DAYOFWEEK 5) and seq 2 (48 hours before the run).
-	// seq 2 matches DAYOFWEEK 5 only when the run falls on a day 2 days after a Thursday, so the expectation follows the fixture.
-	want := 1
-	if time.Now().UTC().Add(-48*time.Hour).Weekday() == time.Thursday {
-		want = 2
-	}
-	if len(rows) != want || asInt(rows[0][0]) != 1 {
-		t.Fatalf("day_of_week rows %v, want %d", rows, want)
+	// The place fixture holds seq 1 (created 2020-01-02, a Thursday, DAYOFWEEK 5) and seq 2 (created 2026-10-15,
+	// a Thursday, DAYOFWEEK 5), so both rows match and the expected count is 2 on any run day.
+	if len(rows) != 2 || asInt(rows[0][0]) != 1 {
+		t.Fatalf("day_of_week rows %v, want 2 rows starting at seq 1", rows)
 	}
 
+	// On sqlite and postgres the days_ago bind uses the fixed clock 2026-10-16 12:00: days_ago(3) is 2026-10-13 12:00, so seq 2
+	// (2026-10-15 09:00) is inside the window and seq 1 (2020) is outside it. MySQL computes days_ago from NOW(6), not from the bind.
 	rows = run(`"kind":"all","entity":"place","columns":{"mode":"none"},
 	 "where":{"items":[{"pred":{"column":"created_ts","op":"gt","value":{"name":"days_ago","ps":[0]}}},
 	   {"pred":{"conn":"and","column":"created_ts","op":"lte","value":{"name":"now"}}}]}`, 3)
@@ -155,7 +154,7 @@ func testPhysicalQueryForms(t *testing.T, driver, dsn string) {
 	}
 }
 
-func physicalRows(t *testing.T, db *sql.DB, driver string, st plan.Step, params []any) [][]any {
+func physicalRows(t *testing.T, db *sql.DB, driver string, st plan.Step, clock time.Time, params []any) [][]any {
 	t.Helper()
 	var args []any
 	for _, slot := range st.BindSlots {
@@ -167,7 +166,7 @@ func physicalRows(t *testing.T, db *sql.DB, driver string, st plan.Step, params 
 			}
 			args = append(args, value)
 		case "now":
-			args = append(args, time.Now().UTC().Format("2006-01-02 15:04:05"))
+			args = append(args, clock.UTC().Format("2006-01-02 15:04:05"))
 		default:
 			t.Fatalf("unexpected bind slot %+v", slot)
 		}

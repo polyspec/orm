@@ -3,6 +3,7 @@
 
 ## Unreleased
 - The Go performance gate is a benchmark of the tools root packages/go/bench, which belongs to no implementation, so its go-internal parity unit is removed; the gate still runs as the performance_gate feature. (#T77-8-1-1)
+- The physical fixture uses a fixed clock on sqlite and postgres, so the day_of_week and days_ago expectations are derived from fixed dates (T77-33, T77-33-1 open for MySQL).
 - The coverage case unit runs its child without the test context (T77-32).
 - The SQLite concurrency unit cleans up after its cases run (T77-31).
 - The TypeScript generate unit expects the text-form setter declared in docs/dbspec.md (T77-30).
