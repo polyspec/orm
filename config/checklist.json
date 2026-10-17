@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "hooks": ["pre-push", "commit-msg"],
+  "hooks": ["pre-push", "commit-msg", "pre-commit"],
   "trackers": [
     {
       "path": "docs/plans/execution-checklist.md",

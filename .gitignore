@@ -27,3 +27,6 @@
 __pycache__/
 *.pyc
 /var/
+/vendor/
+venv/
+*.egg-info/

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 078a760f325a438a45b641ba742061ecc948234b0026eaeef30d70004b45d6c4 -->
+<!-- source-sha256: 86823a013c40cf2a5f749008c8f7fe5e13013ed9c5c78f0ae654bd5fa8cdc4ac -->
 # 변경 이력
 
 ## Unreleased
 - Go 성능 gate는 tools root인 packages/go/bench의 benchmark다. 이 root는 어떤 구현에도 속하지 않으므로 그 go-internal parity unit을 없앴다. gate는 performance_gate feature로 계속 실행된다. (#T77-8-1-1)
+- 생성 파일은 추적하지 않는다: AGENTS.md가 규칙과 명명된 예외를 적고, .gitignore가 vendor/, venv/, *.egg-info/를 덮으며, make staged-check와 pre-commit 훅이 staged 생성 경로를 거절한다(T77-13).
 - Go dialect physical test 파일 열 개와 probe_test.go가 schema_definition feature에 속하며, 정적 feature 검사가 통과한다. (#T198-1)
 - Python conformance runner, Python dbspec comparator, Python와 Rust interface extractor가 packages/python과 packages/rust의 testing/ 아래에 있고, Python test는 packages/python/tests에 있으며, layout, parity support 목록과 interface 검사기가 새 경로를 가리킨다. (#T77-9-3)
 - collection-identity, plan-cache와 dialect probe test, Go coverage gate와 추적되는 fixture tests/collection/keys.json이 feature verification 명령의 입력이라서, 추적되는 모든 file이 행동 test를 고른다. (#T198-2)

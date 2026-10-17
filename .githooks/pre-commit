@@ -1,0 +1,4 @@
+#!/bin/sh
+# The pre-commit hook. Git starts it from the top level of the working tree before each commit. It runs make staged-check,
+# which refuses a staged generated file (AGENTS.md "Generated files").
+exec make --no-print-directory staged-check

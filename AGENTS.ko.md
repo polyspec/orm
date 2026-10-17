@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 4657f85d884a75612acb7c5f947124f0a7aacaecd3cf3d55fe6f81cb9756b994 -->
+<!-- source-sha256: 195753229b41767b3ffa9f901df9ed268bb3e7b6bdfc3cecf7974236ff1647d5 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -199,6 +199,12 @@ orm 자신의 규칙만 적는다.
 - 생성 typed 모델 필드는 비공개다. 조회하거나 대입하지 않은 필드 접근은 `COLUMN_UNSELECTED`로 실패하며 그룹 개수는 일부 필드만 채운 모델 대신 전용 결과를 쓴다.
 - 그룹 결과는 선택한 각 컬럼의 선언된 값 타입을 보존한다. 불리언 그룹 컬럼은 모든 데이터베이스에서 불리언을 반환하며 저장된 불리언 값이 잘못되면 숫자나 기본값으로 바꾸지 않고 실패한다.
 - 영문과 국문 문서를 동등하게 유지한다. 추가 작성자 표기 없이 `min-0-max <max@blue.tools>`로 로컬 커밋한다. 기록은 이 저장소의 동작을 설명하며 외부 출처의 이력을 담지 않는다.
+
+## 생성 파일
+
+- 생성 파일은 git에 추적하지 않는다. 여기에는 의존성 설치물(`node_modules/`, `vendor/`, `vendor-php/`, `.venv/`, `venv/`), 빌드 산출물(`dist/`, `target/`, `*.egg-info/`, `*.vsix`), 캐시(`__pycache__/`, `*.pyc`, `docs/.vitepress/cache/`), 테스트 실행 산출물(`.runtime/`, `var/`, `*.test`), 도구 다운로드(`var/tools/`)가 포함된다.
+- 예외는 저장소가 의도적으로 필요로 하는 파일뿐이며 여기에 이름을 적는다. 커밋된 lock `.kit/kit.lock.json`과 `tests/*/fixtures/` 아래의 테스트 fixture다.
+- 덮이는 각 경로에는 `.gitignore` 항목이 있다. `make staged-check`는 덮이는 패턴에 맞는 staged 경로가 명명된 예외가 아니면 거절하며, `.githooks/pre-commit`이 커밋마다 이를 실행한다.
 
 ## Release
 
