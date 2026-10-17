@@ -13,6 +13,8 @@ final class Request
     public array $names = [];
     /** @var array<int, list<array>> relations with their own connection, by parent model */
     public array $external = [];
+    /** ir and params are canonical (CanonicalRequest), so the plan does not rewrite them again. */
+    public bool $canonical = false;
 
     public function __construct(string $kind, string $manifestHash)
     {
@@ -36,6 +38,16 @@ final class Request
             $values[] = $values[count($values) - 1];
         }
         return $values;
+    }
+
+    /** Rewrites the request in place to its canonical form (T169-3); a second call does nothing. */
+    public function canonicalize(): void
+    {
+        if ($this->canonical) {
+            return;
+        }
+        [$this->ir, $this->params] = CanonicalRequest::of($this->ir, $this->params);
+        $this->canonical = true;
     }
 
     /** The request with the parameter count, as the engine plans it. */

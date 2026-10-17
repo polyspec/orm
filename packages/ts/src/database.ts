@@ -10,6 +10,7 @@ import { Utils } from './utils.js';
 import { wallMicros } from './clock.js';
 import { AesKeyring } from './aes.js';
 import { Engine } from './engine/index.js';
+import { canonicalize } from './engine/canonical.js';
 import { modelOfManifest, type RuntimeModel } from './engine/model.js';
 import { decimalScaled, normalizeDecimal } from './decimal.js';
 import { CORE, type Core } from './core.js';
@@ -1189,12 +1190,18 @@ interface Hooked { request: Request; params: readonly unknown[]; }
  */
 function hooked(ex: Executor, request: Request, params: readonly unknown[]): Hooked {
   const hook = ex.db.requestHook;
-  if (hook === undefined) return { request, params };
-  const values = [...params];
-  const out = hook(request, (value: unknown) => values.push(value) - 1, Object.freeze([...params]));
-  if (out === null || typeof out !== 'object' || Array.isArray(out)) throw new OrmError('CONFIG', 'the request hook returns the request to plan');
-  out.n_params = values.length;
-  return { request: out, params: values };
+  let planned: Hooked = { request, params };
+  if (hook !== undefined) {
+    const values = [...params];
+    const out = hook(request, (value: unknown) => values.push(value) - 1, Object.freeze([...params]));
+    if (out === null || typeof out !== 'object' || Array.isArray(out)) throw new OrmError('CONFIG', 'the request hook returns the request to plan');
+    out.n_params = values.length;
+    planned = { request: out, params: values };
+  }
+  // A SQL connection plans the canonical form (T169-3): the IN lists pad to their buckets and the parameters are renumbered.
+  if (ex.db.md !== undefined) return planned;
+  const canon = canonicalize(planned.request, planned.params);
+  return { request: canon.request, params: canon.params };
 }
 
 export async function query(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<Result> {

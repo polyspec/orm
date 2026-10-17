@@ -923,6 +923,7 @@ final class Db
         $hash = $r->ir['manifest_hash'];
         $this->registeredModel($hash);
         $engine = Engine::for($hash, $this->driver, $this->config->planCacheSize);
+        $r->canonicalize();
         $shape = $r->shape();
         if (count($r->params) <= self::bindLimit($this->driver)) {
             return $engine->plan($shape);

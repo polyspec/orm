@@ -16,6 +16,7 @@ from urllib.parse import urlsplit, parse_qsl
 
 from polyspec.orm.codec import blind_index, decode as codec_decode, host_encode
 from polyspec.orm.clock import wall_micros
+from polyspec.orm.canonical import canonical_request
 from polyspec.orm.bind_check import (
     bind_slot_type,
     check_assign,
@@ -2036,23 +2037,27 @@ def _sqlite_busy(error) -> bool:
 
 
 def _hooked(db: Db, request: dict, params):
-    """handle의 request hook을 plan 직전의 request에 적용하고 (request, params)를 돌려준다. hook은 params의 복사본에
-    add_param으로 값을 더하고, n_params는 그 개수가 된다. 바뀐 request는 plan이 다른 request처럼 validate한다. hook이 없으면
-    아무것도 복사하거나 부르지 않는다."""
+    """Applies the request hook of the handle to the request before it is planned, and returns (request, params).
+    The hook adds values to a copy of params with add_param, and n_params becomes their count. A non-markdown request
+    is then canonicalized (canonical.py), so the plan cache key does not depend on IN list lengths."""
     hook = db.request_hook
     if hook is None:
-        return request, params
-    values = list(params)
+        values = params
+    else:
+        values = list(params)
 
-    def add_param(value) -> int:
-        values.append(value)
-        return len(values) - 1
+        def add_param(value) -> int:
+            values.append(value)
+            return len(values) - 1
 
-    out = hook(request, add_param, tuple(params))
-    if not isinstance(out, dict):
-        raise OrmError("CONFIG", "the request hook returns the request to plan")
-    out["n_params"] = len(values)
-    return out, values
+        request = hook(request, add_param, tuple(params))
+        if not isinstance(request, dict):
+            raise OrmError("CONFIG", "the request hook returns the request to plan")
+        request["n_params"] = len(values)
+    if db.driver == "markdown":
+        return request, values
+    # The plan cache is keyed by the canonical request (canonical.py), so IN lists of one bucket share a plan.
+    return canonical_request(request, values)
 
 
 def query(ex: Executor, request: dict, params):

@@ -393,3 +393,41 @@ fn pad_in(vs: &[Param]) -> Vec<Param> {
     out.resize(n, last);
     out
 }
+
+#[cfg(test)]
+mod plan_cache_tests {
+    use super::*;
+    use crate::args::Value;
+    use crate::core::{Arg, ChainKey};
+    use crate::model::{AnyModel, Entity};
+    use crate::value::Param;
+    use std::collections::HashSet;
+
+    static IDENTITY_SCHEMA: Schema = Schema::new(
+        include_str!("../../../../contracts/fixtures/identity_load.dbs"),
+        "sha256:5b9923a69ed67de11e46bc3b825656d177d6e3664a867ca4d4d779b2677f97de",
+    );
+    static PROBE: Entity = Entity {
+        name: "load_probe",
+        schema: &IDENTITY_SCHEMA,
+        new: |_| -> Box<dyn AnyModel> { unreachable!("the planner test builds no model") },
+        collect: |_, _| unreachable!("the planner test collects no rows"),
+    };
+    const SEQ: ChainKey = ChainKey { conn: "", op: "", column: "seq", columns: &[], compare: "" };
+
+    /// One IN statement over lists of 1 to 300 values: the shape key takes one value per power-of-two bucket
+    /// (1, 2, 4 ... 512), so 300 lengths give at most ten distinct plan-cache keys.
+    #[test]
+    fn in_list_keys_are_bounded_by_bucket() {
+        let mut keys = HashSet::new();
+        for n in 1..=300usize {
+            let list: Vec<Param> = (0..n as i64).map(Param::I64).collect();
+            let mut core = crate::core::Core::new(&PROBE);
+            core.chain("", &[SEQ], vec![Arg::Value(Value::List(list))]);
+            let mut req = build(&core, "all");
+            assert!(req.error().is_none(), "length {n}: {:?}", req.error());
+            keys.insert(req.shape_key());
+        }
+        assert!(keys.len() <= 10, "{} distinct plan keys for lengths 1 to 300, want at most 10", keys.len());
+    }
+}
