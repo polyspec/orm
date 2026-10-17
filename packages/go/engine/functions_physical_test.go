@@ -17,6 +17,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "modernc.org/sqlite"
 
+	"github.com/polyspec/orm/packages/go/internal/dialects"
 	"github.com/polyspec/orm/packages/go/engine/plan"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
@@ -25,9 +26,17 @@ import (
 // conditions, subqueries, and placed join conditions on every database and
 // requires equal results.
 func TestPhysicalQueryForms(t *testing.T) {
+	mysqlDSN := os.Getenv("ORM_TEST_MYSQL_DSN")
+	if mysqlDSN != "" {
+		driverDSN, err := dialects.MySQLDriverDSN(mysqlDSN)
+		if err != nil {
+			t.Fatal(err)
+		}
+		mysqlDSN = driverDSN
+	}
 	testcase.Start(t, testcase.Database)
 	targets := []struct{ driver, dsn string }{
-		{"mysql", os.Getenv("ORM_TEST_MYSQL_DSN")},
+		{"mysql", mysqlDSN},
 		{"postgres", os.Getenv("ORM_TEST_POSTGRES_DSN")},
 		{"sqlite", filepath.Join(t.TempDir(), "forms.sqlite")},
 	}

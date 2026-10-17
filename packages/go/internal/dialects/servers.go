@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -82,7 +83,18 @@ func mysqlConfig(raw string) (*mysql.Config, error) {
 	cfg.Passwd, _ = u.User.Password()
 	cfg.Net = "tcp"
 	cfg.Addr = u.Host
+	cfg.DBName = strings.TrimPrefix(u.Path, "/")
 	return cfg, nil
+}
+
+// MySQLDriverDSN returns the driver form of a mysql:// DSN URI, the form that
+// sql.Open takes, by the same conversion mysqlConfig performs.
+func MySQLDriverDSN(raw string) (string, error) {
+	cfg, err := mysqlConfig(raw)
+	if err != nil {
+		return "", err
+	}
+	return cfg.FormatDSN(), nil
 }
 
 // Name is the disposable object name of the probe at index.
