@@ -81,7 +81,7 @@ func TestConnectionsUseUTC(t *testing.T) {
 				}
 				start := time.Date(2026, 1, 2, 0, 0, 0, 0, time.FixedZone("+09:00", 9*3600))
 				c := model()
-				c.Set("start_dt", start.Format(time.RFC3339))
+				c.Set("start_dt", start.UTC().Format("2006-01-02 15:04:05.000000"))
 				before := time.Now()
 				if _, err := c.Create(); err != nil {
 					t.Fatal(err)
@@ -110,7 +110,7 @@ func TestConnectionsUseUTC(t *testing.T) {
 					arg  any
 					want int64
 				}{
-					{"instant", orm.ChainKey{Column: "start_dt"}, start.Format(time.RFC3339), 1},
+					{"instant", orm.ChainKey{Column: "start_dt"}, start.UTC().Format("2006-01-02 15:04:05.000000"), 1},
 					{"equal", orm.ChainKey{Column: "start_dt"}, "2026-01-01 15:00:00", 1},
 					{"fraction", orm.ChainKey{Column: "start_dt"}, "2026-01-03T00:00:00.0", 1},
 					{"in", orm.ChainKey{Column: "start_dt"}, []string{"2026-01-01 15:00:00", "2026-01-03 00:00:00"}, 2},
@@ -433,5 +433,29 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 	holdRows(t, "postgres", base, table)
 	if err := lockedRead(bounded, ent); orm.ErrorCode(err) != orm.CodeCanceled {
 		t.Fatalf("the bounded connection after the plain one: %v", err)
+	}
+}
+
+// TestNativeTimeIsRefusedByDatetime checks that a native time.Time is no value of a datetime column: the
+// setter takes the text form only, so the write is refused with CODEC_ENCODE.
+func TestNativeTimeIsRefusedByDatetime(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	s := fixtureSchema(t, "zone")
+	dsn := newDatabase(t, "sqlite")
+	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := db.Utils().Schema().Install(s); err != nil {
+		t.Fatal(err)
+	}
+	ent := zoneEntity(s)
+	c := orm.NewCore(ent)
+	ent.New(c)
+	c.Connect(db)
+	c.Set("start_dt", time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC))
+	if _, err := c.Create(); orm.ErrorCode(err) != "CODEC_ENCODE" {
+		t.Fatalf("native time.Time: want CODEC_ENCODE, got %v", err)
 	}
 }
