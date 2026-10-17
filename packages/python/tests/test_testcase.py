@@ -1,5 +1,5 @@
-# The unit test of the Python case harness (testcase.py): the RUN, STEP, PASS, FAIL and SKIP lines, the deadline that
-# ends a stalled case, and that every test of the package runs through it.
+# The unit test of the Python case harness (testcase.py): unittest's own report of each case, the step lines, the
+# deadline that ends a stalled case, and that every test of the package runs through it.
 import re
 import subprocess
 import sys
@@ -46,8 +46,6 @@ SAMPLE = textwrap.dedent("""
             time.sleep(60)
 """)
 
-LINE = re.compile(r"^(RUN|STEP|PASS|FAIL|SKIP) (\S+)( .*)?$")
-
 
 def run_sample(*names: str) -> subprocess.CompletedProcess:
     """Runs the sample through the discovery entry point of python-unit-check."""
@@ -92,51 +90,32 @@ class DurationTest(unittest.TestCase):
 class ReportTest(unittest.TestCase):
     deadline = testcase.PROCESS
 
-    def test_lines_of_each_outcome(self) -> None:
+    def test_unittest_report_of_each_outcome(self) -> None:
         result = run_sample("Sample")
         self.assertEqual(result.returncode, 1, result.stderr)
-        lines = [line for line in result.stdout.splitlines() if line]
-        for line in lines:
-            self.assertRegex(line, LINE)
-        outcome = {
-            m.group(2): m.group(1)
-            for m in map(LINE.match, lines)
-            if m.group(1) not in ("RUN", "STEP")
-        }
+        # The step is a line of the case's output; the outcome of each case is unittest's line on its stream.
+        self.assertIn("one step", result.stdout.splitlines())
         name = "sample.Sample."
-        self.assertEqual(
-            outcome,
-            {
-                name + "test_pass": "PASS",
-                name + "test_fail": "FAIL",
-                name + "test_error": "FAIL",
-                name + "test_skip": "SKIP",
-                name + "test_sub": "FAIL",
-            },
-        )
-        self.assertIn(f"RUN {name}test_pass deadline=1m0s", lines)
-        self.assertTrue(
-            any(
-                line.startswith(f"STEP {name}test_pass elapsed=")
-                and line.endswith(": one step")
-                for line in lines
-            ),
-            lines,
-        )
-        fail = next(line for line in lines if line.startswith(f"FAIL {name}test_error"))
-        self.assertIn("ValueError: broken", fail)
-        sub = next(line for line in lines if line.startswith(f"FAIL {name}test_sub"))
-        self.assertIn("(value=2)", sub)
+        report = result.stderr.splitlines()
+        for pattern in (
+            rf"^test_pass \({name}test_pass\) \.\.\. ok$",
+            rf"^test_fail \({name}test_fail\) \.\.\. FAIL$",
+            rf"^test_error \({name}test_error\) \.\.\. ERROR$",
+            rf"^test_skip \({name}test_skip\) \.\.\. skipped 'not here'$",
+            rf"^\s*test_sub \({name}test_sub\) \(value=2\) \.\.\. FAIL$",
+        ):
+            self.assertTrue(any(re.search(pattern, line) for line in report), (pattern, result.stderr))
+        self.assertIn("ValueError: broken", result.stderr)
+        self.assertIn("(value=2)", result.stderr)
+        self.assertNotRegex(result.stdout + result.stderr, r"(?m)^(RUN|PASS|FAIL|SKIP|STEP) sample\.")
 
     def test_stalled_case_ends_the_process(self) -> None:
         result = run_sample("Stalled")
         self.assertEqual(result.returncode, 1, result.stderr)
-        lines = result.stdout.splitlines()
-        self.assertEqual(lines[0], "RUN sample.Stalled.test_stall deadline=100ms")
-        self.assertRegex(
-            lines[1],
-            r"^FAIL sample\.Stalled\.test_stall elapsed=\S+: "
-            r"deadline 100ms exceeded and the case did not stop$",
+        # The stall message follows the unfinished `test_stall ... ` text of unittest on the same stream line.
+        self.assertIn(
+            "sample.Stalled.test_stall: deadline 100ms exceeded and the case did not stop",
+            result.stderr,
         )
 
 

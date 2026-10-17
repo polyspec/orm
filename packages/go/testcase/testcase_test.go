@@ -49,7 +49,7 @@ func TestFixtureGroup(t *testing.T) {
 	}
 }
 
-// TestFixtureRun은 test가 아닌 runner의 Run이 통과, 실패, 기한 초과를 보고하는 모습이다.
+// TestFixtureRun은 test가 아닌 runner의 Run이 통과, 실패, 기한 초과를 돌려주는 모습이다. 단계는 stdout의 줄이다.
 func TestFixtureRun(t *testing.T) {
 	fixture(t, "report")
 	if err := Run("runner/pass", time.Minute, func(c *Case) error {
@@ -127,10 +127,9 @@ func inOrder(output string, patterns ...string) error {
 	return nil
 }
 
-const elapsed = `elapsed=[0-9.]+(ns|µs|ms|s|m[0-9.]+s)`
-
-// TestReportForm은 Start, Step, Group, Run이 case마다 시작, 단계, 결과와 경과 시간을 이 순서로
-// 출력하고, 기한이 지난 case를 FAIL로 보고하고 process를 끝내는지 확인한다.
+// TestReportForm은 Start로 시작한 case의 단계가 t.Log로, 결과가 go test의 `--- PASS`, `--- FAIL`, `--- SKIP`으로
+// 나오고, 묶음과 runner의 단계와 결과도 native 출력으로 나오며, 기한이 지난 case가 진단과 함께 process를 끝내는지
+// 확인한다.
 func TestReportForm(t *testing.T) {
 	Start(t, Process)
 	output, err := runFixture("report")
@@ -139,36 +138,30 @@ func TestReportForm(t *testing.T) {
 		t.Fatalf("report fixture: want a failing exit for TestFixtureFail, got %v\n%s", err, output)
 	}
 	checks := [][]string{
-		{`RUN TestFixturePass deadline=1m0s`, `STEP TestFixturePass ` + elapsed + `: first step of 2`,
-			`STEP TestFixturePass ` + elapsed + `: step of the enclosing case`, `PASS TestFixturePass ` + elapsed},
-		{`RUN TestFixtureFail deadline=1m0s`, `.*fixture failure reason`, `FAIL TestFixtureFail ` + elapsed + `: the errors reported above`},
-		{`RUN TestFixtureSkip deadline=1m0s`, `SKIP TestFixtureSkip ` + elapsed},
-		{`RUN TestFixtureGroup group`, `RUN TestFixtureGroup/one deadline=2m0s`, `PASS TestFixtureGroup/one ` + elapsed,
-			`RUN TestFixtureGroup/two deadline=2m0s`, `PASS TestFixtureGroup/two ` + elapsed, `PASS TestFixtureGroup ` + elapsed},
-		{`RUN runner/pass deadline=1m0s`, `STEP runner/pass ` + elapsed + `: built runner`, `STEP runner/pass ` + elapsed + `: child line one`,
-			`STEP runner/pass ` + elapsed + `: child line two`, `STEP runner/pass ` + elapsed + `: child tail`, `PASS runner/pass ` + elapsed},
-		{`RUN runner/fail deadline=1m0s`, `FAIL runner/fail ` + elapsed + `: runner failure reason`},
-		{`RUN runner/context deadline=100ms`, `FAIL runner/context ` + elapsed + `: context deadline exceeded`},
-		{`RUN runner/long no-deadline`, `STEP runner/long ` + elapsed + `: building`, `STEP runner/long ` + elapsed + `: exit 0`, `PASS runner/long elapsed=(1\.[5-9][0-9]*|[2-9](\.[0-9]+)?)s`},
-		{`RUN runner/long-fail no-deadline`, `FAIL runner/long-fail ` + elapsed + `: build exited with 3`},
-		{`RUN runner/stuck deadline=100ms`, `FAIL runner/stuck ` + elapsed + `: deadline 100ms exceeded`},
+		{`=== RUN   TestFixturePass`, `.*first step of 2`, `.*step of the enclosing case`, `--- PASS: TestFixturePass \(\S+\)`},
+		{`=== RUN   TestFixtureFail`, `.*fixture failure reason`, `--- FAIL: TestFixtureFail \(\S+\)`},
+		{`=== RUN   TestFixtureSkip`, `.*fixture skip reason`, `--- SKIP: TestFixtureSkip \(\S+\)`},
+		{`=== RUN   TestFixtureGroup/one`, `=== RUN   TestFixtureGroup/two`, `--- PASS: TestFixtureGroup \(\S+\)`,
+			`--- PASS: TestFixtureGroup/one \(\S+\)`, `--- PASS: TestFixtureGroup/two \(\S+\)`},
+		{`built runner`, `child line one`, `child line two`, `child tail`},
+		{`building`, `exit 0`},
 	}
 	for _, patterns := range checks {
 		if err := inOrder(output, patterns...); err != nil {
 			t.Errorf("%v\n%s", err, output)
 		}
 	}
+	if regexp.MustCompile(`(?m)\.go:\d+: *$`).MatchString(output) {
+		t.Errorf("empty log line from the StepWriter\n%s", output)
+	}
 	output, err = runFixture("deadline")
 	if !errors.As(err, &exit) {
 		t.Fatalf("deadline fixture: want a failing exit, got %v\n%s", err, output)
 	}
-	if err := inOrder(output, `RUN TestFixtureDeadline deadline=200ms`, `FAIL TestFixtureDeadline `+elapsed+`: deadline 200ms exceeded`, `goroutine [0-9]+ \[.*\]:`); err != nil {
+	if err := inOrder(output, `testcase TestFixtureDeadline: deadline 200ms exceeded and the case did not stop`, `goroutine [0-9]+ \[.*\]:`); err != nil {
 		t.Errorf("%v\n%s", err, output)
 	}
-	if regexp.MustCompile(`STEP runner/pass ` + elapsed + `: \n`).MatchString(output) {
-		t.Errorf("empty STEP line from the StepWriter\n%s", output)
-	}
-	if strings.Contains(output, "PASS TestFixtureDeadline") {
-		t.Errorf("PASS line for the expired case\n%s", output)
+	if strings.Contains(output, "--- PASS: TestFixtureDeadline") {
+		t.Errorf("PASS result for the expired case\n%s", output)
 	}
 }

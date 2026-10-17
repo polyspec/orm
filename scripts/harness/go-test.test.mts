@@ -21,8 +21,8 @@ caseTest('the build step keeps packages and build flags and runs no test', COMPU
 
 // 느리지만 정상인 build는 기한 없이 끝까지 실행한다. PATH 앞의 가짜 go는 build 단계(-run '^$')에서
 // compiler 줄 사이에 1.5초를 쉬고 0으로 끝나며(FAKE_GO_FAIL이 있으면 오류 줄과 함께 2로 끝난다), 실행
-// 단계에서는 case 줄을 출력한다. build 단계는 RUN no-deadline, 출력 줄, exit 0과 PASS를 보고하고 그 뒤
-// 실행 단계가 이어진다. 실패한 build는 오류 줄과 종료 코드를 보고하고 실행 단계를 시작하지 않는다.
+// 단계에서는 go test -json의 test 출력을 낸다. build 단계는 go의 출력 줄과 `ok - <case>`를 보고하고 그 뒤
+// 실행 단계가 이어진다. 실패한 build는 오류 줄과 `not ok`, 그 이유를 보고하고 실행 단계를 시작하지 않는다.
 caseTest('a slow but healthy go test build runs to its end without a deadline', PROCESS, async () => {
   const dir = await mkdtemp(join(tmpdir(), 'orm-go-test-'));
   try {
@@ -33,7 +33,7 @@ case "$*" in
     if [ -n "\${FAKE_GO_FAIL:-}" ]; then echo "engine/x.go:1: undefined: y"; exit 2; fi
     sleep 1.5
     echo "ok  orm/engine 0.010s [no tests to run]" ;;
-  *) echo "RUN TestFixture deadline=1m0s"; echo "PASS TestFixture elapsed=1ms" ;;
+  *) echo "=== RUN   TestFixture"; echo "--- PASS: TestFixture (0.00s)" ;;
 esac
 `);
     await chmod(join(dir, 'go'), 0o755);
@@ -48,18 +48,17 @@ esac
         return { code, stdout };
       }
     };
-    const elapsed = 'elapsed=[0-9.]+(µs|ms|s|m[0-9.]+s)';
     const lines = (text: string) => text.split('\n').filter(Boolean);
     const passed = await run({});
     assert.equal(passed.code, 0, passed.stdout);
-    const expected = [`RUN go-build/engine no-deadline`, `STEP go-build/engine ${elapsed}: # orm/engine`,
-      `STEP go-build/engine ${elapsed}: ok  orm/engine 0.010s \\[no tests to run\\]`, `STEP go-build/engine ${elapsed}: exit 0`,
-      `PASS go-build/engine elapsed=(1\\.[5-9][0-9]*|[2-9](\\.[0-9]+)?)s`, 'RUN TestFixture deadline=1m0s', 'PASS TestFixture elapsed=1ms'];
+    // The build's output is go's own output, and the case's result is the TAP line of runLong; the run's output is test2json's.
+    const expected = ['# orm/engine', 'ok  orm/engine 0.010s \\[no tests to run\\]', 'exit 0', 'ok - go-build/engine',
+      '=== RUN   TestFixture', '--- PASS: TestFixture \\(0\\.00s\\)'];
     assert.equal(lines(passed.stdout).length, expected.length, passed.stdout);
     lines(passed.stdout).forEach((line: string, index) => assert.match(line, new RegExp(`^${expected[index]}$`), passed.stdout));
     const failed = await run({ FAKE_GO_FAIL: '1' });
     assert.equal(failed.code, 1, failed.stdout);
-    assert.match(failed.stdout, /STEP go-build\/engine [^:]*: engine\/x\.go:1: undefined: y\nFAIL go-build\/engine [^:]*: go test build exited with 2\n$/);
+    assert.match(failed.stdout, /engine\/x\.go:1: undefined: y\nnot ok - go-build\/engine\n# go test build exited with 2\n$/);
     assert.doesNotMatch(failed.stdout, /TestFixture/);
   } finally { await rm(dir, { recursive: true, force: true }); }
 });

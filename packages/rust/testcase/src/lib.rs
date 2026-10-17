@@ -1,26 +1,17 @@
-//! Rust test가 case마다 쓰는 진행 보고 형식과 case별 기한이다(internal/testcase의 Go 형식,
-//! tests/testcase.mts, tests/testcase.php와 같다).
+//! Rust test의 case별 기한과 단계 출력이다(internal/testcase의 Go 형식, tests/testcase.mts와 같은 기한 등급을 쓴다).
 //!
-//! ```text
-//! RUN <case> deadline=<기한>
-//! STEP <case> elapsed=<경과>: <단계>
-//! PASS <case> elapsed=<경과>
-//! FAIL <case> elapsed=<경과>: <이유>
-//! ```
-//!
-//! 줄은 stderr에 바로 쓴다. libtest의 출력 capture는 `print!` 계열 macro만 잡으므로 이 줄은
-//! `--nocapture` 없이도 case가 도는 동안 보이고, stdout의 `test <name> ... ok` 줄과 섞이지 않는다.
-//! 기한은 wall-clock 시간이다. 멈춘 case를 끝내는 timer이고 case 자신의 계산 시간을 재는 제한이
-//! 아니기 때문이다(AGENTS.md testing rule). Rust에는 case를 끊을 수단이 없으므로 기한에 [`GRACE`]를
-//! 더한 시간이 지나면 FAIL 줄을 출력하고 test process를 끝낸다. 기한을 직접 지키는 code(예:
-//! `tokio::time::timeout`)는 그 전에 자기 error로 실패하고 정리를 마친다.
-use std::cell::RefCell;
+//! 결과는 cargo test의 native 출력이다. case는 libtest의 test 하나이고 `test <name> ... ok`나 `FAILED`로
+//! 나온다. 실패는 panic이므로 libtest가 이유를 적는다. 단계는 `println!`으로 쓰므로 libtest의 출력 capture를
+//! 따른다: 통과한 test의 단계는 `--nocapture` 없이 보이지 않고, 실패한 test의 단계는 그 test의 출력으로 보인다.
+//! 기한은 wall-clock 시간이다. 멈춘 case를 끝내는 timer이고 case 자신의 계산 시간을 재는 제한이 아니기 때문이다
+//! (AGENTS.md testing rule). Rust에는 case를 끊을 수단이 없으므로 기한에 [`GRACE`]를 더한 시간이 지나면 진단을
+//! stderr에 쓰고 test process를 끝낸다. 기한을 직접 지키는 code(예: `tokio::time::timeout`)는 그 전에 자기 error로
+//! 실패하고 정리를 마친다.
 use std::fmt::Display;
 use std::io::Write;
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};
-use std::sync::Once;
 use std::thread::{self, JoinHandle};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 /// memory 안의 계산과 repository file 읽기만 하는 case의 기한이다. 기준: 이런 case 가운데 가장
 /// 큰 것(dbspec stress 문서의 parse와 emit)이 몇 초 안에 끝나므로, 1분을 넘긴 case는 멈춘 것이다.
@@ -58,8 +49,8 @@ pub fn program(name: &str) -> String {
     std::env::var(&variable).unwrap_or_else(|_| panic!("{variable} is unset; run the test through tests/cargo-test.mts, which gives the copied program"))
 }
 
-/// test 함수 이름을 case 이름으로 쓰고 기한 `$deadline` 아래의 case를 시작한다. 돌려준 값이
-/// scope를 벗어나면 결과를 출력하므로 `let _case = polyspec_orm_testcase::case!(..);`로 묶어 둔다.
+/// test 함수 이름을 case 이름으로 쓰고 기한 `$deadline` 아래의 case를 시작한다. case는 scope를 벗어날 때
+/// 실패를 확인하므로 `let _case = polyspec_orm_testcase::case!(..);`로 묶어 둔다.
 #[macro_export]
 macro_rules! case {
     ($deadline:expr) => {
@@ -85,13 +76,6 @@ pub fn test_name(here: &str) -> String {
     }
 }
 
-thread_local! {
-    /// 이 thread에서 마지막으로 난 panic의 message다. case가 FAIL 이유로 쓴다.
-    static LAST_PANIC: RefCell<Option<String>> = const { RefCell::new(None) };
-    /// 이 thread에서 실행 중인 case의 이름과 시작 시각이다. 안쪽 case가 뒤에 온다.
-    static RUNNING: RefCell<Vec<(String, Instant)>> = const { RefCell::new(Vec::new()) };
-}
-
 /// 성능 측정이 문서의 기준값을 넘었다는 줄 `WARNING <message>`를 쓴다. 성능은 측정하고 보고할 뿐 test를 실패시키지
 /// 않는다(AGENTS.md): 경고는 실패가 아니다. message는 측정값, 기준값, 기계를 담는다. check runner는 이 줄을 실행 기록과
 /// summary에 모으고 GitHub Actions의 `::warning::` annotation으로도 쓴다.
@@ -99,34 +83,9 @@ pub fn warning(text: impl Display) {
     emit(&format!("WARNING {text}; machine {} {}", std::env::consts::OS, std::env::consts::ARCH));
 }
 
-/// 이 thread에서 실행 중인 가장 안쪽 case의 단계 줄을 출력한다. case 값을 받지 않는 helper
-/// 함수가 쓴다. 실행 중인 case가 없으면 이름 없이 출력한다.
+/// 단계 한 줄을 출력한다. case 값을 받지 않는 helper 함수가 쓴다. libtest가 test의 출력을 capture하므로 실패한 test에서만 보인다.
 pub fn step(text: impl Display) {
-    let line = RUNNING.with(|running| match running.borrow().last() {
-        Some((name, started)) => format!("STEP {name} elapsed={}: {text}", duration(started.elapsed())),
-        None => format!("STEP elapsed=0s: {text}"),
-    });
-    emit(&line);
-}
-
-/// panic message를 thread별로 기억하는 hook을 한 번 설치한다. 원래 hook도 그대로 부른다.
-fn remember_panics() {
-    static ONCE: Once = Once::new();
-    ONCE.call_once(|| {
-        let previous = std::panic::take_hook();
-        std::panic::set_hook(Box::new(move |info| {
-            let message = if let Some(text) = info.payload().downcast_ref::<&str>() {
-                (*text).to_string()
-            } else if let Some(text) = info.payload().downcast_ref::<String>() {
-                text.clone()
-            } else {
-                "panicked".to_string()
-            };
-            let first = message.lines().next().unwrap_or("panicked").to_string();
-            LAST_PANIC.with(|last| *last.borrow_mut() = Some(first));
-            previous(info);
-        }));
-    });
+    println!("{text}");
 }
 
 /// Go time.Duration의 String 형식(1m0s, 1.5s, 12ms, 500µs)으로 쓴다. 네 언어의 보고 줄이 같은
@@ -157,47 +116,41 @@ pub fn duration(d: Duration) -> String {
     format!("{head}{minutes}m{}s", trim(rest))
 }
 
-/// 보고 줄 하나를 stderr에 바로 쓴다.
+/// 진단 줄 하나를 stderr에 바로 쓴다(libtest의 capture를 거치지 않는다).
 fn emit(line: &str) {
     let mut err = std::io::stderr().lock();
     let _ = writeln!(err, "{line}");
     let _ = err.flush();
 }
 
-/// 실행 중인 case 하나다. drop될 때 PASS나 FAIL 줄을 출력한다.
+/// 실행 중인 case 하나다. drop될 때 실패를 확인한다: 이유가 있으면 panic하여 libtest가 실패로 보고한다.
 pub struct Case {
     name: String,
-    started: Instant,
     stop: Option<Sender<()>>,
     watchdog: Option<JoinHandle<()>>,
     failure: Option<String>,
 }
 
-/// 이름 `name`, 기한 `deadline`의 case를 시작하고 RUN 줄을 출력한다. 기한에 [`GRACE`]를 더한
-/// 시간이 지나도 case가 끝나지 않으면 FAIL 줄을 출력하고 process를 끝낸다.
+/// 이름 `name`, 기한 `deadline`의 case를 시작한다. 기한에 [`GRACE`]를 더한 시간이 지나도 case가 끝나지 않으면
+/// 진단을 stderr에 쓰고 process를 끝낸다.
 pub fn start(name: impl Into<String>, deadline: Duration) -> Case {
-    remember_panics();
     let name = name.into();
     assert!(!deadline.is_zero(), "case {name}: the deadline is zero");
-    emit(&format!("RUN {name} deadline={}", duration(deadline)));
-    let started = Instant::now();
-    RUNNING.with(|running| running.borrow_mut().push((name.clone(), started)));
     let (stop, stopped) = mpsc::channel::<()>();
     let watched = name.clone();
     let watchdog = thread::spawn(move || {
         if let Err(RecvTimeoutError::Timeout) = stopped.recv_timeout(deadline + GRACE) {
-            emit(&format!("FAIL {watched} elapsed={}: deadline {} exceeded", duration(started.elapsed()), duration(deadline)));
+            emit(&format!("{watched}: deadline {} exceeded and the case did not stop", duration(deadline)));
             std::process::exit(101);
         }
     });
-    Case { name, started, stop: Some(stop), watchdog: Some(watchdog), failure: None }
+    Case { name, stop: Some(stop), watchdog: Some(watchdog), failure: None }
 }
 
 impl Case {
-    /// case가 지금까지 걸린 시간과 함께 단계 하나를 출력한다. 1분을 넘을 수 있는 case는 단계마다
-    /// 부른다.
+    /// 단계 한 줄을 출력한다. 1분을 넘을 수 있는 case는 단계마다 부른다.
     pub fn step(&self, text: impl Display) {
-        emit(&format!("STEP {} elapsed={}: {text}", self.name, duration(self.started.elapsed())));
+        println!("{text}");
     }
 
     /// case 이름이다.
@@ -205,7 +158,7 @@ impl Case {
         &self.name
     }
 
-    /// case를 panic 없이 실패로 끝낸다. drop이 이 이유로 FAIL 줄을 출력한다.
+    /// case를 실패로 끝낸다. 이유는 drop이 panic 메시지로 쓴다.
     pub fn fail(&mut self, reason: impl Display) {
         self.failure = Some(reason.to_string());
     }
@@ -213,24 +166,15 @@ impl Case {
 
 impl Drop for Case {
     fn drop(&mut self) {
-        RUNNING.with(|running| {
-            let mut running = running.borrow_mut();
-            if let Some(at) = running.iter().rposition(|(name, started)| *name == self.name && *started == self.started) {
-                running.remove(at);
-            }
-        });
         drop(self.stop.take());
         if let Some(watchdog) = self.watchdog.take() {
             let _ = watchdog.join();
         }
-        let elapsed = duration(self.started.elapsed());
-        if thread::panicking() {
-            let reason = LAST_PANIC.with(|last| last.borrow_mut().take()).unwrap_or_else(|| "panicked".to_string());
-            emit(&format!("FAIL {} elapsed={elapsed}: {reason}", self.name));
-        } else if let Some(reason) = self.failure.take() {
-            emit(&format!("FAIL {} elapsed={elapsed}: {reason}", self.name));
-        } else {
-            emit(&format!("PASS {} elapsed={elapsed}", self.name));
+        // 이미 panic 중이면 그 panic이 실패로 보고되므로 다시 panic하지 않는다.
+        if !thread::panicking() {
+            if let Some(reason) = self.failure.take() {
+                panic!("{}: {reason}", self.name);
+            }
         }
     }
 }
