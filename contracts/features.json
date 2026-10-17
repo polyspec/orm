@@ -808,7 +808,7 @@
         "packages/ts/tests/insert-parts.mjs",
         "packages/ts/tests/group_rows.mjs",
         "packages/ts/tests/group_rows_db.mjs",
-        "packages/ts/tests/group_rows.test.ts",
+        "packages/ts/tests/group_rows.types.ts",
         "packages/ts/tests/aggregate_numeric.mjs",
         "packages/ts/tests/styled-value.mjs",
         "packages/rust/tests/src/integration.rs",
@@ -822,7 +822,7 @@
         "packages/php/tests/DecimalModelDbTest.php",
         "packages/rust/tests/tests/decimal_physical.rs",
         "packages/ts/tests/decimal_model.mjs",
-        "packages/ts/tests/decimal_model.test.ts",
+        "packages/ts/tests/decimal_model.types.ts",
         "packages/ts/tests/decimal_model_db.mjs",
         "packages/go/orm/group_rows_test.go",
         "packages/go/orm/related_test.go",
@@ -1044,7 +1044,7 @@
           "shard": "other",
           "inputs": [
             "packages/ts/tsconfig.json",
-            "packages/ts/tests/*.test.ts",
+            "packages/ts/tests/*.types.ts",
             "packages/ts/tests/typecheck.ts",
             "packages/ts/tests/decimal_model_type.ts"
           ]
@@ -1480,7 +1480,7 @@
         "packages/php/tests/DecimalModelDbTest.php",
         "packages/rust/tests/tests/decimal_physical.rs",
         "packages/ts/tests/decimal_model.mjs",
-        "packages/ts/tests/decimal_model.test.ts",
+        "packages/ts/tests/decimal_model.types.ts",
         "packages/ts/tests/decimal_model_db.mjs",
         "packages/go/orm/clock_test.go",
         "packages/php/tests/ClockTest.php",
@@ -1604,7 +1604,7 @@
           "shard": "other",
           "inputs": [
             "packages/ts/tsconfig.json",
-            "packages/ts/tests/*.test.ts"
+            "packages/ts/tests/*.types.ts"
           ]
         },
         {

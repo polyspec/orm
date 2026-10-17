@@ -6,7 +6,7 @@ import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promi
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { cases, PROCESS } from '../../../tests/testcase.mts';
+import { caseTest, PROCESS } from '../../../tests/testcase.mts';
 
 const root = new URL('../../..', import.meta.url).pathname;
 const bin = join(root, 'packages/ts/dist/bin/orm-gen.js');
@@ -33,8 +33,7 @@ async function setOf(dir, documents, external = []) {
 }
 
 // generator check는 orm-gen과 tsc process를 실행하는 case 하나다.
-const suite = cases();
-await suite.run('generate', PROCESS, async () => {
+caseTest('generate', PROCESS, async () => {
   try {
     const usage = join(work, 'usage.ts');
     // The names are interpolated so that scans of this file do not see them.
@@ -173,4 +172,3 @@ await suite.run('generate', PROCESS, async () => {
   }
   if (failures > 0) throw new Error(`${failures} check(s) failed; each FAIL line above names one`);
 });
-suite.finish();

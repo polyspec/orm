@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OrmError, SCHEMA, Service, connect } from '../dist/index.js';
-import { PROCESS, runCase } from '../../../tests/testcase.mts';
+import { PROCESS, caseTest } from '../../../tests/testcase.mts';
 
 
 /** Runs count transactions that read the service count and then insert one service. */
@@ -119,13 +119,12 @@ const tests = {
 // 40개를 commit한다.
 try {
   for (const [name, test] of Object.entries(tests)) {
-    current = name;
-    const before = failures;
-    const passed = await runCase(`sqlite-concurrency/${name}`, PROCESS, async () => {
+    caseTest(`sqlite-concurrency/${name}`, PROCESS, async () => {
+      const before = failures;
+      current = name;
       await test();
       if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
     });
-    if (!passed && failures === before) failures++;
   }
 } finally {
   await rm(work, { recursive: true, force: true });

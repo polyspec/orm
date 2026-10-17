@@ -23,7 +23,7 @@ import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import * as packageEntry from '../dist/index.js';
-import { runCase } from '../../../tests/testcase.mts';
+import { caseTest } from '../../../tests/testcase.mts';
 import { mysqlConnection, postgresClient, relatedDsn, withCaseDatabase } from './case-database.mjs';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { failNextRollback } from '@polyspec/orm/testing';
@@ -219,13 +219,12 @@ for (const name of selected) {
   const run = cases[name];
   if (run === undefined) throw new Error(`unknown case ${name}`);
   for (const driver of ['sqlite', 'mysql', 'postgres']) {
-    const before = failures;
-    current = `${name}/${driver}`;
-    const passed = await runCase(`rollback/${current}`, CASE_DEADLINE_MS, async ({ step }) => {
+    caseTest(`rollback/${name}/${driver}`, CASE_DEADLINE_MS, async ({ step }) => {
+      const before = failures;
+      current = `${name}/${driver}`;
       await withCaseDatabase(driver, step, database => run(driver, database.dsn));
       if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
     });
-    if (!passed && failures === before) failures++;
   }
 }
 if (failures > 0) process.exitCode = 1;

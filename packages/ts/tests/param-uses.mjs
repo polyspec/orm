@@ -4,7 +4,7 @@
 //
 // 사용: node packages/ts/tests/param-uses.mjs (npm run typescript:build 뒤)
 import { isDeepStrictEqual } from 'node:util';
-import { COMPUTE, cases } from '../../../tests/testcase.mts';
+import { COMPUTE, caseTest } from '../../../tests/testcase.mts';
 import { dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { paramUses } from '../dist/engine/params.js';
 import { validate } from '../dist/engine/validate.js';
@@ -35,8 +35,7 @@ function usesOf(uses) {
   return uses.map(list => list.map(use => [use.type, use.column?.name ?? '']));
 }
 
-const run = cases();
-await run.run('param-uses/kinds', COMPUTE, () => {
+caseTest('param-uses/kinds', COMPUTE, () => {
   const parsed = parseDbspec(document, {});
   if (parsed.document === null) throw new Error(JSON.stringify(parsed.diagnostics));
   const { manifest } = dbspecManifest([parsed.document]);
@@ -84,4 +83,3 @@ await run.run('param-uses/kinds', COMPUTE, () => {
     optimistic: { column: 'version', p: 2 },
   }, [[['i64', 'id']], [['varchar', 'title']], [['datetime', 'version']]]);
 });
-run.finish();

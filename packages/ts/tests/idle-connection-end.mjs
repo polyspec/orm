@@ -13,7 +13,7 @@
 // Usage: node packages/ts/tests/idle-connection-end.mjs [child <dialect> <dsn>]
 import { spawnSync } from 'node:child_process';
 import { connect } from '../dist/index.js';
-import { DATABASE, sections } from '../../../tests/testcase.mts';
+import { caseTest, DATABASE } from '../../../tests/testcase.mts';
 import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
 
 /**
@@ -63,21 +63,13 @@ if (process.argv[2] === 'child') {
   await db.close();
   console.log(`child: the pool survived the end of its idle connection on ${dialect}`);
 } else {
-  const log = sections();
-  let failed = 0;
   for (const dialect of ['postgres', 'mysql']) {
-    log.begin(`idle-connection-end/${dialect}`, DATABASE);
-    try {
-      await withCaseDatabase(dialect, text => log.step(text), async database => {
+    caseTest(`idle-connection-end/${dialect}`, DATABASE, async ({ step }) => {
+      await withCaseDatabase(dialect, step, async database => {
         const child = spawnSync(process.execPath, [new URL(import.meta.url).pathname, 'child', dialect, database.dsn], { encoding: 'utf8', env: process.env, timeout: DATABASE });
-        for (const line of `${child.stdout}${child.stderr}`.split('\n').filter(Boolean)) log.step(line);
+        for (const line of `${child.stdout}${child.stderr}`.split('\n').filter(Boolean)) step(line);
         if (child.status !== 0) throw new Error(`the child process ended with ${child.status}`);
       });
-      log.end();
-    } catch (error) {
-      failed++;
-      log.end(error.message);
-    }
+    });
   }
-  if (failed) process.exitCode = 1;
 }

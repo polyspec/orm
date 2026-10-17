@@ -1,8 +1,7 @@
 import { GroupRow, GroupRows, OrmError } from '../dist/index.js';
-import { cases, COMPUTE } from '../../../tests/testcase.mts';
+import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 
-const run = cases();
-await run.run('group_rows/owner', COMPUTE, () => {
+caseTest('group_rows/owner', COMPUTE, () => {
   const row = new GroupRow([['is_close', false], ['row_count', 3]]);
   if (row.count !== 3 || row.value('is_close') !== false || JSON.stringify(row.toArray()) !== '{"is_close":false,"row_count":3}') {
     throw new Error('group result lost a selected value or count');
@@ -31,4 +30,3 @@ await run.run('group_rows/owner', COMPUTE, () => {
     }
   }
 });
-run.finish();

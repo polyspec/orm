@@ -13,7 +13,7 @@ import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { CORE, Db, Model, dbspecManifest, orm, parseDbspec, registerModel } from '../dist/index.js';
 import { wallMicros } from '../dist/clock.js';
-import { runCase } from '../../../tests/testcase.mts';
+import { caseTest } from '../../../tests/testcase.mts';
 import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
 
 const clockText = await readFile(new URL('../../../contracts/fixtures/clock.dbs', import.meta.url), 'utf8');
@@ -201,13 +201,12 @@ const cases = {
 };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : [...Object.keys(databaseFree), ...Object.keys(cases)];
 for (const name of selected.filter(name => Object.hasOwn(databaseFree, name))) {
-  const before = failures;
-  current = name;
-  const passed = await runCase(`clock/${name}`, CASE_DEADLINE_MS, async () => {
+  caseTest(`clock/${name}`, CASE_DEADLINE_MS, async () => {
+    const before = failures;
+    current = name;
     databaseFree[name]();
     if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
   });
-  if (!passed && failures === before) failures++;
 }
 const databaseCases = selected.filter(name => !Object.hasOwn(databaseFree, name));
 for (const env of databaseCases.length > 0 ? ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN'] : []) {
@@ -217,13 +216,12 @@ for (const name of databaseCases) {
   const run = cases[name];
   if (run === undefined) throw new Error(`unknown case ${name}`);
   for (const driver of ['sqlite', 'mysql', 'postgres']) {
-    const before = failures;
-    current = `${name}/${driver}`;
-    const passed = await runCase(`clock/${current}`, CASE_DEADLINE_MS, async ({ step }) => {
+    caseTest(`clock/${name}/${driver}`, CASE_DEADLINE_MS, async ({ step }) => {
+      const before = failures;
+      current = `${name}/${driver}`;
       await withCaseDatabase(driver, step, database => run(database.dsn));
       if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
     });
-    if (!passed && failures === before) failures++;
   }
 }
 if (failures > 0) process.exitCode = 1;

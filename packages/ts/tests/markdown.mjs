@@ -6,14 +6,13 @@
 import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
-import { COMPUTE, cases } from '../../../tests/testcase.mts';
+import { COMPUTE, caseTest } from '../../../tests/testcase.mts';
 import { Db, OrmError } from '../dist/index.js';
 import { parseDsn } from '../dist/driver.js';
 import { beginLine, markdownParam } from '../dist/markdown.js';
 import { checkAssign, checkParam, transformParam } from '../dist/bind_check.js';
 import { readFileSync } from 'node:fs';
 
-const run = cases();
 const token = '0123456789abcdef0123456789abcdef';
 const connectLine = `{"op":"connect","corpus":"tracker","token":"${token}"}`;
 
@@ -49,7 +48,7 @@ async function codeOf(work) {
   return '';
 }
 
-await run.run('markdown/parse-dsn', COMPUTE, () => {
+caseTest('markdown/parse-dsn', COMPUTE, () => {
   const parsed = parseDsn(`markdown://127.0.0.1:4100/tracker?token=${token}`);
   const want = { driver: 'markdown', zone: '+00:00', markdown: { address: '127.0.0.1:4100', corpus: 'tracker', token } };
   if (!isDeepStrictEqual(parsed, want)) throw new Error(`parseDsn() = ${JSON.stringify(parsed)}; want ${JSON.stringify(want)}`);
@@ -74,7 +73,7 @@ await run.run('markdown/parse-dsn', COMPUTE, () => {
 });
 
 // client가 보내는 connect와 control message, 그리고 error 줄의 해석이다.
-await run.run('markdown/session-messages', COMPUTE, async () => {
+caseTest('markdown/session-messages', COMPUTE, async () => {
   const s = await fakeServer(
     '{"ok":true}',
     '{"ok":true}', '{"ok":true}', '{"ok":true}', '{"ok":true}',
@@ -109,7 +108,7 @@ await run.run('markdown/session-messages', COMPUTE, async () => {
 });
 
 // server가 connect에 답한 CONFIG가 connect의 오류다.
-await run.run('markdown/connect-refused', COMPUTE, async () => {
+caseTest('markdown/connect-refused', COMPUTE, async () => {
   const s = await fakeServer('{"error":{"code":"CONFIG","message":"connect: the token is not the corpus\'s token"}}');
   try {
     let failure;
@@ -125,7 +124,7 @@ await run.run('markdown/connect-refused', COMPUTE, async () => {
 });
 
 // markdown 연결은 SQL 전용 surface를 CAPABILITY_UNSUPPORTED로 거절한다.
-await run.run('markdown/rejected-surfaces', COMPUTE, async () => {
+caseTest('markdown/rejected-surfaces', COMPUTE, async () => {
   const s = await fakeServer('{"ok":true}');
   try {
     const db = await Db.connect(s.dsn);
@@ -155,13 +154,13 @@ const bind = JSON.parse(readFileSync(new URL('../../../tests/bind/vectors.json',
 // The control cases: the begin control message of a transaction with and without readOnly (docs/protocol.md §5 Session).
 if (!Array.isArray(bind.control) || bind.control.length === 0) throw new Error('tests/bind/vectors.json has no control cases');
 for (const c of bind.control) {
-  await run.run(`markdown/bind-message/control/${c.name}`, COMPUTE, () => {
+  caseTest(`markdown/bind-message/control/${c.name}`, COMPUTE, () => {
     const got = beginLine(c.read_only);
     if (!isDeepStrictEqual(JSON.parse(got), c.json)) throw new Error(`begin of readOnly ${c.read_only} = ${got}; want ${JSON.stringify(c.json)}`);
   });
 }
 for (const c of bind.message) {
-  await run.run(`markdown/bind-message/${c.name}`, COMPUTE, () => {
+  caseTest(`markdown/bind-message/${c.name}`, COMPUTE, () => {
     const db = { zone: bind.zone, aesKey: '' };
     let got, code = '';
     try { got = markdownParam(db, 0, c.value, [{ type: c.type }]); } catch (error) {
@@ -187,7 +186,7 @@ function vectorValue(value) {
   throw new Error(`value ${JSON.stringify(value)} has no host form`);
 }
 for (const c of bind.bind) {
-  await run.run(`bind/${c.name}`, COMPUTE, () => {
+  caseTest(`bind/${c.name}`, COMPUTE, () => {
     let value = vectorValue(c.value);
     const slot = { type: c.slot.type, precision: c.slot.precision ?? 0, scale: c.slot.scale ?? 0, length: c.slot.length ?? 0 };
     let code = '';
@@ -208,4 +207,3 @@ for (const c of bind.bind) {
     }
   });
 }
-run.finish();

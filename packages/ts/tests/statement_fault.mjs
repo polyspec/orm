@@ -12,7 +12,7 @@
 // Usage: node --conditions=orm-test packages/ts/tests/statement_fault.mjs (after npm run typescript:build)
 import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
-import { caseTest, runCase } from '../../../tests/testcase.mts';
+import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 import { Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel, CORE } from '../dist/index.js';
 import * as packageEntry from '../dist/index.js';
@@ -183,14 +183,13 @@ for (const name of fixture.cases) {
 }
 
 {
-  current = 'entry_point';
-  const before = failures;
-  const ok = await runCase('statement-fault-entry/entry_point', CASE_DEADLINE_MS, async ({ step }) => {
+  caseTest('statement-fault-entry/entry_point', CASE_DEADLINE_MS, async ({ step }) => {
+    const before = failures;
+    current = 'entry_point';
     step('spawn the entry point checks');
     checkFaultEntry();
     if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
   });
-  if (!ok && failures === before) failures++;
 }
 
 if (failures > 0) process.exitCode = 1;

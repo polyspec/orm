@@ -1,4 +1,4 @@
-import { cases, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
+import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
 
 const args = process.argv.slice(2);
 if (args.length !== 2 || args[0] !== '--dialect' || !['mysql', 'postgres', 'sqlite'].includes(args[1])) {
@@ -15,8 +15,7 @@ const [{ OrmError }, { activeFor }, { DecimalCase, connect }] = await Promise.al
 ]);
 
 // case는 둘이다: 생성된 setter의 거부(COMPUTE), database에서 쓰고 읽은 뒤 rollback(DATABASE).
-const run = cases();
-await run.run(`decimal_db/${dialect}/setters`, COMPUTE, () => {
+caseTest(`decimal_db/${dialect}/setters`, COMPUTE, () => {
   for (const invalid of ['1.00001', '1000000000.0000', 'NaN', 48.045]) {
     try {
       new DecimalCase().setAmount(invalid);
@@ -33,7 +32,7 @@ await run.run(`decimal_db/${dialect}/setters`, COMPUTE, () => {
   }
 });
 
-await run.run(`decimal_db/${dialect}/round_trip`, DATABASE, async () => {
+caseTest(`decimal_db/${dialect}/round_trip`, DATABASE, async () => {
   const db = await connect(dsn);
   try {
     if (await new DecimalCase().connect(db).seq(1).getCount() !== 0) {
@@ -71,4 +70,3 @@ await run.run(`decimal_db/${dialect}/round_trip`, DATABASE, async () => {
     await db.close();
   }
 });
-run.finish();

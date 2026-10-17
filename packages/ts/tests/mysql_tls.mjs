@@ -7,17 +7,15 @@
 import { readFile } from 'node:fs/promises';
 import { Db } from '../dist/index.js';
 import { parseDsn } from '../dist/driver.js';
-import { cases, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
+import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
 
 // 각 case는 실패를 모아 그 case의 끝에 한 error로 보고한다.
 function check(failures) {
   if (failures.length > 0) throw new Error(failures.join('; '));
 }
 
-const run = cases();
-
 // parameter case는 memory 안의 parse다.
-await run.run('mysql_tls/parameters', COMPUTE, () => {
+caseTest('mysql_tls/parameters', COMPUTE, () => {
   const failures = [];
   const refused = (dsn, wanted) => {
     try {
@@ -60,7 +58,7 @@ async function sslVersion(dsn) {
 }
 
 // connection case는 TLS server에 세 번 연결한다.
-await run.run('mysql_tls/connections', DATABASE, async ({ step }) => {
+caseTest('mysql_tls/connections', DATABASE, async ({ step }) => {
   const failures = [];
   const dsns = ['ORM_TEST_MYSQL_TLS_DSN', 'ORM_TEST_MYSQL_TLS_OTHER_CA_DSN', 'ORM_TEST_MYSQL_TLS_MISMATCH_DSN'].map(name => {
     const value = process.env[name];
@@ -82,7 +80,7 @@ await run.run('mysql_tls/connections', DATABASE, async ({ step }) => {
 });
 // The session sql_mode that the client sets on every MySQL connection equals sql_mode.session of
 // tests/dsn/mysql-session.json, not the server default (docs/config.md "Runtime connection").
-await run.run('mysql_tls/session_sql_mode', DATABASE, async ({ step }) => {
+caseTest('mysql_tls/session_sql_mode', DATABASE, async ({ step }) => {
   const dsn = process.env.ORM_TEST_MYSQL_DSN;
   if (!dsn) throw new Error('ORM_TEST_MYSQL_DSN is not set; run make test-servers');
   const vector = JSON.parse(await readFile(new URL('../../../tests/dsn/mysql-session.json', import.meta.url), 'utf8'));
@@ -96,4 +94,3 @@ await run.run('mysql_tls/session_sql_mode', DATABASE, async ({ step }) => {
     await db.close();
   }
 });
-run.finish();

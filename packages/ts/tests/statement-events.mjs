@@ -4,7 +4,7 @@
 //
 // Usage: node packages/ts/tests/statement-events.mjs [--dialect mysql|postgres|sqlite]... [case ...]
 // (after npm run typescript:build)
-import { DATABASE, runCase } from '../../../tests/testcase.mts';
+import { DATABASE, caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 import { runEventCase, runServerTransactions, vectors } from './statement-events-run.mjs';
 
@@ -26,11 +26,10 @@ for (const dialect of dialects.length > 0 ? dialects : ['mysql', 'postgres', 'sq
     const name = `statement_events/${c.id}/${dialect}`;
     let failed = 0;
     const check = (cond, message) => { if (!cond) { failed++; console.error(`FAIL ${name}: ${message}`); } };
-    const passed = await runCase(name, DATABASE, async ({ step }) => {
+    caseTest(name, DATABASE, async ({ step }) => {
       await withCaseDatabase(dialect, step, database => runEventCase(c, dialect, database.dsn, check));
       if (failed > 0) throw new Error(`${failed} check(s) failed; each FAIL line above names one`);
     });
-    if (!passed) failures++;
   }
 }
 const spec = vectors.server_transactions;
@@ -38,10 +37,9 @@ if ((selected.length === 0 || selected.includes('server_transactions')) && (dial
   const name = `statement_events/server_transactions/${spec.database}`;
   let failed = 0;
   const check = (cond, message) => { if (!cond) { failed++; console.error(`FAIL ${name}: ${message}`); } };
-  const passed = await runCase(name, DATABASE, async ({ step }) => {
+  caseTest(name, DATABASE, async ({ step }) => {
     await withCaseDatabase(spec.database, step, database => runServerTransactions(spec, database.dsn, check));
     if (failed > 0) throw new Error(`${failed} check(s) failed; each FAIL line above names one`);
   });
-  if (!passed) failures++;
 }
 if (failures > 0) process.exitCode = 1;

@@ -11,7 +11,7 @@
 // Usage: node packages/ts/tests/driver-error.mjs [case ...] (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
-import { runCase } from '../../../tests/testcase.mts';
+import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 
 const refusalText = await readFile(new URL('../../../contracts/fixtures/refusal.dbs', import.meta.url), 'utf8');
@@ -93,13 +93,12 @@ for (const name of selected) {
   const run = cases[name];
   if (run === undefined) throw new Error(`unknown case ${name}`);
   for (const driver of ['sqlite', 'mysql', 'postgres']) {
-    const before = failures;
-    current = `${name}/${driver}`;
-    const passed = await runCase(`driver-error/${current}`, CASE_DEADLINE_MS, async ({ step }) => {
+    caseTest(`driver-error/${name}/${driver}`, CASE_DEADLINE_MS, async ({ step }) => {
+      const before = failures;
+      current = `${name}/${driver}`;
       await withCaseDatabase(driver, step, database => run(database.dsn));
       if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
     });
-    if (!passed && failures === before) failures++;
   }
 }
 if (failures > 0) process.exitCode = 1;

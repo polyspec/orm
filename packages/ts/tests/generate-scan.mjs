@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runCase } from '../../../tests/testcase.mts';
+import { caseTest } from '../../../tests/testcase.mts';
 
 const root = new URL('../../..', import.meta.url).pathname;
 const bin = join(root, 'packages/ts/dist/bin/orm-gen.js');
@@ -139,12 +139,11 @@ const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(c
 for (const name of selected) {
   const run = cases[name];
   if (run === undefined) throw new Error(`unknown case ${name}`);
-  current = name;
-  const before = failures;
-  const passed = await runCase(`generate-scan/${name}`, CASE_DEADLINE_MS, async () => {
+  caseTest(`generate-scan/${name}`, CASE_DEADLINE_MS, async () => {
+    const before = failures;
+    current = name;
     await run();
     if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
   });
-  if (!passed && failures === before) failures++;
 }
 if (failures > 0) process.exitCode = 1;

@@ -15,7 +15,7 @@
 // Usage: node packages/ts/tests/schema-set.mjs [case ...] (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
-import { caseTest, runCase } from '../../../tests/testcase.mts';
+import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 import { nativeQuery } from './coverage_case.mjs';
 
@@ -314,13 +314,12 @@ for (const name of selected.filter(name => name !== INSTALL)) {
   const run = cases[name];
   if (run === undefined) throw new Error(`unknown case ${name}`);
   for (const driver of ['sqlite', 'mysql', 'postgres']) {
-    const before = failures;
-    current = `${name}/${driver}`;
-    const passed = await runCase(`schema-set/${current}`, CASE_DEADLINE_MS, async ({ step }) => {
+    caseTest(`schema-set/${name}/${driver}`, CASE_DEADLINE_MS, async ({ step }) => {
+      const before = failures;
+      current = `${name}/${driver}`;
       await withCaseDatabase(driver, step, database => run(database.dsn, driver));
       if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
     });
-    if (!passed && failures === before) failures++;
   }
 }
 if (failures > 0) process.exitCode = 1;

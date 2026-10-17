@@ -14,7 +14,7 @@ import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writ
 import { tmpdir } from 'node:os';
 import { createRequire, findPackageJSON } from 'node:module';
 import { dirname, join } from 'node:path';
-import { COMPUTE, runCase, runLong, stepLines } from '../../../tests/testcase.mts';
+import { COMPUTE, caseTest, runLong, stepLines } from '../../../tests/testcase.mts';
 
 const client = new URL('..', import.meta.url).pathname;
 // client의 dependency는 Node가 client의 package.json에서 package 이름으로 찾는다.
@@ -54,7 +54,7 @@ function declarationFiles(directory) {
 }
 
 let failed = 0;
-const check = async (name, deadline, body) => { if (!(await runCase(name, deadline, body))) failed++; };
+const check = (name, deadline, body) => caseTest(name, deadline, body);
 
 await check('package-declarations/no-driver-imports', COMPUTE, async () => {
   const offending = declarationFiles(join(client, 'dist')).filter(file => driverModules.test(readFileSync(file, 'utf8')));

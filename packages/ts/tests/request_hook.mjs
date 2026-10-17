@@ -6,15 +6,14 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runCase, DATABASE } from '../../../tests/testcase.mts';
+import { caseTest, DATABASE } from '../../../tests/testcase.mts';
 import { cases, runOn } from './request_hook_run.mjs';
 
 let failures = 0;
 for (const [name, run] of Object.entries(cases)) {
-  const ok = await runCase(`request-hook/${name}`, DATABASE, async ({ step }) => {
+  caseTest(`request-hook/${name}`, DATABASE, async ({ step }) => {
     const dir = await mkdtemp(join(tmpdir(), 'orm-request-hook-'));
     try { await runOn(`sqlite://${join(dir, 'hook.sqlite')}`, step, run); } finally { await rm(dir, { recursive: true, force: true }); }
   });
-  if (!ok) failures++;
 }
 if (failures > 0) process.exitCode = 1;

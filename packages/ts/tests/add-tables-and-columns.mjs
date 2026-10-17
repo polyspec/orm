@@ -11,7 +11,7 @@
 //
 // Usage: node packages/ts/tests/add-tables-and-columns.mjs [case ...] (after npm run typescript:build)
 import { Db, OrmError, dbspecManifest, parseDbspec, readDbspecFile } from '../dist/index.js';
-import { runCase } from '../../../tests/testcase.mts';
+import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 import { nativeQuery } from './coverage_case.mjs';
 
@@ -194,13 +194,12 @@ for (const name of selected) {
   const run = cases[name];
   if (run === undefined) throw new Error(`unknown case ${name}`);
   for (const driver of ['sqlite', 'mysql', 'postgres']) {
-    const before = failures;
-    current = `${name}/${driver}`;
-    const passed = await runCase(`add-tables-and-columns/${current}`, CASE_DEADLINE_MS, async ({ step }) => {
+    caseTest(`add-tables-and-columns/${name}/${driver}`, CASE_DEADLINE_MS, async ({ step }) => {
+      const before = failures;
+      current = `${name}/${driver}`;
       await withCaseDatabase(driver, step, database => run(driver, database.dsn));
       if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
     });
-    if (!passed && failures === before) failures++;
   }
 }
 if (failures > 0) process.exitCode = 1;
