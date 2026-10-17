@@ -81,7 +81,7 @@ func TestConnectionsUseUTC(t *testing.T) {
 				}
 				start := time.Date(2026, 1, 2, 0, 0, 0, 0, time.FixedZone("+09:00", 9*3600))
 				c := model()
-				c.Set("start_dt", start)
+				c.Set("start_dt", start.Format(time.RFC3339))
 				before := time.Now()
 				if _, err := c.Create(); err != nil {
 					t.Fatal(err)
@@ -110,7 +110,7 @@ func TestConnectionsUseUTC(t *testing.T) {
 					arg  any
 					want int64
 				}{
-					{"instant", orm.ChainKey{Column: "start_dt"}, start, 1},
+					{"instant", orm.ChainKey{Column: "start_dt"}, start.Format(time.RFC3339), 1},
 					{"equal", orm.ChainKey{Column: "start_dt"}, "2026-01-01 15:00:00", 1},
 					{"fraction", orm.ChainKey{Column: "start_dt"}, "2026-01-03T00:00:00.0", 1},
 					{"in", orm.ChainKey{Column: "start_dt"}, []string{"2026-01-01 15:00:00", "2026-01-03 00:00:00"}, 2},

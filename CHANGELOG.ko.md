@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 26fbe124cd9d61371e2bbc741099dcfd5753c8380d7deeca21bab5268e13d5dd -->
+<!-- source-sha256: dc50cca8e8baa7be102aaf53f0cb6d4b5b9550f5aebd9dbce1bd9c54897a5360 -->
 # 변경 이력
 
 ## Unreleased
 - Go 성능 gate는 tools root인 packages/go/bench의 benchmark다. 이 root는 어떤 구현에도 속하지 않으므로 그 go-internal parity unit을 없앴다. gate는 performance_gate feature로 계속 실행된다. (#T77-8-1-1)
+- TestConnectionsUseUTC가 프로토콜이 정한 텍스트 형식으로 datetime을 보내어 orm 패키지 unit이 통과한다(T77-34).
 - 열린 행 T77-34는 TestConnectionsUseUTC가 SQLite datetime column의 time.Time에서 CODEC_ENCODE로 실패해 orm 패키지 unit을 실패시킨다고 기록한다.
 - 열린 행 T77-33은 physical fixture timestamp가 실행 시각 상대값이라 day_of_week와 days_ago 기대값이 결정적이지 않음을 기록한다.
 - physical query-form test가 MySQL, PostgreSQL, SQLite에서 실행된다. MySQL DSN은 DB 이름과 함께 한 번 변환되고, 제거된 distance case는 빠지며, day_of_week 개수는 픽스처를 따른다(T77-26, T77-27).
