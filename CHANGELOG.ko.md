@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 64958a901c9376bb55dfee6ea6320680418cbbf5de723b4b76db3c1bb6791a72 -->
+<!-- source-sha256: 99fc232cd0c04a4aad6f1b20495849dc85efdcc8409e0c190122762c906c220a -->
 # 변경 이력
 
 ## Unreleased
+- `make -s feature-unit-check/docs`가 통과한다: docs/features.md와 docs/features.ko.md를 contracts/features.json에서 다시 생성했다. (#T198-3)
 - TypeScript와 PHP interface extractor가 packages/ts/testing/interfaces와 packages/php/testing/interfaces에 있으며, TypeScript extractor project도 그 옆에 있다. interface 검사기, layout과 의존성 기록이 새 경로를 가리킨다. (#T77-9-2-3)
 - TypeScript client가 codec 함수를 `decode`와 `encode`로 export한다. Go, PHP, Rust, Python이 쓰는 이름이며, `decodeCodec`과 `encodeCodec` 별칭은 없앴다. (#T77-8-1-1)
 - TypeScript conformance runner, result helper와 그 test가 packages/ts(testing/conformance와 tests)에 있으며, parity check가 거기서 읽는다. (#T77-9-2-2)

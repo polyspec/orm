@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- `make -s feature-unit-check/docs` passes: docs/features.md and docs/features.ko.md are regenerated from contracts/features.json. (#T198-3)
 - The TypeScript and PHP interface extractors live in packages/ts/testing/interfaces and packages/php/testing/interfaces, with the TypeScript extractor project beside them, and the interface checker, the layout and the dependency records name the new paths. (#T77-9-2-3)
 - The TypeScript client exports the codec functions as `decode` and `encode`, the names that Go, PHP, Rust and Python use; the aliases `decodeCodec` and `encodeCodec` are removed. (#T77-8-1-1)
 - The TypeScript conformance runner, its result helper and the result helper test live in packages/ts (testing/conformance and tests), and the parity check reads them there. (#T77-9-2-2)
