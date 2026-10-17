@@ -1,6 +1,7 @@
 # model의 method 이름은 docs/dsl.md의 chain 문법을 따른다. 이름을 PascalCase
 # 단어로 나눈다; column 이름에는 connector나 operator 단어가 없으므로 나눔이
 # 모호하지 않다.
+from polyspec.orm import codes
 from polyspec.orm.engine.model import Entity, Field, RuntimeModel
 from polyspec.orm.errors import OrmError
 
@@ -223,7 +224,7 @@ def _split_with(e: Entity, ws) -> list | None:
 
 def _parse_key(model: RuntimeModel, e: Entity, ws) -> ChainKey:
     if not ws:
-        raise OrmError("CONFIG", "a condition key is empty")
+        raise OrmError(codes.CONFIG, "a condition key is empty")
     index = _column_index(e)
     text = "".join(ws)
     candidates = []
@@ -277,9 +278,9 @@ def _parse_key(model: RuntimeModel, e: Entity, ws) -> ChainKey:
     if len(candidates) == 1:
         return candidates[0]
     if len(candidates) > 1:
-        raise OrmError("CONFIG", f"{text} has more than one meaning")
+        raise OrmError(codes.CONFIG, f"{text} has more than one meaning")
     raise OrmError(
-        "CONFIG",
+        codes.CONFIG,
         "; ".join(f"{text}: {error}" for error in errors)
         if errors
         else f"{text} is not a column of {e.name}",
@@ -290,7 +291,7 @@ def parse_chain(model: RuntimeModel, e: Entity, name: str) -> list:
     """entity e의 method 이름(PascalCase)에서 chain 부분을 parse한다."""
     ws = words(name)
     if not ws:
-        raise OrmError("CONFIG", "empty condition name")
+        raise OrmError(codes.CONFIG, "empty condition name")
     keys = []
     conn = ""
     start = 0
@@ -321,12 +322,12 @@ def parse_order(e: Entity, name: str) -> list:
         start = i + 1
         if len(part) < 2 or part[-1] not in ("Asc", "Desc"):
             raise OrmError(
-                "CONFIG", f"orderBy{name}: each key needs a column and Asc or Desc"
+                codes.CONFIG, f"orderBy{name}: each key needs a column and Asc or Desc"
             )
         column = _column_index(e).get("".join(part[:-1]))
         if column is None:
             raise OrmError(
-                "CONFIG",
+                codes.CONFIG,
                 f"orderBy{name}: {''.join(part[:-1])} is not a column of {e.name}",
             )
         out.append((column, part[-1] == "Desc"))
@@ -349,8 +350,8 @@ def split_pair(
     if len(found) == 1:
         return found[0]
     if not found:
-        raise OrmError("CONFIG", f"{name} is not <column>With<column>")
-    raise OrmError("CONFIG", f"{name} has more than one meaning")
+        raise OrmError(codes.CONFIG, f"{name} is not <column>With<column>")
+    raise OrmError(codes.CONFIG, f"{name} has more than one meaning")
 
 
 RESERVED_SEGMENTS = frozenset(
@@ -441,7 +442,7 @@ def check_column_names(m: RuntimeModel) -> None:
         for c in e.fields:
             problem = check_column_name(c.name)
             if problem is not None:
-                raise OrmError("CONFIG", f"{e.name}.{c.name}: {problem}")
+                raise OrmError(codes.CONFIG, f"{e.name}.{c.name}: {problem}")
 
 
 def valid_order(e: Entity, name: str) -> bool:

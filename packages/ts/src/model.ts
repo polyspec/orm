@@ -13,6 +13,7 @@ import { StyledValue, orderedJsonOutput } from './styled_value.js';
 import { normalizeDecimal } from './decimal.js';
 import { decimalFromScaled } from './decimal.js';
 import { GroupRow, GroupRows } from './group_rows.js';
+import * as codes from './codes.js';
 
 
 /** A generated model class. */
@@ -46,7 +47,7 @@ function isModelOf<M extends Model>(model: M, value: unknown): value is M {
 
 /** `value` as a model of the entity of `model`; another value is an INTERNAL error. */
 function modelOf<M extends Model>(model: M, value: unknown): M {
-  if (!isModelOf(model, value)) throw new OrmError('INTERNAL', `a model of ${model[CORE].ent.entity.name} received another value`);
+  if (!isModelOf(model, value)) throw new OrmError(codes.INTERNAL, `a model of ${model[CORE].ent.entity.name} received another value`);
   return value;
 }
 
@@ -57,13 +58,13 @@ function isCollectionOf<M extends Model>(model: M, rows: Collection): rows is Co
 
 /** `rows` as rows of the entity of `model`; a row of another entity is an INTERNAL error. */
 function collectionOf<M extends Model>(model: M, rows: Collection): Collection<M> {
-  if (!isCollectionOf(model, rows)) throw new OrmError('INTERNAL', `the rows of ${model[CORE].ent.entity.name} hold another model`);
+  if (!isCollectionOf(model, rows)) throw new OrmError(codes.INTERNAL, `the rows of ${model[CORE].ent.entity.name} hold another model`);
   return rows;
 }
 
 /** `value` as a model: the self of a core is the model that made it. */
 function asModel(value: unknown): Model {
-  if (!(value instanceof Model)) throw new OrmError('INTERNAL', 'the self of a core is no model');
+  if (!(value instanceof Model)) throw new OrmError(codes.INTERNAL, 'the self of a core is no model');
   return value;
 }
 
@@ -144,7 +145,7 @@ export abstract class Model implements ModelLike {
   public async get(): Promise<this> {
     const rows = await load(this[CORE], 'one');
     const row = rows.first();
-    if (row === undefined) throw new OrmError('NO_ROWS', 'query matched no rows');
+    if (row === undefined) throw new OrmError(codes.NO_ROWS, 'query matched no rows');
     return modelOf(this, row);
   }
   /** Returns the matching rows. */
@@ -247,18 +248,18 @@ function convert(type: string, value: unknown, zone: string, declared?: Field): 
       const converted = typeof value === 'bigint' ? Number(value) : value;
       const [min, max] = present(integerRanges[type], `the range of ${type}`);
       if (typeof converted !== 'number' || !Number.isSafeInteger(converted) || converted < min || converted > max) {
-        throw new OrmError('CODEC_DECODE', `${type} cell is not an exact integer in its range`);
+        throw new OrmError(codes.CODEC_DECODE, `${type} cell is not an exact integer in its range`);
       }
       return converted;
     }
     case 'f64':
       return typeof value === 'number' ? value : Number(value);
     case 'decimal': {
-      if (declared === undefined) throw new OrmError('CODEC_DECODE', 'decimal column metadata is missing');
+      if (declared === undefined) throw new OrmError(codes.CODEC_DECODE, 'decimal column metadata is missing');
       if (typeof value === 'bigint') return decimalFromScaled(value, declared.precision, declared.scale);
-      if (typeof value !== 'string') throw new OrmError('CODEC_DECODE', `decimal cell has type ${typeof value}`);
+      if (typeof value !== 'string') throw new OrmError(codes.CODEC_DECODE, `decimal cell has type ${typeof value}`);
       try { return normalizeDecimal(value, declared.precision, declared.scale); }
-      catch (cause) { throw new OrmError('CODEC_DECODE', `invalid decimal cell: ${String(cause)}`); }
+      catch (cause) { throw new OrmError(codes.CODEC_DECODE, `invalid decimal cell: ${String(cause)}`); }
     }
     case 'bool':
       return value === true || value === 1 || value === 1n || value === '1' || value === 't' || value === 'true';
@@ -271,7 +272,7 @@ function convert(type: string, value: unknown, zone: string, declared?: Field): 
     case 'styled':
       return value;
   }
-  throw new OrmError('INTERNAL', `cell of unknown type ${type}`);
+  throw new OrmError(codes.INTERNAL, `cell of unknown type ${type}`);
 }
 
 // host stage(aes, hex, ip)만 가진 column의 model 값은 문자열이다. 저장 형식은
@@ -368,13 +369,13 @@ class Assembler {
 
 function joinChild(c: Core, name: string): Core {
   const j = c.joins.find(j => j.child.resultName(false) === name);
-  if (!j) throw new OrmError('INTERNAL', `join result ${name} without a model`);
+  if (!j) throw new OrmError(codes.INTERNAL, `join result ${name} without a model`);
   return j.child;
 }
 
 function relationChild(c: Core, name: string): [Core, boolean] {
   const r = c.relations.find(r => r.child.resultName(r.many) === name);
-  if (!r) throw new OrmError('INTERNAL', `relation result ${name} without a model`);
+  if (!r) throw new OrmError(codes.INTERNAL, `relation result ${name} without a model`);
   return [r.child, r.many];
 }
 
@@ -404,57 +405,57 @@ async function load(c: Core, kind: 'one' | 'all'): Promise<Collection> {
 
 function groupValue(db: Db, column: Assemble['columns'][number], raw: unknown, schema: Entity): unknown {
   const declared = column.column === column.name ? fieldOf(schema, column.name) : undefined;
-  if (raw === undefined) throw new OrmError('INTERNAL', `group result column ${column.name} is missing`);
+  if (raw === undefined) throw new OrmError(codes.INTERNAL, `group result column ${column.name} is missing`);
   if (column.name === 'row_count') return raw;
   if (raw === null) {
-    if (declared && declared.nullable !== true) throw new OrmError('CODEC_DECODE', `group column ${column.name} is SQL NULL`);
+    if (declared && declared.nullable !== true) throw new OrmError(codes.CODEC_DECODE, `group column ${column.name} is SQL NULL`);
     return null;
   }
   const type = declared ? columnType(declared) : column.type;
   if (type === 'styled') {
-    if (!(raw instanceof StyledValue)) throw new OrmError('CODEC_DECODE', `group column ${column.name} is not StyledValue`);
+    if (!(raw instanceof StyledValue)) throw new OrmError(codes.CODEC_DECODE, `group column ${column.name} is not StyledValue`);
     return raw;
   }
   if (type === 'bool') {
     if (truthyCells.includes(raw)) return true;
     if (falsyCells.includes(raw)) return false;
-    throw new OrmError('CODEC_DECODE', `group column ${column.name} is not boolean`);
+    throw new OrmError(codes.CODEC_DECODE, `group column ${column.name} is not boolean`);
   }
   if (type === 'i16' || type === 'i32' || type === 'i64') {
     let value: number;
     if (typeof raw === 'string' && /^-?(0|[1-9][0-9]*)$/.test(raw)) value = Number(raw);
     else if (typeof raw === 'bigint') value = Number(raw);
     else if (typeof raw === 'number') value = raw;
-    else throw new OrmError('CODEC_DECODE', `group column ${column.name} is not an exact integer`);
+    else throw new OrmError(codes.CODEC_DECODE, `group column ${column.name} is not an exact integer`);
     const [min, max] = present(integerRanges[type], `the range of ${type}`);
     if (!Number.isSafeInteger(value) || value < min || value > max) {
-      throw new OrmError('CODEC_DECODE', `group column ${column.name} is outside its exact integer range`);
+      throw new OrmError(codes.CODEC_DECODE, `group column ${column.name} is outside its exact integer range`);
     }
     return value;
   }
   if (type === 'f64') {
     if (typeof raw !== 'number' && !(typeof raw === 'string' && /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/.test(raw))) {
-      throw new OrmError('CODEC_DECODE', `group column ${column.name} is not numeric`);
+      throw new OrmError(codes.CODEC_DECODE, `group column ${column.name} is not numeric`);
     }
     const value = Number(raw);
-    if (!Number.isFinite(value)) throw new OrmError('CODEC_DECODE', `group column ${column.name} is not finite`);
+    if (!Number.isFinite(value)) throw new OrmError(codes.CODEC_DECODE, `group column ${column.name} is not finite`);
     return value;
   }
   if (type === 'decimal') return convert(type, raw, db.zone, declared);
   if (type === 'date' || type === 'time' || type === 'datetime') {
-    if (!(raw instanceof Date) && typeof raw !== 'string') throw new OrmError('CODEC_DECODE', `group column ${column.name} is not a ${type}`);
+    if (!(raw instanceof Date) && typeof raw !== 'string') throw new OrmError(codes.CODEC_DECODE, `group column ${column.name} is not a ${type}`);
     return convert(type, raw, db.zone, declared);
   }
   if (type === 'bytes') {
-    if (!(raw instanceof Uint8Array)) throw new OrmError('CODEC_DECODE', `group column ${column.name} is not bytes`);
+    if (!(raw instanceof Uint8Array)) throw new OrmError(codes.CODEC_DECODE, `group column ${column.name} is not bytes`);
     return raw;
   }
   if (['string', 'varchar', 'text', 'uuid'].includes(type)) {
     if (typeof raw === 'string') return raw;
     if (raw instanceof Uint8Array) return new TextDecoder('utf-8', { fatal: true }).decode(raw);
-    throw new OrmError('CODEC_DECODE', `group column ${column.name} is not text`);
+    throw new OrmError(codes.CODEC_DECODE, `group column ${column.name} is not text`);
   }
-  throw new OrmError('INTERNAL', `group column ${column.name} has unsupported type ${type}`);
+  throw new OrmError(codes.INTERNAL, `group column ${column.name} has unsupported type ${type}`);
 }
 
 async function grouped(c: Core): Promise<GroupRows> {
@@ -464,20 +465,20 @@ async function grouped(c: Core): Promise<GroupRows> {
   if (r.external.size !== 0) throw configError('group count cannot return relations');
   const result = await query(ex, r.finish(), r.params);
   const columns = result.plan.steps[0]?.assemble?.columns;
-  if (!columns) throw new OrmError('INTERNAL', 'group count has no result declaration');
+  if (!columns) throw new OrmError(codes.INTERNAL, 'group count has no result declaration');
   const names = new Set<string>();
   for (const column of columns) {
     if (column.hidden) continue;
     if (!column.name || names.has(column.name)) throw configError(`group result repeats or omits column ${column.name}`);
     names.add(column.name);
   }
-  if (!names.has('row_count')) throw new OrmError('INTERNAL', 'group result has no row_count');
+  if (!names.has('row_count')) throw new OrmError(codes.INTERNAL, 'group result has no row_count');
   const rows: GroupRow[] = [];
   for (const raw of result.main) {
     const entries: Array<[string, unknown]> = [];
     for (const column of columns) {
       if (column.hidden) continue;
-      if (column.index < 0 || column.index >= raw.length) throw new OrmError('INTERNAL', `group result column ${column.name} is missing`);
+      if (column.index < 0 || column.index >= raw.length) throw new OrmError(codes.INTERNAL, `group result column ${column.name} is missing`);
       entries.push([column.name, groupValue(ex.db, column, raw[column.index], c.ent.entity)]);
     }
     rows.push(new GroupRow(entries));
@@ -583,10 +584,10 @@ async function aggregate(c: Core, fn: 'sum' | 'avg'): Promise<number> {
 export function aggregateNumber(value: unknown): number {
   if (typeof value !== 'number' && typeof value !== 'bigint'
       && !(typeof value === 'string' && /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/.test(value))) {
-    throw new OrmError('CODEC_DECODE', 'aggregate scalar is not a finite number');
+    throw new OrmError(codes.CODEC_DECODE, 'aggregate scalar is not a finite number');
   }
   const number = Number(value);
-  if (!Number.isFinite(number)) throw new OrmError('CODEC_DECODE', 'aggregate scalar is outside finite binary64 range');
+  if (!Number.isFinite(number)) throw new OrmError(codes.CODEC_DECODE, 'aggregate scalar is outside finite binary64 range');
   return number;
 }
 
@@ -624,10 +625,10 @@ function param(r: WriteRequest, value: unknown): number {
 
 function encodeValue(schema: Entity, column: string, value: unknown): unknown {
   const col = fieldOf(schema, column);
-  if (col === undefined) throw new OrmError('COLUMN_UNKNOWN', `${schema.name}.${column}`);
+  if (col === undefined) throw new OrmError(codes.COLUMN_UNKNOWN, `${schema.name}.${column}`);
   const codec = col.stages.filter(s => s !== 'aes' && s !== 'hex' && s !== 'ip');
   if (codec.length === 0) return value;
-  if (!(value instanceof StyledValue)) throw new OrmError('CODEC_ENCODE', `${column} requires StyledValue`);
+  if (!(value instanceof StyledValue)) throw new OrmError(codes.CODEC_ENCODE, `${column} requires StyledValue`);
   return encodeStyled(codec, value);
 }
 
@@ -872,7 +873,7 @@ function restoreKeyValue(own: ReadonlyMap<number, SetSpec>, written: Written, co
     const p = item.pred;
     if (p !== undefined && p.column === column && p.op === 'eq' && p.p !== undefined && p.fn === undefined && p.value === undefined && p.ref === undefined && p.sub === undefined) return written.params[p.p];
   }
-  throw new OrmError('INTERNAL', `restore key column ${column} has no value in the request`);
+  throw new OrmError(codes.INTERNAL, `restore key column ${column} has no value in the request`);
 }
 
 /** The payload of a styled value, which is unknown until a codec reads it. */

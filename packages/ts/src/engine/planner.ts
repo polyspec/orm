@@ -8,6 +8,7 @@ import { type Dialect } from './dialect.js';
 import { functionType, intervalType } from './params.js';
 import { entityOf, fieldOf as columnOf, type Entity, type Field as Column, type RuntimeModel } from './model.js';
 import { conflictKey, restoreKey } from './validate.js';
+import * as codes from '../codes.js';
 
 /** One entity occurrence in a statement (root or join) with its alias. */
 interface Scope {
@@ -65,7 +66,7 @@ class Builder {
   }
   /** type 있는 slot을 더한다. type 없는 slot은 planner 오류다. */
   private typed(s: BindSlot): string {
-    if (s.col_type === '') fail('IR_INVALID', `bind slot ${this.binds.length} (${s.from}) has no declared type`);
+    if (s.col_type === '') fail(codes.IR_INVALID, `bind slot ${this.binds.length} (${s.from}) has no declared type`);
     return this.push(s);
   }
   /** The value Params[i] whose dbspec type is type. */
@@ -156,10 +157,10 @@ function assigned(set: readonly Assignment[], column: string): boolean { return 
 function validateAESAssignments(ent: Entity, set: readonly Assignment[], requireComplete: boolean): void {
   const version = aesVersionColumn(ent);
   if (version === '') return;
-  if (assigned(set, version)) fail('IR_INVALID', `${version} is managed by the AES writer`);
+  if (assigned(set, version)) fail(codes.IR_INVALID, `${version} is managed by the AES writer`);
   if (!requireComplete || !assignsAES(ent, set)) return;
   for (const col of ent.fields) {
-    if (styles(col).includes('aes') && !assigned(set, col.name)) fail('IR_INVALID', `AES update must assign every AES column; missing ${col.name}`);
+    if (styles(col).includes('aes') && !assigned(set, col.name)) fail(codes.IR_INVALID, `AES update must assign every AES column; missing ${col.name}`);
   }
 }
 
@@ -172,7 +173,7 @@ function validateAESAssignments(ent: Entity, set: readonly Assignment[], require
 function validateRequiredAssignments(ent: Entity, set: readonly Assignment[]): void {
   for (const col of ent.fields) {
     if (col.nullable || col.hasDefault || col.identity || col.name === ent.aesVersion || col.name === ent.auditColumn || assigned(set, col.name)) continue;
-    fail('IR_INVALID', `required column ${ent.name}.${col.name} is not set`);
+    fail(codes.IR_INVALID, `required column ${ent.name}.${col.name} is not set`);
   }
 }
 
@@ -227,7 +228,7 @@ export class Planner {
   /** The two values of a between predicate, which the validator has counted. */
   private between(pr: Predicate): [number, number] {
     const [low, high] = pr.ps ?? [];
-    if (low === undefined || high === undefined) fail('IR_INVALID', 'between needs 2 params (ps)');
+    if (low === undefined || high === undefined) fail(codes.IR_INVALID, 'between needs 2 params (ps)');
     return [low, high];
   }
 
@@ -357,7 +358,7 @@ export class Planner {
         const lock = q.lock ?? '';
         if (lock !== '') {
           const suffix = this.d.rowLock(lock);
-          if (suffix === undefined) fail('CAPABILITY_UNSUPPORTED', `${this.d.name} row lock "${lock}" is not supported`);
+          if (suffix === undefined) fail(codes.CAPABILITY_UNSUPPORTED, `${this.d.name} row lock "${lock}" is not supported`);
           sql += suffix;
         }
       }
@@ -426,7 +427,7 @@ export class Planner {
   private selectGroupCountList(b: Builder, s: Scope, asm: Assemble, idx: { n: number }, outNames: string[]): string {
     const parts: string[] = [];
     for (const name of s.q.group_by ?? []) {
-      const col = columnOf(s.ent, name) ?? fail('COLUMN_UNKNOWN', `${s.ent.name}.${name}`);
+      const col = columnOf(s.ent, name) ?? fail(codes.COLUMN_UNKNOWN, `${s.ent.name}.${name}`);
       const out = `${s.alias}__${name}`;
       parts.push(`${this.readColumn(this.qcol(s, name), col)} AS ${this.d.quote(out)}`);
       outNames.push(out);
@@ -468,7 +469,7 @@ export class Planner {
       asm.columns.push({ index: idx.n++, name: c.name, column: c.column, type, styles: colStyles, hidden: false });
     }
     if (hasAES) {
-      const version = columnOf(s.ent, s.ent.aesVersion) ?? fail('SCHEMA_INVALID', `${s.ent.name}: AES column requires an aes_version column`);
+      const version = columnOf(s.ent, s.ent.aesVersion) ?? fail(codes.SCHEMA_INVALID, `${s.ent.name}: AES column requires an aes_version column`);
       // 고른 version column이 있으면 그것을 쓰고, 없을 때만 숨겨서 읽는다.
       const chosen = asm.columns.findIndex(c => c.column === version.name && c.styles.length === 0);
       if (chosen >= 0) asm.aes_version = chosen;
@@ -595,7 +596,7 @@ export class Planner {
       // A clock that the ORM compares keeps six fraction digits; a datetime(p < 6) column compares as its value
       // extended to six digits (docs/protocol.md "Clock").
       const value = this.d.valueFunction(fn.name, () => b.param(present(fn.ps?.[0], `the argument of ${fn.name}`), intervalType(fn.name)), () => b.now(6));
-      if (value === undefined) fail('CAPABILITY_UNSUPPORTED', `${fn.name} is not available on ${this.d.name}`);
+      if (value === undefined) fail(codes.CAPABILITY_UNSUPPORTED, `${fn.name} is not available on ${this.d.name}`);
       if (col.type === 'datetime' && fn.name !== 'today') lhs = this.d.clockOperand(lhs, col.precision);
       return `${lhs} ${cmp(op)} ${value}`;
     }
@@ -614,8 +615,8 @@ export class Planner {
     switch (op) {
       case 'eq': case 'not_eq': case 'gt': case 'gte': case 'lt': case 'lte': {
         if (aes) {
-          if (op !== 'eq' && op !== 'not_eq') fail('OPERATOR_NOT_ALLOWED', 'AES columns support only equality through a declared blind index');
-          if (col.blindIndex === '') fail('IR_INVALID', `${s.ent.name}.${col.name} requires a declared blind index for equality search`);
+          if (op !== 'eq' && op !== 'not_eq') fail(codes.OPERATOR_NOT_ALLOWED, 'AES columns support only equality through a declared blind index');
+          if (col.blindIndex === '') fail(codes.IR_INVALID, `${s.ent.name}.${col.name} requires a declared blind index for equality search`);
           lhs = this.qcol(s, col.blindIndex);
           return `${lhs} ${cmp(op)} ${this.renderBlindIndexValue(b, columnIn(s.ent, col.blindIndex), present(pr.p, `the value of ${op}`))}`;
         }
@@ -625,13 +626,13 @@ export class Planner {
         // 없거나 null인 path는 statement의 root다(검증기와 같다).
         const ref = present(pr.ref, `the reference of ${op}`);
         const rs = this.resolvePath(s, ref.path ?? '');
-        if (!columnOf(rs.ent, ref.column)) fail('COLUMN_UNKNOWN', `${rs.ent.name}.${ref.column}`);
+        if (!columnOf(rs.ent, ref.column)) fail(codes.COLUMN_UNKNOWN, `${rs.ent.name}.${ref.column}`);
         return `${lhs} ${cmp(op.slice(0, -4))} ${this.qcol(rs, ref.column)}`;
       }
       case 'in': case 'not_in': {
         let values: string[];
         if (aes) {
-          if (col.blindIndex === '') fail('IR_INVALID', `${s.ent.name}.${col.name} requires a declared blind index for equality search`);
+          if (col.blindIndex === '') fail(codes.IR_INVALID, `${s.ent.name}.${col.name} requires a declared blind index for equality search`);
           lhs = this.qcol(s, col.blindIndex);
           values = (pr.ps ?? []).map(i => this.renderBlindIndexValue(b, columnIn(s.ent, col.blindIndex), i));
         } else {
@@ -650,7 +651,7 @@ export class Planner {
       case 'contains_binary':
         return this.d.containsBinary(lhs, transform => b.colParam(present(pr.p, `the value of ${op}`), col, transform));
     }
-    return fail('OPERATOR_UNKNOWN', op);
+    return fail(codes.OPERATOR_UNKNOWN, op);
   }
 
   /** A column read with its SQL-side read stages; a time(p) column reads as its p-digit text. */
@@ -683,16 +684,16 @@ export class Planner {
   private resolvePath(s: Scope, path: string): Scope {
     let cur = s;
     while (cur.parent) cur = cur.parent;
-    if (path === '^') return cur.outer ?? fail('IR_INVALID', '^ reference outside a subquery');
+    if (path === '^') return cur.outer ?? fail(codes.IR_INVALID, '^ reference outside a subquery');
     if (path === '') return cur;
-    for (const seg of path.split('/')) cur = cur.joins.get(seg) ?? fail('ENTITY_NOT_JOINED', `${cur.ent.name}.${seg}`);
+    for (const seg of path.split('/')) cur = cur.joins.get(seg) ?? fail(codes.ENTITY_NOT_JOINED, `${cur.ent.name}.${seg}`);
     return cur;
   }
 
   private columnFunction(b: Builder, s: Scope, column: string, f: OrmFunction): string {
     // column 함수의 인자는 아직 없다(arity는 모두 0). 인자의 type을 선언하지 않은 함수가 인자를 받으면
     // type 없는 slot으로 planner 오류다.
-    return this.d.columnFunction(f.name, this.qcol(s, column), i => b.param(present(f.ps?.[i], `argument ${i + 1} of ${f.name}`), '')) ?? fail('CAPABILITY_UNSUPPORTED', `${f.name} is not available on ${this.d.name}`);
+    return this.d.columnFunction(f.name, this.qcol(s, column), i => b.param(present(f.ps?.[i], `argument ${i + 1} of ${f.name}`), '')) ?? fail(codes.CAPABILITY_UNSUPPORTED, `${f.name} is not available on ${this.d.name}`);
   }
 
   /** A subquery for an IN list or a scalar column; "^" refers to outer. */
@@ -730,7 +731,7 @@ export class Planner {
 
   private renderAssign(b: Builder, ent: Entity, col: Column, a: Assignment): string {
     if (blindIndexSource(ent, col.name)) {
-      if (a.plus_p !== undefined || a.minus_p !== undefined) fail('IR_INVALID', 'blind index assignment must use its AES source value');
+      if (a.plus_p !== undefined || a.minus_p !== undefined) fail(codes.IR_INVALID, 'blind index assignment must use its AES source value');
       if (a.null) return 'NULL';
       const start = b.binds.length;
       return markAssigned(b, start, col, this.renderBlindIndexValue(b, col, present(a.p, `the value of ${a.column}`)));
@@ -791,14 +792,14 @@ export class Planner {
     // load은 행을 저장된 key 그대로 쓰므로 identity column의 값을 받고 요구한다.
     const load = r.load === true;
     if (load && ent.identity !== '' && !set.some(a => a.column === ent.identity && a.p !== undefined)) {
-      fail('IR_INVALID', `load of ${ent.name} needs a value for the identity column ${ent.identity}`);
+      fail(codes.IR_INVALID, `load of ${ent.name} needs a value for the identity column ${ent.identity}`);
     }
     const version = aesVersionColumn(ent);
     const cols: string[] = [];
     const vals: string[] = [];
     for (const a of set) {
       const col = columnIn(ent, a.column);
-      if (col.identity && !load) fail('IR_INVALID', `cannot set identity column ${a.column}`);
+      if (col.identity && !load) fail(codes.IR_INVALID, `cannot set identity column ${a.column}`);
       cols.push(this.d.quote(a.column));
       vals.push(this.renderAssign(b, ent, col, a));
     }
@@ -907,7 +908,7 @@ export class Planner {
    */
   private restartIdentityStep(r: Request): Omit<PlanStep, 'id'> {
     const ent = this.entity(r.entity);
-    if (ent.identity === '') fail('IR_INVALID', `restart_identity of ${ent.name}, which has no identity column`);
+    if (ent.identity === '') fail(codes.IR_INVALID, `restart_identity of ${ent.name}, which has no identity column`);
     const b = new Builder(this.d);
     b.table(ent);
     return { role: 'main', sql: this.d.restartIdentity(ent.table, ent.identity), tables: b.tables(), bind_slots: [] };

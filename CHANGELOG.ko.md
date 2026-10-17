@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a8bff136e9164c36239f4e3dd63fba04af1e7bae865a1a58b86117339d489944 -->
+<!-- source-sha256: 984bbdb26cf2586aff08ee6f62c5616925804247e6ab55385894290d7424df6d -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript와 Python의 모든 오류 지점이 생성된 catalog 상수를 쓰며, 오래된 catalog에서 drift test가 실패한다. (#T148-3-7-3)
 - TypeScript와 Python client가 생성된 catalog로 모든 오류 code를 적으며, parity 검사가 이를 docs/errors.yaml과 비교한다. (#T77-4)
 - Rust ir-answers 검사가 main에서 컴파일된다. (#T190)
 - Python이 MySQL과 PostgreSQL에서 time과 date 셀을 읽는다. (#T117)

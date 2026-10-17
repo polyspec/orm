@@ -4,6 +4,7 @@
 import type { Entity, RuntimeModel } from './engine/model.js';
 import { present } from './present.js';
 import { OrmError } from './runtime_error.js';
+import * as codes from './codes.js';
 
 export interface ChainKey {
   conn: string;
@@ -79,7 +80,7 @@ function splitWith(e: Entity, ws: readonly string[]): string[] | undefined {
 }
 
 function parseKey(model: RuntimeModel, e: Entity, ws: readonly string[]): ChainKey {
-  if (ws.length === 0) throw new OrmError('CONFIG', 'a condition key is empty');
+  if (ws.length === 0) throw new OrmError(codes.CONFIG, 'a condition key is empty');
   const text = ws.join('');
   const candidates: ChainKey[] = [];
   const errors: string[] = [];
@@ -114,14 +115,14 @@ function parseKey(model: RuntimeModel, e: Entity, ws: readonly string[]): ChainK
     candidates.push(key({ op: cmp, column: left, compare: right }));
   }
   if (candidates.length === 1) return present(candidates[0], 'the one meaning of a condition key');
-  if (candidates.length > 1) throw new OrmError('CONFIG', `${text} has more than one meaning`);
-  throw new OrmError('CONFIG', errors.length > 0 ? `${text}: ${errors.join('; ')}` : `${text} is not a column of ${e.name}`);
+  if (candidates.length > 1) throw new OrmError(codes.CONFIG, `${text} has more than one meaning`);
+  throw new OrmError(codes.CONFIG, errors.length > 0 ? `${text}: ${errors.join('; ')}` : `${text} is not a column of ${e.name}`);
 }
 
 /** Parses the chain part of a method name (PascalCase) for entity e. */
 export function parseChain(model: RuntimeModel, e: Entity, name: string): ChainKey[] {
   const ws = words(name);
-  if (ws.length === 0) throw new OrmError('CONFIG', 'empty condition name');
+  if (ws.length === 0) throw new OrmError(codes.CONFIG, 'empty condition name');
   const keys: ChainKey[] = [];
   let conn = '';
   let start = 0;
@@ -152,9 +153,9 @@ export function parseOrder(e: Entity, name: string): OrderKey[] {
     const part = ws.slice(start, i);
     start = i + 1;
     const dir = part[part.length - 1];
-    if (part.length < 2 || (dir !== 'Asc' && dir !== 'Desc')) throw new OrmError('CONFIG', `orderBy${name}: each key needs a column and Asc or Desc`);
+    if (part.length < 2 || (dir !== 'Asc' && dir !== 'Desc')) throw new OrmError(codes.CONFIG, `orderBy${name}: each key needs a column and Asc or Desc`);
     const column = columnIndex(e).get(part.slice(0, -1).join(''));
-    if (column === undefined) throw new OrmError('CONFIG', `orderBy${name}: ${part.slice(0, -1).join('')} is not a column of ${e.name}`);
+    if (column === undefined) throw new OrmError(codes.CONFIG, `orderBy${name}: ${part.slice(0, -1).join('')} is not a column of ${e.name}`);
     out.push({ column, desc: dir === 'Desc' });
   }
   return out;
@@ -171,5 +172,5 @@ export function splitPair(model: RuntimeModel, left: Entity | undefined, right: 
     if (l !== '' && r !== '') found.push([l, r]);
   });
   if (found.length === 1) return present(found[0], 'the one pair of columns');
-  throw new OrmError('CONFIG', found.length === 0 ? `${name} is not <column>With<column>` : `${name} has more than one meaning`);
+  throw new OrmError(codes.CONFIG, found.length === 0 ? `${name} is not <column>With<column>` : `${name} has more than one meaning`);
 }

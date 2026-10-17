@@ -9,6 +9,7 @@ does the same in packages/go/orm/canonical.go.
 
 from __future__ import annotations
 
+from polyspec.orm import codes
 from polyspec.orm.errors import OrmError
 
 
@@ -39,7 +40,7 @@ class _Canon:
 
     def index(self, p):
         if not isinstance(p, int) or isinstance(p, bool) or p < 0 or p >= len(self.params):
-            raise OrmError("IR_INVALID", f"param index {p} out of range (n_params {len(self.params)})")
+            raise OrmError(codes.IR_INVALID, f"param index {p} out of range (n_params {len(self.params)})")
         self.used[p] = True
         self.out.append(self.params[p])
         return len(self.out) - 1

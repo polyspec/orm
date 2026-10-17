@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Every TypeScript and Python error site uses the generated catalog constants, and a drift test fails on a stale catalog. (#T148-3-7-3)
 - The TypeScript and Python clients name every error code through a generated catalog, which the parity check compares with docs/errors.yaml. (#T77-4)
 - The Rust ir-answers check compiles on main. (#T190)
 - Python reads time and date cells on MySQL and PostgreSQL. (#T117)

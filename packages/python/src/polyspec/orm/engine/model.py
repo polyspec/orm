@@ -3,6 +3,7 @@
 # parse해서 entity, field, key, codec stage와 setting을 얻는다.
 from dataclasses import dataclass
 
+from polyspec.orm import codes
 from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec_set
 from polyspec.orm.errors import OrmError
 
@@ -122,7 +123,7 @@ def split_documents(text: str) -> list:
     """manifest text를 이은 문서들을 header 줄에서 나눈다."""
     if not text.startswith(_HEADER):
         raise OrmError(
-            "SCHEMA_INVALID", "manifest text does not start with a dbspec header"
+            codes.SCHEMA_INVALID, "manifest text does not start with a dbspec header"
         )
     out = []
     start = 0
@@ -220,7 +221,7 @@ def model_of_documents(documents) -> RuntimeModel:
     if manifest is None:
         d = diagnostics[0]
         raise OrmError(
-            "SCHEMA_INVALID",
+            codes.SCHEMA_INVALID,
             f"document set: {d.rule} at {d.line}:{d.column}: {d.message}",
         )
     entities = {}
@@ -232,7 +233,7 @@ def model_of_documents(documents) -> RuntimeModel:
             entity = _entity_of_table(table)
             if entity.name in entities:
                 raise OrmError(
-                    "SCHEMA_INVALID",
+                    codes.SCHEMA_INVALID,
                     f"entity {entity.name} is declared twice in the document set",
                 )
             entities[entity.name] = entity
@@ -251,13 +252,13 @@ def parse_document_set(texts, external_texts=()) -> list:
     external로 표시한다. 문서의 첫 진단은 SCHEMA_INVALID다."""
     for text in list(texts) + list(external_texts):
         if not isinstance(text, str):
-            raise OrmError("SCHEMA_INVALID", "a dbspec text is not a string")
+            raise OrmError(codes.SCHEMA_INVALID, "a dbspec text is not a string")
     documents = []
     for entry in parse_dbspec_set(texts, external_texts):
         if entry.document is None:
             d = entry.diagnostics[0]
             raise OrmError(
-                "SCHEMA_INVALID",
+                codes.SCHEMA_INVALID,
                 f"document {entry.name}: {d.rule} at {d.line}:{d.column}: {d.message}",
             )
         documents.append(entry.document)
@@ -278,17 +279,17 @@ def model_of_manifest(
     )
     if model.manifest_text != manifest_text:
         raise OrmError(
-            "SCHEMA_INVALID",
+            codes.SCHEMA_INVALID,
             "the embedded text is not the manifest text of its documents",
         )
     if model.external_text != external_text:
         raise OrmError(
-            "SCHEMA_INVALID",
+            codes.SCHEMA_INVALID,
             "the embedded external text is not the external text of its documents",
         )
     if model.manifest_hash != manifest_hash:
         raise OrmError(
-            "SCHEMA_HASH_MISMATCH",
+            codes.SCHEMA_HASH_MISMATCH,
             f"generated code declares manifest {manifest_hash}, its manifest text "
             f"hashes to {model.manifest_hash}: generate the models again",
         )

@@ -6,10 +6,11 @@ import mysql, { type Pool as MySqlPool, type PoolConnection as MySqlConnection }
 import pg from 'pg';
 import { OrmError } from './runtime_error.js';
 import { parseMarkdownDsn, type MarkdownDsn } from './markdown.js';
+import * as codes from './codes.js';
 
 pg.types.setTypeParser(20, value => {
   const parsed = Number(value);
-  if (!Number.isSafeInteger(parsed)) throw new OrmError('CODEC_DECODE', `postgres int8 is outside the TypeScript safe integer range: ${value}`);
+  if (!Number.isSafeInteger(parsed)) throw new OrmError(codes.CODEC_DECODE, `postgres int8 is outside the TypeScript safe integer range: ${value}`);
   return parsed;
 });
 pg.types.setTypeParser(1700, value => value);
@@ -106,7 +107,7 @@ const SQLITE_BUSY_TIMEOUT_MS = 5000;
 export function driverValue(value: unknown, what: string): DriverValue {
   if (value === null || typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string'
     || typeof value === 'bigint' || value instanceof Uint8Array) return value;
-  throw new OrmError('CODEC_ENCODE', `${what} is a ${typeof value}, which no driver binds`);
+  throw new OrmError(codes.CODEC_ENCODE, `${what} is a ${typeof value}, which no driver binds`);
 }
 
 /** The property `name` of `value`, or undefined when value is no object: the drivers keep the fields read here untyped. */
@@ -117,7 +118,7 @@ function property(value: unknown, name: string): unknown {
 /** The number property `name` of a driver object; another value is an INTERNAL error that names `what`. */
 function numberProperty(value: unknown, name: string, what: string): number {
   const found = property(value, name);
-  if (typeof found !== 'number') throw new OrmError('INTERNAL', `${what} has no number ${name}`);
+  if (typeof found !== 'number') throw new OrmError(codes.INTERNAL, `${what} has no number ${name}`);
   return found;
 }
 
@@ -128,9 +129,9 @@ function errorText(error: unknown): string {
 
 /** The rows of a driver result in array mode; a row that is no array is an INTERNAL error. */
 function arrayRows(value: unknown): unknown[][] {
-  if (!Array.isArray(value)) throw new OrmError('INTERNAL', 'a driver answered rows that are no list');
+  if (!Array.isArray(value)) throw new OrmError(codes.INTERNAL, 'a driver answered rows that are no list');
   return value.map((row: unknown): unknown[] => {
-    if (!Array.isArray(row)) throw new OrmError('INTERNAL', 'a driver answered a row that is no list');
+    if (!Array.isArray(row)) throw new OrmError(codes.INTERNAL, 'a driver answered a row that is no list');
     return row;
   });
 }
@@ -178,13 +179,13 @@ function driverError(name: DriverName, error: unknown): OrmError {
   };
   const text = property(error, 'message');
   const message = typeof text === 'string' ? text : errorText(error);
-  if (connectionLost(name, source)) return new OrmError('CONNECTION_LOST', `${name}: ${message}`, error);
+  if (connectionLost(name, source)) return new OrmError(codes.CONNECTION_LOST, `${name}: ${message}`, error);
   const lockNotAvailable = source.code === 'ER_LOCK_NOWAIT' || source.errcode === 3572 || source.code === '55P03';
   // MySQL 1317/3024, PostgreSQL 57014, and SQLite 9 all report a statement
   // that was stopped before it finished; SQLite BUSY reports a lock that
   // another connection still held when busy_timeout ended.
   if (source.code === 'ER_QUERY_INTERRUPTED' || source.code === 'ER_QUERY_TIMEOUT' || source.code === '57014' || source.errcode === 9 || sqliteBusy(name, error)) {
-    return new OrmError('CANCELED', `${name}: ${message}`, error);
+    return new OrmError(codes.CANCELED, `${name}: ${message}`, error);
   }
   const duplicate = source.code === 'ER_DUP_ENTRY' || source.code === '23505' || source.errcode === 2067 || source.errcode === 1555;
   const foreignKey = source.code === 'ER_NO_REFERENCED_ROW_2' || source.code === 'ER_ROW_IS_REFERENCED_2' || source.code === '23503' || source.errcode === 787 ||
@@ -197,13 +198,13 @@ function driverError(name: DriverName, error: unknown): OrmError {
   // MySQL 3819/4025, PostgreSQL 23514, and SQLite CONSTRAINT_CHECK (275) report a CHECK violation.
   const constraint = source.code === 'ER_CHECK_CONSTRAINT_VIOLATED' || source.code === 'ER_CONSTRAINT_FAILED' || source.code === '23514' || source.errcode === 275;
   // Every other driver error, such as a write that a trigger refuses, is DRIVER.
-  const code = lockNotAvailable ? 'LOCK_NOT_AVAILABLE' : duplicate ? 'DUPLICATE_KEY' : foreignKey ? 'FOREIGN_KEY' : deadlock ? 'DEADLOCK' : readOnly ? 'READ_ONLY' : constraint ? 'CONSTRAINT' : 'DRIVER';
+  const code = lockNotAvailable ? codes.LOCK_NOT_AVAILABLE : duplicate ? codes.DUPLICATE_KEY : foreignKey ? codes.FOREIGN_KEY : deadlock ? codes.DEADLOCK : readOnly ? codes.READ_ONLY : constraint ? codes.CONSTRAINT : codes.DRIVER;
   return new OrmError(code, `${name}: ${message}`, error);
 }
 
 /** The error of a statement the caller cancelled. */
 function canceled(name: DriverName): OrmError {
-  return new OrmError('CANCELED', `${name}: the statement was cancelled`);
+  return new OrmError(codes.CANCELED, `${name}: the statement was cancelled`);
 }
 
 /**
@@ -225,7 +226,7 @@ async function cancellable<T>(name: DriverName, signal: AbortSignal, stop: () =>
     result = await work;
   } catch (error) {
     await subscriberFailure(stopping);
-    if (signal.aborted) throw error instanceof OrmError && error.code === 'CANCELED' ? error : canceled(name);
+    if (signal.aborted) throw error instanceof OrmError && error.code === codes.CANCELED ? error : canceled(name);
     throw error;
   } finally {
     signal.removeEventListener('abort', abort);
@@ -238,11 +239,11 @@ async function cancellable<T>(name: DriverName, signal: AbortSignal, stop: () =>
 async function subscriberFailure(stopping: Promise<unknown> | undefined): Promise<void> {
   if (stopping === undefined) return;
   const error = await stopping;
-  if (error instanceof OrmError && error.code === 'SUBSCRIBER') throw error;
+  if (error instanceof OrmError && error.code === codes.SUBSCRIBER) throw error;
 }
 
 export function isolationSql(isolation: Isolation): string {
-  if (!['read_uncommitted', 'read_committed', 'repeatable_read', 'serializable'].includes(isolation)) throw new OrmError('CONFIG', `unsupported transaction isolation ${isolation}`);
+  if (!['read_uncommitted', 'read_committed', 'repeatable_read', 'serializable'].includes(isolation)) throw new OrmError(codes.CONFIG, `unsupported transaction isolation ${isolation}`);
   return isolation.replaceAll('_', ' ').toUpperCase();
 }
 
@@ -382,7 +383,7 @@ async function afterFailure<T>(work: Promise<T>, failure: () => unknown): Promis
   } catch (error) {
     const lost = failure();
     if (lost === undefined || error instanceof OrmError) throw error;
-    throw new OrmError('CONNECTION_LOST', `postgres: ${errorText(error)} (${errorText(lost)})`, error);
+    throw new OrmError(codes.CONNECTION_LOST, `postgres: ${errorText(error)} (${errorText(lost)})`, error);
   }
 }
 
@@ -570,12 +571,12 @@ function mysqlTls(url: URL): string | undefined {
   const mode = url.searchParams.get('ssl-mode');
   const ca = url.searchParams.get('ssl-ca');
   if (mode === null && ca === null) return undefined;
-  if (mode !== 'VERIFY_IDENTITY') throw new OrmError('CONFIG', `mysql DSN ssl-mode ${JSON.stringify(mode)} is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca`);
-  if (ca === null || ca === '') throw new OrmError('CONFIG', 'mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file');
-  if (!ca.startsWith('/')) throw new OrmError('CONFIG', `mysql DSN ssl-ca ${ca} is not an absolute path`);
-  if (url.searchParams.has('socket')) throw new OrmError('CONFIG', 'mysql DSN ssl-mode connects over TCP and does not accept socket');
+  if (mode !== 'VERIFY_IDENTITY') throw new OrmError(codes.CONFIG, `mysql DSN ssl-mode ${JSON.stringify(mode)} is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca`);
+  if (ca === null || ca === '') throw new OrmError(codes.CONFIG, 'mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file');
+  if (!ca.startsWith('/')) throw new OrmError(codes.CONFIG, `mysql DSN ssl-ca ${ca} is not an absolute path`);
+  if (url.searchParams.has('socket')) throw new OrmError(codes.CONFIG, 'mysql DSN ssl-mode connects over TCP and does not accept socket');
   // identity 검사는 host 이름을 인증서와 비교한다. driver는 IP 주소 host를 이름 localhost와 비교한다.
-  if (isIP(url.hostname.replace(/^\[|\]$/g, '')) !== 0) throw new OrmError('CONFIG', `mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address ${url.hostname}`);
+  if (isIP(url.hostname.replace(/^\[|\]$/g, '')) !== 0) throw new OrmError(codes.CONFIG, `mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address ${url.hostname}`);
   return ca;
 }
 
@@ -586,7 +587,7 @@ function mysqlTls(url: URL): string | undefined {
 function mysqlSsl(parsed: SqlDsn): { ca: string; rejectUnauthorized: true; verifyIdentity: true } | undefined {
   if (parsed.sslCa === undefined) return undefined;
   try { return { ca: readFileSync(parsed.sslCa, 'utf8'), rejectUnauthorized: true, verifyIdentity: true }; } catch (error) {
-    throw new OrmError('CONFIG', `mysql DSN ssl-ca ${parsed.sslCa} cannot be read: ${errorText(error)}`, error);
+    throw new OrmError(codes.CONFIG, `mysql DSN ssl-ca ${parsed.sslCa} cannot be read: ${errorText(error)}`, error);
   }
 }
 
@@ -597,34 +598,34 @@ function mysqlSsl(parsed: SqlDsn): { ca: string; rejectUnauthorized: true; verif
  */
 export function parseDsn(dsn: string): ParsedDsn {
   let url: URL;
-  try { url = new URL(dsn); } catch { throw new OrmError('CONFIG', 'dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://'); }
+  try { url = new URL(dsn); } catch { throw new OrmError(codes.CONFIG, 'dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://'); }
   const accepted = DSN_PARAMETERS[url.protocol];
   if (accepted !== undefined) {
     for (const name of url.searchParams.keys()) {
-      if (!accepted.includes(name)) throw new OrmError('CONFIG', `${url.protocol.replace(/:$/, '')} DSN has the unknown parameter ${name}; it accepts ${accepted.join(', ')}`);
+      if (!accepted.includes(name)) throw new OrmError(codes.CONFIG, `${url.protocol.replace(/:$/, '')} DSN has the unknown parameter ${name}; it accepts ${accepted.join(', ')}`);
     }
   }
   const requested = url.searchParams.get('timezone');
-  if (requested !== null && requested !== 'UTC' && requested !== '+00:00') throw new OrmError('CONFIG', `dsn timezone ${requested}: every connection reads and writes datetime values in UTC`);
+  if (requested !== null && requested !== 'UTC' && requested !== '+00:00') throw new OrmError(codes.CONFIG, `dsn timezone ${requested}: every connection reads and writes datetime values in UTC`);
   const zone = '+00:00';
   switch (url.protocol) {
     case 'mysql:': {
-      if (url.hostname === '' || url.pathname.replace(/\//g, '') === '') throw new OrmError('CONFIG', 'mysql DSN must include host and database');
+      if (url.hostname === '' || url.pathname.replace(/\//g, '') === '') throw new OrmError(codes.CONFIG, 'mysql DSN must include host and database');
       const sslCa = mysqlTls(url);
       return sslCa === undefined ? { driver: 'mysql', zone } : { driver: 'mysql', zone, sslCa };
     }
     case 'postgres:':
-      if ((url.hostname === '' && !url.searchParams.has('host')) || url.pathname.replace(/\//g, '') === '') throw new OrmError('CONFIG', 'postgres DSN must include host and database');
+      if ((url.hostname === '' && !url.searchParams.has('host')) || url.pathname.replace(/\//g, '') === '') throw new OrmError(codes.CONFIG, 'postgres DSN must include host and database');
       return { driver: 'postgres', zone };
     case 'sqlite:':
-      if (url.hostname !== '' || !url.pathname.startsWith('/') || url.pathname === '/') throw new OrmError('CONFIG', 'sqlite DSN must include an absolute database path');
-      if (url.searchParams.has('_txlock')) throw new OrmError('CONFIG', 'sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE');
+      if (url.hostname !== '' || !url.pathname.startsWith('/') || url.pathname === '/') throw new OrmError(codes.CONFIG, 'sqlite DSN must include an absolute database path');
+      if (url.searchParams.has('_txlock')) throw new OrmError(codes.CONFIG, 'sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE');
       sqlitePath(url);
       return { driver: 'sqlite', zone };
     case 'markdown:':
       return { driver: 'markdown', zone, markdown: parseMarkdownDsn(url) };
   }
-  throw new OrmError('CONFIG', `unsupported DSN scheme ${url.protocol.replace(/:$/, '')}; want mysql, postgres, sqlite, or markdown`);
+  throw new OrmError(codes.CONFIG, `unsupported DSN scheme ${url.protocol.replace(/:$/, '')}; want mysql, postgres, sqlite, or markdown`);
 }
 
 /**
@@ -636,17 +637,17 @@ function sqlitePath(url: URL): string {
   try {
     path = decodeURIComponent(url.pathname);
   } catch {
-    throw new OrmError('CONFIG', 'sqlite DSN path has a % without two hexadecimal digits or is not UTF-8 after percent-decoding');
+    throw new OrmError(codes.CONFIG, 'sqlite DSN path has a % without two hexadecimal digits or is not UTF-8 after percent-decoding');
   }
   // NUL 뒤를 버리는 opener는 다른 file을 연다.
-  if (path.includes('\0')) throw new OrmError('CONFIG', 'sqlite DSN path must not contain a NUL byte');
+  if (path.includes('\0')) throw new OrmError(codes.CONFIG, 'sqlite DSN path must not contain a NUL byte');
   return path;
 }
 
 /** Returns the offset of a fixed zone such as +00:00 in minutes east of UTC. */
 export function zoneOffset(zone: string): number {
   const fixed = /^([+-])(\d{2}):(\d{2})$/.exec(zone);
-  if (!fixed) throw new OrmError('INTERNAL', `connection zone ${zone} is not a fixed offset`);
+  if (!fixed) throw new OrmError(codes.INTERNAL, `connection zone ${zone} is not a fixed offset`);
   return (fixed[1] === '-' ? -1 : 1) * (Number(fixed[2]) * 60 + Number(fixed[3]));
 }
 
@@ -677,7 +678,7 @@ function mysqlCorePool(pool: MySqlPool): MySqlCorePool {
     freeConnections: () => free().length,
     idle: connection => {
       const { length, get, queue } = free();
-      if (typeof get !== 'function') throw new OrmError('INTERNAL', 'the free connections of a mysql2 pool have no get');
+      if (typeof get !== 'function') throw new OrmError(codes.INTERNAL, 'the free connections of a mysql2 pool have no get');
       for (let i = 0; i < length; i++) if (Reflect.apply(get, queue, [i]) === connection) return true;
       return false;
     },
@@ -771,7 +772,7 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
       const pragmas = url.searchParams.getAll('_pragma').map(pragma => {
         const match = /^([a-z_]+)\(([A-Za-z0-9_]+)\)$/.exec(pragma);
         const [, name, value] = match ?? [];
-        if (name === undefined || value === undefined || (name === 'busy_timeout' && !/^\d+$/.test(value))) throw new OrmError('CONFIG', `sqlite DSN _pragma ${pragma} is invalid`);
+        if (name === undefined || value === undefined || (name === 'busy_timeout' && !/^\d+$/.test(value))) throw new OrmError(codes.CONFIG, `sqlite DSN _pragma ${pragma} is invalid`);
         return [name, value] as const;
       });
       // The connection waits for a lock up to busy_timeout from its first statement.
@@ -782,7 +783,7 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
       const [major = 0, minor = 0] = version.split('.').map(Number);
       if (major < 3 || (major === 3 && minor < 46)) {
         db.close();
-        throw new OrmError('CAPABILITY_UNSUPPORTED', `SQLite ${version} is older than 3.46`);
+        throw new OrmError(codes.CAPABILITY_UNSUPPORTED, `SQLite ${version} is older than 3.46`);
       }
       db.exec('PRAGMA foreign_keys = ON');
       for (const [name, value] of pragmas) db.exec(`PRAGMA ${name} = ${value}`);

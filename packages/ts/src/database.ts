@@ -17,6 +17,7 @@ import { CORE, type Core } from './core.js';
 import { Model } from './model.js';
 import { fieldOf, type Entity } from './engine/model.js';
 import { MarkdownPool, MarkdownSession, beginLine, endLine, markdownRead, markdownScalar, markdownWrite, savepointLine } from './markdown.js';
+import * as codes from './codes.js';
 
 export interface ConnectOptions {
   /** key of aesVersion for aes writes; absent takes aesKeys[aesVersion] */
@@ -98,7 +99,7 @@ export interface Schema {
 export function schemaModel(schema: Schema): RuntimeModel {
   if (schema === null || typeof schema !== 'object' || typeof schema.manifestText !== 'string' || typeof schema.manifestHash !== 'string'
     || (schema.externalText !== undefined && typeof schema.externalText !== 'string')) {
-    throw new OrmError('CONFIG', 'a schema is the manifestText, manifestHash and optional externalText of generated code');
+    throw new OrmError(codes.CONFIG, 'a schema is the manifestText, manifestHash and optional externalText of generated code');
   }
   const externalText = schema.externalText ?? '';
   const loaded = models.get(schema.manifestHash);
@@ -106,8 +107,8 @@ export function schemaModel(schema: Schema): RuntimeModel {
   try {
     return modelOfManifest(schema.manifestText, schema.manifestHash, externalText);
   } catch (error) {
-    if (error instanceof OrmError && error.code === 'SCHEMA_HASH_MISMATCH') {
-      throw new OrmError('CONFIG', `invalid schema manifest: the manifest text does not hash to its declared manifestHash ${schema.manifestHash}`, error);
+    if (error instanceof OrmError && error.code === codes.SCHEMA_HASH_MISMATCH) {
+      throw new OrmError(codes.CONFIG, `invalid schema manifest: the manifest text does not hash to its declared manifestHash ${schema.manifestHash}`, error);
     }
     throw error;
   }
@@ -177,7 +178,7 @@ export class TxFrame {
 
   /** The driver session of a SQL transaction. A markdown transaction sends no statement and has none. */
   public get session(): DriverSession {
-    if (this.connection instanceof MarkdownSession) throw new OrmError('INTERNAL', 'a markdown transaction has no SQL session');
+    if (this.connection instanceof MarkdownSession) throw new OrmError(codes.INTERNAL, 'a markdown transaction has no SQL session');
     return this.connection;
   }
 
@@ -229,13 +230,13 @@ export function resolve(conn: Db | undefined): Executor {
   if (conn !== undefined) {
     const frame = activeFor(conn);
     if (frame) return { db: conn, frame };
-    if (conn.closed) throw new OrmError('CONFIG', 'database is closed');
+    if (conn.closed) throw new OrmError(codes.CONFIG, 'database is closed');
     return { db: conn, frame: undefined };
   }
   const stack = frames();
   const frame = stack[stack.length - 1];
   if (frame && !frame.finished) return { db: frame.db, frame };
-  throw new OrmError('CONFIG', 'the model has no connection; use connect or run it inside a transaction');
+  throw new OrmError(codes.CONFIG, 'the model has no connection; use connect or run it inside a transaction');
 }
 
 const SECRET = '$SECRET';
@@ -313,14 +314,14 @@ function timeShape(colType: string, precision: number): string {
 /** Writes a date, time or datetime bind in its stored text form; any other value is CODEC_ENCODE. */
 export function timeValue(value: unknown, colType: string, zone: string, precision: number): string {
   const text = timeForm(value, colType, zone, precision);
-  if (text === undefined) throw new OrmError('CODEC_ENCODE', `${colType} value ${JSON.stringify(value)} is not ${timeShape(colType, precision)}`);
+  if (text === undefined) throw new OrmError(codes.CODEC_ENCODE, `${colType} value ${JSON.stringify(value)} is not ${timeShape(colType, precision)}`);
   return text;
 }
 
 /** Reads a stored date, time or datetime cell in its value form; any other cell is CODEC_DECODE. */
 export function readTime(value: unknown, colType: string, zone: string, precision: number): string {
   const text = timeForm(value, colType, zone, precision);
-  if (text === undefined) throw new OrmError('CODEC_DECODE', `${colType} cell ${JSON.stringify(value)} is not ${timeShape(colType, precision)}`);
+  if (text === undefined) throw new OrmError(codes.CODEC_DECODE, `${colType} cell ${JSON.stringify(value)} is not ${timeShape(colType, precision)}`);
   return text;
 }
 
@@ -446,18 +447,18 @@ export class Db {
   private constructor(private readonly connection: DriverPool | MarkdownPool, public readonly zone: string, options: ConnectOptions) {
     this.blindIndexKey = options.blindIndexKey ?? '';
     this.aesVersion = options.aesVersion ?? 1;
-    if (!Number.isSafeInteger(this.aesVersion) || this.aesVersion < 1) throw new OrmError('CONFIG', 'aes version must be a positive integer');
+    if (!Number.isSafeInteger(this.aesVersion) || this.aesVersion < 1) throw new OrmError(codes.CONFIG, 'aes version must be a positive integer');
     // aesKey is the key of aesVersion: writes encrypt with it, and aesKeys holds it at aesVersion.
     const given = options.aesKey ?? '';
     const listed = options.aesKeys?.get(this.aesVersion) ?? '';
-    if (given !== '' && options.aesKeys !== undefined && listed !== given) throw new OrmError('CONFIG', `aesKey differs from aesKeys[${this.aesVersion}]`);
+    if (given !== '' && options.aesKeys !== undefined && listed !== given) throw new OrmError(codes.CONFIG, `aesKey differs from aesKeys[${this.aesVersion}]`);
     this.aesKey = given !== '' ? given : listed;
     const keys = options.aesKeys ?? (this.aesKey === '' ? undefined : new Map([[this.aesVersion, this.aesKey]]));
     this.aesKeyring = keys === undefined ? undefined : new AesKeyring(keys, this.aesVersion);
-    if (options.auditSource !== undefined && typeof options.auditSource !== 'function') throw new OrmError('CONFIG', 'auditSource is a function that returns the audit values');
+    if (options.auditSource !== undefined && typeof options.auditSource !== 'function') throw new OrmError(codes.CONFIG, 'auditSource is a function that returns the audit values');
     this.auditSource = options.auditSource;
     this.planCacheSize = options.planCacheSize ?? 256;
-    if (!Number.isSafeInteger(this.planCacheSize) || this.planCacheSize < 1) throw new OrmError('CONFIG', 'plan cache size must be a positive integer');
+    if (!Number.isSafeInteger(this.planCacheSize) || this.planCacheSize < 1) throw new OrmError(codes.CONFIG, 'plan cache size must be a positive integer');
   }
 
   /**
@@ -466,20 +467,20 @@ export class Db {
    * until install registers the set of the model.
    */
   public static async connect(dsn: string, options: ConnectOptions = {}): Promise<Db> {
-    if (options === null || typeof options !== 'object' || Array.isArray(options)) throw new OrmError('CONFIG', 'connect takes the DSN and an options object');
+    if (options === null || typeof options !== 'object' || Array.isArray(options)) throw new OrmError(codes.CONFIG, 'connect takes the DSN and an options object');
     const parsed = parseDsn(dsn);
     if (parsed.driver === 'markdown' && (options.statementTimeoutMs ?? 0) > 0) {
-      throw new OrmError('CAPABILITY_UNSUPPORTED', 'statement timeout is not supported by the markdown IR executor');
+      throw new OrmError(codes.CAPABILITY_UNSUPPORTED, 'statement timeout is not supported by the markdown IR executor');
     }
     const statementCacheSize = options.statementCacheSize ?? 256;
-    if (!Number.isSafeInteger(statementCacheSize) || statementCacheSize < 1) throw new OrmError('CONFIG', 'statement cache size must be a positive integer');
-    if ((options.poolSize ?? 0) < 0) throw new OrmError('CONFIG', 'pool size must not be negative');
-    if ((options.statementTimeoutMs ?? 0) < 0) throw new OrmError('CONFIG', 'statement timeout must not be negative');
+    if (!Number.isSafeInteger(statementCacheSize) || statementCacheSize < 1) throw new OrmError(codes.CONFIG, 'statement cache size must be a positive integer');
+    if ((options.poolSize ?? 0) < 0) throw new OrmError(codes.CONFIG, 'pool size must not be negative');
+    if ((options.statementTimeoutMs ?? 0) < 0) throw new OrmError(codes.CONFIG, 'statement timeout must not be negative');
     // Zero or unset takes the default of every client, 10 connections.
     const size = options.poolSize || 10;
     const idleSize = options.poolIdleSize ?? 0;
-    if (idleSize < 0 || idleSize > size) throw new OrmError('CONFIG', `pool idle size must be between 0 and the pool size ${size}`);
-    if ((options.poolLifetimeMs ?? 0) < 0) throw new OrmError('CONFIG', 'pool lifetime must not be negative');
+    if (idleSize < 0 || idleSize > size) throw new OrmError(codes.CONFIG, `pool idle size must be between 0 and the pool size ${size}`);
+    if ((options.poolLifetimeMs ?? 0) < 0) throw new OrmError(codes.CONFIG, 'pool lifetime must not be negative');
     const bounds = { size, idleSize: idleSize || size, lifetimeMs: options.poolLifetimeMs ?? 0 };
     if (parsed.driver === 'markdown') {
       // session 하나를 연결해 server가 corpus와 token을 받아들이는지 확인하고 pool에 둔다.
@@ -523,10 +524,10 @@ export class Db {
    * @internal
    */
   public markdownModel(manifestHash: string): RuntimeModel {
-    if (this.closed) throw new OrmError('CONFIG', 'database is closed');
+    if (this.closed) throw new OrmError(codes.CONFIG, 'database is closed');
     const model = this.markdownModels.get(manifestHash);
     if (model === undefined) {
-      throw new OrmError('SCHEMA_HASH_MISMATCH', `manifest ${manifestHash} is not registered on this connection: connect through its generated models or register it`);
+      throw new OrmError(codes.SCHEMA_HASH_MISMATCH, `manifest ${manifestHash} is not registered on this connection: connect through its generated models or register it`);
     }
     return model;
   }
@@ -541,7 +542,7 @@ export class Db {
    * @internal
    */
   public get pool(): DriverPool {
-    if (this.connection instanceof MarkdownPool) throw new OrmError('INTERNAL', 'a markdown connection has no SQL pool');
+    if (this.connection instanceof MarkdownPool) throw new OrmError(codes.INTERNAL, 'a markdown connection has no SQL pool');
     return this.connection;
   }
 
@@ -561,7 +562,7 @@ export class Db {
    * @internal
    */
   public unsupportedOnMarkdown(surface: string): void {
-    if (this.md !== undefined) throw new OrmError('CAPABILITY_UNSUPPORTED', `${surface} is not supported by the markdown IR executor`);
+    if (this.md !== undefined) throw new OrmError(codes.CAPABILITY_UNSUPPORTED, `${surface} is not supported by the markdown IR executor`);
   }
 
   public get closed(): boolean { return this.shared.closed; }
@@ -585,14 +586,14 @@ export class Db {
    * handle, and transactions started on it keep the hook for the models of their callback.
    */
   public withRequestHook(hook: RequestHook): Db {
-    if (typeof hook !== 'function') throw new OrmError('CONFIG', 'withRequestHook takes a function of the request and addParam');
+    if (typeof hook !== 'function') throw new OrmError(codes.CONFIG, 'withRequestHook takes a function of the request and addParam');
     return this.derive('requestHook', hook);
   }
 
   /** 같은 연결의 handle 이다: 상태를 공유하고 property 하나만 value 로 바꾼다. */
   private derive(property: 'signal' | 'requestHook', value: unknown): Db {
     const handle: unknown = Object.create(Db.prototype);
-    if (!(handle instanceof Db)) throw new OrmError('INTERNAL', 'a derived handle is no Db');
+    if (!(handle instanceof Db)) throw new OrmError(codes.INTERNAL, 'a derived handle is no Db');
     Object.assign(handle, this);
     Object.defineProperty(handle, property, { value, enumerable: true, writable: false });
     Object.defineProperty(handle, 'rootDb', { value: this.root(), enumerable: false, writable: false });
@@ -694,16 +695,16 @@ export class Db {
    */
   public async transaction<T>(callback: () => Promise<T> | T, options: TransactionOptions = {}): Promise<T> {
     const retry = options.retry ?? 3;
-    if (!Number.isSafeInteger(retry) || retry < 0) throw new OrmError('CONFIG', 'transaction retry must be a non-negative integer');
+    if (!Number.isSafeInteger(retry) || retry < 0) throw new OrmError(codes.CONFIG, 'transaction retry must be a non-negative integer');
     const timeoutMs = options.timeoutMs ?? 0;
-    if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 0) throw new OrmError('CONFIG', 'transaction timeoutMs must not be negative');
+    if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 0) throw new OrmError(codes.CONFIG, 'transaction timeoutMs must not be negative');
     const outer = activeFor(this);
     if (options.audit !== undefined) this.unsupportedOnMarkdown('a transaction with audit values');
     // audit 기록은 transaction 이 시작하기 전에 검사하고 시도마다 callback 앞에서 삽입한다.
     const record = options.audit !== undefined && outer === undefined ? this.auditRecord(options.audit) : undefined;
     if (outer) {
       if (options.isolation !== undefined || options.readOnly !== undefined || options.timeoutMs !== undefined || options.audit !== undefined) {
-        throw new OrmError('CONFIG', 'a nested transaction of the same connection accepts only the retry option');
+        throw new OrmError(codes.CONFIG, 'a nested transaction of the same connection accepts only the retry option');
       }
       return this.savepoint(outer, callback);
     }
@@ -714,7 +715,7 @@ export class Db {
         if (options.readOnly !== undefined) begin.readOnly = options.readOnly;
         return await this.run(callback, begin, record);
       } catch (error) {
-        if (!(error instanceof OrmError) || error.code !== 'DEADLOCK' || attempt >= retry) throw error;
+        if (!(error instanceof OrmError) || error.code !== codes.DEADLOCK || attempt >= retry) throw error;
         await new Promise(resolve => setTimeout(resolve, (50 << attempt) + Math.floor(Math.random() * 20)));
       }
     }
@@ -728,31 +729,31 @@ export class Db {
    * 그대로 전한다.
    */
   private auditRecord(values: Readonly<Record<string, unknown>>): AuditInsert {
-    if (values === null || typeof values !== 'object' || Array.isArray(values)) throw new OrmError('CONFIG', 'transaction audit is an object of column values');
+    if (values === null || typeof values !== 'object' || Array.isArray(values)) throw new OrmError(codes.CONFIG, 'transaction audit is an object of column values');
     if (this.auditSource === undefined) {
-      throw new OrmError('CONFIG', 'the transaction has audit values but the connection has no audit source: set the auditSource connect option');
+      throw new OrmError(codes.CONFIG, 'the transaction has audit values but the connection has no audit source: set the auditSource connect option');
     }
     const engines = [...this.engines.values()];
     const tables = [...new Set(engines.flatMap(e => [...e.model.entities.values()].map(x => x.auditRecord).filter(t => t !== '')))].sort();
-    if (tables.length === 0) throw new OrmError('CONFIG', 'the transaction has audit values but no set of the connection has an audited table');
-    if (tables.length > 1) throw new OrmError('CONFIG', `the audited tables of the connection record their audits in ${tables.join(', ')}; one audit record table is required`);
+    if (tables.length === 0) throw new OrmError(codes.CONFIG, 'the transaction has audit values but no set of the connection has an audited table');
+    if (tables.length > 1) throw new OrmError(codes.CONFIG, `the audited tables of the connection record their audits in ${tables.join(', ')}; one audit record table is required`);
     const table = present(tables[0], 'the audited table');
     let target: { model: RuntimeModel; entity: Entity } | undefined;
     for (const engine of engines) {
       for (const entity of engine.model.entities.values()) if (entity.table === table) target = { model: engine.model, entity };
     }
-    if (target === undefined) throw new OrmError('CONFIG', `the audit record table ${table} is not a table of a set registered on the connection`);
-    if (target.entity.primaryKey.length !== 1) throw new OrmError('CONFIG', `the audit record table ${table} needs a primary key of one column`);
+    if (target === undefined) throw new OrmError(codes.CONFIG, `the audit record table ${table} is not a table of a set registered on the connection`);
+    if (target.entity.primaryKey.length !== 1) throw new OrmError(codes.CONFIG, `the audit record table ${table} needs a primary key of one column`);
     const source = this.auditSource();
     const merged: Record<string, unknown> = {};
     for (const set of [source, values]) {
-      if (set === null || typeof set !== 'object' || Array.isArray(set)) throw new OrmError('CONFIG', 'the audit source returns an object of column values');
+      if (set === null || typeof set !== 'object' || Array.isArray(set)) throw new OrmError(codes.CONFIG, 'the audit source returns an object of column values');
       for (const column of Object.keys(set).sort()) {
-        if (fieldOf(target.entity, column) === undefined) throw new OrmError('CONFIG', `audit value ${column} is not a column of ${table}`);
+        if (fieldOf(target.entity, column) === undefined) throw new OrmError(codes.CONFIG, `audit value ${column} is not a column of ${table}`);
         merged[column] = set[column];
       }
     }
-    if (Object.keys(merged).length === 0) throw new OrmError('CONFIG', `the audit record of ${table} has no value: the audit source and the transaction give none`);
+    if (Object.keys(merged).length === 0) throw new OrmError(codes.CONFIG, `the audit record of ${table} has no value: the audit source and the transaction give none`);
     return { ...target, values: merged };
   }
 
@@ -768,12 +769,12 @@ export class Db {
     for (const column of Object.keys(record.values).sort()) row[CORE].setValue(column, record.values[column]);
     const created = (await row.create())[CORE];
     const key = created.values.get(present(entity.primaryKey[0], `the primary key of ${entity.table}`));
-    if (key === undefined || key === null) throw new OrmError('CONFIG', `the audit record ${entity.table} has no ${entity.primaryKey[0]} after its insert`);
+    if (key === undefined || key === null) throw new OrmError(codes.CONFIG, `the audit record ${entity.table} has no ${entity.primaryKey[0]} after its insert`);
     return { table: entity.table, key };
   }
 
   private async run<T>(callback: () => Promise<T> | T, options: BeginOptions, record: AuditInsert | undefined): Promise<T> {
-    if (this.closed) throw new OrmError('CONFIG', 'database is closed');
+    if (this.closed) throw new OrmError(codes.CONFIG, 'database is closed');
     const frame = await this.begin(options);
     let result: T;
     try {
@@ -789,7 +790,7 @@ export class Db {
       }
       if (this.shared.rollbackFault) {
         this.shared.rollbackFault = false;
-        throw rollbackFailed(error, new OrmError('FAULT', 'test fault: the rollback of the transaction ran and is reported as failed'));
+        throw rollbackFailed(error, new OrmError(codes.FAULT, 'test fault: the rollback of the transaction ran and is reported as failed'));
       }
       throw error;
     }
@@ -813,7 +814,7 @@ export class Db {
    * 사용자에게 가지 않도록 연결을 닫고, BEGIN 뒤에 실패하면 transaction을 rollback한다.
    */
   private async begin(options: BeginOptions): Promise<TxFrame> {
-    if (options.timeoutMs > 0 && this.driver !== 'postgres') throw new OrmError('CAPABILITY_UNSUPPORTED', 'transaction timeoutMs is supported only by postgres');
+    if (options.timeoutMs > 0 && this.driver !== 'postgres') throw new OrmError(codes.CAPABILITY_UNSUPPORTED, 'transaction timeoutMs is supported only by postgres');
     if (this.md !== undefined) return this.beginMarkdown(this.md, options);
     const driver = this.pool.name;
     const level = options.isolation === undefined ? '' : isolationSql(options.isolation);
@@ -890,7 +891,7 @@ export class Db {
       for (const key of frame.locks.splice(0)) {
         const released = await attempt('SELECT RELEASE_LOCK(?)', [key]);
         // 1이 아니면 이 connection이 lock을 갖고 있지 않았다.
-        if (released !== undefined && Number(released.rows[0]?.[0]) !== 1) errors.push(new OrmError('CONFIG', `lock ${key} was not held at transaction end`));
+        if (released !== undefined && Number(released.rows[0]?.[0]) !== 1) errors.push(new OrmError(codes.CONFIG, `lock ${key} was not held at transaction end`));
       }
       if (this.driver === 'mysql') {
         // 값을 지우는 statement는 key 순서로 보낸다.
@@ -910,13 +911,13 @@ export class Db {
           // 실패한 COMMIT은 transaction을 이미 끝냈을 수 있다. SQLite는 열려 있을 때만 rollback하고, 다른
           // database는 상태를 알 수 없는 session을 닫는다.
           if (session.inTransaction?.() === true) {
-            try { await frame.run('rollback', [], 'ROLLBACK'); } catch (rollback) { throw rollbackFailed(error, rollback); }
+            try { await frame.run('rollback', [], codes.ROLLBACK); } catch (rollback) { throw rollbackFailed(error, rollback); }
           } else if (this.driver !== 'sqlite') discard = true;
           throw error;
         }
       }
       try {
-        await frame.run('rollback', [], 'ROLLBACK');
+        await frame.run('rollback', [], codes.ROLLBACK);
       } catch (rollback) {
         if (!subscriberError(rollback)) discard = true;
         if (commit) throw rollbackFailed(failure, rollback);
@@ -953,7 +954,7 @@ export class Db {
     try {
       if (frame.db.signal?.aborted === true) {
         session.close();
-        if (op === 'commit') throw new OrmError('CANCELED', 'the transaction was cancelled before its commit');
+        if (op === 'commit') throw new OrmError(codes.CANCELED, 'the transaction was cancelled before its commit');
         return;
       }
       await session.call(endLine(op), frame.db.signal);
@@ -1014,7 +1015,7 @@ export class Db {
       if (noWait) await frame.run('utility', [], 'PRAGMA busy_timeout=0');
       await frame.run('utility', ROW_LOCK_TABLES, 'INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"');
     } catch (error) {
-      if (noWait && error instanceof OrmError && sqliteBusy('sqlite', error.cause)) throw new OrmError('LOCK_NOT_AVAILABLE', error.message, error.cause);
+      if (noWait && error instanceof OrmError && sqliteBusy('sqlite', error.cause)) throw new OrmError(codes.LOCK_NOT_AVAILABLE, error.message, error.cause);
       throw error;
     } finally {
       if (noWait) await frame.run('utility', [], `PRAGMA busy_timeout=${previous}`);
@@ -1022,11 +1023,11 @@ export class Db {
   }
 
   public async plan(request: Request): Promise<Cached> {
-    if (this.closed) throw new OrmError('CONFIG', 'database is closed');
+    if (this.closed) throw new OrmError(codes.CONFIG, 'database is closed');
     // 연결은 자기에게 등록된 set만 plan한다. plan cache를 보기 전에 확인한다.
     const engine = this.engines.get(request.manifest_hash);
     if (engine === undefined) {
-      throw new OrmError('SCHEMA_HASH_MISMATCH', `manifest ${request.manifest_hash} is not registered on this connection: connect through its generated models or install it`);
+      throw new OrmError(codes.SCHEMA_HASH_MISMATCH, `manifest ${request.manifest_hash} is not registered on this connection: connect through its generated models or install it`);
     }
     const key = canonical(request);
     const cached = this.plans.get(key);
@@ -1071,7 +1072,7 @@ export class Db {
             value = timeValue(value, slot.col_type, this.zone, slot.precision ?? 0);
           }
           if (slot.col_type === 'decimal' && value !== null) {
-            if (typeof value !== 'string') throw new OrmError('CODEC_ENCODE', 'decimal bind requires exact text');
+            if (typeof value !== 'string') throw new OrmError(codes.CODEC_ENCODE, 'decimal bind requires exact text');
             value = this.driver === 'sqlite'
               ? decimalScaled(value, slot.precision ?? 0, slot.scale ?? 0)
               : normalizeDecimal(value, slot.precision ?? 0, slot.scale ?? 0);
@@ -1087,11 +1088,11 @@ export class Db {
           push(auditValue(slot, audit));
           break;
         case 'secret':
-          if (slot.name !== 'aes' || this.aesKey === '') throw new OrmError('CONFIG', `secret ${slot.name} is not configured`);
+          if (slot.name !== 'aes' || this.aesKey === '') throw new OrmError(codes.CONFIG, `secret ${slot.name} is not configured`);
           push(this.aesKey, SECRET);
           break;
         case 'config':
-          if (slot.name !== 'aes_version') throw new OrmError('CONFIG', `config value ${slot.name} is not configured`);
+          if (slot.name !== 'aes_version') throw new OrmError(codes.CONFIG, `config value ${slot.name} is not configured`);
           push(this.aesVersion);
           break;
         case 'parent':
@@ -1103,7 +1104,7 @@ export class Db {
           push(this.now(clock, slot.precision ?? 6), NOW);
           break;
         default:
-          throw new OrmError('INTERNAL', `bind from ${slot.from}`);
+          throw new OrmError(codes.INTERNAL, `bind from ${slot.from}`);
       }
     }
     return { values, masked };
@@ -1120,10 +1121,10 @@ export class Db {
   public async execute(step: PlanStep, params: readonly unknown[]): Promise<void> {
     const ex = resolve(this);
     await guarded(ex, async () => {
-      if (step.assemble !== undefined) throw new OrmError('IR_INVALID', 'execute runs a statement without rows; the statement is a read');
+      if (step.assemble !== undefined) throw new OrmError(codes.IR_INVALID, 'execute runs a statement without rows; the statement is a read');
       step.bind_slots.forEach((slot, i) => {
         if (slot.from === 'param' && !(slot.param >= 0 && slot.param < params.length)) {
-          throw new OrmError('IR_INVALID', `bind slot ${i} reads parameter ${slot.param}, but execute has ${params.length} parameters`);
+          throw new OrmError(codes.IR_INVALID, `bind slot ${i} reads parameter ${slot.param}, but execute has ${params.length} parameters`);
         }
       });
       await this.runStep(ex, step.sql, step, params);
@@ -1148,15 +1149,15 @@ export class Db {
 
 /** error가 subscriber 실패(SUBSCRIBER)인지다. 그 statement는 효과를 냈다. */
 function subscriberError(error: unknown): boolean {
-  return error instanceof OrmError && error.code === 'SUBSCRIBER';
+  return error instanceof OrmError && error.code === codes.SUBSCRIBER;
 }
 
 /** Marks the start of a statement on an executor; a transaction rejects concurrent use. */
 async function guarded<T>(ex: Executor, work: () => Promise<T>): Promise<T> {
   const frame = ex.frame;
   if (frame === undefined) return work();
-  if (frame.finished) throw new OrmError('CONFIG', 'transaction already finished');
-  if (frame.busy) throw new OrmError('CONFIG', 'the transaction connection is already in use');
+  if (frame.finished) throw new OrmError(codes.CONFIG, 'transaction already finished');
+  if (frame.busy) throw new OrmError(codes.CONFIG, 'the transaction connection is already in use');
   frame.busy = true;
   try { return await work(); } finally { frame.busy = false; }
 }
@@ -1167,15 +1168,15 @@ async function guarded<T>(ex: Executor, work: () => Promise<T>): Promise<T> {
  * in another table than the transaction's audit record, is CONFIG.
  */
 function auditValue(slot: BindSlot, audit: AuditRecord | undefined): unknown {
-  if (audit === undefined) throw new OrmError('CONFIG', 'a write of an audited table needs an audit: run it in a transaction with audit values');
+  if (audit === undefined) throw new OrmError(codes.CONFIG, 'a write of an audited table needs an audit: run it in a transaction with audit values');
   if (audit.table !== slot.name) {
-    throw new OrmError('CONFIG', `the audited table records its audits in ${slot.name}, but the audit of the transaction is a row of ${audit.table}`);
+    throw new OrmError(codes.CONFIG, `the audited table records its audits in ${slot.name}, but the audit of the transaction is a row of ${audit.table}`);
   }
   return audit.key;
 }
 
 function checkLock(ex: Executor, request: Request): void {
-  if ((request.lock ?? '') !== '' && ex.frame === undefined) throw new OrmError('CONFIG', 'row locks are allowed only inside a transaction');
+  if ((request.lock ?? '') !== '' && ex.frame === undefined) throw new OrmError(codes.CONFIG, 'row locks are allowed only inside a transaction');
 }
 
 function driverLimit(driver: string): number { return driver === 'sqlite' ? 999 : 65535; }
@@ -1194,7 +1195,7 @@ function hooked(ex: Executor, request: Request, params: readonly unknown[]): Hoo
   if (hook !== undefined) {
     const values = [...params];
     const out = hook(request, (value: unknown) => values.push(value) - 1, Object.freeze([...params]));
-    if (out === null || typeof out !== 'object' || Array.isArray(out)) throw new OrmError('CONFIG', 'the request hook returns the request to plan');
+    if (out === null || typeof out !== 'object' || Array.isArray(out)) throw new OrmError(codes.CONFIG, 'the request hook returns the request to plan');
     out.n_params = values.length;
     planned = { request: out, params: values };
   }
@@ -1297,7 +1298,7 @@ export async function scalar(ex: Executor, given: Request, givenParams: readonly
     const cached = await db.plan(request);
     const parts = rootInParts(request, cached.plan, db.driver, params);
     if (parts.length > 1) {
-      if (request.kind !== 'count') throw new OrmError('IR_INVALID', 'a split IN list can be merged only for a count');
+      if (request.kind !== 'count') throw new OrmError(codes.IR_INVALID, 'a split IN list can be merged only for a count');
       let total = 0;
       for (const part of parts) {
         const partPlan = await db.plan(part);
@@ -1320,7 +1321,7 @@ export async function paginate(ex: Executor, given: Request, givenParams: readon
     const main = await select(ex, cached, mainStep(cached.plan), params);
     const result = await relations(ex, cached, params, main);
     const step = cached.plan.steps.find(s => s.role === 'count');
-    if (!step) throw new OrmError('INTERNAL', 'paginate plan has no count step');
+    if (!step) throw new OrmError(codes.INTERNAL, 'paginate plan has no count step');
     const total = Number((await db.runStep(ex, step.sql, step, params)).rows[0]?.[0] ?? 0);
     return { result, total };
   });
@@ -1346,7 +1347,7 @@ export async function write(ex: Executor, given: Request, givenParams: readonly 
     const step = mainStep(cached.plan);
     const result = await db.runStep(ex, step.sql, step, params);
     if (request.kind === 'insert' && / RETURNING /.test(step.sql)) return { key: Number(result.rows[0]?.[0]), affected: 1 };
-    if (request.kind === 'update' && request.optimistic && result.affected === 0) throw new OrmError('OPTIMISTIC_LOCK', 'the row changed after it was read');
+    if (request.kind === 'update' && request.optimistic && result.affected === 0) throw new OrmError(codes.OPTIMISTIC_LOCK, 'the row changed after it was read');
     const key = request.kind === 'insert' && !request.rows && result.insertId !== null ? Number(result.insertId) : null;
     // An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
     const upsert = request.kind === 'insert' && (request.on_duplicate?.length ?? 0) > 0;
@@ -1383,7 +1384,7 @@ function relationChunks(step: PlanStep, values: readonly unknown[], driver: stri
   const width = parentOf(step).keys.length;
   const nonParent = step.bind_slots.filter(slot => slot.from !== 'parent').length;
   const max = Math.floor((driverLimit(driver) - nonParent) / width);
-  if (max < 1) throw new OrmError('IR_INVALID', `relation ${step.id} needs more bind parameters than ${driver} permits`);
+  if (max < 1) throw new OrmError(codes.IR_INVALID, `relation ${step.id} needs more bind parameters than ${driver} permits`);
   let size = 1;
   while (size * 2 <= max) size *= 2;
   const tuples = values.length / width;
@@ -1435,7 +1436,7 @@ function childKeys(plan: Plan, id: number): KeyReference[] {
     return undefined;
   };
   for (const step of plan.steps) if (step.assemble) { const found = find(step.assemble); if (found) return found; }
-  throw new OrmError('INTERNAL', `relation step ${id} has no child`);
+  throw new OrmError(codes.INTERNAL, `relation step ${id} has no child`);
 }
 
 /** The main step of `plan`, which every plan has first. */
@@ -1456,7 +1457,7 @@ function assembleOf(step: PlanStep): Assemble {
 /** A codec cell as the driver reads it: text or bytes; another value is a CODEC_DECODE error. */
 function cellBytes(value: unknown, index: number): string | Uint8Array {
   if (typeof value === 'string' || value instanceof Uint8Array) return value;
-  throw new OrmError('CODEC_DECODE', `the codec column at ${index} reads a ${typeof value}`);
+  throw new OrmError(codes.CODEC_DECODE, `the codec column at ${index} reads a ${typeof value}`);
 }
 
 function itemConn(item: Group['items'][number]): string | undefined {
@@ -1468,7 +1469,7 @@ function rootInParts(request: Request, plan: Plan, driver: string, params: reado
   const main = mainStep(plan);
   const limit = driverLimit(driver);
   if (main.bind_slots.length <= limit) return [request];
-  const tooLarge = new OrmError('IR_INVALID', `the statement needs ${main.bind_slots.length} bind parameters but ${driver} permits ${limit}`);
+  const tooLarge = new OrmError(codes.IR_INVALID, `the statement needs ${main.bind_slots.length} bind parameters but ${driver} permits ${limit}`);
   if (request.limit || request.order?.length || request.group_by?.length || !request.where) throw tooLarge;
   const items = request.where.items;
   let target = -1;

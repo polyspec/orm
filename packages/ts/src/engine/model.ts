@@ -4,6 +4,7 @@
 import { dbspecManifest, parseDbspecSet } from '../dbspec/index.js';
 import type { DbspecCodecStage, DbspecDocument, DbspecTable, DbspecType } from '../dbspec/model.js';
 import { OrmError } from '../runtime_error.js';
+import * as codes from '../codes.js';
 
 export type FieldType = DbspecType['kind'];
 
@@ -96,7 +97,7 @@ const HEADER = 'dbspec 1 ';
 
 /** Splits the concatenated documents of a manifest text at their header lines. */
 function splitDocuments(text: string): string[] {
-  if (!text.startsWith(HEADER)) throw new OrmError('SCHEMA_INVALID', 'manifest text does not start with a dbspec header');
+  if (!text.startsWith(HEADER)) throw new OrmError(codes.SCHEMA_INVALID, 'manifest text does not start with a dbspec header');
   const out: string[] = [];
   let start = 0;
   for (let at = text.indexOf(`\n${HEADER}`); at >= 0; at = text.indexOf(`\n${HEADER}`, at + 1)) {
@@ -177,8 +178,8 @@ export function modelOfDocuments(documents: readonly DbspecDocument[]): RuntimeM
   const result = dbspecManifest(documents);
   if (result.manifest === null) {
     const [d] = result.diagnostics;
-    if (d === undefined) throw new OrmError('SCHEMA_INVALID', 'document set: no manifest and no diagnostic');
-    throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
+    if (d === undefined) throw new OrmError(codes.SCHEMA_INVALID, 'document set: no manifest and no diagnostic');
+    throw new OrmError(codes.SCHEMA_INVALID, `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
   }
   const entities = new Map<string, Entity>();
   const ordered = [...documents].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
@@ -186,7 +187,7 @@ export function modelOfDocuments(documents: readonly DbspecDocument[]): RuntimeM
     if (document.external === true) continue;
     for (const table of document.tables) {
       const e = entityOfTable(table);
-      if (entities.has(e.name)) throw new OrmError('SCHEMA_INVALID', `entity ${e.name} is declared twice in the document set`);
+      if (entities.has(e.name)) throw new OrmError(codes.SCHEMA_INVALID, `entity ${e.name} is declared twice in the document set`);
       entities.set(e.name, e);
     }
   }
@@ -206,13 +207,13 @@ export function modelOfDocuments(documents: readonly DbspecDocument[]): RuntimeM
  */
 export function parseDocumentSet(texts: readonly string[], externalTexts: readonly string[] = []): DbspecDocument[] {
   for (const text of [...texts, ...externalTexts]) {
-    if (typeof text !== 'string') throw new OrmError('SCHEMA_INVALID', 'a dbspec text does not start with its header');
+    if (typeof text !== 'string') throw new OrmError(codes.SCHEMA_INVALID, 'a dbspec text does not start with its header');
   }
   return parseDbspecSet(texts, externalTexts).map(d => {
     if (d.document !== null) return d.document;
     const [first] = d.diagnostics;
-    if (first === undefined) throw new OrmError('SCHEMA_INVALID', `document ${d.name}: no document and no diagnostic`);
-    throw new OrmError('SCHEMA_INVALID', `document ${d.name}: ${first.rule} at ${first.line}:${first.column}: ${first.message}`);
+    if (first === undefined) throw new OrmError(codes.SCHEMA_INVALID, `document ${d.name}: no document and no diagnostic`);
+    throw new OrmError(codes.SCHEMA_INVALID, `document ${d.name}: ${first.rule} at ${first.line}:${first.column}: ${first.message}`);
   });
 }
 
@@ -234,10 +235,10 @@ export function loadSet(manifestText: string, externalText: string): DbspecDocum
  */
 export function modelOfManifest(manifestText: string, manifestHash: string, externalText = ''): RuntimeModel {
   const model = modelOfDocuments(parseDocumentSet(splitDocuments(manifestText), externalText === '' ? [] : splitDocuments(externalText)));
-  if (model.manifestText !== manifestText) throw new OrmError('SCHEMA_INVALID', 'the embedded text is not the manifest text of its documents');
-  if (model.externalText !== externalText) throw new OrmError('SCHEMA_INVALID', 'the embedded external text is not the external text of its documents');
+  if (model.manifestText !== manifestText) throw new OrmError(codes.SCHEMA_INVALID, 'the embedded text is not the manifest text of its documents');
+  if (model.externalText !== externalText) throw new OrmError(codes.SCHEMA_INVALID, 'the embedded external text is not the external text of its documents');
   if (model.manifestHash !== manifestHash) {
-    throw new OrmError('SCHEMA_HASH_MISMATCH', `generated code declares manifest ${manifestHash}, its manifest text hashes to ${model.manifestHash}: generate the models again`);
+    throw new OrmError(codes.SCHEMA_HASH_MISMATCH, `generated code declares manifest ${manifestHash}, its manifest text hashes to ${model.manifestHash}: generate the models again`);
   }
   return model;
 }

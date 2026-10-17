@@ -18,6 +18,7 @@ from polyspec.ordered_json import (
     stringify as ordered_json_stringify,
 )
 
+from polyspec.orm import codes
 from polyspec.orm.styled_value import StyledValue
 
 __all__ = [
@@ -37,7 +38,7 @@ _AES_PREFIX = b"ORM-AES2\x00"
 class CodecError(Exception):
     """A codec failure with its stable error code."""
 
-    CODES = ("CODEC_DECODE", "CODEC_ENCODE", "CODEC_UNSUPPORTED")
+    CODES = (codes.CODEC_DECODE, codes.CODEC_ENCODE, codes.CODEC_UNSUPPORTED)
 
     def __init__(self, code: str, message: str):
         super().__init__(f"{code}: {message}")
@@ -59,7 +60,7 @@ def blind_index(value, key: str):
     if value is None:
         return None
     if key == "":
-        raise CodecError("CODEC_ENCODE", "secret blind_index not configured")
+        raise CodecError(codes.CODEC_ENCODE, "secret blind_index not configured")
     return hmac.new(key.encode("utf-8"), _as_bytes(value), hashlib.sha256).hexdigest()
 
 
@@ -81,7 +82,7 @@ def _pack_ip(value: str) -> bytes:
         address = ipaddress.ip_address(source)
     except ValueError:
         raise CodecError(
-            "CODEC_ENCODE", f"ip: {_quoted(source)} is not an address"
+            codes.CODEC_ENCODE, f"ip: {_quoted(source)} is not an address"
         ) from None
     if isinstance(address, ipaddress.IPv4Address):
         return address.packed
@@ -95,7 +96,7 @@ def _unpack_ip(value: bytes) -> str:
     if len(value) == 4:
         return ".".join(str(byte) for byte in value)
     if len(value) != 16:
-        raise CodecError("CODEC_DECODE", f"ip: byte length {len(value)}")
+        raise CodecError(codes.CODEC_DECODE, f"ip: byte length {len(value)}")
     groups = [
         int.from_bytes(value[index * 2 : index * 2 + 2], "big") for index in range(8)
     ]
@@ -127,7 +128,7 @@ def host_encode(value, styles, aes_key: str):
     for style in styles:
         if style == "aes":
             if aes_key == "":
-                raise CodecError("CODEC_ENCODE", "secret aes not configured")
+                raise CodecError(codes.CODEC_ENCODE, "secret aes not configured")
             nonce = os.urandom(12)
             encrypted = AESGCM(_aes_v2_key(aes_key)).encrypt(
                 nonce, current, _AES_PREFIX
@@ -141,7 +142,7 @@ def host_encode(value, styles, aes_key: str):
             current = _pack_ip(current.decode("utf-8"))
             text_result = False
         else:
-            raise CodecError("CODEC_UNSUPPORTED", f"host style {style}")
+            raise CodecError(codes.CODEC_UNSUPPORTED, f"host style {style}")
     if text_result:
         return current.decode("ascii")
     return current
@@ -157,15 +158,15 @@ def host_decode(raw, styles, aes_key: str):
             # 저장 cell은 encoder가 쓰는 형태로만 decode한다: 공백이나 hex 숫자 밖의 byte는 CODEC_DECODE다.
             source = current.decode("utf-8", "replace")
             if len(source) % 2 != 0 or re.fullmatch(r"[0-9A-F]*", source) is None:
-                raise CodecError("CODEC_DECODE", "hex: odd length or non-hex input")
+                raise CodecError(codes.CODEC_DECODE, "hex: odd length or non-hex input")
             current = bytes.fromhex(source)
         elif style == "aes":
             if aes_key == "":
-                raise CodecError("CODEC_DECODE", "secret aes not configured")
+                raise CodecError(codes.CODEC_DECODE, "secret aes not configured")
             if not current.startswith(_AES_PREFIX):
-                raise CodecError("CODEC_DECODE", "aes: unsupported ciphertext format")
+                raise CodecError(codes.CODEC_DECODE, "aes: unsupported ciphertext format")
             if len(current) < len(_AES_PREFIX) + 12 + 16:
-                raise CodecError("CODEC_DECODE", "aes: truncated v2 envelope")
+                raise CodecError(codes.CODEC_DECODE, "aes: truncated v2 envelope")
             nonce = current[len(_AES_PREFIX) : len(_AES_PREFIX) + 12]
             sealed = current[len(_AES_PREFIX) + 12 :]
             try:
@@ -173,11 +174,11 @@ def host_decode(raw, styles, aes_key: str):
                     nonce, sealed, _AES_PREFIX
                 )
             except InvalidTag:
-                raise CodecError("CODEC_DECODE", "aes: authentication failed") from None
+                raise CodecError(codes.CODEC_DECODE, "aes: authentication failed") from None
         elif style == "ip":
             return _unpack_ip(current)
         else:
-            raise CodecError("CODEC_UNSUPPORTED", f"host style {style}")
+            raise CodecError(codes.CODEC_UNSUPPORTED, f"host style {style}")
     return current.decode("utf-8")
 
 
@@ -204,10 +205,10 @@ def _decode_base64(data: bytes) -> bytes:
         )
         is None
     ):
-        raise CodecError("CODEC_DECODE", "base64: bad input")
+        raise CodecError(codes.CODEC_DECODE, "base64: bad input")
     decoded = base64.b64decode(source)
     if base64.b64encode(decoded).decode("ascii") != source:
-        raise CodecError("CODEC_DECODE", "base64: bad input")
+        raise CodecError(codes.CODEC_DECODE, "base64: bad input")
     return decoded
 
 
@@ -265,11 +266,11 @@ def php_serialize(value) -> str:
         return "b:1;" if value else "b:0;"
     if isinstance(value, int):
         if not -_SAFE_INTEGER <= value <= _SAFE_INTEGER:
-            raise CodecError("CODEC_ENCODE", f"number {value} is not finite")
+            raise CodecError(codes.CODEC_ENCODE, f"number {value} is not finite")
         return f"i:{value};"
     if isinstance(value, float):
         if not math.isfinite(value):
-            raise CodecError("CODEC_ENCODE", f"number {value} is not finite")
+            raise CodecError(codes.CODEC_ENCODE, f"number {value} is not finite")
         return f"d:{_php_float(value)};"
     if isinstance(value, str):
         return f's:{len(value.encode(_UTF8))}:"{value}";'
@@ -282,7 +283,7 @@ def php_serialize(value) -> str:
         keys = sorted(value.keys())
         parts = "".join(f"{_php_key(key)}{php_serialize(value[key])}" for key in keys)
         return f"a:{len(keys)}:{{{parts}}}"
-    raise CodecError("CODEC_ENCODE", f"{type(value).__name__} is not a codec value")
+    raise CodecError(codes.CODEC_ENCODE, f"{type(value).__name__} is not a codec value")
 
 
 class _PhpParser:
@@ -299,7 +300,7 @@ class _PhpParser:
         return value
 
     def _fail(self, message: str):
-        raise CodecError("CODEC_DECODE", f"serialize: {message} at {self._index}")
+        raise CodecError(codes.CODEC_DECODE, f"serialize: {message} at {self._index}")
 
     def _byte(self) -> int:
         if self._index >= len(self._data):
@@ -374,7 +375,7 @@ class _PhpParser:
             return self._array()
         if kind in ("O", "C", "r", "R"):
             raise CodecError(
-                "CODEC_UNSUPPORTED",
+                codes.CODEC_UNSUPPORTED,
                 f"serialize: objects and references are not supported ({kind})",
             )
         self._fail(f"unknown type {kind}")
@@ -404,7 +405,7 @@ class _PhpParser:
 def _json_text(value, depth: int) -> str:
     # 일반 값을 ordered-json 문법 텍스트로 만든다. object member는 삽입 순서를 지킨다.
     if depth > 256:
-        raise CodecError("CODEC_ENCODE", "json: value nesting exceeds 256 levels")
+        raise CodecError(codes.CODEC_ENCODE, "json: value nesting exceeds 256 levels")
     if isinstance(value, OrderedJson):
         return ordered_json_stringify(value)
     if value is None:
@@ -417,7 +418,7 @@ def _json_text(value, depth: int) -> str:
         return str(value)
     if isinstance(value, float):
         if not math.isfinite(value):
-            raise CodecError("CODEC_ENCODE", f"json: non-finite number {value}")
+            raise CodecError(codes.CODEC_ENCODE, f"json: non-finite number {value}")
         text = json.dumps(value, ensure_ascii=False)
         # JSON.stringify는 정수값 float를 '2'로 쓴다; json.dumps는 '2.0'이다.
         if text.endswith(".0"):
@@ -426,18 +427,18 @@ def _json_text(value, depth: int) -> str:
     if isinstance(value, list):
         return "[" + ",".join(_json_text(item, depth + 1) for item in value) + "]"
     if isinstance(value, (bytes, bytearray)):
-        raise CodecError("CODEC_ENCODE", "json: bytes are not a JSON value")
+        raise CodecError(codes.CODEC_ENCODE, "json: bytes are not a JSON value")
     if isinstance(value, dict):
         members = []
         for key in value:
             if not isinstance(key, str):
-                raise CodecError("CODEC_ENCODE", "json: member keys must be strings")
+                raise CodecError(codes.CODEC_ENCODE, "json: member keys must be strings")
             members.append(
                 f"{json.dumps(key, ensure_ascii=False)}:{_json_text(value[key], depth + 1)}"
             )
         return "{" + ",".join(members) + "}"
     raise CodecError(
-        "CODEC_ENCODE", f"json: {type(value).__name__} is not a JSON value"
+        codes.CODEC_ENCODE, f"json: {type(value).__name__} is not a JSON value"
     )
 
 
@@ -449,14 +450,14 @@ def ordered_json_value(value) -> OrderedJson:
     except CodecError:
         raise
     except Exception as error:
-        raise CodecError("CODEC_ENCODE", f"json: {error}") from None
+        raise CodecError(codes.CODEC_ENCODE, f"json: {error}") from None
 
 
 def _common_value(value, style: str):
     # ordered_json 단계만 ordered-json 값을 받는다.
     if isinstance(value, OrderedJson):
         raise CodecError(
-            "CODEC_ENCODE",
+            codes.CODEC_ENCODE,
             f"{style}: an ordered-json value is written only by the ordered_json stage",
         )
     return value
@@ -509,18 +510,18 @@ def _yaml_refuse_marks(tree, node, key: bool):
     # docs/codec.md (yaml): anchors and every explicit tag, the core tags included, are refused.
     if key:
         if tree.has_key_anchor(node):
-            raise CodecError("CODEC_DECODE", "yaml: anchors are not supported")
+            raise CodecError(codes.CODEC_DECODE, "yaml: anchors are not supported")
         if tree.has_key_tag(node):
             raise CodecError(
-                "CODEC_DECODE",
+                codes.CODEC_DECODE,
                 f"yaml: explicit tag {_yaml_text(tree.key_tag(node))} is not supported",
             )
         return
     if tree.has_val_anchor(node):
-        raise CodecError("CODEC_DECODE", "yaml: anchors are not supported")
+        raise CodecError(codes.CODEC_DECODE, "yaml: anchors are not supported")
     if tree.has_val_tag(node):
         raise CodecError(
-            "CODEC_DECODE",
+            codes.CODEC_DECODE,
             f"yaml: explicit tag {_yaml_text(tree.val_tag(node))} is not supported",
         )
 
@@ -531,7 +532,7 @@ def _yaml_node(tree, node):
         mapping = {}
         for child in ryml.children(tree, node):
             if tree.is_key_ref(child):
-                raise CodecError("CODEC_DECODE", "yaml: aliases are not allowed")
+                raise CodecError(codes.CODEC_DECODE, "yaml: aliases are not allowed")
             _yaml_refuse_marks(tree, child, True)
             key = _yaml_scalar(
                 _yaml_text(tree.key(child)), not tree.is_key_quoted(child)
@@ -540,16 +541,16 @@ def _yaml_node(tree, node):
                 key = str(key)
             if not isinstance(key, str):
                 raise CodecError(
-                    "CODEC_DECODE", "yaml: map keys must be strings or integers"
+                    codes.CODEC_DECODE, "yaml: map keys must be strings or integers"
                 )
             if key in mapping:
-                raise CodecError("CODEC_DECODE", f"yaml: duplicate key {key}")
+                raise CodecError(codes.CODEC_DECODE, f"yaml: duplicate key {key}")
             mapping[key] = _yaml_node(tree, child)
         return mapping
     if tree.is_seq(node):
         return [_yaml_node(tree, child) for child in ryml.children(tree, node)]
     if tree.is_val_ref(node):
-        raise CodecError("CODEC_DECODE", "yaml: aliases are not allowed")
+        raise CodecError(codes.CODEC_DECODE, "yaml: aliases are not allowed")
     return _yaml_scalar(_yaml_text(tree.val(node)), not tree.is_val_quoted(node))
 
 
@@ -562,17 +563,17 @@ def _decode_yaml(data: bytes):
             documents = list(ryml.children(tree, root))
             if len(documents) != 1:
                 raise CodecError(
-                    "CODEC_DECODE", "yaml: multiple documents are not supported"
+                    codes.CODEC_DECODE, "yaml: multiple documents are not supported"
                 )
             root = documents[0]
         elif not (tree.has_val(root) or tree.is_map(root) or tree.is_seq(root)):
             # A stream without a document (empty, or comments only) is not a YAML value.
-            raise CodecError("CODEC_DECODE", "yaml: no document")
+            raise CodecError(codes.CODEC_DECODE, "yaml: no document")
         return _validate_codec_value(_yaml_node(tree, root), "yaml decode")
     except CodecError:
         raise
     except Exception as error:
-        raise CodecError("CODEC_DECODE", f"yaml: {error}") from None
+        raise CodecError(codes.CODEC_DECODE, f"yaml: {error}") from None
 
 
 def _yaml_dump(value) -> str:
@@ -592,7 +593,7 @@ def _yaml_dump(value) -> str:
     except CodecError:
         raise
     except Exception as error:
-        raise CodecError("CODEC_ENCODE", f"yaml: {error}") from None
+        raise CodecError(codes.CODEC_ENCODE, f"yaml: {error}") from None
     return out.getvalue()
 
 
@@ -605,7 +606,7 @@ def decode(styles, raw):
     # An empty cell is CODEC_DECODE, except under a last base64 stage, whose encoder writes an empty
     # cell for empty bytes (docs/codec.md, Stage lists).
     if len(raw) == 0 and (not styles or styles[-1] != "base64"):
-        raise CodecError("CODEC_DECODE", "styled cell is empty")
+        raise CodecError(codes.CODEC_DECODE, "styled cell is empty")
     if isinstance(raw, memoryview):
         current = bytes(raw)
     elif isinstance(raw, bytearray):
@@ -616,12 +617,12 @@ def decode(styles, raw):
     has_value = False
     for style in reversed(styles):
         if has_value:
-            raise CodecError("CODEC_DECODE", f"style {style} after a decoded value")
+            raise CodecError(codes.CODEC_DECODE, f"style {style} after a decoded value")
         if style == "gz":
             try:
                 current = zlib.decompress(current, 47)
             except zlib.error as error:
-                raise CodecError("CODEC_DECODE", f"gz: {error}") from None
+                raise CodecError(codes.CODEC_DECODE, f"gz: {error}") from None
         elif style == "base64":
             current = _decode_base64(current)
         elif style == "serialize":
@@ -636,10 +637,10 @@ def decode(styles, raw):
             except CodecError:
                 raise
             except Exception as error:
-                raise CodecError("CODEC_DECODE", f"json: {error}") from None
+                raise CodecError(codes.CODEC_DECODE, f"json: {error}") from None
             has_value = True
         else:
-            raise CodecError("CODEC_UNSUPPORTED", f"style {style}")
+            raise CodecError(codes.CODEC_UNSUPPORTED, f"style {style}")
     if has_value:
         return StyledValue.value(value)
     return StyledValue.value(_text(current, "decode"))
@@ -655,26 +656,26 @@ def encode(styles, state: StyledValue):
     if styles and styles[0] in ("gz", "base64"):
         if not isinstance(transformed, str):
             raise CodecError(
-                "CODEC_ENCODE", f"a first {styles[0]} stage takes a string value"
+                codes.CODEC_ENCODE, f"a first {styles[0]} stage takes a string value"
             )
         current = transformed.encode("utf-8")
     for index, style in enumerate(styles):
         if style == "serialize":
             if index != 0:
                 raise CodecError(
-                    "CODEC_UNSUPPORTED", "serialize must be the first encoding style"
+                    codes.CODEC_UNSUPPORTED, "serialize must be the first encoding style"
                 )
             current = php_serialize(_common_value(transformed, "serialize")).encode(
                 "utf-8"
             )
         elif style == "yaml":
             if index != 0:
-                raise CodecError("CODEC_UNSUPPORTED", "yaml must be the first style")
+                raise CodecError(codes.CODEC_UNSUPPORTED, "yaml must be the first style")
             current = _yaml_dump(_common_value(transformed, "yaml")).encode("utf-8")
         elif style == "ordered_json":
             if index != 0:
                 raise CodecError(
-                    "CODEC_UNSUPPORTED", "ordered_json must be the first stage"
+                    codes.CODEC_UNSUPPORTED, "ordered_json must be the first stage"
                 )
             if isinstance(transformed, OrderedJson):
                 current = ordered_json_stringify(transformed).encode("utf-8")
@@ -686,8 +687,8 @@ def encode(styles, state: StyledValue):
             current = base64.b64encode(current)
         elif style == "gz":
             if index != len(styles) - 1:
-                raise CodecError("CODEC_UNSUPPORTED", "gz must be the last style")
+                raise CodecError(codes.CODEC_UNSUPPORTED, "gz must be the last style")
             return zlib.compress(current, 9)
         else:
-            raise CodecError("CODEC_UNSUPPORTED", f"style {style}")
+            raise CodecError(codes.CODEC_UNSUPPORTED, f"style {style}")
     return current.decode("utf-8")

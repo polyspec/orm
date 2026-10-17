@@ -8,6 +8,7 @@ import { normalizeDecimal } from './decimal.js';
 import { ColumnFunction, ValueFunction } from './values.js';
 import { StyledValue } from './styled_value.js';
 import { Value as JsonValue } from '@polyspec/ordered-json';
+import * as codes from './codes.js';
 
 export const CORE: unique symbol = Symbol('orm.core');
 
@@ -118,7 +119,7 @@ export class RowState {
 
 const operators: Record<string, string> = { '': 'eq', ne: 'not_eq', gt: 'gt', lt: 'lt', ge: 'gte', le: 'lte', lk: 'contains', lb: 'contains_binary' };
 
-export function configError(message: string): OrmError { return new OrmError('CONFIG', message); }
+export function configError(message: string): OrmError { return new OrmError(codes.CONFIG, message); }
 
 export function isModel(value: unknown): value is ModelLike {
   return typeof value === 'object' && value !== null && CORE in value;
@@ -257,7 +258,7 @@ export class Core {
     switch (key.op) {
       case 'tuple': case 'ne_tuple': {
         if (!Array.isArray(value)) throw configError('tuple values must be a list');
-        if (value.length === 0) throw new OrmError('EMPTY_IN', 'tuple condition received an empty list');
+        if (value.length === 0) throw new OrmError(codes.EMPTY_IN, 'tuple condition received an empty list');
         const rows = value.map((row: unknown): unknown[] => {
           if (!Array.isArray(row) || row.length !== key.columns.length) throw configError('tuple values must be value groups of the tuple columns');
           return row;
@@ -293,7 +294,7 @@ export class Core {
     }
     if (Array.isArray(value)) {
       if (!nullable) throw configError(`a list is not accepted by the ${key.op} operator`);
-      if (value.length === 0) throw new OrmError('EMPTY_IN', `${key.column} received an empty list`);
+      if (value.length === 0) throw new OrmError(codes.EMPTY_IN, `${key.column} received an empty list`);
       return [p({ kind: 'list', op: key.op === 'ne' ? 'not_in' : 'in', value }), 0];
     }
     return [p({ kind: 'value', op, value }), 0];
@@ -350,8 +351,8 @@ export class Core {
   /** Returns a selected or assigned column value; any other column is COLUMN_UNSELECTED. */
   public column(name: string): unknown {
     if (this.values.has(name)) return this.values.get(name);
-    if (fieldOf(this.ent.entity, name) === undefined) throw new OrmError('COLUMN_UNKNOWN', `${this.ent.entity.name}.${name}`);
-    throw new OrmError('COLUMN_UNSELECTED', `${this.ent.entity.name}.${name} was neither selected nor assigned`);
+    if (fieldOf(this.ent.entity, name) === undefined) throw new OrmError(codes.COLUMN_UNKNOWN, `${this.ent.entity.name}.${name}`);
+    throw new OrmError(codes.COLUMN_UNSELECTED, `${this.ent.entity.name}.${name} was neither selected nor assigned`);
   }
   /**
    * Returns the value of an ordered_json column, as column does, checked to be a styled value that holds SQL NULL or an
@@ -370,18 +371,18 @@ export class Core {
   /** Stores a column value and records it for the next write; null stores NULL. */
   public setValue(column: string, value: unknown): void {
     const field = fieldOf(this.ent.entity, column);
-    if (field === undefined) throw new OrmError('COLUMN_UNKNOWN', column);
+    if (field === undefined) throw new OrmError(codes.COLUMN_UNKNOWN, column);
     if (styledField(field)) {
-      if (!(value instanceof StyledValue)) throw new OrmError('CODEC_ENCODE', `${column} requires StyledValue`);
-      if (!field.nullable && value.kind === 'sql-null') throw new OrmError('CODEC_ENCODE', `${column} does not accept SQL NULL`);
+      if (!(value instanceof StyledValue)) throw new OrmError(codes.CODEC_ENCODE, `${column} requires StyledValue`);
+      if (!field.nullable && value.kind === 'sql-null') throw new OrmError(codes.CODEC_ENCODE, `${column} does not accept SQL NULL`);
       if (value.kind === 'value') value.payload();
     } else if (value !== null) {
       const range = integerRanges[field.type];
       if (range !== undefined && (typeof value !== 'number' || !Number.isSafeInteger(value) || value < range[0] || value > range[1])) {
-        throw new OrmError('CODEC_ENCODE', `${column} (${field.type}) requires an integer from ${range[0]} to ${range[1]}`);
+        throw new OrmError(codes.CODEC_ENCODE, `${column} (${field.type}) requires an integer from ${range[0]} to ${range[1]}`);
       }
       if (field.type === 'decimal') {
-        if (typeof value !== 'string') throw new OrmError('CODEC_ENCODE', `${column} requires exact decimal text`);
+        if (typeof value !== 'string') throw new OrmError(codes.CODEC_ENCODE, `${column} requires exact decimal text`);
         value = normalizeDecimal(value, field.precision, field.scale);
       }
     }
@@ -543,7 +544,7 @@ export class BuiltRequest {
     if (c.where.items.length > 0) q.where = this.group(c.where, c, f);
     for (const rel of c.relations) {
       if (rel.child.conn !== undefined) {
-        if (rel.child.limit) { this.fail(new OrmError('LIMIT_IN_RELATION', `${rel.child.ent.entity.name} relation uses limit; use groupLimit`)); return undefined; }
+        if (rel.child.limit) { this.fail(new OrmError(codes.LIMIT_IN_RELATION, `${rel.child.ent.entity.name} relation uses limit; use groupLimit`)); return undefined; }
         const list = this.external.get(c) ?? [];
         list.push(rel);
         this.external.set(c, list);
@@ -571,7 +572,7 @@ export class BuiltRequest {
     const ch = rel.child;
     const q = this.query(ch, new Frame(ch, undefined));
     if (!q) return undefined;
-    if (ch.limit) { this.fail(new OrmError('LIMIT_IN_RELATION', `${ch.ent.entity.name} relation uses limit; use groupLimit`)); return undefined; }
+    if (ch.limit) { this.fail(new OrmError(codes.LIMIT_IN_RELATION, `${ch.ent.entity.name} relation uses limit; use groupLimit`)); return undefined; }
     if (ch.parentNode) q.flatten = true;
     if (ch.groupLimit > 0) q.limit_per_parent = ch.groupLimit;
     if (ch.deleteLock) q.no_cascade_delete = true;

@@ -5,6 +5,7 @@ from polyspec.ordered_json import (
     Value as OrderedJson,
 )
 
+from polyspec.orm import codes
 from polyspec.orm.errors import OrmError
 
 __all__ = ["StyledValue"]
@@ -14,18 +15,18 @@ def _assert_no_omitted(value: Any, ancestors: set, depth: int) -> None:
     # codec이 값 표현에서 잃어버리는 요소(undefined, 순환, 비유한 수, 지원 밖 타입)를
     # 쓰기 전에 거절한다. 깊이 제한은 256 level다.
     if depth > 256:
-        raise OrmError("CODEC_ENCODE", "styled value nesting exceeds 256 levels")
+        raise OrmError(codes.CODEC_ENCODE, "styled value nesting exceeds 256 levels")
     if value is None or isinstance(value, (bool, int, str, OrderedJson)):
         return
     if isinstance(value, float):
         import math
 
         if not math.isfinite(value):
-            raise OrmError("CODEC_ENCODE", "styled value contains a non-finite number")
+            raise OrmError(codes.CODEC_ENCODE, "styled value contains a non-finite number")
         return
     if isinstance(value, list):
         if id(value) in ancestors:
-            raise OrmError("CODEC_ENCODE", "styled value contains a cycle")
+            raise OrmError(codes.CODEC_ENCODE, "styled value contains a cycle")
         ancestors.add(id(value))
         for item in value:
             _assert_no_omitted(item, ancestors, depth + 1)
@@ -33,27 +34,27 @@ def _assert_no_omitted(value: Any, ancestors: set, depth: int) -> None:
         return
     if isinstance(value, dict):
         if id(value) in ancestors:
-            raise OrmError("CODEC_ENCODE", "styled value contains a cycle")
+            raise OrmError(codes.CODEC_ENCODE, "styled value contains a cycle")
         ancestors.add(id(value))
         for name in value:
             if not isinstance(name, str):
                 raise OrmError(
-                    "CODEC_ENCODE", "styled value member keys must be strings"
+                    codes.CODEC_ENCODE, "styled value member keys must be strings"
                 )
             try:
                 _assert_no_omitted(value[name], ancestors, depth + 1)
             except OrmError as error:
-                if error.code == "CODEC_ENCODE":
+                if error.code == codes.CODEC_ENCODE:
                     import json
 
                     raise OrmError(
-                        "CODEC_ENCODE",
+                        codes.CODEC_ENCODE,
                         f"styled value member {json.dumps(name)}: {error.args[0]}",
                     ) from None
                 raise
         ancestors.discard(id(value))
         return
-    raise OrmError("CODEC_ENCODE", f"styled value contains {type(value).__name__}")
+    raise OrmError(codes.CODEC_ENCODE, f"styled value contains {type(value).__name__}")
 
 
 class StyledValue:
@@ -75,7 +76,7 @@ class StyledValue:
 
     def payload(self) -> Any:
         if self.kind == "sql-null":
-            raise OrmError("CODEC_DECODE", "SQL NULL has no styled value")
+            raise OrmError(codes.CODEC_DECODE, "SQL NULL has no styled value")
         _assert_no_omitted(self._stored, set(), 0)
         return self._stored
 

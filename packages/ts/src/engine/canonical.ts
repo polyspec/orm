@@ -1,5 +1,6 @@
 import type { Assignment, Group, Item, Join, Order, Predicate, Relation, Request, RequestQuery, Subquery, OrmFunction } from '../ir.js';
 import { OrmError } from '../runtime_error.js';
+import * as codes from '../codes.js';
 
 /**
  * The canonical form of a request for the plan cache (T169-3, the rule of packages/go/orm/canonical.go). An IN or NOT IN
@@ -34,7 +35,7 @@ class Canonicalizer {
 
   /** Adds one slot holding the value of parameter p and returns the slot index. */
   public index(p: number): number {
-    if (!Number.isSafeInteger(p) || p < 0 || p >= this.params.length) throw new OrmError('IR_INVALID', `param index ${p} out of range (n_params ${this.params.length})`);
+    if (!Number.isSafeInteger(p) || p < 0 || p >= this.params.length) throw new OrmError(codes.IR_INVALID, `param index ${p} out of range (n_params ${this.params.length})`);
     this.used[p] = true;
     this.out.push(this.params[p]);
     return this.out.length - 1;

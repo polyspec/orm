@@ -13,6 +13,7 @@ from polyspec.ordered_json import (
     stringify as ordered_json_stringify,
 )
 
+from polyspec.orm import codes
 from polyspec.orm.core import Core
 from polyspec.orm.engine.model import RuntimeModel, model_of_manifest
 from polyspec.orm.errors import OrmError
@@ -52,7 +53,7 @@ class _RegisteredModel:
         """생성된 class의 EntityDef: entity와 그 class로 model을 만드는 생성자."""
         entity = self.entities.get(name)
         if entity is None:
-            raise OrmError("ENTITY_UNKNOWN", name)
+            raise OrmError(codes.ENTITY_UNKNOWN, name)
         self.ctors[name] = ctor
         return EntityDef(self, entity, ctor)
 
@@ -243,7 +244,7 @@ def _number_text(value: float) -> str:
     """JavaScript Number::toString의 텍스트. repr과 JavaScript는 모두 가장 짧은 왕복
     자릿수를 쓰므로 자릿수는 같고, 소수점과 지수의 위치만 ECMAScript 규칙으로 정한다."""
     if not math.isfinite(value):
-        raise OrmError("CODEC_ENCODE", f"JSON output cannot write the number {value!r}")
+        raise OrmError(codes.CODEC_ENCODE, f"JSON output cannot write the number {value!r}")
     if value == 0:
         return "0"
     sign = "-" if value < 0 else ""
@@ -288,7 +289,7 @@ def _json_text(value) -> str:
         for name in value:
             if not isinstance(name, str):
                 raise OrmError(
-                    "CODEC_ENCODE", f"JSON output cannot write the member key {name!r}"
+                    codes.CODEC_ENCODE, f"JSON output cannot write the member key {name!r}"
                 )
         return (
             "{"
@@ -298,7 +299,7 @@ def _json_text(value) -> str:
             )
             + "}"
         )
-    raise OrmError("CODEC_ENCODE", f"JSON output cannot write {type(value).__name__}")
+    raise OrmError(codes.CODEC_ENCODE, f"JSON output cannot write {type(value).__name__}")
 
 
 class Model:
@@ -311,7 +312,7 @@ class Model:
 
     @property
     def entity_def(self) -> EntityDef:
-        raise OrmError("CONFIG", f"{type(self).__name__} has no entity declaration")
+        raise OrmError(codes.CONFIG, f"{type(self).__name__} has no entity declaration")
 
     def __getattr__(self, name: str):
         # 생성된 고정 method와 class attribute가 아닌 이름은 chain 문법으로 해석한다.
@@ -424,7 +425,7 @@ class Model:
         rows = load(self.core, "one")
         row = rows.first()
         if row is None:
-            raise OrmError("NO_ROWS", "query matched no rows")
+            raise OrmError(codes.NO_ROWS, "query matched no rows")
         return row
 
     def gets(self) -> Collection[Self]:
@@ -442,14 +443,14 @@ class Model:
         from polyspec.orm.model_exec import _aggregate_number, scalar_of
 
         if self.core.agg_fn != "sum":
-            raise OrmError("CONFIG", "get_sum requires sum_<col>()")
+            raise OrmError(codes.CONFIG, "get_sum requires sum_<col>()")
         return _aggregate_number(scalar_of(self.core, "sum", self.core.agg))
 
     def get_avg(self) -> float:
         from polyspec.orm.model_exec import _aggregate_number, scalar_of
 
         if self.core.agg_fn != "avg":
-            raise OrmError("CONFIG", "get_avg requires avg_<col>()")
+            raise OrmError(codes.CONFIG, "get_avg requires avg_<col>()")
         return _aggregate_number(scalar_of(self.core, "avg", self.core.agg))
 
     def gets_count(self) -> GroupRows:

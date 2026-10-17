@@ -1,6 +1,8 @@
 # OrmError: 실행 중 오류의 code와 message를 함께 전달한다.
 # code 목록은 docs/interfaces.md가 정의한다.
 
+from polyspec.orm import codes
+
 
 class OrmError(Exception):
     """A failure of the library with its stable error code."""
@@ -27,7 +29,7 @@ def rollback_failed(cause: object, rollback: object) -> OrmError:
     ROLLBACK 오류로 보고한다 (docs/interfaces.md). cause는 원인이고
     rollback은 rollback 오류다. ROLLBACK 오류는 retry하지 않는다."""
     return OrmError(
-        "ROLLBACK",
+        codes.ROLLBACK,
         f"transaction failed ({_error_text(cause)}) "
         f"and rollback failed ({_error_text(rollback)})",
         cause,
@@ -40,5 +42,5 @@ def joined_errors(errors: list) -> object:
     if len(errors) <= 1:
         return errors[0] if errors else None
     return OrmError(
-        "CONFIG", "; ".join(_error_text(error) for error in errors), errors[0]
+        codes.CONFIG, "; ".join(_error_text(error) for error in errors), errors[0]
     )

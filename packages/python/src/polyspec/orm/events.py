@@ -2,6 +2,7 @@
 # 모든 statement마다 event 하나를 등록한 subscriber에게 publish한다.
 import time
 
+from polyspec.orm import codes
 from polyspec.orm.errors import OrmError
 
 __all__ = ["StatementEvent", "Subscribers", "statement_kind"]
@@ -51,7 +52,7 @@ class Subscribers:
         """subscriber를 등록하고 해제 함수를 돌려준다."""
         if not callable(subscriber):
             raise OrmError(
-                "CONFIG", "subscribe takes a function that receives a statement event"
+                codes.CONFIG, "subscribe takes a function that receives a statement event"
             )
 
         # 같은 함수를 두 번 등록해도 해제는 자기 등록 하나만 지운다.
@@ -101,7 +102,7 @@ class Subscribers:
             try:
                 subscriber(event)
             except OrmError as failure:
-                if failure.code == "SUBSCRIBER":
+                if failure.code == codes.SUBSCRIBER:
                     raise
                 raise _subscriber_error(failure) from None
             except Exception as failure:  # noqa: BLE001
@@ -112,5 +113,5 @@ def _subscriber_error(failure: Exception) -> OrmError:
     """subscriber 오류의 text를 message에 담고 그 오류를 cause로 둔 SUBSCRIBER 오류다. OrmError의 text는
     `<code>: <message>`이며, TypeScript client가 `error.message`로 쓰는 text와 같다."""
     return OrmError(
-        "SUBSCRIBER", f"statement event subscriber failed: {failure}", failure
+        codes.SUBSCRIBER, f"statement event subscriber failed: {failure}", failure
     )

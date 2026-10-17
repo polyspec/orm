@@ -6,6 +6,7 @@ import math
 import re
 from dataclasses import dataclass
 
+from polyspec.orm import codes
 from polyspec.orm.engine.params import ParamUse
 from polyspec.orm.errors import OrmError
 
@@ -79,7 +80,7 @@ def check_assign(i: int, value, slot: ParamSlot) -> None:
     statement."""
     if value is None and slot.not_null:
         raise OrmError(
-            "CODEC_ENCODE", f"parameter {i} assigns NULL to the non-null {slot.column}"
+            codes.CODEC_ENCODE, f"parameter {i} assigns NULL to the non-null {slot.column}"
         )
 
 
@@ -96,7 +97,7 @@ def check_param(i: int, value, slot: ParamSlot, zone: str) -> None:
 
     def kind() -> OrmError:
         return OrmError(
-            "CODEC_ENCODE",
+            codes.CODEC_ENCODE,
             f"parameter {i} ({type(value).__name__}) is not a {slot.type} value",
         )
 
@@ -106,13 +107,13 @@ def check_param(i: int, value, slot: ParamSlot, zone: str) -> None:
             raise kind()
         low, high = _INTEGER_RANGES[t]
         if not low <= value <= high:
-            raise OrmError("CODEC_ENCODE", f"parameter {i} ({value}) is outside {t}")
+            raise OrmError(codes.CODEC_ENCODE, f"parameter {i} ({value}) is outside {t}")
     elif t == "f64":
         if not isinstance(value, (int, float)) or isinstance(value, bool):
             raise kind()
         if isinstance(value, float) and not math.isfinite(value):
             raise OrmError(
-                "CODEC_ENCODE", f"parameter {i} ({value}) is not a finite f64"
+                codes.CODEC_ENCODE, f"parameter {i} ({value}) is not a finite f64"
             )
     elif t == "bool":
         if not isinstance(value, bool):
@@ -123,22 +124,22 @@ def check_param(i: int, value, slot: ParamSlot, zone: str) -> None:
         try:
             normalize_decimal(value, slot.precision, slot.scale)
         except OrmError as error:
-            raise OrmError("CODEC_ENCODE", f"parameter {i}: {error}") from error
+            raise OrmError(codes.CODEC_ENCODE, f"parameter {i}: {error}") from error
     elif t in ("varchar", "text", "uuid"):
         if not isinstance(value, str):
             raise kind()
         if "\0" in value:
             raise OrmError(
-                "CODEC_ENCODE", f"parameter {i} holds U+0000, which no {t} value holds"
+                codes.CODEC_ENCODE, f"parameter {i} holds U+0000, which no {t} value holds"
             )
         if t == "varchar" and slot.length > 0 and len(value) > slot.length:
             raise OrmError(
-                "CODEC_ENCODE",
+                codes.CODEC_ENCODE,
                 f"parameter {i} has {len(value)} characters, more than varchar({slot.length})",
             )
         if t == "uuid" and not _CANONICAL_UUID.match(value):
             raise OrmError(
-                "CODEC_ENCODE",
+                codes.CODEC_ENCODE,
                 f"parameter {i} ({_shown(value)}) is not a lower-case canonical uuid",
             )
     elif t == "bytes":
@@ -150,12 +151,12 @@ def check_param(i: int, value, slot: ParamSlot, zone: str) -> None:
         try:
             text = time_value(value, t, zone, slot.precision)
         except OrmError as error:
-            raise OrmError("CODEC_ENCODE", f"parameter {i}: {error}") from error
+            raise OrmError(codes.CODEC_ENCODE, f"parameter {i}: {error}") from error
         if t != "time" and (
             re.match(r"\d{4}-", text) is None or text.startswith("0000")
         ):
             raise OrmError(
-                "CODEC_ENCODE",
+                codes.CODEC_ENCODE,
                 f"parameter {i} ({_shown(value)}) is outside 0001-01-01 to 9999-12-31",
             )
 
@@ -166,7 +167,7 @@ def transform_param(kind: str, value):
     if value is None:
         return None
     if not isinstance(value, str):
-        raise OrmError("CODEC_ENCODE", f"{kind} requires a string value")
+        raise OrmError(codes.CODEC_ENCODE, f"{kind} requires a string value")
     escaped = value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     if kind == "like_contains":
         return f"%{escaped}%"

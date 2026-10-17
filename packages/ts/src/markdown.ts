@@ -13,6 +13,7 @@ import { validate } from './engine/validate.js';
 import type { Assemble, Child, OutputColumn, Request, RequestQuery, Subquery } from './ir.js';
 import { present } from './present.js';
 import { OrmError } from './runtime_error.js';
+import * as codes from './codes.js';
 
 /** markdown:// DSN의 flowmark server 주소, corpus 이름, token이다(docs/protocol.md §5 "IR executors"). */
 export interface MarkdownDsn {
@@ -28,24 +29,24 @@ const dsnForm = 'markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<tok
  * 평문으로 가므로 host는 127.0.0.1뿐이다.
  */
 export function parseMarkdownDsn(url: URL): MarkdownDsn {
-  if (url.username !== '' || url.password !== '') throw new OrmError('CONFIG', `${dsnForm}; it takes no user`);
-  if (url.hostname !== '127.0.0.1') throw new OrmError('CONFIG', `${dsnForm}; host ${JSON.stringify(url.hostname)}: a flowmark server listens on 127.0.0.1 only`);
+  if (url.username !== '' || url.password !== '') throw new OrmError(codes.CONFIG, `${dsnForm}; it takes no user`);
+  if (url.hostname !== '127.0.0.1') throw new OrmError(codes.CONFIG, `${dsnForm}; host ${JSON.stringify(url.hostname)}: a flowmark server listens on 127.0.0.1 only`);
   const port = Number(url.port);
-  if (!/^[0-9]+$/.test(url.port) || port < 1 || port > 65535) throw new OrmError('CONFIG', `${dsnForm}; port ${JSON.stringify(url.port)} is not 1 to 65535: give the port that flowmark serve printed`);
+  if (!/^[0-9]+$/.test(url.port) || port < 1 || port > 65535) throw new OrmError(codes.CONFIG, `${dsnForm}; port ${JSON.stringify(url.port)} is not 1 to 65535: give the port that flowmark serve printed`);
   let corpus: string;
   try { corpus = decodeURIComponent(url.pathname.replace(/^\//, '')); } catch { corpus = ''; }
-  if (corpus === '' || corpus.includes('/')) throw new OrmError('CONFIG', `${dsnForm}; the path ${JSON.stringify(url.pathname)} is not one corpus name: give the corpus root's directory name`);
+  if (corpus === '' || corpus.includes('/')) throw new OrmError(codes.CONFIG, `${dsnForm}; the path ${JSON.stringify(url.pathname)} is not one corpus name: give the corpus root's directory name`);
   const tokens = url.searchParams.getAll('token');
   const [token] = tokens;
-  if (tokens.length !== 1 || token === undefined || token === '') throw new OrmError('CONFIG', `${dsnForm}; give one token, the token of .flowmark/server.json of the corpus`);
+  if (tokens.length !== 1 || token === undefined || token === '') throw new OrmError(codes.CONFIG, `${dsnForm}; give one token, the token of .flowmark/server.json of the corpus`);
   for (const key of url.searchParams.keys()) {
-    if (key !== 'token') throw new OrmError('CONFIG', `${dsnForm}; it does not accept ${key}`);
+    if (key !== 'token') throw new OrmError(codes.CONFIG, `${dsnForm}; it does not accept ${key}`);
   }
   return { address: `${url.hostname}:${port}`, corpus, token };
 }
 
 function canceled(): OrmError {
-  return new OrmError('CANCELED', 'the call was cancelled');
+  return new OrmError(codes.CANCELED, 'the call was cancelled');
 }
 
 /** control message 하나다: begin(read_only), commit, rollback, savepoint, release, rollback_to(name). */
@@ -107,7 +108,7 @@ export class MarkdownSession {
     } catch (error) {
       s.close();
       if (signal?.aborted) throw canceled();
-      throw new OrmError('DRIVER', `connecting to the flowmark server ${dsn.address}: ${error instanceof Error ? error.message : String(error)}; start flowmark serve for the corpus`, error);
+      throw new OrmError(codes.DRIVER, `connecting to the flowmark server ${dsn.address}: ${error instanceof Error ? error.message : String(error)}; start flowmark serve for the corpus`, error);
     } finally {
       signal?.removeEventListener('abort', abort);
     }
@@ -131,7 +132,7 @@ export class MarkdownSession {
    * 끝나면 연결을 끊는다: server는 끊긴 연결의 transaction을 rollback하고 lock을 푼다.
    */
   public async call(line: string, signal: AbortSignal | undefined): Promise<Value> {
-    if (this.broken) throw new OrmError('CONNECTION_LOST', 'the flowmark session has ended');
+    if (this.broken) throw new OrmError(codes.CONNECTION_LOST, 'the flowmark session has ended');
     if (signal?.aborted) {
       this.close();
       throw canceled();
@@ -145,7 +146,7 @@ export class MarkdownSession {
     } catch (error) {
       this.close();
       if (signal?.aborted) throw canceled();
-      throw new OrmError('CONNECTION_LOST', `the flowmark server connection broke: ${error instanceof Error ? error.message : String(error)}`, error);
+      throw new OrmError(codes.CONNECTION_LOST, `the flowmark server connection broke: ${error instanceof Error ? error.message : String(error)}`, error);
     } finally {
       signal?.removeEventListener('abort', abort);
     }
@@ -153,7 +154,7 @@ export class MarkdownSession {
     try { answer = parseJson(text); } catch { answer = undefined; }
     if (answer === undefined || answer.kind !== 'object') {
       this.close();
-      throw new OrmError('INTERNAL', `the flowmark server answered ${JSON.stringify(text)}, not a JSON object`);
+      throw new OrmError(codes.INTERNAL, `the flowmark server answered ${JSON.stringify(text)}, not a JSON object`);
     }
     const failure = answer.get('error');
     if (failure !== undefined) {
@@ -161,10 +162,10 @@ export class MarkdownSession {
       const message = failure.kind === 'object' ? failure.get('message') : undefined;
       if (code?.kind !== 'string' || code.stringValue() === '') {
         this.close();
-        throw new OrmError('INTERNAL', `the flowmark server answered the error ${failure.raw} without a code`);
+        throw new OrmError(codes.INTERNAL, `the flowmark server answered the error ${failure.raw} without a code`);
       }
       // server는 CONNECTION_LOST를 쓴 뒤 연결을 닫는다(idle transaction).
-      if (code.stringValue() === 'CONNECTION_LOST') this.close();
+      if (code.stringValue() === codes.CONNECTION_LOST) this.close();
       throw new OrmError(code.stringValue(), message?.kind === 'string' ? message.stringValue() : '');
     }
     return answer;
@@ -193,7 +194,7 @@ export class MarkdownPool {
   /** 쉬는 session을 내주거나 새로 연결한다. 쓰는 session이 bounds.size이면 하나가 돌아올 때까지 기다린다. */
   public async acquire(signal: AbortSignal | undefined): Promise<MarkdownSession> {
     while (!this.closed && this.inUse >= this.bounds.size) await this.wait(signal);
-    if (this.closed) throw new OrmError('CONFIG', 'database is closed');
+    if (this.closed) throw new OrmError(codes.CONFIG, 'database is closed');
     for (let s = this.idle.pop(); s !== undefined; s = this.idle.pop()) {
       if (s.broken || (this.bounds.lifetimeMs > 0 && performance.now() - s.created >= this.bounds.lifetimeMs)) {
         s.close();
@@ -280,9 +281,9 @@ export function markdownParam(db: Pick<Db, 'zone' | 'aesKey'>, i: number, value:
   if (typeof value === 'string' && use?.type === 'bytes') return JSON.stringify(Buffer.from(value).toString('base64'));
   if (typeof value === 'string' && (use?.type === 'date' || use?.type === 'time' || use?.type === 'datetime')) return JSON.stringify(timeValue(value, use.type, db.zone, 6));
   if (typeof value === 'bigint') return value.toString();
-  if (typeof value === 'number' && !Number.isFinite(value)) throw new OrmError('CODEC_ENCODE', `parameter ${i} (${value}) has no JSON form`);
+  if (typeof value === 'number' && !Number.isFinite(value)) throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} (${value}) has no JSON form`);
   if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return JSON.stringify(value);
-  throw new OrmError('CODEC_ENCODE', `parameter ${i} (${typeof value}) has no JSON form`);
+  throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} (${typeof value}) has no JSON form`);
 }
 
 /**
@@ -315,7 +316,7 @@ async function markdownCall(ex: Executor, request: Request, params: readonly unk
 }
 
 function answerError(message: string): OrmError {
-  return new OrmError('INTERNAL', `the flowmark answer: ${message}`);
+  return new OrmError(codes.INTERNAL, `the flowmark answer: ${message}`);
 }
 
 /** markdown 답의 행이 마지막 칸에 가지는 join과 relation 행이다. */
@@ -472,7 +473,7 @@ function sameList(a: readonly string[], b: readonly string[]): boolean {
 /** 답의 값 하나를 column type의 cell로 읽는다. 값은 parameter와 같은 runtime value model이다. */
 function answerValue(type: string, raw: Value): unknown {
   if (raw.kind === 'null') return null;
-  const bad = () => new OrmError('CODEC_DECODE', `the answer value ${raw.raw} is not a ${type} value`);
+  const bad = () => new OrmError(codes.CODEC_DECODE, `the answer value ${raw.raw} is not a ${type} value`);
   switch (type) {
     case 'i16': case 'i32': case 'i64':
       if (raw.kind !== 'number' || !/^-?[0-9]+$/.test(raw.numberLiteral())) throw bad();
@@ -543,6 +544,6 @@ export async function markdownWrite(ex: Executor, request: Request, params: read
   const keys = answer.get('keys');
   const out = keys?.kind === 'array' ? keys.items.map(aggregateValue) : [];
   const n = Number(affected.numberLiteral());
-  if (request.kind === 'update' && request.optimistic !== undefined && n === 0) throw new OrmError('OPTIMISTIC_LOCK', 'the row changed after it was read');
+  if (request.kind === 'update' && request.optimistic !== undefined && n === 0) throw new OrmError(codes.OPTIMISTIC_LOCK, 'the row changed after it was read');
   return { keys: out, affected: n };
 }

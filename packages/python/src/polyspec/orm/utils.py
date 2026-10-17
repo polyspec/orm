@@ -8,6 +8,7 @@ import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from polyspec.orm import codes
 from polyspec.orm.aes import AesKeyring
 from polyspec.orm.errors import OrmError
 from polyspec.orm.markdown import unsupported_on_markdown
@@ -41,7 +42,7 @@ def _active(db, name: str):
     frame = _active_for(db)
     if frame is None:
         raise OrmError(
-            "CONFIG", f"{name} requires an active transaction of the connection"
+            codes.CONFIG, f"{name} requires an active transaction of the connection"
         )
     return frame
 
@@ -82,12 +83,12 @@ class Utils:
         unsupported_on_markdown(self.db, "lock")
         frame = _active(self.db, "lock")
         if not valid_key(key):
-            raise OrmError("CONFIG", f"lock key {key!r} is invalid")
+            raise OrmError(codes.CONFIG, f"lock key {key!r} is invalid")
         driver = self.db.driver
         if driver == "mysql":
             rows = frame.run("SELECT GET_LOCK(?, 50)", [key], "utility")["rows"]
             if not rows or rows[0][0] != 1:
-                raise OrmError("DEADLOCK", f"lock {key} was not acquired")
+                raise OrmError(codes.DEADLOCK, f"lock {key} was not acquired")
             frame.locks.append(key)
         elif driver == "postgres":
             frame.run(POSTGRES_ADVISORY_LOCK, [key], "utility")
@@ -98,7 +99,7 @@ class Utils:
         unsupported_on_markdown(self.db, "setLocal")
         frame = _active(self.db, "setLocal")
         if not valid_key(key):
-            raise OrmError("CONFIG", f"local key {key!r} is invalid")
+            raise OrmError(codes.CONFIG, f"local key {key!r} is invalid")
         if self.db.driver == "postgres":
             frame.run(POSTGRES_SET_LOCAL, [key, value], "utility")
         elif self.db.driver == "mysql":
@@ -109,7 +110,7 @@ class Utils:
         unsupported_on_markdown(self.db, "local")
         frame = _active(self.db, "local")
         if key not in frame.locals:
-            raise OrmError("NO_ROWS", f"local value {key} is not set")
+            raise OrmError(codes.NO_ROWS, f"local value {key} is not set")
         return frame.locals[key]
 
     def aes(self) -> AesUtils:
@@ -166,7 +167,7 @@ class SchemaUtils:
             )
             if result["differences"]:
                 raise OrmError(
-                    "SCHEMA_DIFFERS",
+                    codes.SCHEMA_DIFFERS,
                     "the existing tables of the document set differ beyond missing "
                     "tables, missing columns that are null or have a default and "
                     "missing indexes: " + "; ".join(result["differences"]),
@@ -179,7 +180,7 @@ class SchemaUtils:
             differences = installed_differences(live.document, live.unsupported, target)
             if differences:
                 raise OrmError(
-                    "CONFIG",
+                    codes.CONFIG,
                     "the database differs from the document set: "
                     + "; ".join(differences),
                 )
@@ -191,7 +192,7 @@ class SchemaUtils:
             )
         if _frame_of(self.db) is not None:
             raise OrmError(
-                "CONFIG",
+                codes.CONFIG,
                 f"{driver} adds tables and columns outside a transaction: MySQL commits "
                 "schema statements implicitly and SQLite turns foreign keys off to rebuild "
                 "a table",
@@ -215,14 +216,14 @@ class SchemaUtils:
         if rendered["statements"] is None:
             d = rendered["diagnostics"][0]
             raise OrmError(
-                "SCHEMA_INVALID",
+                codes.SCHEMA_INVALID,
                 f"document set: {d.rule} at {d.line}:{d.column}: {d.message}",
             )
         statements = rendered["statements"]
         target = _schema_target(model)
         if driver == "mysql" and _frame_of(self.db) is not None:
             raise OrmError(
-                "CONFIG",
+                codes.CONFIG,
                 "MySQL commits schema statements implicitly; install outside a transaction",
             )
 
@@ -234,7 +235,7 @@ class SchemaUtils:
             present = [t.name for t in target.tables if t.name in found]
             if present and len(present) < len(target.tables):
                 raise OrmError(
-                    "CONFIG",
+                    codes.CONFIG,
                     "install found only some tables of the document set: "
                     + ", ".join(present),
                 )
@@ -245,7 +246,7 @@ class SchemaUtils:
             differences = installed_differences(live, live.unsupported, target)
             if differences:
                 raise OrmError(
-                    "CONFIG",
+                    codes.CONFIG,
                     "the database differs from the document set: "
                     + "; ".join(differences),
                 )
@@ -266,7 +267,7 @@ class SchemaUtils:
         """Reports whether the schema exists: a PostgreSQL schema, a MySQL database, or on SQLite a table or
         view whose name starts with the schema name and __."""
         if not valid_key(name):
-            raise OrmError("CONFIG", f"schema name {name!r} is invalid")
+            raise OrmError(codes.CONFIG, f"schema name {name!r} is invalid")
         driver = self.db.driver
         if driver == "postgres":
             return self._check(
@@ -286,7 +287,7 @@ class SchemaUtils:
     def installed(self, name: str, table: str) -> bool:
         """Reports whether a table of the schema exists; on SQLite the table is named <schema>__<table>."""
         if not valid_key(name) or not valid_key(table):
-            raise OrmError("CONFIG", "schema and table names are required")
+            raise OrmError(codes.CONFIG, "schema and table names are required")
         driver = self.db.driver
         if driver == "postgres":
             return self._check(
@@ -354,18 +355,18 @@ class PrivilegeUtils:
     def _table(self, table: str) -> str:
         if self.utils.db.driver != "postgres":
             raise OrmError(
-                "CAPABILITY_UNSUPPORTED",
+                codes.CAPABILITY_UNSUPPORTED,
                 "table privileges are supported only by postgres",
             )
         parts = table.split(".")
         if len(parts) != 2 or not all(valid_key(part) for part in parts):
-            raise OrmError("CONFIG", "a qualified table name is required")
+            raise OrmError(codes.CONFIG, "a qualified table name is required")
         return ".".join(_quote("postgres", part) for part in parts)
 
     @staticmethod
     def _role(name: str) -> str:
         if not valid_key(name):
-            raise OrmError("CONFIG", f"role {name!r} is invalid")
+            raise OrmError(codes.CONFIG, f"role {name!r} is invalid")
         return _quote("postgres", name)
 
     def grant_table(self, table: str, role: str) -> None:
@@ -394,7 +395,7 @@ class PrivilegeUtils:
         r = self._role(role)
         upper = privilege.strip().upper()
         if upper not in _TABLE_PRIVILEGES:
-            raise OrmError("CONFIG", f"unsupported table privilege {privilege!r}")
+            raise OrmError(codes.CONFIG, f"unsupported table privilege {privilege!r}")
         self.utils._run(
             lambda: _frame_of(self.utils.db).run(
                 f"REVOKE {upper} ON {qualified} FROM {r}",
@@ -459,7 +460,7 @@ class AesUtils:
         entity = model.entity_def.entity
         if not entity.aes_version:
             raise OrmError(
-                "CONFIG", f"entity {entity.name} has no AES columns with a key version"
+                codes.CONFIG, f"entity {entity.name} has no AES columns with a key version"
             )
         columns = [
             _AesColumn(f.name, [st for st in f.stages if st in ("aes", "hex")])
@@ -468,7 +469,7 @@ class AesUtils:
         ]
         if not columns:
             raise OrmError(
-                "CONFIG", f"entity {entity.name} has no AES columns with a key version"
+                codes.CONFIG, f"entity {entity.name} has no AES columns with a key version"
             )
         db = self.utils.db
         driver = db.driver
@@ -523,7 +524,7 @@ class AesUtils:
                     )
                     if result["affected"] != 1:
                         raise OrmError(
-                            "DEADLOCK",
+                            codes.DEADLOCK,
                             f"aes rotation of {entity.table} changed {result['affected']} rows",
                         )
                     rotated += 1
@@ -535,7 +536,7 @@ class AesUtils:
         entity = model.entity_def.entity
         if not entity.aes_version:
             raise OrmError(
-                "CONFIG", f"entity {entity.name} has no AES columns with a key version"
+                codes.CONFIG, f"entity {entity.name} has no AES columns with a key version"
             )
         db = self.utils.db
         version = _quote(db.driver, entity.aes_version)
@@ -574,7 +575,7 @@ def _schema_model(schema):
         or not isinstance(schema.external_text, str)
     ):
         raise OrmError(
-            "CONFIG",
+            codes.CONFIG,
             "a schema is the manifest_text, manifest_hash and external_text of generated code",
         )
     try:
@@ -582,9 +583,9 @@ def _schema_model(schema):
             schema.manifest_text, schema.manifest_hash, schema.external_text
         )
     except OrmError as error:
-        if error.code == "SCHEMA_HASH_MISMATCH":
+        if error.code == codes.SCHEMA_HASH_MISMATCH:
             raise OrmError(
-                "CONFIG",
+                codes.CONFIG,
                 f"invalid schema manifest: the manifest text does not hash to its declared "
                 f"manifest_hash {schema.manifest_hash}",
             ) from None
@@ -601,7 +602,7 @@ def _schema_target(model):
     if manifest is None:
         d = diagnostics[0]
         raise OrmError(
-            "SCHEMA_INVALID",
+            codes.SCHEMA_INVALID,
             f"document set: {d.rule} at {d.line}:{d.column}: {d.message}",
         )
     externals = {d.name: emit_dbspec(d) for d in model.documents if d.external is True}
@@ -611,7 +612,7 @@ def _schema_target(model):
     if parse_diagnostics:
         d = parse_diagnostics[0]
         raise OrmError(
-            "SCHEMA_INVALID",
+            codes.SCHEMA_INVALID,
             f"document set: {d.rule} at {d.line}:{d.column}: {d.message}",
         )
     return document
@@ -629,7 +630,7 @@ def _introspect_set(run, driver: str, model):
     differences = external_differences(live_document, model.documents)
     if differences:
         raise OrmError(
-            "CONFIG",
+            codes.CONFIG,
             "the tables that the set uses from external documents differ from the database: "
             + "; ".join(differences),
         )
@@ -710,11 +711,11 @@ def _sqlite_without_foreign_keys(db, apply):
                 )[0][0]
                 if int(broken) != 0:
                     raise OrmError(
-                        "INTERNAL", f"the rebuilt tables break {broken} foreign keys"
+                        codes.INTERNAL, f"the rebuilt tables break {broken} foreign keys"
                     )
                 db._connection.execute("COMMIT", [])
             except BaseException:
-                db._connection.execute("ROLLBACK", [])
+                db._connection.execute(codes.ROLLBACK, [])
                 raise
         except BaseException:
             outside("PRAGMA foreign_keys = ON")

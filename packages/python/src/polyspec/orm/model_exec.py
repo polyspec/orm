@@ -4,6 +4,7 @@ import math
 import re
 from decimal import Decimal
 
+from polyspec.orm import codes
 from polyspec.orm.core import Core, SetSpec
 from polyspec.orm.database import (
     Db,
@@ -38,13 +39,13 @@ __all__ = ["execute_query", "load"]
 
 def _terminal(c: Core) -> Executor:
     if c.group:
-        raise OrmError("CONFIG", "a terminal is not allowed inside a group callback")
+        raise OrmError(codes.CONFIG, "a terminal is not allowed inside a group callback")
     if c.error is not None:
         raise c.error
     if c.conn is None:
         # connect 없는 model은 활성 transaction을 쓴다 (docs/usage.md).
         if not _ACTIVE:
-            raise OrmError("CONFIG", "the model has no connection: connect(db) first")
+            raise OrmError(codes.CONFIG, "the model has no connection: connect(db) first")
         frame = next(reversed(_ACTIVE.values()))
         return Executor(frame.db, frame)
     return Executor(c.conn, c.conn.active_frame())
@@ -113,7 +114,7 @@ class _Assembler:
                 )
                 if join_core is None:
                     raise OrmError(
-                        "INTERNAL", f"join result {child['rel']} without a model"
+                        codes.INTERNAL, f"join result {child['rel']} without a model"
                     )
                 join_row = self._join_row(child, row)
                 value = (
@@ -133,7 +134,7 @@ class _Assembler:
             )
             if relation is None:
                 raise OrmError(
-                    "INTERNAL", f"relation result {child['rel']} without a model"
+                    codes.INTERNAL, f"relation result {child['rel']} without a model"
                 )
             child_core = relation["child"]
             rows, child_asm = self._related(child, row)
@@ -320,7 +321,7 @@ def _attach_external(parents: list, rel: dict) -> None:
     name = ch.result_name(rel["many"])
     for p in parents:
         if name in p.row.related:
-            raise OrmError("CONFIG", f"relation result name {name} is used twice")
+            raise OrmError(codes.CONFIG, f"relation result name {name} is used twice")
         v = _match_values(p, ch, "left")
         matched = (
             by_key.get(key_of_values(v), []) if possible(p) and v is not None else []
@@ -341,13 +342,13 @@ def execute_query(runner_core: Core, kind: str):
         rows = load(runner_core, "one")
         first = rows.first()
         if first is None:
-            raise OrmError("NO_ROWS", "query matched no rows")
+            raise OrmError(codes.NO_ROWS, "query matched no rows")
         return first
     if kind == "gets_by":
         return load(runner_core, "all")
     if kind == "get_count_by":
         return int(scalar_of(runner_core, "count"))
-    raise OrmError("CONFIG", f"unknown query method {kind}")
+    raise OrmError(codes.CONFIG, f"unknown query method {kind}")
 
 
 # The text of a finite decimal number, the form of an aggregate scalar that a driver gives as text.
@@ -362,14 +363,14 @@ def _aggregate_number(value) -> float:
         isinstance(value, (int, float, Decimal))
         or (isinstance(value, str) and _NUMBER_TEXT.fullmatch(value))
     ):
-        raise OrmError("CODEC_DECODE", "aggregate scalar is not a finite number")
+        raise OrmError(codes.CODEC_DECODE, "aggregate scalar is not a finite number")
     try:
         number = float(value)
     except OverflowError:
         number = math.inf
     if not math.isfinite(number):
         raise OrmError(
-            "CODEC_DECODE", "aggregate scalar is outside finite binary64 range"
+            codes.CODEC_DECODE, "aggregate scalar is outside finite binary64 range"
         )
     return number
 
@@ -387,12 +388,12 @@ def scalar_of(c: Core, kind: str, agg: str = ""):
 def _encode_value(schema: Entity, column: str, value):
     col = field_of(schema, column)
     if col is None:
-        raise OrmError("COLUMN_UNKNOWN", f"{schema.name}.{column}")
+        raise OrmError(codes.COLUMN_UNKNOWN, f"{schema.name}.{column}")
     codec = tuple(s for s in col.stages if s not in ("aes", "hex", "ip"))
     if not codec:
         return value
     if not isinstance(value, StyledValue):
-        raise OrmError("CODEC_ENCODE", f"{column} requires StyledValue")
+        raise OrmError(codes.CODEC_ENCODE, f"{column} requires StyledValue")
     from polyspec.orm.codec import encode
 
     return encode(codec, value)
@@ -434,14 +435,14 @@ def create(c: Core):
 
     ex = _terminal(c)
     if not c.sets:
-        raise OrmError("CONFIG", "create requires set<col> values")
+        raise OrmError(codes.CONFIG, "create requires set<col> values")
     schema = c.ent.entity
     r = _write_request(c, "insert")
     r["ir"]["set"] = [_assign(r, schema, s) for s in c.sets]
     if c.duplication is not None:
         r["ir"]["on_duplicate"] = [_assign(r, schema, s) for s in c.duplication.sets]
         if not r["ir"]["on_duplicate"]:
-            raise OrmError("CONFIG", "duplication model has no set<col> values")
+            raise OrmError(codes.CONFIG, "duplication model has no set<col> values")
     r["ir"]["n_params"] = len(r["params"])
     written = write(ex, r["ir"], r["params"])
     core = _new_model(c.ent)
@@ -493,11 +494,11 @@ def creates(c: Core, models) -> int:
         return 0
     first = models[0].core
     if not first.sets:
-        raise OrmError("CONFIG", "creates requires models with set<col> values")
+        raise OrmError(codes.CONFIG, "creates requires models with set<col> values")
     columns = []
     for s in first.sets:
         if s.plus or s.minus:
-            raise OrmError("CONFIG", "creates accepts stored values only")
+            raise OrmError(codes.CONFIG, "creates accepts stored values only")
         columns.append(s.column)
     schema = c.ent.entity
     per = max(1, (999 if ex.db.driver == "sqlite" else 65535) // len(columns))
@@ -518,7 +519,7 @@ def creates(c: Core, models) -> int:
                     for j, s in enumerate(mc.sets)
                 ):
                     raise OrmError(
-                        "CONFIG",
+                        codes.CONFIG,
                         "every model of creates must set the same "
                         "columns in the same order",
                     )
@@ -570,7 +571,7 @@ def _key_values(c: Core, schema: Entity) -> dict:
         )
         if spec is None:
             raise OrmError(
-                "CONFIG", f"{schema.name} requires a loaded row or set primary key {pk}"
+                codes.CONFIG, f"{schema.name} requires a loaded row or set primary key {pk}"
             )
         keys[pk] = spec.value
     return keys
@@ -603,7 +604,7 @@ def _with_aes_columns(c: Core, schema: Entity) -> list:
             continue
         if c.row is None or field.name not in c.row.names:
             raise OrmError(
-                "CONFIG",
+                codes.CONFIG,
                 f"changing an AES column of {schema.name} requires "
                 f"a row loaded with {field.name}",
             )
@@ -637,7 +638,7 @@ def update(c: Core, optimistic: bool = False) -> None:
         version = c.row.original.get(column) if loaded and column != "" else None
         if version is None:
             raise OrmError(
-                "CONFIG",
+                codes.CONFIG,
                 "update(true) requires a row loaded with its update time column",
             )
         r["ir"]["optimistic"] = {"column": column, "p": len(r["params"])}
@@ -756,7 +757,7 @@ def _restore_key_value(own: dict, written: dict, column: str):
         ):
             return params[p["p"]]
     raise OrmError(
-        "INTERNAL", f"restore key column {column} has no value in the request"
+        codes.INTERNAL, f"restore key column {column} has no value in the request"
     )
 
 
@@ -776,22 +777,22 @@ def gets_count(c: Core):
     if request.error is not None:
         raise request.error
     if request.external:
-        raise OrmError("CONFIG", "group count cannot return relations")
+        raise OrmError(codes.CONFIG, "group count cannot return relations")
     result = query(ex, request.finish(), request.params)
     columns = (result["plan"]["steps"][0].get("assemble") or {}).get("columns")
     if not columns:
-        raise OrmError("INTERNAL", "group count has no result declaration")
+        raise OrmError(codes.INTERNAL, "group count has no result declaration")
     names: set[str] = set()
     for column in columns:
         if column["hidden"]:
             continue
         if not column["name"] or column["name"] in names:
             raise OrmError(
-                "CONFIG", f"group result repeats or omits column {column['name']}"
+                codes.CONFIG, f"group result repeats or omits column {column['name']}"
             )
         names.add(column["name"])
     if "row_count" not in names:
-        raise OrmError("INTERNAL", "group result has no row_count")
+        raise OrmError(codes.INTERNAL, "group result has no row_count")
     rows = []
     for raw in result["main"]:
         entries = []
@@ -820,7 +821,7 @@ def _group_value(db, column: dict, raw, schema: Entity):
         return raw
     if raw is None:
         if declared is not None and not declared.nullable:
-            raise OrmError("CODEC_DECODE", f"group column {column['name']} is SQL NULL")
+            raise OrmError(codes.CODEC_DECODE, f"group column {column['name']} is SQL NULL")
         return None
     type_ = column_type(declared) if declared is not None else column["type"]
     if type_ == "styled":
@@ -828,7 +829,7 @@ def _group_value(db, column: dict, raw, schema: Entity):
 
         if not isinstance(raw, StyledValue):
             raise OrmError(
-                "CODEC_DECODE", f"group column {column['name']} is not StyledValue"
+                codes.CODEC_DECODE, f"group column {column['name']} is not StyledValue"
             )
         return raw
     if type_ == "bool":
@@ -836,11 +837,11 @@ def _group_value(db, column: dict, raw, schema: Entity):
             return True
         if raw in (False, 0, "0", "f", "false"):
             return False
-        raise OrmError("CODEC_DECODE", f"group column {column['name']} is not boolean")
+        raise OrmError(codes.CODEC_DECODE, f"group column {column['name']} is not boolean")
     if type_ in ("i16", "i32", "i64"):
         if isinstance(raw, bool):
             raise OrmError(
-                "CODEC_DECODE", f"group column {column['name']} is not an exact integer"
+                codes.CODEC_DECODE, f"group column {column['name']} is not an exact integer"
             )
         if isinstance(raw, str) and re.fullmatch(r"-?(0|[1-9][0-9]*)", raw):
             value = int(raw)
@@ -848,12 +849,12 @@ def _group_value(db, column: dict, raw, schema: Entity):
             value = raw
         else:
             raise OrmError(
-                "CODEC_DECODE", f"group column {column['name']} is not an exact integer"
+                codes.CODEC_DECODE, f"group column {column['name']} is not an exact integer"
             )
         low, high = _INTEGER_RANGES[type_]
         if not low <= value <= high:
             raise OrmError(
-                "CODEC_DECODE",
+                codes.CODEC_DECODE,
                 f"group column {column['name']} is outside its exact integer range",
             )
         return value
@@ -866,11 +867,11 @@ def _group_value(db, column: dict, raw, schema: Entity):
             value = float(raw)
         else:
             raise OrmError(
-                "CODEC_DECODE", f"group column {column['name']} is not numeric"
+                codes.CODEC_DECODE, f"group column {column['name']} is not numeric"
             )
         if value != value or value in (float("inf"), float("-inf")):
             raise OrmError(
-                "CODEC_DECODE", f"group column {column['name']} is not finite"
+                codes.CODEC_DECODE, f"group column {column['name']} is not finite"
             )
         return value
     if type_ == "decimal":
@@ -880,7 +881,7 @@ def _group_value(db, column: dict, raw, schema: Entity):
     if type_ == "bytes":
         if not isinstance(raw, bytes):
             raise OrmError(
-                "CODEC_DECODE", f"group column {column['name']} is not bytes"
+                codes.CODEC_DECODE, f"group column {column['name']} is not bytes"
             )
         return raw
     if type_ in ("string", "varchar", "text", "uuid"):
@@ -888,9 +889,9 @@ def _group_value(db, column: dict, raw, schema: Entity):
             return raw
         if isinstance(raw, bytes):
             return raw.decode("utf-8")
-        raise OrmError("CODEC_DECODE", f"group column {column['name']} is not text")
+        raise OrmError(codes.CODEC_DECODE, f"group column {column['name']} is not text")
     raise OrmError(
-        "INTERNAL", f"group column {column['name']} has unsupported type {type_}"
+        codes.INTERNAL, f"group column {column['name']} has unsupported type {type_}"
     )
 
 
@@ -906,9 +907,9 @@ def page_of(c: Core, page: int, per_page: int) -> dict:
         or page < 1
         or per_page < 1
     ):
-        raise OrmError("CONFIG", "getsPage requires a positive page and perPage")
+        raise OrmError(codes.CONFIG, "getsPage requires a positive page and perPage")
     if c.limit is not None:
-        raise OrmError("CONFIG", "getsPage cannot be combined with limit")
+        raise OrmError(codes.CONFIG, "getsPage cannot be combined with limit")
     ex = _terminal(c)
     q = c.clone()
     q.limit = {"offset": (page - 1) * per_page, "count": per_page}

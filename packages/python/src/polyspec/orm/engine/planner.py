@@ -1,6 +1,7 @@
 # 검사된 request를 plan으로 만든다: root와 그 join의 SELECT 문, relation마다
 # parent step의 row에 묶는 별도 statement, INSERT, UPDATE, DELETE 문
 # (docs/protocol.md).
+from polyspec.orm import codes
 from polyspec.orm.engine.params import function_type, interval_type
 from polyspec.orm.engine.model import Entity, Field, RuntimeModel, entity_of, field_of
 from polyspec.orm.engine.validate import conflict_key, restore_key
@@ -98,7 +99,7 @@ class _Builder:
     def _typed(self, slot: _Slot) -> str:
         if slot.col_type == "":
             _fail(
-                "IR_INVALID",
+                codes.IR_INVALID,
                 f"bind slot {len(self.binds)} ({slot.from_}) has no declared type",
             )
         return self._push(slot)
@@ -148,14 +149,14 @@ def _cmp(op: str) -> str:
         "gte": ">=",
         "lt": "<",
         "lte": "<=",
-    }.get(op) or _fail("OPERATOR_UNKNOWN", op)
+    }.get(op) or _fail(codes.OPERATOR_UNKNOWN, op)
 
 
 def _index_of(asm: dict, name: str) -> int:
     for column in asm["columns"]:
         if column["name"] == name:
             return column["index"]
-    raise OrmError("CONFIG", f"planner: column {name} not projected in {asm['entity']}")
+    raise OrmError(codes.CONFIG, f"planner: column {name} not projected in {asm['entity']}")
 
 
 def _key_refs(asm: dict, columns) -> list:
@@ -195,13 +196,13 @@ def _validate_aes_assignments(ent: Entity, assignments, require_complete: bool) 
     if version == "":
         return
     if _assigned(assignments, version):
-        _fail("IR_INVALID", f"{version} is managed by the AES writer")
+        _fail(codes.IR_INVALID, f"{version} is managed by the AES writer")
     if not require_complete or not _assigns_aes(ent, assignments):
         return
     for col in ent.fields:
         if "aes" in _styles(col) and not _assigned(assignments, col.name):
             _fail(
-                "IR_INVALID",
+                codes.IR_INVALID,
                 f"AES update must assign every AES column; missing {col.name}",
             )
 
@@ -219,7 +220,7 @@ def _validate_required_assignments(ent: Entity, assignments) -> None:
             or _assigned(assignments, col.name)
         ):
             continue
-        _fail("IR_INVALID", f"required column {ent.name}.{col.name} is not set")
+        _fail(codes.IR_INVALID, f"required column {ent.name}.{col.name} is not set")
 
 
 def _add_blind_index_assignments(ent: Entity, assignments) -> list:
@@ -297,7 +298,7 @@ class Planner:
     def _entity(self, name: str) -> Entity:
         entity = entity_of(self.m, name)
         if entity is None:
-            _fail("ENTITY_UNKNOWN", name)
+            _fail(codes.ENTITY_UNKNOWN, name)
         return entity
 
     def compile(self, r: dict) -> dict:
@@ -326,7 +327,7 @@ class Planner:
         elif kind == "restart_identity":
             add(self._restart_identity_step(r))
         else:
-            _fail("IR_INVALID", f"unknown request kind {kind}")
+            _fail(codes.IR_INVALID, f"unknown request kind {kind}")
         return {"manifest_hash": self.m.manifest_hash, "kind": kind, "steps": steps}
 
     def _build_scopes(self, q: dict, alias: str, parent) -> _Scope:
@@ -452,7 +453,7 @@ class Planner:
                     suffix = self.d.row_lock(lock)
                     if suffix is None:
                         _fail(
-                            "CAPABILITY_UNSUPPORTED",
+                            codes.CAPABILITY_UNSUPPORTED,
                             f'{self.d.name} row lock "{lock}" is not supported',
                         )
                     sql += suffix
@@ -564,7 +565,7 @@ class Planner:
         for name in s.q.get("group_by") or []:
             col = field_of(s.ent, name)
             if col is None:
-                _fail("COLUMN_UNKNOWN", f"{s.ent.name}.{name}")
+                _fail(codes.COLUMN_UNKNOWN, f"{s.ent.name}.{name}")
             out = f"{s.alias}__{name}"
             parts.append(
                 f"{self._read_column(self._qcol(s, name), col)} AS {self.d.quote(out)}"
@@ -637,7 +638,7 @@ class Planner:
             version = field_of(s.ent, s.ent.aes_version)
             if version is None:
                 _fail(
-                    "SCHEMA_INVALID",
+                    codes.SCHEMA_INVALID,
                     f"{s.ent.name}: AES column requires an aes_version column",
                 )
             # 고른 version column이 있으면 그것을 쓰고, 없을 때만 숨겨서 읽는다.
@@ -833,7 +834,7 @@ class Planner:
             value = self.d.value_function(fn["name"], arg, now)
             if value is None:
                 _fail(
-                    "CAPABILITY_UNSUPPORTED",
+                    codes.CAPABILITY_UNSUPPORTED,
                     f"{fn['name']} is not available on {self.d.name}",
                 )
             if col.type == "datetime" and fn["name"] != "today":
@@ -854,12 +855,12 @@ class Planner:
             if aes:
                 if op not in ("eq", "not_eq"):
                     _fail(
-                        "OPERATOR_NOT_ALLOWED",
+                        codes.OPERATOR_NOT_ALLOWED,
                         "AES columns support only equality through a declared blind index",
                     )
                 if col.blind_index == "":
                     _fail(
-                        "IR_INVALID",
+                        codes.IR_INVALID,
                         f"{s.ent.name}.{col.name} requires a declared blind index for equality search",
                     )
                 lhs = self._qcol(s, col.blind_index)
@@ -869,13 +870,13 @@ class Planner:
             # 없거나 null인 path는 statement의 root다(검증기와 같다).
             rs = self._resolve_path(s, pr["ref"].get("path") or "")
             if field_of(rs.ent, pr["ref"]["column"]) is None:
-                _fail("COLUMN_UNKNOWN", f"{rs.ent.name}.{pr['ref']['column']}")
+                _fail(codes.COLUMN_UNKNOWN, f"{rs.ent.name}.{pr['ref']['column']}")
             return f"{lhs} {_cmp(op[:-4])} {self._qcol(rs, pr['ref']['column'])}"
         if op in ("in", "not_in"):
             if aes:
                 if col.blind_index == "":
                     _fail(
-                        "IR_INVALID",
+                        codes.IR_INVALID,
                         f"{s.ent.name}.{col.name} requires a declared blind index for equality search",
                     )
                 lhs = self._qcol(s, col.blind_index)
@@ -897,7 +898,7 @@ class Planner:
             return self.d.contains_binary(
                 lhs, lambda transform: b.col_param(pr["p"], col, transform)
             )
-        _fail("OPERATOR_UNKNOWN", op)
+        _fail(codes.OPERATOR_UNKNOWN, op)
 
     def _read_column(self, qcol: str, col: Field) -> str:
         """column을 SQL 쪽 read stage로 읽는다; time(p) column은 p자리 text로 읽는다."""
@@ -938,13 +939,13 @@ class Planner:
             current = current.parent
         if path == "^":
             if current.outer is None:
-                _fail("IR_INVALID", "^ reference outside a subquery")
+                _fail(codes.IR_INVALID, "^ reference outside a subquery")
             return current.outer
         if path == "":
             return current
         for segment in path.split("/"):
             if segment not in current.joins:
-                _fail("ENTITY_NOT_JOINED", f"{current.ent.name}.{segment}")
+                _fail(codes.ENTITY_NOT_JOINED, f"{current.ent.name}.{segment}")
             current = current.joins[segment]
         return current
 
@@ -957,7 +958,7 @@ class Planner:
         result = self.d.column_function(f["name"], self._qcol(s, column), arg)
         if result is None:
             _fail(
-                "CAPABILITY_UNSUPPORTED",
+                codes.CAPABILITY_UNSUPPORTED,
                 f"{f['name']} is not available on {self.d.name}",
             )
         return result
@@ -1007,7 +1008,7 @@ class Planner:
         if _blind_index_source(ent, col.name):
             if "plus_p" in a or "minus_p" in a:
                 _fail(
-                    "IR_INVALID", "blind index assignment must use its AES source value"
+                    codes.IR_INVALID, "blind index assignment must use its AES source value"
                 )
             if a.get("null"):
                 return "NULL"
@@ -1073,7 +1074,7 @@ class Planner:
             and not any(a["column"] == ent.identity and "p" in a for a in assignments)
         ):
             _fail(
-                "IR_INVALID",
+                codes.IR_INVALID,
                 f"load of {ent.name} needs a value for the identity column {ent.identity}",
             )
         version = ent.aes_version
@@ -1082,7 +1083,7 @@ class Planner:
         for a in assignments:
             col = field_of(ent, a["column"])
             if col.identity and not load:
-                _fail("IR_INVALID", f"cannot set identity column {a['column']}")
+                _fail(codes.IR_INVALID, f"cannot set identity column {a['column']}")
             cols.append(self.d.quote(a["column"]))
             vals.append(self._render_assign(b, ent, col, a))
         # executor가 관리하는 column은 사용자 assignment 뒤에 AES key version, audit
@@ -1278,7 +1279,7 @@ class Planner:
         ent = self._entity(r["entity"])
         if ent.identity == "":
             _fail(
-                "IR_INVALID",
+                codes.IR_INVALID,
                 f"restart_identity of {ent.name}, which has no identity column",
             )
         b = _Builder(self.d)

@@ -1,8 +1,9 @@
 import { OrmError } from './runtime_error.js';
+import * as codes from './codes.js';
 
 /** Validate an exact decimal field value and pad it to its declared scale. */
 export function normalizeDecimal(input: string, precision: number, scale: number): string {
-  const fail = (reason: string): never => { throw new OrmError('CODEC_ENCODE', `decimal ${JSON.stringify(input)}: ${reason}`); };
+  const fail = (reason: string): never => { throw new OrmError(codes.CODEC_ENCODE, `decimal ${JSON.stringify(input)}: ${reason}`); };
   if (!Number.isInteger(precision) || precision < 1 || precision > 18 || !Number.isInteger(scale) || scale < 0 || scale > precision) {
     return fail('invalid precision or scale');
   }
@@ -24,10 +25,10 @@ export function decimalScaled(input: string, precision: number, scale: number): 
 }
 
 export function decimalFromScaled(raw: unknown, precision: number, scale: number): string {
-  if (typeof raw !== 'bigint') throw new OrmError('CODEC_DECODE', `decimal scaled cell has type ${typeof raw}`);
+  if (typeof raw !== 'bigint') throw new OrmError(codes.CODEC_DECODE, `decimal scaled cell has type ${typeof raw}`);
   const negative = raw < 0n;
   let digits = (negative ? -raw : raw).toString().padStart(scale + 1, '0');
   if (scale > 0) digits = `${digits.slice(0, -scale)}.${digits.slice(-scale)}`;
   try { return normalizeDecimal(`${negative ? '-' : ''}${digits}`, precision, scale); }
-  catch (cause) { throw new OrmError('CODEC_DECODE', `invalid scaled decimal cell: ${String(cause)}`); }
+  catch (cause) { throw new OrmError(codes.CODEC_DECODE, `invalid scaled decimal cell: ${String(cause)}`); }
 }

@@ -5,6 +5,7 @@ import { normalizeDecimal } from './decimal.js';
 import type { ParamUse } from './engine/params.js';
 import type { BindSlot } from './ir.js';
 import { OrmError } from './runtime_error.js';
+import * as codes from './codes.js';
 
 /**
  * The logical type of a slot that a parameter fills: a dbspec type kind with the precision of a decimal, time or
@@ -49,7 +50,7 @@ function shown(value: unknown): string {
 /** Refuses SQL NULL as parameter i when slot assigns a non-null column; it runs for every slot before any statement. */
 export function checkAssign(i: number, value: unknown, slot: ParamSlot): void {
   if ((value === null || value === undefined) && slot.notNull === true) {
-    throw new OrmError('CODEC_ENCODE', `parameter ${i} assigns NULL to the non-null ${slot.column ?? ''}`);
+    throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} assigns NULL to the non-null ${slot.column ?? ''}`);
   }
 }
 
@@ -61,19 +62,19 @@ export function checkAssign(i: number, value: unknown, slot: ParamSlot): void {
  */
 export function checkParam(i: number, value: unknown, slot: ParamSlot, zone: string): void {
   if (value === null || value === undefined) return;
-  const kind = (): OrmError => new OrmError('CODEC_ENCODE', `parameter ${i} (${typeof value}) is not a ${slot.type} value`);
+  const kind = (): OrmError => new OrmError(codes.CODEC_ENCODE, `parameter ${i} (${typeof value}) is not a ${slot.type} value`);
   switch (slot.type) {
     case 'i16': case 'i32': case 'i64': {
       if (!(typeof value === 'bigint' || (typeof value === 'number' && Number.isInteger(value)))) throw kind();
       const n = BigInt(value);
       const [low, high] = integerRanges[slot.type] ?? [0n, 0n];
-      if (n < low || n > high) throw new OrmError('CODEC_ENCODE', `parameter ${i} (${shown(value)}) is outside ${slot.type}`);
+      if (n < low || n > high) throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} (${shown(value)}) is outside ${slot.type}`);
       return;
     }
     case 'f64':
       if (typeof value === 'bigint') return;
       if (typeof value !== 'number') throw kind();
-      if (!Number.isFinite(value)) throw new OrmError('CODEC_ENCODE', `parameter ${i} (${value}) is not a finite f64`);
+      if (!Number.isFinite(value)) throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} (${value}) is not a finite f64`);
       return;
     case 'bool':
       if (typeof value !== 'boolean') throw kind();
@@ -83,16 +84,16 @@ export function checkParam(i: number, value: unknown, slot: ParamSlot, zone: str
       try {
         normalizeDecimal(value, slot.precision, slot.scale);
       } catch (error) {
-        throw new OrmError('CODEC_ENCODE', `parameter ${i}: ${error instanceof Error ? error.message : String(error)}`);
+        throw new OrmError(codes.CODEC_ENCODE, `parameter ${i}: ${error instanceof Error ? error.message : String(error)}`);
       }
       return;
     case 'varchar': case 'text': case 'uuid': {
       if (typeof value !== 'string') throw kind();
-      if (value.includes('\u0000')) throw new OrmError('CODEC_ENCODE', `parameter ${i} holds U+0000, which no ${slot.type} value holds`);
+      if (value.includes('\u0000')) throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} holds U+0000, which no ${slot.type} value holds`);
       // The length of a varchar is in characters, the code points of the text.
       const n = Array.from(value).length;
-      if (slot.type === 'varchar' && slot.length > 0 && n > slot.length) throw new OrmError('CODEC_ENCODE', `parameter ${i} has ${n} characters, more than varchar(${slot.length})`);
-      if (slot.type === 'uuid' && !canonicalUuid.test(value)) throw new OrmError('CODEC_ENCODE', `parameter ${i} (${shown(value)}) is not a lower-case canonical uuid`);
+      if (slot.type === 'varchar' && slot.length > 0 && n > slot.length) throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} has ${n} characters, more than varchar(${slot.length})`);
+      if (slot.type === 'uuid' && !canonicalUuid.test(value)) throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} (${shown(value)}) is not a lower-case canonical uuid`);
       return;
     }
     case 'bytes':
@@ -104,10 +105,10 @@ export function checkParam(i: number, value: unknown, slot: ParamSlot, zone: str
       try {
         text = timeValue(value, slot.type, zone, slot.precision);
       } catch (error) {
-        throw new OrmError('CODEC_ENCODE', `parameter ${i}: ${error instanceof Error ? error.message : String(error)}`);
+        throw new OrmError(codes.CODEC_ENCODE, `parameter ${i}: ${error instanceof Error ? error.message : String(error)}`);
       }
       if (slot.type !== 'time' && (!/^\d{4}-/.test(text) || text.startsWith('0000'))) {
-        throw new OrmError('CODEC_ENCODE', `parameter ${i} (${shown(value)}) is outside 0001-01-01 to 9999-12-31`);
+        throw new OrmError(codes.CODEC_ENCODE, `parameter ${i} (${shown(value)}) is outside 0001-01-01 to 9999-12-31`);
       }
       return;
     }
@@ -120,7 +121,7 @@ export function checkParam(i: number, value: unknown, slot: ParamSlot, zone: str
  */
 export function transformParam(kind: string, value: unknown): unknown {
   if (value === null || value === undefined) return null;
-  if (typeof value !== 'string') throw new OrmError('CODEC_ENCODE', `${kind} requires a string value`);
+  if (typeof value !== 'string') throw new OrmError(codes.CODEC_ENCODE, `${kind} requires a string value`);
   const escaped = value.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
   if (kind === 'like_contains') return `%${escaped}%`;
   if (kind === 'like_starts') return `${escaped}%`;

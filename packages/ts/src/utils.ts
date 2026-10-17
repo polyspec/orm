@@ -10,6 +10,7 @@ import { CatalogRow } from './dbspec/introspect_catalog.js';
 import type { RuntimeModel } from './engine/model.js';
 import { present } from './present.js';
 import { OrmError, joinedErrors, rollbackFailed } from './runtime_error.js';
+import * as codes from './codes.js';
 
 export interface AesRotationStatus {
   current: number;
@@ -22,7 +23,7 @@ export interface TablePrivileges { insert: boolean; select: boolean; update: boo
 
 function validKey(key: string): boolean { return /^[A-Za-z0-9_][A-Za-z0-9_.]{0,63}$/.test(key); }
 
-function config(message: string): OrmError { return new OrmError('CONFIG', message); }
+function config(message: string): OrmError { return new OrmError(codes.CONFIG, message); }
 
 function quote(driver: string, name: string): string {
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) throw config(`invalid identifier ${name}`);
@@ -31,7 +32,7 @@ function quote(driver: string, name: string): string {
 
 function versionOf(value: unknown): number {
   const version = typeof value === 'string' ? Number.parseInt(value, 10) : Number(value);
-  if (!Number.isSafeInteger(version) || version < 1) throw new OrmError('CODEC_DECODE', `aes version ${String(value)} is out of range`);
+  if (!Number.isSafeInteger(version) || version < 1) throw new OrmError(codes.CODEC_DECODE, `aes version ${String(value)} is out of range`);
   return version;
 }
 
@@ -50,9 +51,9 @@ async function withoutForeignKeys<T>(db: Db, session: DriverSession, fn: (run: R
     try {
       result = await fn(inside);
       const broken = Number((await inside('schema', [], 'SELECT COUNT(*) FROM pragma_foreign_key_check')).rows[0]?.[0]);
-      if (broken !== 0) throw new OrmError('INTERNAL', `the rebuilt tables break ${broken} foreign keys`);
+      if (broken !== 0) throw new OrmError(codes.INTERNAL, `the rebuilt tables break ${broken} foreign keys`);
     } catch (error) {
-      try { await inside('rollback', [], 'ROLLBACK'); } catch (rollback) { throw rollbackFailed(error, rollback); }
+      try { await inside('rollback', [], codes.ROLLBACK); } catch (rollback) { throw rollbackFailed(error, rollback); }
       throw error;
     }
     await inside('commit', [], 'COMMIT');
@@ -103,7 +104,7 @@ function schemaTarget(model: RuntimeModel): DbspecDocument {
   const parsed = manifest.manifest === null ? null : parseDbspec(manifest.manifest.schemaText, externalTexts(model));
   const failed = parsed === null ? manifest.diagnostics : parsed.diagnostics;
   const [d] = failed;
-  if (d !== undefined) throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
+  if (d !== undefined) throw new OrmError(codes.SCHEMA_INVALID, `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
   return present(parsed?.document, 'the document of a schema text without diagnostics');
 }
 
@@ -164,7 +165,7 @@ export class Utils {
     switch (this.db.driver) {
       case 'mysql': {
         const got = (await frame.statement('utility', [], 'SELECT GET_LOCK(?, 50)', [key])).rows[0]?.[0];
-        if (Number(got) !== 1) throw new OrmError('DEADLOCK', `lock ${key} was not acquired`);
+        if (Number(got) !== 1) throw new OrmError(codes.DEADLOCK, `lock ${key} was not acquired`);
         frame.locks.push(key);
         return;
       }
@@ -201,7 +202,7 @@ export class Utils {
     this.db.unsupportedOnMarkdown('local');
     const frame = this.active('local');
     const value = frame.locals.get(key);
-    if (value === undefined) throw new OrmError('NO_ROWS', `local value ${key} is not set`);
+    if (value === undefined) throw new OrmError(codes.NO_ROWS, `local value ${key} is not set`);
     return value;
   }
 
@@ -249,7 +250,7 @@ export class SchemaUtils {
     const rendered = renderDbspecStatements(model.documents, driver);
     if (rendered.statements === null) {
       const d = present(rendered.diagnostics[0], 'a diagnostic of a document set that renders no statements');
-      throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
+      throw new OrmError(codes.SCHEMA_INVALID, `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
     }
     const statements = rendered.statements;
     const target = schemaTarget(model);
@@ -293,7 +294,7 @@ export class SchemaUtils {
     const apply = async (run: Runner): Promise<string[]> => {
       let live = await introspectSet(run, driver, model);
       const { added, steps, differences } = addTablesAndColumnsSteps(live.document, live.unsupported, target, driver);
-      if (differences.length > 0) throw new OrmError('SCHEMA_DIFFERS', `the existing tables of the document set differ beyond missing tables, missing columns that are null or have a default and missing indexes: ${differences.join('; ')}`);
+      if (differences.length > 0) throw new OrmError(codes.SCHEMA_DIFFERS, `the existing tables of the document set differ beyond missing tables, missing columns that are null or have a default and missing indexes: ${differences.join('; ')}`);
       // step의 statement는 그 효과가 가리키는 table을 만들거나 바꾼다.
       for (const step of steps) await run('schema', step.effect.table === '' ? [] : [step.effect.table], step.statement);
       // step을 실행한 database가 set과 같은지 다시 읽어 확인한다.
@@ -348,7 +349,7 @@ export class PrivilegeUtils {
   public constructor(private readonly u: Utils) {}
 
   private table(table: string): string {
-    if (this.u.db.driver !== 'postgres') throw new OrmError('CAPABILITY_UNSUPPORTED', 'table privileges are supported only by postgres');
+    if (this.u.db.driver !== 'postgres') throw new OrmError(codes.CAPABILITY_UNSUPPORTED, 'table privileges are supported only by postgres');
     const parts = table.split('.');
     if (parts.length !== 2 || !parts.every(validKey)) throw config('a qualified table name is required');
     return parts.map(part => quote('postgres', part)).join('.');
@@ -379,7 +380,7 @@ export class PrivilegeUtils {
   public async inspectTable(table: string): Promise<TablePrivileges> {
     const qualified = this.table(table);
     const row = (await this.u.read('utility', [table], `SELECT has_table_privilege(current_user, $1, 'INSERT'), has_table_privilege(current_user, $1, 'SELECT'), has_table_privilege(current_user, $1, 'UPDATE'), has_table_privilege(current_user, $1, 'DELETE'), has_table_privilege(current_user, $1, 'TRUNCATE')`, [qualified]))[0];
-    if (row === undefined) throw new OrmError('INTERNAL', `the privileges of ${table} returned no row`);
+    if (row === undefined) throw new OrmError(codes.INTERNAL, `the privileges of ${table} returned no row`);
     return { insert: row[0] === true, select: row[1] === true, update: row[2] === true, delete: row[3] === true, truncate: row[4] === true };
   }
 }
@@ -432,7 +433,7 @@ export class AesUtils {
     const codec = {
       decode: (value: unknown, styles: readonly string[], key: string) => {
         if (value !== null && typeof value !== 'string' && !(value instanceof Uint8Array)) {
-          throw new OrmError('CODEC_DECODE', `aes rotation read a ${typeof value} value of ${key}`);
+          throw new OrmError(codes.CODEC_DECODE, `aes rotation read a ${typeof value} value of ${key}`);
         }
         return hostDecode(value, styles, key);
       },
@@ -457,7 +458,7 @@ export class AesUtils {
             version,
           ];
           const result = await frame.statement('utility', [spec.table], updateSql, params);
-          if (result.affected !== 1) throw new OrmError('DEADLOCK', `aes rotation of ${spec.table} changed ${result.affected} rows`);
+          if (result.affected !== 1) throw new OrmError(codes.DEADLOCK, `aes rotation of ${spec.table} changed ${result.affected} rows`);
           rotated++;
         }
       }

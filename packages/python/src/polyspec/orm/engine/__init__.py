@@ -1,5 +1,6 @@
 # engine: 모든 client가 공유하는 planner, dialect, schema, 검사 동작
 # (docs/protocol.md).
+from polyspec.orm import codes
 from polyspec.orm.engine.dialect import dialect_of
 from polyspec.orm.engine.model import (
     Entity,
@@ -37,7 +38,7 @@ class Engine:
     def __init__(self, model: RuntimeModel, dialect: str):
         d = dialect_of(dialect)
         if d is None:
-            raise OrmError("DIALECT_UNKNOWN", dialect)
+            raise OrmError(codes.DIALECT_UNKNOWN, dialect)
         self.model = model
         self.dialect = dialect
         self._planner = Planner(model, d())

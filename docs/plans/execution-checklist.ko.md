@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 621388b83909ec25ff0571a68092c43ec2ada6f98c5a444450a06c8a84b2901f -->
+<!-- source-sha256: d692e2ad82eed600496a5acf15bfd7b9ce33722d621485f60931a9869c40c542 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1190,7 +1190,7 @@
       - [ ] T148-3-7-1 parity R5를 통과한다: 모든 test file이 묶인다 (T148-3-7에 이어). 원인: R5가 binding이 없는 test file 420개를 보고한다. 대부분은 어느 parity unit도 적지 않은 한 언어 test다. 완료 조건: 각 test가 다섯 구현에 묶인 unit에 속하거나 unit의 기존 binding으로 옮겨지고, R5가 0을 보고한다.
       - [o] T148-3-7-2 parity R6을 통과한다: 선언된 root 밖의 test (T148-3-7에 이어). 원인: R6가 scripts/, tests/dialects, tests/dbspec, tests/conformance runner, examples/, benchmarks/rust, packages/dbspec-* 아래 test 76개를 보고한다. 완료 조건: 각 test가 root 아래로 옮겨지거나 이유와 함께 tools root에 선언되고, R6가 0을 보고한다.
         근거: commit 1f7e8a53(main): `make -s parity-declarations-check`가 R6 misplaced-test 0건을 보고한다(이 줄을 여기에 기록한다. 같은 실행의 R5 5건은 T169-3의 것으로 T169-4에서 추적하며 R6이 아니다). main에 남은 R6 finding은 없다.
-      - [ ] T148-3-7-3 TypeScript와 Python에 생성된 code catalog를 둔다 (T148-3-7에 이어). 원인: R7이 TypeScript와 Python에 생성된 error code catalog가 없다고 보고한다. Go, PHP, Rust는 모든 error 지점에서 자기 catalog를 쓴다. 완료 조건: orm-gen이 두 언어에 catalog를 생성하고, 두 client의 모든 error 지점이 그것을 쓰며, 오래된 catalog에서 drift test가 실패하고, R7이 0을 보고한다.
+      - [o] T148-3-7-3 TypeScript와 Python에 생성된 code catalog를 둔다 (T148-3-7에 이어). 원인: R7이 TypeScript와 Python에 생성된 error code catalog가 없다고 보고한다. Go, PHP, Rust는 모든 error 지점에서 자기 catalog를 쓴다. 완료 조건: orm-gen이 두 언어에 catalog를 생성하고, 두 client의 모든 error 지점이 그것을 쓰며, 오래된 catalog에서 drift test가 실패하고, R7이 0을 보고한다. 근거: TypeScript와 Python 소스의 `OrmError`, `CodecError`와 오류 code literal은 모두 생성된 catalog의 `codes.<NAME>` 상수가 되었고, 소스는 main과 그 상수만 다르다(quote를 맞춘 뒤 기계적으로 확인). T77-4의 drift test가 catalog를 errors.yaml과 비교한다.
       - [o] T148-3-7-4 parity R9와 R10의 Python 기능 차이를 없앤다 (T148-3-7에 이어). 원인: scripts/features/check.mts에 Python을 넣으면 구현됨으로 표시된 기능 15개가 Python에서 통과하지 않고 2개는 Python test가 없다. Python에는 decimal physical test, pool, timeout, VERIFY_IDENTITY 설정, point codec type, typed model field, client-db-test의 database test가 없다. 완료 조건: 각 기능을 다른 client처럼 공유 vector와 함께 Python에 구현하고 test하며, R9와 R10이 Python finding을 보고하지 않는다.
         - [o] T148-3-7-4-1 TLS 설정, pool, timeout 설정 점검 (follows T148-3-7-4). Evidence: commit e41a6450 on main: Python은 알 수 없는 ssl-mode를 거부하고, VERIFY_IDENTITY를 SSLContext로 적용하며, pool 옵션을 PgBouncer나 ProxySQL 이름과 함께 CONFIG로 거부하고, statementTimeoutMs를 적용하며, MySQL socket 인자를 존중한다. RED: VERIFY_CA가 받아들여졌고 틀린 CA로도 연결되었다. GREEN: mysql_tls.py, connection_config.py, replica.py가 통과한다.
         - [o] T148-3-7-4-2 codec에서 옛 point type 제거 (follows T148-3-7-4). Evidence: commit 6ad53395 on main: codec.md에서 옛 point 문단과 그 case를 지웠다. dbspec.md에는 point type이 없다. main에서 검사가 통과한다.

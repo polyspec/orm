@@ -1,5 +1,6 @@
 # manifest에 대한 request 검사. 모든 client가 같은 request를 render한다; 아래 규칙이
 # 공유 statement 규칙이다.
+from polyspec.orm import codes
 from polyspec.orm.engine.dialect import (
     column_function_arity,
     column_function_types,
@@ -76,18 +77,18 @@ class _Validator:
     def params(self, ps) -> None:
         for i in ps or []:
             if not _is_safe(i) or i >= self.n:
-                _fail("IR_INVALID", f"param index {i} out of range (n_params {self.n})")
+                _fail(codes.IR_INVALID, f"param index {i} out of range (n_params {self.n})")
 
     def entity(self, name: str) -> Entity:
         entity = entity_of(self.m, name)
         if entity is None:
-            _fail("ENTITY_UNKNOWN", name)
+            _fail(codes.ENTITY_UNKNOWN, name)
         return entity
 
     def assign(self, ent: Entity, r: dict, a: dict) -> None:
         c = field_of(ent, a["column"])
         if c is None:
-            _fail("COLUMN_UNKNOWN", f"{r['entity']}.{a['column']}")
+            _fail(codes.COLUMN_UNKNOWN, f"{r['entity']}.{a['column']}")
         given = [
             ("p" in a, 1),
             (a.get("null") is True, 1),
@@ -96,22 +97,22 @@ class _Validator:
         ]
         if sum(1 for present, _ in given if present) != 1:
             _fail(
-                "IR_INVALID", f"set {a['column']}: exactly one of p/null/plus_p/minus_p"
+                codes.IR_INVALID, f"set {a['column']}: exactly one of p/null/plus_p/minus_p"
             )
         if a.get("null") and not c.nullable:
             _fail(
-                "IR_INVALID",
+                codes.IR_INVALID,
                 f"set {r['entity']}.{a['column']} to null but column is NOT NULL",
             )
         if a["column"] == ent.audit_column:
             _fail(
-                "IR_INVALID",
+                codes.IR_INVALID,
                 f"{r['entity']}.{a['column']} is written by the executor "
                 f"from the audit of the transaction",
             )
         if ("plus_p" in a or "minus_p" in a) and c.type not in NUMERIC_TYPES:
             _fail(
-                "OPERATOR_NOT_ALLOWED",
+                codes.OPERATOR_NOT_ALLOWED,
                 f"plus/minus on {r['entity']}.{a['column']} ({c.type})",
             )
         self.params(
@@ -146,22 +147,22 @@ class _Validator:
         path = "" if path is None else path
         column = ref.get("column")
         if not isinstance(path, str) or not isinstance(column, str):
-            _fail("IR_INVALID", "ref path and column must be strings")
+            _fail(codes.IR_INVALID, "ref path and column must be strings")
         target = at["root"]
         if path == "^":
             if at["outer"] is None:
-                _fail("IR_INVALID", "^ reference outside a subquery")
+                _fail(codes.IR_INVALID, "^ reference outside a subquery")
             target = at["outer"]
         elif path != "":
             for seg in path.split("/"):
                 if seg not in target["joins"]:
-                    _fail("ENTITY_NOT_JOINED", f"{target['name']}.{seg}")
+                    _fail(codes.ENTITY_NOT_JOINED, f"{target['name']}.{seg}")
                 target = target["joins"][seg]
         if target["ent"] is None:
-            _fail("ENTITY_UNKNOWN", target["name"])
+            _fail(codes.ENTITY_UNKNOWN, target["name"])
         found = field_of(target["ent"], column)
         if found is None:
-            _fail("COLUMN_UNKNOWN", f"{target['name']}.{column}")
+            _fail(codes.COLUMN_UNKNOWN, f"{target['name']}.{column}")
         return found
 
     def query(self, q: dict, at: dict, is_join: bool, is_relation: bool) -> None:
@@ -171,26 +172,26 @@ class _Validator:
         if cols is not None:
             mode = cols.get("mode")
             if mode is not None and mode not in ("", "all", "none"):
-                _fail("IR_INVALID", f'columns.mode "{mode}"')
+                _fail(codes.IR_INVALID, f'columns.mode "{mode}"')
             for name in list(cols.get("add") or []) + list(cols.get("remove") or []):
                 if field_of(ent, name) is None:
-                    _fail("COLUMN_UNKNOWN", f"{q['entity']}.{name}")
+                    _fail(codes.COLUMN_UNKNOWN, f"{q['entity']}.{name}")
             outputs: set[str] = set()
             for out, cf in (cols.get("fn") or {}).items():
                 if field_of(ent, out) is not None or out in outputs:
                     _fail(
-                        "COLUMN_ALIAS_CONFLICT",
+                        codes.COLUMN_ALIAS_CONFLICT,
                         f"{q['entity']}.{out} is already a row name",
                     )
                 outputs.add(out)
                 col = field_of(ent, cf["column"])
                 if col is None:
-                    _fail("COLUMN_UNKNOWN", f"{q['entity']}.{cf['column']}")
+                    _fail(codes.COLUMN_UNKNOWN, f"{q['entity']}.{cf['column']}")
                 self.column_function(ent, col, cf["fn"])
             for out, sub in (cols.get("sub") or {}).items():
                 if field_of(ent, out) is not None or out in outputs:
                     _fail(
-                        "COLUMN_ALIAS_CONFLICT",
+                        codes.COLUMN_ALIAS_CONFLICT,
                         f"{q['entity']}.{out} is already a row name",
                     )
                 outputs.add(out)
@@ -198,21 +199,21 @@ class _Validator:
         joined: dict[str, dict] = {}
         for j in q.get("joins") or []:
             if j["kind"] not in ("inner", "left"):
-                _fail("IR_INVALID", f'join kind "{j["kind"]}"')
+                _fail(codes.IR_INVALID, f'join kind "{j["kind"]}"')
             if j["rel"] == "" or j["rel"] in joined:
-                _fail("IR_INVALID", f'join name "{j["rel"]}" is empty or used twice')
+                _fail(codes.IR_INVALID, f'join name "{j["rel"]}" is empty or used twice')
             if not j.get("left") or not j.get("right") or "query" not in j:
                 _fail(
-                    "IR_INVALID", f"join {j['rel']}: left, right and query are required"
+                    codes.IR_INVALID, f"join {j['rel']}: left, right and query are required"
                 )
             target = self.entity(j["query"]["entity"])
             if field_of(ent, j["left"]) is None:
-                _fail("COLUMN_UNKNOWN", f"{ent.name}.{j['left']}")
+                _fail(codes.COLUMN_UNKNOWN, f"{ent.name}.{j['left']}")
             if field_of(target, j["right"]) is None:
-                _fail("COLUMN_UNKNOWN", f"{target.name}.{j['right']}")
+                _fail(codes.COLUMN_UNKNOWN, f"{target.name}.{j['right']}")
             if not _meets(field_of(ent, j["left"]), field_of(target, j["right"])):
                 _fail(
-                    "OPERATOR_NOT_ALLOWED",
+                    codes.OPERATOR_NOT_ALLOWED,
                     f"join {j['rel']}: {ent.name}.{j['left']} does not meet {target.name}.{j['right']}",
                 )
             joined[j["rel"]] = j
@@ -220,14 +221,14 @@ class _Validator:
                 j["query"], dict(at, node=at["node"]["joins"][j["rel"]]), True, False
             )
         if not is_join and q.get("on") is not None:
-            _fail("IR_INVALID", "on[] is only valid on join children")
+            _fail(codes.IR_INVALID, "on[] is only valid on join children")
         if (q.get("on") or {}).get("not") or (q.get("where") or {}).get("not"):
-            _fail("IR_INVALID", "not applies to a nested group")
+            _fail(codes.IR_INVALID, "not applies to a nested group")
         # top-level group은 앞 형제가 없으므로 conn을 갖지 않는다.
         for top in ("on", "where"):
             if (q.get(top) or {}).get("conn"):
                 _fail(
-                    "IR_INVALID",
+                    codes.IR_INVALID,
                     f'the top-level group takes no conn ("{q[top]["conn"]}")',
                 )
         if q.get("on") is not None:
@@ -239,21 +240,21 @@ class _Validator:
         for relation in q.get("relations") or []:
             if relation["rel"] == "" or relation["rel"] in relation_names:
                 _fail(
-                    "COLUMN_ALIAS_CONFLICT",
+                    codes.COLUMN_ALIAS_CONFLICT,
                     f'relation name "{relation["rel"]}" is empty or used twice',
                 )
             relation_names.add(relation["rel"])
             if field_of(ent, relation["rel"]) is not None:
                 _fail(
-                    "COLUMN_ALIAS_CONFLICT",
+                    codes.COLUMN_ALIAS_CONFLICT,
                     f"{q['entity']}.{relation['rel']} is already a column",
                 )
             if "query" not in relation:
-                _fail("IR_INVALID", f"relation {relation['rel']} needs a query")
+                _fail(codes.IR_INVALID, f"relation {relation['rel']} needs a query")
             kind = relation.get("kind") or ""
             if not relation.get("keys") or kind not in ("one", "many"):
                 _fail(
-                    "IR_INVALID",
+                    codes.IR_INVALID,
                     f"relation {relation['rel']}: keys and kind one|many are required",
                 )
             target = self.entity(relation["query"]["entity"])
@@ -262,43 +263,43 @@ class _Validator:
             for k in relation["keys"]:
                 if not k.get("left") or not k.get("right"):
                     _fail(
-                        "IR_INVALID",
+                        codes.IR_INVALID,
                         f"relation {relation['rel']}: every key needs left and right",
                     )
                 if field_of(ent, k["left"]) is None:
-                    _fail("COLUMN_UNKNOWN", f"{q['entity']}.{k['left']}")
+                    _fail(codes.COLUMN_UNKNOWN, f"{q['entity']}.{k['left']}")
                 if field_of(target, k["right"]) is None:
-                    _fail("COLUMN_UNKNOWN", f"{target.name}.{k['right']}")
+                    _fail(codes.COLUMN_UNKNOWN, f"{target.name}.{k['right']}")
                 if not _meets(field_of(ent, k["left"]), field_of(target, k["right"])):
                     _fail(
-                        "OPERATOR_NOT_ALLOWED",
+                        codes.OPERATOR_NOT_ALLOWED,
                         f"relation {relation['rel']}: {q['entity']}.{k['left']} does not meet {target.name}.{k['right']}",
                     )
                 # 한 column이 두 성분에 나오면 key가 아니다.
                 if k["left"] in lefts or k["right"] in rights:
                     _fail(
-                        "IR_INVALID",
+                        codes.IR_INVALID,
                         f"relation {relation['rel']}: key column "
                         f"{k['left']} or {k['right']} is used twice",
                     )
                 lefts.add(k["left"])
                 rights.add(k["right"])
             if relation["query"].get("limit"):
-                _fail("LIMIT_IN_RELATION", f"{relation['rel']}: use limit_per_parent")
+                _fail(codes.LIMIT_IN_RELATION, f"{relation['rel']}: use limit_per_parent")
             if relation["query"].get("flatten") and kind != "one":
                 _fail(
-                    "IR_INVALID",
+                    codes.IR_INVALID,
                     f"relation {relation['rel']}: flatten needs a one relation",
                 )
             if relation["query"].get("key_by") and kind != "many":
                 _fail(
-                    "IR_INVALID",
+                    codes.IR_INVALID,
                     f"relation {relation['rel']}: key_by needs a many relation",
                 )
             if_parent = relation["query"].get("if_parent")
             if if_parent is not None and field_of(ent, if_parent["column"]) is None:
                 _fail(
-                    "COLUMN_UNKNOWN", f"{q['entity']}.{if_parent['column']} (if_parent)"
+                    codes.COLUMN_UNKNOWN, f"{q['entity']}.{if_parent['column']} (if_parent)"
                 )
             scope = self.scopes(relation["query"])
             self.query(
@@ -311,10 +312,10 @@ class _Validator:
         if q.get("key_by") not in (None, ""):
             key_column = field_of(ent, q["key_by"])
             if key_column is None:
-                _fail("COLUMN_UNKNOWN", f"{q['entity']}.{q['key_by']}")
+                _fail(codes.COLUMN_UNKNOWN, f"{q['entity']}.{q['key_by']}")
             # A NULL collection key has no answer that every language shares.
             if key_column.nullable:
-                _fail("IR_INVALID", f"key_by {q['key_by']} is nullable")
+                _fail(codes.IR_INVALID, f"key_by {q['key_by']} is nullable")
         if q.get("if_parent"):
             self.params([q["if_parent"]["p"]])
         if not is_relation and (
@@ -324,7 +325,7 @@ class _Validator:
             or q.get("if_parent") is not None
             or q.get("no_cascade_delete")
         ):
-            _fail("IR_INVALID", f"relation-only options on {q['entity']}")
+            _fail(codes.IR_INVALID, f"relation-only options on {q['entity']}")
         for o in q.get("order") or []:
             kinds = sum(
                 1
@@ -332,29 +333,29 @@ class _Validator:
                 if present
             )
             if kinds != 1:
-                _fail("IR_INVALID", "order needs exactly one of column, random")
+                _fail(codes.IR_INVALID, "order needs exactly one of column, random")
             if o.get("column"):
                 col = field_of(ent, o["column"])
                 if col is None:
-                    _fail("COLUMN_UNKNOWN", f"{q['entity']}.{o['column']}")
+                    _fail(codes.COLUMN_UNKNOWN, f"{q['entity']}.{o['column']}")
                 if o.get("fn"):
                     self.column_function(ent, col, o["fn"])
             elif o.get("fn"):
-                _fail("IR_INVALID", "order function needs a column")
+                _fail(codes.IR_INVALID, "order function needs a column")
         for g in q.get("group_by") or []:
             if field_of(ent, g) is None:
-                _fail("COLUMN_UNKNOWN", f"{q['entity']}.{g}")
+                _fail(codes.COLUMN_UNKNOWN, f"{q['entity']}.{g}")
         if q.get("group_by"):
             # The request's own query is the only one that may group: a join, a relation and a subquery have an outer.
             if is_join or is_relation or at["outer"] is not None:
                 _fail(
-                    "IR_INVALID", "group_by is only valid on the request's root query"
+                    codes.IR_INVALID, "group_by is only valid on the request's root query"
                 )
             # An order item of a grouped query sorts the groups: only a group column (or random) has a value per group.
             for o in q.get("order") or []:
                 if o.get("column") and o["column"] not in q["group_by"]:
                     _fail(
-                        "IR_INVALID",
+                        codes.IR_INVALID,
                         f"order by {o['column']}, which is not a group column",
                     )
         limit = q.get("limit")
@@ -364,7 +365,7 @@ class _Validator:
             or limit["offset"] < 0
             or limit["count"] <= 0
         ):
-            _fail("IR_INVALID", "limit offset>=0, count>0")
+            _fail(codes.IR_INVALID, "limit offset>=0, count>0")
         lock = q.get("lock") or ""
         if lock != "" and lock not in (
             "update",
@@ -373,7 +374,7 @@ class _Validator:
             "share_nowait",
         ):
             _fail(
-                "IR_INVALID",
+                codes.IR_INVALID,
                 f'lock "{lock}": want update, share, update_nowait or share_nowait',
             )
         if lock != "" and (
@@ -382,9 +383,9 @@ class _Validator:
             or q.get("group_by") is not None
             or (q.get("limit_per_parent") or 0) > 0
         ):
-            _fail("IR_INVALID", "row lock is only valid on a root row select")
+            _fail(codes.IR_INVALID, "row lock is only valid on a root row select")
         if q.get("force_index") and q["force_index"] not in ent.indexes:
-            _fail("INDEX_UNKNOWN", f"{q['entity']}.{q['force_index']}")
+            _fail(codes.INDEX_UNKNOWN, f"{q['entity']}.{q['force_index']}")
 
     def group(self, at: dict, g: dict, joined) -> None:
         for i, item in enumerate(g["items"]):
@@ -395,35 +396,35 @@ class _Validator:
             ]
             if len(present) != 1:
                 _fail(
-                    "IR_INVALID", "where item must be exactly one of pred/group/joined"
+                    codes.IR_INVALID, "where item must be exactly one of pred/group/joined"
                 )
             conn = present[0].get("conn") or ""
             if conn not in ("", "and", "or"):
-                _fail("IR_INVALID", f'conn "{conn}"')
+                _fail(codes.IR_INVALID, f'conn "{conn}"')
             if i == 0 and conn == "or":
-                _fail("OR_AT_GROUP_START", "a group may not start with OR")
+                _fail(codes.OR_AT_GROUP_START, "a group may not start with OR")
             # group의 첫 item은 앞 형제가 없으므로 conn을 갖지 않는다.
             if i == 0 and conn != "":
                 _fail(
-                    "IR_INVALID", f'the first item of a group takes no conn ("{conn}")'
+                    codes.IR_INVALID, f'the first item of a group takes no conn ("{conn}")'
                 )
             if item.get("joined"):
                 if item["joined"]["join"] not in joined:
                     _fail(
-                        "ENTITY_NOT_JOINED",
+                        codes.ENTITY_NOT_JOINED,
                         f"{item['joined']['join']} is not joined in this statement",
                     )
                 where = joined[item["joined"]["join"]]["query"].get("where")
                 if not where or not where.get("items"):
                     _fail(
-                        "IR_INVALID",
+                        codes.IR_INVALID,
                         f"joined {item['joined']['join']} has no conditions",
                     )
             elif item.get("pred"):
                 self.pred(at, item["pred"])
             elif item.get("group"):
                 if not item["group"].get("items"):
-                    _fail("IR_INVALID", "empty group")
+                    _fail(codes.IR_INVALID, "empty group")
                 self.group(at, item["group"], joined)
 
     def pred(self, at: dict, p: dict) -> None:
@@ -436,28 +437,28 @@ class _Validator:
         if op in ("tuple_in", "tuple_not_in"):
             cols = p.get("cols") or []
             if len(cols) < 2:
-                _fail("IR_INVALID", f"{op} needs at least two columns")
+                _fail(codes.IR_INVALID, f"{op} needs at least two columns")
             for name in cols:
                 c = field_of(ent, name)
                 if c is None:
-                    _fail("COLUMN_UNKNOWN", f"{ent.name}.{name}")
+                    _fail(codes.COLUMN_UNKNOWN, f"{ent.name}.{name}")
                 if c.stages:
-                    _fail("OPERATOR_NOT_ALLOWED", f"{op} on {ent.name}.{name}")
+                    _fail(codes.OPERATOR_NOT_ALLOWED, f"{op} on {ent.name}.{name}")
             if not ps:
-                _fail("EMPTY_IN", f"{ent.name}({','.join(cols)})")
+                _fail(codes.EMPTY_IN, f"{ent.name}({','.join(cols)})")
             if len(ps) % len(cols) != 0:
-                _fail("IR_INVALID", f"{op}: {len(ps)} values for {len(cols)} columns")
+                _fail(codes.IR_INVALID, f"{op}: {len(ps)} values for {len(cols)} columns")
             return
         if p.get("cols") or []:
-            _fail("IR_INVALID", "cols is only valid with tuple_in or tuple_not_in")
+            _fail(codes.IR_INVALID, "cols is only valid with tuple_in or tuple_not_in")
         column = p.get("column") or ""
         if p.get("sub"):
             if field_of(ent, column) is None:
-                _fail("COLUMN_UNKNOWN", f"{ent.name}.{column}")
+                _fail(codes.COLUMN_UNKNOWN, f"{ent.name}.{column}")
             if op not in ("in", "not_in"):
-                _fail("IR_INVALID", "subquery needs in or not_in")
+                _fail(codes.IR_INVALID, "subquery needs in or not_in")
             if "p" in p or ps or p.get("fn") or p.get("value"):
-                _fail("IR_INVALID", "subquery pred may not carry values")
+                _fail(codes.IR_INVALID, "subquery pred may not carry values")
             self.sub(p["sub"], False, at["node"])
             # sub checked the subquery column; it meets the compared column as check operands do.
             sub_column = field_of(
@@ -465,91 +466,91 @@ class _Validator:
             )
             if sub_column is not None and not _meets(field_of(ent, column), sub_column):
                 _fail(
-                    "OPERATOR_NOT_ALLOWED",
+                    codes.OPERATOR_NOT_ALLOWED,
                     f"{ent.name}.{column} does not meet the subquery column {p['sub']['query']['entity']}.{p['sub'].get('column')}",
                 )
             return
         if p.get("fn") or p.get("value"):
             c = field_of(ent, column)
             if c is None:
-                _fail("COLUMN_UNKNOWN", f"{ent.name}.{column}")
+                _fail(codes.COLUMN_UNKNOWN, f"{ent.name}.{column}")
             if p.get("fn") and p.get("value"):
-                _fail("IR_INVALID", "fn and value cannot be combined")
+                _fail(codes.IR_INVALID, "fn and value cannot be combined")
             if p.get("fn"):
                 self.column_function(ent, c, p["fn"])
                 if op in ("eq", "not_eq", "gt", "gte", "lt", "lte"):
                     if "p" not in p:
-                        _fail("IR_INVALID", f"{op} needs a value (p)")
+                        _fail(codes.IR_INVALID, f"{op} needs a value (p)")
                 elif op in ("in", "not_in"):
                     if not ps:
-                        _fail("EMPTY_IN", f"{ent.name}.{column}")
+                        _fail(codes.EMPTY_IN, f"{ent.name}.{column}")
                 elif op == "between":
                     if len(ps) != 2:
-                        _fail("IR_INVALID", "between needs 2 params (ps)")
+                        _fail(codes.IR_INVALID, "between needs 2 params (ps)")
                 else:
-                    _fail("OPERATOR_NOT_ALLOWED", f"{op} with a column function")
+                    _fail(codes.OPERATOR_NOT_ALLOWED, f"{op} with a column function")
                 return
             value = p["value"]
             if not is_value_function(value["name"]):
-                _fail("FUNCTION_UNKNOWN", value["name"])
+                _fail(codes.FUNCTION_UNKNOWN, value["name"])
             if c.type not in ("date", "datetime"):
                 _fail(
-                    "OPERATOR_NOT_ALLOWED",
+                    codes.OPERATOR_NOT_ALLOWED,
                     f"{value['name']} on {ent.name}.{column} ({c.type})",
                 )
             want = 1 if value["name"] in value_function_units else 0
             if len(value.get("ps") or []) != want:
-                _fail("IR_INVALID", f"{value['name']} takes {want} arguments")
+                _fail(codes.IR_INVALID, f"{value['name']} takes {want} arguments")
             if "p" in p or ps:
-                _fail("IR_INVALID", "value function pred may not carry p or ps")
+                _fail(codes.IR_INVALID, "value function pred may not carry p or ps")
             if op not in ("eq", "not_eq", "gt", "gte", "lt", "lte"):
-                _fail("OPERATOR_NOT_ALLOWED", f"{op} with a value function")
+                _fail(codes.OPERATOR_NOT_ALLOWED, f"{op} with a value function")
             self.params(value.get("ps"))
             return
         c = field_of(ent, column)
         if c is None:
-            _fail("COLUMN_UNKNOWN", f"{ent.name}.{column}")
+            _fail(codes.COLUMN_UNKNOWN, f"{ent.name}.{column}")
         if not op_allowed(c, op):
-            _fail("OPERATOR_NOT_ALLOWED", f"{op} on {ent.name}.{column} ({c.type})")
+            _fail(codes.OPERATOR_NOT_ALLOWED, f"{op} on {ent.name}.{column} ({c.type})")
         if op in ("is_null", "is_not_null"):
             return
         if op in ("in", "not_in"):
             if not ps:
-                _fail("EMPTY_IN", f"{ent.name}.{column}")
+                _fail(codes.EMPTY_IN, f"{ent.name}.{column}")
             return
         if op == "between":
             if len(ps) != 2:
-                _fail("IR_INVALID", "between needs 2 params (ps)")
+                _fail(codes.IR_INVALID, "between needs 2 params (ps)")
             return
         if op in COLUMN_OPS:
             if not p.get("ref"):
-                _fail("IR_INVALID", f"{op} needs ref")
+                _fail(codes.IR_INVALID, f"{op} needs ref")
             other = self.ref(at, p["ref"])
             if not _meets(c, other):
                 _fail(
-                    "OPERATOR_NOT_ALLOWED",
+                    codes.OPERATOR_NOT_ALLOWED,
                     f"{ent.name}.{column} does not meet {p['ref']['column']}",
                 )
             if not _col_pair_op_allowed(c, other, op):
                 _fail(
-                    "OPERATOR_NOT_ALLOWED",
+                    codes.OPERATOR_NOT_ALLOWED,
                     f"{op} on {ent.name}.{column} ({c.type}) and {p['ref']['column']} ({other.type})",
                 )
             return
         if "p" not in p:
-            _fail("IR_INVALID", f"{op} {ent.name}.{column} needs a value (p)")
+            _fail(codes.IR_INVALID, f"{op} {ent.name}.{column} needs a value (p)")
 
     def column_function(self, ent: Entity, c: Field, f: dict) -> None:
         types = column_function_types.get(f["name"])
         if types is None:
-            _fail("FUNCTION_UNKNOWN", f["name"])
+            _fail(codes.FUNCTION_UNKNOWN, f["name"])
         if c.type not in types:
             _fail(
-                "OPERATOR_NOT_ALLOWED", f"{f['name']} on {ent.name}.{c.name} ({c.type})"
+                codes.OPERATOR_NOT_ALLOWED, f"{f['name']} on {ent.name}.{c.name} ({c.type})"
             )
         if len(f.get("ps") or []) != column_function_arity[f["name"]]:
             _fail(
-                "IR_INVALID",
+                codes.IR_INVALID,
                 f"{f['name']} takes {column_function_arity[f['name']]} arguments",
             )
         self.params(f.get("ps"))
@@ -557,30 +558,30 @@ class _Validator:
     def sub(self, s, scalar: bool, outer: dict) -> None:
         """subquery를 검사한다. outer는 subquery가 놓인 scope이며 그 "^" ref가 가리킨다."""
         if not s or "query" not in s:
-            _fail("IR_INVALID", "subquery needs a query")
+            _fail(codes.IR_INVALID, "subquery needs a query")
         ent = self.entity(s["query"]["entity"])
         column = s.get("column") or ""
         agg = s.get("agg") or ""
         if agg == "":
             if column == "":
-                _fail("IR_INVALID", "subquery needs a column")
+                _fail(codes.IR_INVALID, "subquery needs a column")
         elif agg in ("sum", "avg"):
             if not scalar:
-                _fail("IR_INVALID", f"{agg} subquery is only valid as a column")
+                _fail(codes.IR_INVALID, f"{agg} subquery is only valid as a column")
             c = field_of(ent, column)
             if c is None:
-                _fail("COLUMN_UNKNOWN", f"{ent.name}.{column}")
+                _fail(codes.COLUMN_UNKNOWN, f"{ent.name}.{column}")
             if c.type not in NUMERIC_TYPES:
                 _fail(
-                    "OPERATOR_NOT_ALLOWED", f"{agg} on {ent.name}.{column} ({c.type})"
+                    codes.OPERATOR_NOT_ALLOWED, f"{agg} on {ent.name}.{column} ({c.type})"
                 )
         elif agg == "count":
             if not scalar:
-                _fail("IR_INVALID", "count subquery is only valid as a column")
+                _fail(codes.IR_INVALID, "count subquery is only valid as a column")
         else:
-            _fail("IR_INVALID", f'subquery agg "{agg}"')
+            _fail(codes.IR_INVALID, f'subquery agg "{agg}"')
         if column != "" and field_of(ent, column) is None:
-            _fail("COLUMN_UNKNOWN", f"{ent.name}.{column}")
+            _fail(codes.COLUMN_UNKNOWN, f"{ent.name}.{column}")
         # A scalar column subquery yields at most one row by its shape: MySQL answers 1242 and PostgreSQL 21000 for
         # several rows, and SQLite returns the first, so the request makes one row certain. An in subquery (MySQL
         # 1235) and an aggregate take no limit.
@@ -593,18 +594,18 @@ class _Validator:
             or (query.get("limit") and not scalar_column)
         ):
             _fail(
-                "IR_INVALID", "subquery may not use limit, relations, lock or columns"
+                codes.IR_INVALID, "subquery may not use limit, relations, lock or columns"
             )
         if scalar_column:
             if not query.get("limit") or query["limit"]["count"] != 1:
-                _fail("IR_INVALID", "a scalar column subquery needs limit with count 1")
+                _fail(codes.IR_INVALID, "a scalar column subquery needs limit with count 1")
             order = query.get("order") or []
             if any(o.get("random") for o in order):
-                _fail("IR_INVALID", "a scalar column subquery may not order by random")
+                _fail(codes.IR_INVALID, "a scalar column subquery may not order by random")
             for pk in ent.primary_key:
                 if not any(o.get("column") == pk and not o.get("fn") for o in order):
                     _fail(
-                        "IR_INVALID",
+                        codes.IR_INVALID,
                         f"a scalar column subquery needs an order that includes the primary key column {pk}",
                     )
         scope = self.scopes(s["query"])
@@ -618,7 +619,7 @@ def _joined_refs(g: dict, seen: set) -> None:
     for item in g["items"]:
         if item.get("joined"):
             if item["joined"]["join"] in seen:
-                _fail("IR_INVALID", f"joined {item['joined']['join']} is placed twice")
+                _fail(codes.IR_INVALID, f"joined {item['joined']['join']} is placed twice")
             seen.add(item["joined"]["join"])
         if item.get("group"):
             _joined_refs(item["group"], seen)
@@ -642,19 +643,19 @@ def conflict_key(ent: Entity, assignments) -> list:
     candidates.extend((f"unique ({', '.join(u)})", list(u)) for u in ent.uniques)
     if not candidates:
         _fail(
-            "IR_INVALID",
+            codes.IR_INVALID,
             "on_duplicate needs exactly one conflict key; no key can meet the row",
         )
     if len(candidates) != 1:
         _fail(
-            "IR_INVALID",
+            codes.IR_INVALID,
             f"on_duplicate needs exactly one conflict key; {', '.join(n for n, _ in candidates)} can meet the row",
         )
     name, columns = candidates[0]
     for c in columns:
         if c not in assigned:
             _fail(
-                "IR_INVALID",
+                codes.IR_INVALID,
                 f"on_duplicate needs exactly one conflict key; {name} can meet the row but the insert does not assign {c}",
             )
     return columns
@@ -752,11 +753,11 @@ _RECORDS = {
 def _shape(record: str, value, path: str) -> None:
     """Refuses an unknown member and a member of the wrong type with IR_INVALID, like a strict decoder."""
     if not isinstance(value, dict):
-        _fail("IR_INVALID", f"{path}: object required" if path else "object required")
+        _fail(codes.IR_INVALID, f"{path}: object required" if path else "object required")
     fields = _RECORDS[record]
     for key, member in value.items():
         if key not in fields:
-            _fail("IR_INVALID", f'json: unknown field "{key}"')
+            _fail(codes.IR_INVALID, f'json: unknown field "{key}"')
         _typed(fields[key], member, f"{path}.{key}" if path else str(key))
 
 
@@ -765,13 +766,13 @@ def _typed(kind: str, value, path: str) -> None:
         return
     if kind.startswith("list<"):
         if not isinstance(value, list):
-            _fail("IR_INVALID", f"{path}: list required")
+            _fail(codes.IR_INVALID, f"{path}: list required")
         for item in value:
             _typed(kind[5:-1], item, path)
         return
     if kind.startswith("map<"):
         if not isinstance(value, dict):
-            _fail("IR_INVALID", f"{path}: object required")
+            _fail(codes.IR_INVALID, f"{path}: object required")
         for item in value.values():
             _typed(kind[4:-1], item, path)
         return
@@ -786,7 +787,7 @@ def _typed(kind: str, value, path: str) -> None:
         _shape(kind, value, path)
         return
     if not ok:
-        _fail("IR_INVALID", f"{path}: {kind} required")
+        _fail(codes.IR_INVALID, f"{path}: {kind} required")
 
 
 def validate(m: RuntimeModel, r: dict) -> None:
@@ -794,17 +795,17 @@ def validate(m: RuntimeModel, r: dict) -> None:
     _shape("Request", r, "")
     if r.get("ir_version") != IR_VERSION:
         _fail(
-            "VERSION_MISMATCH", f"ir_version {r.get('ir_version')}, engine {IR_VERSION}"
+            codes.VERSION_MISMATCH, f"ir_version {r.get('ir_version')}, engine {IR_VERSION}"
         )
     if r.get("manifest_hash") != m.manifest_hash:
         _fail(
-            "SCHEMA_HASH_MISMATCH",
+            codes.SCHEMA_HASH_MISMATCH,
             f"client {r.get('manifest_hash')}, engine {m.manifest_hash}",
         )
     if r["kind"] not in _KINDS:
-        _fail("IR_INVALID", f'unknown kind "{r["kind"]}"')
+        _fail(codes.IR_INVALID, f'unknown kind "{r["kind"]}"')
     if r.get("load") and (r["kind"] != "insert" or r.get("on_duplicate")):
-        _fail("IR_INVALID", "load is only valid on insert without on_duplicate")
+        _fail(codes.IR_INVALID, "load is only valid on insert without on_duplicate")
     # restart_identity은 entity 하나의 identity만 다시 시작하므로 행이나 값을 받지 않는다.
     if r["kind"] == "restart_identity" and (
         r.get("set")
@@ -814,34 +815,34 @@ def validate(m: RuntimeModel, r: dict) -> None:
         or r.get("optimistic") is not None
     ):
         _fail(
-            "IR_INVALID",
+            codes.IR_INVALID,
             "restart_identity takes no set, rows, on_duplicate, where or optimistic",
         )
     v = _Validator(m, r.get("n_params") or 0)
     root = v.scopes(r)
     v.query(r, {"root": root, "outer": None, "node": root}, False, False)
     if r.get("lock") and r["kind"] not in ("one", "all"):
-        _fail("IR_INVALID", "row lock is only valid on one or all")
+        _fail(codes.IR_INVALID, "row lock is only valid on one or all")
     ent = v.entity(r["entity"])
     if r["kind"] in ("sum", "avg"):
         c = field_of(ent, r.get("agg") or "")
         if c is None:
-            _fail("COLUMN_UNKNOWN", f"{r['entity']}.{r.get('agg') or ''}")
+            _fail(codes.COLUMN_UNKNOWN, f"{r['entity']}.{r.get('agg') or ''}")
         if c.type not in NUMERIC_TYPES:
             _fail(
-                "OPERATOR_NOT_ALLOWED",
+                codes.OPERATOR_NOT_ALLOWED,
                 f"{r['kind']} on {r['entity']}.{r['agg']} ({c.type})",
             )
     if r["kind"] == "group_count" and not (r.get("group_by") or []):
-        _fail("IR_INVALID", "group_count needs group_by")
+        _fail(codes.IR_INVALID, "group_count needs group_by")
     if (r.get("group_by") or []) and r["kind"] not in ("count", "group_count"):
         _fail(
-            "IR_INVALID",
+            codes.IR_INVALID,
             f"group_by is only valid on count or group_count, not {r['kind']}",
         )
     if r["kind"] in ("insert", "update", "restore"):
         if not (r.get("set") or []) and r["kind"] != "restore":
-            _fail("IR_INVALID", f"{r['kind']} needs set[]")
+            _fail(codes.IR_INVALID, f"{r['kind']} needs set[]")
         for a in r.get("set") or []:
             v.assign(ent, r, a)
             # A VALUES list has no current row for plus_p or minus_p to read; on_duplicate does.
@@ -849,53 +850,53 @@ def validate(m: RuntimeModel, r: dict) -> None:
                 a.get("plus_p") is not None or a.get("minus_p") is not None
             ):
                 _fail(
-                    "IR_INVALID", f"insert cannot assign {a['column']} by plus or minus"
+                    codes.IR_INVALID, f"insert cannot assign {a['column']} by plus or minus"
                 )
             # The key is the table's own. A restore checks its set with its key below.
             if r["kind"] == "update":
                 col = field_of(ent, a["column"])
                 if col.primary or col.identity:
-                    _fail("IR_INVALID", f"cannot update {a['column']}")
+                    _fail(codes.IR_INVALID, f"cannot update {a['column']}")
     if r.get("rows"):
         if r["kind"] != "insert" or r.get("on_duplicate"):
-            _fail("IR_INVALID", "rows are only valid on insert without on_duplicate")
+            _fail(codes.IR_INVALID, "rows are only valid on insert without on_duplicate")
         for a in r.get("set") or []:
             if "p" not in a:
                 _fail(
-                    "IR_INVALID",
+                    codes.IR_INVALID,
                     f"multi-row insert assigns {r['entity']}.{a['column']} "
                     f"without a value",
                 )
         for i, row in enumerate(r["rows"]):
             if len(row) != len(r.get("set") or []):
                 _fail(
-                    "IR_INVALID",
+                    codes.IR_INVALID,
                     f"insert row {i + 1} has {len(row)} values for "
                     f"{len(r.get('set') or [])} columns",
                 )
             v.params(row)
     if r.get("on_duplicate"):
         if r["kind"] != "insert":
-            _fail("IR_INVALID", "on_duplicate is only valid on insert")
+            _fail(codes.IR_INVALID, "on_duplicate is only valid on insert")
         for a in r["on_duplicate"]:
             v.assign(ent, r, a)
             c = field_of(ent, a["column"])
             if c.primary or c.identity:
                 _fail(
-                    "IR_INVALID",
+                    codes.IR_INVALID,
                     f"on_duplicate cannot assign {r['entity']}.{a['column']}",
                 )
         conflict_key(ent, r.get("set") or [])
     if r.get("optimistic"):
         if field_of(ent, r["optimistic"]["column"]) is None:
-            _fail("COLUMN_UNKNOWN", f"{r['entity']}.{r['optimistic']['column']}")
+            _fail(codes.COLUMN_UNKNOWN, f"{r['entity']}.{r['optimistic']['column']}")
         v.params([r["optimistic"]["p"]])
     if r["kind"] in ("update", "delete") and not (r.get("where") or {}).get("items"):
-        _fail("IR_INVALID", f"{r['kind']} without where")
+        _fail(codes.IR_INVALID, f"{r['kind']} without where")
     if r["kind"] == "restore":
         # restore는 지워진 행만 고치므로 읽은 version과 비교할 것이 없다.
         if r.get("optimistic") is not None:
-            _fail("IR_INVALID", "restore takes no optimistic")
+            _fail(codes.IR_INVALID, "restore takes no optimistic")
         restore_key(ent, r)
 
 
@@ -908,7 +909,7 @@ def restore_key(ent: Entity, r: dict) -> dict:
     names at most one row. It returns {'key': the key, 'where': the where with an eq condition for each set
     value of a key column, 'set': the new values}."""
     if ent.soft_delete == "":
-        _fail("IR_INVALID", f"restore of {ent.name}, which has no soft_delete setting")
+        _fail(codes.IR_INVALID, f"restore of {ent.name}, which has no soft_delete setting")
     items = list((r.get("where") or {}).get("items") or [])
     valued = set()
     for i, item in enumerate(items):
@@ -917,7 +918,7 @@ def restore_key(ent: Entity, r: dict) -> dict:
         ) or ""
         if i > 0 and conn == "or":
             _fail(
-                "IR_INVALID",
+                codes.IR_INVALID,
                 f"restore of {ent.name} joins the conditions of its where with and",
             )
         p = item.get("pred")
@@ -947,7 +948,7 @@ def restore_key(ent: Entity, r: dict) -> dict:
     )
     if key is None:
         _fail(
-            "IR_INVALID",
+            codes.IR_INVALID,
             f"restore of {ent.name} gives no primary key or unique key a value in its "
             f"set or in an eq condition of its where",
         )
@@ -969,6 +970,6 @@ def restore_key(ent: Entity, r: dict) -> dict:
         # The key and the soft delete column are the table's own: a restore clears the latter itself.
         col = field_of(ent, a["column"])
         if col.primary or col.identity or a["column"] == ent.soft_delete:
-            _fail("IR_INVALID", f"restore cannot assign {a['column']}")
+            _fail(codes.IR_INVALID, f"restore cannot assign {a['column']}")
         assignments.append(a)
     return {"key": key, "where": {"items": where}, "set": assignments}

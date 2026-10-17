@@ -1,5 +1,6 @@
 # 질의 작성 상태: 만들어지는 query와, 읽힌 row의 상태. Model chain이 이것을 채우고
 # planner가 이것을 IR로 만든다 (docs/protocol.md).
+from polyspec.orm import codes
 from polyspec.orm.engine.model import Field, field_of
 from polyspec.orm.errors import OrmError
 from polyspec.orm.names import ChainKey
@@ -157,13 +158,13 @@ class Core:
 
     def fail(self, message: str) -> None:
         if self.error is None:
-            self.error = OrmError("CONFIG", message)
+            self.error = OrmError(codes.CONFIG, message)
 
     def fail_error(self, error) -> None:
         if self.error is not None:
             return
         self.error = (
-            error if isinstance(error, OrmError) else OrmError("CONFIG", str(error))
+            error if isinstance(error, OrmError) else OrmError(codes.CONFIG, str(error))
         )
 
     def subject(self) -> "Core":
@@ -274,14 +275,14 @@ class Core:
 
         if key.op in ("tuple", "ne_tuple"):
             if not isinstance(value, (list, tuple)):
-                raise OrmError("CONFIG", "tuple values must be a list")
+                raise OrmError(codes.CONFIG, "tuple values must be a list")
             if len(value) == 0:
-                raise OrmError("EMPTY_IN", "tuple condition received an empty list")
+                raise OrmError(codes.EMPTY_IN, "tuple condition received an empty list")
             rows = []
             for row in value:
                 if not isinstance(row, (list, tuple)) or len(row) != len(key.columns):
                     raise OrmError(
-                        "CONFIG",
+                        codes.CONFIG,
                         "tuple values must be value groups of the tuple columns",
                     )
                 rows.append(list(row))
@@ -294,14 +295,14 @@ class Core:
         if key.op == "between":
             if not isinstance(value, (list, tuple)) or len(value) != 2:
                 raise OrmError(
-                    "CONFIG",
+                    codes.CONFIG,
                     f"between value for {key.column} must be a two-value array",
                 )
             return p(kind="between", op="between", value=list(value)), 0
         if key.compare != "":
             if not _is_model(value):
                 raise OrmError(
-                    "CONFIG", f"column comparison {key.column} requires a model"
+                    codes.CONFIG, f"column comparison {key.column} requires a model"
                 )
             return p(
                 kind="ref",
@@ -317,18 +318,18 @@ class Core:
         if value is None:
             if not nullable:
                 raise OrmError(
-                    "CONFIG", f"null is not accepted by the {key.op} operator"
+                    codes.CONFIG, f"null is not accepted by the {key.op} operator"
                 )
             return p(kind="null", op="is_not_null" if key.op == "ne" else "is_null"), 0
         if isinstance(value, ColumnFunction):
             if not single:
                 raise OrmError(
-                    "CONFIG",
+                    codes.CONFIG,
                     "a column function is accepted only by a single-key condition",
                 )
             if len(rest) != 1:
                 raise OrmError(
-                    "CONFIG",
+                    codes.CONFIG,
                     f"column function on {key.column} requires one compared value",
                 )
             return p(kind="column_fn", op=op, fn=value, value=rest[0]), 1
@@ -337,7 +338,7 @@ class Core:
         if _is_model(value):
             if not nullable:
                 raise OrmError(
-                    "CONFIG", f"a subquery is not accepted by the {key.op} operator"
+                    codes.CONFIG, f"a subquery is not accepted by the {key.op} operator"
                 )
             return p(
                 kind="sub", op="not_in" if key.op == "ne" else "in", sub=value.core
@@ -345,10 +346,10 @@ class Core:
         if isinstance(value, (list, tuple)):
             if not nullable:
                 raise OrmError(
-                    "CONFIG", f"a list is not accepted by the {key.op} operator"
+                    codes.CONFIG, f"a list is not accepted by the {key.op} operator"
                 )
             if len(value) == 0:
-                raise OrmError("EMPTY_IN", f"{key.column} received an empty list")
+                raise OrmError(codes.EMPTY_IN, f"{key.column} received an empty list")
             return p(
                 kind="list", op="not_in" if key.op == "ne" else "in", value=list(value)
             ), 0
@@ -438,9 +439,9 @@ class Core:
         if name in self.values:
             return self.values[name]
         if field_of(self.ent.entity, name) is None:
-            raise OrmError("COLUMN_UNKNOWN", f"{self.ent.entity.name}.{name}")
+            raise OrmError(codes.COLUMN_UNKNOWN, f"{self.ent.entity.name}.{name}")
         raise OrmError(
-            "COLUMN_UNSELECTED",
+            codes.COLUMN_UNSELECTED,
             f"{self.ent.entity.name}.{name} was neither selected nor assigned",
         )
 
@@ -470,12 +471,12 @@ class Core:
 
         field = field_of(self.ent.entity, column)
         if field is None:
-            raise OrmError("COLUMN_UNKNOWN", column)
+            raise OrmError(codes.COLUMN_UNKNOWN, column)
         if styled_field(field):
             if not isinstance(value, StyledValue):
-                raise OrmError("CODEC_ENCODE", f"{column} requires StyledValue")
+                raise OrmError(codes.CODEC_ENCODE, f"{column} requires StyledValue")
             if not field.nullable and value.kind == "sql-null":
-                raise OrmError("CODEC_ENCODE", f"{column} does not accept SQL NULL")
+                raise OrmError(codes.CODEC_ENCODE, f"{column} does not accept SQL NULL")
             if value.kind == "value":
                 value.payload()
         elif value is not None:
@@ -484,14 +485,14 @@ class Core:
                 not _is_safe_integer(value) or not rng[0] <= value <= rng[1]
             ):
                 raise OrmError(
-                    "CODEC_ENCODE",
+                    codes.CODEC_ENCODE,
                     f"{column} ({field.type}) requires an integer "
                     f"from {rng[0]} to {rng[1]}",
                 )
             if field.type == "decimal":
                 if not isinstance(value, str):
                     raise OrmError(
-                        "CODEC_ENCODE", f"{column} requires exact decimal text"
+                        codes.CODEC_ENCODE, f"{column} requires exact decimal text"
                     )
                 value = normalize_decimal(value, field.precision, field.scale)
         self.values[column] = value
@@ -628,7 +629,7 @@ class Frame:
             return path
         if self.outer is not None and core is self.outer:
             return "^"
-        raise OrmError("CONFIG", f"{core.ent.entity.name} is not part of the statement")
+        raise OrmError(codes.CONFIG, f"{core.ent.entity.name} is not part of the statement")
 
 
 def _pad(values):
@@ -665,7 +666,7 @@ class BuiltRequest:
     def fail(self, error) -> None:
         if self.error is None:
             self.error = (
-                error if isinstance(error, OrmError) else OrmError("CONFIG", str(error))
+                error if isinstance(error, OrmError) else OrmError(codes.CONFIG, str(error))
             )
 
     def finish(self) -> dict:
@@ -679,7 +680,7 @@ class BuiltRequest:
         if c.where.pending != "":
             self.fail(
                 OrmError(
-                    "CONFIG",
+                    codes.CONFIG,
                     f"connector {c.where.pending} without a following condition",
                 )
             )
@@ -700,7 +701,7 @@ class BuiltRequest:
             child_path = f.path_of(join["child"])
             name = child_path[child_path.rfind("/") + 1 :]
             if child_path in self.join_paths:
-                self.fail(OrmError("CONFIG", f"join result name {name} is used twice"))
+                self.fail(OrmError(codes.CONFIG, f"join result name {name} is used twice"))
                 return None
             self.join_paths.add(child_path)
             child = self.query(join["child"], f, child_path)
@@ -725,7 +726,7 @@ class BuiltRequest:
                 if child_core.limit is not None:
                     self.fail(
                         OrmError(
-                            "LIMIT_IN_RELATION",
+                            codes.LIMIT_IN_RELATION,
                             f"{child_core.ent.entity.name} relation uses limit; "
                             f"use groupLimit",
                         )
@@ -760,7 +761,7 @@ class BuiltRequest:
         if ch.limit is not None:
             self.fail(
                 OrmError(
-                    "LIMIT_IN_RELATION",
+                    codes.LIMIT_IN_RELATION,
                     f"{ch.ent.entity.name} relation uses limit; use groupLimit",
                 )
             )
@@ -829,7 +830,7 @@ class BuiltRequest:
                 if path is None or child is f.root:
                     self.fail(
                         OrmError(
-                            "CONFIG",
+                            codes.CONFIG,
                             f"{child.ent.entity.name} is not joined in the statement",
                         )
                     )
@@ -837,7 +838,7 @@ class BuiltRequest:
                 if f.parent.get(id(child)) is not owner.subject():
                     self.fail(
                         OrmError(
-                            "CONFIG",
+                            codes.CONFIG,
                             f"{child.ent.entity.name} conditions must "
                             f"be placed in the model it is joined to",
                         )
@@ -846,7 +847,7 @@ class BuiltRequest:
                 if id(child) in f.placed:
                     self.fail(
                         OrmError(
-                            "CONFIG",
+                            codes.CONFIG,
                             f"{child.ent.entity.name} conditions are placed twice",
                         )
                     )
@@ -855,7 +856,7 @@ class BuiltRequest:
                 if not child.where.items:
                     self.fail(
                         OrmError(
-                            "CONFIG",
+                            codes.CONFIG,
                             f"{child.ent.entity.name} has no condition to place",
                         )
                     )
@@ -906,16 +907,16 @@ class BuiltRequest:
         from polyspec.orm.model import Model
 
         if not isinstance(model, Model):
-            self.fail(OrmError("CONFIG", "subquery callback returned no model"))
+            self.fail(OrmError(codes.CONFIG, "subquery callback returned no model"))
             return None
         c = model.core
         if c.conn is not None:
             self.fail(
-                OrmError("CONFIG", "a subquery model cannot have its own connection")
+                OrmError(codes.CONFIG, "a subquery model cannot have its own connection")
             )
             return None
         if c.relations:
-            self.fail(OrmError("CONFIG", "a subquery model cannot load relations"))
+            self.fail(OrmError(codes.CONFIG, "a subquery model cannot load relations"))
             return None
         q = self.query(c, Frame(c, outer), "")
         if q is None:
@@ -929,7 +930,7 @@ class BuiltRequest:
         else:
             self.fail(
                 OrmError(
-                    "CONFIG",
+                    codes.CONFIG,
                     "a subquery model must add exactly one column "
                     "with addColumn<Col>()",
                 )

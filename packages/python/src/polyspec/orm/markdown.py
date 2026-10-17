@@ -9,6 +9,7 @@ import socket
 from dataclasses import dataclass
 from urllib.parse import parse_qsl
 
+from polyspec.orm import codes
 from polyspec.orm.engine.model import Entity, RuntimeModel, entity_of, field_of
 from polyspec.orm.bind_check import check_assign, check_param, use_slot_type
 from polyspec.orm.engine.params import ParamUse, function_type, param_uses
@@ -35,10 +36,10 @@ def parse_markdown_dsn(url) -> MarkdownDsn:
     """markdown://127.0.0.1:<port>/<corpus>?token=<token>을 읽는다. flowmark server는 127.0.0.1에서만 듣고
     token은 평문으로 가므로 host는 127.0.0.1뿐이다."""
     if url.username is not None or url.password is not None:
-        raise OrmError("CONFIG", f"{_FORM}; it takes no user")
+        raise OrmError(codes.CONFIG, f"{_FORM}; it takes no user")
     if url.hostname != "127.0.0.1":
         raise OrmError(
-            "CONFIG",
+            codes.CONFIG,
             f"{_FORM}; host {url.hostname!r}: a flowmark server listens on 127.0.0.1 only",
         )
     try:
@@ -48,14 +49,14 @@ def parse_markdown_dsn(url) -> MarkdownDsn:
     if port is None or not 1 <= port <= 65535:
         given = url.netloc.rpartition(":")[2] if ":" in url.netloc else ""
         raise OrmError(
-            "CONFIG",
+            codes.CONFIG,
             f"{_FORM}; port {given!r} is not 1 to 65535: give the port that flowmark serve "
             f"printed",
         )
     corpus = url.path[1:] if url.path.startswith("/") else url.path
     if corpus == "" or "/" in corpus:
         raise OrmError(
-            "CONFIG",
+            codes.CONFIG,
             f"{_FORM}; the path {url.path!r} is not one corpus name: give the corpus root's "
             f"directory name",
         )
@@ -63,12 +64,12 @@ def parse_markdown_dsn(url) -> MarkdownDsn:
     tokens = [value for name, value in parameters if name == "token"]
     if len(tokens) != 1 or tokens[0] == "":
         raise OrmError(
-            "CONFIG",
+            codes.CONFIG,
             f"{_FORM}; give one token, the token of .flowmark/server.json of the corpus",
         )
     for name, _ in parameters:
         if name != "token":
-            raise OrmError("CONFIG", f"{_FORM}; it does not accept {name}")
+            raise OrmError(codes.CONFIG, f"{_FORM}; it does not accept {name}")
     return MarkdownDsn(f"127.0.0.1:{port}", corpus, tokens[0])
 
 
@@ -77,7 +78,7 @@ def unsupported_on_markdown(db, surface: str) -> None:
     연결에서는 아무것도 하지 않는다."""
     if db.driver == "markdown":
         raise OrmError(
-            "CAPABILITY_UNSUPPORTED",
+            codes.CAPABILITY_UNSUPPORTED,
             f"{surface} is not supported by the markdown IR executor",
         )
 
@@ -107,17 +108,17 @@ class MdSession:
         """message 하나를 한 줄로 보내고 답 한 줄을 읽는다. 답이 {"error": {code, message}}이면 그 code의
         오류다."""
         if self.broken:
-            raise OrmError("CONNECTION_LOST", "the flowmark session has ended")
+            raise OrmError(codes.CONNECTION_LOST, "the flowmark session has ended")
         try:
             line = _plain(msg)
         except (TypeError, ValueError) as error:
-            raise OrmError("INTERNAL", f"writing the message: {error}", error) from None
+            raise OrmError(codes.INTERNAL, f"writing the message: {error}", error) from None
         try:
             answer = self.exchange(line.encode("utf-8") + b"\n")
         except OSError as error:
             self.close()
             raise OrmError(
-                "CONNECTION_LOST",
+                codes.CONNECTION_LOST,
                 f"the flowmark server connection broke: {error}",
                 error,
             ) from None
@@ -128,7 +129,7 @@ class MdSession:
         if not isinstance(probe, dict):
             self.close()
             raise OrmError(
-                "INTERNAL",
+                codes.INTERNAL,
                 f"the flowmark server answered {answer!r}, not a JSON object",
             )
         if "error" in probe:
@@ -140,11 +141,11 @@ class MdSession:
             ):
                 self.close()
                 raise OrmError(
-                    "INTERNAL",
+                    codes.INTERNAL,
                     f"the flowmark server answered the error {_plain(e)} without a code",
                 )
             # server는 CONNECTION_LOST를 쓴 뒤 연결을 닫는다(idle transaction).
-            if e["code"] == "CONNECTION_LOST":
+            if e["code"] == codes.CONNECTION_LOST:
                 self.close()
             message = e.get("message")
             raise OrmError(e["code"], message if isinstance(message, str) else "")
@@ -168,7 +169,7 @@ def dial_markdown(dsn: MarkdownDsn) -> MdSession:
     except OSError as error:
         sock.close()
         raise OrmError(
-            "DRIVER",
+            codes.DRIVER,
             f"connecting to the flowmark server {dsn.address}: {error}; start flowmark serve "
             f"for the corpus",
             error,
@@ -188,7 +189,7 @@ def markdown_model(db, manifest_hash: str) -> RuntimeModel:
     model = db.schemas.get(manifest_hash)
     if model is None:
         raise OrmError(
-            "SCHEMA_HASH_MISMATCH",
+            codes.SCHEMA_HASH_MISMATCH,
             f"manifest {manifest_hash} is not registered on this connection: "
             f"connect through its generated package or register it",
         )
@@ -199,7 +200,7 @@ def markdown_call(ex, request: dict, params) -> tuple[dict, RuntimeModel]:
     """request를 검증하고 그 request message를 ex의 session에서 실행해 답을 돌려준다."""
     db = ex.db
     if db.closed:
-        raise OrmError("CONFIG", "database is closed")
+        raise OrmError(codes.CONFIG, "database is closed")
     m = markdown_model(db, request["manifest_hash"])
     request["n_params"] = len(params)
     validate(m, request)
@@ -223,7 +224,7 @@ def markdown_call(ex, request: dict, params) -> tuple[dict, RuntimeModel]:
     }
     session = ex.frame.connection if ex.frame is not None else db._connection
     if session is None:
-        raise OrmError("CONFIG", "transaction already finished")
+        raise OrmError(codes.CONFIG, "transaction already finished")
     return session.call(msg), m
 
 
@@ -250,12 +251,12 @@ def markdown_param(db, i: int, value, uses: list[ParamUse]):
     if isinstance(value, (str, int, float)):
         return value
     raise OrmError(
-        "CODEC_ENCODE", f"parameter {i} ({type(value).__name__}) has no JSON form"
+        codes.CODEC_ENCODE, f"parameter {i} ({type(value).__name__}) has no JSON form"
     )
 
 
 def _answer_error(message: str) -> OrmError:
-    return OrmError("INTERNAL", f"the flowmark answer: {message}")
+    return OrmError(codes.INTERNAL, f"the flowmark answer: {message}")
 
 
 class MdLinks:
@@ -467,7 +468,7 @@ def answer_value(type_: str, raw, where: str):
 
     def bad():
         return OrmError(
-            "CODEC_DECODE",
+            codes.CODEC_DECODE,
             f"{where}: the answer value {_plain(raw)} is not a {type_} value",
         )
 
@@ -560,7 +561,7 @@ def markdown_write(ex, request: dict, params) -> tuple[list, int]:
         )
     keys = [aggregate_value(key) for key in answer.get("keys") or []]
     if request["kind"] == "update" and request.get("optimistic") and affected == 0:
-        raise OrmError("OPTIMISTIC_LOCK", "the row changed after it was read")
+        raise OrmError(codes.OPTIMISTIC_LOCK, "the row changed after it was read")
     return keys, affected
 
 

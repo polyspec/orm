@@ -3,6 +3,7 @@
 import type { SentOrigin, StatementDone } from './driver.js';
 import { present } from './present.js';
 import { OrmError } from './runtime_error.js';
+import * as codes from './codes.js';
 
 /**
  * The origin of a statement: the verb of the plan step of a model statement,
@@ -43,7 +44,7 @@ export class Subscribers {
   private transactions = 0;
 
   public subscribe(subscriber: StatementSubscriber): () => void {
-    if (typeof subscriber !== 'function') throw new OrmError('CONFIG', 'subscribe takes a function that receives a statement event');
+    if (typeof subscriber !== 'function') throw new OrmError(codes.CONFIG, 'subscribe takes a function that receives a statement event');
     // 같은 함수를 두 번 등록해도 해제는 자기 등록 하나만 지운다.
     const entry: StatementSubscriber = event => subscriber(event);
     this.list = [...this.list, entry];
@@ -72,7 +73,7 @@ export class Subscribers {
     const frozen = Object.freeze({ ...event, binds: Object.freeze([...event.binds]), tables: Object.freeze([...event.tables]) });
     for (const subscriber of list) {
       try { subscriber(frozen); } catch (error) {
-        throw new OrmError('SUBSCRIBER', `statement event subscriber failed: ${error instanceof Error ? error.message : String(error)}`, error);
+        throw new OrmError(codes.SUBSCRIBER, `statement event subscriber failed: ${error instanceof Error ? error.message : String(error)}`, error);
       }
     }
   }

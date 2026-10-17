@@ -1,6 +1,7 @@
 # AES column의 key 관리: version마다 key를 두고 row 단위로 갱신한다 (docs/codec.md "AES").
 from typing import Mapping
 
+from polyspec.orm import codes
 from polyspec.orm.errors import OrmError
 
 __all__ = ["AesKeyring"]
@@ -37,10 +38,10 @@ class AesKeyring:
             or current_version < 1
             or current_version not in keys
         ):
-            raise OrmError("CONFIG", f"AES version {current_version} is not declared")
+            raise OrmError(codes.CONFIG, f"AES version {current_version} is not declared")
         for version, key in keys.items():
             if not _is_safe_integer(version) or version < 1 or len(key) == 0:
-                raise OrmError("CONFIG", f"AES version {version} has no key")
+                raise OrmError(codes.CONFIG, f"AES version {version} has no key")
         self._keys = dict(keys)
         self.current_version = current_version
 
@@ -50,7 +51,7 @@ class AesKeyring:
     def key(self, version: int) -> str:
         key = self._keys.get(version)
         if key is None:
-            raise OrmError("CONFIG", f"AES version {version} is not declared")
+            raise OrmError(codes.CONFIG, f"AES version {version} is not declared")
         return key
 
     def rotate_row(
@@ -65,13 +66,13 @@ class AesKeyring:
         codec = codec or _RowCodec()
         old_version = row.get(version_column)
         if not _is_safe_integer(old_version):
-            raise OrmError("CODEC_DECODE", "AES row version must be an integer")
+            raise OrmError(codes.CODEC_DECODE, "AES row version must be an integer")
         old_key = self.key(old_version)
         new_key = self.key(target_version)
         out = dict(row)
         for column in columns:
             if column.name not in row:
-                raise OrmError("CONFIG", f"AES column {column.name} is missing")
+                raise OrmError(codes.CONFIG, f"AES column {column.name} is missing")
             out[column.name] = codec.encode(
                 codec.decode(row[column.name], column.styles, old_key),
                 column.styles,

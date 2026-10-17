@@ -14,6 +14,7 @@ import time
 from dataclasses import dataclass
 from urllib.parse import urlsplit, parse_qsl
 
+from polyspec.orm import codes
 from polyspec.orm.codec import blind_index, decode as codec_decode, host_encode
 from polyspec.orm.clock import wall_micros
 from polyspec.orm.canonical import canonical_request
@@ -127,20 +128,20 @@ def _mysql_tls(parameters: dict, host: str) -> str | None:
         return None
     if mode != "VERIFY_IDENTITY":
         raise OrmError(
-            "CONFIG",
+            codes.CONFIG,
             f"mysql DSN ssl-mode {json.dumps(mode)} is not supported; the TLS mode is "
             f"ssl-mode=VERIFY_IDENTITY with ssl-ca",
         )
     if not ca:
         raise OrmError(
-            "CONFIG",
+            codes.CONFIG,
             "mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file",
         )
     if not ca.startswith("/"):
-        raise OrmError("CONFIG", f"mysql DSN ssl-ca {ca} is not an absolute path")
+        raise OrmError(codes.CONFIG, f"mysql DSN ssl-ca {ca} is not an absolute path")
     if "socket" in parameters:
         raise OrmError(
-            "CONFIG", "mysql DSN ssl-mode connects over TCP and does not accept socket"
+            codes.CONFIG, "mysql DSN ssl-mode connects over TCP and does not accept socket"
         )
     # identity 검사는 host 이름을 인증서와 비교한다.
     try:
@@ -148,7 +149,7 @@ def _mysql_tls(parameters: dict, host: str) -> str | None:
     except ValueError:
         return ca
     raise OrmError(
-        "CONFIG",
+        codes.CONFIG,
         f"mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address {host}",
     )
 
@@ -160,7 +161,7 @@ def _sqlite_path(url) -> str:
     # unquote keeps a % without two hexadecimal digits as text, so the escape is checked before it decodes.
     if re.search(r"%(?![0-9A-Fa-f]{2})", path):
         raise OrmError(
-            "CONFIG",
+            codes.CONFIG,
             "sqlite DSN path has a % without two hexadecimal digits "
             "or is not UTF-8 after percent-decoding",
         )
@@ -170,13 +171,13 @@ def _sqlite_path(url) -> str:
         path = unquote(path, errors="strict")
     except UnicodeDecodeError:
         raise OrmError(
-            "CONFIG",
+            codes.CONFIG,
             "sqlite DSN path has a % without two hexadecimal digits "
             "or is not UTF-8 after percent-decoding",
         ) from None
     # NUL 뒤를 버리는 opener는 다른 file을 연다.
     if "\0" in path:
-        raise OrmError("CONFIG", "sqlite DSN path must not contain a NUL byte")
+        raise OrmError(codes.CONFIG, "sqlite DSN path must not contain a NUL byte")
     return path
 
 
@@ -188,7 +189,7 @@ def parse_dsn(dsn: str) -> ParsedDsn:
         url = urlsplit(dsn)
     except ValueError:
         raise OrmError(
-            "CONFIG",
+            codes.CONFIG,
             "dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://",
         ) from None
     scheme = url.scheme
@@ -196,7 +197,7 @@ def parse_dsn(dsn: str) -> ParsedDsn:
         return ParsedDsn(scheme, "+00:00", url, parse_markdown_dsn(url))
     if scheme not in DSN_PARAMETERS:
         raise OrmError(
-            "CONFIG",
+            codes.CONFIG,
             f"unsupported DSN scheme {scheme or '(none)'}; want "
             f"mysql, postgres, sqlite, or markdown",
         )
@@ -204,14 +205,14 @@ def parse_dsn(dsn: str) -> ParsedDsn:
     for name in parameters:
         if name not in DSN_PARAMETERS[scheme]:
             raise OrmError(
-                "CONFIG",
+                codes.CONFIG,
                 f"{scheme} DSN has the unknown parameter {name}; it "
                 f"accepts {', '.join(DSN_PARAMETERS[scheme])}",
             )
     requested = parameters.get("timezone")
     if requested is not None and requested not in ("UTC", "+00:00"):
         raise OrmError(
-            "CONFIG",
+            codes.CONFIG,
             f"dsn timezone {requested}: every connection reads and "
             f"writes datetime values in UTC",
         )
@@ -219,21 +220,21 @@ def parse_dsn(dsn: str) -> ParsedDsn:
     ssl_ca = None
     if scheme == "mysql":
         if not url.hostname or not (url.path or "").strip("/"):
-            raise OrmError("CONFIG", "mysql DSN must include host and database")
+            raise OrmError(codes.CONFIG, "mysql DSN must include host and database")
         ssl_ca = _mysql_tls(parameters, url.hostname)
     elif scheme == "postgres":
         if (not url.hostname and "host" not in parameters) or not (
             url.path or ""
         ).strip("/"):
-            raise OrmError("CONFIG", "postgres DSN must include host and database")
+            raise OrmError(codes.CONFIG, "postgres DSN must include host and database")
     else:
         if url.hostname or not url.path.startswith("/") or url.path == "/":
             raise OrmError(
-                "CONFIG", "sqlite DSN must include an absolute database path"
+                codes.CONFIG, "sqlite DSN must include an absolute database path"
             )
         if "_txlock" in parameters:
             raise OrmError(
-                "CONFIG",
+                codes.CONFIG,
                 "sqlite DSN does not accept _txlock; write "
                 "transactions begin with BEGIN IMMEDIATE",
             )
@@ -248,7 +249,7 @@ def _pad2(n: int) -> str:
 def _zone_offset(zone: str) -> int:
     fixed = re.fullmatch(r"([+-])(\d{2}):(\d{2})", zone)
     if fixed is None:
-        raise OrmError("INTERNAL", f"connection zone {zone} is not a fixed offset")
+        raise OrmError(codes.INTERNAL, f"connection zone {zone} is not a fixed offset")
     sign = -1 if fixed.group(1) == "-" else 1
     return sign * (int(fixed.group(2)) * 60 + int(fixed.group(3)))
 
@@ -406,7 +407,7 @@ def time_value(value, col_type: str, zone: str, precision: int) -> str:
     text = _time_form(value, col_type, zone, precision)
     if text is None:
         raise OrmError(
-            "CODEC_ENCODE",
+            codes.CODEC_ENCODE,
             f"{col_type} value {_shown(value)} is not "
             f"{_time_shape(col_type, precision)}",
         )
@@ -419,7 +420,7 @@ def read_time(value, col_type: str, zone: str, precision: int) -> str:
     text = _time_form(value, col_type, zone, precision)
     if text is None:
         raise OrmError(
-            "CODEC_DECODE",
+            codes.CODEC_DECODE,
             f"{col_type} cell {_shown(value)} is not "
             f"{_time_shape(col_type, precision)}",
         )
@@ -491,7 +492,7 @@ def convert(type_: str, value, zone: str, declared: Field | None = None):
             or not low <= value <= high
         ):
             raise OrmError(
-                "CODEC_DECODE", f"{type_} cell is not an exact integer in its range"
+                codes.CODEC_DECODE, f"{type_} cell is not an exact integer in its range"
             )
         return value
     if type_ == "f64":
@@ -504,17 +505,17 @@ def convert(type_: str, value, zone: str, declared: Field | None = None):
         from polyspec.orm.decimal import decimal_from_scaled
 
         if declared is None:
-            raise OrmError("CODEC_DECODE", "decimal column metadata is missing")
+            raise OrmError(codes.CODEC_DECODE, "decimal column metadata is missing")
         if isinstance(value, int) and not isinstance(value, bool):
             return decimal_from_scaled(value, declared.precision, declared.scale)
         if not isinstance(value, str):
             raise OrmError(
-                "CODEC_DECODE", f"decimal cell has type {type(value).__name__}"
+                codes.CODEC_DECODE, f"decimal cell has type {type(value).__name__}"
             )
         try:
             return normalize_decimal(value, declared.precision, declared.scale)
         except OrmError as cause:
-            raise OrmError("CODEC_DECODE", f"invalid decimal cell: {cause}") from None
+            raise OrmError(codes.CODEC_DECODE, f"invalid decimal cell: {cause}") from None
     if type_ == "bool":
         return value in (True, 1, "1", "t", "true")
     if type_ in ("date", "time", "datetime"):
@@ -536,7 +537,7 @@ def convert(type_: str, value, zone: str, declared: Field | None = None):
         return str(value)
     if type_ == "styled":
         return value
-    raise OrmError("INTERNAL", f"cell of unknown type {type_}")
+    raise OrmError(codes.INTERNAL, f"cell of unknown type {type_}")
 
 
 def column_type(col: Field) -> str:
@@ -561,35 +562,35 @@ def _driver_limit(driver: str) -> int:
 _MYSQL_CODES = {
     # 2006(server has gone away), 2013(lost connection during query)은 client가 연결을 잃은 것이고 4031은
     # server가 쉬던 연결을 끝낸 것이다.
-    2006: "CONNECTION_LOST",
-    2013: "CONNECTION_LOST",
-    4031: "CONNECTION_LOST",
-    3572: "LOCK_NOT_AVAILABLE",
-    1317: "CANCELED",
-    3024: "CANCELED",
-    1062: "DUPLICATE_KEY",
-    1451: "FOREIGN_KEY",
-    1452: "FOREIGN_KEY",
-    1213: "DEADLOCK",
-    1290: "READ_ONLY",
-    1792: "READ_ONLY",
-    3819: "CONSTRAINT",
-    4025: "CONSTRAINT",
+    2006: codes.CONNECTION_LOST,
+    2013: codes.CONNECTION_LOST,
+    4031: codes.CONNECTION_LOST,
+    3572: codes.LOCK_NOT_AVAILABLE,
+    1317: codes.CANCELED,
+    3024: codes.CANCELED,
+    1062: codes.DUPLICATE_KEY,
+    1451: codes.FOREIGN_KEY,
+    1452: codes.FOREIGN_KEY,
+    1213: codes.DEADLOCK,
+    1290: codes.READ_ONLY,
+    1792: codes.READ_ONLY,
+    3819: codes.CONSTRAINT,
+    4025: codes.CONSTRAINT,
 }
 _POSTGRES_CODES = {
     # 57P01(admin_shutdown), 57P02(crash_shutdown), 57P05(idle_session_timeout)는 server가 session을 끝낼 때
     # 보낸다. class 08(connection exception)은 _postgres_code가 고른다.
-    "57P01": "CONNECTION_LOST",
-    "57P02": "CONNECTION_LOST",
-    "57P05": "CONNECTION_LOST",
-    "55P03": "LOCK_NOT_AVAILABLE",
-    "57014": "CANCELED",
-    "23505": "DUPLICATE_KEY",
-    "23503": "FOREIGN_KEY",
-    "40P01": "DEADLOCK",
-    "40001": "DEADLOCK",
-    "25006": "READ_ONLY",
-    "23514": "CONSTRAINT",
+    "57P01": codes.CONNECTION_LOST,
+    "57P02": codes.CONNECTION_LOST,
+    "57P05": codes.CONNECTION_LOST,
+    "55P03": codes.LOCK_NOT_AVAILABLE,
+    "57014": codes.CANCELED,
+    "23505": codes.DUPLICATE_KEY,
+    "23503": codes.FOREIGN_KEY,
+    "40P01": codes.DEADLOCK,
+    "40001": codes.DEADLOCK,
+    "25006": codes.READ_ONLY,
+    "23514": codes.CONSTRAINT,
 }
 
 
@@ -597,36 +598,36 @@ def _sqlite_code(error: sqlite3.Error) -> str:
     """SQLite extended result code의 ORM 오류 code다."""
     number = getattr(error, "sqlite_errorcode", None)
     if not isinstance(number, int):
-        return "DRIVER"
+        return codes.DRIVER
     # SQLITE_BUSY와 그 extended code는 busy_timeout이 끝날 때 다른 연결이 아직 잡은 lock이고,
     # SQLITE_INTERRUPT(9)는 끝나기 전에 멈춘 statement다.
     if (number & 0xFF) == 5 or number == 9:
-        return "CANCELED"
+        return codes.CANCELED
     if number in (2067, 1555):
-        return "DUPLICATE_KEY"
+        return codes.DUPLICATE_KEY
     # RESTRICT action의 FK 위반은 CONSTRAINT_TRIGGER(1811)로 온다. trigger RAISE의 1811은 DRIVER다.
     if number == 787 or (
         number == 1811 and "FOREIGN KEY constraint failed" in str(error)
     ):
-        return "FOREIGN_KEY"
+        return codes.FOREIGN_KEY
     if number in (6, 262):
-        return "DEADLOCK"
+        return codes.DEADLOCK
     # SQLITE_READONLY(8)와 그 extended code는 읽기 전용 연결이나 query_only가 거부한 쓰기다.
     if (number & 0xFF) == 8:
-        return "READ_ONLY"
+        return codes.READ_ONLY
     if number == 275:
-        return "CONSTRAINT"
-    return "DRIVER"
+        return codes.CONSTRAINT
+    return codes.DRIVER
 
 
 def _postgres_code(sqlstate, lost: bool) -> str:
     """psycopg 오류의 ORM 오류 code다. server의 SQLSTATE가 없는 오류는 연결이 닫혔을 때(lost)
     연결을 잃은 오류다."""
     if sqlstate is None:
-        return "CONNECTION_LOST" if lost else "DRIVER"
+        return codes.CONNECTION_LOST if lost else codes.DRIVER
     if sqlstate.startswith("08"):
-        return "CONNECTION_LOST"
-    return _POSTGRES_CODES.get(sqlstate, "DRIVER")
+        return codes.CONNECTION_LOST
+    return _POSTGRES_CODES.get(sqlstate, codes.DRIVER)
 
 
 def _driver_error(
@@ -649,9 +650,9 @@ def _driver_error(
         message = str(args[1]) if len(args) >= 2 else str(error)
         # PyMySQL은 이미 닫힌 연결에 보낸 statement를 InterfaceError로 알린다.
         code = (
-            "CONNECTION_LOST"
+            codes.CONNECTION_LOST
             if isinstance(error, pymysql.err.InterfaceError)
-            else _MYSQL_CODES.get(number, "DRIVER")
+            else _MYSQL_CODES.get(number, codes.DRIVER)
         )
         return OrmError(code, f"mysql: {message}", error)
     import psycopg
@@ -684,13 +685,13 @@ class _SqliteConnection:
             if match is None or (
                 match.group(1) == "busy_timeout" and not match.group(2).isdigit()
             ):
-                raise OrmError("CONFIG", f"sqlite DSN _pragma {value} is invalid")
+                raise OrmError(codes.CONFIG, f"sqlite DSN _pragma {value} is invalid")
             pragmas.append(f"PRAGMA {match.group(1)} = {match.group(2)}")
         # sqlite3가 link한 SQLite library의 version이다. 연결은 그것을 묻는 statement를 보내지 않는다.
         version = sqlite3.sqlite_version
         if tuple(int(part) for part in version.split(".")[:2]) < (3, 46):
             raise OrmError(
-                "CAPABILITY_UNSUPPORTED", f"SQLite {version} is older than 3.46"
+                codes.CAPABILITY_UNSUPPORTED, f"SQLite {version} is older than 3.46"
             )
         # 연결을 여는 driver 오류도 statement의 오류처럼 ORM 오류다.
         try:
@@ -753,7 +754,7 @@ def _verify_identity_context(ca: str):
         context.load_verify_locations(cafile=ca)
     except (ssl.SSLError, OSError) as error:
         raise OrmError(
-            "CONFIG", f"mysql DSN ssl-ca {ca} holds no CA certificate: SSL: {error}"
+            codes.CONFIG, f"mysql DSN ssl-ca {ca} holds no CA certificate: SSL: {error}"
         ) from error
     return context
 
@@ -780,7 +781,7 @@ class _MysqlConnection:
             from pymysql.constants import CLIENT
         except ImportError as error:
             raise OrmError(
-                "CONFIG", f"the mysql driver needs PyMySQL: {error}"
+                codes.CONFIG, f"the mysql driver needs PyMySQL: {error}"
             ) from None
         url = parsed.url
         socket = dict(parse_qsl(url.query, keep_blank_values=True)).get("socket")
@@ -790,7 +791,7 @@ class _MysqlConnection:
                 parsed.ssl_ca, os.R_OK
             ):
                 raise OrmError(
-                    "CONFIG", f"mysql DSN ssl-ca {parsed.ssl_ca} is not a readable file"
+                    codes.CONFIG, f"mysql DSN ssl-ca {parsed.ssl_ca} is not a readable file"
                 )
             # The server certificate is checked against the CA and the host name, and the password travels only
             # inside TLS: the client keeps no server public key, so it makes no RSA password exchange.
@@ -813,7 +814,7 @@ class _MysqlConnection:
         except Exception as error:
             if tls and _tls_failure(error):
                 raise OrmError(
-                    "CONFIG", f"mysql TLS connection failed: SSL: {error}"
+                    codes.CONFIG, f"mysql TLS connection failed: SSL: {error}"
                 ) from error
             _raise_driver_error("mysql", error)
         # The session settings are one statement: MySQL bounds SELECT statements with max_execution_time.
@@ -855,7 +856,7 @@ class _PostgresConnection:
             import psycopg
         except ImportError as error:
             raise OrmError(
-                "CONFIG", f"the postgres driver needs psycopg: {error}"
+                codes.CONFIG, f"the postgres driver needs psycopg: {error}"
             ) from None
         url = parsed.url
         name = _unquote(url.path.lstrip("/"))
@@ -940,7 +941,7 @@ class TxFrame:
         종류다. faultable=False는 transaction control statement이며 statement fault를
         소비하지 않는다."""
         if self.connection is None:
-            raise OrmError("CONFIG", "transaction already finished")
+            raise OrmError(codes.CONFIG, "transaction already finished")
         values = values if values is not None else []
 
         def send():
@@ -949,7 +950,7 @@ class TxFrame:
                     return self.db._sent(lambda: self.connection.execute(sql, values))
                 return self.connection.execute(sql, values)
             except OrmError as error:
-                if error.code == "CONNECTION_LOST":
+                if error.code == codes.CONNECTION_LOST:
                     self.lost = True
                 raise
 
@@ -1067,14 +1068,14 @@ def _connection_config(options: dict) -> _PoolConfig:
     for name in ("poolSize", "poolIdleSize", "poolLifetimeMs", "statementTimeoutMs"):
         value = options.get(name, 0)
         if isinstance(value, bool) or not isinstance(value, int):
-            raise OrmError("CONFIG", f"{name} must be an integer")
+            raise OrmError(codes.CONFIG, f"{name} must be an integer")
         if value < 0:
-            raise OrmError("CONFIG", f"{name} must not be negative")
+            raise OrmError(codes.CONFIG, f"{name} must not be negative")
         values[name] = value
     size = values["poolSize"] or DEFAULT_POOL_SIZE
     if values["poolIdleSize"] > size:
         raise OrmError(
-            "CONFIG",
+            codes.CONFIG,
             f"poolIdleSize {values['poolIdleSize']} is above the pool size {size}",
         )
     return _PoolConfig(
@@ -1117,7 +1118,7 @@ class _Pool:
         with self._condition:
             while True:
                 if self._closed:
-                    raise OrmError("CONFIG", "database is closed")
+                    raise OrmError(codes.CONFIG, "database is closed")
                 while self._idle:
                     connection = self._idle.pop()
                     if self._expired(connection):
@@ -1196,7 +1197,7 @@ class _Leased:
         try:
             return connection.execute(sql, values)
         except OrmError as error:
-            broken = error.code == "CONNECTION_LOST"
+            broken = error.code == codes.CONNECTION_LOST
             raise
         finally:
             pool.release(connection, broken)
@@ -1225,7 +1226,7 @@ class Db:
         if self.driver != "markdown":
             dialect_class = dialect_of(self.driver)
             if dialect_class is None:
-                raise OrmError("CONFIG", f"unsupported DSN scheme {self.driver}")
+                raise OrmError(codes.CONFIG, f"unsupported DSN scheme {self.driver}")
             self.dialect = dialect_class()
         self.zone = self.parsed.zone
         self.aes_key = options.get("aesKey", "")
@@ -1294,7 +1295,7 @@ class Db:
         try:
             yield connection
         except OrmError as error:
-            broken = error.code == "CONNECTION_LOST"
+            broken = error.code == codes.CONNECTION_LOST
             raise
         finally:
             held.connection = None
@@ -1349,7 +1350,7 @@ class Db:
         the plan cache, the subscribers and the active transactions; withRequestHook on a hooked
         handle replaces its hook."""
         if not callable(hook):
-            raise OrmError("CONFIG", "with_request_hook takes a callable")
+            raise OrmError(codes.CONFIG, "with_request_hook takes a callable")
         handle = copy.copy(self)
         handle.request_hook = hook
         handle._root = self.root()
@@ -1379,12 +1380,12 @@ class Db:
 
     def plan(self, request: dict) -> dict:
         if self._shared.closed:
-            raise OrmError("CONFIG", "database is closed")
+            raise OrmError(codes.CONFIG, "database is closed")
         # 연결은 자기에게 등록된 set만 plan한다. plan cache를 보기 전에 확인한다.
         engine = self.engines.get(request["manifest_hash"])
         if engine is None:
             raise OrmError(
-                "SCHEMA_HASH_MISMATCH",
+                codes.SCHEMA_HASH_MISMATCH,
                 f"manifest {request['manifest_hash']} is not registered on this "
                 f"connection: connect through its generated models or install it",
             )
@@ -1444,7 +1445,7 @@ class Db:
                 if slot["col_type"] == "decimal" and value is not None:
                     if not isinstance(value, str):
                         raise OrmError(
-                            "CODEC_ENCODE", "decimal bind requires exact text"
+                            codes.CODEC_ENCODE, "decimal bind requires exact text"
                         )
                     if self.driver == "sqlite":
                         value = decimal_scaled(
@@ -1466,12 +1467,12 @@ class Db:
                 push(_audit_value(slot, audit))
             elif source == "secret":
                 if slot["name"] != "aes" or self.aes_key == "":
-                    raise OrmError("CONFIG", f"secret {slot['name']} is not configured")
+                    raise OrmError(codes.CONFIG, f"secret {slot['name']} is not configured")
                 push(self.aes_key, "$SECRET")
             elif source == "config":
                 if slot["name"] != "aes_version":
                     raise OrmError(
-                        "CONFIG", f"config value {slot['name']} is not configured"
+                        codes.CONFIG, f"config value {slot['name']} is not configured"
                     )
                 push(self.aes_version)
             elif source == "parent":
@@ -1483,7 +1484,7 @@ class Db:
                     clock = self.clock_micros()
                 push(self.now(clock, slot.get("precision", 6)), "$NOW")
             else:
-                raise OrmError("INTERNAL", f"bind from {source}")
+                raise OrmError(codes.INTERNAL, f"bind from {source}")
         return {"values": values, "masked": masked}
 
     def execute(self, step: dict, params: list) -> None:
@@ -1494,19 +1495,19 @@ class Db:
         assemble) and a param slot past params fail with IR_INVALID before any statement runs
         (docs/usage.md "Execute a compiled statement")."""
         if self._shared.closed:
-            raise OrmError("CONFIG", "database is closed")
+            raise OrmError(codes.CONFIG, "database is closed")
         ex = Executor(self, self.active_frame())
 
         def work():
             if step.get("assemble") is not None:
                 raise OrmError(
-                    "IR_INVALID",
+                    codes.IR_INVALID,
                     "execute runs a statement without rows; the statement is a read",
                 )
             for i, slot in enumerate(step["bind_slots"]):
                 if slot["from"] == "param" and not 0 <= slot["param"] < len(params):
                     raise OrmError(
-                        "IR_INVALID",
+                        codes.IR_INVALID,
                         f"bind slot {i} reads parameter {slot['param']}, "
                         f"but execute has {len(params)} parameters",
                     )
@@ -1551,14 +1552,14 @@ class Db:
         options = dict(options or {})
         retry = options.get("retry", 3)
         if isinstance(retry, bool) or not isinstance(retry, int) or retry < 0:
-            raise OrmError("CONFIG", "transaction retry must be a non-negative integer")
+            raise OrmError(codes.CONFIG, "transaction retry must be a non-negative integer")
         timeout_ms = options.get("timeoutMs", 0)
         if (
             isinstance(timeout_ms, bool)
             or not isinstance(timeout_ms, int)
             or timeout_ms < 0
         ):
-            raise OrmError("CONFIG", "transaction timeoutMs must not be negative")
+            raise OrmError(codes.CONFIG, "transaction timeoutMs must not be negative")
         if "audit" in options:
             unsupported_on_markdown(self, "a transaction with audit values")
         outer = _active_for(self)
@@ -1577,7 +1578,7 @@ class Db:
                 or "audit" in options
             ):
                 raise OrmError(
-                    "CONFIG",
+                    codes.CONFIG,
                     "a nested transaction of the same connection "
                     "accepts only the retry option",
                 )
@@ -1595,14 +1596,14 @@ class Db:
                     record,
                 )
             except OrmError as error:
-                if error.code != "DEADLOCK" or attempt >= retry:
+                if error.code != codes.DEADLOCK or attempt >= retry:
                     raise
                 time.sleep((50 << attempt) / 1000)
                 attempt += 1
 
     def _run(self, callback, options: dict, record: dict | None = None):
         if self._shared.closed:
-            raise OrmError("CONFIG", "database is closed")
+            raise OrmError(codes.CONFIG, "database is closed")
         frame = self._begin(options)
         key = id(self.root())
         previous = _ACTIVE.get(key)
@@ -1625,7 +1626,7 @@ class Db:
                 raise rollback_failed(
                     error,
                     OrmError(
-                        "FAULT",
+                        codes.FAULT,
                         "test fault: the rollback of the transaction ran and is "
                         "reported as failed",
                     ),
@@ -1643,10 +1644,10 @@ class Db:
         audit setting이 references로 이름하는 table 하나이며, 그 table을 entity로
         가진 set이 이 연결에 등록되어 있어야 한다."""
         if not isinstance(values, dict):
-            raise OrmError("CONFIG", "transaction audit is an object of column values")
+            raise OrmError(codes.CONFIG, "transaction audit is an object of column values")
         if self.audit_source is None:
             raise OrmError(
-                "CONFIG",
+                codes.CONFIG,
                 "the transaction has audit values but the "
                 "connection has no audit source: set the "
                 "auditSource connect option",
@@ -1661,13 +1662,13 @@ class Db:
         )
         if not tables:
             raise OrmError(
-                "CONFIG",
+                codes.CONFIG,
                 "the transaction has audit values but no set of "
                 "the connection has an audited table",
             )
         if len(tables) > 1:
             raise OrmError(
-                "CONFIG",
+                codes.CONFIG,
                 f"the audited tables of the connection record "
                 f"their audits in {', '.join(tables)}; one audit "
                 f"record table is required",
@@ -1680,13 +1681,13 @@ class Db:
                     target = (engine.model, entity)
         if target is None:
             raise OrmError(
-                "CONFIG",
+                codes.CONFIG,
                 f"the audit record table {table} is not a table of "
                 f"a set registered on the connection",
             )
         if len(target[1].primary_key) != 1:
             raise OrmError(
-                "CONFIG",
+                codes.CONFIG,
                 f"the audit record table {table} needs a primary key of one column",
             )
         source = self.audit_source()
@@ -1694,17 +1695,17 @@ class Db:
         for item in (source, values):
             if not isinstance(item, dict):
                 raise OrmError(
-                    "CONFIG", "the audit source returns an object of column values"
+                    codes.CONFIG, "the audit source returns an object of column values"
                 )
             for column in sorted(item):
                 if field_of(target[1], column) is None:
                     raise OrmError(
-                        "CONFIG", f"audit value {column} is not a column of {table}"
+                        codes.CONFIG, f"audit value {column} is not a column of {table}"
                     )
                 merged[column] = item[column]
         if not merged:
             raise OrmError(
-                "CONFIG",
+                codes.CONFIG,
                 f"the audit record of {table} has no value: the "
                 f"audit source and the transaction give none",
             )
@@ -1738,7 +1739,7 @@ class Db:
         key = created.core.values.get(entity.primary_key[0])
         if key is None:
             raise OrmError(
-                "CONFIG",
+                codes.CONFIG,
                 f"the audit record {entity.table} has no "
                 f"{entity.primary_key[0]} after its insert",
             )
@@ -1781,7 +1782,7 @@ class Db:
         except OrmError as error:
             # NOWAIT 요청의 SQLITE_BUSY는 CANCELED가 아니라 LOCK_NOT_AVAILABLE이다.
             if no_wait and _sqlite_busy(error.cause):
-                raise OrmError("LOCK_NOT_AVAILABLE", str(error), error.cause) from None
+                raise OrmError(codes.LOCK_NOT_AVAILABLE, str(error), error.cause) from None
             raise
         finally:
             if no_wait:
@@ -1791,7 +1792,7 @@ class Db:
         driver = self.driver
         if options.get("timeoutMs", 0) > 0 and driver != "postgres":
             raise OrmError(
-                "CAPABILITY_UNSUPPORTED",
+                codes.CAPABILITY_UNSUPPORTED,
                 "transaction timeoutMs is supported only by postgres",
             )
         if driver == "markdown":
@@ -1802,7 +1803,7 @@ class Db:
         level = _ISOLATION_SQL.get(isolation, "") if isolation is not None else ""
         if isolation is not None and level == "":
             raise OrmError(
-                "CONFIG",
+                codes.CONFIG,
                 f"transaction isolation {isolation} is not one of "
                 f"read_committed, repeatable_read, serializable, "
                 f"read_uncommitted",
@@ -1903,7 +1904,7 @@ class Db:
             # 1이 아니면 이 connection이 lock을 갖고 있지 않았다.
             if released is not None and int((released["rows"] or [[0]])[0][0]) != 1:
                 errors.append(
-                    OrmError("CONFIG", f"lock {key} was not held at transaction end")
+                    OrmError(codes.CONFIG, f"lock {key} was not held at transaction end")
                 )
         if self.driver == "mysql":
             # 값을 지우는 statement는 key 순서로 보낸다.
@@ -1913,7 +1914,7 @@ class Db:
             if commit and not errors:
                 frame.run("COMMIT", [], "commit", faultable=False)
                 return
-            frame.run("ROLLBACK", [], "rollback", faultable=False)
+            frame.run(codes.ROLLBACK, [], "rollback", faultable=False)
         except BaseException as error:
             if commit:
                 raise rollback_failed(errors[0] if errors else error, error) from None
@@ -1969,13 +1970,13 @@ def _audit_value(slot: dict, audit):
     쓰기는 CONFIG다."""
     if audit is None:
         raise OrmError(
-            "CONFIG",
+            codes.CONFIG,
             "a write of an audited table needs an audit: run it in a "
             "transaction with audit values",
         )
     if audit["table"] != slot["name"]:
         raise OrmError(
-            "CONFIG",
+            codes.CONFIG,
             f"the audited table records its audits in {slot['name']}, "
             f"but the audit of the transaction is a row of "
             f"{audit['table']}",
@@ -1989,9 +1990,9 @@ def _guarded(ex: Executor, work):
     if frame is None:
         return work()
     if frame.finished:
-        raise OrmError("CONFIG", "transaction already finished")
+        raise OrmError(codes.CONFIG, "transaction already finished")
     if frame.busy:
-        raise OrmError("CONFIG", "the transaction connection is already in use")
+        raise OrmError(codes.CONFIG, "the transaction connection is already in use")
     frame.busy = True
     try:
         return work()
@@ -2001,7 +2002,7 @@ def _guarded(ex: Executor, work):
 
 def _check_lock(ex: Executor, request: dict) -> None:
     if request.get("lock") and ex.frame is None:
-        raise OrmError("CONFIG", "row locks are allowed only inside a transaction")
+        raise OrmError(codes.CONFIG, "row locks are allowed only inside a transaction")
 
 
 def _arm_rollback_fault(db: Db) -> None:
@@ -2028,7 +2029,7 @@ def _arm_statement_fault(db: Db, code: str, message: str) -> None:
 
 
 def _subscriber_error(error) -> bool:
-    return isinstance(error, OrmError) and error.code == "SUBSCRIBER"
+    return isinstance(error, OrmError) and error.code == codes.SUBSCRIBER
 
 
 def _sqlite_busy(error) -> bool:
@@ -2052,7 +2053,7 @@ def _hooked(db: Db, request: dict, params):
 
         request = hook(request, add_param, tuple(params))
         if not isinstance(request, dict):
-            raise OrmError("CONFIG", "the request hook returns the request to plan")
+            raise OrmError(codes.CONFIG, "the request hook returns the request to plan")
         request["n_params"] = len(values)
     if db.driver == "markdown":
         return request, values
@@ -2184,7 +2185,7 @@ def _relation_chunks(step: dict, values, driver: str):
     max_count = (limit - non_parent) // width
     if max_count < 1:
         raise OrmError(
-            "IR_INVALID",
+            codes.IR_INVALID,
             f"relation {step['id']} needs more bind parameters than {driver} permits",
         )
     size = 1
@@ -2255,7 +2256,7 @@ def _child_keys(plan: dict, step_id: int):
             found = find(step["assemble"])
             if found is not None:
                 return found
-    raise OrmError("INTERNAL", f"relation step {step_id} has no child")
+    raise OrmError(codes.INTERNAL, f"relation step {step_id} has no child")
 
 
 def _root_in_parts(request: dict, plan: dict, driver: str, params):
@@ -2267,7 +2268,7 @@ def _root_in_parts(request: dict, plan: dict, driver: str, params):
 
     def too_large():
         raise OrmError(
-            "IR_INVALID",
+            codes.IR_INVALID,
             f"the statement needs {len(main['bind_slots'])} bind "
             f"parameters but {driver} permits {limit}",
         )
@@ -2352,7 +2353,7 @@ def scalar(ex: Executor, request: dict, params):
         if len(parts) > 1:
             if request["kind"] != "count":
                 raise OrmError(
-                    "IR_INVALID", "a split IN list can be merged only for a count"
+                    codes.IR_INVALID, "a split IN list can be merged only for a count"
                 )
             total = 0
             for part in parts:
@@ -2382,7 +2383,7 @@ def paginate(ex: Executor, request: dict, params):
         result = _relations(ex, cached, params, main)
         step = next((s for s in cached["plan"]["steps"] if s["role"] == "count"), None)
         if step is None:
-            raise OrmError("INTERNAL", "paginate plan has no count step")
+            raise OrmError(codes.INTERNAL, "paginate plan has no count step")
         counted = db._send_step(ex, step["sql"], step, params)
         total = int(counted["rows"][0][0] if counted["rows"] else 0)
         return {"result": result, "total": total}
@@ -2411,7 +2412,7 @@ def write(ex: Executor, request: dict, params):
             and request.get("optimistic")
             and result["affected"] == 0
         ):
-            raise OrmError("OPTIMISTIC_LOCK", "the row changed after it was read")
+            raise OrmError(codes.OPTIMISTIC_LOCK, "the row changed after it was read")
         insert_id = result["insert_id"]
         identity_id = (
             int(insert_id)
