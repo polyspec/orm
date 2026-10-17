@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9c3c5c942fa4d1fb7b61f2e8fb1d65e9e0611cdcc8b812d31077c88334eac8aa -->
+<!-- source-sha256: e06ef290cc280239abf7d2bc9dcb2ce6bd77d90bd99dd0e70ef3e3677f4ae59e -->
 # 변경 이력
 
 ## Unreleased
 - Go 성능 gate는 tools root인 packages/go/bench의 benchmark다. 이 root는 어떤 구현에도 속하지 않으므로 그 go-internal parity unit을 없앴다. gate는 performance_gate feature로 계속 실행된다. (#T77-8-1-1)
+- interface self-test가 실행 전에 빠진 TypeScript checker 의존성을 이름으로 알린다(T77-19).
 - contracts/interfaces.json 이전은 계획과 함께 보류한다(T77-8-1-5).
 - generated model symbol은 선언되어 있다. live 선언 검사가 선언되지 않은 공개 symbol을 찾지 않는다(T77-8-1-4).
 - client surface symbol은 선언되어 있다. live 선언 검사가 선언되지 않은 공개 symbol을 찾지 않는다(T77-8-1-3).

@@ -1140,7 +1140,12 @@ decimal-physical-check: php-vendor-check cargo-downloads-check lease-tool python
 interface-check: interface-check/tests interface-check/self-test
 interface-check/tests: php-vendor-check
 	$(NODE) --test tests/interfaces/check/*.test.mts
-interface-check/self-test: php-vendor-check lease-tool typescript-build
+# interface-typescript-check names the missing TypeScript checker dependency before the self-test runs it, so a fresh
+# checkout fails with the install step instead of a module resolution error.
+interface-typescript-check:
+	test -f packages/ts/testing/interfaces/typescript/node_modules/typescript/lib/typescript.js || { echo "interface-typescript-check: packages/ts/testing/interfaces/typescript/node_modules/typescript is missing; run make install-interfaces-typescript"; exit 1; }
+
+interface-check/self-test: php-vendor-check lease-tool typescript-build interface-typescript-check
 	$(READ_TYPESCRIPT)
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(NODE) tests/interfaces/check/main.mts --self-test
 
