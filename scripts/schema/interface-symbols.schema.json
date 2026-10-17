@@ -1,7 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "A native symbol inventory of tests/interfaces/check",
-  "description": "The output of a symbol extractor and a recorded snapshot (contracts/symbols/*.json): each declaration's symbol to its signature.",
+  "description": "The output of a symbol extractor and a recorded snapshot (contracts/symbols/*.json): each declaration's symbol to its signature and whether the declaration is exported, that is public in its language (the name is exported, the declaration is pub, public or exported from its module).",
   "type": "object",
-  "additionalProperties": { "type": "string" }
+  "additionalProperties": {
+    "type": "object",
+    "required": ["signature", "exported"],
+    "additionalProperties": false,
+    "properties": {
+      "signature": { "type": "string" },
+      "exported": { "type": "boolean" }
+    }
+  }
 }

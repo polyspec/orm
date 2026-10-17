@@ -8,7 +8,10 @@ import { dirname, join, resolve } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../testcase.mts';
 import { checkProhibitedSymbols, checkRecords, differences } from './contract.mts';
 import { checkCallsInRoots, extract } from './extract.mts';
-import { readManifest, type ContractRecord, type Manifest, type Symbols } from './manifest.mts';
+import { mark, readManifest, type ContractRecord, type Manifest, type Symbols } from './manifest.mts';
+
+// symbolsOf gives each signature of a map the exported status of a public declaration.
+const symbolsOf = (signatures: Record<string, string>): Symbols => Object.fromEntries(Object.entries(signatures).map(([key, value]) => [key, mark(value)]));
 import { checkExtension } from './main.mts';
 
 const root = resolve(import.meta.dirname, '../../..');
@@ -35,10 +38,10 @@ caseTest('a common record rejects recaptured native drift', COMPUTE, () => {
     { id: 'Query', native: { go: 'ir.go::Query' }, fields: { entity: 'text', group: 'Group' } },
     { id: 'Group', native: { go: 'ir.go::Group' }, fields: { items: 'list<text>' } },
   ];
-  const symbols: Symbols = { 'ir.go::Query#wire': '{"entity":"text","group":"Group"}', 'ir.go::Group#wire': '{"items":"list<text>"}' };
+  const symbols: Symbols = symbolsOf({ 'ir.go::Query#wire': '{"entity":"text","group":"Group"}', 'ir.go::Group#wire': '{"items":"list<text>"}' });
   assert.deepEqual(checkRecords('go', symbols, records), []);
   for (const changed of ['{}', '{"items":"text"}', '{"items":"list<integer>"}', '{"items":"list<text>","controller":"text"}']) {
-    symbols['ir.go::Group#wire'] = changed;
+    symbols['ir.go::Group#wire'] = mark(changed);
     assert.notDeepEqual(checkRecords('go', symbols, records), [], `nested drift accepted even with recaptured native symbol snapshot ${changed}`);
   }
 });
@@ -49,9 +52,9 @@ caseTest('prohibited symbols use the name forms of each language', COMPUTE, () =
     { 'Query::multi_statement': 'public function multi_statement(bool): Query' },
     { 'Query.multiStatement': 'multiStatement(value: boolean): Query' },
   ]) {
-    assert.equal(checkProhibitedSymbols('test', symbols, ['multi_statement']).length, 1);
+    assert.equal(checkProhibitedSymbols('test', symbolsOf(symbols), ['multi_statement']).length, 1);
   }
-  assert.deepEqual(checkProhibitedSymbols('test', { 'Query.stream': 'func(visitor) StreamResult' }, ['multi_statement']), [], 'unrelated symbol rejected');
+  assert.deepEqual(checkProhibitedSymbols('test', symbolsOf({ 'Query.stream': 'func(visitor) StreamResult' }), ['multi_statement']), [], 'unrelated symbol rejected');
 });
 
 caseTest('attempted multi_statement calls fail the interface validation', COMPUTE, () => {
@@ -104,13 +107,13 @@ class Row extends Base {
       base: 'public function base(Fixture\\Base $row): Fixture\\Base',
       late: 'public function late(): static',
     })) {
-      assert.equal(got[prefix + name], want, name);
+      assert.equal(got[prefix + name]?.signature, want, name);
     }
     const qualified = source.replaceAll('self', '\\Fixture\\Row').replaceAll('parent', '\\Fixture\\Base');
     assert.deepEqual(differences(got, await read(qualified)), [], 'relative and qualified types differ');
     for (const replacement of ['static', '\\Fixture\\Base']) {
       const other = await read(source.replace('same(self $row): self', `same(self $row): ${replacement}`));
-      assert.notEqual(got[`${prefix}same`], other[`${prefix}same`], `normalization hid a change from self to ${replacement}`);
+      assert.notEqual(got[`${prefix}same`]?.signature, other[`${prefix}same`]?.signature, `normalization hid a change from self to ${replacement}`);
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -129,11 +132,11 @@ caseTest('a PHP record source mutation changes the extracted wire', PROCESS, asy
     };
     const key = 'fixture.php::Polyspec\\Orm\\Validator::Request#wire';
     const before = await read('string', 'list<int>', false);
-    assert.equal(before[key], '{"kind":"text","items":"list<integer>"}', 'PHP record declaration was not extracted');
+    assert.equal(before[key]?.signature, '{"kind":"text","items":"list<integer>"}', 'PHP record declaration was not extracted');
     const contract: ContractRecord[] = [{ id: 'IRRequest', native: { php: 'fixture.php::Polyspec\\Orm\\Validator::Request' }, fields: { kind: 'text', items: 'list<integer>' } }];
     assert.deepEqual(checkRecords('php', before, contract), [], 'unaltered PHP record failed');
     const after = await read('int', 'list<int>', false);
-    assert.equal(after[key], '{"kind":"integer","items":"list<integer>"}', 'PHP record type mutation was not detected');
+    assert.equal(after[key]?.signature, '{"kind":"integer","items":"list<integer>"}', 'PHP record type mutation was not detected');
     assert.notDeepEqual(differences(before, after), []);
     assert.notDeepEqual(checkRecords('php', after, contract), [], 'PHP record type mutation passed the common record contract');
     assert.notDeepEqual(checkRecords('php', await read('string', 'list<string>', false), contract), [], 'PHP nested record type mutation passed the common record contract');

@@ -1,6 +1,8 @@
 // Go symbol extractor of tests/interfaces/check: prints the declarations of the Go files under the given roots as one
 // JSON object of symbol to signature, read from Go's own syntax trees (go/parser, go/printer) without executing code.
 //
+// A symbol is exported when its name is exported and, for a method or a field, so is its receiver or struct type.
+//
 // Usage: go run ./tests/interfaces/go <root> <directory>...
 package main
 
@@ -38,8 +40,14 @@ func main() {
 	os.Stdout.Write(append(out, '\n'))
 }
 
-func goSymbols(root string, roots []string) (map[string]string, error) {
-	out := map[string]string{}
+// symbol is one declaration: its signature and whether Go exports it.
+type symbol struct {
+	Signature string `json:"signature"`
+	Exported  bool   `json:"exported"`
+}
+
+func goSymbols(root string, roots []string) (map[string]symbol, error) {
+	out := map[string]symbol{}
 	for _, dir := range roots {
 		err := filepath.WalkDir(filepath.Join(root, dir), func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
@@ -63,6 +71,7 @@ func goSymbols(root string, roots []string) (map[string]string, error) {
 				switch v := decl.(type) {
 				case *ast.FuncDecl:
 					key, receiver := rel+"::", ""
+					exported := ast.IsExported(v.Name.Name)
 					if v.Recv != nil {
 						t := v.Recv.List[0].Type
 						receiver = "receiver=" + print(t) + " "
@@ -72,23 +81,27 @@ func goSymbols(root string, roots []string) (map[string]string, error) {
 						if gen, ok := t.(*ast.IndexExpr); ok {
 							t = gen.X
 						}
+						if id, ok := t.(*ast.Ident); ok {
+							exported = exported && ast.IsExported(id.Name)
+						}
 						key += print(t) + "."
 					}
-					out[key+v.Name.Name] = receiver + print(v.Type)
+					out[key+v.Name.Name] = symbol{receiver + print(v.Type), exported}
 				case *ast.GenDecl:
 					for _, spec := range v.Specs {
 						if t, ok := spec.(*ast.TypeSpec); ok {
-							out[rel+"::"+t.Name.Name] = "type " + print(t)
+							typeExported := ast.IsExported(t.Name.Name)
+							out[rel+"::"+t.Name.Name] = symbol{"type " + print(t), typeExported}
 							if fields, ok := t.Type.(*ast.StructType); ok {
 								wire := map[string]string{}
 								for _, f := range fields.Fields.List {
 									for _, name := range f.Names {
-										out[rel+"::"+t.Name.Name+"#field."+name.Name] = print(f.Type)
+										out[rel+"::"+t.Name.Name+"#field."+name.Name] = symbol{print(f.Type), typeExported && ast.IsExported(name.Name)}
 									}
 									if len(f.Names) == 0 {
 										name := strings.TrimPrefix(print(f.Type), "*")
 										name = name[strings.LastIndex(name, ".")+1:]
-										out[rel+"::"+t.Name.Name+"#field."+name] = print(f.Type)
+										out[rel+"::"+t.Name.Name+"#field."+name] = symbol{print(f.Type), typeExported && ast.IsExported(name)}
 										wire["@flatten"] = goWireType(f.Type)
 										continue
 									}
@@ -106,7 +119,7 @@ func goSymbols(root string, roots []string) (map[string]string, error) {
 								}
 								if len(wire) > 0 {
 									raw, _ := json.Marshal(wire)
-									out[rel+"::"+t.Name.Name+"#wire"] = string(raw)
+									out[rel+"::"+t.Name.Name+"#wire"] = symbol{string(raw), typeExported}
 								}
 							}
 						}

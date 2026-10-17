@@ -1,14 +1,19 @@
 // 한 언어(또는 extension)의 native 선언을 공통 contract에 비교하는 검사다: rule의 signature, 금지 symbol, owner의 field
 // 목록, record의 wire 형식. 각 검사는 차이마다 한 줄을 돌려준다.
 import { sortBytes } from './json.mts';
-import type { ContractRecord, Owner, Rule, Symbols } from './manifest.mts';
+import { mark, type ContractRecord, type Owner, type Rule, type Symbol, type Symbols } from './manifest.mts';
 
 /** differences는 기대한 symbol과 실제 symbol의 차이(missing, changed, unexpected)를 byte 순서로 돌려준다. */
+// show는 한 symbol을 공개 여부와 signature로 적는다.
+const show = (entry: Symbol): string => `${entry.exported ? 'exported' : 'private'} ${entry.signature}`;
+
 export function differences(want: Symbols, got: Symbols): string[] {
   const out: string[] = [];
   for (const [key, value] of Object.entries(want)) {
     if (!Object.hasOwn(got, key)) out.push(`missing ${key}`);
-    else if (value !== got[key]) out.push(`changed ${key}\n  want ${value}\n  got  ${got[key] ?? ''}`);
+    else if (value.signature !== got[key]?.signature || value.exported !== got[key]?.exported) {
+      out.push(`changed ${key}\n  want ${show(value)}\n  got  ${show(got[key] ?? { signature: '', exported: false })}`);
+    }
   }
   for (const key of Object.keys(got)) {
     if (!Object.hasOwn(want, key)) out.push(`unexpected ${key}`);
@@ -50,7 +55,7 @@ export function checkRules(lang: string, actual: Symbols, rules: Rule[], order: 
     for (const vars of maps) {
       const fill = (value: string): string => Object.entries(vars).reduce((text, [key, replacement]) => text.replaceAll(`{${key}}`, replacement), value);
       const key = fill(native.symbol ?? ''), want = fill(native.signature ?? '');
-      const got = actual[key] ?? '';
+      const got = actual[key]?.signature ?? '';
       if (!Object.hasOwn(actual, key) || compact(got) !== compact(want)) errors.push(`${lang}/${id}: ${key}\n  want ${want}\n  got  ${got}`);
     }
   }
@@ -66,8 +71,8 @@ function normalizeName(value: string): string {
 /** checkProhibitedSymbols는 금지 symbol이 이름 형식과 무관하게 선언이나 signature에 나오는 곳마다 한 줄을 돌려준다. */
 export function checkProhibitedSymbols(lang: string, actual: Symbols, prohibited: string[]): string[] {
   const errors: string[] = [];
-  for (const [symbol, signature] of Object.entries(actual)) {
-    const value = normalizeName(`${symbol} ${signature}`);
+  for (const [symbol, entry] of Object.entries(actual)) {
+    const value = normalizeName(`${symbol} ${entry.signature}`);
     for (const name of prohibited) {
       if (value.includes(normalizeName(name))) errors.push(`${lang}: prohibited symbol ${name} matches ${symbol}`);
     }
@@ -104,9 +109,9 @@ export function checkOwnersAs(lang: string, syntax: string, symbols: Symbols, ow
     }
     const prefix = syntax === 'php' ? `${symbol}::$` : `${symbol}#field.`;
     const expected: Symbols = {}, actual: Symbols = {};
-    for (const field of native.fields ?? []) expected[field] = 'field';
+    for (const field of native.fields ?? []) expected[field] = mark('field');
     for (const key of Object.keys(symbols)) {
-      if (key.startsWith(prefix)) actual[key.slice(prefix.length)] = 'field';
+      if (key.startsWith(prefix)) actual[key.slice(prefix.length)] = mark('field');
     }
     for (const d of differences(expected, actual)) failures.push(`${lang}/${id}: ${d}`);
   }
@@ -124,6 +129,9 @@ function wireFields(raw: string): Record<string, string> {
   }
   return out;
 }
+
+// asSymbols gives a map of record fields the exported status of a public declaration, for the comparison of differences.
+const asSymbols = (fields: Record<string, string>): Symbols => Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, mark(value)]));
 
 const sameMap = (a: Record<string, string>, b: Record<string, string>): boolean =>
   Object.keys(a).length === Object.keys(b).length && Object.entries(a).every(([key, value]) => Object.hasOwn(b, key) && b[key] === value);
@@ -154,7 +162,7 @@ export function checkRecords(lang: string, symbols: Symbols, records: ContractRe
   const readNative = (r: ContractRecord): Record<string, string> => {
     const key = r.native?.[lang] ?? '';
     const prefix = key.slice(0, key.lastIndexOf('::') + 2);
-    const raw = symbols[`${key}#wire`];
+    const raw = symbols[`${key}#wire`]?.signature;
     if (raw === undefined || !Object.hasOwn(symbols, `${key}#wire`)) throw new Error(`${lang}: missing record ${key}`);
     const out: Record<string, string> = {};
     for (const [field, type] of Object.entries(wireFields(raw))) {
@@ -180,10 +188,10 @@ export function checkRecords(lang: string, symbols: Symbols, records: ContractRe
     for (const r of records) {
       const key = `${r.native?.[lang] ?? ''}#wire`;
       if (!key.startsWith(prefix)) failures.push(`php/${r.id ?? ''}: record is outside the validator`);
-      expected[key] = 'record';
+      expected[key] = mark('record');
     }
     for (const key of Object.keys(symbols)) {
-      if (key.startsWith(prefix) && key.endsWith('#wire')) actual[key] = 'record';
+      if (key.startsWith(prefix) && key.endsWith('#wire')) actual[key] = mark('record');
     }
     for (const mismatch of differences(expected, actual)) failures.push(`php records: ${mismatch}`);
   }
@@ -197,7 +205,7 @@ export function checkRecords(lang: string, symbols: Symbols, records: ContractRe
     }
     const expected = flattenExpected(r);
     if (!sameMap(actual, expected)) {
-      for (const d of differences(expected, actual)) failures.push(`${lang}/${r.id ?? ''}: ${d}`);
+      for (const d of differences(asSymbols(expected), asSymbols(actual))) failures.push(`${lang}/${r.id ?? ''}: ${d}`);
     }
   }
   return failures;

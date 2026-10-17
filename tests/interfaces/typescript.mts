@@ -23,7 +23,13 @@ async function walk(path: string) {
 }
 for (const path of roots) await walk(resolve(root, path));
 files.sort();
-const symbols: Record<string, string> = {};
+// A symbol is exported when its declaration carries the export modifier, and a class member when, in addition, it is neither
+// private, protected nor a private name (#name). An interface member is exported with its interface.
+type Entry = { signature: string; exported: boolean };
+const symbols: Record<string, Entry> = {};
+const put = (key: string, signature: string, exported: boolean) => { symbols[key] = { signature, exported }; };
+const hasExport = (node: Node): boolean => (ts.getCombinedModifierFlags(node as import('./typescript/node_modules/typescript/lib/typescript.js').Declaration) & ts.ModifierFlags.Export) !== 0;
+const hidden = (node: Node): boolean => (ts.getCombinedModifierFlags(node as import('./typescript/node_modules/typescript/lib/typescript.js').Declaration) & (ts.ModifierFlags.Private | ts.ModifierFlags.Protected)) !== 0;
 const printer = ts.createPrinter({ removeComments: true, newLine: ts.NewLineKind.LineFeed });
 const compact = (text: string) => text.replace(/\s+/g, ' ').trim().replace(/ ;$/, ';');
 function methodSignature(node: MethodLike, source: SourceFile): string {
@@ -56,11 +62,12 @@ for (const file of files) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const path = relative(root, file);
   for (const node of source.statements) {
-    if (ts.isFunctionDeclaration(node) && node.name) symbols[`${path}::${node.name.text}`] = functionSignature(node, source);
+    if (ts.isFunctionDeclaration(node) && node.name) put(`${path}::${node.name.text}`, functionSignature(node, source), hasExport(node));
     if (!((ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node)) && node.name)) continue;
     const name = node.name.text;
     const key = `${path}::${name}`;
-    symbols[key] = `${ts.isClassDeclaration(node) ? 'class' : 'interface'} ${name}`;
+    const exported = hasExport(node);
+    put(key, `${ts.isClassDeclaration(node) ? 'class' : 'interface'} ${name}`, exported);
     const wire: Record<string, string> = {};
     if (ts.isInterfaceDeclaration(node) && node.heritageClauses?.length) {
       const base = node.heritageClauses.flatMap(clause => clause.types).map(type => type.expression.getText(source));
@@ -70,19 +77,19 @@ for (const file of files) {
       if (ts.isConstructorDeclaration(member)) {
         for (const parameter of member.parameters) {
           if (!parameter.modifiers?.length || !ts.isIdentifier(parameter.name)) continue;
-          symbols[`${key}#field.${parameter.name.text}`] = parameter.type?.getText(source) ?? 'unknown';
+          put(`${key}#field.${parameter.name.text}`, parameter.type?.getText(source) ?? 'unknown', exported && !hidden(parameter));
         }
         continue;
       }
       if (ts.isMethodDeclaration(member) || ts.isMethodSignature(member)) {
-        if (member.name) symbols[`${key}.${member.name.getText(source)}`] = methodSignature(member, source);
+        if (member.name) put(`${key}.${member.name.getText(source)}`, methodSignature(member, source), exported && !hidden(member) && !ts.isPrivateIdentifier(member.name));
       } else if ((ts.isPropertyDeclaration(member) || ts.isPropertySignature(member)) && member.name) {
         const field = member.name.getText(source);
-        symbols[`${key}#field.${field}`] = member.type?.getText(source) ?? 'unknown';
+        put(`${key}#field.${field}`, member.type?.getText(source) ?? 'unknown', exported && !hidden(member) && !ts.isPrivateIdentifier(member.name));
         if (ts.isInterfaceDeclaration(node)) wire[field] = fieldType(member.type);
       }
     }
-    if (Object.keys(wire).length > 0) symbols[`${key}#wire`] = JSON.stringify(wire);
+    if (Object.keys(wire).length > 0) put(`${key}#wire`, JSON.stringify(wire), exported);
   }
 }
 process.stdout.write(`${JSON.stringify(symbols, null, 2)}\n`);

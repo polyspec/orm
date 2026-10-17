@@ -2,7 +2,8 @@
 # Python symbol extractor of tests/interfaces/check: prints the public declarations of the Python
 # client as JSON in the form of tests/interfaces/typescript.mts. A key names a top-level
 # declaration as "<path>::<name>", a member as "<class key>.<name>" and a field as
-# "<class key>#field.<name>"; a value is the class header, the signature or the annotation.
+# "<class key>#field.<name>"; a value is {"signature": the class header, the signature or the annotation, "exported": true}.
+# Only names without a leading underscore are read, so every declaration read is exported.
 #
 # Usage: python3 tests/interfaces/python.py <root> <source-root>...
 import ast
@@ -171,7 +172,9 @@ def extract(root: str, roots: list) -> dict:
                     node.value.args[1].keys, node.value.args[1].values
                 ):
                     symbols[f"{key}#field.{field_key.value}"] = ast.unparse(field_value)
-    return symbols
+    return {
+        key: {"signature": value, "exported": True} for key, value in symbols.items()
+    }
 
 
 def main() -> None:

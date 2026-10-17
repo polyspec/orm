@@ -8,7 +8,12 @@ import { readLosslessJson } from './json.mts';
 
 const schemas = resolve(import.meta.dirname, '../../../scripts/schema');
 
-export type Symbols = Record<string, string>;
+/** Symbol는 한 선언의 signature와, 그 언어에서 공개(export)인지 여부다. */
+export type Symbol = { signature: string; exported: boolean };
+export type Symbols = Record<string, Symbol>;
+
+/** mark는 공개 여부를 따지지 않는 비교용 symbol이다(owner field, record). */
+export const mark = (signature: string, exported = true): Symbol => ({ signature, exported });
 type Language = { roots?: string[]; symbols?: string };
 export type Native = { symbol?: string; signature?: string };
 export type Rule = {

@@ -19,7 +19,12 @@ sort($files);
 $autoload = "$root/packages/php/tests/autoload.php";
 if (is_file($autoload)) { require_once $autoload; }
 foreach ($files as $file) { require_once $file; }
+// Each declaration is ['signature' => ..., 'exported' => bool]. A class, interface, trait and function is public; a property or
+// method is exported when it is public.
 $out = [];
+$put = static function (string $key, string $signature, bool $exported) use (&$out): void {
+    $out[$key] = ['signature' => $signature, 'exported' => $exported];
+};
 $type = static function (?ReflectionType $t, ?ReflectionClass $scope = null) use (&$type): string {
     if ($t === null) { return ''; }
     if ($t instanceof ReflectionNamedType) {
@@ -55,18 +60,18 @@ foreach (array_merge(get_declared_classes(), get_declared_interfaces(), get_decl
     $interfaces = $r->getInterfaceNames(); sort($interfaces);
     $traits = $r->getTraitNames(); sort($traits);
     $parent = $r->getParentClass();
-    $out[$key] = implode(' ', Reflection::getModifierNames($r->getModifiers())) . " $kind $name extends " . ($parent === false ? '' : $parent->getName()) . ' implements ' . implode(',', $interfaces) . ' uses ' . implode(',', $traits);
+    $put($key, implode(' ', Reflection::getModifierNames($r->getModifiers())) . " $kind $name extends " . ($parent === false ? '' : $parent->getName()) . ' implements ' . implode(',', $interfaces) . ' uses ' . implode(',', $traits), true);
     foreach ($r->getProperties() as $p) {
         if ($p->getDeclaringClass()->getName() !== $name) { continue; }
         $modifiers = Reflection::getModifierNames($p->getModifiers());
         // PHP 8.4+ reports the implicit protected(set) of readonly properties.
         // Preserve explicit private(set), but keep default readonly portable to 8.2.
         if ($p->isReadOnly()) { $modifiers = array_values(array_diff($modifiers, ['protected(set)'])); }
-        $out[$key . '::$' . $p->getName()] = implode(' ', $modifiers) . ' ' . $type($p->getType(), $p->getDeclaringClass());
+        $put($key . '::$' . $p->getName(), implode(' ', $modifiers) . ' ' . $type($p->getType(), $p->getDeclaringClass()), $p->isPublic());
     }
     foreach ($r->getMethods() as $m) {
         if ($m->getDeclaringClass()->getName() !== $name) { continue; }
-        $out[$key . '::' . $m->getName()] = implode(' ', Reflection::getModifierNames($m->getModifiers())) . ' function ' . $m->getName() . $signature($m);
+        $put($key . '::' . $m->getName(), implode(' ', Reflection::getModifierNames($m->getModifiers())) . ' function ' . $m->getName() . $signature($m), $m->isPublic());
     }
     if ($r->hasConstant('RECORDS') && $r->getReflectionConstant('RECORDS')->getDeclaringClass()->getName() === $name) {
         $records = $r->getReflectionConstant('RECORDS')->getValue();
@@ -84,14 +89,14 @@ foreach (array_merge(get_declared_classes(), get_declared_interfaces(), get_decl
                 if (!is_string($field) || !is_string($nativeType)) { throw new UnexpectedValueException("$key RECORDS field is invalid"); }
                 $wire[$field] = $wireType($nativeType);
             }
-            $out[$key . '::' . $record . '#wire'] = json_encode($wire, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+            $put($key . '::' . $record . '#wire', json_encode($wire, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR), true);
         }
     }
 }
 foreach (get_defined_functions()['user'] as $name) {
     $f = new ReflectionFunction($name);
     if (in_array($f->getFileName(), $files, true)) {
-        $out[substr($f->getFileName(), strlen($root) + 1) . '::' . $name] = 'function ' . $name . $signature($f);
+        $put(substr($f->getFileName(), strlen($root) + 1) . '::' . $name, 'function ' . $name . $signature($f), true);
     }
 }
 ksort($out);
