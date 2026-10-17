@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from packages.python.testing.conformance import runner_python as runner
+from packages.python.tests import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 RUNNER = ROOT / "packages" / "python" / "testing" / "conformance" / "runner_python.py"
@@ -56,4 +57,4 @@ class ArgumentsTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    testcase.main()

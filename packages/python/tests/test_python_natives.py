@@ -29,6 +29,12 @@ def python_table(validate: str, name: str) -> dict:
     return table
 
 
+def signatures():
+    """The signature of each symbol of the Python snapshot; the snapshot also holds the exported flag of each."""
+    snapshot = json.loads((ROOT / "contracts" / "symbols" / "python.json").read_text(encoding="utf-8"))
+    return {key: value["signature"] for key, value in snapshot.items()}
+
+
 def python_parts(signature: str):
     """The parameters and return type of a python native signature, as validate.go reads them."""
     sig = compact(signature)
@@ -47,9 +53,7 @@ class EntityRuleNativesTest(unittest.TestCase):
         self.manifest = json.loads(
             (ROOT / "contracts" / "interfaces.json").read_text(encoding="utf-8")
         )
-        self.symbols = json.loads(
-            (ROOT / "contracts" / "symbols" / "python.json").read_text(encoding="utf-8")
-        )
+        self.symbols = signatures()
         validate = (
             ROOT / "tests" / "interfaces" / "contracts" / "validate.go"
         ).read_text(encoding="utf-8")
@@ -89,9 +93,7 @@ class ConnectionAndToolRuleNativesTest(unittest.TestCase):
         self.manifest = json.loads(
             (ROOT / "contracts" / "interfaces.json").read_text(encoding="utf-8")
         )
-        self.symbols = json.loads(
-            (ROOT / "contracts" / "symbols" / "python.json").read_text(encoding="utf-8")
-        )
+        self.symbols = signatures()
         validate = (
             ROOT / "tests" / "interfaces" / "contracts" / "validate.go"
         ).read_text(encoding="utf-8")
@@ -163,9 +165,7 @@ class DbspecRuleNativesTest(unittest.TestCase):
         self.manifest = json.loads(
             (ROOT / "contracts" / "interfaces.json").read_text(encoding="utf-8")
         )
-        self.symbols = json.loads(
-            (ROOT / "contracts" / "symbols" / "python.json").read_text(encoding="utf-8")
-        )
+        self.symbols = signatures()
         validate = (
             ROOT / "tests" / "interfaces" / "contracts" / "validate.go"
         ).read_text(encoding="utf-8")
@@ -213,9 +213,7 @@ class RecordNativesTest(unittest.TestCase):
         self.manifest = json.loads(
             (ROOT / "contracts" / "interfaces.json").read_text(encoding="utf-8")
         )
-        self.symbols = json.loads(
-            (ROOT / "contracts" / "symbols" / "python.json").read_text(encoding="utf-8")
-        )
+        self.symbols = signatures()
         self.records = {record["id"]: record for record in self.manifest["records"]}
 
     def expected(self, record: dict) -> dict:
@@ -278,9 +276,7 @@ class OwnerNativesTest(unittest.TestCase):
         self.manifest = json.loads(
             (ROOT / "contracts" / "interfaces.json").read_text(encoding="utf-8")
         )
-        self.symbols = json.loads(
-            (ROOT / "contracts" / "symbols" / "python.json").read_text(encoding="utf-8")
-        )
+        self.symbols = signatures()
         self.owners = {owner["id"]: owner for owner in self.manifest["owners"]}
 
     def check_group(self, ids):

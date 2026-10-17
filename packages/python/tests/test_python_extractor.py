@@ -26,7 +26,7 @@ class PythonExtractorTest(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
-            return json.loads(result.stdout)
+            return {key: value["signature"] for key, value in json.loads(result.stdout).items()}
 
     def test_public_names_match_the_symbol_file(self):
         # The contract contracts/symbols/python.json lists the public surface of the Python client. A module-level

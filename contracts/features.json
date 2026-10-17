@@ -7362,7 +7362,9 @@
         "packages/ts/tests/package-declarations.mjs",
         "packages/ts/src/index.ts",
         "packages/python/tests/coverage_interface_contract.py",
-        "packages/python/testing/interfaces/python.py"
+        "packages/python/testing/interfaces/python.py",
+        "packages/python/tests/test_python_extractor.py",
+        "packages/python/tests/test_python_natives.py"
       ],
       "docs": [
         "docs/interfaces.md",
@@ -7815,7 +7817,8 @@
         "packages/python/tests/conformance_mysql.py",
         "packages/python/tests/conformance_postgres.py",
         "packages/python/tests/conformance_sqlite.py",
-        "packages/python/tests/coverage_conformance_verification.py"
+        "packages/python/tests/coverage_conformance_verification.py",
+        "packages/python/tests/conformance_result.py"
       ],
       "docs": [
         "tests/conformance/README.md",
