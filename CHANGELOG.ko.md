@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7246054bd9c6d29040874b06883061e23329f2a9ccea3576ba5ff3b2936cea31 -->
+<!-- source-sha256: 150a226eb8cdfb121b38afdda3c550135c70bc077ec2ecad88d895d17616f0c0 -->
 # 변경 이력
 
 ## Unreleased
 - Go 성능 gate는 tools root인 packages/go/bench의 benchmark다. 이 root는 어떤 구현에도 속하지 않으므로 그 go-internal parity unit을 없앴다. gate는 performance_gate feature로 계속 실행된다. (#T77-8-1-1)
+- contracts/interfaces.json 이전은 계획과 함께 보류한다(T77-8-1-5).
 - generated model symbol은 선언되어 있다. live 선언 검사가 선언되지 않은 공개 symbol을 찾지 않는다(T77-8-1-4).
 - client surface symbol은 선언되어 있다. live 선언 검사가 선언되지 않은 공개 symbol을 찾지 않는다(T77-8-1-3).
 - dbspec symbol은 선언되어 있다. live 선언 검사가 선언되지 않은 공개 symbol을 찾지 않는다(T77-8-1-2).
