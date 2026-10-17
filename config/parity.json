@@ -4152,7 +4152,38 @@
     {"implementation": "typescript", "symbol": "@polyspec/orm!TransactionOptions:interface", "reason": "@polyspec/orm!TransactionOptions:interface is the type transaction options in packages/ts/src/database.ts::TransactionOptions (`interface TransactionOptions`); php exposes no undeclared public symbol for the same type transaction options; python exposes no undeclared public symbol for the same type transaction options", "spec": ["contracts/interfaces.json#/languages/typescript"]},
     {"implementation": "rust", "symbol": "polyspec_orm::tx::Transaction", "reason": "polyspec_orm::tx::Transaction is the type transaction options in packages/rust/orm/src/tx.rs::Transaction (`pub struct Transaction < 'a , F > { db : & 'a Db , f : F , isolation : Option < Isolation > , read_only : bool , timeout_ms : u64 , retry : `); php exposes no undeclared public symbol for the same type transaction options; python exposes no undeclared public symbol for the same type transaction options", "spec": ["contracts/interfaces.json#/languages/rust"]},
     {"implementation": "typescript", "symbol": "@polyspec/orm!ValueFunction:class", "reason": "@polyspec/orm!ValueFunction:class is the type value function in packages/ts/src/values.ts::ValueFunction (`class ValueFunction`); go exposes no undeclared public symbol for the same type value function; php exposes no undeclared public symbol for the same type value function; rust exposes no undeclared public symbol for the same type value function", "spec": ["contracts/interfaces.json#/languages/typescript"]},
-    {"implementation": "python", "symbol": "orm.values.ValueFunction", "reason": "orm.values.ValueFunction is the type value function in packages/python/src/polyspec/orm/values.py::ValueFunction (`class ValueFunction(_FunctionValue)`); go exposes no undeclared public symbol for the same type value function; php exposes no undeclared public symbol for the same type value function; rust exposes no undeclared public symbol for the same type value function", "spec": ["contracts/interfaces.json#/languages/python"]}
+    {"implementation": "python", "symbol": "orm.values.ValueFunction", "reason": "orm.values.ValueFunction is the type value function in packages/python/src/polyspec/orm/values.py::ValueFunction (`class ValueFunction(_FunctionValue)`); go exposes no undeclared public symbol for the same type value function; php exposes no undeclared public symbol for the same type value function; rust exposes no undeclared public symbol for the same type value function", "spec": ["contracts/interfaces.json#/languages/python"]},
+    {"implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.HostDecodeVersioned", "reason": "Go HostDecodeVersioned (packages/go/orm/aes_rotation.go) decodes a host-styled raw value for an explicit AES key version looked up in an AESKeyring. TS hostDecode (codec.ts), Python host_decode (codec.py) and Rust host_decode (codec.rs) take one aes key string and have no versioned entry point, so the keyring-plus-version variant is Go-only.", "spec": ["contracts/interfaces.json#/languages/go"]},
+    {"implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.NormalizeStyled", "reason": "Go NormalizeStyled (packages/go/orm/codec.go) validates styles and the nullable flag against a StyledValue before encoding. TS encode (codec.ts), Python encode (codec.py), Rust encode (codec.rs) and PHP Codec::encode (Codec.php) take the StyledValue directly and no other kit exports a separate normalizer.", "spec": ["contracts/interfaces.json#/languages/go"]},
+    {"implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.SameScalar", "reason": "Go SameScalar (packages/go/orm/collection.go) compares two scalar collection keys with Go type rules. Other kits key collections with language equality (TS Map and Python dict keys, PHP Collection::identityOf), so none exports a scalar key comparator.", "spec": ["contracts/interfaces.json#/languages/go"]},
+    {"implementation": "php", "symbol": "Polyspec\\Orm\\Codec::isHostStyle", "reason": "PHP Codec::isHostStyle (packages/php/src/Codec.php) is a public predicate that one style name is host-side. Rust split_host (codec.rs) partitions a list instead, and TS (codec.ts) and Python (codec.py) decide host styles inside hostEncode/host_encode without a public predicate.", "spec": ["contracts/interfaces.json#/languages/php"]},
+    {"implementation": "php", "symbol": "Polyspec\\Orm\\Collection::__invoke", "reason": "PHP Collection::__invoke(Db) (packages/php/src/Collection.php) is the magic callable form that returns a db-bound Collection. Only PHP makes Collection callable; the other kits attach a connection with connect(Db), which is the declared collection-connect unit.", "spec": ["contracts/interfaces.json#/languages/php"]},
+    {"implementation": "php", "symbol": "Polyspec\\Orm\\Collection::fetchValues", "reason": "PHP Collection::fetchValues(Closure) (packages/php/src/Collection.php) feeds each fetched value to a callback. Go, TS, Python and Rust read fetched values only through the fetched-value accessors (collection-fetched-value), so there is no callback-driven form.", "spec": ["contracts/interfaces.json#/languages/php"]},
+    {"implementation": "php", "symbol": "Polyspec\\Orm\\Page::__construct", "reason": "PHP Page constructor (packages/php/src/Page.php) builds the readonly Page value object by promotion. Go and Rust build Page with struct literals (collection.go, collection.rs), TS Page is an interface (model.ts) and Python Page is a dict subclass (model.py), so no constructor symbol exists there.", "spec": ["contracts/interfaces.json#/languages/php"]},
+    {"implementation": "php", "symbol": "Polyspec\\Orm\\AesRotationStatus::__construct", "reason": "PHP AesRotationStatus constructor (packages/php/src/AesRotationStatus.php) builds the readonly status object by promotion. Go and Rust build AESRotationStatus with struct literals (utils.go, utils.rs) and TS AesRotationStatus is an interface (utils.ts), so no constructor symbol exists there.", "spec": ["contracts/interfaces.json#/languages/php"]},
+    {"implementation": "typescript", "symbol": "@polyspec/orm!AesRowCodec:interface", "reason": "TS AesRowCodec interface (packages/ts/src/aes.ts) describes an object with encode(value, styles, key) and decode(value, styles, key) for row-level AES. Go, PHP, Python and Rust do row-level AES through functions (hostEncode/hostDecode, AESEncrypt, Codec::hostEncode) and expose no codec interface.", "spec": ["contracts/interfaces.json#/languages/typescript"]},
+    {"implementation": "typescript", "symbol": "@polyspec/orm!AesRowCodec#decode:member(1)", "reason": "TS AesRowCodec.decode (packages/ts/src/aes.ts) is the row-level AES decode member of the AesRowCodec interface. Go, PHP, Python and Rust expose row-level decode only as functions (hostDecode, host_decode, Codec::hostDecode), not as an interface member.", "spec": ["contracts/interfaces.json#/languages/typescript"]},
+    {"implementation": "typescript", "symbol": "@polyspec/orm!AesRowCodec#encode:member(1)", "reason": "TS AesRowCodec.encode (packages/ts/src/aes.ts) is the row-level AES encode member of the AesRowCodec interface. Go, PHP, Python and Rust expose row-level encode only as functions (hostEncode, host_encode, Codec::hostEncode), not as an interface member.", "spec": ["contracts/interfaces.json#/languages/typescript"]},
+    {"implementation": "python", "symbol": "orm.codec.ordered_json_value", "reason": "Python ordered_json_value (packages/python/src/polyspec/orm/codec.py) converts a value to an OrderedJson wrapper before ordered encoding. TS orderedJsonValue in codec.ts is not exported, Go and PHP have no codec-level ordered-JSON helper, and Rust uses encode_ordered and Val::Ordered with a different type.", "spec": ["contracts/interfaces.json#/languages/python"]},
+    {"implementation": "rust", "symbol": "polyspec_orm::codec::StyledCol", "reason": "Rust StyledCol (packages/rust/orm/src/codec.rs) is the per-column style plan entry (index, codec styles, host styles). Go, PHP, TS and Python keep the equivalent inside their assemble/runtime model and expose no public StyledCol type.", "spec": ["contracts/interfaces.json#/languages/rust"]},
+    {"implementation": "rust", "symbol": "polyspec_orm::codec::StyledCol::codec", "reason": "Rust StyledCol.codec field (packages/rust/orm/src/codec.rs) holds the database-side style list of one styled column. Only the Rust StyledCol struct carries this, so the field has no counterpart in Go, PHP, TS or Python.", "spec": ["contracts/interfaces.json#/languages/rust"]},
+    {"implementation": "rust", "symbol": "polyspec_orm::codec::StyledCol::host", "reason": "Rust StyledCol.host field (packages/rust/orm/src/codec.rs) holds the host-side style list of one styled column. Only the Rust StyledCol struct carries this, so the field has no counterpart in Go, PHP, TS or Python.", "spec": ["contracts/interfaces.json#/languages/rust"]},
+    {"implementation": "rust", "symbol": "polyspec_orm::codec::StyledCol::index", "reason": "Rust StyledCol.index field (packages/rust/orm/src/codec.rs) is the column position of one styled column. Only the Rust StyledCol struct carries this, so the field has no counterpart in Go, PHP, TS or Python.", "spec": ["contracts/interfaces.json#/languages/rust"]},
+    {"implementation": "rust", "symbol": "polyspec_orm::codec::executor_stages", "reason": "Rust executor_stages (packages/rust/orm/src/codec.rs) maps configured codec stage names to executor stage names. Go, PHP, TS and Python resolve stages inside their own runtime and export no stage-name mapper from the codec module.", "spec": ["contracts/interfaces.json#/languages/rust"]},
+    {"implementation": "rust", "symbol": "polyspec_orm::codec::hex_decode", "reason": "Rust hex_decode (packages/rust/orm/src/codec.rs) decodes a hex string into bytes for the hex-encoded AES column values. Go, PHP, TS and Python use their standard libraries for hex (encoding/hex, bin2hex, Buffer, bytes.hex) and export no codec helper for it.", "spec": ["contracts/interfaces.json#/languages/rust"]},
+    {"implementation": "rust", "symbol": "polyspec_orm::codec::hex_upper", "reason": "Rust hex_upper (packages/rust/orm/src/codec.rs) renders bytes as uppercase hex for the AES hex column values. Go, PHP, TS and Python use standard-library hex formatting and export no codec helper for it.", "spec": ["contracts/interfaces.json#/languages/rust"]},
+    {"implementation": "rust", "symbol": "polyspec_orm::codec::split_host", "reason": "Rust split_host (packages/rust/orm/src/codec.rs) partitions a style list into host-side and database-side styles. PHP Codec::isHostStyle (Codec.php) tests a single style and Go, TS and Python have no partition helper in the codec module.", "spec": ["contracts/interfaces.json#/languages/rust"]},
+    {"implementation": "rust", "symbol": "polyspec_orm::codec::styled_cols", "reason": "Rust styled_cols (packages/rust/orm/src/codec.rs) builds the StyledCol list from a plan::Assemble. The other kits build the styled-column plan inside their assemble/runtime model and export no codec-level builder.", "spec": ["contracts/interfaces.json#/languages/rust"]},
+    {"implementation": "rust", "symbol": "polyspec_orm::codec::encode_ordered", "reason": "Rust encode_ordered (packages/rust/orm/src/codec.rs) encodes a strict-JSON value with ordered keys for styled output. Go, PHP and TS export no ordered-JSON encode entry point (TS orderedJsonValue in codec.ts is not exported), and Python has only the ordered_json_value helper.", "spec": ["contracts/interfaces.json#/languages/rust"]},
+    {"implementation": "rust", "symbol": "polyspec_orm::collection::AnyCollection", "reason": "Rust AnyCollection trait (packages/rust/orm/src/collection.rs) is the type-erased collection interface used to hold collections of any model type. Go uses generics (Collection[T]) and PHP, TS and Python are dynamically typed, so none needs or exports an erased collection trait.", "spec": ["contracts/interfaces.json#/languages/rust"]},
+    {"implementation": "rust", "symbol": "polyspec_orm::collection::AnyCollection::as_any", "reason": "Rust AnyCollection.as_any (packages/rust/orm/src/collection.rs) downcasts a type-erased collection to Any. This exists only because of the Rust AnyCollection trait; Go, PHP, TS and Python have no erased collection type.", "spec": ["contracts/interfaces.json#/languages/rust"]},
+    {"implementation": "rust", "symbol": "polyspec_orm::collection::AnyCollection::models_dyn", "reason": "Rust AnyCollection.models_dyn (packages/rust/orm/src/collection.rs) lists the models of an erased collection as trait objects. Only the Rust erased trait exposes this; Go, PHP, TS and Python use typed or dynamic collection values.", "spec": ["contracts/interfaces.json#/languages/rust"]},
+    {"implementation": "rust", "symbol": "polyspec_orm::collection::AnyCollection::to_array_dyn", "reason": "Rust AnyCollection.to_array_dyn (packages/rust/orm/src/collection.rs) renders an erased collection to a JSON array value. Only the Rust erased trait exposes this; Go, PHP, TS and Python call their typed to_array-style members directly.", "spec": ["contracts/interfaces.json#/languages/rust"]},
+    {"implementation": "rust", "symbol": "polyspec_orm::collection::AnyCollection::to_json_dyn", "reason": "Rust AnyCollection.to_json_dyn (packages/rust/orm/src/collection.rs) renders an erased collection to JSON text. Only the Rust erased trait exposes this; the typed Collection JSON text is the collection-json-text unit.", "spec": ["contracts/interfaces.json#/languages/rust"]},
+    {"implementation": "rust", "symbol": "polyspec_orm::collection::Collection::from_boxes", "reason": "Rust Collection::from_boxes (packages/rust/orm/src/collection.rs) builds a Collection from boxed models and a fetched map. Go, PHP, TS and Python construct collections from their own typed or dynamic values and export no boxed-model constructor.", "spec": ["contracts/interfaces.json#/languages/rust"]},
+    {"implementation": "rust", "symbol": "polyspec_orm::collection::Collection::into_vec", "reason": "Rust Collection::into_vec (packages/rust/orm/src/collection.rs) consumes the collection and returns Vec<M>. The other kits return the models as a non-consuming array (collection-values), so no ownership-transferring accessor exists there.", "spec": ["contracts/interfaces.json#/languages/rust"]},
+    {"implementation": "rust", "symbol": "polyspec_orm::collection::Collection::is_empty", "reason": "Rust Collection::is_empty (packages/rust/orm/src/collection.rs) is an emptiness predicate. Go, PHP, TS and Python test emptiness through the length/count members (collection-length), so there is no separate predicate.", "spec": ["contracts/interfaces.json#/languages/rust"]},
+    {"implementation": "rust", "symbol": "polyspec_orm::collection::GroupRows::is_empty", "reason": "Rust GroupRows::is_empty (packages/rust/orm/src/collection.rs) is an emptiness predicate. Go, PHP, TS and Python test emptiness through the length/count members (collection-group-rows-length), so there is no separate predicate.", "spec": ["contracts/interfaces.json#/languages/rust"]}
   ],
   "units": [
     {"id": "ts-browser-entry", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/browser-entry.mjs", "id": "the subpath module reaches no Node module, undeclared package or Node global"}]},
@@ -6822,6 +6853,186 @@
         { "implementation": "typescript", "symbol": "@polyspec/orm!Utils:class" },
         { "implementation": "python", "symbol": "orm.utils.Utils" },
         { "implementation": "rust", "symbol": "polyspec_orm::utils::Utils" }
+      ]
+    },
+    {
+      "id": "codec-styled-value",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.StyledValue" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\StyledValue" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!StyledValue:class" },
+        { "implementation": "python", "symbol": "orm.styled_value.StyledValue" },
+        { "implementation": "rust", "symbol": "polyspec_orm::value::StyledValue" }
+      ]
+    },
+    {
+      "id": "codec-styled-value-sql-null",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.SqlNull" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\StyledValue::sqlNull" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!StyledValue.sqlNull:member(1)" },
+        { "implementation": "python", "symbol": "orm.styled_value.StyledValue.sql_null" },
+        { "implementation": "rust", "symbol": "polyspec_orm::value::StyledValue::SqlNull" }
+      ]
+    },
+    {
+      "id": "codec-styled-value-value",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Value" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\StyledValue::value" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!StyledValue.value:member(1)" },
+        { "implementation": "python", "symbol": "orm.styled_value.StyledValue.value" },
+        { "implementation": "rust", "symbol": "polyspec_orm::value::StyledValue::Value" }
+      ]
+    },
+    {
+      "id": "collection-page",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Page" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\Page" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!Page:interface" },
+        { "implementation": "python", "symbol": "orm.model.Page" },
+        { "implementation": "rust", "symbol": "polyspec_orm::collection::Page" }
+      ]
+    },
+    {
+      "id": "collection-group-row",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.GroupRow" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\GroupRow" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!GroupRow:class" },
+        { "implementation": "python", "symbol": "orm.group_rows.GroupRow" },
+        { "implementation": "rust", "symbol": "polyspec_orm::collection::GroupRow" }
+      ]
+    },
+    {
+      "id": "collection-group-rows",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.GroupRows" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\GroupRows" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!GroupRows:class" },
+        { "implementation": "python", "symbol": "orm.group_rows.GroupRows" },
+        { "implementation": "rust", "symbol": "polyspec_orm::collection::GroupRows" }
+      ]
+    },
+    {
+      "id": "collection-group-row-to-array",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.GroupRow.ToArray" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\GroupRow::toArray" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!GroupRow#toArray:member(1)" },
+        { "implementation": "python", "symbol": "orm.group_rows.GroupRow.to_array" },
+        { "implementation": "rust", "symbol": "polyspec_orm::collection::GroupRow::to_array" }
+      ]
+    },
+    {
+      "id": "collection-group-row-value",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.GroupRow.Value" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\GroupRow::value" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!GroupRow#value:member(1)" },
+        { "implementation": "python", "symbol": "orm.group_rows.GroupRow.value" },
+        { "implementation": "rust", "symbol": "polyspec_orm::collection::GroupRow::value" }
+      ]
+    },
+    {
+      "id": "collection-group-rows-length",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.GroupRows.Len" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\GroupRows::count" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!GroupRows#length:member" },
+        { "implementation": "python", "symbol": "orm.group_rows.GroupRows.length" },
+        { "implementation": "rust", "symbol": "polyspec_orm::collection::GroupRows::len" }
+      ]
+    },
+    {
+      "id": "collection-group-rows-to-array",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.GroupRows.ToArray" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\GroupRows::toArray" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!GroupRows#toArray:member(1)" },
+        { "implementation": "python", "symbol": "orm.group_rows.GroupRows.to_array" },
+        { "implementation": "rust", "symbol": "polyspec_orm::collection::GroupRows::to_array" }
+      ]
+    },
+    {
+      "id": "collection-length",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.Len" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::count" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!Collection#length:member" },
+        { "implementation": "python", "symbol": "orm.model.Collection.length" },
+        { "implementation": "rust", "symbol": "polyspec_orm::collection::Collection::len" }
+      ]
+    },
+    {
+      "id": "collection-json-text",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.MarshalJSON" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::toJson" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!Collection#toJSONText:member(1)" },
+        { "implementation": "python", "symbol": "orm.model.Collection.to_json_text" },
+        { "implementation": "rust", "symbol": "polyspec_orm::collection::Collection::to_json" }
+      ]
+    },
+    {
+      "id": "collection-fetched-value",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.FetchedValue" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::fetchedValue" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!Collection#fetched:member(1)" },
+        { "implementation": "python", "symbol": "orm.model.Collection.fetched" },
+        { "implementation": "rust", "symbol": "polyspec_orm::collection::Collection::fetched_value" }
+      ]
+    },
+    {
+      "id": "collection-values",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.Slice" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::all" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!Collection#values:member(1)" },
+        { "implementation": "python", "symbol": "orm.model.Collection.values" },
+        { "implementation": "rust", "symbol": "polyspec_orm::collection::Collection::models" }
+      ]
+    },
+    {
+      "id": "collection-entries",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.All" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::entries" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!Collection#entries:member(1)" },
+        { "implementation": "python", "symbol": "orm.model.Collection.entries" },
+        { "implementation": "rust", "symbol": "polyspec_orm::collection::Collection::iter" }
       ]
     }
   ],
