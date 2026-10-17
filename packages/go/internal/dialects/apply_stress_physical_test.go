@@ -35,7 +35,7 @@ func TestApplyStressPlan(t *testing.T) {
 	}
 	// stress 문서 생성은 node process 하나이므로 testcase.Process 기한을 가진다.
 	generating, cancelGenerate := context.WithTimeout(context.Background(), testcase.Process)
-	out, err := exec.CommandContext(generating, "node", filepath.Join("..", "dbspec", "stress.mts")).Output()
+	out, err := exec.CommandContext(generating, "node", filepath.Join(repoRoot, "tests", "dbspec", "stress.mts")).Output()
 	cancelGenerate()
 	if err != nil {
 		t.Fatalf("node tests/dbspec/stress.mts: %v", err)

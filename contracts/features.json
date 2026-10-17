@@ -9044,7 +9044,7 @@
     {
       "id": "dbspec-apply-stress-mysql",
       "paths": [
-        "tests/dialects/apply_stress_physical_test.go"
+        "packages/go/internal/dialects/apply_stress_physical_test.go"
       ],
       "tests": [],
       "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" APPLY_STRESS_DIALECTS=mysql dbspec-apply-stress-bench"
@@ -9052,7 +9052,7 @@
     {
       "id": "dbspec-apply-stress-pg-sqlite",
       "paths": [
-        "tests/dialects/apply_stress_physical_test.go"
+        "packages/go/internal/dialects/apply_stress_physical_test.go"
       ],
       "tests": [],
       "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" APPLY_STRESS_DIALECTS='postgres|sqlite' dbspec-apply-stress-bench"

@@ -48,7 +48,6 @@ rules:
       - "!tests/codec"
       - "!tests/conformance"
       - "!tests/dbspec"
-      - "!tests/dialects"
       - "!tests/dsn"
       - "!tests/editor"
       - "!tests/events"
@@ -107,7 +106,6 @@ rules:
       - "!tests/interfaces/rust/**"
       # The Go tests of the engine's dialect rules: the probes of docs/dialects.md and the physical tests of the engine's
       # DDL, plans, apply and introspection against the databases, which run the Go engine.
-      - "!tests/dialects/**"
       # The table of Unicode letters and digits that every lexer reads is written from the data of Go's unicode package,
       # the reference of packages/go/engine/dbspec.
       - "!tests/dbspec/unicode/**"

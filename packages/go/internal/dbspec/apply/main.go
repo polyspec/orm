@@ -33,7 +33,7 @@ import (
 )
 
 // connectionRules는 모든 client가 새 connection에서 실행하는 statement다
-// (tests/dialects connectionRules).
+// (packages/go/internal/dialects connectionRules).
 var connectionRules = map[string][]string{
 	"mysql":    {"SET time_zone = '+00:00'"},
 	"postgres": {"SET TimeZone = 'UTC'"},

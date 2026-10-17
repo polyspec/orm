@@ -298,14 +298,14 @@ DBSPEC_INTROSPECT_DIR = $(if $(filter dev,$(DBSPEC_INTROSPECT_PROFILE)),debug,$(
 # 렌더링한 statement를 적용한다.
 .PHONY: dbspec-ddl-check
 dbspec-ddl-check:
-	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^(TestDDLVectors|TestSchemaDocumentsApply)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^(TestDDLVectors|TestSchemaDocumentsApply)$$' -count=1
 
 # dbspec-introspect-check는 tests/dbspec/ddl.json과 모든 schema 문서를 MySQL, PostgreSQL,
 # SQLite에 렌더링해 적용하고, 각 database를 introspect해 source schema text를 요구하며,
 # tests/dbspec/introspect.json을 실행한다.
 .PHONY: dbspec-introspect-check
 dbspec-introspect-check:
-	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^(TestIntrospectRoundTrip|TestIntrospectUnsupported)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^(TestIntrospectRoundTrip|TestIntrospectUnsupported)$$' -count=1
 
 # dbspec-introspect-ts-check는 TypeScript client를 build하고 dbspec-introspect-check의 round
 # trip과 미지원 case를 그 introspectDbspec으로 MySQL, PostgreSQL, SQLite에서 실행한다.
@@ -354,7 +354,7 @@ dbspec-introspect-python-check: python-venv-check
 # 숨긴 이름 없음을 요구한다(docs/plans.md "Verification").
 .PHONY: dbspec-plan-check
 dbspec-plan-check:
-	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^TestPlanApply$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^TestPlanApply$$' -count=1
 
 # dbspec-apply-check는 plan chain을 MySQL, PostgreSQL, SQLite에 history, 두 번째 apply, drift,
 # lock, 아무것도 풀지 않은 unlock, 검증, representative plan의 모든 step 뒤 중단에서 recover와
@@ -363,7 +363,7 @@ dbspec-plan-check:
 # statement와 history step 22000개씩을 따로 commit하므로 그 case의 기한이 길다.
 .PHONY: dbspec-apply-check
 dbspec-apply-check:
-	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^(TestApplyChain|TestApplyThroughTransactionPooler)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^(TestApplyChain|TestApplyThroughTransactionPooler)$$' -count=1
 
 # dbspec-apply-stress-bench는 2000 table 문서를 첫 plan으로 APPLY_STRESS_DIALECTS의 database에
 # 적용한다(make bench는 셋 모두). MySQL은 statement와 history step 22000개씩을 따로 commit한다.
@@ -375,7 +375,7 @@ APPLY_STRESS_DIALECTS = mysql|postgres|sqlite
 .PHONY: dbspec-apply-stress-bench
 dbspec-apply-stress-bench:
 	$(if $(APPLY_STRESS_DIALECTS),,$(error APPLY_STRESS_DIALECTS is empty; give mysql, postgres or sqlite separated by |))$(foreach dialect,$(subst |, ,$(APPLY_STRESS_DIALECTS)),$(if $(filter $(dialect),mysql postgres sqlite),,$(error APPLY_STRESS_DIALECTS names $(dialect), which is no database; give mysql, postgres or sqlite separated by |)))
-	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyStressPlan$$/^($(APPLY_STRESS_DIALECTS))$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^TestApplyStressPlan$$/^($(APPLY_STRESS_DIALECTS))$$' -count=1
 
 # dbspec-apply-pairs-check는 TypeScript client와 Rust apply runner를 build하고,
 # tests/dbspec/apply의 Go, PHP, TypeScript, Rust와 PHP 확장 orm_dbspec(이 실행의 directory에 build한다) runner와 Python runner
@@ -389,7 +389,7 @@ dbspec-apply-pairs-check: cargo-downloads-check lease-tool python-venv-check
 	$(TSC_BUILD)
 	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
-	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(RUN_TARGET)/debug/examples/dbspec_apply ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyChainAcrossClients$$' -count=1
+	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(RUN_TARGET)/debug/examples/dbspec_apply ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^TestApplyChainAcrossClients$$' -count=1
 	rm -rf $(RUN_DIR)
 
 # dbspec-apply-rust-check는 2000 table plan을 뺀 dbspec-apply-check의 scenario를 Rust client의
@@ -453,7 +453,7 @@ dbspec-introspect-compare-check: cargo-downloads-check lease-tool python-venv-ch
 	$(TSC_BUILD)
 	$(RUN_LONG) rust-build/dbspec_introspect --cwd packages/rust -- $(CARGO_COPY) $(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --profile $(DBSPEC_INTROSPECT_PROFILE) --locked --offline -p polyspec-orm --example dbspec_introspect
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
-	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(RUN_TARGET)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) DBSPEC_INTROSPECT_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) -tags physical ./tests/dialects -run '^TestIntrospectCompare$$' -count=1
+	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(RUN_TARGET)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) DBSPEC_INTROSPECT_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^TestIntrospectCompare$$' -count=1
 	rm -rf $(RUN_DIR)
 
 dbspec-introspect-compare-bench:
@@ -970,14 +970,14 @@ python-identity-load-check: python-venv-check
 python-schema-inspection-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.schema_inspection
 
-# dialect-facts-check runs the schema dialect probes of tests/dialects against
+# dialect-facts-check runs the schema dialect probes of packages/go/internal/dialects against
 # the MySQL and PostgreSQL servers of TEST_ENV and a SQLite file per probe,
 # and records which SQLite openers keep a DSN query in the file name.
 dialect-facts-check: dialect-facts-check/probes dialect-facts-check/facts
 dialect-facts-check/probes:
-	$(GO_TEST) ./tests/dialects -run '^TestProbeIDs$$' -count=1
+	$(GO_TEST) ./packages/go/internal/dialects -run '^TestProbeIDs$$' -count=1
 dialect-facts-check/facts:
-	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^(TestDialectFacts|TestSQLiteFileNameWithQuery)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^(TestDialectFacts|TestSQLiteFileNameWithQuery)$$' -count=1
 
 conformance-counter-check:
 	$(WITH_TEST_ENV) node --test tests/conformance/check/counters.physical.test.mts

@@ -23,7 +23,7 @@ const root = new URL('../../../', import.meta.url);
 // TIMEOUT은 case 하나의 기한(ms)이다. plan case 하나는 database 하나를 만들고 step을 적용, 되돌리기, 다시 적용, finalize한 뒤 지운다.
 const TIMEOUT = 60000;
 const DIALECTS = ['mysql', 'postgres', 'sqlite'];
-// 모든 client가 새 connection에서 실행하는 문장이다(tests/dialects connectionRules).
+// 모든 client가 새 connection에서 실행하는 문장이다(packages/go/internal/dialects connectionRules).
 const CONNECTION_RULES = {
   mysql: ["SET time_zone = '+00:00'"],
   postgres: ["SET TimeZone = 'UTC'"],

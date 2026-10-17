@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: aa12eef6113316a64d39a8d2240aaf8c6f1d5e167238901e3a43939f557018ca -->
+<!-- source-sha256: 61d189ea35a8d41d8be45aa83266ebd4612fff88adb53c7e615da1a7dbf424cd -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -60,7 +60,7 @@ import하지 않으면 `orm.Open`은 필요한 import를 포함한 `CONFIG`를 �
 
 이 절은 MySQL, PostgreSQL, SQLite가 스키마 객체를 정의하고 적용하고 catalog에 기록하는 방식을 정리하고, 중립 스키마 언어 dbspec이 각 기능을 지원하는지 결정한다. 기능은 (1) dbspec에 공통 정의가 하나 있고, (2) 그 정의가 MySQL, PostgreSQL, SQLite에서 같은 의미로 생성되며, (3) introspection이 숨은 표식 없이 catalog에서 같은 정의를 복원할 때만 지원한다. Renderer가 setting에서 생성하는 CHECK나 trigger 같은 동작은 catalog 텍스트가 선언한 renderer version의 출력과 같을 때만 복원한다.
 
-모든 사실은 `tests/dialects`의 공통 probe ID(`make dialect-facts-check`)를 인용한다. Probe는 자기 전용 일회용 database, schema, file에서 DDL, DML, catalog 질의를 실행하며 데이터베이스가 다르게 동작하면 실패한다. `render.*` probe는 제안한 rendering을 검사한다. Probe ID가 없는 사실은 공식 manual을 인용한다. 각 행은 **Decision:**으로 끝난다. **T8.1 review**는 이 기록이 결정하지 않는 정의다.
+모든 사실은 `packages/go/internal/dialects`의 공통 probe ID(`make dialect-facts-check`)를 인용한다. Probe는 자기 전용 일회용 database, schema, file에서 DDL, DML, catalog 질의를 실행하며 데이터베이스가 다르게 동작하면 실패한다. `render.*` probe는 제안한 rendering을 검사한다. Probe ID가 없는 사실은 공식 manual을 인용한다. 각 행은 **Decision:**으로 끝난다. **T8.1 review**는 이 기록이 결정하지 않는 정의다.
 
 표기: "renderer CHECK"는 renderer가 타입이나 setting을 위해 생성하는 CHECK 제약이다. 정확한 텍스트와 이름은 T8.1에서 정하며, introspection은 catalog 텍스트가 해당 서버의 renderer 출력과 같을 때만 받아들인다.
 

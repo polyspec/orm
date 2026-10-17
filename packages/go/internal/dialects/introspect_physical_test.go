@@ -39,7 +39,7 @@ type roundTripSet struct {
 // roundTripSets는 tests/dbspec/ddl.json의 모든 case와 모든 schema 문서다.
 func roundTripSets(t *testing.T) []roundTripSet {
 	var out []roundTripSet
-	raw, err := os.ReadFile(filepath.Join("..", "dbspec", "ddl.json"))
+	raw, err := os.ReadFile(filepath.Join(repoRoot, "tests", "dbspec", "ddl.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +197,7 @@ func TestIntrospectUnsupported(t *testing.T) {
 	if mysqlDSN == "" || postgresDSN == "" {
 		t.Fatal("ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV")
 	}
-	raw, err := os.ReadFile(filepath.Join("..", "dbspec", "introspect.json"))
+	raw, err := os.ReadFile(filepath.Join(repoRoot, "tests", "dbspec", "introspect.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

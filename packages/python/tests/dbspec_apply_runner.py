@@ -1,5 +1,5 @@
 # Applies the chain of tests/dbspec/plans.json (create-from-empty and rename-table-and-column) to one database with the
-# Python client (docs/plans.md "Apply"), the Python runner of the apply pair comparison (tests/dialects
+# Python client (docs/plans.md "Apply"), the Python runner of the apply pair comparison (packages/go/internal/dialects
 # TestApplyChainAcrossClients, make dbspec-apply-pairs-check), in the form of tests/dbspec/apply/typescript.mts. The
 # action is apply-first (the first plan), apply (the whole chain), stop (stop after statement 1 of the second plan ran),
 # recover (finish the interrupted plan) or rollback (undo the last plan of the history). stdout holds one result line:
@@ -24,7 +24,7 @@ from polyspec.orm.dbspec.apply import (
 from polyspec.orm.dbspec.plan import parse_plan
 from polyspec.orm.placeholders import for_mysql, for_postgres
 
-# The statements every client runs on a new connection (tests/dialects connectionRules).
+# The statements every client runs on a new connection (packages/go/internal/dialects connectionRules).
 CONNECTION_RULES = {
     "mysql": ["SET time_zone = '+00:00'"],
     "postgres": ["SET TimeZone = 'UTC'"],
@@ -62,7 +62,7 @@ class Adapter:
 
 
 def connect(dialect: str, uri: str):
-    """Opens the URI as the driver connection of its dialect, in the compare URI form of tests/dialects."""
+    """Opens the URI as the driver connection of its dialect, in the compare URI form of packages/go/internal/dialects."""
     url = urlsplit(uri)
     if dialect == "mysql" and url.scheme == "mysql" and not url.query:
         return pymysql.connect(

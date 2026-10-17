@@ -36,7 +36,7 @@ class Adapter:
 
 
 def connect(dialect, uri):
-    """URI를 dialect의 driver connection으로 연다. tests/dialects의 compare URI 형식이다."""
+    """URI를 dialect의 driver connection으로 연다. packages/go/internal/dialects의 compare URI 형식이다."""
     url = urlsplit(uri)
     if dialect == "mysql" and url.scheme == "mysql":
         return pymysql.connect(

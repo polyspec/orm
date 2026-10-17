@@ -33,9 +33,9 @@ const pairDeadline = 3*runnerDeadline + time.Minute
 var applyClients = dbspecLanguages()
 
 // dbspecLanguages는 config/parity.json의 dbspec profile implementation을 읽는다. 이 test는 package directory에서
-// 실행되므로 경로는 tests/dialects 기준이다.
+// 실행되므로 경로는 packages/go/internal/dialects 기준이다.
 func dbspecLanguages() []string {
-	raw, err := os.ReadFile(filepath.Join("..", "..", "config", "parity.json"))
+	raw, err := os.ReadFile(filepath.Join(repoRoot, "config", "parity.json"))
 	if err != nil {
 		panic(err)
 	}
@@ -73,7 +73,7 @@ func TestApplyChainAcrossClients(t *testing.T) {
 	if !filepath.IsAbs(rustRunner) || !filepath.IsAbs(extension) || !filepath.IsAbs(python) {
 		t.Fatalf("DBSPEC_APPLY_RUST %q, ORM_DBSPEC_EXTENSION %q and ORM_PYTHON %q must be absolute paths", rustRunner, extension, python)
 	}
-	root, err := filepath.Abs(filepath.Join("..", ".."))
+	root, err := filepath.Abs(repoRoot)
 	if err != nil {
 		t.Fatal(err)
 	}

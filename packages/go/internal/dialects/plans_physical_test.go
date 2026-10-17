@@ -46,7 +46,7 @@ func TestPlanApply(t *testing.T) {
 	if mysqlDSN == "" || postgresDSN == "" {
 		t.Fatal("ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV")
 	}
-	raw, err := os.ReadFile(filepath.Join("..", "dbspec", "plans.json"))
+	raw, err := os.ReadFile(filepath.Join(repoRoot, "tests", "dbspec", "plans.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

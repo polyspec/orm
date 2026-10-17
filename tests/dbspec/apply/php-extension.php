@@ -21,7 +21,7 @@ use Polyspec\Orm\Dbspec\Native\ApplyEvent;
 use Polyspec\Orm\Dbspec\Native\Dbspec;
 use Polyspec\Orm\Orm;
 
-// 모든 client 가 새 connection 에서 실행하는 statement 다(tests/dialects connectionRules).
+// 모든 client 가 새 connection 에서 실행하는 statement 다(packages/go/internal/dialects connectionRules).
 const CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];
 
 if ($argc !== 5) {

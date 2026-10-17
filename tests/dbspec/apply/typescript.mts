@@ -12,7 +12,7 @@ import pg from 'pg';
 import { DbspecApplyError, applyPlans, parsePlan, recoverPlans, rollbackPlans, type DbspecApplyHandler, type DbspecPlan } from '../../../packages/ts/dist/dbspec/index.js';
 import { readVectors } from '../vectors.mts';
 
-// 모든 client가 새 connection에서 실행하는 statement다(tests/dialects connectionRules).
+// 모든 client가 새 connection에서 실행하는 statement다(packages/go/internal/dialects connectionRules).
 const CONNECTION_RULES = {
   mysql: ["SET time_zone = '+00:00'"],
   postgres: ["SET TimeZone = 'UTC'"],

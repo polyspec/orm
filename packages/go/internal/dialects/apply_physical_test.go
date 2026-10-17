@@ -28,7 +28,7 @@ type planCaseText struct {
 
 func planCases(t *testing.T) map[string]planCaseText {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join("..", "dbspec", "plans.json"))
+	raw, err := os.ReadFile(filepath.Join(repoRoot, "tests", "dbspec", "plans.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

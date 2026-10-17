@@ -48,7 +48,7 @@ func TestProbeCitations(t *testing.T) {
 	for _, p := range probes {
 		known[p.ID] = true
 	}
-	raw, err := os.ReadFile(filepath.Join("..", "dbspec", "ddl.json"))
+	raw, err := os.ReadFile(filepath.Join(repoRoot, "tests", "dbspec", "ddl.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestProbeCitations(t *testing.T) {
 		}
 	}
 	for _, page := range []string{"dialects.md", "dialects.ko.md"} {
-		text, err := os.ReadFile(filepath.Join("..", "..", "docs", page))
+		text, err := os.ReadFile(filepath.Join(repoRoot, "docs", page))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -96,7 +96,7 @@ func TestRestrictRowOrder(t *testing.T) {
 		"dialects.ko.md": "하나의 `DELETE`가 참조되는 행과 그 행을 참조하는 행을 함께 지우면, MySQL과 SQLite는 참조되는 행이 행 순서에서 먼저 나올 때 거부하고 PostgreSQL은 받아들인다; 이식 가능한 코드는 참조하는 행을 먼저 지운다.",
 	}
 	for page, rule := range rules {
-		text, err := os.ReadFile(filepath.Join("..", "..", "docs", page))
+		text, err := os.ReadFile(filepath.Join(repoRoot, "docs", page))
 		if err != nil {
 			t.Fatal(err)
 		}

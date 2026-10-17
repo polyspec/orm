@@ -25,7 +25,7 @@ import { DbspecApplyError, applyPlans, dbspecManifest, finalizePlans, introspect
 const root = new URL('../../../', import.meta.url);
 // TIMEOUT은 case 하나의 기한(ms)이다. apply scenario 하나는 database 하나를 만들고 plan chain을 적용, 중단, recover, rollback한 뒤 지운다.
 const TIMEOUT = 60000;
-// 모든 client가 새 connection에서 실행하는 문장이다(tests/dialects connectionRules).
+// 모든 client가 새 connection에서 실행하는 문장이다(packages/go/internal/dialects connectionRules).
 const CONNECTION_RULES = {
   mysql: ["SET time_zone = '+00:00'"],
   postgres: ["SET TimeZone = 'UTC'"],

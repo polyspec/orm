@@ -54,7 +54,7 @@ func TestIntrospectCompare(t *testing.T) {
 	if stressPath == "" || rustRunner == "" || extension == "" || pythonRunner == "" || mysqlDSN == "" || postgresDSN == "" {
 		t.Fatal("DBSPEC_STRESS_DOCUMENT, DBSPEC_INTROSPECT_RUST, ORM_DBSPEC_EXTENSION, DBSPEC_INTROSPECT_PYTHON, ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; run make dbspec-introspect-compare-check")
 	}
-	root, err := filepath.Abs(filepath.Join("..", ".."))
+	root, err := filepath.Abs(repoRoot)
 	if err != nil {
 		t.Fatal(err)
 	}

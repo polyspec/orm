@@ -18,13 +18,13 @@ const TIMEOUT = 30000;
 export const DIALECTS = ['mysql', 'postgres', 'sqlite'];
 // 모든 집합에서 dialect마다 같아야 하는 catalog query 수다(docs/dialects.md "Introspection").
 export const QUERIES = { mysql: 9, postgres: 7, sqlite: 3 };
-// 모든 client가 새 connection에서 실행하는 문장이다(tests/dialects connectionRules).
+// 모든 client가 새 connection에서 실행하는 문장이다(packages/go/internal/dialects connectionRules).
 export const CONNECTION_RULES = {
   mysql: ["SET time_zone = '+00:00'"],
   postgres: ["SET TimeZone = 'UTC'"],
   sqlite: ['PRAGMA foreign_keys = ON'],
 };
-// tests/dialects schemaDocumentPatterns와 같은 디렉터리의 *.dbs다.
+// packages/go/internal/dialects schemaDocumentPatterns와 같은 디렉터리의 *.dbs다.
 const SCHEMA_DIRECTORIES = ['contracts/fixtures/bench', 'contracts/fixtures'];
 
 const mysqlDSN = process.env.ORM_TEST_MYSQL_DSN;

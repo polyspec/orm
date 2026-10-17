@@ -12,8 +12,8 @@ import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { execFailure } from '../../tests/errors.mts';
 
 caseTest('the build step keeps packages and build flags and runs no test', COMPUTE, () => {
-  assert.deepEqual(buildArguments(['-v', '-timeout', '0', '-tags', 'physical', './tests/dialects', '-run', '^(TestA|TestB)$', '-count=1']),
-    ['-tags', 'physical', './tests/dialects', '-run', '^$', '-count=1']);
+  assert.deepEqual(buildArguments(['-v', '-timeout', '0', '-tags', 'physical', './packages/go/internal/dialects', '-run', '^(TestA|TestB)$', '-count=1']),
+    ['-tags', 'physical', './packages/go/internal/dialects', '-run', '^$', '-count=1']);
   assert.deepEqual(buildArguments(['-v', '-timeout=0', '-count', '1', '-race', './packages/go/...', '-run=X']), ['-race', './packages/go/...', '-run', '^$', '-count=1']);
   assert.equal(packages(['-v', './packages/go/orm', './packages/go/orm/pg', '-run', 'X']), 'packages/go/orm,packages/go/orm/pg');
   assert.equal(packages(['-v']), '.');
