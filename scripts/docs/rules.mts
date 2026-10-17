@@ -146,7 +146,8 @@ const clients = parityProfiles.find(profile => profile.name === 'client')?.imple
 const runnerSource = await readFile(path.join(root, 'tests/conformance/check/main.mts'), 'utf8');
 const runners = [...(/export const requiredLanguages = \[([^\]]*)\]/.exec(runnerSource)?.[1] ?? '').matchAll(/'([^']+)'/g)].map(match => match[1] ?? '');
 if (clients.length === 0) fail('docs.implementation-count', 'config/parity.json has no client profile');
-if (JSON.stringify([...clients].sort()) !== JSON.stringify([...runners].sort()))
+const runnersFromProfile = /export const requiredLanguages = clientLanguages\(\)/.test(runnerSource);
+if (!runnersFromProfile && JSON.stringify([...clients].sort()) !== JSON.stringify([...runners].sort()))
   fail('docs.implementation-count', `tests/conformance/check/main.mts requiredLanguages (${runners.join(', ')}) differs from the client profile of config/parity.json (${clients.join(', ')})`);
 const numberWords: Record<string, number> = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
 const koreanNumbers: Record<string, number> = { 두: 2, 세: 3, 네: 4, 다섯: 5, 여섯: 6, 일곱: 7, 여덟: 8, 아홉: 9, 열: 10 };
