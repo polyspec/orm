@@ -79,9 +79,6 @@ rules:
       - "!tests/kit/fixture/**"
       # The runners of one language: each drives the client of its language through the shared vectors and writes the
       # form that the TypeScript comparators read, so it is a test of that language.
-      - "!tests/conformance/runner_python.py"
-      - "!tests/conformance/result_python.py"
-      - "!tests/dbspec/compare/python.py"
       - "!tests/dbspec/cases.php"
       - "!tests/dbspec/vectors.php"
       - "!tests/dbspec/input.php"
@@ -90,10 +87,6 @@ rules:
       # The Go tests of the interface manifest contracts/interfaces.json: they read it and refuse a native adapter that
       # drifts from its logical signature, as a test of the Go tests module.
       - "!tests/interfaces/contracts/**"
-      - "!tests/interfaces/python.py"
-      - "!tests/interfaces/test_python_extractor.py"
-      - "!tests/interfaces/test_python_natives.py"
-      - "!tests/interfaces/rust/**"
       # The Go tests of the engine's dialect rules: the probes of docs/dialects.md and the physical tests of the engine's
       # DDL, plans, apply and introspection against the databases, which run the Go engine.
       # The table of Unicode letters and digits that every lexer reads is written from the data of Go's unicode package,
@@ -111,4 +104,4 @@ rules:
 
   # The Python symbol extractor runs as a program of its interpreter (its shebang), an exception of the rule above.
   - id: layout-infrastructure-shebang
-    paths: ["scripts/**", "tests/**", "!tests/kit/fixture/**", "!tests/interfaces/python.py"]
+    paths: ["scripts/**", "tests/**", "!tests/kit/fixture/**"]

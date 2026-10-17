@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 from packages.python.tests import testcase
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 
 
 def compact(text: str) -> str:

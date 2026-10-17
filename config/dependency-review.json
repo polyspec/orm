@@ -58,7 +58,7 @@
       "advisories": []
     },
     {
-      "lock": "tests/interfaces/rust/Cargo.lock",
+      "lock": "packages/rust/testing/interfaces/Cargo.lock",
       "sha256": "b4b5ec07cbcc9f32f28899d15e670daff171f5f3447837e9d17409cce51c9348",
       "advisories": []
     }

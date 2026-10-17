@@ -2,18 +2,18 @@
 # dbspec 결과를 tests/dbspec/compare/check.mts의 줄 형식으로 출력한다. It then prints the positions cases of
 # cases.json and the analysis and format of each case of syntax.json.
 #
-# Usage: python3 -m tests.dbspec.compare.python <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
+# Usage: python3 -m packages.python.testing.dbspec.compare.python <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
 import json
 import os
 import sys
 
-# Run with python -m tests.dbspec.compare.python from the root, which puts the root on sys.path; the client and
+# Run with python -m packages.python.testing.dbspec.compare.python from the root, which puts the root on sys.path; the client and
 # ordered-json are the ones installed into the interpreter.
 from packages.python.tests.dbspec_cases_reader import check_cases as check_shared_cases
 from packages.python.tests.dbspec_vectors_reader import VectorError, check_vectors
 
 ROOT = os.path.normpath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..")
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", "..")
 )
 
 try:
@@ -42,7 +42,7 @@ except ImportError as error:
 
 if len(sys.argv) != 7:
     print(
-        "usage: python3 -m tests.dbspec.compare.python <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>",
+        "usage: python3 -m packages.python.testing.dbspec.compare.python <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>",
         file=sys.stderr,
     )
     sys.exit(2)

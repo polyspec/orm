@@ -1,5 +1,5 @@
 # The conformance vectors of one database as unittest cases, one for each vector, named by the vector name.
-# The runner tests/conformance/runner_python.py runs every vector once, in the order of tests/conformance/vectors.json,
+# The runner packages/python/testing/conformance/runner_python.py runs every vector once, in the order of tests/conformance/vectors.json,
 # against the bench database of the dialect (BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN or BENCH_SQLITE_DSN, which
 # make run-databases and make check create), with the models that orm-gen writes from
 # contracts/fixtures/bench/dbspec-set.json (packages/python/src/polyspec/orm/models, kept current by

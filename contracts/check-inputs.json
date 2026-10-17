@@ -31,7 +31,7 @@
     "rust-check": {"scope": "suite", "needs": ["go", "rust"]},
     "go-fmt-check": {"scope": "owner", "needs": ["go"], "lints": ["**/*.go"]},
     "go-vet-check": {"scope": "owner", "needs": ["go"], "inputs": ["tests/analyzers/**"], "lints": ["**/*.go", "go.work", "go.work.sum", "**/go.mod", "**/go.sum"]},
-    "rust-fmt-check": {"scope": "owner", "needs": ["rust"], "lints": ["packages/rust/**/*.rs", "benchmarks/rust/**/*.rs", "tests/interfaces/rust/**/*.rs"]},
+    "rust-fmt-check": {"scope": "owner", "needs": ["rust"], "lints": ["packages/rust/**/*.rs", "benchmarks/rust/**/*.rs", "packages/rust/testing/interfaces/**/*.rs"]},
     "rust-150-check": {"scope": "owner", "needs": ["go", "rust"], "inputs": ["scripts/check-rust-150.mts"]},
     "rust-driver-check": {"scope": "owner", "needs": ["go", "rust", "databases"], "inputs": ["benchmarks/rust/**"]},
     "example-check": {"scope": "owner", "needs": ["go", "rust", "php", "composer", "databases"], "inputs": ["examples/**"]},
@@ -76,7 +76,7 @@
     "feature-stress-mysql-check": {"scope": "suite", "needs": ["go", "databases"]},
     "feature-stress-pg-sqlite-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "databases"]},
     "go-test-check": {"scope": "suite", "needs": ["go", "databases"]},
-    "python-check": {"scope": "owner", "needs": ["python", "databases"], "inputs": ["mise.toml", "packages/python/**", "tests/interfaces/contracts/python_signature_test.go", "tests/interfaces/test_*.py", "tests/interfaces/python.py", "tests/conformance/result_python.py", "tests/conformance/runner_python.py", "tests/dbspec/show-create.json", "tests/dbspec/cases.json", "contracts/fixtures/planner.json", "tests/ir/validate.json", "tests/codec/decode-vectors.json"]}
+    "python-check": {"scope": "owner", "needs": ["python", "databases"], "inputs": ["mise.toml", "packages/python/**", "tests/interfaces/contracts/python_signature_test.go", "tests/interfaces/test_*.py", "packages/python/testing/interfaces/python.py", "packages/python/tests/conformance_result.py", "packages/python/testing/conformance/runner_python.py", "tests/dbspec/show-create.json", "tests/dbspec/cases.json", "contracts/fixtures/planner.json", "tests/ir/validate.json", "tests/codec/decode-vectors.json"]}
   },
   "paths": {
     ".github/runner": {"scope": "suite", "reason": "it names the runner image of every job of the CI workflow, so it changes the machine that runs every target"},

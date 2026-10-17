@@ -6,7 +6,7 @@
 # error or null. Result maps are written with sorted keys and the top level is sorted by
 # vector name, as the Go encoder writes them.
 #
-# Usage: python3 tests/conformance/runner_python.py --models DIR --dsn URI [--vector NAME]...
+# Usage: python3 packages/python/testing/conformance/runner_python.py --models DIR --dsn URI [--vector NAME]...
 # DIR holds the models.py that orm-gen writes from contracts/fixtures/bench/bench.dbs (conformance-python-models).
 # Each --vector selects one vector by name; without one every vector runs.
 import datetime

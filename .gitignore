@@ -11,7 +11,7 @@
 /packages/rust/target/
 *.test
 /docs/perf-raw/
-/tests/interfaces/rust/target/
+/packages/rust/testing/interfaces/target/
 
 /node_modules/
 /packages/*/node_modules/

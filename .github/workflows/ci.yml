@@ -122,7 +122,7 @@ jobs:
           workspaces: |
             packages/rust -> target
             benchmarks/rust -> target
-            tests/interfaces/rust -> target
+            packages/rust/testing/interfaces -> target
       # make check runs cargo offline on the crates of every Cargo.lock that make install-rust-crates downloads; it runs
       # after the cache is restored, since the restored registry replaces crates downloaded before it.
       - name: Rust crates

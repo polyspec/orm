@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ae24639719b233b4a9bdcccb87ead7639063898dbfb07f7bcf92b166acf73128 -->
+<!-- source-sha256: 738260243970e75a5c847a37b31a52beb5f9532b011c3ee5d98196dbede28b9d -->
 # 변경 이력
 
 ## Unreleased
+- Python conformance runner, Python dbspec comparator, Python와 Rust interface extractor가 packages/python과 packages/rust의 testing/ 아래에 있고, Python test는 packages/python/tests에 있으며, layout, parity support 목록과 interface 검사기가 새 경로를 가리킨다. (#T77-9-3)
 - collection-identity, plan-cache와 dialect probe test, Go coverage gate와 추적되는 fixture tests/collection/keys.json이 feature verification 명령의 입력이라서, 추적되는 모든 file이 행동 test를 고른다. (#T198-2)
 - PHP와 TypeScript dbspec adapter가 packages/php, packages/php-ext, packages/ts의 testing/dbspec에 있으며, comparator, Go physical test와 layout이 새 경로를 가리킨다. (#T77-9-2-4)
 - `make -s feature-unit-check/docs`가 통과한다: docs/features.md와 docs/features.ko.md를 contracts/features.json에서 다시 생성했다. (#T198-3)

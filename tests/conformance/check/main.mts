@@ -329,7 +329,7 @@ async function runOne(context: Context, root: string, target: Target, output: st
       const interpreter = process.env.ORM_PYTHON ?? '';
       const models = process.env.ORM_PYTHON_MODELS ?? '';
       if (interpreter === '' || models === '') throw new Error('ORM_PYTHON and ORM_PYTHON_MODELS are unset; run make conformance-check, which sets both and builds the models');
-      return runCommand(context, root, output, runnerDeadline, interpreter, ['tests/conformance/runner_python.py', '--models', models, ...flags]);
+      return runCommand(context, root, output, runnerDeadline, interpreter, ['packages/python/testing/conformance/runner_python.py', '--models', models, ...flags]);
     }
     default:
       throw new Error(`unsupported language ${JSON.stringify(language)}`);

@@ -995,7 +995,7 @@ conformance-result-check/typescript: lease-tool
 conformance-result-check/go:
 	$(GO_TEST) ./packages/go/internal/conformance -count=1
 conformance-result-check/python: python-venv-check
-	$(PYTHON_VENV)/bin/python tests/conformance/result_python.py
+	$(PYTHON_VENV)/bin/python packages/python/tests/conformance_result.py
 
 conformance-result-physical-check: lease-tool conformance-python-models
 	$(HOLD_TYPESCRIPT)
@@ -1407,7 +1407,7 @@ ir-answers-check/php: php-vendor-check
 
 # rust-fmt-check fails when cargo fmt would change a source of the Rust
 # workspace (packages/rust/rustfmt.toml).
-# rust-fmt-check는 저장소의 모든 Rust workspace(packages/rust, benchmarks/rust, tests/interfaces/rust)가 cargo fmt로
+# rust-fmt-check는 저장소의 모든 Rust workspace(packages/rust, benchmarks/rust, packages/rust/testing/interfaces)가 cargo fmt로
 # 정리되어 있는지 확인한다.
 rust-fmt-check: rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces
 rust-fmt-check/clients:
@@ -1415,7 +1415,7 @@ rust-fmt-check/clients:
 rust-fmt-check/bench:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/bench --cwd benchmarks/rust -- cargo fmt --all --check
 rust-fmt-check/interfaces:
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/interfaces --cwd tests/interfaces/rust -- cargo fmt --all --check
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/interfaces --cwd packages/rust/testing/interfaces -- cargo fmt --all --check
 
 rust-150-check: lease-tool
 	$(RUN_LONG) rust-150 -- node scripts/check-rust-150.mts
@@ -1464,7 +1464,7 @@ install-rust-toolchain:
 install-rust-crates:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path packages/rust/Cargo.toml
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path benchmarks/rust/Cargo.toml
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path tests/interfaces/rust/Cargo.toml
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path packages/rust/testing/interfaces/Cargo.toml
 install-go:
 	$(ONLINE) $(GO) mod download
 # install-flowmark은 markdown-conformance-check가 실행하는 flowmark, tests/markdown/flowmark.version이 고정한 module

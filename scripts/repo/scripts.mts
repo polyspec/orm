@@ -27,7 +27,7 @@ const otherLanguages = /\.(?:py|rb|pl|pm|lua|java|kt|cs|swift|scala|r)$/i;
 // pythonRunners는 Python 구현을 시험하는 Python 파일의 정확한 목록이다. 명세(polyspec Python 구현과 도구 언어 통일 명세)는
 // Python 구현을 시험하는 runner를 Python으로 쓴다고 정한다. 목록은 다음 다섯 곳뿐이다:
 //   packages/python (Python client와 그 도구)
-//   tests/interfaces/python.py와 tests/interfaces/test_*.py
+//   packages/python/testing/interfaces/python.py와 tests/interfaces/test_*.py
 //   tests/conformance의 python runner (파일 이름에 python이 드는 것)
 //   tests/dbspec/compare의 python runner (파일 이름에 python이 드는 것)
 // 이 밖의 Python 프로그램은 면제되지 않는다.

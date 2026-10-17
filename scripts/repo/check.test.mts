@@ -851,8 +851,8 @@ caseTest('every tool of the repository is written in Go, PHP, Rust or TypeScript
     'tools/x.rb is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',
   ]);
   // the Python exemption is exactly the five places of scripts/repo/scripts.mts; nothing else is exempt
-  assert.deepEqual(toolingLanguageErrors(['packages/python/src/polyspec/orm/core.py', 'tests/interfaces/python.py', 'tests/interfaces/test_schema_utils.py',
-    'tests/conformance/runner_python.py', 'tests/dbspec/compare/python.py']), []);
+  assert.deepEqual(toolingLanguageErrors(['packages/python/src/polyspec/orm/core.py', 'packages/python/testing/interfaces/python.py', 'tests/interfaces/test_schema_utils.py',
+    'packages/python/testing/conformance/runner_python.py', 'packages/python/testing/dbspec/compare/python.py']), []);
   assert.deepEqual(toolingLanguageErrors(['tests/interfaces/helper.py', 'tests/conformance/vectors.py', 'tests/dbspec/compare/other.py',
     'scripts/python_tool.py', 'packages/orm-python-old/x.py']), [
     'tests/interfaces/helper.py is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',

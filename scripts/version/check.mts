@@ -30,8 +30,8 @@ const packageLock = (text: string) => [parseNpmLock(text, 'package-lock.json').p
 // 각 선언의 파일과 그 파일에서 orm version을 읽는 방법.
 export const DECLARATIONS = [
   ...['packages/rust/orm', 'packages/rust/schema', 'packages/rust/build', 'packages/rust/case-clock', 'packages/rust/case-database',
-    'packages/rust/testcase', 'packages/rust/tests', 'benchmarks/rust', 'tests/interfaces/rust'].map(dir => ({ file: `${dir}/Cargo.toml`, read: cargoToml })),
-  ...['packages/rust', 'benchmarks/rust', 'tests/interfaces/rust'].map(dir => ({ file: `${dir}/Cargo.lock`, read: cargoLock })),
+    'packages/rust/testcase', 'packages/rust/tests', 'benchmarks/rust', 'packages/rust/testing/interfaces'].map(dir => ({ file: `${dir}/Cargo.toml`, read: cargoToml })),
+  ...['packages/rust', 'benchmarks/rust', 'packages/rust/testing/interfaces'].map(dir => ({ file: `${dir}/Cargo.lock`, read: cargoLock })),
   { file: 'packages/php/composer.json', read: (text: string) => [parseComposer(text, 'packages/php/composer.json').version].filter(present) },
   { file: 'packages/php-ext/composer.json', read: (text: string) => [parseComposer(text, 'packages/php-ext/composer.json').version].filter(present) },
   { file: 'packages/ts/package.json', read: (text: string) => [parsePackage(text, 'packages/ts/package.json').version].filter(present) },

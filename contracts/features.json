@@ -2977,7 +2977,7 @@
       "title": "Model generation",
       "title_ko": "모델 생성",
       "status": "implemented",
-      "description": "Generate the models from the dbspec document set with the generator of each language. Go and Rust scan the sources and generate the chain methods they call; TypeScript and PHP (`--scan`) type the scanned chains, and PHP otherwise resolves chains at run time. With `--check`, the Go, PHP, TypeScript, and Python generators compare the models with the output directory without writing.",
+      "description": "Generate the models from the dbspec document set with the generator of each language. Go and Rust scan the sources and generate the chain methods they call; TypeScript and PHP (`--scan`) type the scanned chains, and PHP otherwise resolves chains at run time. With `--check`, the Go, PHP, TypeScript, Python, and Rust generators compare the models with the output directory without writing.",
       "description_ko": "언어별 생성기로 dbspec document set에서 모델을 만든다. Go와 Rust는 소스를 읽어 호출한 체인 메서드를 만들고, TypeScript와 PHP(`--scan`)는 읽은 체인에 타입을 붙이며 PHP는 그 밖에는 실행 시 체인을 해석한다. `--check`를 붙이면 Go, PHP, TypeScript, Python 생성기는 쓰지 않고 모델을 출력 디렉터리와 비교한다.",
       "inputs": {
         "type": "GeneratorRequest",
@@ -7350,7 +7350,7 @@
         "packages/go/engine/interface_test.go",
         "packages/go/orm/shape_test.go",
         "packages/php/testing/interfaces/php.php",
-        "tests/interfaces/rust/src/main.rs",
+        "packages/rust/testing/interfaces/src/main.rs",
         "packages/ts/testing/interfaces/typescript.mts",
         "packages/go/orm/coverage_interface_contract_test.go",
         "packages/php/tests/CoverageInterfaceContractTest.php",
@@ -7362,7 +7362,7 @@
         "packages/ts/tests/package-declarations.mjs",
         "packages/ts/src/index.ts",
         "packages/python/tests/coverage_interface_contract.py",
-        "tests/interfaces/python.py"
+        "packages/python/testing/interfaces/python.py"
       ],
       "docs": [
         "docs/interfaces.md",
@@ -7418,9 +7418,9 @@
           "command": "make python-interface-unit-check",
           "shard": "other",
           "inputs": [
-            "tests/interfaces/python.py",
-            "tests/interfaces/test_python_extractor.py",
-            "tests/interfaces/test_python_natives.py"
+            "packages/python/testing/interfaces/python.py",
+            "packages/python/tests/test_python_extractor.py",
+            "packages/python/tests/test_python_natives.py"
           ]
         }
       ],
@@ -7490,7 +7490,7 @@
               "packages/go/internal/symbols/*.go",
               "contracts/interfaces.json",
               "contracts/symbols/rust.json",
-              "tests/interfaces/rust/**"
+              "packages/rust/testing/interfaces/**"
             ],
             "commands": {
               "none": [
@@ -7540,7 +7540,7 @@
               "tests/interfaces/check/*.mts",
               "contracts/interfaces.json",
               "contracts/symbols/python.json",
-              "tests/interfaces/python.py"
+              "packages/python/testing/interfaces/python.py"
             ],
             "commands": {
               "none": [
@@ -7914,8 +7914,8 @@
           "command": "make conformance-result-check/python",
           "shard": "other",
           "inputs": [
-            "tests/conformance/result_python.py",
-            "tests/conformance/runner_python.py"
+            "packages/python/tests/conformance_result.py",
+            "packages/python/testing/conformance/runner_python.py"
           ]
         }
       ],
@@ -8136,7 +8136,7 @@
               "tests/conformance/vectors.json",
               "tests/conformance/vectors.postgres.json",
               "tests/conformance/vectors.sqlite.json",
-              "tests/conformance/runner_python.py"
+              "packages/python/testing/conformance/runner_python.py"
             ],
             "commands": {
               "mysql": [

@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The Python conformance runner, the Python dbspec comparator and the Python and Rust interface extractors live in packages/python and packages/rust under testing/, with the Python tests in packages/python/tests, and the layout, the parity support lists and the interface checker name the new paths. (#T77-9-3)
 - The collection-identity, plan-cache and dialect probe tests, the Go coverage gate and the tracked fixture tests/collection/keys.json are inputs of feature verification commands, so every tracked file selects a behaviour test. (#T198-2)
 - The PHP and TypeScript dbspec adapters live in packages/php, packages/php-ext and packages/ts under testing/dbspec, and the comparators, the Go physical tests and the layout name the new paths. (#T77-9-2-4)
 - `make -s feature-unit-check/docs` passes: docs/features.md and docs/features.ko.md are regenerated from contracts/features.json. (#T198-3)

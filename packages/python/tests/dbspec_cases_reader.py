@@ -2,7 +2,7 @@
 # every section and every field of the format must be present with its type, a section or field the format does not
 # name is refused, and every section has a case. The schema cannot state that the main document of a case is one of its
 # documents; check_cases checks it. A refusal is a CasesError whose message holds one "<file>: <location> <problem>" line
-# per problem. The client tests and the compare runner tests/dbspec/compare/python.py read cases.json with it.
+# per problem. The client tests and the compare runner packages/python/testing/dbspec/compare/python.py read cases.json with it.
 import json
 from pathlib import Path
 

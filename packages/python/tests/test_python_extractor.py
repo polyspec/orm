@@ -1,4 +1,4 @@
-# The Python symbol extractor (tests/interfaces/python.py) reports the public declarations of a
+# The Python symbol extractor (packages/python/testing/interfaces/python.py) reports the public declarations of a
 # package in the form of packages/ts/testing/interfaces/typescript.mts: a class, a function, a method, a field.
 import json
 import subprocess
@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from packages.python.tests import testcase
 
-EXTRACTOR = Path(__file__).resolve().parent / "python.py"
+EXTRACTOR = Path(__file__).resolve().parents[3] / "packages" / "python" / "testing" / "interfaces" / "python.py"
 
 
 class PythonExtractorTest(unittest.TestCase):
@@ -31,7 +31,7 @@ class PythonExtractorTest(unittest.TestCase):
     def test_public_names_match_the_symbol_file(self):
         # The contract contracts/symbols/python.json lists the public surface of the Python client. A module-level
         # helper that another module of the package imports is internal, so its name starts with `_`.
-        root = Path(__file__).resolve().parents[2]
+        root = Path(__file__).resolve().parents[3]
         result = subprocess.run(
             [sys.executable, str(EXTRACTOR), str(root), "packages/python/src"],
             capture_output=True,

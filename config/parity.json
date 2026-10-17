@@ -57,7 +57,7 @@
     {
       "name": "python",
       "runner": "python",
-      "roots": ["packages/python", "tests/conformance", "tests/dbspec/compare", "tests/interfaces"],
+      "roots": ["packages/python"],
       "tests": ["packages/python/tests/coverage_*.py"],
       "support": [
         "packages/python/tests/__init__.py",
@@ -71,10 +71,7 @@
         "packages/python/tests/dbspec_plans.py",
         "packages/python/tests/dbspec_vectors_reader.py",
         "packages/python/tests/testcase.py",
-        "packages/python/tests/vector_case.py",
-        "tests/conformance/runner_python.py",
-        "tests/dbspec/compare/python.py",
-        "tests/interfaces/python.py"
+        "packages/python/tests/vector_case.py"
       ],
       "command": "packages/python/.venv/bin/python",
       "env": [],
@@ -84,11 +81,10 @@
     {
       "name": "rust",
       "runner": "cargo",
-      "roots": ["packages/rust", "benchmarks/rust", "tests/interfaces/rust"],
+      "roots": ["packages/rust", "benchmarks/rust"],
       "tests": ["packages/rust/**/tests/**/coverage_*.rs"],
       "support": [
         "packages/rust/tests/tests/integration/main.rs",
-        "tests/interfaces/rust/src/main.rs",
         "packages/rust/build/tests/lock_probe/mod.rs",
         "packages/rust/build/tests/row_insert_identity/expression.rs",
         "packages/rust/orm/tests/common/audit_rows.rs",
@@ -5526,15 +5522,15 @@
     },
     {
       "id": "py-result-python", "kind": "feature", "profile": "python-internal",
-      "bindings": [{ "implementation": "python", "test": "tests/conformance/result_python.py", "id": "test_encodes_the_go_layout" }]
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/conformance_result.py", "id": "test_encodes_the_go_layout" }]
     },
     {
       "id": "py-test-python-extractor", "kind": "feature", "profile": "python-internal",
-      "bindings": [{ "implementation": "python", "test": "tests/interfaces/test_python_extractor.py", "id": "test_public_names_match_the_symbol_file" }]
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_python_extractor.py", "id": "test_public_names_match_the_symbol_file" }]
     },
     {
       "id": "py-test-python-natives", "kind": "feature", "profile": "python-internal",
-      "bindings": [{ "implementation": "python", "test": "tests/interfaces/test_python_natives.py", "id": "test_every_entity_rule_names_a_python_method_of_the_snapshot" }]
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_python_natives.py", "id": "test_every_entity_rule_names_a_python_method_of_the_snapshot" }]
     },
     {
       "id": "py-ir-answers", "kind": "feature", "profile": "python-internal",

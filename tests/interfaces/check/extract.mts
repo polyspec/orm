@@ -1,6 +1,6 @@
 // native 선언을 각 언어의 추출기로 읽는다. 추출기는 그 언어 자신의 parser로 선언을 읽는 program이다: Go(go/parser,
-// packages/go/internal/symbols), PHP(Reflection, packages/php/testing/interfaces/php.php), Rust(syn, tests/interfaces/rust), TypeScript(TypeScript
-// compiler API, packages/ts/testing/interfaces/typescript.mts), Python(ast, tests/interfaces/python.py). Go와 Rust의 추출기는 이 실행의
+// packages/go/internal/symbols), PHP(Reflection, packages/php/testing/interfaces/php.php), Rust(syn, packages/rust/testing/interfaces), TypeScript(TypeScript
+// compiler API, packages/ts/testing/interfaces/typescript.mts), Python(ast, packages/python/testing/interfaces/python.py). Go와 Rust의 추출기는 이 실행의
 // 임시 directory에 build한 실행 file이다. 금지된 multi_statement 호출은 source text에서 찾는다.
 import { spawn } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -44,7 +44,7 @@ export async function extract(signal: AbortSignal | undefined, root: string, lan
   if (lang === 'go') [program, args] = [tools.go ?? '', [root, ...roots]];
   else if (lang === 'php') [program, args] = ['php', [join(toolRoot, 'packages/php/testing/interfaces/php.php'), root, ...roots]];
   else if (lang === 'typescript') [program, args] = ['node', [join(toolRoot, 'packages/ts/testing/interfaces/typescript.mts'), root, ...roots]];
-  else if (lang === 'python') [program, args] = ['python3', [join(toolRoot, 'tests/interfaces/python.py'), root, ...roots]];
+  else if (lang === 'python') [program, args] = ['python3', [join(toolRoot, 'packages/python/testing/interfaces/python.py'), root, ...roots]];
   else [program, args] = [tools.rust ?? '', [root, ...roots]];
   if (program === '') throw new Error(`${lang} declarations: this run built no ${lang} symbol extractor`);
   let output: Output;
@@ -80,7 +80,7 @@ export async function buildGo(step: Step, root: string, directory: string): Prom
 export async function buildRust(step: Step, root: string, directory: string): Promise<string> {
   const lease = process.env['LEASE'] ?? '', leases = process.env['CARGO_LEASES'] ?? '';
   if (lease === '' || leases === '') throw new Error('LEASE and CARGO_LEASES are unset; run this through make, which exports them');
-  const manifest = join(root, 'tests/interfaces/rust/Cargo.toml');
+  const manifest = join(root, 'packages/rust/testing/interfaces/Cargo.toml');
   const lines = stepLines(step);
   step(`run cargo build --locked --manifest-path ${manifest} under the target lease`);
   const output = await run(lease, ['run', leases, 'exclusive', '--wait', '--', 'node', join(root, 'scripts', 'cargo-build-copy.mts'),

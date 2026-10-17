@@ -1,14 +1,14 @@
-# Conformance result check of the Python runner (tests/conformance/runner_python.py): the output
+# Conformance result check of the Python runner (packages/python/testing/conformance/runner_python.py): the output
 # encoder writes the Go encoder's layout, and the runner rejects invalid arguments with exit 2.
 import subprocess
 import sys
 import unittest
 from pathlib import Path
 
-from . import runner_python as runner
+from packages.python.testing.conformance import runner_python as runner
 
-ROOT = Path(__file__).resolve().parents[2]
-RUNNER = ROOT / "tests" / "conformance" / "runner_python.py"
+ROOT = Path(__file__).resolve().parents[3]
+RUNNER = ROOT / "packages" / "python" / "testing" / "conformance" / "runner_python.py"
 
 
 class EncodeTest(unittest.TestCase):
