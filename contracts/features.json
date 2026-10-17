@@ -866,7 +866,12 @@
         "packages/python/tests/decimal_model_db.py",
         "packages/python/tests/test_model_fields.py",
         "packages/python/tests/test_values.py",
-        "packages/python/tests/coverage_model_queries.py"
+        "packages/python/tests/coverage_model_queries.py",
+        "packages/go/orm/collection_identity_test.go",
+        "packages/php/tests/CollectionIdentityTest.php",
+        "packages/rust/orm/tests/collection_identity.rs",
+        "packages/ts/tests/collection_identity.mjs",
+        "packages/python/tests/test_collection_identity.py"
       ],
       "docs": [
         "docs/dsl.md",
@@ -4534,7 +4539,11 @@
         "packages/rust/orm/tests/unit/param_uses.rs",
         "packages/ts/tests/param-uses.mjs",
         "packages/rust/orm/tests/ir_validate.rs",
-        "packages/rust/orm/tests/unit/ir_request.rs"
+        "packages/rust/orm/tests/unit/ir_request.rs",
+        "packages/go/orm/plan_cache_test.go",
+        "packages/php/tests/PlanCacheBoundTest.php",
+        "packages/ts/tests/plan-cache-in.mjs",
+        "packages/python/tests/test_plan_cache_bound.py"
       ],
       "docs": [
         "docs/protocol.md",
@@ -8901,7 +8910,8 @@
       "paths": [
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/rust/tests/tests/common/mod.rs",
-        "packages/rust/orm/tests/common/*.rs"
+        "packages/rust/orm/tests/common/*.rs",
+        "packages/rust/tests/tests/integration/main.rs"
       ],
       "tests": [],
       "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mts rust-build/test-helpers -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- cargo test --no-run --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\""
@@ -8913,12 +8923,16 @@
         "packages/go/orm/codes.go",
         "packages/php/src/Code.php",
         "packages/rust/orm/src/codes.rs",
-        "packages/go/cmd/orm-gen/errors.go"
+        "packages/go/cmd/orm-gen/errors.go",
+        "packages/ts/src/codes.ts",
+        "packages/python/src/polyspec/orm/codes.py"
       ],
       "tests": [
         "packages/go/orm/codes_test.go",
         "packages/php/tests/CodeCatalogTest.php",
-        "packages/rust/orm/tests/code_catalog.rs"
+        "packages/rust/orm/tests/code_catalog.rs",
+        "packages/ts/tests/code-catalog.mjs",
+        "packages/python/tests/test_code_catalog.py"
       ],
       "command": "sh -c 'dir=$(mktemp -d) && trap \"rm -rf \\\"$dir\\\"\" EXIT && for pair in go:packages/go/orm/codes.go php:packages/php/src/Code.php rust:packages/rust/orm/src/codes.rs; do node tests/go-run.mts orm-gen ./packages/go/cmd/orm-gen errors --lang \"${pair%%:*}\" --out \"$dir/${pair%%:*}\" && diff -u \"${pair#*:}\" \"$dir/${pair%%:*}\" || exit 1; done'"
     },
