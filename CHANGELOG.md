@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The Go performance gate is a benchmark of the tools root packages/go/bench, which belongs to no implementation, so its go-internal parity unit is removed; the gate still runs as the performance_gate feature. (#T77-8-1-1)
 - The ten Go dialect physical test files and probe_test.go belong to the schema_definition feature, and the static feature check passes. (#T198-1)
 - The Python conformance runner, the Python dbspec comparator and the Python and Rust interface extractors live in packages/python and packages/rust under testing/, with the Python tests in packages/python/tests, and the layout, the parity support lists and the interface checker name the new paths. (#T77-9-3)
 - The collection-identity, plan-cache and dialect probe tests, the Go coverage gate and the tracked fixture tests/collection/keys.json are inputs of feature verification commands, so every tracked file selects a behaviour test. (#T198-2)
