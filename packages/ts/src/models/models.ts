@@ -597,6 +597,7 @@ export class Author extends Model {
   declare andLeReadCount: (v0: number | ValueFunction) => this;
   declare andLeStartDt: (...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) => this;
   declare andLkName: (v0: string) => this;
+  declare andLtDisplayStartDt: (...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) => this;
   declare andLtReadCount: (v0: number | ValueFunction) => this;
   declare andLtSeq: (v0: number | ValueFunction) => this;
   declare andLtStartDt: (...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) => this;
@@ -604,6 +605,7 @@ export class Author extends Model {
   declare andNeIsClose: (v0: boolean | readonly (boolean)[] | ValueFunction | Model) => this;
   declare andNePhotoUrl: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare andNeReadCount: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  declare andSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare andServiceSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare andStartDt: (...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) => this;
   declare andSuccessCountLtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;

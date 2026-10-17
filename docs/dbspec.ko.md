@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 5c5118b958876f4ba1e3c224f3153492ec8d571e453ca31fb79d60f63bb8c455 -->
+<!-- source-sha256: d3b4134704950e0b4961cabd90bff57dd1d1a94a183bcdb8362c54117efc58eb -->
 # dbspec
 
 [English](dbspec.md)
@@ -323,7 +323,7 @@ manifest와 [rendered statements](dialects.md#rendered-statements)는 한 집합
 client는 문서 집합으로 runtime model 하나를 만들고, 생성 코드도 같은 model에서 만든다.
 
 - **Entity.** 집합의 모든 문서의 table마다 entity 하나다. 문서는 이름 순, table은 문서 순서다. entity 이름은 `entity` setting이나 table 이름이다. 생성 type 이름은 snake_case 조각의 첫 글자를 대문자로 쓴 것이다(`service_member` → `ServiceMember`).
-- **Field.** column마다 field 하나이며 이름은 column 이름, 순서는 column 순서, 값 type은 아래 표를 따른다. `null` column은 언어의 없음 값을 쓴다: Go는 pointer(`[]byte`와 styled 값은 감싸지 않음), PHP는 `?T`, TypeScript는 `T | null`, Rust는 `Option<T>`, Python은 `T | None`이다. 값의 type이 다른 Python getter는 `TypeError`를 던진다.
+- **Field.** column마다 field 하나이며 이름은 column 이름, 순서는 column 순서, 값 type은 아래 표를 따른다. `null` column은 언어의 없음 값을 쓴다: Go는 pointer(`[]byte`와 styled 값은 감싸지 않음), PHP는 `?T`, TypeScript는 `T | null`, Rust는 `Option<T>`, Python은 `T | None`이다. styled column은 언어의 `StyledValue`를 쓴다. TypeScript는 `StyledValue<T>`, Python은 `polyspec.orm.StyledValue`이며, 둘 다 SQL NULL과 value 변형을 가진다. 값의 type이 다른 Python getter는 `TypeError`를 던진다.
 - **Key.** primary key column이 row를 식별한다. identity column은 insert가 쓰지 않으며 생성된 key를 돌려준다. upsert는 호출이 지정한 primary key나 unique key에서 충돌한다.
 - **기본 select 집합.** `select explicit`에 없는 모든 column이다. 선택하지 않은 column을 읽으면 `COLUMN_UNSELECTED`로 실패한다. type이나 codec이 스스로 column을 빼지는 않는다.
 - **Default.** default가 있는 column을 생략한 insert는 database default를 받으며 executor는 채우지 않는다. 단 clock이 millisecond 해상도인 SQLite에서는 생략한 `default now` column에 클라이언트 clock을 bind한다([protocol](protocol.ko.md)). default 없는 non-null column을 생략한 insert는 database에 닿기 전에 `IR_INVALID`로 실패한다.

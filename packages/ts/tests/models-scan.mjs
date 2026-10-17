@@ -12,7 +12,7 @@ import { parseSync } from 'oxc-parser';
 const client = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const root = resolve(client, '../..');
 // model을 호출하는 source를 찾는 디렉터리: scan이 읽을 수 있는 source 전체
-const scannedDirs = [join(client, 'tests'), join(root, 'tests/conformance')];
+const scannedDirs = [join(client, 'tests'), join(root, 'tests/conformance'), join(root, 'examples/thin-slice/ts')];
 const extensions = new Set(['.ts', '.mts', '.js', '.mjs']);
 const modelModules = new Set([join(client, 'dist/models/models.js'), join(client, 'src/models/models.js')]);
 const indexModules = new Set([join(client, 'dist/index.js'), join(client, 'src/index.js')]);

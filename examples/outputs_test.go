@@ -40,6 +40,17 @@ func TestExampleOutputsAreIdentical(t *testing.T) {
 			if !bytes.Equal(goOut, phpOut) {
 				t.Errorf("%s: go and php outputs differ\n--- go\n%s\n--- php\n%s", name, goOut, phpOut)
 			}
+			if name == "thin-slice" {
+				// The TypeScript and Python programs run on the Node and the venv interpreter that install-python makes.
+				tsOut := runExample(t, c, "ts", "node", filepath.Join(name, "ts", "main.mts"))
+				pyOut := runExample(t, c, "python", filepath.Join("..", "packages", "python", ".venv", "bin", "python"), filepath.Join(name, "python", "main.py"))
+				if !bytes.Equal(goOut, tsOut) {
+					t.Errorf("%s: go and ts outputs differ\n--- go\n%s\n--- ts\n%s", name, goOut, tsOut)
+				}
+				if !bytes.Equal(goOut, pyOut) {
+					t.Errorf("%s: go and python outputs differ\n--- go\n%s\n--- python\n%s", name, goOut, pyOut)
+				}
+			}
 			if !bytes.Equal(goOut, rustOut) {
 				t.Errorf("%s: go and rust outputs differ\n--- go\n%s\n--- rust\n%s", name, goOut, rustOut)
 			}

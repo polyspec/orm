@@ -39,6 +39,10 @@ func TestExamplesRequireBenchDSN(t *testing.T) {
 		}
 		programs["go/"+name] = []string{bin}
 		programs["php/"+name] = []string{"php", filepath.Join(name, "php", "main.php")}
+		if name == "thin-slice" {
+			programs["ts/"+name] = []string{"node", filepath.Join(name, "ts", "main.mts")}
+			programs["python/"+name] = []string{"python3", filepath.Join(name, "python", "main.py")}
+		}
 	}
 	for name, args := range programs {
 		for _, empty := range []bool{false, true} {

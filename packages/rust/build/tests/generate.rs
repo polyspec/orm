@@ -433,3 +433,49 @@ fn key_prefix_methods_come_from_the_schema_without_a_scan() {
     assert!(impl_of(&text, "Card").contains("pub fn audit_seq<"), "Card lacks audit_seq, the prefix of ix_card_audit");
     assert!(impl_of(&text, "CardHistory").contains("pub fn seq<"), "CardHistory lacks seq, the prefix of ix_card_history_row");
 }
+
+/// The check of the generated files (orm-gen gen --check of the Go module): it reports no line for the current
+/// files, reports a changed and a missing file, and writes nothing.
+#[test]
+fn check_reports_differences_without_writing() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
+    let src = dir.join("src");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(src.join("main.rs"), "fn main() { let _ = ZoneEvent::new().gt_start_dt(now); }").unwrap();
+    let set = set_file(&dir, &[schema()], &[]);
+    let out = dir.join("out");
+    let check = || polyspec_orm_build::Builder::set(&set).scan(&src).out_dir(&out).check();
+    let result = (|| -> Result<(), String> {
+        polyspec_orm_build::Builder::set(&set).scan(&src).out_dir(&out).try_generate()?;
+        assert_eq!(check()?, Vec::<String>::new(), "the current files are up to date");
+        std::fs::write(out.join("orm_model.rs"), "// changed\n").unwrap();
+        std::fs::remove_file(out.join("orm_manifest.dbs")).unwrap();
+        let before = std::fs::read_to_string(out.join("orm_model.rs")).unwrap();
+        assert_eq!(check()?, vec!["missing: orm_manifest.dbs".to_owned(), "differs: orm_model.rs".to_owned()]);
+        assert_eq!(std::fs::read_to_string(out.join("orm_model.rs")).unwrap(), before, "the check wrote orm_model.rs");
+        assert!(!out.join("orm_manifest.dbs").exists(), "the check wrote orm_manifest.dbs");
+        Ok(())
+    })();
+    let _ = std::fs::remove_dir_all(&dir);
+    result.unwrap_or_else(|e| panic!("check: {e}"));
+}
+
+/// A check whose generation fails returns the error and does not create the output directory.
+#[test]
+fn check_keeps_the_output_directory_on_generation_error() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
+    let src = dir.join("src");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(src.join("main.rs"), "fn main() { let _ = ZoneEvent::new().no_such_column(now); }").unwrap();
+    let set = set_file(&dir, &[schema()], &[]);
+    let out = dir.join("out");
+    let err = polyspec_orm_build::Builder::set(&set).scan(&src).out_dir(&out).check();
+    let created = out.exists();
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(err.is_err(), "a call the schema does not allow must fail the check");
+    assert!(!created, "the check created the output directory");
+}

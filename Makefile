@@ -1031,7 +1031,7 @@ case-database-check: php-vendor-check lease-tool
 PYTHON_MODELS_DIR = packages/python/src/polyspec/orm/models
 .PHONY: python-model-check
 python-model-check: python-venv-check
-	$(PYTHON_VENV)/bin/orm-gen gen --check --set contracts/fixtures/bench/dbspec-set.json --out $(PYTHON_MODELS_DIR)
+	$(PYTHON_VENV)/bin/orm-gen gen --check --set contracts/fixtures/bench/dbspec-set.json --out $(PYTHON_MODELS_DIR) --scan examples/thin-slice/python/main.py
 
 # CONFORMANCE_PY_MODELS is the model directory that the Python conformance runner imports. The venv orm-gen writes it from
 # contracts/fixtures/bench/bench.dbs into a temporary directory and renames it into place (an atomic publish of build output).
@@ -1498,9 +1498,10 @@ downloads-check:
 rust-driver-check: cargo-downloads-check
 	$(WITH_TEST_ENV) cd benchmarks/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) rust-driver-check -- cargo test --locked --offline -- --test-threads=1
 
-# example-check는 examples/complex와 examples/thin-slice의 Go, PHP, Rust 프로그램을 시드된
-# bench database에서 실행하고 README의 diff처럼 stdout이 byte 단위로 같은지 비교한다.
-example-check: cargo-downloads-check
+# example-check runs the Go, PHP and Rust programs of examples/complex and the Go, PHP, Rust, TypeScript and Python programs of
+# examples/thin-slice on the seeded bench database, and compares their stdout byte for byte as the README diff does. The Python
+# program runs on the venv of install-python, so the target requires that venv.
+example-check: cargo-downloads-check python-venv-check
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/examples --cwd packages/rust -- $(CARGO_COPY) debug/complex debug/demo -- cargo build --locked --offline -p polyspec-orm-tests --bin complex --bin demo
 	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(RUN_TARGET)/debug/complex EXAMPLE_RUST_DEMO=$(RUN_TARGET)/debug/demo $(GO_TEST) -tags examples ./examples -run '^TestExampleOutputsAreIdentical$$' -count=1
 	rm -rf $(RUN_DIR)

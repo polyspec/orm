@@ -41,7 +41,7 @@
   ],
   "scripts": {
     "build": "node ../../scripts/typescript/build.mts && npm run models && node ../../scripts/typescript/build.mts",
-    "models": "node dist/bin/orm-gen.js gen --set ../../contracts/fixtures/bench/dbspec-set.json --out src/models --scan ../../tests/conformance/runner_typescript.mts --scan tests/coverage_composite_keys.mjs --scan tests/coverage_constraints_and_relations.mjs --scan tests/coverage_dsn.mjs --scan tests/coverage_model_queries.mjs --scan tests/coverage_model_writes.mjs --scan tests/coverage_parameter_chunking.mjs --scan tests/coverage_schema_install.mjs --scan tests/coverage_transactions.mjs --scan tests/decimal_model_type.ts --scan tests/group_rows.types.ts --scan tests/group_rows_db.mjs --scan tests/model.mjs --scan tests/sqlite-concurrency.mjs --scan tests/typecheck.ts"
+    "models": "node dist/bin/orm-gen.js gen --set ../../contracts/fixtures/bench/dbspec-set.json --out src/models --scan ../../tests/conformance/runner_typescript.mts --scan tests/coverage_composite_keys.mjs --scan tests/coverage_constraints_and_relations.mjs --scan tests/coverage_dsn.mjs --scan tests/coverage_model_queries.mjs --scan tests/coverage_model_writes.mjs --scan tests/coverage_parameter_chunking.mjs --scan tests/coverage_schema_install.mjs --scan tests/coverage_transactions.mjs --scan tests/decimal_model_type.ts --scan tests/group_rows.types.ts --scan tests/group_rows_db.mjs --scan tests/model.mjs --scan tests/sqlite-concurrency.mjs --scan tests/typecheck.ts --scan ../../examples/thin-slice/ts/main.mts"
   },
   "dependencies": {
     "@noble/hashes": "2.4.0",
