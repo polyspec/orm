@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 9bbc55d1455321cffe7e3550f0f8ce9db35f3c787b70123a6ac98fd31fa71d29 -->
+<!-- source-sha256: 09d8923cf01f7c0c1ce401530b8c7585dfe75d6833d9691fe11ce31f81e3e9a8 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1194,7 +1194,8 @@
       - [o] T148-3-6-1 Python conformance target을 harness와 run database로 실행한다 (T148-3-6에 이어). 원인: conformance-check/python이 $(WITH_TEST_ENV) 없이 `python -m unittest …`를 실행해, python-unit-check가 그 줄을 거부했고 make run-databases에서 target이 "BENCH_MYSQL_DSN is required"로 실패했다. 완료 조건: target이 run 환경으로 packages.python.tests.testcase를 실행하고, python-unit-check와 전체 conformance-check가 통과한다.
         Evidence: python-unit-check가 그 줄에서 실패했고 target은 BENCH_* 없이 실패했다. 이제 target은 lease-tool과 conformance-python-models 뒤에 `$(WITH_TEST_ENV) … -m packages.python.tests.testcase`를 실행하며, python-unit-check가 통과하고, make run-databases TARGETS=conformance-check가 Python 부분(test 135개)과 함께 통과하고 세 vector file은 바뀌지 않는다.
     - [ ] T148-3-7 parity R4, R5, R6, R7, R9, R10을 통과한다 (T148-3에 이어). 원인: parity 검사가 R5 396건(bind되지 않은 test file), R10 120건(client를 넷으로 세는 문서), R6 78건(root 밖 test), R4 4건(선언되지 않은 suite), R9 4건(오래된 client 목록), R7 2건(오류 code를 선언하지 않는 TypeScript와 Python)을 보고한다. 완료 조건: 각 규칙이 통과하고, 큰 묶음은 더 나눈다.
-      - [ ] T148-3-7-1 parity R5를 통과한다: 모든 test file이 묶인다 (T148-3-7에 이어). 원인: R5가 binding이 없는 test file 420개를 보고한다. 대부분은 어느 parity unit도 적지 않은 한 언어 test다. 완료 조건: 각 test가 다섯 구현에 묶인 unit에 속하거나 unit의 기존 binding으로 옮겨지고, R5가 0을 보고한다.
+      - [o] T148-3-7-1 parity R5를 통과한다: 모든 test file이 묶인다 (T148-3-7에 이어). 원인: R5가 binding이 없는 test file 420개를 보고한다. 대부분은 어느 parity unit도 적지 않은 한 언어 test다. 완료 조건: 각 test가 다섯 구현에 묶인 unit에 속하거나 unit의 기존 binding으로 옮겨지고, R5가 0을 보고한다.
+        근거: commit 39276d1a(main; config/parity.json, unit 10개): T77-6의 collection identity test 다섯 개를 각 언어의 internal profile unit으로 선언했고, 바인딩은 하나씩이며 native id를 쓴다. kit checkout에 링크된 worktree에서 `make -s parity-declarations-check`가 exit 0이다(`every declaration holds`, R5 0). 앞선 R5 1은 링크 전 실행의 결과다.
       - [o] T148-3-7-2 parity R6을 통과한다: 선언된 root 밖의 test (T148-3-7에 이어). 원인: R6가 scripts/, tests/dialects, tests/dbspec, tests/conformance runner, examples/, benchmarks/rust, packages/dbspec-* 아래 test 76개를 보고한다. 완료 조건: 각 test가 root 아래로 옮겨지거나 이유와 함께 tools root에 선언되고, R6가 0을 보고한다.
         근거: commit 1f7e8a53(main): `make -s parity-declarations-check`가 R6 misplaced-test 0건을 보고한다(이 줄을 여기에 기록한다. 같은 실행의 R5 5건은 T169-3의 것으로 T169-4에서 추적하며 R6이 아니다). main에 남은 R6 finding은 없다.
       - [o] T148-3-7-3 TypeScript와 Python에 생성된 code catalog를 둔다 (T148-3-7에 이어). 원인: R7이 TypeScript와 Python에 생성된 error code catalog가 없다고 보고한다. Go, PHP, Rust는 모든 error 지점에서 자기 catalog를 쓴다. 완료 조건: orm-gen이 두 언어에 catalog를 생성하고, 두 client의 모든 error 지점이 그것을 쓰며, 오래된 catalog에서 drift test가 실패하고, R7이 0을 보고한다. 근거: TypeScript와 Python 소스의 `OrmError`, `CodecError`와 오류 code literal은 모두 생성된 catalog의 `codes.<NAME>` 상수가 되었고, 소스는 main과 그 상수만 다르다(quote를 맞춘 뒤 기계적으로 확인). T77-4의 drift test가 catalog를 errors.yaml과 비교한다.
