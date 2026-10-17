@@ -124,20 +124,34 @@ function mutation(change: (manifest: SampleManifest, reports: Reports) => void, 
   return checkCoverage(manifest, reports).join('\n');
 }
 
-// executeCoverage는 실패한 실행마다 FAIL 줄을 출력한다. 음성 sample의 FAIL은 test가 일부러 만든 실패이므로
-// 통과한 실행의 출력에 나타나면 안 된다. negative는 그 줄을 가로채 돌려주고, 호출한 test가 exact 문구를 확인한다.
-// 경과 시간은 `elapsed=<t>`로 바꾸고, 병렬 database 줄의 순서가 정해지지 않으므로 두 목록을 정렬한다.
-async function negative(manifest: Manifest, root: string, timeoutMs: number): Promise<{ errors: string[]; failures: string[] }> {
+// quietly collects the console lines that run writes. executeCoverage writes a TAP `not ok - <case>` line and `# <reason>`
+// lines for each failed run (tests/testcase.mts). A failure of a negative sample is made on purpose by the test, so it must
+// not appear in the output of a passing run.
+async function quietly<T>(run: () => Promise<T>): Promise<{ value: T; lines: string[] }> {
   const lines: string[] = [];
   const log = console.log;
   console.log = (...args: unknown[]) => { lines.push(args.join(' ')); };
-  let errors: string[];
-  try { errors = await executeCoverage(manifest, root, timeoutMs); }
+  try { return { value: await run(), lines }; }
   finally { console.log = log; }
-  return {
-    errors: errors.toSorted(),
-    failures: lines.filter(line => line.startsWith('FAIL ')).map(line => line.replace(/ elapsed=[^:]+:/, ' elapsed=<t>:')).toSorted(),
-  };
+}
+
+// tapFailures groups each `not ok - <case>` line with the `# <reason>` lines that follow it. Parallel database lines have no
+// fixed order, so the groups are sorted.
+function tapFailures(lines: string[]): string[] {
+  const failures: string[] = [];
+  let open = false;
+  for (const line of lines) {
+    if (line.startsWith('not ok - ')) { failures.push(line); open = true; }
+    else if (line.startsWith('ok - ')) open = false;
+    else if (open && line.startsWith('# ')) failures[failures.length - 1] += `\n${line}`;
+  }
+  return failures.toSorted();
+}
+
+// negative returns the execution errors and the TAP failure groups of a negative sample; the calling test checks the exact text.
+async function negative(manifest: Manifest, root: string, timeoutMs: number): Promise<{ errors: string[]; failures: string[] }> {
+  const { value, lines } = await quietly(() => executeCoverage(manifest, root, timeoutMs));
+  return { errors: value.toSorted(), failures: tapFailures(lines) };
 }
 
 caseTest('owner and dependent cases execute in five languages and three databases', 1000, () => {
@@ -209,18 +223,18 @@ caseTest('native owner and dependent files execute twice from their own parts', 
     const missing = 'sample/owner/typescript/none: exactly two executions required';
     assert.deepEqual(await negative(manifest, root, 1000), {
       errors: [`sample/owner/typescript/none run 1: unexpected test output: ${unexpected}`, missing].toSorted(),
-      failures: [`FAIL sample/owner/typescript/none run 1 elapsed=<t>: unexpected test output: ${unexpected}`],
+      failures: [`not ok - sample/owner/typescript/none run 1\n# unexpected test output: ${unexpected}`],
     });
     await writeFile(join(root, owner), "for (const id of process.argv.slice(2)) { console.log(`CASE ${id} PASS`); console.log(`CASE ${id} PASS`); }\n");
     assert.deepEqual(await negative(manifest, root, 1000), {
       errors: ['sample/owner/typescript/none run 1: duplicate observed case first', missing].toSorted(),
-      failures: ['FAIL sample/owner/typescript/none run 1 elapsed=<t>: duplicate observed case first'],
+      failures: ['not ok - sample/owner/typescript/none run 1\n# duplicate observed case first'],
     });
     delete defined(defined(manifest.features[0].coverage.dependents[0]).commands).none;
     assert.deepEqual(await negative(manifest, root, 1000), {
       errors: ['sample/dependent/use/typescript/none: no executable command', 'sample/dependent/use/typescript/none: no executed report',
         'sample/owner/typescript/none run 1: duplicate observed case first', missing].toSorted(),
-      failures: ['FAIL sample/owner/typescript/none run 1 elapsed=<t>: duplicate observed case first'],
+      failures: ['not ok - sample/owner/typescript/none run 1\n# duplicate observed case first'],
     });
   } finally { await rm(root, { recursive: true, force: true }); }
 });
@@ -418,7 +432,7 @@ caseTest('checker reads physical database state around each native test run', 12
         `sample/owner/typescript/sqlite run 1: ${groupFailure}`,
         `sample/owner/typescript/sqlite: exactly two executions required`,
       ].toSorted(),
-      failures: [`FAIL sample/owner/typescript/mysql (mysql,postgres,sqlite) run 1 elapsed=<t>: ${groupFailure}`],
+      failures: [`not ok - sample/owner/typescript/mysql (mysql,postgres,sqlite) run 1\n# ${groupFailure}`],
     });
     await writeFile(join(root, owner), "import { DatabaseSync } from 'node:sqlite'; const db = new DatabaseSync(new URL(process.env.ORM_COVERAGE_TEST_SQLITE_DSN).pathname); db.exec('UPDATE state SET value = value + 1'); db.close(); for (const database of ['mysql', 'postgres', 'sqlite']) console.log(`CASE first [${database}] PASS`');\n");
     // The state readers of mysql and postgres refuse the sqlite DSN, so the run never reaches the state comparison; the
@@ -500,7 +514,7 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', 12
     ];
     for (const [events, error] of outcomes) {
       await phpunitStub(root, php.file, events);
-      assert.match((await executeCoverage(phpManifest, root, 30000)).join('\n'), error);
+      assert.match((await quietly(() => executeCoverage(phpManifest, root, 30000))).value.join('\n'), error);
     }
     const go = defined(cases[0]);
     await writeFile(join(root, go.file), 'package orm\nimport "testing"\nfunc TestFirst(t *testing.T) { t.Skip("no executed pass") }\n');
@@ -512,7 +526,7 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', 12
     const message = 'observed no cases differ from TestFirst';
     assert.deepEqual(await negative(skipped, root, 30000), {
       errors: [`sample/owner/go/none run 1: ${message}`, 'sample/owner/go/none: exactly two executions required'].toSorted(),
-      failures: [`FAIL sample/owner/go/none run 1 elapsed=<t>: ${message}`],
+      failures: [`not ok - sample/owner/go/none run 1\n# ${message}`],
     });
   } finally {
     restoreLease();
@@ -552,9 +566,9 @@ caseTest('Python cases execute on the interpreter of ORM_PYTHON', 8000, async ()
   }
 });
 
-// executeCoverage는 실행마다 하나의 case로 시작, 실행하는 native 명령, 결과와 경과 시간을
-// 실행 중에 출력한다. 실패한 실행은 FAIL 줄에 이유를 담는다.
-caseTest('every native run reports its start, steps, result and elapsed time', 8000, async () => {
+// executeCoverage writes each run's native command as one line, then its result as a TAP line (`ok - <case>` or
+// `not ok - <case>`). A failed run gives its reason on `# <reason>` lines.
+caseTest('every native run reports its command and TAP result', 8000, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-report-')));
   const owner = 'packages/ts/tests/owner.mjs';
   const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', clients: { typescript: 'partial' },
@@ -574,17 +588,14 @@ caseTest('every native run reports its start, steps, result and elapsed time', 8
     console.log = log;
     await rm(root, { recursive: true, force: true });
   }
-  const elapsed = 'elapsed=[0-9.]+(µs|ms|s)';
   const expected = [
-    '^RUN sample/owner/typescript/none run 1 deadline=1s$',
-    `^STEP sample/owner/typescript/none run 1 ${elapsed}: node ${owner}$`,
-    `^PASS sample/owner/typescript/none run 1 ${elapsed}$`,
-    '^RUN sample/owner/typescript/none run 2 deadline=1s$',
-    `^STEP sample/owner/typescript/none run 2 ${elapsed}: node ${owner}$`,
-    `^PASS sample/owner/typescript/none run 2 ${elapsed}$`,
-    '^RUN sample/owner/typescript/none run 1 deadline=1s$',
-    `^STEP sample/owner/typescript/none run 1 ${elapsed}: node ${owner}$`,
-    `^FAIL sample/owner/typescript/none run 1 ${elapsed}: exit 3: $`,
+    `^node ${owner}$`,
+    '^ok - sample/owner/typescript/none run 1$',
+    `^node ${owner}$`,
+    '^ok - sample/owner/typescript/none run 2$',
+    `^node ${owner}$`,
+    '^not ok - sample/owner/typescript/none run 1$',
+    '^# exit 3: $',
   ];
   assert.equal(lines.length, expected.length, lines.join('\n'));
   lines.forEach((line, index) => assert.match(line, new RegExp(expected[index] ?? ''), lines.join('\n')));
