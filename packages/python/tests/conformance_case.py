@@ -16,7 +16,7 @@ from decimal import Decimal
 from .coverage_case import REPOSITORY_ROOT
 from .vector_case import vector_tests
 
-RUNNER = REPOSITORY_ROOT / "tests" / "conformance" / "runner_python.py"
+RUNNER = REPOSITORY_ROOT / "packages" / "python" / "testing" / "conformance" / "runner_python.py"
 MODELS = REPOSITORY_ROOT / "packages" / "python" / "src" / "polyspec" / "orm" / "models"
 VECTORS = REPOSITORY_ROOT / "tests" / "conformance"
 
