@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: a0eae7c2c8274df81f94244f61a0688e535be6f7ff298f954bea1279bad950b0 -->
+<!-- source-sha256: a058fdd80516d278e3bf1292fa9aac6d8f80ee239c01521bdfb13b3733282d8e -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1237,7 +1237,8 @@
   - [o] T169-1 conformance vector에 insert part를 기록한다 (T169에 이어). 원인: T169가 creates를 2 + 1 part로 바꿨지만 tests/conformance는 3행 INSERT 하나를 유지해, main CI가 다섯 client 모두에서 같이 실패했다. Evidence: check compare -vector creates_and_save가 mysql, postgres, sqlite에서 vector 1개 × 5개 언어 동일을 보고한다.
   - [o] T169-2 선택한 conformance vector를 make로 실행하고 다섯 client를 기술한다 (T169-1에 이어). 원인: tests/conformance/README.md가 아직 client 네 개와 출력 파일 네 개를 말하고, -vector를 check run에 넘기는 make target이 없어 vector 하나에도 손으로 만든 database와 make 환경이 필요하다. 완료 조건: make target이 test server로 지정한 vector를 실행, 비교, 기록하고, README가 그것과 다섯 client를 기술한다.
   Evidence: VECTOR=creates_and_save가 세 database에서 vector 1개 × 5개 언어 동일을 보고한다. VECTOR와 RECORD=1은 이유를 출력하고 2로 끝난다.
-  - [ ] T169-3 IN-list 길이마다 plan cache가 커지지 않게 한다 (T169에 이어). 원인: T169의 완료 근거는 insert parts만 다룬다. Planner는 IN-list의 원소마다 placeholder를 하나씩 만들므로(packages/php/src/Planner.php:525, 다른 planner도 같다), 길이마다 별도 plan과 cache 항목이 생긴다. RED: 같은 IN-list 요청을 길이 1부터 300까지 실행하고 plan cache 항목 수를 세는 test. 현재 코드에서는 길이마다 하나씩 늘어난다. 완료 조건: plan이 목록 길이에 의존하지 않거나(정해진 placeholder 묶음과 채우기 방식), cache의 메모리 상한을 밝혀 강제한다. 모든 client의 plan cache를 같은 기준으로 판단한다.
+  - [o] T169-3 IN-list 길이마다 plan cache가 커지지 않게 한다 (T169에 이어). 원인: T169의 완료 근거는 insert parts만 다룬다. Planner는 IN-list의 원소마다 placeholder를 하나씩 만들므로(packages/php/src/Planner.php:525, 다른 planner도 같다), 길이마다 별도 plan과 cache 항목이 생긴다. RED: 같은 IN-list 요청을 길이 1부터 300까지 실행하고 plan cache 항목 수를 세는 test. 현재 코드에서는 길이마다 하나씩 늘어난다. 완료 조건: plan이 목록 길이에 의존하지 않거나(정해진 placeholder 묶음과 채우기 방식), cache의 메모리 상한을 밝혀 강제한다. 모든 client의 plan cache를 같은 기준으로 판단한다.
+    근거: commit e2bcacbf(Go)와 9767c513(PHP, Python, TypeScript, Rust)가 main에 있다. plan key는 IN list를 2의 거듭제곱 bucket으로 묶는다(마지막 값을 반복해 채우고 parameter를 다시 번호 붙인다). 그래서 각 client의 plan cache는 list 길이마다가 아니라 bucket마다 항목 하나를 갖는다. client별 red 후 green: Go TestPlanCacheBoundedByInListShape('length 11: plan cache holds 11 entries, want at most 10' 후 PASS), PHP PlanCacheBoundTest(같은 red 후 OK 1 test 600 assertions), Python test_plan_cache_bound(red 후 OK), TypeScript plan-cache-in('11 plan cache keys, want at most 10' 후 3건 중 3 통과), Rust는 이미 bucket(pad_in)을 쓰고 회귀 test in_list_keys_are_bounded_by_bucket이 통과한다. documents-check, docs:rules-check, layout-check가 통과한다. interface-check와 rust-fmt-check는 main에서도 exit 2다(이 행의 것이 아님).
 - [o] T170 TypeScript model을 쓰는 것만 담아 생성한다 (T137-1-3-1에 이어). 원인: kit 0.0.43의 fsm lint-ts가 orm-gen이 쓴 models.ts에서 쓰지 않는 import, 같은 이름의 class와 interface(declaration merging), 쓰지 않는 MANIFEST_* export를 찾는다. 완료 조건: TS emitter가 model이 쓰는 import와 export만 쓰고 type마다 한 번만 선언하며, generator test가 이를 확인하고, 생성 파일의 lint가 통과한다.
   Evidence: 쓰지 않는 import와 interface가 합쳐진 class를 거부하는 models-scan test가 수정 전 실패하고 수정 후 통과한다. ts-check/types와 ts-model-check가 통과한다. MANIFEST_TEXT와 MANIFEST_HASH는 docs/usage.md가 정한 대로 export를 유지한다.
   - [o] T170-1 생성 model의 TypeScript symbol을 기록한다 (T170에 이어). 원인: T170이 contracts/symbols/typescript.json을 기록하지 않고 model을 다시 생성해 main에서 make interface-check가 실패했다. Evidence: 기록은 생성 model과 declareMember만 다르다. interface-check 8개가 통과한다.
