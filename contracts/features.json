@@ -3741,6 +3741,7 @@
             "tests/dbspec/mermaid.json",
             "tests/dbspec/syntax.json",
             "tests/dbspec/compare/**",
+            "packages/go/internal/dbspec/compare/**",
             "packages/rust/schema/examples/dbspec_compare.rs",
             "packages/rust/schema/examples/dbspec_stress.rs",
             "tests/cargo-target.mts",

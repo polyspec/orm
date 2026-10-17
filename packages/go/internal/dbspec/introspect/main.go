@@ -2,7 +2,7 @@
 // 출력 형식으로 쓴다: stdout에 canonical 문서와 미지원 객체 줄
 // "! kind<TAB>table<TAB>name", stderr에 미지원 객체마다 "reason ..." 줄과 "elapsed <ms>".
 //
-// Usage: go run ./tests/dbspec/introspect/go <mysql|postgres|sqlite> <uri>
+// Usage: go run ./packages/go/internal/dbspec/introspect <mysql|postgres|sqlite> <uri>
 package main
 
 import (
@@ -41,7 +41,7 @@ func run() (code int) {
 		}
 	}()
 	if len(os.Args) != 3 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./tests/dbspec/introspect/go <mysql|postgres|sqlite> <uri>")
+		fmt.Fprintln(os.Stderr, "usage: go run ./packages/go/internal/dbspec/introspect <mysql|postgres|sqlite> <uri>")
 		return 2
 	}
 	dialect, uri := os.Args[1], os.Args[2]

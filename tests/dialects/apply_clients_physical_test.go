@@ -86,7 +86,7 @@ func TestApplyChainAcrossClients(t *testing.T) {
 	goRunner := filepath.Join(t.TempDir(), "apply-go")
 	// Go runner build는 testcase.Process 기한을 가진다(build cache가 비면 몇 분 걸린다).
 	building, cancelBuild := context.WithTimeout(context.Background(), testcase.Process)
-	build := exec.CommandContext(building, "go", "build", "-o", goRunner, "./tests/dbspec/apply/go")
+	build := exec.CommandContext(building, "go", "build", "-o", goRunner, "./packages/go/internal/dbspec/apply")
 	build.Dir = root
 	out, err := build.CombinedOutput()
 	cancelBuild()

@@ -42,7 +42,7 @@ function mermaidWithPath(path: string): string {
 }
 
 const applyRunners: Runner[] = [
-  { name: 'apply go', command: 'go', args: ['run', './tests/dbspec/apply/go'] },
+  { name: 'apply go', command: 'go', args: ['run', './packages/go/internal/dbspec/apply'] },
   { name: 'apply php', command: 'php', args: ['tests/dbspec/apply/php.php'] },
   { name: 'apply typescript', command: process.execPath, args: ['tests/dbspec/apply/typescript.mts'] },
   { name: 'apply rust', command: join(cargoTarget(), 'debug/examples/dbspec_apply'), args: [] },

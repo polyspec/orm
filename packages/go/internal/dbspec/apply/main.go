@@ -11,7 +11,7 @@
 // stdout에는 결과 한 줄을 쓴다: 성공은 "ok", stop이 멈춘 것은 "stopped", apply
 // error는 "error <code>"다. 그 밖의 error는 stderr에 쓰고 1로 끝난다.
 //
-// Usage: go run ./tests/dbspec/apply/go <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
+// Usage: go run ./packages/go/internal/dbspec/apply <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
 package main
 
 import (
@@ -45,7 +45,7 @@ var errStop = errors.New("stop")
 
 func main() {
 	if len(os.Args) != 5 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./tests/dbspec/apply/go <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>")
+		fmt.Fprintln(os.Stderr, "usage: go run ./packages/go/internal/dbspec/apply <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>")
 		os.Exit(2)
 	}
 	action, dialect, uri, vectors := os.Args[1], os.Args[2], os.Args[3], os.Args[4]

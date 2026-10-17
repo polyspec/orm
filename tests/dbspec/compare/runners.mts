@@ -29,7 +29,7 @@ function pythonCommand() {
 }
 
 export const runners: (Runner & { reads: string[] })[] = [
-  { name: 'go', command: 'go', args: ['run', './tests/dbspec/compare/go'], reads: INPUTS },
+  { name: 'go', command: 'go', args: ['run', './packages/go/internal/dbspec/compare'], reads: INPUTS },
   { name: 'php', command: 'php', args: ['tests/dbspec/compare/php.php'], reads: INPUTS },
   { name: 'typescript', command: process.execPath, args: ['tests/dbspec/compare/typescript.mts'], reads: INPUTS },
   {

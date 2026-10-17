@@ -2,7 +2,7 @@
 // Go dbspec 결과를 tests/dbspec/compare/check.mts의 줄 형식으로 출력한다. It then prints the positions cases
 // of cases.json and the analysis and format of each case of syntax.json.
 //
-// Usage: go run ./tests/dbspec/compare/go <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
+// Usage: go run ./packages/go/internal/dbspec/compare <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
 package main
 
 import (
@@ -613,7 +613,7 @@ func writeRead(out *bufio.Writer, text string, diagnostics []dbspec.Diagnostic, 
 
 func main() {
 	if len(os.Args) != 7 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./tests/dbspec/compare/go <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>")
+		fmt.Fprintln(os.Stderr, "usage: go run ./packages/go/internal/dbspec/compare <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>")
 		os.Exit(2)
 	}
 	all, err := readCases(os.Args[1])

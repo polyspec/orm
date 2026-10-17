@@ -19,7 +19,7 @@ import (
 // location is the dotted path of the value (`canonical[0].documents.shop`).
 
 // schemaDirectory is tests/dbspec/schema of the working directory, the root of the checkout, where the usage
-// `go run ./tests/dbspec/compare/go` runs this runner.
+// `go run ./packages/go/internal/dbspec/compare` runs this runner.
 func schemaDirectory() (string, error) {
 	root, err := os.Getwd()
 	if err != nil {
