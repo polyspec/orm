@@ -42,3 +42,4 @@ export type { EntityDef } from './core.js';
 export type { ChainKey } from './names.js';
 export { orm, ColumnFunction, ValueFunction } from './values.js';
 export * from './models/models.js';
+export * as codes from './codes.js';

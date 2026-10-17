@@ -5,6 +5,7 @@ of styled columns and the MySQL, PostgreSQL and SQLite drivers behind one
 DSN URI.
 """
 
+from polyspec.orm import codes
 from polyspec.orm.aes import AesKeyring
 from polyspec.orm.codec import (
     CodecError,
@@ -48,6 +49,7 @@ __all__ = [
     "StyledValue",
     "ValueFunction",
     "blind_index",
+    "codes",
     "connect",
     "decode",
     "encode",

@@ -23,6 +23,17 @@
       "scope": "tests/interfaces/typescript",
       "reason": "tests/interfaces/typescript.mts reads the declarations of the TypeScript client with the JavaScript API of the compiler (createSourceFile, the printer and the node factory), which TypeScript 7.0 does not ship",
       "retry": "TypeScript ships its stable JavaScript API (announced for 7.1)"
+    },
+    {
+      "tool": "rust",
+      "channel": "nightly-2026-10-01",
+      "scope": "packages/rust",
+      "reason": "The parity check reads the public symbols of the Rust crates from rustdoc JSON, which is unstable (rust-lang/rust#76578), so the extractor needs a nightly toolchain",
+      "retry": "rustdoc JSON is stable in a Rust release"
     }
+  ],
+  "symbolExtractors": [
+    "go",
+    "php"
   ]
 }

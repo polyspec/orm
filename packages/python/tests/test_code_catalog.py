@@ -57,6 +57,18 @@ class CodeCatalogTest(unittest.TestCase):
             "; run orm-gen errors --lang python --out packages/python/src/polyspec/orm/codes.py",
         )
 
+    def test_codes_exported_from_package(self):
+        import polyspec.orm as orm
+        from polyspec.orm import codes
+
+        self.assertIn("codes", orm.__all__)
+        missing = [code for code, _ in read_catalog() if getattr(codes, code, None) != code]
+        self.assertEqual(
+            missing,
+            [],
+            "polyspec.orm.codes lacks a constant whose value is the code of docs/errors.yaml",
+        )
+
 
 if __name__ == "__main__":
     testcase.main()

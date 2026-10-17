@@ -23,6 +23,7 @@ import { byteOrder, goJson } from './json.mts';
 import { allRules, checkErrorLabels, readErrorCatalog, readManifest, validateManifest, type Extension, type Manifest, type Owner, type Rule, type Symbols } from './manifest.mts';
 import { parserMutations } from './mutations.mts';
 import { checkResults } from './sequences.mts';
+import { apiProblems, readParity } from './api.mts';
 
 const symbolsSchema = resolve(import.meta.dirname, '../../../scripts/schema/interface-symbols.schema.json');
 
@@ -235,6 +236,11 @@ async function main(argv: string[]): Promise<number> {
     order = await loadOrder(root, join(root, m.schema ?? ''));
   });
   if (!manifestPassed) return 1;
+  // The API units of config/parity.json are read here, so that the check of each client runs against the same units.
+  const apiPassed = await runCase('interfaces/api-units', MANIFEST, () => {
+    const problems = apiProblems(root, readParity(root), readErrorCatalog(root));
+    if (problems.length > 0) throw new Error(problems.join('\n'));
+  });
   const tools: Tools = {};
   // 추출기는 이 실행의 directory에 build하고, Rust 추출기는 lease 아래에서 그곳으로 복사한 것을 실행한다.
   const directory = languages.includes('go') || languages.includes('rust') ? mkdtempSync(join(tmpdir(), 'orm-interface-symbols-')) : undefined;
@@ -245,7 +251,7 @@ async function main(argv: string[]): Promise<number> {
     if (directory !== undefined && languages.includes('rust')) {
       if (!(await runLong('interfaces/rust-build', async ({ step }) => { tools.rust = await buildRust(step, root, directory); }))) return 1;
     }
-    let failed = false;
+    let failed = !apiPassed;
     for (const lang of languages) {
       const options: Options = { root, lang, tools, manifest: m, order, record, selfTest };
       if (!(await runCase(`interfaces/${lang}`, LANGUAGE, ({ signal, step }) => checkLanguage(options, signal, step)))) failed = true;
