@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d1b07273bc444de6c0c278c3966e209156de5f5d30fe0e127898d7f79cf3ebcf -->
+<!-- source-sha256: 71e81cbf77b997074dd769277b9dd306be7476d1af9ac50658c51db6b89007cc -->
 # 변경 이력
 
 ## Unreleased
 - Go 성능 gate는 tools root인 packages/go/bench의 benchmark다. 이 root는 어떤 구현에도 속하지 않으므로 그 go-internal parity unit을 없앴다. gate는 performance_gate feature로 계속 실행된다. (#T77-8-1-1)
+- codec, collection, AES 공개 symbol을 새 추출로 다시 계산했고 선언되지 않은 것은 없다. model_generation의 한국어 문장이 영어와 같이 Rust를 적는다(T77-8-1-1).
 - performance gate는 존재하는 parity unit만 명명한다. 뺀 Go unit과 Go owner를 지웠고 정적 검사가 통과한다(T77-15).
 - Python interface와 conformance test는 {exported, signature} 스냅샷에서 심볼의 signature를 읽고, testcase.main으로 끝나며, 각자의 기능에 속한다(T77-14).
 - 생성 파일은 추적하지 않는다: AGENTS.md가 규칙과 명명된 예외를 적고, .gitignore가 vendor/, venv/, *.egg-info/를 덮으며, make staged-check와 pre-commit 훅이 staged 생성 경로를 거절한다(T77-13).

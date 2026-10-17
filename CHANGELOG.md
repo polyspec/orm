@@ -3,6 +3,7 @@
 
 ## Unreleased
 - The Go performance gate is a benchmark of the tools root packages/go/bench, which belongs to no implementation, so its go-internal parity unit is removed; the gate still runs as the performance_gate feature. (#T77-8-1-1)
+- The codec, collection and AES public symbols are recomputed from a fresh extraction and none stays undeclared; the Korean model_generation sentence now names Rust as the English one does (T77-8-1-1).
 - The performance gate names only the parity units that exist: its dropped Go unit and Go owner are removed, and the static check passes (T77-15).
 - The Python interface and conformance tests read each symbol's signature from the {exported, signature} snapshot, end with testcase.main, and belong to their features (T77-14).
 - Generated files are never tracked: AGENTS.md states the rule and its named exceptions, .gitignore covers vendor/, venv/ and *.egg-info/, and make staged-check with the pre-commit hook refuses a staged generated path (T77-13).
