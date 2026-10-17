@@ -221,6 +221,9 @@
     {"id": "ts-sqlite-concurrency", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/sqlite-concurrency.mjs", "id": "sqlite-concurrency/writersInSeveralProcesses"}]},
     {"id": "ts-statement-events", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/statement-events.mjs", "id": "statement_events/model_statements/sqlite"}]},
     {"id": "ts-syntax-vectors", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/syntax-vectors.mjs", "id": "syntax.json is what the generator writes from the current cases"}]},
+    {"id": "ts-plan-cache-in-lengths-share-keys", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/plan-cache-in.mjs", "id": "IN lists of lengths 1 to 300 share at most ten plan cache keys"}]},
+    {"id": "ts-plan-cache-in-pads-to-bucket", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/plan-cache-in.mjs", "id": "an IN list pads to its bucket by repeating its last value and renumbers its parameters"}]},
+    {"id": "ts-plan-cache-in-param-past-end", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/plan-cache-in.mjs", "id": "a parameter index past the parameters is IR_INVALID"}]},
     {
       "id": "aggregate-numeric", "kind": "suite", "profile": "client",
       "file": "contracts/fixtures/aggregate_numeric.json", "cases": "$.cases[*].id",
@@ -820,6 +823,8 @@
     {"id": "go-internal-tests-dialects-sqlite-filename-physical", "kind": "feature", "profile": "go-internal", "bindings": [{"implementation": "go", "test": "tests/dialects/sqlite_filename_physical_test.go", "id": "TestSQLiteFileNameWithQuery"}]},
     {"id": "go-internal-tests-interfaces-contracts-generate", "kind": "feature", "profile": "go-internal", "bindings": [{"implementation": "go", "test": "tests/interfaces/contracts/generate_test.go", "id": "TestLogicalContractRejectsNativeDrift"}]},
     {"id": "go-internal-tests-interfaces-contracts-python-signature", "kind": "feature", "profile": "go-internal", "bindings": [{"implementation": "go", "test": "tests/interfaces/contracts/python_signature_test.go", "id": "TestPythonSignatureReadsLikeTheOtherClients"}]},
+    {"id": "go-internal-plan-cache-bounded-in-list-shape", "kind": "feature", "profile": "go-internal", "bindings": [{"implementation": "go", "test": "packages/go/orm/plan_cache_test.go", "id": "TestPlanCacheBoundedByInListShape"}]},
+    {"id": "go-internal-plan-cache-pads-in-list-and-rejects-range", "kind": "feature", "profile": "go-internal", "bindings": [{"implementation": "go", "test": "packages/go/orm/plan_cache_test.go", "id": "TestCanonicalizePadsInListAndRejectsOutOfRangeParam"}]},
     { "id": "rust-catalog-temporal-fraction-keeps-exactly-p-digits-and-rejects-dropped-digits", "kind": "feature", "profile": "rust-internal", "bindings": [{ "implementation": "rust", "test": "packages/rust/build/src/catalog/temporal.rs", "id": "catalog::temporal::tests::fraction_keeps_exactly_p_digits_and_rejects_dropped_digits" }] },
     { "id": "rust-catalog-temporal-precision-follows-the-native-type-and-dialect-default", "kind": "feature", "profile": "rust-internal", "bindings": [{ "implementation": "rust", "test": "packages/rust/build/src/catalog/temporal.rs", "id": "catalog::temporal::tests::precision_follows_the_native_type_and_dialect_default" }] },
     { "id": "rust-catalog-temporal-temporal-text-follows-the-dbspec-forms", "kind": "feature", "profile": "rust-internal", "bindings": [{ "implementation": "rust", "test": "packages/rust/build/src/catalog/temporal.rs", "id": "catalog::temporal::tests::temporal_text_follows_the_dbspec_forms" }] },
@@ -1096,6 +1101,7 @@
     {"id": "rust-integration-coverage-transactions-coverage-transaction-savepoint", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/coverage_transactions.rs", "id": "coverage_transactions::coverage_transaction_savepoint"}]},
     {"id": "rust-integration-result-chains-generated-model-result-chains-preserve-assigned-values", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/result_chains.rs", "id": "result_chains::generated_model_result_chains_preserve_assigned_values"}]},
     {"id": "rust-benchmark-native-insert-email-is-an-aes-hex-envelope", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "benchmarks/rust/src/native.rs", "id": "tests::insert_email_is_an_aes_hex_envelope"}]},
+    {"id": "rust-plan-cache-in-list-keys-bounded", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/orm/src/request.rs", "id": "request::plan_cache_tests::in_list_keys_are_bounded_by_bucket"}]},
     {
       "id": "py-codec-vector", "kind": "feature", "profile": "python-internal",
       "bindings": [{ "implementation": "python", "test": "packages/python/tests/codec_vector.py", "id": "test_error_cases" }]
@@ -1364,6 +1370,8 @@
       "id": "py-ir-answers", "kind": "feature", "profile": "python-internal",
       "bindings": [{ "implementation": "python", "test": "packages/python/tests/ir_answers.py", "id": "one" }]
     },
+    {"id": "py-plan-cache-in-lengths-share-plans", "kind": "feature", "profile": "python-internal", "bindings": [{"implementation": "python", "test": "packages/python/tests/test_plan_cache_bound.py", "id": "test_in_list_lengths_share_bucketed_plans"}]},
+    {"id": "py-plan-cache-out-of-range-in-param", "kind": "feature", "profile": "python-internal", "bindings": [{"implementation": "python", "test": "packages/python/tests/test_plan_cache_bound.py", "id": "test_out_of_range_in_param_is_refused"}]},
     {
       "id": "py-cov-audit-triggers-audit-history", "kind": "feature", "profile": "python-feature",
       "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_audit_triggers.py", "id": "test_audit_history" }]
@@ -1654,6 +1662,7 @@
     {"id": "php-internal-runtime-db-audit-record-of-a-transaction", "kind": "feature", "profile": "php-internal", "bindings": [{"implementation": "php", "test": "packages/php/tests/RuntimeDbTest.php", "id": "RuntimeDbTest::test_audit_record_of_a_transaction"}]},
     {"id": "php-internal-runtime-db-restore-of-soft-deleted-rows", "kind": "feature", "profile": "php-internal", "bindings": [{"implementation": "php", "test": "packages/php/tests/RuntimeDbTest.php", "id": "RuntimeDbTest::test_restore_of_soft_deleted_rows"}]},
     {"id": "php-internal-unselected-column-db-unselected-column", "kind": "feature", "profile": "php-internal", "bindings": [{"implementation": "php", "test": "packages/php/tests/UnselectedColumnDbTest.php", "id": "UnselectedColumnDbTest::test_unselected_column"}]},
+    {"id": "php-internal-plan-cache-bound", "kind": "feature", "profile": "php-internal", "bindings": [{"implementation": "php", "test": "packages/php/tests/PlanCacheBoundTest.php", "id": "PlanCacheBoundTest::testInListLengthsShareBucketedPlans"}]},
     {"id": "php-extension-internal-dbspec-apply-cleanup-cleanup-errors-release", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecApplyCleanupTest.php", "id": "DbspecApplyCleanupTest::test_cleanup_errors_release"}]},
     {"id": "php-extension-internal-dbspec-apply-cleanup-cleanup-errors-begin-restore", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecApplyCleanupTest.php", "id": "DbspecApplyCleanupTest::test_cleanup_errors_begin_restore"}]},
     {"id": "php-extension-internal-dbspec-apply-cleanup-rollback-step-outside", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecApplyCleanupTest.php", "id": "DbspecApplyCleanupTest::test_rollback_step_outside"}]},
