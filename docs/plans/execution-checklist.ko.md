@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 11f63decf016b07daa584835c43415d6ea931a01df6dc0402110cd7b1228874b -->
+<!-- source-sha256: c77c03d6676ea3c41f9c96a1a76b5f64ebe3efff0ee22934faea64266a2ad89c -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1234,7 +1234,7 @@
     - [o] T148-2-1 Rust show-create case를 그 id로 보고한다 (T148-2에 이어). 원인: Rust는 tests/dbspec/show-create.json을 crate 밖에서 보이지 않는 shown_checks로 읽고 lib unit test 하나로 확인한다. libtest는 unit test 이름에 하이픈 id를 쓸 수 없고, 공개 경로 read_catalog는 읽은 본문을 dbspec 문서로 바꾸므로 vector를 표현하지 못한다(kit 판정: spec 단위가 공개 경로보다 넓으며 orm의 설계 문제다). 완료 조건: orm이 SHOW CREATE reader가 API의 어디에 속하는지 정하고, Rust binding이 각 case를 그 id로 보고한다.
       Evidence: SHOW CREATE reader는 Go, TypeScript, Python처럼 MySQL introspection의 private으로 둔다. tests/dbspec/show-create.json은 각 case를 공개 경로(catalog_queries, catalog_followups, read_catalog)로 기술하고, 새 libtest-mimic target packages/rust/schema/tests/dbspec_show_create.rs가 그것을 trial `show_create_vectors::<id>`로 실행한다. 이전 binding은 9 case 모두 R3 "not executed"였고(0 passed, 6 filtered out), 새 binding에서 kit의 cargo 명령은 9건 통과한다. dbspec-rust-check/show-create, repository, feature, owners, layout 검사가 통과한다.
     - [o] T148-2-2 옮긴 Rust vector를 workspace에서 실행하고 측정 시간은 경고한다 (T148-2에 이어). 원인: main CI가 실패했다: T148-2의 검증 명령이 ORM_RUST_TEST_FEATURES의 workspace feature와 함께 -p polyspec-orm을 썼고, packages/rust/schema/tests/dbspec_plan.rs가 CPU 시간으로 case를 실패시켰다. Evidence: planner-rust-validate, codec-vectors-rust, encryption-codec-rust가 통과하고 저장소 검사가 통과한다.
-  - [ ] T148-3 모든 parity unit을 bind하고 parity R2와 R3를 통과한다 (T148-1, T148-2에 이어). 원인: parity 검사가 모든 unit에서 R2 binding 누락 15줄과 R3 196줄을 보고한다. 완료 조건: make parity-check가 통과하며, 끝에 한 번 실행한다.
+  - [~] T148-3 모든 parity unit을 bind하고 parity R2와 R3를 통과한다 (T148-1, T148-2에 이어). 원인: parity 검사가 모든 unit에서 R2 binding 누락 15줄과 R3 196줄을 보고한다. 완료 조건: make parity-check가 통과하며, 끝에 한 번 실행한다. Progress: the four test files that the T77-9-4 landings added are bound (go-internal subtest names, php-internal plan reader, ts-internal vector count, and the php support list); make parity-declarations-check holds. The full parity-check (R2, R3) runs once in the final batch.
     - [o] T148-3-1 PHP와 PHP extension parity binding을 root Composer project의 PHPUnit으로 실행한다 (T148-3에 이어). 원인: kit의 PHP runner는 package마다 vendor/bin/phpunit을 찾는데 orm은 root Composer project(vendor-php, T148-1-1)에 PHPUnit을 한 번 설치하므로 R3 binding 59개가 시작하지 못한다. 완료 조건: 가장 가까운 Composer project에서 PHPUnit을 찾는 kit 0.0.50(K178) 뒤 parity가 그것을 실행한다. 우회 원인: kit 도구가 정한다. Retry: kit 0.0.50이 release될 때(T181).
       Evidence: kit 0.0.50(K178, K184)로 parity가 root Composer project(vendor-php)에서 PHPUnit을 찾는다. PHP와 PHP extension binding 62개가 모두 vendor-php/bin/phpunit으로 시작하고 phpunit이 없다고 보고하는 것은 없다. 남은 R3 finding은 test 실패와 case 이름이며 T148-3-8이 맡는다.
     - [o] T148-3-2 parity R2가 binding이 없다고 보고하는 Python feature를 bind한다 (T148-3에 이어). 원인: aggregate-numeric, authenticated-encryption, decimal-model, planner, styled-column-states, install-changed-database, sqlite-paths, statement-events에 Python binding이 없고 대부분 Python test도 없다. 완료 조건: 각각 config/parity.json에 bind된 Python test가 있거나, 먼저 Python에 feature를 구현한다.

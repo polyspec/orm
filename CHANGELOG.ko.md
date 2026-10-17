@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 395babc8e0d63637b2f816e339238b17cdc7ff8227cd933a8a64b22821766002 -->
+<!-- source-sha256: d4d55fb5ebf411e7fb504dc121983a7ebe3a80ee5701968b4d4e4a219f54bf0c -->
 # 변경 이력
 
 ## Unreleased
 - Go 성능 gate는 tools root인 packages/go/bench의 benchmark다. 이 root는 어떤 구현에도 속하지 않으므로 그 go-internal parity unit을 없앴다. gate는 performance_gate feature로 계속 실행된다. (#T77-8-1-1)
+- T77-9-4 landing이 추가한 test 파일을 각 unit과 php support 목록에 묶어, 모든 선언이 다시 성립한다(T148-3).
 - PHP conformance binding은 선언된 모든 vector가 실행되고 vector 파일들이 같은 이름 집합을 가지는지 검사한다(T77-9-4-3).
 - TypeScript conformance suite는 선언된 모든 vector를 실행하며, dialect별 선언 집합이 runner의 집합과 같은지 test가 검사한다(T77-9-4-4).
 - Python conformance binding이 옮겨진 runner 경로 packages/python/testing/conformance/runner_python.py를 읽는다(T77-9-4-6).
