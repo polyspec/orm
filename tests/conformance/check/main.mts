@@ -303,7 +303,7 @@ export async function buildRunners(context: Context, root: string, directory: st
   await buildRustRunner(context, root, directory);
   await runCommand(context, root, '', 0, 'npm', ['run', 'build', '--prefix', 'packages/ts']);
   const binary = join(directory, 'runner_go');
-  await runCommand(context, root, '', 0, 'go', ['build', '-tags', 'ormtest', '-o', binary, './tests/conformance/runner_go']);
+  await runCommand(context, root, '', 0, 'go', ['build', '-tags', 'ormtest', '-o', binary, './packages/go/internal/conformance']);
   runners.go = binary;
 }
 

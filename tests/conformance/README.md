@@ -21,7 +21,7 @@ Duplicate object keys at any depth and a missing database expectation file are e
 The base and database expectation files require nonempty, unique vector names and exactly the same vector set. A missing or extra expectation name fails comparison and recording.
 The vectors `clock_truncate_write` and `clock_compare_six_digits` fix the executor clock through the test entry
 point of each client ([protocol](../../docs/protocol.md) 3.3): `check run` builds the Go runner with the tag
-`ormtest`, whose file `runner_go/clock_ormtest.go` declares them, and the Rust runner's crate enables the feature
+`ormtest`, whose file `packages/go/internal/conformance/clock_ormtest.go` declares them, and the Rust runner's crate enables the feature
 `test-faults`; the TypeScript runner imports `dist/testing.js`, the PHP runner requires `testing/Faults.php`, and the
 Python runner imports `polyspec.orm.testing`.
 The `write_cycle` expectation uses tagged styled-column values for
@@ -31,7 +31,7 @@ The `write_cycle` expectation uses tagged styled-column values for
 |---|---|
 | `vectors.json` | vector names, canonical chains, MySQL expectations — **the only place a vector is declared** |
 | `vectors.postgres.json`, `vectors.sqlite.json` | the same vectors' expectations on the other databases (`check … --driver postgres`); results equal MySQL's except where the dialect differs (`sql_dump` text, fulltext semantics, operators SQLite rejects) |
-| `runner_go/main.go` | Go runner (generated models in `packages/go/model`) |
+| `packages/go/internal/conformance/main.go` | Go runner (generated models in `packages/go/model`) |
 | `runner.php` | PHP runner (PDO) |
 | `packages/rust/tests/src/conformance.rs` | Rust runner (models from `polyspec-orm-build`, sqlx) |
 | `runner_typescript.mts` | TypeScript runner (native database drivers) |

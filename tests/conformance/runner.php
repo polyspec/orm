@@ -1,5 +1,5 @@
 <?php
-// Conformance runner (PHP). Runs the chains of runner_go/main.go and prints the same document.
+// Conformance runner (PHP). Runs the chains of packages/go/internal/conformance/main.go and prints the same document.
 // Usage: php tests/conformance/runner.php --dsn URI [--vector NAME]...
 // --vector는 반복할 수 있고, 주어지면 이름이 같은 vector만 실행한다. 모르는 이름은 오류다.
 declare(strict_types=1);

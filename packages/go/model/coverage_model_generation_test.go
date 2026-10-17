@@ -70,7 +70,7 @@ func copyModule(t *testing.T, root, dst string) {
 	for _, file := range files {
 		copyFile(t, filepath.Join(root, file), filepath.Join(dst, file))
 	}
-	for _, dir := range []string{filepath.Join("packages", "go"), "examples", filepath.Join("tests", "conformance", "runner_go")} {
+	for _, dir := range []string{filepath.Join("packages", "go"), "examples", filepath.Join("packages", "go", "internal", "conformance")} {
 		err := filepath.WalkDir(filepath.Join(root, dir), func(path string, entry fs.DirEntry, err error) error {
 			if err != nil {
 				return err

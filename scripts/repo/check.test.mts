@@ -1152,7 +1152,7 @@ caseTest('a build tool outside run-long or under a deadline fails', COMPUTE, () 
   assert.deepEqual(unwrappedToolErrors([
     unit('tsc', 'node packages/ts/node_modules/typescript/bin/tsc -p packages/ts/tsconfig.json --noEmit'),
     unit('generate', 'go test ./packages/go/generator && cd packages/go/model && go generate ./'),
-    unit('vet', 'go vet ./tests/conformance/runner_go'),
+    unit('vet', 'go vet ./packages/go/internal/conformance'),
     unit('build', 'PATH="$HOME/.cargo/bin:$PATH" cargo build --locked -p polyspec-orm-tests --bin integration && ./integration'),
     unit('npm', 'npm run typescript:build >/dev/null'),
     unit('later', 'node tests/run-long.mts a -- go vet ./a && go vet ./b'),
@@ -1165,7 +1165,7 @@ caseTest('a build tool outside run-long or under a deadline fails', COMPUTE, () 
   ]), [
     outside('tsc', 'tsc', 'node packages/ts/node_modules/typescript/bin/tsc -p packages/ts/tsconfig.json --noEmit'),
     outside('generate', 'go generate', 'go generate ./'),
-    outside('vet', 'go vet', 'go vet ./tests/conformance/runner_go'),
+    outside('vet', 'go vet', 'go vet ./packages/go/internal/conformance'),
     outside('build', 'cargo build', 'PATH="$HOME/.cargo/bin:$PATH" cargo build --locked -p polyspec-orm-tests --bin integration'),
     outside('npm', 'a TypeScript build', 'npm run typescript:build >/dev/null'),
     outside('later', 'go vet', 'go vet ./b'),

@@ -80,7 +80,6 @@ rules:
       - "!tests/kit/fixture/**"
       # The runners of one language: each drives the client of its language through the shared vectors and writes the
       # form that the TypeScript comparators read, so it is a test of that language.
-      - "!tests/conformance/runner_go/**"
       - "!tests/conformance/runner.php"
       - "!tests/conformance/result_php_helpers.php"
       - "!tests/conformance/runner_python.py"

@@ -993,7 +993,7 @@ conformance-result-check/typescript: lease-tool
 	$(RUN_LONG) typescript-build -- npm run typescript:build
 	$(NODE) --test tests/conformance/result_typescript.test.mts
 conformance-result-check/go:
-	$(GO_TEST) ./tests/conformance/runner_go -count=1
+	$(GO_TEST) ./packages/go/internal/conformance -count=1
 conformance-result-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python tests/conformance/result_python.py
 

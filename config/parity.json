@@ -5,7 +5,7 @@
     {
       "name": "go",
       "runner": "go",
-      "roots": ["packages/go/cmd", "packages/go/decimalmodel", "packages/go/engine", "packages/go/generator", "packages/go/internal", "packages/go/markdownmodel", "packages/go/model", "packages/go/orm", "packages/go/procevent", "packages/go/testcase", "tests/interfaces/contracts", "tests/conformance/runner_go", "tests/dialects", "tests/dbspec/unicode", "examples"],
+      "roots": ["packages/go/cmd", "packages/go/decimalmodel", "packages/go/engine", "packages/go/generator", "packages/go/internal", "packages/go/markdownmodel", "packages/go/model", "packages/go/orm", "packages/go/procevent", "packages/go/testcase", "tests/interfaces/contracts", "tests/dialects", "tests/dbspec/unicode", "examples"],
       "tests": ["packages/go/{cmd,decimalmodel,engine,generator,internal,markdownmodel,model,orm,procevent,testcase}/**/coverage_*_test.go"],
       "support": ["packages/go/engine/dbspec/case_clock_test.go", "packages/go/engine/dbspec/vector_reader_test.go", "packages/go/model/coverage_helpers_test.go", "packages/go/orm/coverage_fixture_test.go", "packages/go/orm/failing_driver_test.go", "packages/go/orm/schema_helpers_test.go", "packages/go/orm/statement_events_export_test.go", "packages/go/orm/test_helpers_test.go"],
       "args": ["-tags", "physical,ormtest,markdown,featurecoverage"],
@@ -814,7 +814,7 @@
     {"id": "go-internal-packages-go-orm-write-set", "kind": "feature", "profile": "go-internal", "bindings": [{"implementation": "go", "test": "packages/go/orm/write_set_test.go", "id": "TestWasInsertedTracksGeneratedRows"}]},
     {"id": "go-internal-packages-go-testcase-stall", "kind": "feature", "profile": "go-internal", "bindings": [{"implementation": "go", "test": "packages/go/testcase/stall_test.go", "id": "TestStepBudgetScalesWithTheSteps"}]},
     {"id": "go-internal-packages-go-testcase-testcase", "kind": "feature", "profile": "go-internal", "bindings": [{"implementation": "go", "test": "packages/go/testcase/testcase_test.go", "id": "TestFixturePass"}]},
-    {"id": "go-internal-tests-conformance-runner-go-main", "kind": "feature", "profile": "go-internal", "bindings": [{"implementation": "go", "test": "tests/conformance/runner_go/main_test.go", "id": "TestPickRejectsUnselectedField"}]},
+    {"id": "go-internal-conformance-runner-main", "kind": "feature", "profile": "go-internal", "bindings": [{"implementation": "go", "test": "packages/go/internal/conformance/main_test.go", "id": "TestPickRejectsUnselectedField"}]},
     {"id": "go-internal-tests-dbspec-unicode-main", "kind": "feature", "profile": "go-internal", "bindings": [{"implementation": "go", "test": "tests/dbspec/unicode/main_test.go", "id": "TestCommittedTablesAreGenerated"}]},
     {"id": "go-internal-tests-dialects-apply-clients-physical", "kind": "feature", "profile": "go-internal", "bindings": [{"implementation": "go", "test": "tests/dialects/apply_clients_physical_test.go", "id": "TestApplyChainAcrossClients"}]},
     {"id": "go-internal-tests-dialects-apply-physical", "kind": "feature", "profile": "go-internal", "bindings": [{"implementation": "go", "test": "tests/dialects/apply_physical_test.go", "id": "TestApplyChain"}]},

@@ -51,7 +51,7 @@ func TestCoverageConformanceVector(t *testing.T) {
 		}
 	}
 
-	cmd := exec.Command("go", "run", "./tests/conformance/runner_go", "-dsn", dsn, "-vector", names[0], "-vector", names[1])
+	cmd := exec.Command("go", "run", "./packages/go/internal/conformance", "-dsn", dsn, "-vector", names[0], "-vector", names[1])
 	cmd.Dir = root
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
@@ -125,7 +125,7 @@ func runConformanceVectors(t *testing.T, dsnVariable, expectFile string) {
 	if err := json.Unmarshal(raw, &recorded); err != nil {
 		t.Fatalf("%s: %v", expectFile, err)
 	}
-	cmd := exec.Command("go", "run", "-tags", "ormtest", "./tests/conformance/runner_go", "-dsn", dsn)
+	cmd := exec.Command("go", "run", "-tags", "ormtest", "./packages/go/internal/conformance", "-dsn", dsn)
 	cmd.Dir = root
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr

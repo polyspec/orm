@@ -1,5 +1,5 @@
 <!-- doc-id: tests-conformance-readme -->
-<!-- source-sha256: 966bc24549c861211d6b6204aa39bd5680f56c83b5516345a3ac8a093ab4873a -->
+<!-- source-sha256: fe80e221c124632fc961eb94b664bb16c35096054b025e2d17ecee1b0e280b5f -->
 # 적합성 벡터
 
 한 문서와 다섯 실행기를 사용한다. 각 벡터는 Go, PHP, Rust, TypeScript, Python으로 같은 체인을 작성한다. 각 실행기는 데이터베이스에서 체인을 실행하고 다음 JSON을 출력한다.
@@ -13,14 +13,14 @@
 `check`는 JSON 숫자를 정확한 유리수 값으로 비교하고 기록할 때 원래 십진 표현을 보존한다. 객체 키는 출력에서 정렬한다. SQL, bind 순서와 타입, 결과를 `vectors.json`과 비교한다. 2^53을 넘는 서로 다른 정수도 구분하며 동등한 십진 표현은 같은 값으로 처리한다. 날짜 형식은 `YYYY-MM-DD HH:MM:SS[.ffffff]`다.
 어느 깊이의 객체든 중복 키가 있거나 데이터베이스 기대값 파일이 없으면 실패한다.
 기본 파일과 데이터베이스 기대값 파일에는 비어 있지 않은 고유 벡터 이름과 정확히 같은 벡터 집합이 필요하다. 기대값 이름이 누락되거나 추가되면 비교와 기록이 실패한다.
-벡터 `clock_truncate_write`와 `clock_compare_six_digits`는 각 클라이언트의 test entry point로 executor clock을 고정한다([protocol](../../docs/protocol.ko.md) 3.3). `check run`은 Go 실행기를 tag `ormtest`로 build하며 그 파일 `runner_go/clock_ormtest.go`가 두 벡터를 선언하고, Rust 실행기의 crate는 feature `test-faults`를 켠다. TypeScript 실행기는 `dist/testing.js`를 import하고, PHP 실행기는 `testing/Faults.php`를 require하며, Python 실행기는 `polyspec.orm.testing`을 import한다.
+벡터 `clock_truncate_write`와 `clock_compare_six_digits`는 각 클라이언트의 test entry point로 executor clock을 고정한다([protocol](../../docs/protocol.ko.md) 3.3). `check run`은 Go 실행기를 tag `ormtest`로 build하며 그 파일 `packages/go/internal/conformance/clock_ormtest.go`가 두 벡터를 선언하고, Rust 실행기의 crate는 feature `test-faults`를 켠다. TypeScript 실행기는 `dist/testing.js`를 import하고, PHP 실행기는 `testing/Faults.php`를 require하며, Python 실행기는 `polyspec.orm.testing`을 import한다.
 `write_cycle` 기대값은 생성한 행과 갱신한 행의 `json_setting`, `serialize_data`에 값 스타일 컬럼의 태그 값을 사용한다.
 
 | 파일 | 역할 |
 |---|---|
 | `vectors.json` | 벡터 이름, 체인, MySQL 기대값 |
 | `vectors.postgres.json`, `vectors.sqlite.json` | PostgreSQL과 SQLite 기대값 |
-| `runner_go/main.go` | Go 실행기(`packages/go/model`의 생성 모델) |
+| `packages/go/internal/conformance/main.go` | Go 실행기(`packages/go/model`의 생성 모델) |
 | `runner.php` | PHP 실행기(PDO) |
 | `packages/rust/tests/src/conformance.rs` | Rust 실행기(`polyspec-orm-build` 생성 모델, sqlx) |
 | `runner_typescript.mts` | TypeScript 실행기(네이티브 데이터베이스 드라이버) |

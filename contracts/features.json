@@ -816,7 +816,7 @@
         "packages/go/orm/jsontext_order_test.go",
         "packages/rust/orm/tests/model_output.rs",
         "packages/rust/orm/tests/value_decode.rs",
-        "tests/conformance/runner_go/main_test.go",
+        "packages/go/internal/conformance/main_test.go",
         "packages/go/decimalmodel/decimal_physical_test.go",
         "packages/php/tests/DecimalModelTest.php",
         "packages/php/tests/DecimalModelDbTest.php",
@@ -7695,8 +7695,8 @@
         "packages/php/tests/IrAnswersTest.php",
         "packages/python/tests/ir_answers.py",
         "tests/conformance/check/main.mts",
-        "tests/conformance/runner_go/main.go",
-        "tests/conformance/runner_go/main_test.go",
+        "packages/go/internal/conformance/main.go",
+        "packages/go/internal/conformance/main_test.go",
         "tests/conformance/check/styled-expectations.test.mts",
         "tests/conformance/check/rust-group.physical.test.mts",
         "tests/conformance/runner.php",
@@ -7773,10 +7773,10 @@
         },
         {
           "id": "conformance-build",
-          "command": "node tests/run-long.mts go-vet/conformance -- go vet -tags ormtest ./tests/conformance/runner_go",
+          "command": "node tests/run-long.mts go-vet/conformance -- go vet -tags ormtest ./packages/go/internal/conformance",
           "shard": "other",
           "inputs": [
-            "tests/conformance/runner_go/*.go"
+            "packages/go/internal/conformance/*.go"
           ]
         },
         {
@@ -7794,10 +7794,10 @@
         },
         {
           "id": "conformance-runner-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./tests/conformance/runner_go -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/internal/conformance -count=1",
           "shard": "other",
           "inputs": [
-            "tests/conformance/runner_go/main_test.go"
+            "packages/go/internal/conformance/main_test.go"
           ]
         },
         {
