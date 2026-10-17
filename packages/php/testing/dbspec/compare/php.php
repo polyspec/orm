@@ -6,13 +6,13 @@ declare(strict_types=1);
 // 결과를 tests/dbspec/compare/check.mts의 줄 형식으로 출력한다. It then prints the positions cases of cases.json and
 // the analysis and format of each case of syntax.json.
 //
-// Usage: php tests/dbspec/compare/php.php <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
+// Usage: php packages/php/testing/dbspec/compare/php.php <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
 
-require __DIR__ . '/../../../vendor-php/autoload.php';
+require __DIR__ . '/../../../../../vendor-php/autoload.php';
 require __DIR__ . '/php-interface.php';
 
 if ($argc !== 7) {
-    fwrite(STDERR, "usage: php tests/dbspec/compare/php.php <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>\n");
+    fwrite(STDERR, "usage: php packages/php/testing/dbspec/compare/php.php <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>\n");
     exit(2);
 }
 

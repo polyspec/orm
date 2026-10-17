@@ -2,15 +2,15 @@
 // 형식으로 쓴다: stdout에 canonical 문서와 미지원 객체 줄
 // "! kind<TAB>table<TAB>name", stderr에 "elapsed <ms>".
 //
-// Usage: node tests/dbspec/introspect/typescript.mts <mysql|postgres|sqlite> <uri>
+// Usage: node packages/ts/testing/dbspec/introspect/typescript.mts <mysql|postgres|sqlite> <uri>
 import { DatabaseSync } from 'node:sqlite';
 import mysql from 'mysql2/promise';
 import pg from 'pg';
-import { emitDbspec, introspectDbspec, type DbspecIntrospection } from '../../../packages/ts/dist/index.js';
+import { emitDbspec, introspectDbspec, type DbspecIntrospection } from '../../../dist/index.js';
 
 const [dialect, uri, ...rest] = process.argv.slice(2);
 if (dialect === undefined || uri === undefined || rest.length > 0) {
-  console.error('usage: node tests/dbspec/introspect/typescript.mts <mysql|postgres|sqlite> <uri>');
+  console.error('usage: node packages/ts/testing/dbspec/introspect/typescript.mts <mysql|postgres|sqlite> <uri>');
   process.exit(2);
 }
 const url = new URL(uri);

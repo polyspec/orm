@@ -95,10 +95,10 @@ func TestApplyChainAcrossClients(t *testing.T) {
 	}
 	runners := map[string][]string{
 		"go":            {goRunner},
-		"php":           {"php", "tests/dbspec/apply/php.php"},
-		"typescript":    {"node", "tests/dbspec/apply/typescript.mts"},
+		"php":           {"php", "packages/php/testing/dbspec/apply/php.php"},
+		"typescript":    {"node", "packages/ts/testing/dbspec/apply/typescript.mts"},
 		"rust":          {rustRunner},
-		"php-extension": {"php", "-d", "extension=" + extension, "tests/dbspec/apply/php-extension.php"},
+		"php-extension": {"php", "-d", "extension=" + extension, "packages/php-ext/testing/dbspec/apply/php-extension.php"},
 		"python":        {python, "packages/python/tests/dbspec_apply_runner.py"},
 	}
 	// 동시에 도는 다른 test run과 겹치지 않도록 database 이름에 pid와 random 값을 넣는다.

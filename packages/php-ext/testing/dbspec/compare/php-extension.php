@@ -7,12 +7,12 @@ declare(strict_types=1);
 // 같은 함수로 쓴다. It then prints the positions cases of cases.json and the analysis and format of each case of
 // syntax.json.
 //
-// Usage: php -d extension=<orm_dbspec library> tests/dbspec/compare/php-extension.php <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
+// Usage: php -d extension=<orm_dbspec library> packages/php-ext/testing/dbspec/compare/php-extension.php <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
 
-require __DIR__ . '/php-interface.php';
+require __DIR__ . '/../../../../php/testing/dbspec/compare/php-interface.php';
 
 if ($argc !== 7) {
-    fwrite(STDERR, "usage: php -d extension=<orm_dbspec library> tests/dbspec/compare/php-extension.php <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>\n");
+    fwrite(STDERR, "usage: php -d extension=<orm_dbspec library> packages/php-ext/testing/dbspec/compare/php-extension.php <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>\n");
     exit(2);
 }
 if (!extension_loaded('orm_dbspec')) {

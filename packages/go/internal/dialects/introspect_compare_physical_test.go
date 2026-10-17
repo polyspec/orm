@@ -80,10 +80,10 @@ func TestIntrospectCompare(t *testing.T) {
 		args   []string
 	}{
 		{"go", []string{"go", "run", "./packages/go/internal/dbspec/introspect"}},
-		{"php", []string{"php", "tests/dbspec/introspect/php.php"}},
-		{"typescript", []string{"node", "tests/dbspec/introspect/typescript.mts"}},
+		{"php", []string{"php", "packages/php/testing/dbspec/introspect/php.php"}},
+		{"typescript", []string{"node", "packages/ts/testing/dbspec/introspect/typescript.mts"}},
 		{"rust", []string{rustRunner}},
-		{"php-extension", []string{"php", "-d", "extension=" + extension, "tests/dbspec/introspect/php-extension.php"}},
+		{"php-extension", []string{"php", "-d", "extension=" + extension, "packages/php-ext/testing/dbspec/introspect/php-extension.php"}},
 		{"python", []string{pythonRunner, "packages/python/tests/dbspec_introspect_runner.py"}},
 	}
 	for _, dialect := range []string{"mysql", "postgres", "sqlite"} {

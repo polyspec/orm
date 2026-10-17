@@ -6,15 +6,15 @@ declare(strict_types=1);
 // 형식으로 쓴다: stdout 에 canonical 문서와 미지원 객체 줄
 // "! kind<TAB>table<TAB>name", stderr 에 "elapsed <ms>".
 //
-// Usage: php tests/dbspec/introspect/php.php <mysql|postgres|sqlite> <uri>
+// Usage: php packages/php/testing/dbspec/introspect/php.php <mysql|postgres|sqlite> <uri>
 
-require __DIR__ . '/../../../vendor-php/autoload.php';
+require __DIR__ . '/../../../../../vendor-php/autoload.php';
 
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Orm;
 
 if ($argc !== 3) {
-    fwrite(STDERR, "usage: php tests/dbspec/introspect/php.php <mysql|postgres|sqlite> <uri>\n");
+    fwrite(STDERR, "usage: php packages/php/testing/dbspec/introspect/php.php <mysql|postgres|sqlite> <uri>\n");
     exit(2);
 }
 [, $dialect, $uri] = $argv;

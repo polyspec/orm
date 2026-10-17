@@ -30,8 +30,8 @@ function pythonCommand() {
 
 export const runners: (Runner & { reads: string[] })[] = [
   { name: 'go', command: 'go', args: ['run', './packages/go/internal/dbspec/compare'], reads: INPUTS },
-  { name: 'php', command: 'php', args: ['tests/dbspec/compare/php.php'], reads: INPUTS },
-  { name: 'typescript', command: process.execPath, args: ['tests/dbspec/compare/typescript.mts'], reads: INPUTS },
+  { name: 'php', command: 'php', args: ['packages/php/testing/dbspec/compare/php.php'], reads: INPUTS },
+  { name: 'typescript', command: process.execPath, args: ['packages/ts/testing/dbspec/compare/typescript.mts'], reads: INPUTS },
   {
     name: 'python',
     get command() {
@@ -45,7 +45,7 @@ export const runners: (Runner & { reads: string[] })[] = [
     name: 'php-extension',
     command: 'php',
     get args() {
-      return ['-d', `extension=${phpExtension()}`, 'tests/dbspec/compare/php-extension.php'];
+      return ['-d', `extension=${phpExtension()}`, 'packages/php-ext/testing/dbspec/compare/php-extension.php'];
     },
     reads: INPUTS,
   },

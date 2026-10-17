@@ -4,10 +4,7 @@
   "entries": {
     "docs/.vitepress/config.mts": "the VitePress configuration of the site under docs/, which make docs-build runs with vitepress build docs",
     "docs/.vitepress/theme/index.ts": "the VitePress theme of the site under docs/, which VitePress loads by its path",
-    "tests/dbspec/apply/typescript.mts": "the TypeScript apply runner, which the Go physical apply tests spawn",
-    "tests/dbspec/compare/typescript.mts": "the TypeScript compare runner, which tests/dbspec/compare/runners.mts spawns",
     "tests/dbspec/compare/check.mts": "the dbspec comparison check, which make runs with node",
-    "tests/dbspec/introspect/typescript.mts": "the TypeScript introspect runner, which the Go physical introspect tests spawn",
     "tests/dbspec/stress.mts": "the writer of the stress documents, which make runs with node",
     "tests/go-run.mts": "the Go test runner, which the repository checks and the CI spawn"
   },
@@ -19,6 +16,9 @@
         "tests/*.ts": "the type tests of the TypeScript client, which tsc checks through packages/ts/tsconfig.json and orm-gen scans for the models",
         "testing/conformance/runner_typescript.mts": "the TypeScript conformance runner, which tests/conformance/check/main.mts spawns",
         "testing/interfaces/typescript.mts": "the TypeScript declaration extractor, which tests/interfaces/check spawns with its own TypeScript",
+        "testing/dbspec/apply/typescript.mts": "the TypeScript apply runner, which the Go physical apply tests spawn",
+        "testing/dbspec/compare/typescript.mts": "the TypeScript compare runner, which tests/dbspec/compare/runners.mts spawns",
+        "testing/dbspec/introspect/typescript.mts": "the TypeScript introspect runner, which the Go physical introspect tests spawn",
         "src/tools/cli.ts": "the dbspec tool command that the dbspec checks run from packages/ts/dist",
         "src/models/markdown_fixture/models.ts": "the generated models of the Markdown fixture, which the markdown tests load from dist",
         "src/models/decimal_fixture/models.ts": "the generated models of the decimal fixture, which the decimal tests load from dist"

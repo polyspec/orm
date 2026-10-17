@@ -2,16 +2,16 @@
 // dbspec 결과를 tests/dbspec/compare/check.mts의 줄 형식으로 출력한다. It then prints the positions cases of
 // cases.json and the analysis and format of each case of syntax.json.
 //
-// Usage: node tests/dbspec/compare/typescript.mts <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
+// Usage: node packages/ts/testing/dbspec/compare/typescript.mts <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
 // (TypeScript build 뒤)
 import { readFileSync } from 'node:fs';
 import { dirname, join as joinPath } from 'node:path';
-import { parseCases, type Cases } from '../cases.mts';
-import { readVectors, vectorProblems } from '../vectors.mts';
-import { join, vectorInputs } from '../../../scripts/dbspec/syntax-vectors.mts';
-import { SchemaError } from '../../../scripts/json/schema.mts';
-import { errorMessage } from '../../errors.mts';
-import { readInput } from '../input.mts';
+import { parseCases, type Cases } from '../../../../../tests/dbspec/cases.mts';
+import { readVectors, vectorProblems } from '../../../../../tests/dbspec/vectors.mts';
+import { join, vectorInputs } from '../../../../../scripts/dbspec/syntax-vectors.mts';
+import { SchemaError } from '../../../../../scripts/json/schema.mts';
+import { errorMessage } from '../../../../../tests/errors.mts';
+import { readInput } from '../../../../../tests/dbspec/input.mts';
 import {
   analyzeDbspec,
   chainPlans,
@@ -38,11 +38,11 @@ import {
   type DbspecPlanStep,
   type DbspecReadResult,
   type DbspecUnsupported,
-} from '../../../packages/ts/dist/dbspec/index.js';
+} from '../../../dist/dbspec/index.js';
 
 const [casesPath, stressPath, ddlPath, plansPath, mermaidPath, syntaxPath] = process.argv.slice(2);
 if (casesPath === undefined || stressPath === undefined || ddlPath === undefined || plansPath === undefined || mermaidPath === undefined || syntaxPath === undefined) {
-  console.error('usage: node tests/dbspec/compare/typescript.mts <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>');
+  console.error('usage: node packages/ts/testing/dbspec/compare/typescript.mts <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>');
   process.exit(2);
 }
 

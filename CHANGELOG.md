@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The PHP and TypeScript dbspec adapters live in packages/php, packages/php-ext and packages/ts under testing/dbspec, and the comparators, the Go physical tests and the layout name the new paths. (#T77-9-2-4)
 - `make -s feature-unit-check/docs` passes: docs/features.md and docs/features.ko.md are regenerated from contracts/features.json. (#T198-3)
 - The TypeScript and PHP interface extractors live in packages/ts/testing/interfaces and packages/php/testing/interfaces, with the TypeScript extractor project beside them, and the interface checker, the layout and the dependency records name the new paths. (#T77-9-2-3)
 - The TypeScript client exports the codec functions as `decode` and `encode`, the names that Go, PHP, Rust and Python use; the aliases `decodeCodec` and `encodeCodec` are removed. (#T77-8-1-1)

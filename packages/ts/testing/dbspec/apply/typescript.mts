@@ -5,12 +5,12 @@
 // 끝냄), rollback(history의 마지막 plan을 되돌림) 중 하나다. stdout에는 결과 한 줄을 쓴다: "ok", "stopped" 또는
 // "error <code>". 그 밖의 error는 stderr에 쓰고 1로 끝난다.
 //
-// Usage: node tests/dbspec/apply/typescript.mts <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
+// Usage: node packages/ts/testing/dbspec/apply/typescript.mts <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
 import { DatabaseSync } from 'node:sqlite';
 import mysql from 'mysql2/promise';
 import pg from 'pg';
-import { DbspecApplyError, applyPlans, parsePlan, recoverPlans, rollbackPlans, type DbspecApplyHandler, type DbspecPlan } from '../../../packages/ts/dist/dbspec/index.js';
-import { readVectors } from '../vectors.mts';
+import { DbspecApplyError, applyPlans, parsePlan, recoverPlans, rollbackPlans, type DbspecApplyHandler, type DbspecPlan } from '../../../dist/dbspec/index.js';
+import { readVectors } from '../../../../../tests/dbspec/vectors.mts';
 
 // 모든 client가 새 connection에서 실행하는 statement다(packages/go/internal/dialects connectionRules).
 const CONNECTION_RULES = {
@@ -21,7 +21,7 @@ const CONNECTION_RULES = {
 
 const [action, dialect, uri, vectorsPath, ...rest] = process.argv.slice(2);
 if (action === undefined || dialect === undefined || uri === undefined || vectorsPath === undefined || rest.length > 0) {
-  console.error('usage: node tests/dbspec/apply/typescript.mts <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>');
+  console.error('usage: node packages/ts/testing/dbspec/apply/typescript.mts <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>');
   process.exit(2);
 }
 const url = new URL(uri);

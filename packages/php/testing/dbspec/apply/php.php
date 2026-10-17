@@ -9,10 +9,10 @@ declare(strict_types=1);
 // 끝냄), rollback(history 의 마지막 plan 을 되돌림) 중 하나다. stdout 에는 결과 한 줄을 쓴다: "ok", "stopped" 또는
 // "error <code>". 그 밖의 error 는 stderr 에 쓰고 1 로 끝난다.
 //
-// Usage: php tests/dbspec/apply/php.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
+// Usage: php packages/php/testing/dbspec/apply/php.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
 
-require __DIR__ . '/../../../vendor-php/autoload.php';
-require __DIR__ . '/../input.php';
+require __DIR__ . '/../../../../../vendor-php/autoload.php';
+require __DIR__ . '/../../../../../tests/dbspec/input.php';
 
 use Polyspec\Orm\Dbspec\ApplyError;
 use Polyspec\Orm\Dbspec\ApplyEvent;
@@ -23,7 +23,7 @@ use Polyspec\Orm\Orm;
 const CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];
 
 if ($argc !== 5) {
-    fwrite(STDERR, "usage: php tests/dbspec/apply/php.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>\n");
+    fwrite(STDERR, "usage: php packages/php/testing/dbspec/apply/php.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>\n");
     exit(2);
 }
 [, $action, $dialect, $uri, $vectorsPath] = $argv;

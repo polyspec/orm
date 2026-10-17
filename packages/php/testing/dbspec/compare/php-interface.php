@@ -8,8 +8,8 @@ declare(strict_types=1);
 // dbspec_write_plans는 plan vector를, dbspec_write_mermaid는 Mermaid vector를 쓴다. 두 class는 같은 메서드와 결과
 // 모양을 가진다.
 
-require_once __DIR__ . '/../input.php';
-require_once __DIR__ . '/../cases.php';
+require_once __DIR__ . '/../../../../../tests/dbspec/input.php';
+require_once __DIR__ . '/../../../../../tests/dbspec/cases.php';
 
 /** vector file의 위치와 문제를 stderr에 쓰고 1로 끝낸다. */
 function dbspec_vector_fail(string $path, string $location, string $problem): never

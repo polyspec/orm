@@ -11,10 +11,10 @@ declare(strict_types=1);
 //
 // DSN 은 PHP client 의 Orm::parseDsn 으로 PDO 인자로 바꾼다.
 //
-// Usage: php -d extension=<orm_dbspec library> tests/dbspec/apply/php-extension.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
+// Usage: php -d extension=<orm_dbspec library> packages/php-ext/testing/dbspec/apply/php-extension.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
 
-require __DIR__ . '/../../../vendor-php/autoload.php';
-require __DIR__ . '/../input.php';
+require __DIR__ . '/../../../../../vendor-php/autoload.php';
+require __DIR__ . '/../../../../../tests/dbspec/input.php';
 
 use Polyspec\Orm\Dbspec\Native\ApplyError;
 use Polyspec\Orm\Dbspec\Native\ApplyEvent;
@@ -25,7 +25,7 @@ use Polyspec\Orm\Orm;
 const CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];
 
 if ($argc !== 5) {
-    fwrite(STDERR, "usage: php -d extension=<orm_dbspec library> tests/dbspec/apply/php-extension.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>\n");
+    fwrite(STDERR, "usage: php -d extension=<orm_dbspec library> packages/php-ext/testing/dbspec/apply/php-extension.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>\n");
     exit(2);
 }
 if (!extension_loaded('orm_dbspec')) {
