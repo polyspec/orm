@@ -1,30 +1,30 @@
 <!-- doc-id: features -->
-<!-- source-sha256: e91ef8b05b2584fab6e2520c34d1ec836aac3499c3fc1e1309d8028a59358e83 -->
+<!-- source-sha256: b31f2070c31e8efc69dd9d7a3c90ccbae054db977da31105671fcff6db46c34b -->
 # 기능 정의
 
-실행 기준은 저장소의 기능 manifest이다. 먼저 manifest의 `source.read_order` 경로를 읽고 선택한 기능의 모든 참조 경로를 읽는다. 각 항목은 input, output, 상태 전이, 오류, client 지원 상태, fixture, test, paired document, 실제 검증 명령을 정의한다.
+실행 기준은 저장소의 기능 manifest이다. 먼저 manifest의 `source.read_order` 경로를 읽고 선택한 기능의 모든 참조 경로를 읽는다. 각 항목은 input, output, 상태 전이, 오류, parity unit, fixture, test, paired document, 실제 검증 명령을 정의한다.
 
-| ID | 기능 | 상태 | Client 지원 |
+| ID | 기능 | 상태 | 언어 |
 |---|---|---|---|
-| dsn_connection | DSN URI 연결 | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| model_queries | 모델 조회 | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| model_writes | 모델 쓰기 | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| transactions | 트랜잭션 | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| statement_events | Statement event | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| model_generation | 모델 생성 | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| schema_definition | 스키마 정의와 마이그레이션 | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| schema_install | 스키마 설치 | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| planner | 프로세스 내 planner | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| composite_keys | 복합 key | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| authenticated_encryption | 인증 암호화 | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| parameter_chunking | 파라미터 분할 | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| constraints_and_relations | 제약과 관계 | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| audit_triggers | 감사 트리거 | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| interface_contract | 공통 인터페이스 검증 | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| performance_gate | hot-path 성능 기준 | partial | go: pass<br>php: pass<br>typescript: planned<br>python: planned<br>rust: partial |
-| conformance_verification | 적합성 검증 | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| catalog_connection | Rust catalog 연결 | partial | go: unsupported<br>php: unsupported<br>typescript: unsupported<br>python: planned<br>rust: pass |
-| request_hook | Request hook | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
+| dsn_connection | DSN URI 연결 | implemented | go, php, typescript, python, rust |
+| model_queries | 모델 조회 | implemented | go, php, typescript, python, rust |
+| model_writes | 모델 쓰기 | implemented | go, php, typescript, python, rust |
+| transactions | 트랜잭션 | implemented | go, php, typescript, python, rust |
+| statement_events | Statement event | implemented | go, php, typescript, python, rust |
+| model_generation | 모델 생성 | implemented | go, php, typescript, python, rust |
+| schema_definition | 스키마 정의와 마이그레이션 | implemented | go, php, typescript, python, rust |
+| schema_install | 스키마 설치 | implemented | go, php, typescript, python, rust |
+| planner | 프로세스 내 planner | implemented | go, php, typescript, python, rust |
+| composite_keys | 복합 key | implemented | go, php, typescript, python, rust |
+| authenticated_encryption | 인증 암호화 | implemented | go, php, typescript, python, rust |
+| parameter_chunking | 파라미터 분할 | implemented | go, php, typescript, python, rust |
+| constraints_and_relations | 제약과 관계 | implemented | go, php, typescript, python, rust |
+| audit_triggers | 감사 트리거 | implemented | go, php, typescript, python, rust |
+| interface_contract | 공통 인터페이스 검증 | implemented | go, php, typescript, python, rust |
+| performance_gate | hot-path 성능 기준 | partial | php, rust |
+| conformance_verification | 적합성 검증 | implemented | go, php, typescript, python, rust |
+| catalog_connection | Rust catalog 연결 | partial | rust |
+| request_hook | Request hook | implemented | go, php, typescript, python, rust |
 
 ## 현재 동작
 
@@ -43,7 +43,7 @@
 - `constraints_and_relations`: CHECK 제약, index, 내부와 외부 foreign key, soft delete, 변경 불가 테이블, 관계 삭제 동작을 planner와 migration 시스템에서 유지한다.
 - `audit_triggers`: 테이블의 audit 설정은 audit column과, 그 column의 선언한 restrict foreign key의 대상인 audit 기록 테이블을 정하고, 삽입·갱신된 모든 행을 선언한 history 테이블에 복사하는 행 trigger를 설치한다. 설정은 모든 column을, 또는 exclude나 include 목록이 고른 column만 기록하며, history 테이블은 기록하는 column만 가진다. 연결 설정은 현재 요청의 audit 값을 돌려주는 audit source를 받고, audit 값을 가진 트랜잭션은 이를 한 번 불러 callback 전에 그 값과 트랜잭션의 값으로 감사 대상 테이블이 references로 정한 테이블에 audit 기록 하나를 삽입한다. 트랜잭션 안의 모든 감사 대상 insert, update, soft delete, restore는 그 기록의 key를 쓰며, 이는 모든 트랜잭션 진입점에서 같다: 연결이나 그 context, signal handle을 통한 Go Transaction, PHP transaction, TypeScript transaction, 그리고 Rust transaction, transaction_send, transaction_once다. 중첩 트랜잭션은 바깥 audit을 유지한다.
 - `interface_contract`: 모든 클라이언트는 contracts/interfaces.json에 선언한 공개 심볼을 노출한다. 각 언어는 모델 코드를 실행하지 않고 실제 구문 트리에서 선언을 뽑고, 비교 도구는 심볼, 필드, 반환, 오류가 공통 인터페이스와 다르면 실패한다.
-- `performance_gate`: Go와 PHP 클라이언트는 seed한 MySQL 벤치 데이터베이스에서 hot-path 지연 시간을 순수 드라이버와의 비율로 재며, make perf-check는 비율을 출력하고 작업량이 기록한 기준값을 넘으면 경고한다. 측정은 그것을 실패시키지 않는다. Rust 벤치 도구는 기준값 없이 측정만 하고 TypeScript 기준은 만들지 않았다.
+- `performance_gate`: PHP 클라이언트는 seed한 MySQL 벤치 데이터베이스에서 hot-path 지연 시간을 순수 드라이버와의 비율로 재며, make perf-check는 비율을 출력하고 작업량이 기록한 기준값을 넘으면 경고한다. 측정은 그것을 실패시키지 않는다. Rust 벤치 도구는 기준값 없이 측정만 하고 TypeScript 기준은 만들지 않았다.
 - `conformance_verification`: 같은 모델 체인을 Go, PHP, Rust, TypeScript, Python에서 MySQL, PostgreSQL, SQLite로 실행하고 statement와 결과를 기록된 벡터와 비교한다.
 - `catalog_connection`: live-db feature가 켜진 polyspec-orm-build는 하나의 DSN으로 catalog 연결을 열고, table metadata와 제한된 table page를 읽고, dialect로 parse한 read-only query를 실행하며, 검증된 snapshot으로 row를 insert, update, delete한다. Rust client만 제공한다.
 - `request_hook`: 연결 handle은 hook 하나를 가지며, 그 hook은 handle의 각 request를 plan 직전에 받는다: 읽기, count, page, 행 하나나 여러 행의 insert, update, delete, restore, getQuery다. hook은 client의 매개변수 추가 호출로 predicate, assignment, 매개변수를 더할 수 있다. client는 n_params를 쓰고 request를 다른 request처럼 plan하므로 planner가 검증하고 plan cache는 그 request로 key를 정한다. handle의 행과 transaction은 hook을 지키며, client는 hook에 자기 의미를 붙이지 않는다.

@@ -1,29 +1,29 @@
 <!-- doc-id: features -->
 # Feature definitions
 
-The executable source is the repository feature manifest. Read the manifest, then its `source.read_order` paths and every path listed by the selected feature. Each entry defines inputs, outputs, state transitions, errors, client support, fixtures, tests, paired documentation, and executable verification commands.
+The executable source is the repository feature manifest. Read the manifest, then its `source.read_order` paths and every path listed by the selected feature. Each entry defines inputs, outputs, state transitions, errors, parity units, fixtures, tests, paired documentation, and executable verification commands.
 
-| ID | Feature | Status | Client support |
+| ID | Feature | Status | Languages |
 |---|---|---|---|
-| dsn_connection | DSN URI connection | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| model_queries | Model queries | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| model_writes | Model writes | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| transactions | Transactions | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| statement_events | Statement events | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| model_generation | Model generation | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| schema_definition | Schema definition and migration | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| schema_install | Schema installation | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| planner | In-process planner | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| composite_keys | Composite keys | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| authenticated_encryption | Authenticated encryption | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| parameter_chunking | Parameter chunking | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| constraints_and_relations | Constraints and relations | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| audit_triggers | Audit triggers | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| interface_contract | Common interface verification | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| performance_gate | Hot-path performance standard | partial | go: pass<br>php: pass<br>typescript: planned<br>python: planned<br>rust: partial |
-| conformance_verification | Conformance verification | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
-| catalog_connection | Rust catalog connection | partial | go: unsupported<br>php: unsupported<br>typescript: unsupported<br>python: planned<br>rust: pass |
-| request_hook | Request hook | implemented | go: pass<br>php: pass<br>typescript: pass<br>python: pass<br>rust: pass |
+| dsn_connection | DSN URI connection | implemented | go, php, typescript, python, rust |
+| model_queries | Model queries | implemented | go, php, typescript, python, rust |
+| model_writes | Model writes | implemented | go, php, typescript, python, rust |
+| transactions | Transactions | implemented | go, php, typescript, python, rust |
+| statement_events | Statement events | implemented | go, php, typescript, python, rust |
+| model_generation | Model generation | implemented | go, php, typescript, python, rust |
+| schema_definition | Schema definition and migration | implemented | go, php, typescript, python, rust |
+| schema_install | Schema installation | implemented | go, php, typescript, python, rust |
+| planner | In-process planner | implemented | go, php, typescript, python, rust |
+| composite_keys | Composite keys | implemented | go, php, typescript, python, rust |
+| authenticated_encryption | Authenticated encryption | implemented | go, php, typescript, python, rust |
+| parameter_chunking | Parameter chunking | implemented | go, php, typescript, python, rust |
+| constraints_and_relations | Constraints and relations | implemented | go, php, typescript, python, rust |
+| audit_triggers | Audit triggers | implemented | go, php, typescript, python, rust |
+| interface_contract | Common interface verification | implemented | go, php, typescript, python, rust |
+| performance_gate | Hot-path performance standard | partial | php, rust |
+| conformance_verification | Conformance verification | implemented | go, php, typescript, python, rust |
+| catalog_connection | Rust catalog connection | partial | rust |
+| request_hook | Request hook | implemented | go, php, typescript, python, rust |
 
 ## Current behavior
 
@@ -42,7 +42,7 @@ The executable source is the repository feature manifest. Read the manifest, the
 - `constraints_and_relations`: Keep CHECK constraints, indexes, internal and external foreign keys, soft delete, immutable tables, and relation delete actions in the planner and the migration system.
 - `audit_triggers`: The audit setting of a table names its audit column and the audit record table that the column refers to through a declared restrict foreign key, and installs row triggers that copy every inserted and updated row into the declared history table; the setting records every column, or only the columns that an exclude or include list selects, and the history table holds exactly the recorded columns. The connection configuration takes an audit source, a function that returns the audit values of the current request, and a transaction with audit values calls it once and inserts one audit record from its values and the transaction's into the table that the audited tables reference, before the callback; every audited insert, update, soft delete and restore in the transaction writes the record's key, on every transaction entry point: Go Transaction, PHP transaction and TypeScript transaction through the connection or its context or signal handle, and Rust transaction, transaction_send and transaction_once. A nested transaction keeps the outer audit.
 - `interface_contract`: Every client exposes the public symbols declared in contracts/interfaces.json. Each language extracts its declarations from real syntax trees without running model code, and the comparator fails when a symbol, field, return, or error differs from the common interface.
-- `performance_gate`: The Go client and the PHP client measure hot-path latency as a ratio to the raw driver on the seeded MySQL bench database, and make perf-check prints each ratio and warns when a workload exceeds its recorded reference; a measurement never fails it. The Rust bench harness measures without a reference, and the TypeScript standard is not built.
+- `performance_gate`: The PHP client measures hot-path latency as a ratio to the raw driver on the seeded MySQL bench database, and make perf-check prints each ratio and warns when a workload exceeds its recorded reference; a measurement never fails it. The Rust bench harness measures without a reference, and the TypeScript standard is not built.
 - `conformance_verification`: Run the same model chains in Go, PHP, Rust, TypeScript, and Python on MySQL, PostgreSQL, and SQLite and compare the statements and results with the recorded vectors.
 - `catalog_connection`: With the live-db feature, polyspec-orm-build opens a catalog connection from one DSN, reads table metadata and bounded table pages, runs dialect-parsed read-only queries, and inserts, updates and deletes rows with verified snapshots. Only the Rust client provides it.
 - `request_hook`: A connection handle carries one hook that receives each request of the handle right before planning: reads, counts, pages, inserts with one row or rows, updates, deletes, restores and getQuery. The hook may add predicates, assignments and parameters through the client's add-parameter call; the client sets n_params and plans the request as any other, so the planner validates it and the plan cache keys on it. Rows and transactions of the handle keep the hook, and the client gives the hook no meaning of its own.
