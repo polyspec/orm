@@ -3,6 +3,7 @@
 
 ## Unreleased
 - The Go performance gate is a benchmark of the tools root packages/go/bench, which belongs to no implementation, so its go-internal parity unit is removed; the gate still runs as the performance_gate feature. (#T77-8-1-1)
+- The Rust conformance runner has the NULL collection key handler relation_null_key (T77-6-1-4).
 - The PHP conformance runner has the NULL collection key handler relation_null_key (T77-6-1-3).
 - The Go conformance runner has the NULL collection key handler relation_null_key; its expectation is recorded with the database runs (T77-6-1-2).
 - The generated-file check is kit's pre-commit hook: config/generated.json declares the repository's paths and exceptions, and the local hook and staged check are removed (T77-16).

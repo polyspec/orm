@@ -450,6 +450,15 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         let rows = author().relations(ServiceMember::new().match_user_seq_with_user_seq()).gets_by_seq(-1).await?;
         Ok::<Value, polyspec_orm::Error>(json!(rows.len()))
     });
+    run!("relation_null_key", async {
+        let rows = User::new()
+            .connect(db)
+            .relations(Author::new().match_seq_with_user_seq().key_name_price())
+            .seq(100)
+            .gets()
+            .await?;
+        Ok::<Value, polyspec_orm::Error>(json!(rows.len()))
+    });
     run!("subqueries", async {
         let users = User::new()
             .connect(db)
