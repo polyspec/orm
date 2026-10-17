@@ -247,6 +247,39 @@ fn arguments_reject_missing_duplicate_and_unknown_flags() {
     }
 }
 
+/// Every vector of the vector files is declared in `vectors`, so a run without `--vector` reports each of them by name.
+/// The declared names are read from this file: the first string literal after each run invocation. The call token is
+/// built with concat! so that this test does not count itself.
+#[test]
+fn every_vector_of_the_vector_files_is_declared() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let call = concat!("run", "!(");
+    let declared: Vec<&str> = include_str!("conformance.rs")
+        .split(call)
+        .skip(1)
+        .map(|rest| {
+            let literal = rest.trim_start().strip_prefix('"').unwrap_or_else(|| panic!("a vector invocation has no name literal"));
+            &literal[..literal.find('"').unwrap_or_else(|| panic!("a vector name literal is not closed"))]
+        })
+        .collect();
+    let mut seen = HashSet::new();
+    for name in &declared {
+        assert!(seen.insert(*name), "vector {name} is declared twice");
+    }
+    let dir = polyspec_orm_testcase::manifest_dir().join("../../../tests/conformance");
+    for file in ["vectors.json", "vectors.postgres.json", "vectors.sqlite.json"] {
+        let path = dir.join(file);
+        let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+        let recorded: Value = serde_json::from_str(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+        let vectors = recorded["vectors"].as_array().unwrap_or_else(|| panic!("{}: no vectors array", path.display()));
+        assert!(declared.len() >= vectors.len(), "{file}: the binding declares {} vectors for {} recorded", declared.len(), vectors.len());
+        for vector in vectors {
+            let name = vector["name"].as_str().unwrap_or_else(|| panic!("{file}: a vector has no name"));
+            assert!(seen.contains(name), "{file}: vector {name} is not declared by the conformance binding");
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let args = Args::parse(&std::env::args().skip(1).collect::<Vec<_>>()).unwrap_or_else(|e| {
