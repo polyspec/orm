@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1611510ab6589d0a66e60930ff7dc8a00805148184108e79b7220c78adbe171b -->
+<!-- source-sha256: b8d2ea400ade73c0b5161cdaa2f200ac63a3452572743add7b5934bc9a3c01f1 -->
 # 변경 이력
 
 ## Unreleased
 - Go 성능 gate는 tools root인 packages/go/bench의 benchmark다. 이 root는 어떤 구현에도 속하지 않으므로 그 go-internal parity unit을 없앴다. gate는 performance_gate feature로 계속 실행된다. (#T77-8-1-1)
+- 열린 행 T77-30, T77-31, T77-32는 TypeScript parity unit 실패 세 가지를 첫 오류 줄로 기록한다(T77-30 setDay 선언, T77-31 SQLite 파일, T77-32 재귀 node:test run).
 - 열린 행 T77-26과 T77-27은 parity 실행이 찾은 physical query-form test 실패를 기록한다(MySQL DSN 형식, place.location).
 - examples test가 옮겨진 Python 위치의 thin-slice를 실행한다(T77-29).
 - models script scan test가 models를 호출하는 conformance runner가 있는 TypeScript client testing 디렉터리를 다룬다(T77-28).
