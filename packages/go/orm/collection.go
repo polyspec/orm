@@ -23,6 +23,9 @@ type Key struct {
 
 // KeyOf converts a column value to a key.
 func KeyOf(v any) (Key, error) {
+	if v == nil {
+		return Key{}, codecErr(CodeCodecDecode, "collection row identity contains SQL NULL")
+	}
 	switch x := v.(type) {
 	case Key:
 		if x.tag != 0 {

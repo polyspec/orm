@@ -392,7 +392,9 @@ function collectionKey(c: Core, m: Core, asm: Assemble, row: readonly unknown[])
     const column = present(asm.columns.find(col => col.index === only.index), `the key column at ${only.index}`);
     return keyValue(m.values.get(column.name) ?? row[only.index]);
   }
-  return rowKey(row, asm.key) ?? '';
+  const key = rowKey(row, asm.key);
+  if (key === undefined) throw new OrmError('CODEC_DECODE', 'collection row identity contains SQL NULL');
+  return key;
 }
 
 async function load(c: Core, kind: 'one' | 'all'): Promise<Collection> {

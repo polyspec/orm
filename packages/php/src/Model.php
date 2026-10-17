@@ -1275,7 +1275,7 @@ abstract class Model implements \JsonSerializable
         throw new OrmException(Code::INTERNAL, "relation result $name without a model");
     }
 
-    private function collectionKey(Model $m, array $asm, array $vals): int|string
+    private function collectionKey(Model $m, array $asm, array $vals): int|string|bool|Bytes|\DateTimeInterface
     {
         if ($this->fetchKey !== null) {
             return Collection::keyOf(($this->fetchKey)($m));
@@ -1283,7 +1283,11 @@ abstract class Model implements \JsonSerializable
         if ($this->keyName !== '') {
             return Collection::keyOf(array_key_exists($this->keyName, $m->values) ? $m->value($this->keyName) : $m->row['extra'][$this->keyName] ?? null);
         }
-        return Db::rowKey($vals, $asm['key']) ?? '';
+        $key = Db::rowKey($vals, $asm['key']);
+        if ($key === null) {
+            throw new OrmException(Code::CODEC_DECODE, 'collection row identity contains SQL NULL');
+        }
+        return $key;
     }
 
     /** @return Collection<static> */

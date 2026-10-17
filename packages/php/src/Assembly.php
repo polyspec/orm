@@ -60,7 +60,7 @@ final class Assembly
         if ($ifp !== null && !Db::sameScalar($parent[$ifp['index']], $this->result['params'][$ifp['param']])) {
             return [];
         }
-        $key = Db::rowKey($parent, $ch['parent_keys']);
+        $key = Db::rowSlot($parent, $ch['parent_keys']);
         if ($key === null) {
             return [];
         }

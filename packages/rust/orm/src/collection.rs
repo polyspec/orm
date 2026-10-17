@@ -3,24 +3,43 @@
 use std::any::Any;
 use std::collections::HashMap;
 
+use chrono::NaiveDateTime;
+
 use crate::model::{AnyModel, Model};
 use crate::value::{Param, Val};
-use crate::Result;
+use crate::{Error, Result};
 
-/// A collection key. The integer 7 and the text "7" are different keys.
+/// A collection key. The integer 7 and the text "7" are different keys, and so are the boolean true and the
+/// integer 1; SQL NULL has no key.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Key {
     I(i64),
     S(String),
+    B(bool),
+    X(Vec<u8>),
+    T(NaiveDateTime),
+}
+
+fn null_key() -> Error {
+    Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "collection row identity contains SQL NULL".into() }
 }
 
 impl Key {
     pub fn of(v: &Val) -> Result<Key> {
         Ok(match v {
+            Val::Null => return Err(null_key()),
             Val::I64(x) => Key::I(*x),
-            Val::Bool(b) => Key::I(*b as i64),
+            Val::Bool(b) => Key::B(*b),
+            Val::Bytes(b) => Key::X(b.clone()),
+            Val::DateTime(t) => Key::T(*t),
             other => Key::S(other.as_string()?),
         })
+    }
+
+    /// The collection identity of a row: every key column, and SQL NULL in one of them is CODEC_DECODE.
+    pub fn of_collection_row(row: &[Val], refs: &[crate::plan::KeyRef]) -> Result<Key> {
+        let values: Vec<Val> = refs.iter().map(|r| row[r.index].clone()).collect();
+        Key::of_values(&values)
     }
 
     pub fn of_row(row: &[Val], refs: &[crate::plan::KeyRef]) -> Result<Option<Key>> {
@@ -42,6 +61,7 @@ impl Key {
         let mut out = String::new();
         for value in values {
             let part = match value {
+                Val::Null => return Err(null_key()),
                 Val::Bool(b) => (*b as i64).to_string(),
                 other => other.as_string()?,
             };
@@ -55,6 +75,9 @@ impl Key {
         match self {
             Key::I(x) => serde_json::json!(x),
             Key::S(s) => serde_json::json!(s),
+            Key::B(b) => serde_json::json!(b),
+            Key::X(bytes) => serde_json::json!(bytes.iter().map(|b| format!("{b:02x}")).collect::<String>()),
+            Key::T(t) => serde_json::json!(t.format("%Y-%m-%d %H:%M:%S%.6f").to_string()),
         }
     }
 }
@@ -87,7 +110,7 @@ impl From<Param> for Key {
     fn from(v: Param) -> Key {
         match v {
             Param::I64(x) => Key::I(x),
-            Param::Bool(b) => Key::I(b as i64),
+            Param::Bool(b) => Key::B(b),
             Param::Str(s) => Key::S(s),
             other => Key::S(format!("{other:?}")),
         }
@@ -99,6 +122,9 @@ impl std::fmt::Display for Key {
         match self {
             Key::I(x) => write!(f, "{x}"),
             Key::S(s) => write!(f, "{s}"),
+            Key::B(b) => write!(f, "{b}"),
+            Key::X(bytes) => bytes.iter().try_for_each(|b| write!(f, "{b:02x}")),
+            Key::T(t) => write!(f, "{}", t.format("%Y-%m-%d %H:%M:%S%.6f")),
         }
     }
 }

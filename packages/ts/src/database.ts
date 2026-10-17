@@ -368,24 +368,29 @@ export function rowKey(row: readonly unknown[], refs: readonly KeyReference[]): 
   return keyOfValues(values);
 }
 
-/** A collection key: a number or a string, never equal to each other. */
-export type Key = number | string;
+/** A collection key: an integer, a string, a boolean, bytes or a date; keys of different types never share an identity. */
+export type Key = number | bigint | string | boolean | Uint8Array | Date;
 
 export function keyOfValues(values: readonly unknown[]): string {
   if (values.length === 1) return keyText(values[0]);
   return values.map(v => { const part = scalarKey(v); return `${part.length}:${part}`; }).join('');
 }
 
+/** The identity of a collection key; SQL NULL has none and is CODEC_DECODE. */
 export function keyText(value: unknown): string {
+  if (value === null || value === undefined) throw new OrmError(codes.CODEC_DECODE, 'collection row identity contains SQL NULL');
   if (typeof value === 'number' || typeof value === 'bigint') return `n:${value}`;
-  if (typeof value === 'boolean') return `n:${value ? 1 : 0}`;
+  if (typeof value === 'boolean') return value ? 'b:1' : 'b:0';
+  if (value instanceof Uint8Array) return `x:${Buffer.from(value).toString('hex')}`;
+  if (value instanceof Date) return `d:${value.toISOString()}`;
   return `s:${scalarKey(value)}`;
 }
 
+/** The collection key of a value, kept in its type; SQL NULL is CODEC_DECODE. */
 export function keyValue(value: unknown): Key {
-  if (typeof value === 'number') return value;
-  if (typeof value === 'bigint') return Number(value);
-  if (typeof value === 'boolean') return value ? 1 : 0;
+  if (value === null || value === undefined) throw new OrmError(codes.CODEC_DECODE, 'collection row identity contains SQL NULL');
+  if (typeof value === 'number' || typeof value === 'bigint' || typeof value === 'boolean') return value;
+  if (value instanceof Uint8Array || value instanceof Date) return value;
   return scalarKey(value);
 }
 

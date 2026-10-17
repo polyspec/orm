@@ -953,7 +953,7 @@ final class Db
             foreach ($parts as $part) {
                 $partPlan = $this->plan($part);
                 foreach ($this->query($partPlan['steps'][0], $part->params) as $row) {
-                    $key = self::rowKey($row, $partPlan['steps'][0]['assemble']['key']);
+                    $key = self::rowSlot($row, $partPlan['steps'][0]['assemble']['key']) ?? '';
                     if (!isset($seen[$key])) {
                         $seen[$key] = true;
                         $main[] = $row;
@@ -1452,7 +1452,7 @@ final class Db
                 }
                 $keys = self::childKeys($plan, $st['id']);
                 foreach ($sr['data'] as $j => $row) {
-                    $key = self::rowKey($row, $keys);
+                    $key = self::rowSlot($row, $keys);
                     if ($key !== null) {
                         $sr['byKey'][$key][] = $j;
                     }
@@ -1472,7 +1472,7 @@ final class Db
             if ($ifp !== null && !self::sameScalar($row[$ifp['index']], $params[$ifp['param']])) {
                 continue;
             }
-            $key = self::rowKey($row, $pr['keys']);
+            $key = self::rowSlot($row, $pr['keys']);
             if ($key === null || isset($seen[$key])) {
                 continue;
             }
@@ -1640,8 +1640,14 @@ final class Db
         return $parts;
     }
 
-    /** @param list<mixed> $row @param list<array{column:string,index:int}> $refs */
-    public static function rowKey(array $row, array $refs): int|string|null
+    /**
+     * The collection key of a row's key columns; null when a column is SQL NULL.
+     *
+     * @param list<mixed> $row
+     * @param list<array{column:string,index:int}> $refs
+     * @return int|string|bool|Bytes|\DateTimeInterface|null
+     */
+    public static function rowKey(array $row, array $refs): int|string|bool|Bytes|\DateTimeInterface|null
     {
         if (count($refs) === 1) {
             $v = $row[$refs[0]['index']];
@@ -1657,6 +1663,18 @@ final class Db
             $out .= strlen($part) . ':' . $part;
         }
         return $out;
+    }
+
+    /**
+     * The identity of rowKey, for the array keys of the row grouping of a plan.
+     *
+     * @param list<mixed> $row
+     * @param list<array{column:string,index:int}> $refs
+     */
+    public static function rowSlot(array $row, array $refs): ?string
+    {
+        $key = self::rowKey($row, $refs);
+        return $key === null ? null : Collection::identityOf($key);
     }
 
     public static function sameScalar(mixed $a, mixed $b): bool

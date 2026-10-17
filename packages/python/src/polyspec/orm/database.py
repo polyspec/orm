@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import datetime
 import ipaddress
 import json
 import os
@@ -444,10 +445,11 @@ def key_of_values(values) -> str:
 
 
 def key_value(value):
-    if isinstance(value, int) and not isinstance(value, bool):
+    """The collection key of a value, kept in its type; SQL NULL is CODEC_DECODE."""
+    if value is None:
+        raise OrmError(codes.CODEC_DECODE, "collection row identity contains SQL NULL")
+    if isinstance(value, (bool, int, bytes, datetime.datetime)):
         return value
-    if isinstance(value, bool):
-        return 1 if value else 0
     return scalar_key(value)
 
 

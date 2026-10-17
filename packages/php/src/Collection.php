@@ -18,40 +18,58 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
     /** @var array<string, mixed> */
     private array $fetched = [];
 
-    public static function keyOf(mixed $key): int|string
+    /**
+     * The collection key of a value: an integer, a string, a boolean, Bytes or a date and time. SQL NULL is an error.
+     *
+     * @return int|string|bool|Bytes|\DateTimeInterface
+     */
+    public static function keyOf(mixed $key): int|string|bool|Bytes|\DateTimeInterface
     {
         return match (true) {
-            is_int($key), is_string($key) => $key,
-            is_bool($key) => (int) $key,
-            $key === null => '',
-            $key instanceof \DateTimeInterface => $key->format('Y-m-d H:i:s.u'),
+            is_int($key), is_string($key), is_bool($key), $key instanceof Bytes, $key instanceof \DateTimeInterface => $key,
+            $key === null => throw new OrmException(Code::CODEC_DECODE, 'collection row identity contains SQL NULL'),
             default => (string) $key,
         };
     }
 
-    private static function slot(int|string $key): string
+    /**
+     * The identity of a collection key: equal keys have equal identities and keys of different types never share one.
+     *
+     * @param int|string|bool|Bytes|\DateTimeInterface $key
+     */
+    public static function identityOf(mixed $key): string
     {
-        return (is_int($key) ? 'i' : 's') . $key;
+        $key = self::keyOf($key);
+        return match (true) {
+            is_int($key) => 'i' . $key,
+            is_string($key) => 's' . $key,
+            is_bool($key) => $key ? 'b1' : 'b0',
+            $key instanceof Bytes => 'x' . bin2hex($key->bytes),
+            default => 'd' . \DateTimeImmutable::createFromInterface($key)
+                ->setTimezone(new \DateTimeZone('UTC'))
+                ->format('Y-m-d H:i:s.u'),
+        };
     }
 
     /**
      * @internal
      * @param TModel $model
      */
-    public function put(int|string $key, Model $model): void
+    public function put(int|string|bool|Bytes|\DateTimeInterface $key, Model $model): void
     {
-        $this->items[self::slot($key)] = [$key, $model];
+        $key = self::keyOf($key);
+        $this->items[self::identityOf($key)] = [$key, $model];
     }
 
     /** @return TModel|null */
-    public function get(int|string $key): ?Model
+    public function get(int|string|bool|Bytes|\DateTimeInterface $key): ?Model
     {
-        return $this->items[self::slot($key)][1] ?? null;
+        return $this->items[self::identityOf($key)][1] ?? null;
     }
 
-    public function has(int|string $key): bool
+    public function has(int|string|bool|Bytes|\DateTimeInterface $key): bool
     {
-        return isset($this->items[self::slot($key)]);
+        return isset($this->items[self::identityOf($key)]);
     }
 
     /** @return TModel|null */
@@ -63,10 +81,10 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
         return null;
     }
 
-    /** @return list<int|string> */
+    /** @return list<int|string|bool|Bytes|\DateTimeInterface> */
     public function keys(): array
     {
-        return array_values(array_map(static fn(array $e): int|string => $e[0], $this->items));
+        return array_values(array_map(static fn(array $e): int|string|bool|Bytes|\DateTimeInterface => $e[0], $this->items));
     }
 
     /** @return list<TModel> */
@@ -75,7 +93,7 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
         return array_values(array_map(static fn(array $e): Model => $e[1], $this->items));
     }
 
-    /** @return list<array{0: int|string, 1: TModel}> */
+    /** @return list<array{0: int|string|bool|Bytes|\DateTimeInterface, 1: TModel}> */
     public function entries(): array
     {
         return array_values($this->items);
@@ -86,7 +104,7 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
         return count($this->items);
     }
 
-    /** @return \Generator<int|string, TModel, mixed, void> */
+    /** @return \Generator<int|string|bool|Bytes|\DateTimeInterface, TModel, mixed, void> */
     public function getIterator(): \Generator
     {
         foreach ($this->items as [$key, $m]) {
@@ -103,9 +121,9 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
     }
 
     /** The fetchValue() result of the key. */
-    public function fetchedValue(int|string $key): mixed
+    public function fetchedValue(int|string|bool|Bytes|\DateTimeInterface $key): mixed
     {
-        return $this->fetched[self::slot($key)] ?? null;
+        return $this->fetched[self::identityOf($key)] ?? null;
     }
 
     /** @return list<mixed> the fetchValue() results in order */

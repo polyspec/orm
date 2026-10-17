@@ -223,7 +223,10 @@ def _collection_key(c: Core, m: Core, asm: dict, row):
             if col["index"] == asm["key"][0]["index"]
         )
         return key_value(m.values.get(name, row[asm["key"][0]["index"]]))
-    return row_key(row, asm["key"]) or ""
+    key = row_key(row, asm["key"])
+    if key is None:
+        raise OrmError(codes.CODEC_DECODE, "collection row identity contains SQL NULL")
+    return key
 
 
 def load(c: Core, kind: str) -> Collection:

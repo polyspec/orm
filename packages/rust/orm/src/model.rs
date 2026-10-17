@@ -560,7 +560,7 @@ fn collection_key(c: &Core, m: &dyn AnyModel, asm: &Assemble, row: &[Val]) -> Re
             return Key::of(v);
         }
     }
-    Key::of_row(row, &asm.key)?.ok_or_else(|| Error::internal("selected row has no collection key"))
+    Key::of_collection_row(row, &asm.key)
 }
 
 struct Loaded {
