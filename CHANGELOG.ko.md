@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a155381e67a7d4d5022aa0db3aaf2141613d2c0321a16dc6439ea340f197fa82 -->
+<!-- source-sha256: d044944dfaa679380c45d8c0708767823636b2efe72a00526517845c6ebc6e40 -->
 # 변경 이력
 
 ## Unreleased
 - Go 성능 gate는 tools root인 packages/go/bench의 benchmark다. 이 root는 어떤 구현에도 속하지 않으므로 그 go-internal parity unit을 없앴다. gate는 performance_gate feature로 계속 실행된다. (#T77-8-1-1)
+- models script scan test가 models를 호출하는 conformance runner가 있는 TypeScript client testing 디렉터리를 다룬다(T77-28).
 - physical query-form test가 다른 physical test와 같은 ORM_TEST DSN 이름을 읽는다(T77-24).
 - parity-check가 markdown conformance unit을 실행하기 전에 빠진 flowmark binary와 설치 단계를 알린다(T77-25).
 - dbspec harness test가 harness가 출력하는 평탄한 case id를 기대하여, dbspec 패키지가 exit 0이 된다(T77-23).
