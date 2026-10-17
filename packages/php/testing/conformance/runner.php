@@ -283,6 +283,7 @@ vector('relations', fn() => $author()
     ->serviceSeq(7)->orderBySeqAsc()->limit(0, 3)->gets()->toArray());
 
 vector('relation_empty', fn() => count($author()->relations((new ServiceMember)->matchUserSeqWithUserSeq())->getsBySeq(-1)));
+vector('relation_null_key', fn() => count((new User)($db)->relations((new Author)->matchSeqWithUserSeq()->keyNamePrice())->seq(100)->gets()));
 
 vector('subqueries', fn() => array_map(
     static fn(User $u): array => [$u->getSeq(), derivedInteger($u->getReadTotal())],

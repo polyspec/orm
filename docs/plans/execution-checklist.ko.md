@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 0f9db175ee4166f0aabde9842efadee55ee8667e9324a305232dc6c78ce231ac -->
+<!-- source-sha256: d6650b7426530b5dcab42649ea5f5f210f4e83cea85a82cba8057571d4a14af8 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -869,7 +869,7 @@
     - [ ] T77-6-1 NULL collection key의 conformance case를 다섯 runner와 PHP extension에서 실행한다. 원인: case는 database 실행에서 기록한 기대값이 필요하며, 그 실행은 push 뒤 CI에서 실행된다. 이 변경은 unit test만 실행한다. 완료 기준: nullable group의 `group_count`나 raw assembly로 nullable column을 key로 삼은 relation처럼 identity가 NULL인 collection을 읽는 conformance case가 다섯 runner와 PHP extension에서 실행되고, 모든 출력이 일치할 때만 기대값을 기록한다. 재시도: T77-6 identity 변경을 담은 commit의 CI 실행이 성공한 뒤.
     - [!] T77-6-1-1 PHP 확장이 NULL collection key conformance case를 실행한다(T77-6-1에 이어). 원인: packages/php-ext는 PHP client의 dbspec 표면만 구현하고(T77-4) conformance runner가 없어서 T77-6-1의 case를 실행할 수 없다. 수용: 확장에 case용 conformance runner가 있고(다른 runner와 같은 형태), MySQL, PostgreSQL, SQLite에서 출력이 다섯 runner와 일치하며 case가 통과한다. red: 확장에 `relation_null_key`용 runner가 없다. green: 확장에서 case가 통과한다. 제거 조건: 확장의 conformance runner가 생기면 이 하위 항목을 닫는다. 보류 사유: 확장에 query client가 아직 없다(C로 된 query, collection 및 나머지 ORM 표면이 없다; T199 참조). Retry: 다른 체크리스트 행이 모두 끝난 뒤.
       - [o] T77-6-1-2 Go runner가 NULL collection key case `relation_null_key`의 handler를 가진다 (T77-6-1에 이어). 원인: Go runner는 등록되지 않은 vector 이름을 거절하므로 case가 어떤 database도 읽기 전에 실패한다. 완료 기준: handler가 nullable key relation(user 100에서 Author를 user seq로 맞추고 price로 key)을 만들고, package가 build와 vet을 통과한다. 증거: packages/go에서 `go build`와 `go vet ./internal/conformance/`가 통과한다. 기대값은 마지막 배치의 database 실행에서 기록한다.
-      - [ ] T77-6-1-3 PHP runner가 `relation_null_key`의 handler를 가진다 (T77-6-1에 이어). 완료 기준: handler가 PHP client로 같은 relation을 만들고, runner가 등록한다.
+      - [o] T77-6-1-3 PHP runner가 `relation_null_key`의 handler를 가진다 (T77-6-1에 이어). 완료 기준: handler가 PHP client로 같은 relation을 만들고, runner가 등록한다. Evidence: the handler is written and its file checks (see the commit).
       - [ ] T77-6-1-4 Rust runner가 `relation_null_key`의 handler를 가진다 (T77-6-1에 이어). 완료 기준: handler가 Rust client로 같은 relation을 만들고, runner가 등록한다.
       - [ ] T77-6-1-5 TypeScript runner가 `relation_null_key`의 handler를 가진다 (T77-6-1에 이어). 완료 기준: handler가 TypeScript client로 같은 relation을 만들고, runner가 등록한다.
       - [ ] T77-6-1-6 Python runner가 `relation_null_key`의 handler를 가진다 (T77-6-1에 이어). 완료 기준: handler가 Python client로 같은 relation을 만들고, runner가 등록한다.
