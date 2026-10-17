@@ -1,7 +1,10 @@
 package contracts
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"unicode"
@@ -16,7 +19,30 @@ func compact(s string) string {
 	}, s)
 }
 
-var languages = []string{"go", "php", "rust", "typescript", "python"}
+// languages is the client profile of config/parity.json, the one language set; this package is in tests/interfaces/contracts.
+var languages = clientLanguages()
+
+func clientLanguages() []string {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "config", "parity.json"))
+	if err != nil {
+		panic(err)
+	}
+	var parity struct {
+		Profiles []struct {
+			Name            string   `json:"name"`
+			Implementations []string `json:"implementations"`
+		} `json:"profiles"`
+	}
+	if err := json.Unmarshal(raw, &parity); err != nil {
+		panic(err)
+	}
+	for _, profile := range parity.Profiles {
+		if profile.Name == "client" {
+			return profile.Implementations
+		}
+	}
+	panic("config/parity.json has no client profile")
+}
 
 // outputs maps a common result to the native return type of each language and
 // of each extension (an implementation of part of the contract, declared under

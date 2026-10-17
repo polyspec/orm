@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 52c68bc9cbb855319b324e5c5f99f8f6fdee9de705ae2ae5e323c8360bcf6206 -->
+<!-- source-sha256: 9c3c5c942fa4d1fb7b61f2e8fb1d65e9e0611cdcc8b812d31077c88334eac8aa -->
 # 변경 이력
 
 ## Unreleased
@@ -12,6 +12,7 @@
 - 세 feature check가 main에서 통과한다. T77-9-4 landing이 추가한 Go와 PHP dbspec test 파일이 schema_definition에 속한다(T198).
 - conformance result Python check가 module mode로 실행되어 packages import가 해석된다(T77-17).
 - 저장소 convention test가 통과한다. Python thin-slice는 Python 클라이언트 예제이고, Rust case와 TypeScript plan-cache test는 공유 testcase package를 따른다(T77-18).
+- client-db test와 interface validator가 config/parity.json의 하나의 language set을 읽는다(T77-10).
 - parity 선언 규칙 R4부터 R10까지 main에서 통과한다. 선언되지 않은 suite, 묶이지 않은 test 파일, root와 문서 수, 오래된 client 목록을 선언했다(T148-3-7).
 - T77-9-4 landing이 추가한 test 파일을 각 unit과 php support 목록에 묶어, 모든 선언이 다시 성립한다(T148-3).
 - PHP conformance binding은 선언된 모든 vector가 실행되고 vector 파일들이 같은 이름 집합을 가지는지 검사한다(T77-9-4-3).

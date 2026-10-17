@@ -17,11 +17,12 @@ import { homedir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
 import { keepAll, render, run, runLanes, variable, type Command } from './check/commands.mts';
 import { COMMANDS as TYPESCRIPT_COMMANDS, sqliteTest } from './typescript/sqlite-test.mts';
+import { clientLanguages } from './features/languages.mts';
 
 const root = resolve(import.meta.dirname, '..');
-const LANES = ['go', 'php', 'typescript', 'rust', 'python'] as const;
-type Lane = (typeof LANES)[number];
-const isLane = (name: string): name is Lane => LANES.some(lane => lane === name);
+// The lanes are the client profile of config/parity.json, the one language set.
+const LANES = clientLanguages();
+const isLane = (name: string): boolean => LANES.includes(name);
 const env = (name: string): string => process.env[name] ?? '';
 
 const go = (...args: string[]): Command => ({ program: 'node', args: ['tests/go-test.mts', '-v', '-timeout', '0', '-count=1', ...args], cwd: root });
@@ -47,7 +48,7 @@ const RUST_INTEGRATION: Command = { program: join(RUN, 'debug/integration'), arg
 /** The commands this script runs, for make repo-check. */
 export const COMMANDS = [...[...GO, ...PHP, ...PYTHON, RUST_TESTS, RUST_BUILD, RUST_INTEGRATION].map(step => render(step, root)), ...TYPESCRIPT_COMMANDS];
 
-const lanes: Record<Lane, (write: (line: string) => void) => Promise<string[]>> = {
+const lanes: Record<string, (write: (line: string) => void) => Promise<string[]>> = {
   go: write => keepAll(GO, write),
   php: write => keepAll(PHP, write),
   typescript: write => sqliteTest(write),
@@ -77,15 +78,21 @@ if (import.meta.main) {
   const names = (process.env['ORM_CLIENT_DB_LANGS'] || LANES.join(',')).split(',').filter(name => name !== '');
   const unknown = names.find(name => !isLane(name));
   if (unknown !== undefined) {
-    console.error(`client-db-test: ORM_CLIENT_DB_LANGS names ${unknown}, which is no lane; the lanes are go, php, typescript, rust and python`);
+    console.error(`client-db-test: ORM_CLIENT_DB_LANGS names ${unknown}, which is no lane; the lanes are ${LANES.join(', ')}`);
     process.exit(2);
   }
   const selected = LANES.filter(lane => names.includes(lane));
   if (selected.length === 0) {
-    console.error(`client-db-test: ORM_CLIENT_DB_LANGS=${env('ORM_CLIENT_DB_LANGS')} selects no lane; the lanes are go, php, typescript, rust and python`);
+    console.error(`client-db-test: ORM_CLIENT_DB_LANGS=${env('ORM_CLIENT_DB_LANGS')} selects no lane; the lanes are ${LANES.join(', ')}`);
     process.exit(2);
   }
-  const failed = await runLanes('client-db-test', Object.fromEntries(selected.map(lane => [lane, lanes[lane]])), process.env['ORM_CLIENT_DB_LANES'] === 'parallel');
+  // A client of config/parity.json without a lane here is a failure, not a lane that silently does not run.
+  const runs = Object.fromEntries(selected.map(lane => {
+    const run = lanes[lane];
+    if (!run) throw new Error(`client-db-test: the client ${lane} of config/parity.json has no lane`);
+    return [lane, run];
+  }));
+  const failed = await runLanes('client-db-test', runs, process.env['ORM_CLIENT_DB_LANES'] === 'parallel');
   if (failed.length) {
     console.error(`client-db-test: failed lanes: ${failed.join(' ')}`);
     process.exit(1);
