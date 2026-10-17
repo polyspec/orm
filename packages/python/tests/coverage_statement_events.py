@@ -3,7 +3,7 @@
 # statement_events coverage of Go, PHP, TypeScript and Rust does. The bench database is neither read nor written.
 from . import statement_events
 from .case_database import case_database
-from .coverage_case import run_cases
+from .coverage_case import CoverageCase, coverage_main
 
 
 def run_statement_events(item):
@@ -30,5 +30,10 @@ def run_statement_events(item):
         statement_events.tearDownModule()
 
 
+class CoverageTest(CoverageCase):
+    def test_statement_events(self):
+        self.each_item("statement_events", run_statement_events)
+
+
 if __name__ == "__main__":
-    run_cases({"statement_events": run_statement_events})
+    coverage_main(CoverageTest)

@@ -105,6 +105,12 @@
       "implementations": ["python"],
       "reason": "The Python tests of the implementation's own structure: its harness, packaging, installation, driver adapters and helpers. They check code that implements no shared vector or interface, so no other implementation has a counterpart and only python binds them.",
       "spec": ["docs/spec/parity.md#implementation-internal-tests"]
+    },
+    {
+      "name": "python-feature",
+      "implementations": ["python"],
+      "reason": "The Python owner of a feature coverage program: each test method runs one case of the feature on every database item of its file. The other languages' owners of the same feature are native tests of their own, so this profile holds the Python owner alone.",
+      "spec": ["contracts/features.json#/features"]
     }
   ],
   "suites": [
@@ -1268,6 +1274,142 @@
     {
       "id": "py-ir-answers", "kind": "feature", "profile": "python-internal",
       "bindings": [{ "implementation": "python", "test": "packages/python/tests/ir_answers.py", "id": "one" }]
+    },
+    {
+      "id": "py-cov-audit-triggers-audit-history", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_audit_triggers.py", "id": "test_audit_history" }]
+    },
+    {
+      "id": "py-cov-audit-triggers-audit-selected-columns", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_audit_triggers.py", "id": "test_audit_selected_columns" }]
+    },
+    {
+      "id": "py-cov-audit-triggers-audit-transaction-entry-points", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_audit_triggers.py", "id": "test_audit_transaction_entry_points" }]
+    },
+    {
+      "id": "py-cov-audit-triggers-soft-delete-restore", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_audit_triggers.py", "id": "test_soft_delete_restore" }]
+    },
+    {
+      "id": "py-cov-authenticated-encryption-aes-envelope-decrypt", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_authenticated_encryption.py", "id": "test_aes_envelope_decrypt" }]
+    },
+    {
+      "id": "py-cov-authenticated-encryption-aes-round-trip", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_authenticated_encryption.py", "id": "test_aes_round_trip" }]
+    },
+    {
+      "id": "py-cov-authenticated-encryption-aes-tamper-rejected", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_authenticated_encryption.py", "id": "test_aes_tamper_rejected" }]
+    },
+    {
+      "id": "py-cov-authenticated-encryption-aes-wrong-key-rejected", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_authenticated_encryption.py", "id": "test_aes_wrong_key_rejected" }]
+    },
+    {
+      "id": "py-cov-authenticated-encryption-blind-index-vector", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_authenticated_encryption.py", "id": "test_blind_index_vector" }]
+    },
+    {
+      "id": "py-cov-composite-keys-composite-key-rows", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_composite_keys.py", "id": "test_composite_key_rows" }]
+    },
+    {
+      "id": "py-cov-conformance-verification-conformance-vector", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_conformance_verification.py", "id": "test_conformance_vector" }]
+    },
+    {
+      "id": "py-cov-constraints-and-relations-constraint-errors", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_constraints_and_relations.py", "id": "test_constraint_errors" }]
+    },
+    {
+      "id": "py-cov-dsn-dsn-connection", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_dsn.py", "id": "test_dsn_connection" }]
+    },
+    {
+      "id": "py-cov-interface-contract-interface-symbols", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_interface_contract.py", "id": "test_interface_symbols" }]
+    },
+    {
+      "id": "py-cov-model-generation-model-generation-check", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_model_generation.py", "id": "test_model_generation_check" }]
+    },
+    {
+      "id": "py-cov-model-queries-model-query-rows", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_model_queries.py", "id": "test_model_query_rows" }]
+    },
+    {
+      "id": "py-cov-model-writes-model-write-cycle", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_model_writes.py", "id": "test_model_write_cycle" }]
+    },
+    {
+      "id": "py-cov-parameter-chunking-root-in-chunking", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_parameter_chunking.py", "id": "test_root_in_chunking" }]
+    },
+    {
+      "id": "py-cov-request-hook-without-hook", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_request_hook.py", "id": "test_without_hook" }]
+    },
+    {
+      "id": "py-cov-request-hook-read-filter", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_request_hook.py", "id": "test_read_filter" }]
+    },
+    {
+      "id": "py-cov-request-hook-insert-assign", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_request_hook.py", "id": "test_insert_assign" }]
+    },
+    {
+      "id": "py-cov-request-hook-loaded-row-writes", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_request_hook.py", "id": "test_loaded_row_writes" }]
+    },
+    {
+      "id": "py-cov-request-hook-invalid-param", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_request_hook.py", "id": "test_invalid_param" }]
+    },
+    {
+      "id": "py-cov-request-hook-restore-key", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_request_hook.py", "id": "test_restore_key" }]
+    },
+    {
+      "id": "py-cov-request-hook-restore-condition", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_request_hook.py", "id": "test_restore_condition" }]
+    },
+    {
+      "id": "py-cov-request-hook-restore-no-key", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_request_hook.py", "id": "test_restore_no_key" }]
+    },
+    {
+      "id": "py-cov-request-hook-restore-rewritten-key", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_request_hook.py", "id": "test_restore_rewritten_key" }]
+    },
+    {
+      "id": "py-cov-request-hook-restore-hook-set-key", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_request_hook.py", "id": "test_restore_hook_set_key" }]
+    },
+    {
+      "id": "py-cov-schema-install-schema-install-existing", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_schema_install.py", "id": "test_schema_install_existing" }]
+    },
+    {
+      "id": "py-cov-schema-install-schema-install-partial", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_schema_install.py", "id": "test_schema_install_partial" }]
+    },
+    {
+      "id": "py-cov-schema-install-schema-install-external-documents", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_schema_install.py", "id": "test_schema_install_external_documents" }]
+    },
+    {
+      "id": "py-cov-statement-events-statement-events", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_statement_events.py", "id": "test_statement_events" }]
+    },
+    {
+      "id": "py-cov-transactions-transaction-rollback", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_transactions.py", "id": "test_transaction_rollback" }]
+    },
+    {
+      "id": "py-cov-transactions-transaction-savepoint", "kind": "feature", "profile": "python-feature",
+      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_transactions.py", "id": "test_transaction_savepoint" }]
     }
   ],
   "errors": {

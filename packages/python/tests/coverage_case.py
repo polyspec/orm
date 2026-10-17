@@ -1,8 +1,9 @@
-# The shared runner of the Python feature coverage tests (scripts/features/coverage.mts). The checker runs
-# `<python> <file> <case id>...`, and the whole output must be `CASE <id> PASS` lines, so the runner runs
-# exactly the requested cases in their order and writes that one line for each case that passed. A failure
-# raises, so the process ends with a nonzero code and the error.
+# The shared base of the Python feature coverage tests (scripts/features/coverage.mts). The checker runs
+# `<python> -m <module> <case id>...`, and the standard output must be `CASE <id> [<database>] PASS` lines; coverage_main
+# runs exactly the requested test methods and CoverageCase.each_item prints those lines.
+import io
 import sys
+import unittest
 from pathlib import Path
 
 # The repository root, resolved from this file.
@@ -23,7 +24,12 @@ def run_cases(cases):
         raise SystemExit(
             f"usage: {Path(sys.argv[0]).name} {'|'.join(cases)}...; got {requested}"
         )
-    test = Path(sys._getframe(1).f_globals["__file__"]).resolve().relative_to(REPOSITORY_ROOT).as_posix()
+    test = (
+        Path(sys._getframe(1).f_globals["__file__"])
+        .resolve()
+        .relative_to(REPOSITORY_ROOT)
+        .as_posix()
+    )
     items = feature_items(test)
     for case_id in requested:
         for item in items:
@@ -36,6 +42,55 @@ def run_cases(cases):
                 print(f"CASE {case_id} [{item[0]}] PASS", flush=True)
 
 
+class CoverageCase(unittest.TestCase):
+    """The base of a coverage program: one test method per case id, each run on every coverage item of the file (the
+    databases the manifest lists for it, or one item without a database) through each_item."""
+
+    def each_item(self, case_id: str, check) -> None:
+        """Runs check on each coverage item in a subTest and prints `CASE <id> [<database>] PASS` for each item that
+        passed, or `CASE <id> PASS` for an item without a database. A check takes its item (driver, dsn), or none."""
+        for item in feature_items(self.coverage_test()):
+            database = "none" if item is None else item[0]
+            with self.subTest(db=database):
+                if item is None:
+                    check()
+                    print(f"CASE {case_id} PASS", flush=True)
+                else:
+                    check(item)
+                    print(f"CASE {case_id} [{item[0]}] PASS", flush=True)
+
+    @classmethod
+    def coverage_test(cls) -> str:
+        """The path of the test file of this class, relative to the repository root."""
+        file = sys.modules[cls.__module__].__file__
+        return Path(file).resolve().relative_to(REPOSITORY_ROOT).as_posix()
+
+
+def coverage_main(test_class: type) -> None:
+    """The entry point of a coverage program: `python -m <module> <case id>...` runs exactly the test methods of the
+    command line, in their order, and exits nonzero when one fails; an unknown, repeated or missing ID is a usage error
+    before any case runs. The checker reads the output as CASE lines only, so the unittest report is kept back and
+    written to standard error when a case fails; a passing run writes nothing but the CASE lines."""
+    names = sorted(
+        name[len("test_") :] for name in dir(test_class) if name.startswith("test_")
+    )
+    requested = sys.argv[1:]
+    if (
+        not requested
+        or len(set(requested)) != len(requested)
+        or any(i not in names for i in requested)
+    ):
+        raise SystemExit(
+            f"usage: {Path(sys.argv[0]).name} {'|'.join(names)}...; got {requested}"
+        )
+    suite = unittest.TestSuite(test_class(f"test_{case_id}") for case_id in requested)
+    report = io.StringIO()
+    result = unittest.TextTestRunner(stream=report, verbosity=0).run(suite)
+    if not result.wasSuccessful():
+        sys.stderr.write(report.getvalue())
+        raise SystemExit(1)
+
+
 def feature_items(test: str):
     """The coverage items of this test file from the feature manifest: the coverage resolver of scripts/features/coverage.mts
     (`--items`) gives one (driver, dsn) for each database the manifest lists for the file. A file without a database
@@ -44,8 +99,16 @@ def feature_items(test: str):
     import subprocess
 
     listed = subprocess.run(
-        ["node", str(REPOSITORY_ROOT / "scripts/features/coverage.mts"), "--items", test],
-        cwd=REPOSITORY_ROOT, capture_output=True, text=True, check=False,
+        [
+            "node",
+            str(REPOSITORY_ROOT / "scripts/features/coverage.mts"),
+            "--items",
+            test,
+        ],
+        cwd=REPOSITORY_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if listed.returncode != 0:
         raise AssertionError(f"coverage items of {test}: {listed.stderr.strip()}")

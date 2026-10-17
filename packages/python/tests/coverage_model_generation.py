@@ -7,7 +7,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from .coverage_case import REPOSITORY_ROOT, expect_equal, run_cases
+from .coverage_case import REPOSITORY_ROOT, expect_equal, CoverageCase, coverage_main
 
 SET = "contracts/fixtures/bench/dbspec-set.json"
 MODELS = REPOSITORY_ROOT / "packages" / "python" / "src" / "polyspec" / "orm" / "models"
@@ -59,5 +59,10 @@ def model_generation_check():
         )
 
 
+class CoverageTest(CoverageCase):
+    def test_model_generation_check(self):
+        self.each_item("model_generation_check", model_generation_check)
+
+
 if __name__ == "__main__":
-    run_cases({"model_generation_check": model_generation_check})
+    coverage_main(CoverageTest)

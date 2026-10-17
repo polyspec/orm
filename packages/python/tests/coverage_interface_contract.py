@@ -3,7 +3,7 @@
 # TypeScript and Rust does for its client.
 import subprocess
 
-from .coverage_case import REPOSITORY_ROOT, run_cases
+from .coverage_case import REPOSITORY_ROOT, CoverageCase, coverage_main
 
 
 def interface_symbols():
@@ -20,5 +20,10 @@ def interface_symbols():
         )
 
 
+class CoverageTest(CoverageCase):
+    def test_interface_symbols(self):
+        self.each_item("interface_symbols", interface_symbols)
+
+
 if __name__ == "__main__":
-    run_cases({"interface_symbols": interface_symbols})
+    coverage_main(CoverageTest)

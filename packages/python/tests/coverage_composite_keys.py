@@ -2,7 +2,7 @@
 # both components of its foreign key (tenant_id, account_id), and deleting an account removes its membership through
 # ON DELETE CASCADE, as the composite_keys coverage of Go, PHP, TypeScript and Rust does. Every written row is removed.
 from polyspec.orm.models import models
-from .coverage_case import expect_equal, run_cases, with_cleanup
+from .coverage_case import expect_equal, CoverageCase, coverage_main, with_cleanup
 
 # Another tenant also has account 2, so a relation that joins on account_id alone would show.
 TENANT = 990004
@@ -114,5 +114,10 @@ def composite_key_rows(item):
         db.close()
 
 
+class CoverageTest(CoverageCase):
+    def test_composite_key_rows(self):
+        self.each_item("composite_key_rows", composite_key_rows)
+
+
 if __name__ == "__main__":
-    run_cases({"composite_key_rows": composite_key_rows})
+    coverage_main(CoverageTest)

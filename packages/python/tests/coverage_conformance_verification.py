@@ -6,7 +6,7 @@ import json
 import subprocess
 import sys
 
-from .coverage_case import REPOSITORY_ROOT, expect_equal, run_cases
+from .coverage_case import REPOSITORY_ROOT, expect_equal, CoverageCase, coverage_main
 
 VECTOR_FILES = {
     "mysql": "vectors.json",
@@ -48,5 +48,10 @@ def conformance_vector(item):
         )
 
 
+class CoverageTest(CoverageCase):
+    def test_conformance_vector(self):
+        self.each_item("conformance_vector", conformance_vector)
+
+
 if __name__ == "__main__":
-    run_cases({"conformance_vector": conformance_vector})
+    coverage_main(CoverageTest)

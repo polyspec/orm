@@ -2,7 +2,7 @@
 # as FOREIGN_KEY, CONSTRAINT and DUPLICATE_KEY and changes no row, as the constraints_and_relations coverage of Go, PHP,
 # TypeScript and Rust does.
 from polyspec.orm.models import models
-from .coverage_case import error_code, expect_equal, run_cases
+from .coverage_case import error_code, expect_equal, CoverageCase, coverage_main
 
 
 def constraint_errors(item):
@@ -50,5 +50,10 @@ def constraint_errors(item):
         db.close()
 
 
+class CoverageTest(CoverageCase):
+    def test_constraint_errors(self):
+        self.each_item("constraint_errors", constraint_errors)
+
+
 if __name__ == "__main__":
-    run_cases({"constraint_errors": constraint_errors})
+    coverage_main(CoverageTest)

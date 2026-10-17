@@ -12,7 +12,8 @@ from .coverage_case import (
     REPOSITORY_ROOT,
     expect_equal,
     native_query,
-    run_cases,
+    CoverageCase,
+    coverage_main,
     table_exists,
     with_cleanup,
 )
@@ -382,7 +383,9 @@ def audit_selected_columns(item):
             "tag_history in history_id order",
         )
 
-    with_installed(item, "audit_columns.dbs", AUDIT_COLUMNS_TABLES, ["card", "tag"], body)
+    with_installed(
+        item, "audit_columns.dbs", AUDIT_COLUMNS_TABLES, ["card", "tag"], body
+    )
 
 
 # contracts/fixtures/restore.dbs: restore brings back the soft-deleted rows of an audited table with a unique key and
@@ -554,16 +557,24 @@ def soft_delete_restore(item):
     with_installed(item, "restore.dbs", RESTORE_TABLES, ["membership"], body)
 
 
+def tearDownModule():
+    if "dir" in STATE:
+        STATE["dir"].cleanup()
+
+
+class CoverageTest(CoverageCase):
+    def test_audit_history(self):
+        self.each_item("audit_history", audit_history)
+
+    def test_audit_selected_columns(self):
+        self.each_item("audit_selected_columns", audit_selected_columns)
+
+    def test_audit_transaction_entry_points(self):
+        self.each_item("audit_transaction_entry_points", audit_transaction_entry_points)
+
+    def test_soft_delete_restore(self):
+        self.each_item("soft_delete_restore", soft_delete_restore)
+
+
 if __name__ == "__main__":
-    try:
-        run_cases(
-            {
-                "audit_history": audit_history,
-                "audit_selected_columns": audit_selected_columns,
-                "audit_transaction_entry_points": audit_transaction_entry_points,
-                "soft_delete_restore": soft_delete_restore,
-            }
-        )
-    finally:
-        if "dir" in STATE:
-            STATE["dir"].cleanup()
+    coverage_main(CoverageTest)

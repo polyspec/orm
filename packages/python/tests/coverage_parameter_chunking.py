@@ -2,7 +2,7 @@
 # repeated and absent values, and a limit, which the parts would change, is refused with IR_INVALID, as the
 # parameter_chunking coverage of Go, PHP, TypeScript and Rust does. It only reads.
 from polyspec.orm.models import models
-from .coverage_case import error_code, expect_equal, run_cases
+from .coverage_case import error_code, expect_equal, CoverageCase, coverage_main
 
 
 def root_in_chunking(item):
@@ -27,5 +27,10 @@ def root_in_chunking(item):
         db.close()
 
 
+class CoverageTest(CoverageCase):
+    def test_root_in_chunking(self):
+        self.each_item("root_in_chunking", root_in_chunking)
+
+
 if __name__ == "__main__":
-    run_cases({"root_in_chunking": root_in_chunking})
+    coverage_main(CoverageTest)

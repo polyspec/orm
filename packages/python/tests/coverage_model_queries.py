@@ -1,7 +1,7 @@
 # model_queries coverage: the conditions, order, limit, sum and relation reads of the generated models on the seeded
 # bench database, as the model_queries coverage of Go, PHP, TypeScript and Rust does. It only reads.
 from polyspec.orm.models import models
-from .coverage_case import expect_equal, run_cases
+from .coverage_case import expect_equal, CoverageCase, coverage_main
 
 
 def model_query_rows(item):
@@ -34,5 +34,10 @@ def model_query_rows(item):
         db.close()
 
 
+class CoverageTest(CoverageCase):
+    def test_model_query_rows(self):
+        self.each_item("model_query_rows", model_query_rows)
+
+
 if __name__ == "__main__":
-    run_cases({"model_query_rows": model_query_rows})
+    coverage_main(CoverageTest)

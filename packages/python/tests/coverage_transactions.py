@@ -2,7 +2,7 @@
 # nested transaction rolls back only its own write through a savepoint, as the transactions coverage of Go, PHP,
 # TypeScript and Rust does. The rows are written only to composite_account and removed when the case ends.
 from polyspec.orm.models import models
-from .coverage_case import expect_equal, run_cases, with_cleanup
+from .coverage_case import expect_equal, CoverageCase, coverage_main, with_cleanup
 
 TENANT = 990003
 
@@ -102,10 +102,13 @@ def transaction_savepoint(item):
     with_tenant(item, body)
 
 
+class CoverageTest(CoverageCase):
+    def test_transaction_rollback(self):
+        self.each_item("transaction_rollback", transaction_rollback)
+
+    def test_transaction_savepoint(self):
+        self.each_item("transaction_savepoint", transaction_savepoint)
+
+
 if __name__ == "__main__":
-    run_cases(
-        {
-            "transaction_rollback": transaction_rollback,
-            "transaction_savepoint": transaction_savepoint,
-        }
-    )
+    coverage_main(CoverageTest)

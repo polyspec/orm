@@ -5,7 +5,8 @@ from polyspec.orm.models import models
 from .coverage_case import (
     error_code,
     expect_equal,
-    run_cases,
+    CoverageCase,
+    coverage_main,
     with_cleanup,
 )
 
@@ -95,5 +96,10 @@ def model_write_cycle(item):
         db.close()
 
 
+class CoverageTest(CoverageCase):
+    def test_model_write_cycle(self):
+        self.each_item("model_write_cycle", model_write_cycle)
+
+
 if __name__ == "__main__":
-    run_cases({"model_write_cycle": model_write_cycle})
+    coverage_main(CoverageTest)

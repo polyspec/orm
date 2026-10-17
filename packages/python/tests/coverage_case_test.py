@@ -37,11 +37,12 @@ class CoverageCaseTest(unittest.TestCase):
     def test_runs_each_case_on_every_database_item_of_the_file(self):
         ran = []
         original = coverage_case.feature_items
-        coverage_case.feature_items = lambda test: [("sqlite", "sqlite:///x"), ("mysql", "mysql://y")]
+        coverage_case.feature_items = lambda test: [
+            ("sqlite", "sqlite:///x"),
+            ("mysql", "mysql://y"),
+        ]
         try:
-            lines = run_with_arguments(
-                ["a"], {"a": lambda item: ran.append(item[0])}
-            )
+            lines = run_with_arguments(["a"], {"a": lambda item: ran.append(item[0])})
         finally:
             coverage_case.feature_items = original
         self.assertEqual(ran, ["sqlite", "mysql"])

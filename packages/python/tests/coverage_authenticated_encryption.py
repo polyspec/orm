@@ -5,7 +5,7 @@ import json
 
 from polyspec.orm.codec import CodecError, blind_index, host_decode, host_encode
 from polyspec.orm.errors import OrmError
-from .coverage_case import REPOSITORY_ROOT, expect_equal, run_cases
+from .coverage_case import REPOSITORY_ROOT, expect_equal, CoverageCase, coverage_main
 
 FIXTURE = json.loads(
     (
@@ -70,13 +70,24 @@ def blind_index_vector():
     )
 
 
+class CoverageTest(CoverageCase):
+    def test_aes_envelope_decrypt(self):
+        self.each_item("aes_envelope_decrypt", aes_envelope_decrypt)
+
+    def test_aes_round_trip(self):
+        self.each_item("aes_round_trip", aes_round_trip)
+
+    def test_aes_tamper_rejected(self):
+        self.each_item("aes_tamper_rejected", lambda: rejected("aes_tamper_rejected"))
+
+    def test_aes_wrong_key_rejected(self):
+        self.each_item(
+            "aes_wrong_key_rejected", lambda: rejected("aes_wrong_key_rejected")
+        )
+
+    def test_blind_index_vector(self):
+        self.each_item("blind_index_vector", blind_index_vector)
+
+
 if __name__ == "__main__":
-    run_cases(
-        {
-            "aes_envelope_decrypt": aes_envelope_decrypt,
-            "aes_round_trip": aes_round_trip,
-            "aes_tamper_rejected": lambda: rejected("aes_tamper_rejected"),
-            "aes_wrong_key_rejected": lambda: rejected("aes_wrong_key_rejected"),
-            "blind_index_vector": blind_index_vector,
-        }
-    )
+    coverage_main(CoverageTest)

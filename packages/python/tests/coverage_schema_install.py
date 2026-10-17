@@ -7,7 +7,7 @@ from polyspec.orm.engine import model_of_documents, parse_document_set
 from polyspec.orm.errors import OrmError
 from polyspec.orm.models import models
 from polyspec.orm.schema import Schema
-from .coverage_case import expect_equal, run_cases, table_exists
+from .coverage_case import expect_equal, CoverageCase, coverage_main, table_exists
 
 PARTIAL = """dbspec 1 partial
 
@@ -143,11 +143,18 @@ def schema_install_external_documents(item):
     with_database(item, body)
 
 
+class CoverageTest(CoverageCase):
+    def test_schema_install_existing(self):
+        self.each_item("schema_install_existing", schema_install_existing)
+
+    def test_schema_install_partial(self):
+        self.each_item("schema_install_partial", schema_install_partial)
+
+    def test_schema_install_external_documents(self):
+        self.each_item(
+            "schema_install_external_documents", schema_install_external_documents
+        )
+
+
 if __name__ == "__main__":
-    run_cases(
-        {
-            "schema_install_existing": schema_install_existing,
-            "schema_install_partial": schema_install_partial,
-            "schema_install_external_documents": schema_install_external_documents,
-        }
-    )
+    coverage_main(CoverageTest)
