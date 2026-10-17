@@ -3,6 +3,7 @@
 
 ## Unreleased
 - The Go performance gate is a benchmark of the tools root packages/go/bench, which belongs to no implementation, so its go-internal parity unit is removed; the gate still runs as the performance_gate feature. (#T77-8-1-1)
+- Open row T77-35 records that each go-orm parity unit runs the whole orm package twice, and the unit should run only its own tests.
 - TestConnectionsUseUTC sends the spec datetime form in UTC, and a native time.Time is refused with CODEC_ENCODE (T77-34).
 - TestConnectionsUseUTC sends its datetime as the text form the protocol names, so the orm package units pass (T77-34).
 - Open row T77-34 records that TestConnectionsUseUTC fails on SQLite with CODEC_ENCODE for a time.Time in a datetime column, which fails the orm package units of the parity run.
