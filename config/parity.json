@@ -24,6 +24,7 @@
       "runner": "php",
       "roots": ["packages/php-ext"],
       "tests": ["packages/php-ext/tests/Coverage*Test.php"],
+      "support": ["packages/php-ext/tests/bootstrap.php", "packages/php-ext/tests/declarations.php"],
       "args": ["-d", "extension=${ORM_PARITY_PHP_EXTENSION}"]
     },
     {
@@ -135,7 +136,8 @@
       "reason": "The Python owner of a feature coverage program: each test method runs one case of the feature on every database item of its file. The other languages' owners of the same feature are native tests of their own, so this profile holds the Python owner alone.",
       "spec": ["contracts/features.json#/features"]
     },
-    {"name": "php-internal", "implementations": ["php"], "reason": "An implementation-internal test checks the structure of the PHP implementation; the contract has no counterpart for it.", "spec": ["docs/spec/parity.md#implementation-internal-tests"]}
+    {"name": "php-internal", "implementations": ["php"], "reason": "An implementation-internal test checks the structure of the PHP implementation; the contract has no counterpart for it.", "spec": ["docs/spec/parity.md#implementation-internal-tests"]},
+    {"name": "php-extension-internal", "implementations": ["php-extension"], "reason": "An implementation-internal test of the PHP extension orm_dbspec: it checks the extension's own cleanup after a failing PDO, its name rendering, its apply path and the agreement of its class declarations with the PHP client and the stub. The shared dbspec suites bind the results these tests reach; no other implementation has a counterpart for these methods.", "spec": ["docs/spec/parity.md#implementation-internal-tests"]}
   ],
   "suites": [
     "contracts/fixtures/**/*.json",
@@ -1635,7 +1637,23 @@
     {"id": "php-internal-runtime-db-i16-values-and-defaults", "kind": "feature", "profile": "php-internal", "bindings": [{"implementation": "php", "test": "packages/php/tests/RuntimeDbTest.php", "id": "RuntimeDbTest::test_i16_values_and_defaults"}]},
     {"id": "php-internal-runtime-db-audit-record-of-a-transaction", "kind": "feature", "profile": "php-internal", "bindings": [{"implementation": "php", "test": "packages/php/tests/RuntimeDbTest.php", "id": "RuntimeDbTest::test_audit_record_of_a_transaction"}]},
     {"id": "php-internal-runtime-db-restore-of-soft-deleted-rows", "kind": "feature", "profile": "php-internal", "bindings": [{"implementation": "php", "test": "packages/php/tests/RuntimeDbTest.php", "id": "RuntimeDbTest::test_restore_of_soft_deleted_rows"}]},
-    {"id": "php-internal-unselected-column-db-unselected-column", "kind": "feature", "profile": "php-internal", "bindings": [{"implementation": "php", "test": "packages/php/tests/UnselectedColumnDbTest.php", "id": "UnselectedColumnDbTest::test_unselected_column"}]}
+    {"id": "php-internal-unselected-column-db-unselected-column", "kind": "feature", "profile": "php-internal", "bindings": [{"implementation": "php", "test": "packages/php/tests/UnselectedColumnDbTest.php", "id": "UnselectedColumnDbTest::test_unselected_column"}]},
+    {"id": "php-extension-internal-dbspec-apply-cleanup-cleanup-errors-release", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecApplyCleanupTest.php", "id": "DbspecApplyCleanupTest::test_cleanup_errors_release"}]},
+    {"id": "php-extension-internal-dbspec-apply-cleanup-cleanup-errors-begin-restore", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecApplyCleanupTest.php", "id": "DbspecApplyCleanupTest::test_cleanup_errors_begin_restore"}]},
+    {"id": "php-extension-internal-dbspec-apply-cleanup-rollback-step-outside", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecApplyCleanupTest.php", "id": "DbspecApplyCleanupTest::test_rollback_step_outside"}]},
+    {"id": "php-extension-internal-dbspec-apply-cleanup-effect-row", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecApplyCleanupTest.php", "id": "DbspecApplyCleanupTest::test_effect_row"}]},
+    {"id": "php-extension-internal-dbspec-apply-cleanup-effect-close", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecApplyCleanupTest.php", "id": "DbspecApplyCleanupTest::test_effect_close"}]},
+    {"id": "php-extension-internal-dbspec-apply-scenario", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecApplyTest.php", "id": "DbspecApplyTest::test_scenario"}]},
+    {"id": "php-extension-internal-dbspec-apply-runs", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecApplyTest.php", "id": "DbspecApplyTest::test_runs"}]},
+    {"id": "php-extension-internal-dbspec-apply-pooler", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecApplyTest.php", "id": "DbspecApplyTest::test_pooler"}]},
+    {"id": "php-extension-internal-dbspec-names-render", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecNamesTest.php", "id": "DbspecNamesTest::test_render"}]},
+    {"id": "php-extension-internal-dbspec-names-column", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecNamesTest.php", "id": "DbspecNamesTest::test_column"}]},
+    {"id": "php-extension-internal-dbspec-names-of-table", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecNamesTest.php", "id": "DbspecNamesTest::test_of_table"}]},
+    {"id": "php-extension-internal-declarations-required-modules", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DeclarationsTest.php", "id": "DeclarationsTest::test_required_modules"}]},
+    {"id": "php-extension-internal-declarations-declarations", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DeclarationsTest.php", "id": "DeclarationsTest::test_declarations"}]},
+    {"id": "php-extension-internal-declarations-client", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DeclarationsTest.php", "id": "DeclarationsTest::test_client"}]},
+    {"id": "php-extension-internal-declarations-package", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DeclarationsTest.php", "id": "DeclarationsTest::test_package"}]},
+    {"id": "php-extension-internal-declarations-mirrors", "kind": "feature", "profile": "php-extension-internal", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DeclarationsTest.php", "id": "DeclarationsTest::test_mirrors"}]}
   ],
   "errors": {
     "profile": "client",
