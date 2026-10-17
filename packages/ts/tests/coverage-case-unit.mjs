@@ -42,9 +42,14 @@ caseTest('coverage_case/registers-the-suite-without-ids', COMPUTE, () => {
     const file = join(directory, 'suite.mjs');
     writeFileSync(file, `import { runCases } from ${JSON.stringify(new URL('./coverage_case.mjs', import.meta.url).href)};\n` +
       "await runCases('suite.mjs', { only: async () => {} }, 1000, { b: async () => {}, a: async () => { throw new Error('a fails'); } });\n");
-    const result = spawnSync(process.execPath, ['--test', '--test-reporter=tap', file], { encoding: 'utf8' });
+    // A separate process without --test: a nested node:test run inside this test is refused by node:test. NODE_TEST_CONTEXT
+    // is removed so the child registers and runs its own root tests instead of reporting to this run.
+    const env = { ...process.env };
+    delete env.NODE_TEST_CONTEXT;
+    const result = spawnSync(process.execPath, [file], { encoding: 'utf8', env });
     assert.equal(result.status, 1, result.stderr);
-    assert.deepEqual([...result.stdout.matchAll(/^(not ok|ok) \d+ - (\S+)$/gm)].map(m => [m[1], m[2]]), [['ok', 'b'], ['not ok', 'a']]);
+    const summary = result.stdout.split(/^ℹ tests /m)[0];
+    assert.deepEqual([...summary.matchAll(/^([✔✖]) (\S+) \(/gmu)].map(m => [m[1] === '✔' ? 'ok' : 'not ok', m[2]]), [['ok', 'b'], ['not ok', 'a']]);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 caseTest('coverage_case/stops-a-case-at-its-deadline', COMPUTE, async () => {
