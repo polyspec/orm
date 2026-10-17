@@ -5,6 +5,7 @@
 - The Go performance gate is a benchmark of the tools root packages/go/bench, which belongs to no implementation, so its go-internal parity unit is removed; the gate still runs as the performance_gate feature. (#T77-8-1-1)
 - The Python conformance bindings read the runner at its moved path, packages/python/testing/conformance/runner_python.py (T77-9-4-6).
 - The Go dbspec subtests report flat case names: no subtest name contains "/", checked by TestSubtestNamesAreFlat (T77-9-4-2).
+- The PHP dbspec tests read plans.json through one helper, dbspec_plan_cases.php, which opens the file once per process (T77-9-4-7).
 - The Python conformance runner has the NULL collection key handler relation_null_key (T77-6-1-6).
 - The TypeScript conformance runner has the NULL collection key handler relation_null_key (T77-6-1-5).
 - The Rust conformance runner has the NULL collection key handler relation_null_key (T77-6-1-4).

@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e9a147331e0204329409afc584e4769fbd6d13eaa9b63bfe6d057cd88e4eb779 -->
+<!-- source-sha256: 8769844d7ffe45c7aa8f6979d680cb3732ba40f4f62196fd8bc6ca98fe13b415 -->
 # 변경 이력
 
 ## Unreleased
 - Go 성능 gate는 tools root인 packages/go/bench의 benchmark다. 이 root는 어떤 구현에도 속하지 않으므로 그 go-internal parity unit을 없앴다. gate는 performance_gate feature로 계속 실행된다. (#T77-8-1-1)
 - Python conformance binding이 옮겨진 runner 경로 packages/python/testing/conformance/runner_python.py를 읽는다(T77-9-4-6).
 - Go dbspec subtest가 평탄한 case 이름을 보고한다. subtest 이름에 "/"가 없음을 TestSubtestNamesAreFlat이 검사한다(T77-9-4-2).
+- PHP dbspec test가 plans.json을 하나의 helper dbspec_plan_cases.php로 읽고, 프로세스마다 파일을 한 번만 연다(T77-9-4-7).
 - Python conformance runner에 NULL collection key handler relation_null_key가 생긴다(T77-6-1-6).
 - TypeScript conformance runner에 NULL collection key handler relation_null_key가 생긴다(T77-6-1-5).
 - Rust conformance runner에 NULL collection key handler relation_null_key가 생긴다(T77-6-1-4).

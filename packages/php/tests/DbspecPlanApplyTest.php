@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/coverage_cases.php';
+require_once __DIR__ . '/dbspec_plan_cases.php';
 // Applies every case of tests/dbspec/plans.json to MySQL, PostgreSQL and
 // SQLite through Polyspec\Orm\Dbspec\Dbspec (docs/plans.md "Verification"): a fresh
 // database, schema or file per run renders and applies the source, runs the
@@ -137,11 +138,7 @@ final class DbspecPlanApplyTest extends TestCase
 {
     public static function planCases(): iterable
     {
-        $vectors = json_decode(file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/plans.json'), true, 512, JSON_THROW_ON_ERROR);
-        if (($vectors['cases'] ?? []) === []) {
-            throw new RuntimeException('Missing plan vectors');
-        }
-        foreach ($vectors['cases'] as $case) {
+        foreach (plan_vectors()['cases'] as $case) {
             foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
                 yield "plan/$dialect/{$case['id']}" => [$case, $dialect];
             }

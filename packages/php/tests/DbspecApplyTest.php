@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/coverage_cases.php';
+require_once __DIR__ . '/dbspec_plan_cases.php';
 // Applies the plans.json chains through Polyspec\Orm\Dbspec\Dbspec::apply, ::recover,
 // ::rollback and ::finalize on MySQL, PostgreSQL and SQLite (docs/plans.md
 // "Apply"): the chain of create-from-empty and rename-table-and-column with
@@ -173,9 +174,8 @@ function apply_scenarios(): array
     if ($made !== null) {
         return $made;
     }
-    $vectors = json_decode(file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/plans.json'), true, 512, JSON_THROW_ON_ERROR);
     $cases = [];
-    foreach ($vectors['cases'] as $case) {
+    foreach (plan_vectors()['cases'] as $case) {
         $cases[$case['id']] = $case;
     }
     $parse = static function (string $id, string $text): Plan {
