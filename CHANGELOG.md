@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The features' `clients` flags are removed from contracts/features.json, the schema and scripts/features, and `tests.language-parity` in contracts/rules.json uses the parity check. (#T77-10-2)
 - The PHP conformance runner and its result helpers live in packages/php/testing/conformance, and the PHP result-helper test loads them from there. (#T77-9-2-1)
 - The Go conformance runner, the dbspec Go programs, the Go symbol extractor and the dialect physical tests live in packages/go/internal, and no Go adapter stays under tests/ except the cross-language tools. (#T77-9-1)
 
