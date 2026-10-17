@@ -995,7 +995,7 @@ conformance-result-check/typescript: lease-tool
 conformance-result-check/go:
 	$(GO_TEST) ./packages/go/internal/conformance -count=1
 conformance-result-check/python: python-venv-check
-	$(PYTHON_VENV)/bin/python packages/python/tests/conformance_result.py
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.conformance_result
 
 conformance-result-physical-check: lease-tool conformance-python-models
 	$(HOLD_TYPESCRIPT)

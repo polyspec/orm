@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9dea2171ab9299619d80cb1ffcf145d749b840d74a301ce828db5e0821d45aa5 -->
+<!-- source-sha256: a05160a443471a0a5b4a7627c527f66daaf027655efd3cf4cf29ef34c9451fb9 -->
 # 변경 이력
 
 ## Unreleased
@@ -10,6 +10,7 @@
 - dbspec symbol은 선언되어 있다. live 선언 검사가 선언되지 않은 공개 symbol을 찾지 않는다(T77-8-1-2).
 - PHP와 TypeScript adapter는 packages/php와 packages/ts에 있다. 상위 행은 하위 네 항목과 함께 닫힌다(T77-9-2).
 - 세 feature check가 main에서 통과한다. T77-9-4 landing이 추가한 Go와 PHP dbspec test 파일이 schema_definition에 속한다(T198).
+- conformance result Python check가 module mode로 실행되어 packages import가 해석된다(T77-17).
 - parity 선언 규칙 R4부터 R10까지 main에서 통과한다. 선언되지 않은 suite, 묶이지 않은 test 파일, root와 문서 수, 오래된 client 목록을 선언했다(T148-3-7).
 - T77-9-4 landing이 추가한 test 파일을 각 unit과 php support 목록에 묶어, 모든 선언이 다시 성립한다(T148-3).
 - PHP conformance binding은 선언된 모든 vector가 실행되고 vector 파일들이 같은 이름 집합을 가지는지 검사한다(T77-9-4-3).
