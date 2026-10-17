@@ -34,7 +34,7 @@ const sources = (): Map<string, string> => new Map([
 caseTest('the API units of the error catalog cover every code of errors.yaml once', COMPUTE, () => {
   const parity = readParity(root);
   const codes = readErrorCatalog(root);
-  const units = (parity.units ?? []).filter(unit => unit.kind === 'api');
+  const units = (parity.units ?? []).filter(unit => unit.kind === 'api' && (unit.id ?? '').startsWith('error-code-'));
   assert.equal(units.length, codes.size, `API units ${units.length}, errors.yaml codes ${codes.size}`);
   for (const code of codes) {
     const id = `error-code-${code.toLowerCase().replaceAll('_', '-')}`;

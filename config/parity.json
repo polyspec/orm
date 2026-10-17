@@ -2211,6 +2211,198 @@
         { "implementation": "python", "symbol": "orm.codes.DRIVER" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::DRIVER" }
       ]
+    },
+    {
+      "id": "aes-keyring",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.AESKeyring" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\AesKeyring" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!AesKeyring:class" },
+        { "implementation": "python", "symbol": "orm.aes.AesKeyring" },
+        { "implementation": "rust", "symbol": "polyspec_orm::utils::AesKeyring" }
+      ]
+    },
+    {
+      "id": "aes-keyring-versions",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.AESKeyring.AESVersions" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\AesKeyring::versions" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!AesKeyring#versions:member(1)" },
+        { "implementation": "python", "symbol": "orm.aes.AesKeyring.versions" },
+        { "implementation": "rust", "symbol": "polyspec_orm::utils::AesKeyring::versions" }
+      ]
+    },
+    {
+      "id": "aes-rotation-status",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.AESRotationStatus" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\AesRotationStatus" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!AesRotationStatus:interface" },
+        { "implementation": "python", "symbol": "orm.utils.AesRotationStatus" },
+        { "implementation": "rust", "symbol": "polyspec_orm::utils::AesRotationStatus" }
+      ]
+    },
+    {
+      "id": "aes-utils",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.AESUtils" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\AesUtils" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!AesUtils:class" },
+        { "implementation": "python", "symbol": "orm.utils.AesUtils" },
+        { "implementation": "rust", "symbol": "polyspec_orm::utils::AesUtils" }
+      ]
+    },
+    {
+      "id": "aes-utils-status",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.AESUtils.Status" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\AesUtils::status" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!AesUtils#status:member(1)" },
+        { "implementation": "python", "symbol": "orm.utils.AesUtils.status" },
+        { "implementation": "rust", "symbol": "polyspec_orm::utils::AesUtils::status" }
+      ]
+    },
+    {
+      "id": "aes-utils-rotate",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.AESUtils.Rotate" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\AesUtils::rotate" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!AesUtils#rotate:member(1)" },
+        { "implementation": "python", "symbol": "orm.utils.AesUtils.rotate" },
+        { "implementation": "rust", "symbol": "polyspec_orm::utils::AesUtils::rotate" }
+      ]
+    },
+    {
+      "id": "codec-blind-index",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.BlindIndex" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\Codec::blindIndex" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!blindIndex:function(1)" },
+        { "implementation": "python", "symbol": "orm.codec.blind_index" },
+        { "implementation": "rust", "symbol": "polyspec_orm::codec::blind_index" }
+      ]
+    },
+    {
+      "id": "codec-host-encode",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.HostEncode" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\Codec::hostEncode" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!hostEncode:function(1)" },
+        { "implementation": "python", "symbol": "orm.codec.host_encode" },
+        { "implementation": "rust", "symbol": "polyspec_orm::codec::host_encode" }
+      ]
+    },
+    {
+      "id": "codec-host-decode",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.HostDecode" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\Codec::hostDecode" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!hostDecode:function(1)" },
+        { "implementation": "python", "symbol": "orm.codec.host_decode" },
+        { "implementation": "rust", "symbol": "polyspec_orm::codec::host_decode" }
+      ]
+    },
+    {
+      "id": "collection",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!Collection:class" },
+        { "implementation": "python", "symbol": "orm.model.Collection" },
+        { "implementation": "rust", "symbol": "polyspec_orm::collection::Collection" }
+      ]
+    },
+    {
+      "id": "collection-get",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.Get" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::get" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!Collection#get:member(1)" },
+        { "implementation": "python", "symbol": "orm.model.Collection.get" },
+        { "implementation": "rust", "symbol": "polyspec_orm::collection::Collection::get" }
+      ]
+    },
+    {
+      "id": "collection-first",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.First" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::first" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!Collection#first:member(1)" },
+        { "implementation": "python", "symbol": "orm.model.Collection.first" },
+        { "implementation": "rust", "symbol": "polyspec_orm::collection::Collection::first" }
+      ]
+    },
+    {
+      "id": "collection-keys",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.Keys" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::keys" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!Collection#keys:member(1)" },
+        { "implementation": "python", "symbol": "orm.model.Collection.keys" },
+        { "implementation": "rust", "symbol": "polyspec_orm::collection::Collection::keys" }
+      ]
+    },
+    {
+      "id": "collection-to-array",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.ToArray" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::toArray" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!Collection#toArray:member(1)" },
+        { "implementation": "python", "symbol": "orm.model.Collection.to_array" },
+        { "implementation": "rust", "symbol": "polyspec_orm::collection::Collection::to_array" }
+      ]
+    },
+    {
+      "id": "collection-delete",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.Delete" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::delete" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!Collection#delete:member(1)" },
+        { "implementation": "python", "symbol": "orm.model.Collection.delete" },
+        { "implementation": "rust", "symbol": "polyspec_orm::collection::Collection::delete" }
+      ]
+    },
+    {
+      "id": "collection-connect",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.Connect" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::connect" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!Collection#connect:member(1)" },
+        { "implementation": "python", "symbol": "orm.model.Collection.connect" },
+        { "implementation": "rust", "symbol": "polyspec_orm::collection::Collection::connect" }
+      ]
     }
   ],
   "errors": {
