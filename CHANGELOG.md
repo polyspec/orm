@@ -3,6 +3,7 @@
 
 ## Unreleased
 - The Go performance gate is a benchmark of the tools root packages/go/bench, which belongs to no implementation, so its go-internal parity unit is removed; the gate still runs as the performance_gate feature. (#T77-8-1-1)
+- The Python conformance runner has the NULL collection key handler relation_null_key (T77-6-1-6).
 - The TypeScript conformance runner has the NULL collection key handler relation_null_key (T77-6-1-5).
 - The Rust conformance runner has the NULL collection key handler relation_null_key (T77-6-1-4).
 - The PHP conformance runner has the NULL collection key handler relation_null_key (T77-6-1-3).
