@@ -1,10 +1,10 @@
 <?php
-// The result helpers of the PHP conformance runner (tests/conformance/result_php_helpers.php): a result keeps ordered-json
+// The result helpers of the PHP conformance runner (packages/php/testing/conformance/result_php_helpers.php): a result keeps ordered-json
 // numbers and styled states, a derived integer is read only from an integral value, and a vector failure keeps its cause.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceResultTest.php
 declare(strict_types=1);
 
-require_once dirname(__DIR__, 3) . '/tests/conformance/result_php_helpers.php';
+require_once dirname(__DIR__) . '/testing/conformance/result_php_helpers.php';
 
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;

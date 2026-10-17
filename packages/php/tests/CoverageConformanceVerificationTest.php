@@ -98,7 +98,7 @@ final class CoverageConformanceVerificationTest extends TestCase
             throw new RuntimeException("$variable is required, and database tests never skip; run make databases-create, which seeds the bench databases and writes their DSNs");
         }
         $root = dirname(__DIR__, 3);
-        [$status, $stdout, $stderr] = coverageProcess([PHP_BINARY, "$root/tests/conformance/runner.php", '--dsn', $dsn], $root);
+        [$status, $stdout, $stderr] = coverageProcess([PHP_BINARY, "$root/packages/php/testing/conformance/runner.php", '--dsn', $dsn], $root);
         if ($status !== 0) {
             throw new RuntimeException(str_replace($dsn, '[dsn]', "conformance runner exited $status: $stderr$stdout"));
         }
@@ -145,7 +145,7 @@ final class CoverageConformanceVerificationTest extends TestCase
                 }
             }
             Assert::assertTrue(count($expect) === count(CONFORMANCE_VECTORS), "$file lacks a selected vector");
-            $command = [PHP_BINARY, "$root/tests/conformance/runner.php", '--dsn', $dsn];
+            $command = [PHP_BINARY, "$root/packages/php/testing/conformance/runner.php", '--dsn', $dsn];
             foreach (CONFORMANCE_VECTORS as $name) {
                 array_push($command, '--vector', $name);
             }

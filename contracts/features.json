@@ -7709,7 +7709,7 @@
         "packages/go/internal/conformance/main_test.go",
         "tests/conformance/check/styled-expectations.test.mts",
         "tests/conformance/check/rust-group.physical.test.mts",
-        "tests/conformance/runner.php",
+        "packages/php/testing/conformance/runner.php",
         "tests/conformance/runner_typescript.mts",
         "packages/rust/tests/src/conformance.rs",
         "packages/go/model/coverage_conformance_verification_test.go",
@@ -9027,7 +9027,7 @@
       "id": "conformance-result",
       "paths": [
         "packages/php/tests/ConformanceResultTest.php",
-        "tests/conformance/result_php_helpers.php",
+        "packages/php/testing/conformance/result_php_helpers.php",
         "tests/conformance/result_typescript.mts"
       ],
       "tests": [
@@ -9038,7 +9038,7 @@
     {
       "id": "conformance-runners",
       "paths": [
-        "tests/conformance/runner.php",
+        "packages/php/testing/conformance/runner.php",
         "tests/conformance/runner_typescript.mts"
       ],
       "tests": [],

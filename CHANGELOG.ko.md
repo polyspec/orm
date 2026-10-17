@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ca17350b82cb5f61d10a94cc75663b97b0933a07b4894ac34653c08481fbf9f7 -->
+<!-- source-sha256: 7109b793e11e4a806daef78faec568579c60e3bf739b8c9e7041994cbe56e05e -->
 # 변경 이력
 
 ## Unreleased
+- PHP conformance runner와 result helper가 packages/php/testing/conformance에 있으며, PHP result helper test가 거기서 불러온다. (#T77-9-2-1)
 - Go conformance runner, dbspec Go program, Go symbol extractor와 dialect physical test가 packages/go/internal에 있으며, Go adapter는 cross-language 도구를 제외하고 tests/ 아래에 남지 않는다. (#T77-9-1)
 
 

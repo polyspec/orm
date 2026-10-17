@@ -43,7 +43,7 @@ Structure checks compare the common methods and stored fields first, then report
 | Client | Planner and generated model owner | Executable owner tests | Dependent-part and shared checks |
 |---|---|---|---|
 | Go | `packages/go/engine/*` is called directly by `packages/go/orm`; generated models are under `packages/go/model` | `packages/go/orm/*_test.go`, `packages/go/model/*_test.go` | `tests/conformance/runner.go`, `tests/interfaces/check` |
-| PHP | `packages/php/src` plans and executes through PDO; generated models are under `packages/php/gen` | `packages/php/tests/*.php` | `tests/conformance/runner.php`, `tests/interfaces/php.php` |
+| PHP | `packages/php/src` plans and executes through PDO; generated models are under `packages/php/gen` | `packages/php/tests/*.php` | `packages/php/testing/conformance/runner.php`, `tests/interfaces/php.php` |
 | Rust | `packages/rust/orm` plans and executes through sqlx; `polyspec-orm-build` generates models | `packages/rust/tests/src`, `packages/rust/orm/src/*_test.rs` | `tests/conformance/runner_rust.rs`, `tests/interfaces/rust` |
 | TypeScript | `packages/ts/src` plans and executes through native drivers; generated models are under `packages/ts/src/models` | `packages/ts/tests` | `tests/conformance/runner_typescript.mts`, `tests/interfaces/typescript.mts` |
 

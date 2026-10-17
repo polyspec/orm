@@ -37,7 +37,7 @@ the client on SQLite with `php -n` and only the extensions it needs, so that `my
   `EngineTest.php`, `HostcodecTest.php`, `DsnTest.php`,
   `RelationKeysTest.php`, `PerfGateTest.php`, `OrmGenTest.php` (the command line), and the `dbspec_*`
   tests of `Dbspec/`. The conformance runner is
-  `tests/conformance/runner.php`.
+  `packages/php/testing/conformance/runner.php`.
 
 ## Models
 

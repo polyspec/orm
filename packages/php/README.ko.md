@@ -1,5 +1,5 @@
 <!-- doc-id: packages-orm-php-readme -->
-<!-- source-sha256: 05810178674fba039ed80f2f3c2f9b5323504bedba297b9487be319da2ff195c -->
+<!-- source-sha256: 9fe860030367c84eaf1d150360c669559750ca9ae8014d9607b1c99500b45a34 -->
 # orm — PHP 클라이언트
 
 PHP 클라이언트: PDO(`pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`) 위의 생성 모델(`Polyspec\Orm\Tests\Model\Author`, …). 라이브러리가
@@ -37,7 +37,7 @@ extension은 없다. PHP 8.4 이상. Version 0.0.18. DSN의 scheme이 PDO driver
   `EngineTest.php`, `HostcodecTest.php`, `DsnTest.php`,
   `RelationKeysTest.php`, `PerfGateTest.php`, `OrmGenTest.php`(command line), 그리고 `Dbspec/`의 `dbspec_*`
   test. conformance runner는
-  `tests/conformance/runner.php`다.
+  `packages/php/testing/conformance/runner.php`다.
 
 ## 모델
 

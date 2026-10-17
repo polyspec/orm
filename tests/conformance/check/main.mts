@@ -318,7 +318,7 @@ async function runOne(context: Context, root: string, target: Target, output: st
     case 'php': {
       // PHP는 TZ를 읽지 않고 date.timezone을 읽는다. 다른 runner처럼 TZ의 시간대로 실행한다.
       const zone = process.env.TZ ?? '';
-      return runCommand(context, root, output, runnerDeadline, 'php', [...(zone === '' ? [] : ['-d', `date.timezone=${zone}`]), 'tests/conformance/runner.php', ...flags]);
+      return runCommand(context, root, output, runnerDeadline, 'php', [...(zone === '' ? [] : ['-d', `date.timezone=${zone}`]), 'packages/php/testing/conformance/runner.php', ...flags]);
     }
     case 'typescript':
       return runCommand(context, root, output, runnerDeadline, 'node', ['tests/conformance/runner_typescript.mts', ...flags]);

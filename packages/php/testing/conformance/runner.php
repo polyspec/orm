@@ -1,12 +1,12 @@
 <?php
 // Conformance runner (PHP). Runs the chains of packages/go/internal/conformance/main.go and prints the same document.
-// Usage: php tests/conformance/runner.php --dsn URI [--vector NAME]...
+// Usage: php packages/php/testing/conformance/runner.php --dsn URI [--vector NAME]...
 // --vector는 반복할 수 있고, 주어지면 이름이 같은 vector만 실행한다. 모르는 이름은 오류다.
 declare(strict_types=1);
 
-require dirname(__DIR__, 2) . '/packages/php/tests/autoload.php';
+require dirname(__DIR__, 2) . '/tests/autoload.php';
 require __DIR__ . '/result_php_helpers.php';
-require dirname(__DIR__, 2) . '/packages/php/testing/Faults.php';
+require dirname(__DIR__, 2) . '/testing/Faults.php';
 
 use Polyspec\Orm\Tests\Model\Author;
 use Polyspec\Orm\Tests\Model\BindCell;
