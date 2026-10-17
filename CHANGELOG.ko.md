@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 52e6812d41db17e712fae61912e80c5ed6677bbb9101d9e07b5af232992f4c3e -->
+<!-- source-sha256: e8748738b9779567f0c88f8a7be6e6542c077be5af5e131d3931662bb283d562 -->
 # 변경 이력
 
 ## Unreleased
 - Go 성능 gate는 tools root인 packages/go/bench의 benchmark다. 이 root는 어떤 구현에도 속하지 않으므로 그 go-internal parity unit을 없앴다. gate는 performance_gate feature로 계속 실행된다. (#T77-8-1-1)
+- PHP conformance binding은 선언된 모든 vector가 실행되고 vector 파일들이 같은 이름 집합을 가지는지 검사한다(T77-9-4-3).
 - Python conformance binding이 옮겨진 runner 경로 packages/python/testing/conformance/runner_python.py를 읽는다(T77-9-4-6).
 - Go dbspec subtest가 평탄한 case 이름을 보고한다. subtest 이름에 "/"가 없음을 TestSubtestNamesAreFlat이 검사한다(T77-9-4-2).
 - PHP dbspec test가 plans.json을 하나의 helper dbspec_plan_cases.php로 읽고, 프로세스마다 파일을 한 번만 연다(T77-9-4-7).
