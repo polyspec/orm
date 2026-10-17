@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 141cc2593b25f6693a7284d91a836cc63cbab70a09655a5b72b41003f37a807a -->
+<!-- source-sha256: 13adad9e2490f2e5eac3e5cc035817dc3d036cdb8ba5618cdf8f7cf4316a1d37 -->
 # 변경 이력
 
 ## Unreleased
 - Go 성능 gate는 tools root인 packages/go/bench의 benchmark다. 이 root는 어떤 구현에도 속하지 않으므로 그 go-internal parity unit을 없앴다. gate는 performance_gate feature로 계속 실행된다. (#T77-8-1-1)
+- TypeScript conformance runner에 NULL collection key handler relation_null_key가 생긴다(T77-6-1-5).
 - Rust conformance runner에 NULL collection key handler relation_null_key가 생긴다(T77-6-1-4).
 - PHP conformance runner에 NULL collection key handler relation_null_key가 생긴다(T77-6-1-3).
 - Go conformance runner에 NULL collection key handler relation_null_key가 생긴다. 기대값은 database 실행과 함께 기록한다(T77-6-1-2).

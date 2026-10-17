@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 4c8a729523abac0bd784a780ab4b28cd0f3a27b39b1196c1971fcc727f6275f8 -->
+<!-- source-sha256: f9777a0836e721cf7d76e78b2a5f348bde89bb60f492483e4bfe93add5cd7fe7 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -871,7 +871,7 @@
       - [o] T77-6-1-2 Go runner가 NULL collection key case `relation_null_key`의 handler를 가진다 (T77-6-1에 이어). 원인: Go runner는 등록되지 않은 vector 이름을 거절하므로 case가 어떤 database도 읽기 전에 실패한다. 완료 기준: handler가 nullable key relation(user 100에서 Author를 user seq로 맞추고 price로 key)을 만들고, package가 build와 vet을 통과한다. 증거: packages/go에서 `go build`와 `go vet ./internal/conformance/`가 통과한다. 기대값은 마지막 배치의 database 실행에서 기록한다.
       - [o] T77-6-1-3 PHP runner가 `relation_null_key`의 handler를 가진다 (T77-6-1에 이어). 완료 기준: handler가 PHP client로 같은 relation을 만들고, runner가 등록한다. Evidence: the handler is written and its file checks (see the commit).
       - [o] T77-6-1-4 Rust runner가 `relation_null_key`의 handler를 가진다 (T77-6-1에 이어). 완료 기준: handler가 Rust client로 같은 relation을 만들고, runner가 등록한다. Evidence: the handler is written and its file checks (see the commit).
-      - [ ] T77-6-1-5 TypeScript runner가 `relation_null_key`의 handler를 가진다 (T77-6-1에 이어). 완료 기준: handler가 TypeScript client로 같은 relation을 만들고, runner가 등록한다.
+      - [o] T77-6-1-5 TypeScript runner가 `relation_null_key`의 handler를 가진다 (T77-6-1에 이어). 완료 기준: handler가 TypeScript client로 같은 relation을 만들고, runner가 등록한다. Evidence: the handler is written and its file checks (see the commit).
       - [ ] T77-6-1-6 Python runner가 `relation_null_key`의 handler를 가진다 (T77-6-1에 이어). 완료 기준: handler가 Python client로 같은 relation을 만들고, runner가 등록한다.
       결정(owner가 2026-10-18에 전달): PHP 확장은 모든 기능을 C로 구현한다. 다른 개발 행이 모두 끝난 뒤 재개하며, 그때까지 보류한다.
   - [!] T77-6-2 conformance runner가 vector의 chain을 vector 이름마다가 아니라 한 번 해석한다(T77-6의 구조 개선). 원인: 다섯 runner(Go packages/go/internal/conformance/main.go:1255, PHP packages/php/testing/conformance/runner.php:744, Rust packages/rust/tests/src/conformance.rs:1005, TypeScript tests/conformance/runner_typescript.mts:668, Python tests/conformance/runner_python.py:1444)가 vector 이름마다 손으로 쓴 본문을 가져서, vector가 늘 때마다 같은 로직을 다섯 번 반복한다. 계획: (1) tests/conformance/vectors*.json의 chain 스키마를 단일 형식으로 고정한다(step 종류는 기존 본문이 쓰는 begin, commit, create, gets, relations 등); (2) runner마다 vector의 step을 실행하고 vector가 기대하는 결과 형태를 돌려주는 chain 해석기를 하나씩 둔다; (3) 이름별 본문을 해석기 호출로 한 vector씩 바꾸며, 각 vector는 바뀌지 않은 기대값에 대해 red 후 green이다; (4) 해석기를 step 종류별로 단위 test한다; (5) 기존 vector 전부가 바뀐 뒤에도 같은 결과를 보고한다. 수용: 어느 runner에도 이름별 본문이 남지 않고, 모든 vector가 바뀌지 않은 기대값으로 통과한다. 보류 사유: 다섯 runner의 파괴적 구조 변경은 사용자가 지금 요구하지 않았다. Retry: 사용자가 이 구조 변경의 보류를 해제한다.

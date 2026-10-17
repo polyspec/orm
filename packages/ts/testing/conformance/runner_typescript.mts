@@ -243,6 +243,10 @@ async function main() {
     const rows = await author().relations(new ServiceMember().matchUserSeqWithUserSeq()).getsBySeq(-1);
     return rows.length;
   });
+  await run('relation_null_key', async () => {
+    const rows = await new User().connect(db).relations(new Author().matchSeqWithUserSeq().keyNamePrice()).seq(100).gets();
+    return rows.values().length;
+  });
   await run('subqueries', async () => {
     const users = await new User().connect(db)
       .addColumnReadTotal(u => new Author().sumReadCount().userSeqEqSeq(u).andServiceSeq(7))
