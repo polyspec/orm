@@ -3,6 +3,7 @@
 
 ## Unreleased
 - The Go performance gate is a benchmark of the tools root packages/go/bench, which belongs to no implementation, so its go-internal parity unit is removed; the gate still runs as the performance_gate feature. (#T77-8-1-1)
+- The PHP and TypeScript adapters live in packages/php and packages/ts; the parent row closes with its four sub-items (T77-9-2).
 - The parity declaration rules R4 to R10 pass on main: the undeclared suites, the unbound test files, the root and document counts, and the stale client lists are declared (T148-3-7).
 - The parity declarations bind the test files added by the T77-9-4 landings to their units and the php support list, so every declaration holds again (T148-3).
 - The PHP conformance binding checks that every declared vector is run and that the vector files name the same set (T77-9-4-3).
