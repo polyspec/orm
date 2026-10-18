@@ -367,8 +367,8 @@ async function nativeTest(item: Item, command: NativeCommand, root: string): Pro
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(short) || !new RegExp(pattern).test(source))
       throw new Error(`test symbol ${symbol} is absent from declared test file`);
   }
-  // Go와 Rust는 실행 전에 test binary를 한 번 build한다(buildNative). 여기서는 build 단위만
-  // 정한다: Go는 test file의 package directory, Rust는 test file을 소유하는 crate다.
+  // Go and Rust build the test binary once before running it (buildNative). Here only the build unit
+  // is fixed: for Go, the package directory of the test file; for Rust, the crate that owns the test file.
   if (command.runner === 'go')
     return { format: 'go', cwd: dirname(testPath), symbols: nativeSymbols };
   let crate = dirname(testPath);
@@ -440,17 +440,17 @@ export function observedCases(format: Spec['format'], output: string, requested:
     }
   }
   if (seen.size !== nativeSymbols.length || nativeSymbols.some(symbol => !seen.has(symbol))) {
-    // 빈 집합은 `observed no cases`로 쓴다. 목록이 비면 `observed cases` 뒤가 비어 보이기 때문이다.
+    // An empty set is written as `observed no cases`. If the list were empty, what follows `observed cases` would look blank.
     const observed = seen.size === 0 ? 'observed no cases' : `observed cases ${[...seen].join(',')}`;
     throw new Error(`${observed} differ from ${nativeSymbols.join(',')}`);
   }
   return requested.map(id => ({ id, database, value_json: 'true' }));
 }
 
-// dependencyFiles는 rustc가 test binary 옆에 쓰는 dep-info(<binary>.d)의 첫 규칙에서 그
-// binary가 compile한 source file 목록을 읽는다. 경로의 공백은 backslash로 escape되어 있고,
-// cargo는 workspace member를 workspace root에 대한 상대 경로로 compile하므로 상대 경로는
-// workspace에서 푼다.
+// dependencyFiles reads from the first rule of the dep-info (<binary>.d) that rustc writes next to the test binary, the
+// list of source files the binary was compiled from. Spaces in paths are escaped with a backslash, and
+// cargo compiles workspace members by paths relative to the workspace root, so relative paths
+// are resolved against the workspace.
 async function dependencyFiles(executable: string, workspace: string): Promise<string[]> {
   const text = await readFile(`${executable}.d`, 'utf8');
   const rule = text.split('\n', 1)[0] ?? '';
@@ -459,13 +459,13 @@ async function dependencyFiles(executable: string, workspace: string): Promise<s
   return rule.slice(separator + 2).split(/(?<!\\) +/).filter(Boolean).map(path => resolve(workspace, path.replaceAll('\\ ', ' ')));
 }
 
-// buildNative는 coverage case보다 먼저 build를 한 번씩 한다. Go
-// package마다 `go test -c` test binary와 test2json, Rust crate마다 `cargo test --no-run`의
-// test binary다. 두 번의 실행과 모든 database가 같은 binary를 실행한다. build 하나는 장기 작업
-// 하나로 시작, 진행(compiler 출력), 종료 코드, 결과와 경과 시간을 보고하고 기한이 없다(runLong). 실패한
-// build는 builds의 error로 남고 그 build를 쓰는 실행이 그 error로 실패한다. Go build는
-// 끝난 뒤 돌아오고, 가장 긴 Rust build는 시작만 하고 돌아온다: builds.cargoReady가 그 build가 끝나고
-// builds.cargo를 채우면 끝나는 promise다. 그래서 cargo를 쓰지 않는 실행은 Rust build와 함께 진행한다.
+// buildNative builds once each before the coverage cases. Go
+// per package, the `go test -c` test binary and test2json; per Rust crate, the output of `cargo test --no-run`
+// test binary. The two runs and every database execute the same binary. One build is a long-running task
+// that starts once, reports progress (compiler output), exit code, result and elapsed time, and has no deadline (runLong). A failed
+// build stays as an error in builds, and the runs that use that build fail with that error. The Go build
+// returns after it finishes, and the longest Rust build only starts and returns: builds.cargoReady
+// is a promise that settles once builds.cargo is filled. So runs that do not use cargo proceed alongside the Rust build.
 /** The plans of one coverage run, with the repository root they resolve against. */
 type Plans = Plan[] & { root: string };
 /** A build with its name; it returns null when it passes, otherwise its error. */
@@ -502,14 +502,14 @@ async function buildNative(plans: Plans, directory: string): Promise<Builds> {
   return builds;
 }
 
-// buildCargo는 Rust test binary의 build다(buildNative). 끝나면 builds.cargo에 crate마다 그 binary나 error를 둔다.
-// 실패는 builds.cargo의 error로 남기므로 이 promise는 거부되지 않는다.
+// buildCargo is the build of the Rust test binary (buildNative). When it finishes, builds.cargo holds, per crate, that binary or the error.
+// A failure stays as an error in builds.cargo, so this promise is not rejected.
 async function buildCargo(plans: Plans, directory: string, builds: Builds, build: Build): Promise<void> {
   const specs = plans.flatMap(plan => plan.native);
-  // Rust test binary는 crate가 속한 workspace마다 한 번 build한다. `--workspace`와
-  // ORM_RUST_TEST_FEATURES(Makefile)는 client DB test와 다른 Rust 검사가 쓰는 것과 같은 feature
-  // 결정을 만들어 그 build를 함께 쓴다. crate 하나만 고르면(`-p`, manifest) feature가 달라져 같은
-  // crate를 다시 compile한다.
+  // The Rust test binary is built once per workspace that the crate belongs to. `--workspace` and
+  // ORM_RUST_TEST_FEATURES (Makefile) is the same feature set used by the client DB tests and the other Rust checks
+  // decision, so the build is shared. If only one crate is selected (`-p`, manifest), the features differ and the same
+  // crate is compiled again.
   const workspaces = new Map<string, string[]>();
   for (const crate of new Set(specs.filter(spec => spec.format === 'cargo').map(spec => spec.cwd))) {
     const located = await run('cargo', ['locate-project', '--workspace', '--message-format', 'plain',
@@ -526,9 +526,9 @@ async function buildCargo(plans: Plans, directory: string, builds: Builds, build
   for (const [workspace, crates] of workspaces) {
     const files = new Map<string, string[]>();
     const error = await build(`cargo/${relative(plans.root, workspace) || '.'}`, async step => {
-      // build와 복사는 공유 Rust target directory의 exclusive lease 아래에서 한다(tests/cargo-test.mts --copy). 실행은
-      // 이 checker의 directory에 복사한 binary를 쓰므로, 이 checkout의 다른 실행의 build가 target directory를 바꿔도 이
-      // 실행의 test binary는 바뀌지 않는다.
+      // The build and the copy are done under an exclusive lease on the shared Rust target directory (tests/cargo-test.mts --copy). Runs
+      // use the binary copied into this checker's directory, so even if a build from another run in this checkout changes the target directory, this
+      // run's test binary does not change.
       const { LEASE: lease, CARGO_LEASES: leases } = process.env;
       if (!lease || !leases) throw new Error('LEASE and CARGO_LEASES are unset; run this through make, which exports them');
       const copies = resolve(directory, `cargo-${workspaces.size}-${files.size}-${relative(plans.root, workspace).replaceAll('/', '_') || 'root'}`);
@@ -550,13 +550,13 @@ async function buildCargo(plans: Plans, directory: string, builds: Builds, build
   }
 }
 
-// prepared는 spec 하나를 build된 binary를 실행하는 process 목록으로 바꾼다. Go는 test2json이
-// test binary를 실행해 `go test -json`과 같은 event를 낸다. Rust는 선언된 test file을
-// compile한 test binary마다 그 entry의 모든 symbol을 한 process에서 정확히 일치로, 선언된 순서와
-// 상관없이 하나씩 차례로 실행한다(--test-threads=1). 같은 entry의 case는 같은 database row를 쓸 수
-// 있으므로 symbol마다 process를 띄우던 때처럼 겹쳐 실행하지 않는다.
-// Rust test binary에는 cargo test처럼 그 crate의 package directory를 CARGO_MANIFEST_DIR로 준다:
-// test는 fixture 경로를 실행 시점의 값(polyspec_orm_testcase::manifest_dir)에서 얻는다.
+// prepared turns one spec into the list of processes that run the built binary. For Go, test2json
+// runs the test binary and emits the same events as `go test -json`. For Rust, each test binary compiled from the declared test file
+// runs every symbol of its entry in one process, matched exactly,
+// one at a time in turn regardless of the declared order (--test-threads=1). Cases of the same entry can
+// write the same database row, so they are not run in parallel as when a process was started per symbol.
+// The Rust test binary receives the crate's package directory as CARGO_MANIFEST_DIR, as cargo test does:
+// the test gets the fixture path from the value at run time (polyspec_orm_testcase::manifest_dir).
 function prepared(spec: Spec, builds: Builds): Prepared[] {
   if (spec.format === 'case' || spec.format === 'phpunit') return [{ program: spec.program, args: spec.args, cwd: spec.cwd }];
   if (spec.format === 'go') {
@@ -585,14 +585,14 @@ async function state(database: string, dsn: string, timeoutMs: number): Promise<
   return match[1];
 }
 
-// usesCargo는 실행이 cargo test binary(buildNative의 Rust build)를 쓰는지다.
+// usesCargo is whether the run uses the cargo test binary (the Rust build of buildNative).
 const usesCargo = (plan: Plan): boolean => plan.native.some(spec => spec.format === 'cargo');
 
-// executeCoverage의 기한이다.
-// timeoutMs: 실행 하나가 띄우는 process 하나의 기한이다. process는 build된 binary로, database
-// 하나의 catalog digest를 읽는 state reader이거나, 선언된 case를 실행하는 test binary다. 그
-// case는 자기 등급(testcase.Start, caseTest)으로 자기 기한을 지키므로, 이 기한은 멈춘 process를 끝내는 바깥
-// 경계이며 선언할 수 있는 가장 긴 등급 PROCESS(5분)보다 짧지 않다. 그 앞의 build는 장기 작업이므로 기한이 없다.
+// The deadline of executeCoverage.
+// timeoutMs: the deadline of one process that a run starts. The process is either the built binary, a database
+// state reader that reads one catalog digest, or the test binary that runs the declared cases. The
+// case keeps its own deadline through its own level (testcase.Start, caseTest), so this deadline is the outer
+// boundary that ends a stuck process, and is not shorter than the longest declarable level PROCESS (5 minutes). The build before it is a long-running task, so it has no deadline.
 export const NATIVE_DEADLINE = PROCESS;
 export async function executeCoverage(manifest: Manifest, root: string, timeoutMs = NATIVE_DEADLINE): Promise<string[]> {
   const reports: Record<string, Report[]> = {};
@@ -649,11 +649,11 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
   let builds: Builds | undefined;
   try {
     builds = await buildNative(plans, directory);
-    // 실행은 database마다 한 줄(lane)로 차례로 하고, 줄끼리는 함께 진행한다. 한 database의 state는
-    // 그 database의 실행만 바꿀 수 있으므로 앞뒤 state 비교는 그대로이고, 세 database와
-    // database가 없는 실행이 서로 기다리지 않는다. 줄 안에서는 cargo를 쓰지 않는 실행이 먼저, Rust build
-    // 동안 진행하고, cargo test binary를 쓰는 실행이 그 build가 끝난 뒤 manifest의 순서대로 온다.
-    // 실행마다 자기 앞뒤 state를 비교하므로 실행의 순서는 결과를 바꾸지 않는다.
+    // Runs are done in turn, one line (lane) per database, and the lines proceed together. The state of one database
+    // can only be changed by the runs of that database, so the before and after state comparison stays as it is, and the three databases and
+    // the runs without a database do not wait for each other. Within a line, the runs that do not use cargo come first, during the Rust build
+    // they proceed, and the runs that use the cargo test binary come after that build finishes, in manifest order.
+    // Each run compares its own before and after state, so the order of runs does not change the result.
     // A file that lists several databases runs once for them (runUnit), before the lanes; the other plans run in lanes.
     const units = groupUnits(plans);
     for (const unit of units) if (unit.length > 1) await runUnit(unit);
@@ -661,7 +661,7 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
     const lanes = Map.groupBy(singles, plan => plan.item.database);
     await Promise.all([...lanes.values()].map(lane => runLane([...lane.filter(plan => !usesCargo(plan)), ...lane.filter(usesCargo)])));
   } finally {
-    // 임시 directory를 지우기 전에 Rust build(그 directory에 binary를 복사한다)가 끝나기를 기다린다.
+    // Before deleting the temporary directory, wait for the Rust build (which copies the binary into that directory) to finish.
     await builds?.cargoReady;
     await rm(directory, { recursive: true, force: true });
   }
@@ -755,8 +755,8 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
         let processes: Prepared[][];
         try { processes = native.map(spec => prepared(spec, shared)); }
         catch (error) { errors.push(`${key}: ${error instanceof Error ? error.message : String(error)}`); continue; }
-        // 한 실행의 기한은 그 실행이 띄우는 process 기한의 합이다. state reader 두 번과 native
-        // process마다 timeoutMs를 가진다.
+        // The deadline of one run is the sum of the deadlines of the processes that run starts. Two state readers and native
+        // each process has its own timeoutMs.
         const count = (dsn ? 2 : 0) + processes.flat().length;
         for (let attempt = 1; attempt <= 2; attempt++) {
           let failure: string | undefined;
@@ -774,8 +774,8 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
                   step(child.label ?? `${spec.format === 'case' || spec.format === 'phpunit' ? spec.program : child.program} ${entry.test}${spec.format !== 'case' ? ` ${spec.symbols.join(' ')}` : ''}`);
                   const result = await run(child.program, child.args, child.cwd, timeoutMs, { ...testEnv, ...child.env }, dsn ? (text: string) => step(text.replaceAll(dsn, '[redacted]')) : step);
                   if (result.error) throw new Error(result.error);
-                  // libtest는 `test <symbol> ... ok` 결과 줄을, PHPUnit은 TeamCity event를 stdout에 쓴다. test가
-                  // stderr에 쓰는 줄이 그 사이에 끼지 않도록 Rust와 PHP는 stdout만 읽는다.
+                  // libtest writes `test <symbol> ... ok` result lines, and PHPUnit writes TeamCity events, to stdout. Since a test
+                  // lines written to stderr must not be interleaved between them, Rust and PHP read only stdout.
                   output += (spec.format === 'cargo' || spec.format === 'phpunit' ? result.stdout : result.value) + '\n';
                 }
                 results.push(...observedCases(spec.format, output, entry.cases, spec.format === 'case' ? entry.cases : spec.symbols, item.database));
@@ -826,9 +826,9 @@ function groupUnits(plans: Plan[]): Plan[][] {
   return units;
 }
 
-// selectFeatures는 featureId(check.mts --feature처럼 contracts/features.json의 id)인 기능 하나만 남긴
-// manifest다. parts(`owner/<language>`나 `dependent/<id>`)를 주면 그 coverage 단위만 실행하고 검사한다.
-// 없는 id나 단위는 빈 실행이 아니라 고를 수 있는 값을 적은 오류다.
+// selectFeatures keeps only the one feature whose featureId (the id in contracts/features.json, as with check.mts --feature)
+// manifest. If parts (`owner/<language>` or `dependent/<id>`) are given, only that coverage unit is run and checked.
+// An unknown id or unit is an error listing the values that can be chosen, not an empty run.
 export function selectFeatures(manifest: Manifest, featureId: string | undefined, parts: string[] = []): Manifest & { features: Feature[] } {
   if (featureId === undefined) {
     if (parts.length) throw new Error('--part needs --feature');

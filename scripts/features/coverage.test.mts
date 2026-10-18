@@ -338,10 +338,10 @@ function phpArray(list: string[]): string {
 
 const PASSED = ["testStarted name='test_first'", "testFinished name='test_first' duration='0'"];
 
-// Rust build 겹침 case(G5.123)는 cargo test binary를 쓰지 않는 실행이 Rust build를 기다리지 않는지 본다. PATH 앞의 cargo는
-// `cargo test --no-run`에서 FIFO를 읽을 때까지, 곧 PHP case가 그 FIFO에 쓸 때까지 기다린 뒤 실제 cargo를 실행한다. manifest에서
-// Rust 소유자가 PHP 소유자보다 앞에 있으므로, build가 끝난 뒤에야 실행을 시작하거나 줄의 순서대로만 실행하면 build와 PHP
-// case가 서로를 기다려 case의 기한에 실패한다.
+// The Rust build overlap case (G5.123) checks that a run not using the cargo test binary does not wait for the Rust build. The cargo at the front of PATH
+// waits until it reads the FIFO in `cargo test --no-run`, that is, until the PHP case writes to that FIFO, and then runs the real cargo. From the manifest,
+// since the Rust owner comes before the PHP owner, if runs start only after the build finishes, or run only in line order, the build and the PHP
+// cases wait for each other and fail at the case deadline.
 // exportLease sets LEASE and CARGO_LEASES as make exports them. The lease program is a stub that runs the command after
 // `--`: these cases assert the build gate and the execution, not the exclusion of the lease. It returns the restore.
 async function exportLease(root: string): Promise<() => void> {
@@ -383,7 +383,7 @@ caseTest('coverage runs without cargo proceed while the Rust test build runs', 1
     for (const file of [rustFile, phpFile]) await mkdir(join(root, file, '..'), { recursive: true });
     await writeFile(join(root, 'packages/rust/orm/Cargo.toml'), '[package]\nname = "coverage_overlap"\nversion = "0.0.1"\nedition = "2021"\n');
     await writeFile(join(root, rustFile), '#[cfg(test)] mod tests { #[test] fn first() {} }\n');
-    // 첫 실행만 FIFO에 쓴다. 쓰기는 cargo가 FIFO를 읽으려고 열 때까지 기다린다.
+    // Only the first run writes to the FIFO. The write waits until cargo opens the FIFO to read it.
     await writeFile(join(root, phpFile), '<?php\n');
     await phpunitStub(root, phpFile, PASSED, `if (!file_exists(${JSON.stringify(written)})) { file_put_contents(${JSON.stringify(fifo)}, "go\\n"); touch(${JSON.stringify(written)}); }\n`);
     process.env.PATH = `${join(root, 'bin')}:${path}`;
