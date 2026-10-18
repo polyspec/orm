@@ -12,7 +12,7 @@ final class PlanText
 {
     private const NAME = '[a-z][a-z0-9_]*';
 
-    /** 잘못된 plan 은 위치가 붙은 `plan` diagnostic 하나다. */
+    /** An invalid plan is one `plan` diagnostic with a position attached. */
     public static function parse(string $text): PlanParseResult
     {
         if (!str_ends_with($text, "\n")) {
@@ -84,8 +84,8 @@ final class PlanText
             return self::fail($i + 1, 'a blank line and the target schema text follow the header');
         }
         $offset = $i + 1;
-        // plan 은 database 전체를 하나의 schema 로 옮긴다. 외부 문서를 쓰는 set 의 table 은 install 과
-        // addTablesAndColumns 가 만든다.
+        // A plan moves the whole database to one schema. A table of a set that uses external documents is created by install and
+        // addTablesAndColumns.
         for ($k = $offset; $k < count($lines); $k++) {
             if (str_starts_with($lines[$k], 'use ')) {
                 $document = preg_split('/\s+/', $lines[$k])[1] ?? '';
@@ -95,7 +95,7 @@ final class PlanText
         $schemaText = implode("\n", array_slice($lines, $offset)) . "\n";
         $parsed = Dbspec::parse($schemaText, []);
         if ($parsed->document === null) {
-            // target diagnostic 은 plan 안의 위치로 옮긴다.
+            // A target diagnostic is moved to the position in the plan.
             return PlanParseResult::invalid(array_map(static fn(Diagnostic $d): Diagnostic => new Diagnostic($d->rule, $d->line + $offset, $d->column, $d->message), $parsed->diagnostics));
         }
         if (!SchemaComparison::isSchemaText($parsed->document) || Dbspec::emit($parsed->document) !== $schemaText) {
@@ -105,9 +105,9 @@ final class PlanText
     }
 
     /**
-     * plan 의 target 을 schema text 문서로 정한다. target 이 from 과 같으면 diagnostic 이다.
+     * Decides the plan's target as a schema text document. If the target is the same as from, it is a diagnostic.
      *
-     * @internal Dbspec::addTablesAndColumnsSteps 도 plan 문서 없이 쓴다.
+     * @internal Dbspec::addTablesAndColumnsSteps also writes without a plan document.
      * @param list<TableRename> $renameTables
      * @param list<ColumnRename> $renameColumns
      * @param list<string> $dropTables
@@ -124,7 +124,7 @@ final class PlanText
 
     /**
      * canonical plan: rename table, rename column, allow drop table, allow drop
-     * column 순서로, 각각 이름 순이다.
+     * In column order, each in name order.
      */
     public static function emit(Plan $plan): string
     {
@@ -144,15 +144,15 @@ final class PlanText
         return $out . "\n" . self::schemaText($plan);
     }
 
-    /** plan target 의 schema text; parsePlan 이 받은 target 은 유효한 schema 다. */
+    /** The schema text of the plan target; a target given to parsePlan is a valid schema. */
     public static function schemaText(Plan $plan): string
     {
-        // target 은 schema text 문서이므로 그 canonical emission 이 schema text 다.
+        // The target is a schema text document, so its canonical emission is the schema text.
         return Dbspec::emit($plan->schema);
     }
 
     /**
-     * key 의 byte 순서로 안정 정렬한다.
+     * Stable-sorts by the byte order of the key.
      *
      * @template T
      * @param list<T> $items

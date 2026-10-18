@@ -7,30 +7,30 @@ use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Document;
 
 /**
- * dbspec document set의 runtime model이다(docs/dbspec.md "Runtime model").
- * table마다 entity 하나를 두며, 문서는 이름 순서, table은 문서 순서다.
- * generator는 각 entity를 model class의 meta() 배열로 쓰고, engine은 등록된
- * model에서 같은 배열을 다시 읽으므로 어떤 요청도 dbspec text를 parse하지 않는다.
+ * The runtime model of a dbspec document set (docs/dbspec.md "Runtime model").
+ * One entity per table; documents are in name order, and tables are in document order.
+ * The generator writes each entity as the model class's meta() array, and the engine
+ * rereads the same array from the registered model, so no request parses dbspec text.
  *
- * entity는 [entity, table, pk, identity, updated, soft_delete, aes_version,
- * audit, audit_record, columns, unique, indexes]이며 `audit`은 감사 table의 audit
- * column, `audit_record`는 transaction의 audit 기록을 담는 table의 이름이다. column은 [name, type, nullable, default, default_now, select,
- * codec, blind_index, pk, foreign_key]이고 decimal, time, datetime은
- * precision을, decimal은 scale도, varchar는 length를 가진다. default_now는 default가 `now`임을
- * 뜻한다. generated model의 meta()는 entity에 그 model을 만든 document set의
- * manifest_hash를 더한다.
+ * Each entity is [entity, table, pk, identity, updated, soft_delete, aes_version,
+ * audit, audit_record, columns, unique, indexes], and `audit` is the audit
+ * column, and `audit_record` names the table that holds the transaction's audit records. Each column is [name, type, nullable, default, default_now, select,
+ * codec, blind_index, pk, foreign_key], and decimal, time, and datetime have
+ * precision, decimal also has scale, and varchar has length. default_now means the default is `now`.
+ * The generated model's meta() adds the manifest_hash of the document set that made the model to the entity.
+ * manifest_hash.
  */
 final class RuntimeModel
 {
-    /** column 값을 StyledValue로 만드는 codec stage다. aes, hex, ip는 string을 유지한다. */
+    /** The codec stage that makes a column value a StyledValue. aes, hex, and ip keep the value a string. */
     public const STYLED_STAGES = ['ordered_json', 'serialize', 'yaml', 'gz', 'base64'];
-    /** dialect나 executor가 bind 값 주위에 적용하는 codec stage다. */
+    /** The codec stage that a dialect or executor applies around a bind value. */
     public const HOST_STAGES = ['aes', 'hex', 'ip'];
 
     /**
      * @param array<string, array> $entities entity name => entity
-     * @param string $externalText 외부 문서에서 소유한 문서가 쓰는 table의 text(Dbspec Manifest)이며, 외부
-     *     문서를 쓰지 않는 set은 빈 text다. 외부 문서의 table은 entity가 아니다.
+     * @param string $externalText The text (Dbspec Manifest) of the tables that the owned documents use from external documents; a set
+     *     with no external documents has empty text. A table of an external document is not an entity.
      */
     public function __construct(
         public readonly string $manifestHash,
@@ -40,9 +40,9 @@ final class RuntimeModel
     ) {}
 
     /**
-     * document set을 parse한다. 각 text는 header 이름으로 찾는 나머지 text를
-     * 선언된 집합으로 삼아 parse한다. $texts는 diagnostic이 가리키는 label(파일
-     * 경로 등)에서 text로의 map이다. diagnostic이 있으면 SCHEMA_INVALID로 실패한다.
+     * Parses the document set. Each text takes the rest of the texts, found by header name,
+     * as the declared set to parse with. $texts is the map from the label that diagnostics point at (such as a file
+     * path) to the text. If there is a diagnostic, it fails with SCHEMA_INVALID.
      *
      * @param array<string, string> $texts
      * @return list<Document>
@@ -53,10 +53,10 @@ final class RuntimeModel
     }
 
     /**
-     * 소유한 문서와 외부 문서(소유한 문서가 use로 쓰는 다른 set의 문서)의 document set을
-     * parse한다. 모든 문서는 나머지 모든 문서를 선언된 집합으로 삼아 parse하고, 외부 문서는
-     * external로 표시한다. 외부 문서는 parse하고 검사하지만 렌더링, 설치, 비교, 생성하지 않는다.
-     * 두 map은 label에서 text로의 map이다. diagnostic이 있으면 SCHEMA_INVALID로 실패한다.
+     * The document set of the owned documents and external documents (the documents of other sets that owned documents use by use)
+     * Parses all documents, each using all the other documents as the declared set; external documents are
+     * marked external. External documents are parsed and checked, but not rendered, installed, compared, or generated.
+     * Both maps are maps from label to text. If there is a diagnostic, it fails with SCHEMA_INVALID.
      *
      * @param array<string, string> $owned
      * @param array<string, string> $external
@@ -82,8 +82,8 @@ final class RuntimeModel
     }
 
     /**
-     * generated schema 값의 manifest text와 external text(외부 문서에서 쓰는 table)를 parse한
-     * document set이다. external text의 문서는 external로 표시한다.
+     * Parses the generated schema's manifest text and external text (the tables used from external documents)
+     * as a document set. A document in the external text is marked external.
      *
      * @return list<Document>
      */
@@ -97,8 +97,8 @@ final class RuntimeModel
     }
 
     /**
-     * manifest text를 header 줄에서 나눈 document text다. 각 document의 이름을
-     * label로 갖는다. header로 시작하지 않는 text는 SCHEMA_INVALID다.
+     * The document text split from the manifest text at header lines. Each document's name is
+     * its label. Text that does not start with a header is SCHEMA_INVALID.
      *
      * @return array<string, string>
      */
@@ -148,9 +148,9 @@ final class RuntimeModel
     }
 
     /**
-     * document set의 dbspec 파일을 Dbspec::readFile로 읽어 parse한다. $external은 소유한 문서가
-     * use로 쓰는 외부 문서 파일이다(parseSet). 읽을 수 없는 파일은 CONFIG, signature가 없는
-     * 파일은 SCHEMA_INVALID로 실패한다.
+     * Reads the set's dbspec file with Dbspec::readFile and parses it. $external is an external document file that an owned document
+     * uses by use (parseSet). An unreadable file is CONFIG; a file with no
+     * signature fails with SCHEMA_INVALID.
      *
      * @param list<string> $paths
      * @param list<string> $external
@@ -185,7 +185,7 @@ final class RuntimeModel
         return self::parseSet($read($paths), $read($external));
     }
 
-    /** parse된 document set의 runtime model을 만든다. @param list<Document> $documents */
+    /** Makes the runtime model of a parsed document set. @param list<Document> $documents */
     public static function build(array $documents): self
     {
         $result = Dbspec::manifest($documents);
@@ -196,7 +196,7 @@ final class RuntimeModel
         usort($documents, static fn(Document $a, Document $b): int => strcmp($a->name, $b->name));
         $entities = [];
         foreach ($documents as $document) {
-            // 외부 문서의 table은 entity가 아니다.
+            // Tables of external documents are not entities.
             if ($document->external) {
                 continue;
             }
@@ -211,13 +211,13 @@ final class RuntimeModel
         return new self($result->manifest->manifestHash, $result->manifest->manifestText, $entities, $result->manifest->externalText);
     }
 
-    /** 등록된 generated class의 model이다. @param list<class-string<Model>> $classes */
+    /** The model of a registered generated class. @param list<class-string<Model>> $classes */
     public static function fromModels(string $manifestHash, string $manifestText, array $classes, string $externalText = ''): self
     {
         $entities = [];
         foreach ($classes as $class) {
             $meta = $class::meta();
-            // manifest_hash는 model class가 속한 document set을 가리키며 entity의 일부가 아니다.
+            // manifest_hash points at the document set that the model class belongs to, and is not part of an entity.
             unset($meta['manifest_hash']);
             $entities[$meta['entity']] = $meta;
         }
@@ -234,19 +234,19 @@ final class RuntimeModel
         return $entity['columns'][$name] ?? null;
     }
 
-    /** column 값이 StyledValue인지 여부다. */
+    /** Whether the column value is a StyledValue. */
     public static function styled(array $column): bool
     {
         return array_intersect($column['codec'], self::STYLED_STAGES) !== [];
     }
 
-    /** column이 aes stage로 암호화되는지 여부다. */
+    /** Whether the column is encrypted by the aes stage. */
     public static function encrypted(array $column): bool
     {
         return in_array('aes', $column['codec'], true);
     }
 
-    /** plus, minus, sum, avg가 받는 정수, 실수, decimal type인지 여부다. */
+    /** Whether the type is an integer, real, or decimal type that plus, minus, sum, and avg accept. */
     public static function numeric(array $column): bool
     {
         return $column['codec'] === [] && in_array($column['type'], ['i16', 'i32', 'i64', 'f64', 'decimal'], true);

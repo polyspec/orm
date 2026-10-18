@@ -86,9 +86,9 @@ final class Emitter
     }
 
     /**
-     * 같은 종류의 설정 두 개의 순서다: codec, blind_index, navigation과 markdown은 column 또는
-     * foreign key 이름순이고, state_machine 줄은 선언 순서를 지키고 history 줄, limit 줄 순이다
-     * (Go의 emitter가 그 순서로 쓴다). 나머지는 선언 순서를 지킨다.
+     * The order of two settings of the same kind: codec, blind_index, navigation, and markdown are ordered by column or
+     * foreign key name; state_machine lines keep declaration order, with the history line and limit line in that order
+     * (Go's emitter writes in that order). The rest keep declaration order.
      */
     private static function within(Setting $a, Setting $b): int
     {
@@ -116,8 +116,8 @@ final class Emitter
             'checkbox' => "checkbox {$setting->arguments[0]} {$setting->arguments[1]} " . self::quote($setting->arguments[2]),
             'state_machine' => self::machine($setting),
             'store' => self::store($setting->arguments),
-            // schema text는 database 상태로 정해지므로 기록하지 않는 column을 column 순서의 exclude
-            // 목록으로 쓴다. 다른 view는 쓴 목록을 그대로 쓴다.
+            // Schema text is decided by database state, so the columns not recorded are written as an exclude
+            // list in column order. Other views write the list they were given as is.
             'audit' => match (true) {
                 $view === View::Schema => $setting->auditLine('exclude', $setting->excluded($table)),
                 $setting->include !== null => $setting->auditLine('include', $setting->include),
@@ -128,7 +128,7 @@ final class Emitter
     }
 
     /**
-     * store 줄이다: kind의 인자 뒤에 shard 절의 column과 period가 있으면 `shard`를 앞에 쓴다.
+     * The store line: if there is a shard clause column and period after the kind's arguments, write `shard` before them.
      *
      * @param list<string> $arguments
      */
@@ -142,7 +142,7 @@ final class Emitter
         return $line;
     }
 
-    /** state_machine 줄 하나다: transition, initial 또는 terminal state, history 또는 limit. */
+    /** One state_machine line: a transition, an initial or terminal state, history or limit. */
     private static function machine(Setting $setting): string
     {
         $column = $setting->arguments[0];
@@ -160,7 +160,7 @@ final class Emitter
         return $text;
     }
 
-    /** 표준 text의 문자열 literal이다: 작은따옴표 사이 값이며 따옴표는 두 번 쓴다. */
+    /** A string literal in canonical text: the value between single quotes, with each quote written twice. */
     private static function quote(string $value): string
     {
         return "'" . str_replace("'", "''", $value) . "'";

@@ -4,33 +4,33 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * plan chain 을 connection 하나에 step 하나씩 적용하고, 중단된 plan 을 이어 가거나
- * 되돌리고, 적용한 plan 을 finalize 한다(docs/plans.md "Apply"). 객체 하나가 명령 한
- * 번의 상태다.
+ * Applies a plan chain to one connection, one step at a time; resumes or undoes an interrupted plan,
+ * and finalizes an applied plan (docs/plans.md "Apply"). One object is the state of one command
+ * per command.
  *
  * @internal
  */
 final class PlanApply
 {
-    /** 적용한 plan 을 기록하는 table. dbspec 이름에는 $ 가 없으므로 사용자 table 과 겹치지 않고, introspection 은 dbspec$ 로 시작하는 table 을 빼고 읽는다. */
+    /** The table that records applied plans. Dbspec names have no $, so it does not overlap user tables, and introspection reads without the tables starting with dbspec$. */
     private const HISTORY = 'dbspec$plans';
-    // 현재 database 하나의 lock 이름. MySQL lock 이름은 64자까지이므로 database
-    // 이름 대신 그 SHA-256 hex 앞 51자를 붙여 64자로 만든다.
+    // The lock name of the current database. MySQL lock names are up to 64 characters, so for a database
+    // the name is made 64 characters by appending the first 51 characters of its SHA-256 hex.
     private const MYSQL_LOCK = "CONCAT('dbspec\$plans\$', LEFT(SHA2(DATABASE(), 256), 51))";
-    // 현재 database 의 현재 schema 하나의 advisory lock key.
+    // The advisory lock key of the current schema of the current database.
     private const POSTGRES_LOCK = "hashtext('dbspec\$plans'), hashtext(current_schema())";
-    // session error 가 밝히는 요구. lock 은 server session 에 속하므로 명령은 처음부터 끝까지 다른
-    // client 와 나누지 않는 server session 하나에서 실행해야 한다. transaction pooler 는 statement 마다
-    // server connection 을 다시 고르므로 그 요구를 지키지 못한다.
+    // A requirement that the session error states. The lock belongs to the server session, so the command must run from start to finish on one
+    // server session not shared with another client. A transaction pooler reselects the server connection for every statement,
+    // so it cannot keep that requirement.
     private const SESSION_REQUIREMENT = 'apply, recover, rollback and finalize need one server session of their own for the whole run: a direct or session-pooled connection';
-    // 현재 server session 의 id 와, 그 session 이 이 명령의 lock 을 이미 잡고 있는지를 읽는다. lock 을
-    // 잡기 전에 이미 잡혀 있으면 다른 client 가 같은 server session 을 쓰고 있다.
+    // Reads the id of the current server session, and whether that session already holds this command's lock. Before the lock
+    // is taken, if it is already held, another client is using the same server session.
     private const SESSION_QUERIES = [
         'mysql' => 'SELECT CONNECTION_ID(), COALESCE(IS_USED_LOCK(' . self::MYSQL_LOCK . ') = CONNECTION_ID(), 0)',
         'postgres' => "SELECT pg_backend_pid(), EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid() AND objsubid = 2"
             . " AND classid = (hashtext('dbspec\$plans')::bigint & 4294967295)::oid AND objid = (hashtext(current_schema())::bigint & 4294967295)::oid)",
     ];
-    // statement 가 다른 session 의 lock 을 기다리는 최대 시간(docs/plans.md "Apply"의 lock 대기).
+    // The maximum time a statement waits for another session's lock (the lock wait in docs/plans.md "Apply").
     private const LOCK_WAIT_SECONDS = 5;
 
     private const APPLYING = 'applying';
@@ -40,8 +40,8 @@ final class PlanApply
     private const ROLLING_BACK = 'rolling_back';
 
     /**
-     * dialect 마다 효과 종류를 읽는 query 다. 인자는 Effect 의 table 과 name 중 query
-     * 가 쓰는 것이며, query 는 개수를 돌려준다.
+     * A query that reads the effect kind, per dialect. The arguments are the table and name of Effect; the query
+     * uses whichever it writes, and the query returns a count.
      */
     public const EFFECT_QUERIES = [
         'mysql' => [
@@ -71,9 +71,9 @@ final class PlanApply
     private readonly Renderer $r;
     /** @var list<Plan> */
     private readonly array $chain;
-    /** @var array<string, array{from: string, to: string, state: string, step: int}> plan 이름마다 history row */
+    /** @var array<string, array{from: string, to: string, state: string, step: int}> One history row per plan name */
     private array $history = [];
-    /** lock 을 잡은 server session 의 id(MySQL CONNECTION_ID, PostgreSQL pg_backend_pid). */
+    /** The id of the server session holding the lock (MySQL CONNECTION_ID, PostgreSQL pg_backend_pid). */
     private int $serverSession = 0;
 
     /**
@@ -228,7 +228,7 @@ final class PlanApply
     }
 
     /**
-     * 첫 finalize step 의 index.
+     * The index of the first finalize step.
      *
      * @param list<PlanStep> $steps
      */
@@ -249,9 +249,9 @@ final class PlanApply
     }
 
     /**
-     * dialect 의 lock 을 잡고 session 설정을 바꾼 뒤 f 를 실행하고, 끝에 설정을 되돌리고
-     * lock 을 놓는다. f 가 실패해도 정리를 모두 실행하며, 그때 난 error 는 finish 가 f 의
-     * error 와 함께 던진다.
+     * Takes the dialect's lock and changes the session settings, runs $f, and at the end restores the settings
+     * and releases the lock. Even if $f fails, all cleanup runs, and an error raised then is thrown
+     * together with $f's error from finish.
      *
      * @param \Closure(): void $f
      */
@@ -262,7 +262,7 @@ final class PlanApply
         switch ($this->r->dialect) {
             case 'mysql':
                 $this->openSession(self::SESSION_QUERIES['mysql']);
-                // GET_LOCK 의 NULL 은 lock 을 기다리던 중의 error 다.
+                // A NULL from GET_LOCK is an error raised while waiting for the lock.
                 [$got, $current] = $this->queryRow('SELECT GET_LOCK(' . self::MYSQL_LOCK . ', 0), CONNECTION_ID()');
                 if ($got === 0 || $got === '0') {
                     throw new ApplyError('locked', '', 0, "another session holds the $h lock of this database");
@@ -286,7 +286,7 @@ final class PlanApply
                 }, fn() => $this->c->exec('DO RELEASE_LOCK(' . self::MYSQL_LOCK . ')'));
                 return;
             case 'postgres':
-                // current_schema() 가 NULL 이면 결과도 NULL 이며 error 다.
+                // If current_schema() is NULL, the result is also NULL and an error.
                 $this->openSession(self::SESSION_QUERIES['postgres']);
                 [$got, $current] = $this->queryRow('SELECT pg_try_advisory_lock(' . self::POSTGRES_LOCK . '), pg_backend_pid()');
                 if ($got === false) {
@@ -321,8 +321,8 @@ final class PlanApply
     }
 
     /**
-     * SQLite 의 exclusive locking mode 로 file 을 잠그고, foreign key 를 끄고, 이름
-     * 바꾸기가 다른 table 의 foreign key 를 데려가게 한다.
+     * Locks the file with SQLite's exclusive locking mode, turns off foreign keys, and lets the rename
+     * bring along another table's foreign keys.
      *
      * @param \Closure(): void $f
      */
@@ -347,15 +347,15 @@ final class PlanApply
         }, fn() => $this->c->exec("PRAGMA foreign_keys = $foreignKeys"),
             fn() => $this->c->exec("PRAGMA legacy_alter_table = $legacy"),
             fn() => $this->c->exec("PRAGMA locking_mode = $mode"),
-            // locking mode 를 되돌린 뒤 한 번 읽어야 exclusive lock 이 풀린다.
+            // The lock is released only after the locking mode is restored and read once.
             fn() => $this->queryValue('SELECT COUNT(*) FROM sqlite_master'),
             fn() => $this->c->exec("PRAGMA busy_timeout = $busy"));
     }
 
     /**
-     * f 를 실행한 뒤 end 를 앞의 실패와 상관없이 차례로 모두 실행한다. error 가 하나면
-     * 그것을 그대로 던지고, 여럿이면 첫 error 와 그 뒤의 정리 error 를 함께 담은
-     * ApplyCleanupError 를 던진다.
+     * Runs $f, then runs end in order regardless of the earlier failure. If there is one error,
+     * it is thrown as is; if there are several, the first error and the cleanup errors after it are carried together in
+     * an ApplyCleanupError, which is thrown.
      *
      * @param \Closure(): void $f
      * @param \Closure(): mixed ...$ends
@@ -366,7 +366,7 @@ final class PlanApply
         try {
             $f();
         } catch (ApplyCleanupError $e) {
-            // 안쪽 정리 error 는 순서를 지켜 한 목록으로 편다.
+            // Flattens the inner cleanup errors into one list, keeping their order.
             $errors[] = $e->getPrevious();
             array_push($errors, ...$e->cleanup);
         } catch (\Throwable $e) {
@@ -388,7 +388,7 @@ final class PlanApply
     }
 
     /**
-     * query 가 돌려준 첫 row. row 가 없거나 result 를 닫지 못하면 error 다.
+     * The first row the query returned. If there is no row, or the result cannot be closed, it is an error.
      *
      * @param list<mixed> $args
      * @return list<mixed>
@@ -412,7 +412,7 @@ final class PlanApply
     }
 
     /**
-     * query 가 돌려준 첫 row 의 첫 값.
+     * The first value of the first row the query returned.
      *
      * @param list<mixed> $args
      */
@@ -421,7 +421,7 @@ final class PlanApply
         return $this->queryRow($query, $args)[0];
     }
 
-    /** history table 을 없을 때 만든다. */
+    /** Creates the history table if it does not exist. */
     private function createHistory(): void
     {
         $q = $this->r->q(...);
@@ -453,8 +453,8 @@ final class PlanApply
     }
 
     /**
-     * history 를 읽어 기록된 plan 수를 돌려준다. 기록은 chain 의 앞부분이어야 하고,
-     * 마지막 앞의 row 는 applied 나 done 이어야 한다.
+     * Reads the history and returns the number of recorded plans. Records must be at the front of the chain,
+     * and the row before the last must be applied or done.
      */
     private function position(): int
     {
@@ -488,7 +488,7 @@ final class PlanApply
         return $position;
     }
 
-    /** 중단된 plan 이 없고 catalog 가 기록한 schema 와 같을 때 기록된 plan 수를 돌려준다. */
+    /** Returns the number of recorded plans when no plan is interrupted and the catalog matches the recorded schema. */
     private function settled(): int
     {
         $position = $this->position();
@@ -509,7 +509,7 @@ final class PlanApply
         return $position;
     }
 
-    /** database 의 introspection 이 want schemaHash('' 이면 빈 database) 이고 미지원 객체가 없는지 확인한다. */
+    /** Checks that the database's introspection is want schemaHash (if '', an empty database) and that there are no unsupported objects. */
     private function verify(string $want): void
     {
         $result = Dbspec::introspect($this->c, $this->r->dialect, 'schema');
@@ -531,7 +531,7 @@ final class PlanApply
     }
 
     /**
-     * chain 에서 plan 의 앞 plan target 을 source 로 쓴 step.
+     * The step that uses the previous plan's target in the chain as the source of the plan.
      *
      * @return list<PlanStep>
      */
@@ -551,8 +551,8 @@ final class PlanApply
     }
 
     /**
-     * 중단된 row 의 step 을 catalog 의 효과로 정한다. forward 이면 앞으로, 아니면 뒤로
-     * 이어 갈 위치다(docs/plans.md "Apply"의 recover).
+     * Decides the step of an interrupted row by the catalog's effect: going forward if forward, otherwise going backward,
+     * is where to resume (docs/plans.md "Apply"'s recover).
      *
      * @param array{from: string, to: string, state: string, step: int} $row
      * @param list<PlanStep> $steps
@@ -570,7 +570,7 @@ final class PlanApply
         }
         $e = $steps[$uncertain]->effect;
         $held = $e->kind !== 'repeat' && $this->effect($plan, $uncertain, $e);
-        // 앞으로 갈 때 repeat step 은 다시 실행하고, 뒤로 갈 때는 그 rollback 을 다시 실행한다.
+        // When going forward, a repeat step is run again; when going backward, its rollback is run again.
         $took = $held || (!$forward && $e->kind === 'repeat');
         if ($rolling) {
             return $took ? $k : $k - 1;
@@ -578,13 +578,13 @@ final class PlanApply
         return $took ? $k + 1 : $k;
     }
 
-    /** plan 의 row 를 state 와 step 으로 쓴다. row 가 없으면 만든다. */
+    /** Writes the plan's row by state and step. If there is no row, creates it. */
     private function record(Plan $plan, string $state, int $step): void
     {
         $q = $this->r->q(...);
         if (!isset($this->history[$plan->name])) {
             $steps = count($this->steps($plan));
-            // applied_at은 tool clock의 UTC 시각을 소수 여섯 자리로 버림한 text다(docs/plans.md "Apply").
+            // applied_at is the UTC time of the tool clock, truncated to six fractional digits as text (docs/plans.md "Apply").
             $appliedAt = \DateTimeImmutable::createFromInterface(($this->now)())->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.u\Z');
             $this->c->prepare('INSERT INTO ' . $q(self::HISTORY) . ' (' . $q('name') . ', ' . $q('from_hash') . ', ' . $q('to_hash') . ', ' .
                 $q('state') . ', ' . $q('step') . ', ' . $q('steps') . ', ' . $q('applied_at') . ') VALUES (?, ?, ?, ?, ?, ?, ?)')
@@ -602,7 +602,7 @@ final class PlanApply
         $this->c->prepare('UPDATE ' . $q(self::HISTORY) . ' SET ' . $q('step') . ' = ? WHERE ' . $q('name') . ' = ?')->execute([$step, $plan->name]);
     }
 
-    /** plan 하나를 finalize step 앞까지 적용하고 검증한다. */
+    /** Applies one plan up to its finalize step, and verifies it. */
     private function applyPlan(Plan $plan): void
     {
         $steps = $this->steps($plan);
@@ -617,7 +617,7 @@ final class PlanApply
     }
 
     /**
-     * step start 부터 finalize step 앞까지 실행하고 검증한 뒤 row 를 applied 로 바꾼다.
+     * Runs from the start step up to the finalize step, verifies, and then changes the row to applied.
      *
      * @param list<PlanStep> $steps
      */
@@ -645,7 +645,7 @@ final class PlanApply
     }
 
     /**
-     * finalize step 을 start 부터 실행하고 row 를 done 으로 바꾼다.
+     * Runs the finalize step from start, and changes the row to done.
      *
      * @param list<PlanStep> $steps
      */
@@ -660,8 +660,8 @@ final class PlanApply
     }
 
     /**
-     * lock 을 잡기 전에 server session 의 id 를 기억한다. 그 session 이 lock 을 이미 잡고 있으면 다른
-     * client 가 같은 server session 을 쓰는 것이므로 session error 다.
+     * Before taking the lock, remembers the server session's id. If that session already holds the lock, another
+     * client is using the same server session, so it is a session error.
      */
     private function openSession(string $query): void
     {
@@ -672,7 +672,7 @@ final class PlanApply
         }
     }
 
-    /** current 가 lock 을 잡은 server session 인지 확인한다. 다르면 plan 의 step i 앞에서(plan 이 null 이면 lock 에서) session error 다. */
+    /** Checks that current is the server session holding the lock. If not, it is a session error before step i of the plan (or at the lock if the plan is null). */
     private function sameSession(?Plan $plan, int $i, mixed $current): void
     {
         $id = CatalogRows::integer([$current], 0, 'server session id');
@@ -683,8 +683,8 @@ final class PlanApply
     }
 
     /**
-     * step i 의 statement 하나를 event 와 함께 실행한다. statement 앞에서 server session 을
-     * 확인한다(SQLite 는 file 하나의 connection 이다).
+     * Runs one statement of step i together with its event. Before the statement, checks the server session
+     * (for SQLite, the connection is a single file).
      *
      * @param list<PlanStep> $steps
      */
@@ -708,7 +708,7 @@ final class PlanApply
         $this->emit(new ApplyEvent('applied', $plan->name, $i, count($steps), $statement));
     }
 
-    /** SQLite 에서 foreign key 를 어기는 row 가 없는지 확인한다. */
+    /** Checks whether SQLite has any row that violates a foreign key. */
     private function foreignKeyCheck(Plan $plan): void
     {
         if ($this->r->dialect !== 'sqlite') {
@@ -722,8 +722,8 @@ final class PlanApply
     }
 
     /**
-     * 적용한 plan 의 rollback 이 non-null 로 되돌릴 column 의 NULL row 를 default 로
-     * 채우거나, default 가 없으면 nulls error 로 멈춘다(docs/plans.md "Steps").
+     * Fills the NULL rows of a column that the rollback of an applied plan would restore to non-null with the default,
+     * or stops with a nulls error if there is no default (docs/plans.md "Steps").
      *
      * @param list<PlanStep> $steps
      */
@@ -752,7 +752,7 @@ final class PlanApply
         }
     }
 
-    /** 효과가 지금 database 에 있는지 알려 준다. 읽지 못하면 step 의 failed error 다. */
+    /** Tells whether the effect is in the database now. If it cannot be read, it is the step's failed error. */
     private function effect(Plan $plan, int $step, ?Effect $e): bool
     {
         if ($e === null) {
@@ -783,7 +783,7 @@ final class PlanApply
     }
 
     /**
-     * 효과 하나를 읽는 test 용 입구다(DbspecApplyCleanupTest.php).
+     * An entry point for tests that reads one effect (DbspecApplyCleanupTest.php).
      *
      * @internal
      */

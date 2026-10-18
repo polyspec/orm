@@ -4,8 +4,8 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * dialect reader 가 채우는 중립 중간 model 이다. document() 가 그것을 dbspec
- * 문서로 만든다 (docs/dialects.md "Introspection").
+ * The neutral intermediate model that the dialect reader fills. document() turns it into the dbspec
+ * document (docs/dialects.md "Introspection").
  *
  * @internal
  */
@@ -16,12 +16,12 @@ final class Catalog
     /** @var list<Unsupported> */
     public array $unsupported = [];
 
-    /** @var array<string, ColumnType> type text 마다 하나의 ColumnType */
+    /** @var array<string, ColumnType> One ColumnType per type text */
     private array $types = [];
 
     /**
-     * 같은 type 의 ColumnType 을 하나로 나눠 쓴다. ColumnType 은 readonly 이므로
-     * 공유해도 안전하고, 2000 table 의 catalog 에서 수만 개의 객체를 줄인다.
+     * The ColumnType of the same type is shared as one. ColumnType is readonly, so
+     * sharing it is safe, and it cuts tens of thousands of objects in a catalog of 2000 tables.
      */
     public function sharedType(ColumnType $type): ColumnType
     {
@@ -44,10 +44,10 @@ final class Catalog
     }
 
     /**
-     * 중간 model 을 dbspec text 로 쓰고 parse 한다. parse 가 어떤 줄을 거부하면
-     * 그 줄의 객체를 미지원으로 보고하고 빼서 다시 만든다. 빠진 객체를 참조하던
-     * 객체는 다음 parse 에서 거부되므로 같은 방식으로 빠진다. 객체에 속하지 않는
-     * 줄의 diagnostic 은 reader 의 결함이므로 error 다.
+     * Writes the intermediate model as dbspec text and parses it. If parse rejects a line,
+     * that line's object is reported as unsupported and removed, and the text is rebuilt. An object that referred to a removed object
+     * is rejected by the next parse, so it is removed the same way. A diagnostic on a line
+     * that belongs to no object is a defect of the reader, so it is an error.
      */
     public function document(string $name): IntrospectResult
     {
@@ -60,7 +60,7 @@ final class Catalog
                 usort($unsupported, static fn(Unsupported $a, Unsupported $b): int => strcmp("{$a->table}\0{$a->kind}\0{$a->name}", "{$b->table}\0{$b->kind}\0{$b->name}"));
                 return new IntrospectResult($result->document, $unsupported);
             }
-            // 거부된 table 의 객체는 table 과 함께 빠지므로 따로 보고하지 않는다.
+            // Objects of a rejected table are removed together with the table, so they are not reported separately.
             $rejected = [];
             foreach ($result->diagnostics as $d) {
                 $packed = $objects[$d->line] ?? null;
@@ -90,7 +90,7 @@ final class Catalog
     }
 
     /**
-     * 객체 하나를 뺀다. table 이나 primary key 를 빼면 table 전체가 빠진다.
+     * Removes one object. Removing a table or its primary key removes the whole table.
      *
      * @param array{0: string, 1: string, 2: string} $object kind, table, name
      */
@@ -110,7 +110,7 @@ final class Catalog
         };
     }
 
-    /** primary key 가 없는 table 을 뺀다. 그 table 을 참조하던 foreign key 는 parse 가 거부해 빠진다. */
+    /** Removes a table without a primary key. A foreign key that referred to that table is rejected by parse, so it is removed too. */
     private function dropTablesWithoutKey(): void
     {
         $kept = [];
@@ -125,10 +125,10 @@ final class Catalog
     }
 
     /**
-     * table 을 이름 순으로 쓴 dbspec text 와, 줄 번호마다 그 줄의 객체를
-     * 돌려준다. 닫는 괄호와 primary key 줄은 table 에 속한다.
+     * Returns the dbspec text with the tables written in name order, and for each line number, the object on that line
+     * is returned. The closing brace and the primary key line belong to the table.
      *
-     * @return array{0: string, 1: array<int, string>} text 와, 줄 번호마다 "kind\0table\0name"
+     * @return array{0: string, 1: array<int, string>} The text, and for each line number, "kind\0table\0name"
      */
     private function text(string $name): array
     {
@@ -136,8 +136,8 @@ final class Catalog
         usort($tables, static fn(CatalogTable $a, CatalogTable $b): int => strcmp($a->name, $b->name));
         $lines = ["dbspec 1 $name"];
         $objects = [];
-        // 줄의 객체는 "kind\0table\0name" 문자열로 둔다. 배열보다 작아서 큰 catalog 의
-        // 메모리를 줄인다.
+        // An object on a line is kept as a "kind\0table\0name" string. It is smaller than an array, so in a large catalog
+        // it reduces memory.
         $add = static function (string $line, array $object) use (&$lines, &$objects): void {
             $lines[] = $line;
             $objects[count($lines)] = implode("\0", $object);
@@ -194,7 +194,7 @@ final class Catalog
         return explode(' ', $line, 2)[0];
     }
 
-    /** catalog 의 참조 action 을 dbspec action 으로 바꾼다. 없으면 null. */
+    /** Converts a catalog reference action to a dbspec action. null if there is none. */
     public static function actionName(string $rule): ?string
     {
         return match (strtoupper($rule)) {
@@ -205,7 +205,7 @@ final class Catalog
         };
     }
 
-    /** 10^scale 을 곱한 정수 text 를 scale 자리 소수로 쓴다. */
+    /** Writes the integer text multiplied by 10^scale as a decimal with scale digits. */
     public static function unscaledDecimal(string $text, int $scale): string
     {
         $negative = str_starts_with($text, '-');

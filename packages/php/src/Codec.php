@@ -58,9 +58,9 @@ final class Codec
                     }
                     break;
                 case 'base64':
-                    // 저장 cell은 encoder가 쓰는 형태로만 decode한다: 공백, 줄바꿈, 빠진 padding, 0이 아닌 padding
-                    // bit는 CODEC_DECODE다(docs/codec.md). PHP의 strict mode도 공백과 빠진 padding을 받으므로 다시
-                    // encode한 text가 같은지 본다.
+                    // A stored cell is decoded only in the form the encoder writes: no whitespace, no line breaks, no missing padding, no non-zero padding
+                    // bit is CODEC_DECODE (docs/codec.md). PHP's strict mode also accepts whitespace and missing padding, so re-
+                    // encode the text and check that it is the same.
                     $decoded = base64_decode($v, true);
                     $v = $decoded !== false && base64_encode($decoded) === $v ? $decoded : false;
                     if ($v === false) {
@@ -107,7 +107,7 @@ final class Codec
     /**
      * Encodes a value with the column's styles in write order. A gz result is binary and comes back as Bytes
      * so the executor binds it as a blob (bytea on PostgreSQL rejects it as text); everything else is text.
-     * gz나 base64가 첫 stage면 StyledValue의 값은 그 stage가 encode하는 string이다.
+     * If gz or base64 is the first stage, the value of StyledValue is the string that stage encodes.
      * @param list<string> $styles
      */
     public static function encode(array $styles, StyledValue $v): string|Bytes|null

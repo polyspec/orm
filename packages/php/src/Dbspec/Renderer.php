@@ -16,7 +16,7 @@ final class Renderer
     private const COMPARISONS = ['=' => true, '<>' => true, '<' => true, '<=' => true, '>' => true, '>=' => true];
     private const KEYWORDS = ['and' => true, 'or' => true, 'not' => true, 'in' => true, 'between' => true, 'is' => true, 'null' => true, 'true' => true, 'false' => true];
 
-    /** @var list<string> 읽고 있는 check 의 토큰; 위치, 테이블과 check 이름이 함께 간다. */
+    /** @var list<string> The tokens of the check being read; the position, table, and check name go with them. */
     private array $tokens = [];
     private int $at = 0;
     private ?Table $table = null;
@@ -43,16 +43,16 @@ final class Renderer
     }
 
     /**
-     * render 와 같은 statement 를 같은 순서로 쓰고, 각 statement 가 만들거나 바꾸는 table 을
-     * 함께 돌려준다. install 이 statement event 의 table 로 쓴다.
+     * Writes the same statements in the same order as render, and returns the table that each statement creates or changes
+     * alongside it. install uses it as the table of a statement event.
      *
      * @param list<Document> $documents
-     * @return list<array{0: string, 1: string}> statement 와 그 table
+     * @return list<array{0: string, 1: string}> The statement and its table
      */
     public static function statements(array $documents, string $dialect): array
     {
         $r = new self($dialect);
-        // 외부 문서의 table은 그 문서를 소유한 set이 만든다.
+        // A table of an external document is created by the set that owns that document.
         $ordered = array_values(array_filter(self::useOrder($documents), static fn(Document $d): bool => !$d->external));
         $out = [];
         $add = static function (string $table, array $statements) use (&$out): void {
@@ -82,26 +82,26 @@ final class Renderer
         return $out;
     }
 
-    /** table 의 immutable 과 audit trigger statement; introspection 이 catalog trigger 와 비교한다. @return list<string> */
+    /** The table's immutable and audit trigger statements; introspection compares them with the catalog triggers. @return list<string> */
     public static function tableTriggers(Table $t, string $dialect): array
     {
         return (new self($dialect))->triggers($t);
     }
 
-    /** column 의 renderer CHECK 식, 없으면 ""; introspection 이 catalog CHECK 와 비교한다. */
+    /** The renderer CHECK expression of a column, or "" if none; introspection compares it with the catalog CHECK. */
     public static function columnCheck(Column $c, string $dialect): string
     {
         return (new self($dialect))->typeCheck($c);
     }
 
-    /** column type 의 default 를 dialect 형태로 쓴다; introspection 이 catalog default 와 비교한다. */
+    /** Writes a column type's default in the dialect's form; introspection compares it with the catalog default. */
     public static function columnDefault(ColumnType $t, string $default, string $dialect): string
     {
         return (new self($dialect))->defaultText($t, $default);
     }
 
     /**
-     * 사용되는 문서가 그것을 사용하는 문서보다 먼저, 같은 순위는 문서 이름 순.
+     * A document that a document uses comes before it; for equal rank, by document name.
      *
      * @param list<Document> $documents
      * @return list<Document>
@@ -145,7 +145,7 @@ final class Renderer
         return $items;
     }
 
-    /** 식별자를 인용한다. */
+    /** Quotes an identifier. */
     public function q(string $name): string
     {
         return $this->dialect === 'mysql' ? "`$name`" : "\"$name\"";
@@ -175,9 +175,9 @@ final class Renderer
     }
 
     /**
-     * table t 를 name 으로 만드는 CREATE TABLE 이다. checkName 은 column 의 renderer
-     * CHECK 이름이고, hidden 은 t 의 column 뒤에 nullable 이며 CHECK 없이 더하는
-     * column 이다(docs/plans.md "Steps"의 SQLite 다시 만들기).
+     * Writes the CREATE TABLE that creates table t with the given name. checkName is the column's renderer
+     * CHECK name; hidden is a nullable column placed after t's columns, added without a CHECK
+     * column (the SQLite rebuild in docs/plans.md "Steps").
      *
      * @param \Closure(string): string $checkName
      * @param list<Column> $hidden
@@ -310,7 +310,7 @@ final class Renderer
         };
     }
 
-    /** 컬럼 타입 $t 의 정규 literal 을 dialect 형태로 쓴다. */
+    /** Writes the canonical literal of column type $t in the dialect's form. */
     private function literal(ColumnType $t, string $text): string
     {
         if ($text === 'true' || $text === 'false') {
@@ -328,7 +328,7 @@ final class Renderer
         return $text;
     }
 
-    /** 정규 decimal literal × 10^scale: 소수점과 앞의 0 을 뺀 숫자. */
+    /** The canonical decimal literal times 10^scale: the number with the decimal point and leading zeros removed. */
     private static function scaledDecimal(string $text): string
     {
         $negative = str_starts_with($text, '-');
@@ -355,7 +355,7 @@ final class Renderer
         };
     }
 
-    /** 컬럼의 renderer CHECK, dialect 가 타입을 직접 지키면 "". */
+    /** The column's renderer CHECK, or "" if the dialect enforces the type directly. */
     public function typeCheck(Column $c): string
     {
         if ($c->identity) {
@@ -416,9 +416,9 @@ final class Renderer
     }
 
     /**
-     * 정규 check 텍스트를 dialect 형태로 쓴다: 컬럼은 인용하고, 키워드는 대문자로,
-     * literal 은 그것이 만나는 컬럼의 타입으로 쓴다. 정규 텍스트의 간격과
-     * 괄호는 (and 안의 or 만 묶는다) 렌더링된 텍스트의 간격, 괄호와 같다.
+     * Writes canonical check text in the dialect's form: columns are quoted, keywords are upper case,
+     * a literal is written in the type of the column it meets, and the spacing of the canonical text and
+     * its parentheses (only an or inside an and is wrapped) match the rendered text.
      */
     public function checkText(Table $t, Check $check): string
     {
@@ -535,7 +535,7 @@ final class Renderer
         $this->invalid('`' . ($left[0] === 'column' ? $left[1]->name : $left[1]) . '` alone is not a predicate');
     }
 
-    /** 테이블의 컬럼, 또는 literal: ['column', Column] 또는 ['literal', text]. */
+    /** A column or literal of the table: ['column', Column] or ['literal', text]. */
     private function operand(): array
     {
         $token = $this->peek();
@@ -566,7 +566,7 @@ final class Renderer
         return null;
     }
 
-    /** 피연산자 중 컬럼의 타입; 검증이 적어도 하나를 컬럼으로 만들었다. */
+    /** The column type among the operands; validation made at least one of them a column. */
     private function operandType(array $a, ?array $b): ColumnType
     {
         foreach ([$a, $b] as $operand) {
@@ -585,7 +585,7 @@ final class Renderer
         return $this->literal($type ?? $this->invalid("literal `{$operand[1]}` meets no column"), $operand[1]);
     }
 
-    /** immutable 과 audit 설정의 trigger. @return list<string> */
+    /** Triggers for immutable and audit settings. @return list<string> */
     public function triggers(Table $t): array
     {
         if ($t->settings === null) {
@@ -616,7 +616,7 @@ final class Renderer
     }
 
     /**
-     * <table>$<event> trigger 의 본문은 단일 statement 이다; PostgreSQL 은 같은 이름의 함수로 감싼다.
+     * The body of the <table>$<event> trigger is a single statement; PostgreSQL wraps it in a function of the same name.
      *
      * @return list<string>
      */

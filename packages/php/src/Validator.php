@@ -5,7 +5,7 @@ namespace Polyspec\Orm;
 
 use Polyspec\Orm\Dbspec\Meet;
 
-/** 요청(docs/protocol.md)을 runtime model에 대해 검증한다. */
+/** Validates a request (docs/protocol.md) against the runtime model. */
 final class Validator
 {
     public const IR_VERSION = 1;
@@ -69,9 +69,9 @@ final class Validator
     }
 
     /**
-     * column의 type과 codec에 op가 유효한지 여부다. aes column은 blind index로
-     * 같음을, hex와 ip만 가진 column은 결정적인 encoding으로 같음을 비교하고,
-     * 다른 codec column은 null 여부만 비교한다.
+     * Whether op is valid for the column's type and codec. An aes column compares equality by blind index,
+     * a column with only hex and ip compares equality by its deterministic encoding,
+     * and other codec columns compare only whether they are null.
      */
     public static function opAllowed(array $c, string $op): bool
     {
@@ -104,7 +104,7 @@ final class Validator
         if (($r['load'] ?? false) && ($kind !== 'insert' || ($r['on_duplicate'] ?? []) !== [])) {
             throw self::err(Code::IR_INVALID, 'load is only valid on insert without on_duplicate');
         }
-        // restart_identity은 entity 하나의 identity만 다시 시작하므로 행이나 값을 받지 않는다.
+        // restart_identity restarts only one entity's identity, so it takes no row or value.
         if ($kind === 'restart_identity' && (($r['set'] ?? []) !== [] || ($r['rows'] ?? []) !== [] || ($r['on_duplicate'] ?? []) !== [] || isset($r['where']) || isset($r['optimistic']))) {
             throw self::err(Code::IR_INVALID, 'restart_identity takes no set, rows, on_duplicate, where or optimistic');
         }
@@ -190,7 +190,7 @@ final class Validator
             throw self::err(Code::IR_INVALID, "$kind without where");
         }
         if ($kind === 'restore') {
-            // restore는 지워진 행만 고치므로 읽은 version과 비교할 것이 없다.
+            // restore fixes only deleted rows, so there is no read version to compare with.
             if (isset($r['optimistic'])) {
                 throw self::err(Code::IR_INVALID, 'restore takes no optimistic');
             }
@@ -346,7 +346,7 @@ final class Validator
     }
 
     /**
-     * query $q의 parameter use를 $out에 더한다. relation child의 $parent는 부모 entity다.
+     * Adds query $q's parameter uses to $out. The $parent of a relation child is the parent entity.
      *
      * @param list<list<array{type: string, column: ?array}>> $out
      */
@@ -401,7 +401,7 @@ final class Validator
         }
         $col = RuntimeModel::column($ent, $p['column'] ?? '');
         foreach ($p['value']['ps'] ?? [] as $i) {
-            // 상대 시각 함수의 간격이다: 초는 소수를, 나머지 단위는 정수를 받는다.
+            // The interval of a relative time function: seconds take a fraction, and other units take an integer.
             self::addUse($out, $i, self::intervalType($p['value']['name']), null);
         }
         if ($p['op'] === 'contains' || $p['op'] === 'contains_binary') {
@@ -518,8 +518,8 @@ final class Validator
     }
 
     /**
-     * scopes는 q와 그 join의 scope tree다(name, ent, joins). planner의 buildScopes처럼 조건을 검사하기
-     * 전에 모든 join을 두므로, 조건은 뒤에 선언한 join의 path도 푼다. manifest에 없는 entity의 ent는 null이다.
+     * scopes is the scope tree of q and its joins (name, ent, joins). As in planner's buildScopes, all joins are placed
+     * before conditions are checked, so a condition can also resolve the path of a join declared later. The ent of an entity not in the manifest is null.
      */
     private function scopes(array $q): array
     {
@@ -535,10 +535,10 @@ final class Validator
     }
 
     /**
-     * ref는 planner의 resolvePath처럼 column-to-column 조건의 ref를 푼다. $at은 조건이 놓인 자리다:
-     * root는 statement의 root scope, outer는 subquery를 둘러싼 query의 scope(subquery가 아니면 null),
-     * node는 조건의 scope다. path ""는 root, "^"는 outer이며 subquery 안에서만 쓰고, 그 밖의 path는
-     * root에서 join 이름을 "/"로 이은 것이다. 대상 entity에 ref의 column이 있어야 한다.
+     * ref resolves a ref in a column-to-column condition as planner's resolvePath does. $at is the place where the condition sits:
+     * root is the statement's root scope, outer is the scope of the query enclosing a subquery (null if not a subquery),
+     * node is the scope of the condition. Path "" is root, "^" is outer and is used only inside a subquery, and any other path is
+     * the join names joined with "/" from root. The target entity must have the ref's column.
      */
     private function ref(array $at, array $ref): array
     {
@@ -619,7 +619,7 @@ final class Validator
         return $left['codec'] === ['ip'] && $right['codec'] === ['ip'] && ($base === 'eq' || $base === 'not_eq');
     }
 
-    /** query는 q를 검사한다. $at은 q의 자리다(ref 참고). */
+    /** query checks q. $at is the place in q (see ref). */
     private function query(array $q, array $at, bool $isJoin, bool $isRelation): void
     {
         $entity = $q['entity'] ?? '';
@@ -666,7 +666,7 @@ final class Validator
             }
             $left = $j['left'] ?? '';
             $right = $j['right'] ?? '';
-            // join은 match method가 고른 두 column으로만 잇는다. 이름에서 추론한 relation은 없다.
+            // A join is made only on the two columns that the match method picks. No relation is inferred from names.
             if ($left === '' || $right === '' || !isset($j['query'])) {
                 throw self::err(Code::IR_INVALID, "join $rel: left, right and query are required");
             }
@@ -689,7 +689,7 @@ final class Validator
         if (!empty($q['on']['not']) || !empty($q['where']['not'])) {
             throw self::err(Code::IR_INVALID, 'not applies to a nested group');
         }
-        // top-level group은 앞 형제가 없으므로 conn을 갖지 않는다.
+        // The top-level group has no earlier sibling, so it has no conn.
         foreach (['on', 'where'] as $top) {
             if (($q[$top]['conn'] ?? '') !== '') {
                 throw self::err(Code::IR_INVALID, "the top-level group takes no conn (\"{$q[$top]['conn']}\")");
@@ -737,7 +737,7 @@ final class Validator
                 if (!self::meets(RuntimeModel::column($ent, $left), RuntimeModel::column($target, $right))) {
                     throw self::err(Code::OPERATOR_NOT_ALLOWED, "relation $rel: $entity.$left does not meet {$target['entity']}.$right");
                 }
-                // 한 column이 두 성분에 나오면 key가 아니다.
+                // A column that appears in two components is not a key.
                 if (isset($lefts[$left]) || isset($rights[$right])) {
                     throw self::err(Code::IR_INVALID, "relation $rel: key column $left or $right is used twice");
                 }
@@ -841,7 +841,7 @@ final class Validator
             if ($i === 0 && $conn === 'or') {
                 throw self::err(Code::OR_AT_GROUP_START, 'a group may not start with OR');
             }
-            // group의 첫 item은 앞 형제가 없으므로 conn을 갖지 않는다.
+            // The first item of a group has no earlier sibling, so it has no conn.
             if ($i === 0 && $conn !== '') {
                 throw self::err(Code::IR_INVALID, "the first item of a group takes no conn (\"$conn\")");
             }
@@ -1009,7 +1009,7 @@ final class Validator
         $this->params($f['ps'] ?? []);
     }
 
-    /** sub는 subquery를 검사한다. $outer는 subquery가 놓인 scope이며 그 "^" ref가 가리킨다. */
+    /** sub checks a subquery. $outer is the scope the subquery sits in, and its "^" ref points there. */
     private function sub(array $s, bool $scalar, array $outer): void
     {
         $q = $s['query'] ?? throw self::err(Code::IR_INVALID, 'subquery needs a query');

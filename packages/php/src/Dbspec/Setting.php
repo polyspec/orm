@@ -11,15 +11,15 @@ namespace Polyspec\Orm\Dbspec;
  * the shape of `document` and `block` (STORE_ARGUMENTS counts them), and then
  * the column and the period of its `shard` clause when it has one.
  *
- * audit의 exclude와 include는 기록하지 않는 column과 audit column 말고 기록하는
- * column의 목록이며, 목록이 없으면 null이다. parse한 setting은 둘 중 하나만 가진다
+ * The audit's exclude and include are lists of columns, other than the unrecorded columns and the audit
+ * columns, or null if there are no lists. A parsed setting has only one of the two.
  * (docs/dbspec.md "Audit").
  */
 final class Setting
 {
     public const KINDS = ['entity', 'updated', 'soft_delete', 'select_explicit', 'codec', 'aes_version', 'blind_index', 'navigation', 'markdown', 'store', 'key_prefix', 'title', 'body', 'order', 'checkbox', 'state_machine', 'immutable', 'audit'];
     public const CODEC_STAGES = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];
-    /** store 종류마다 shard 절 앞의 인자 수다(kind 포함). */
+    /** The number of arguments before the shard clause for each store kind (including the kind). */
     public const STORE_ARGUMENTS = ['files' => 1, 'document' => 2, 'block' => 3];
 
     /**
@@ -27,8 +27,8 @@ final class Setting
      * @param list<string> $comments
      * @param list<string>|null $exclude
      * @param list<string>|null $include
-     * @param 'transition'|'terminal'|'initial'|'history'|'limit'|null $form state_machine 설정의 줄 형태
-     * @param list<string>|null $requires transition 또는 terminal 줄의 `require (...)` column
+     * @param 'transition'|'terminal'|'initial'|'history'|'limit'|null $form The line form of a state_machine setting
+     * @param list<string>|null $requires The `require (...)` columns of a transition or terminal line
      */
     public function __construct(
         public string $kind,
@@ -42,8 +42,8 @@ final class Setting
     }
 
     /**
-     * audit trigger가 column을 복사하는지 알린다. audit column은 언제나, exclude 목록의
-     * column은 언제나 아니며, include 목록이 있으면 그 column만 복사한다.
+     * Tells whether the audit trigger copies the column. An audit column is always copied, and a column in the exclude list
+     * column is never copied; if there is an include list, only that column is copied.
      */
     public function records(string $column): bool
     {
@@ -60,8 +60,8 @@ final class Setting
     }
 
     /**
-     * audit trigger가 복사하지 않는 table의 column을 column 순서로 돌려준다. schema text가 쓰는
-     * 목록이다.
+     * Returns, in column order, the table's columns that the audit trigger does not copy, which the schema text
+     * writes as a list.
      *
      * @return list<string>
      */
@@ -77,7 +77,7 @@ final class Setting
     }
 
     /**
-     * audit setting 줄이다. 목록이 비면 목록 없이, 아니면 list keyword와 그 column을 쓴다.
+     * The audit setting line. If the list is empty, it is written without a list; otherwise the list keyword and its columns are written.
      *
      * @param list<string>|null $columns
      */

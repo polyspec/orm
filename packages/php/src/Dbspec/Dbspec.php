@@ -62,17 +62,17 @@ final class Dbspec
         return (new Parser($documents))->run($text, $withTokens);
     }
 
-    /** 모든 dbspec document 파일의 첫 byte다. header `dbspec 1 <document>`가 이것으로 시작한다. */
+    /** The first byte of every dbspec document file. The header `dbspec 1 <document>` starts with this. */
     public const SIGNATURE = 'dbspec ';
 
     /**
-     * parse할 $path의 dbspec document 파일을 읽고 그 byte를 path를 이름으로 readBytes로
-     * 확인한다(docs/dbspec.md "Files"). directory나 읽을 수 없는 파일은
-     * "cannot read <path>: <reason>" RuntimeException이다.
+     * Reads the dbspec document file at $path to parse, and checks its bytes against the path as the name in
+     * readBytes (docs/dbspec.md "Files"). A directory or an unreadable file is a
+     * RuntimeException "cannot read <path>: <reason>".
      */
     public static function readFile(string $path): ReadResult
     {
-        // PHP는 directory를 열고 빈 text를 읽으므로, 빈 파일의 signature diagnostic이 되기 전에 거부한다.
+        // PHP opens a directory and reads empty text, so it is rejected before it becomes an empty file's signature diagnostic.
         if (is_dir($path)) {
             throw new \RuntimeException("cannot read $path: is a directory");
         }
@@ -150,12 +150,12 @@ final class Dbspec
     }
 
     /**
-     * 호출자가 자기 규칙으로 읽은 dbspec document 파일의 byte를 parse 전에 확인한다.
-     * $name은 message가 파일을 가리키는 이름이다. SIGNATURE로 시작하지 않는 byte는 text 없이
-     * line 1, column 1의 `signature` diagnostic 하나와 message "<name> is not a dbspec
-     * document"를, UTF-8이 아닌 byte는 첫 잘못된 byte의 줄과 칸에서 `encoding` diagnostic
-     * 하나와 message "<name> is not valid UTF-8"을 돌려준다. 그 밖의 byte는 diagnostic 없이
-     * 그대로 text가 된다.
+     * Checks the bytes of a dbspec document file, which the caller read by its own rules, before parse.
+     * $name is the name by which the message refers to the file. Bytes not starting with SIGNATURE give no text, but
+     * one `signature` diagnostic at line 1, column 1 with the message "<name> is not a dbspec
+     * document", and non-UTF-8 bytes give an `encoding` diagnostic at the line and column of the first bad byte, with the message
+     * "<name> is not valid UTF-8". Other bytes pass through as text without a diagnostic.
+     * as is.
      */
     public static function readBytes(string $name, string $bytes): ReadResult
     {
@@ -170,7 +170,7 @@ final class Dbspec
     }
 
     /**
-     * 첫 잘못된 UTF-8 byte의 줄과 칸(code point 단위)이다. 줄은 LF로 나눈다.
+     * The line and column (in code points) of the first bad UTF-8 byte. Lines are split at LF.
      *
      * @return array{int, int}
      */
@@ -195,7 +195,7 @@ final class Dbspec
         return [$line, $column];
     }
 
-    /** $i에서 시작하는 올바른 UTF-8 문자의 byte 수, 잘못된 byte이면 0이다. */
+    /** The number of bytes of the valid UTF-8 character starting at $i, or 0 if the byte is invalid. */
     private static function utf8Size(string $bytes, int $i, int $length): int
     {
         $b = ord($bytes[$i]);
@@ -315,8 +315,8 @@ final class Dbspec
             $manifestText .= Emitter::emit($document, View::Manifest);
             array_push($tables, ...$document->tables);
         }
-        // schema text 는 집합이 소유한 모든 table 을 이름 순으로 담은 문서 `schema` 하나이므로 문서를 나누는
-        // 방식과 무관하다. 외부 문서에서 쓰는 table 은 그 문서의 use 줄로 남는다.
+        // Schema text is one document `schema` holding all the tables the set owns in name order, so the way documents are split
+        // does not matter. Tables used from an external document remain as a use line in that document.
         usort($tables, static fn(Table $a, Table $b): int => strcmp($a->name, $b->name));
         $schema->tables = $tables;
         $schemaText = Emitter::emit($schema, View::Schema);
@@ -324,8 +324,8 @@ final class Dbspec
     }
 
     /**
-     * 외부 문서에서 $tables의 column, primary key, unique key만 문서 순서로 담은 문서다. 그 table이
-     * 없으면 null이다. foreign key, index, check, setting은 외부 문서가 소유하므로 담지 않는다.
+     * Only the columns, primary key, and unique keys of $tables, from the external document, in document order. If that table
+     * is absent, null. Foreign keys, indexes, checks, and settings are owned by the external document, so they are not included.
      *
      * @param list<string> $tables
      */
@@ -346,10 +346,10 @@ final class Dbspec
     }
 
     /**
-     * set이 외부 문서에서 쓰는 table이 database에 있는지 확인한다(docs/dbspec.md "External
-     * documents"). `$live`는 database를 introspect한 문서다. 쓰는 table마다 table이 없거나, 외부
-     * 문서의 column이 없거나 type이나 null이 다르거나, primary key가 다르거나, unique key의 column
-     * 목록이 없으면 그 차이를 table 이름, column 순으로 돌려준다. 외부 문서가 없으면 빈 목록이다.
+     * Checks that the tables the set uses from external documents are in the database (docs/dbspec.md "External
+     * documents"). $live is the document of the introspected database. For each table written, if the table is missing,
+     * or an external document column is missing, or its type or null differs, or the primary key differs, or the unique key's columns
+     * list is missing, returns those differences by table name and column order. With no external document, it is an empty list.
      *
      * @param list<Document> $documents
      * @return list<string>
@@ -463,8 +463,8 @@ final class Dbspec
     }
 
     /**
-     * plan 없이 source 에서 target 까지의 모든 차이, 또는 schema text 가 아닌 쪽의
-     * `compare` diagnostic 이다(docs/plans.md "Comparison").
+     * All differences from source to target without a plan, or the diagnostic `compare` of the side that is not schema text
+     * (docs/plans.md "Comparison").
      */
     public static function compareSchemas(Document $source, Document $target): ComparisonResult
     {
@@ -472,12 +472,12 @@ final class Dbspec
     }
 
     /**
-     * database가 document set과 같은지 확인한다(docs/schema.md "Schema installation").
-     * `$live`는 연결의 database를 introspect한 문서, `$unsupported`는 introspection이 읽지
-     * 못한 객체, `$target`은 document set의 schema text 문서다. set에 없는 database의 table은
-     * 비교하지 않는다. set의 table에 읽지 못한 객체가 있으면 그 객체를
-     * "unsupported_<kind> <table>[.<name>]: <reason>"로, 아니면 database에 있는 set의 table에서
-     * set까지의 모든 차이를 "<kind> <table>[.<name>]"로 돌려준다. 빈 목록이면 같다.
+     * Checks whether the database matches the document set (docs/schema.md "Schema installation").
+     * $live is the document of the connection's database introspected; $unsupported is the objects introspection could not
+     * read; $target is the schema text document of the document set. Tables of the database that are not in the set are
+     * not compared. If a table in the set has an unread object, that object is
+     * reported as "unsupported_<kind> <table>[.<name>]: <reason>"; otherwise, for tables of the set in the database,
+     * all differences up to the set are reported as "<kind> <table>[.<name>]". An empty list means they match.
      *
      * @param list<Unsupported> $unsupported
      * @return list<string>
@@ -495,9 +495,9 @@ final class Dbspec
     }
 
     /**
-     * database에 있는 set의 table(source)과 set을 비교한다. set의 table에 읽지 못한 객체가
-     * 있으면 source 없이 그 객체를 차이로 돌려준다. 아니면 set의 table 이름별 정의, source,
-     * 비교 결과와 그 diagnostic을 돌려준다.
+     * Compares the set's tables (source) that are in the database with the set. If a table in the set has an unread object,
+     * that object is returned as a difference without a source. Otherwise, the definitions by table name of the set, source,
+     * Returns the comparison result and its diagnostic.
      *
      * @param list<Unsupported> $unsupported
      * @return array{0: array<string, Table>, 1: ?Document, 2: ?ComparisonResult, 3: list<string>}
@@ -509,7 +509,7 @@ final class Dbspec
             $declared[$table->name] = $table;
         }
         $differences = [];
-        // set의 table에 읽지 못한 객체가 있으면 그 table은 set과 같다고 할 수 없다.
+        // If a table in the set has an unread object, that table cannot be called the same as the set.
         foreach ($unsupported as $u) {
             if (isset($declared[$u->table])) {
                 $differences[] = "unsupported_{$u->kind} " . self::qualified($u->table, $u->name) . ": {$u->reason}";
@@ -537,20 +537,20 @@ final class Dbspec
     }
 
     /**
-     * 연결의 addTablesAndColumns가 실행할 step이다(docs/schema.md "Adding tables and
-     * columns"). `$live`는 연결의 database를 introspect한 문서, `$unsupported`는
-     * introspection이 읽지 못한 객체, `$target`은 document set의 schema text 문서다. set에
-     * 없는 database의 table은 비교하지도 바꾸지도 않는다. database에 있는 set의 table과
-     * set의 차이가 database에 없는 table의 create_table, null이거나 default가 있는
-     * column의 add_column, unique가 아닌 index의 add_index뿐이면, database에 있는 set의
-     * table에서 set까지의 plan step(docs/plans.md "Steps")과, table 이름 순으로 만드는
-     * table은 "table", 더하는 column은 column 순서로 "table.column", 그 뒤 더하는 index는
-     * index 순서로 "table.index"인 목록을 돌려준다. 다른 차이는 step 없이
-     * "<kind> <table>[.<name>]"로 돌려주며, 빠진 unique key는 있는 행에서 실패할 수 있으므로
-     * 그 이유와 함께 돌려준다.
+     * The steps that the connection's addTablesAndColumns will run (docs/schema.md "Adding tables and
+     * columns"). `$live` is the document of the connection's introspected database, `$unsupported` is
+     * the objects introspection could not read, and `$target` is the schema text document of the document set. For the set
+     * tables of the database not in the set are neither compared nor changed. The set's tables that are in the database and
+     * differ from the set: a create_table for a table missing from the database, an add_column for a column that is null or has a default,
+     * or an add_index for a non-unique index only; the set's tables that are in the database
+     * get plan steps up to the set (docs/plans.md "Steps"), and returns, in table name order, the list of
+     * tables as "table", added columns as "table.column" in column order, and then added indexes
+     * as "table.index" in index order. Other differences are returned without a step
+     * as "<kind> <table>[.<name>]", and since a missing unique key can fail on existing rows,
+     * it is returned with that reason.
      *
      * @param list<Unsupported> $unsupported
-     * @return array{0: list<string>, 1: list<PlanStep>, 2: list<string>} 만드는 table과 더하는 column, step, 차이
+     * @return array{0: list<string>, 1: list<PlanStep>, 2: list<string>} The tables to create, the columns to add, the steps, and the differences
      */
     public static function addTablesAndColumnsSteps(Document $live, array $unsupported, Document $target, string $dialect): array
     {
@@ -580,12 +580,12 @@ final class Dbspec
                 continue;
             }
             if ($d->kind === 'add_index') {
-                // index는 행을 거부하지 않으므로 있는 table에도 더한다.
+                // An index does not reject rows, so it is added to existing tables too.
                 $adding[$qualified($d->table, $d->name)] = true;
                 continue;
             }
             if ($d->kind === 'add_unique') {
-                // unique key는 있는 행이 겹치면 실패하므로 plan과 apply가 다룬다.
+                // A unique key fails if existing rows overlap, so plan and apply handle it.
                 $differences[] = 'add_unique ' . $qualified($d->table, $d->name) . ': a missing unique key can fail on the existing rows; add it with a plan';
                 continue;
             }
@@ -594,8 +594,8 @@ final class Dbspec
         if ($differences !== [] || $adding === []) {
             return [[], [], $differences];
         }
-        // 만드는 table과 더하는 column과 index는 table 이름 순, table 안에서는 column 순서 뒤
-        // index 순서다.
+        // Tables to create, columns to add, and indexes are in table name order; within a table, after column order
+        // comes index order.
         $added = [];
         foreach ($target->tables as $table) {
             if (isset($adding[$table->name])) {
@@ -613,9 +613,9 @@ final class Dbspec
                 }
             }
         }
-        // 더하는 table과 column은 plan 하나로 쓴다. plan은 database에 있는 set의 table에서
-        // 시작하므로(하나도 없으면 빈 database) step은 docs/plans.md의 순서와 rollback을
-        // 그대로 갖는다.
+        // Tables and columns to add are written as one plan. The plan starts from the set's tables that are in the database
+        // (an empty database if there are none), so the steps keep the order and rollback of docs/plans.md
+        // as they are.
         $diagnostics = [];
         $steps = [];
         $start = $source->tables === [] ? null : $source;
@@ -629,8 +629,8 @@ final class Dbspec
             }
         }
         if ($diagnostics === []) {
-            // target 은 외부 문서를 쓰는 set 의 schema text 일 수 있으므로 plan 문서를 parse 하지 않고
-            // target 으로 plan 을 만든다.
+            // The target may be the schema text of a set that uses external documents, so the plan document is not parsed and
+            // the plan is built from the target.
             $plan = PlanText::planTo('add_tables_and_columns', $from, [], [], [], [], $target, self::emit($target));
             if ($plan->plan === null) {
                 $diagnostics = $plan->diagnostics;

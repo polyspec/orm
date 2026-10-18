@@ -4,20 +4,20 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * introspection 의 catalog query 를 보내고 그 값을 읽는다. query 실패와 catalog 가
- * 선언하지 않은 모양의 값은 query 를 담은 error 다.
+ * Sends the introspection catalog queries and reads their values. A query failure and a catalog
+ * value of a shape it did not declare are errors carrying the query.
  *
  * @internal
  */
 final class CatalogRows
 {
-    /** @var ?\Closure(string, int, ?\Throwable): void observed가 정한 catalog query observer다. */
+    /** @var ?\Closure(string, int, ?\Throwable): void The catalog query observer that observed sets. */
     private static ?\Closure $observer = null;
 
     /**
-     * $fn 동안 catalog query 마다 $observer 를 부른다. observer 는 query 의 row 를 모두
-     * 읽었거나 읽다 실패했을 때 query, query 를 보내기 전의 hrtime, query 의 오류(성공이면
-     * null)를 받는다. observer 가 던진 오류는 introspection 을 그 오류로 끝낸다.
+     * Calls $observer for each catalog query while $fn runs. The observer receives all of the query's rows once
+     * they have been read or reading has failed, the query, the hrtime before the query was sent, and the query's error (null on success).
+     * An exception the observer throws ends introspection with that error.
      *
      * @template T
      * @param \Closure(string, int, ?\Throwable): void $observer
@@ -36,8 +36,8 @@ final class CatalogRows
     }
 
     /**
-     * query 의 모든 row 를 위치 순 값으로 돌려준다. connection 의 error mode 와
-     * 무관하게 실패는 RuntimeException 이다.
+     * Returns all rows of the query as position-ordered values. Regardless of the connection's error mode,
+     * a failure is a RuntimeException.
      *
      * @return list<list<mixed>>
      */
@@ -106,7 +106,7 @@ final class CatalogRows
         throw new \UnexpectedValueException("Catalog value $i is " . get_debug_type($value) . ', not an integer, in ' . self::firstLine($query));
     }
 
-    /** boolean 이나 0, 1 인 값. @param list<mixed> $row */
+    /** A value that is boolean, or 0 or 1. @param list<mixed> $row */
     public static function flag(array $row, int $i, string $query): bool
     {
         $value = $row[$i] ?? null;

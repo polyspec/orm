@@ -4,26 +4,26 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * dbspec 문서를 표준 Mermaid erDiagram 으로 쓰고, erDiagram 을 dbspec 문서로
- * 읽는다 (docs/mermaid.md). 둘 다 옮기지 못한 것을 [kind, table, name] 순서로 알린다.
+ * Writes a dbspec document as standard Mermaid erDiagram, and reads an erDiagram back into a dbspec document
+ * (docs/mermaid.md). Reports what neither could carry, as [kind, table, name].
  *
  * @internal
  */
 final class Mermaid
 {
-    /** import 가 읽지 못한 Mermaid 줄의 diagnostic rule. */
+    /** The diagnostic rule for a Mermaid line that import could not read. */
     public const RULE = 'mermaid';
 
-    // Go regexp 의 \s 는 [\t\n\f\r ] 이다. PCRE 의 \s 는 \v 도 받으므로 class 를 그대로 쓴다.
+    // Go regexp's \s is [\t\n\f\r ]. PCRE's \s also matches \v, so the class is written out as is.
     private const ENTITY_NAME = '([A-Za-z0-9_-]+|"[^"]*")';
     private const ENTITY_START = '/^' . self::ENTITY_NAME . '[\t\n\f\r ]*\{$/D';
     private const ATTRIBUTE = '/^([A-Za-z][A-Za-z0-9_()\[\]-]*)[\t\n\f\r ]+([A-Za-z_*][A-Za-z0-9_-]*)((?:[\t\n\f\r ]+(?:PK|FK|UK)(?:[\t\n\f\r ]*,[\t\n\f\r ]*(?:PK|FK|UK))*)?)(?:[\t\n\f\r ]+"([^"]*)")?$/D';
     private const RELATION = '/^' . self::ENTITY_NAME . '[\t\n\f\r ]+(\|o|\|\||\}o|\}\|)(--|\.\.)(o\||\|\||o\{|\|\{)[\t\n\f\r ]+' . self::ENTITY_NAME . '[\t\n\f\r ]*:[\t\n\f\r ]*("[^"]*"|[^\t\n\f\r "]+)$/D';
     private const LABEL = '/^([a-z][a-z0-9_]*) \(([a-z0-9_, ]+)\) references \(([a-z0-9_, ]+)\)$/D';
-    // comment 뒤에 공백 하나를 붙인 text 에 맞춘다. 각 부분이 공백 하나로 끝나야 하므로 부분 사이에 공백이 정확히 하나 있다.
+    // Matches text with one space appended after the comment. Each part must end in one space, so there is exactly one space between parts.
     private const SUFFIX = '/^(?:(null) )?(?:(identity) )?(?:default (.+) )?$/D';
     private const KNOWN_TYPE = '/^(i16|i32|i64|bool|f64|text|bytes|uuid|date)$|^varchar\((\d+)\)$|^(time|datetime)\((\d)\)$|^decimal\((\d+)-(\d+)\)$/D';
-    /** Go strings.TrimSpace 가 지우는 Unicode White_Space 의 UTF-8 byte 열. */
+    /** The UTF-8 byte sequence of the Unicode White_Space that Go's strings.TrimSpace removes. */
     private const SPACE = '(?:[\t\n\v\f\r ]|\xC2[\x85\xA0]|\xE1\x9A\x80|\xE2\x80[\x80-\x8A\xA8\xA9\xAF]|\xE2\x81\x9F|\xE3\x80\x80)';
 
     public static function export(Document $d): MermaidExportResult
@@ -139,13 +139,13 @@ final class Mermaid
         return new MermaidExportResult($out, $dropped);
     }
 
-    /** settings block 의 여는 줄, setting 줄, 닫는 줄 중 하나에 comment 가 있는지 알려준다. */
+    /** Tells whether a comment is on the opening line, a setting line, or the closing line of a settings block. */
     private static function settingsCommented(?Settings $s): bool
     {
         return $s !== null && ($s->comments !== [] || $s->closingComments !== [] || array_any($s->settings, static fn(Setting $x): bool => $x->comments !== []));
     }
 
-    /** Mermaid type 에는 쉼표가 없으므로 decimal(p,s) 를 decimal(p-s) 로 쓴다. */
+    /** Mermaid types have no comma, so decimal(p,s) is written as decimal(p-s). */
     private static function type(ColumnType $t): string
     {
         return $t->name === 'decimal' ? "decimal({$t->parameters[0]}-{$t->parameters[1]})" : $t->text();
@@ -154,7 +154,7 @@ final class Mermaid
     public static function import(string $text, string $name): MermaidImportResult
     {
         $lines = explode("\n", str_ends_with($text, "\n") ? substr($text, 0, -1) : $text);
-        /** @var array<string, array{name: string, attributes: list<array{type: string, name: string, comment: string, keys: list<string>}>}> $byName 선언 순서를 지킨다 */
+        /** @var array<string, array{name: string, attributes: list<array{type: string, name: string, comment: string, keys: list<string>}>}> $byName keeps declaration order */
         $byName = [];
         $entity = static function (string $n) use (&$byName): string {
             $n = trim($n, '"');
@@ -277,7 +277,7 @@ final class Mermaid
             }
             $columns = self::splitNames($m[2]);
             $refs = self::splitNames($m[3]);
-            // column 수가 참조 column 수와 다르면 foreign key 가 아니므로 column 을 보지 않는다.
+            // If the column count differs from the referenced column count, it is not a foreign key, so the columns are not examined.
             $ok = count($columns) === count($refs);
             $nullable = false;
             foreach ($ok ? $columns : [] as $i => $column) {
@@ -304,7 +304,7 @@ final class Mermaid
                 $usedForeignKeys[$child][$column] = true;
             }
             $index = "ix_{$child}_" . implode('_', $columns);
-            // 같은 column 의 foreign key 가 이미 더한 index 는 다시 더하지 않는다.
+            // An index that a foreign key on the same column already added is not added again.
             $indexed = array_any($ct->indexes, static fn(array $x): bool => $x['name'] === $index);
             if (array_slice($ct->primary, 0, count($columns)) !== $columns && !$indexed) {
                 $ct->indexes[] = ['name' => $index, 'columns' => $columns, 'desc' => array_fill(0, count($columns), false)];
@@ -333,9 +333,9 @@ final class Mermaid
     }
 
     /**
-     * Mermaid type 이 dbspec type 이면 그 ColumnType, 아니면 null. 수가 dbspec 범위
-     * (varchar 1-16383, time 과 datetime 0-6, decimal p 1-18 과 s 0-p)를 벗어나면 dbspec
-     * type 이 아니다. 범위를 여기서 정하므로 key column 도 모든 client 에서 같은 지점에서 빠진다.
+     * If the Mermaid type is a dbspec type, its ColumnType; otherwise null. If the number
+     * is outside the range (varchar 1-16383, time and datetime 0-6, decimal p 1-18 and s 0-p), it is not a dbspec
+     * type. The range is decided here, so key columns also drop out at the same point in every client.
      */
     private static function importType(string $s): ?ColumnType
     {
@@ -358,7 +358,7 @@ final class Mermaid
         return $scale === null ? null : new ColumnType('decimal', [$precision, $scale]);
     }
 
-    /** 숫자 text 가 lo 이상 hi 이하인 값이면 그 값, 아니면 null. 9자리를 넘는 수는 범위 밖이다. */
+    /** If the numeric text is a value from lo to hi inclusive, that value; otherwise null. A number over 9 digits is out of range. */
     private static function within(string $digits, int $lo, int $hi): ?int
     {
         $digits = ltrim($digits, '0');
@@ -370,8 +370,8 @@ final class Mermaid
     }
 
     /**
-     * Go 의 %q 처럼 따옴표로 감싼다. ASCII 의 escape 는 Go 와 같고, ASCII 가 아닌 byte 는
-     * 그대로 둔다.
+     * Quotes like Go's %q. ASCII escapes are the same as Go's, and bytes that are not ASCII are
+     * left as they are.
      */
     private static function quoted(string $s): string
     {

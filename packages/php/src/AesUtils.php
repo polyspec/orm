@@ -60,7 +60,7 @@ final class AesUtils
     {
         $spec = $this->spec($model);
         $pg = $this->db->driver() === 'postgres';
-        // PostgreSQL은 $n placeholder를 쓴다. pdo_pgsql에는 ?로 바꿔 보낸다.
+        // PostgreSQL uses $n placeholders. For pdo_pgsql, they are sent as ?.
         $ph = static fn(int $n): string => $pg ? '$' . $n : '?';
         $columns = array_merge(array_map($this->q(...), $spec['keys']), [$this->q($spec['version'])], array_map(fn(array $c): string => $this->q($c['name']), $spec['columns']));
         $keyCount = count($spec['keys']);

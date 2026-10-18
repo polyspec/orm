@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Dbspec;
 
-/** Dbspec::compareSchemas 의 결과: diagnostic 없는 차이, 또는 차이 없는 diagnostic 이다. */
+/** Result of Dbspec::compareSchemas: a difference with no diagnostic, or a diagnostic with no difference. */
 final readonly class ComparisonResult
 {
     /**

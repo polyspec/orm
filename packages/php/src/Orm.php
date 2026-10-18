@@ -8,10 +8,10 @@ final class Orm
 {
     /** milliseconds a SQLite connection waits for a lock when the DSN sets no _pragma=busy_timeout(ms) */
     private const SQLITE_BUSY_TIMEOUT_MS = 5000;
-    /** MySQL 연결마다 정하는 session sql_mode다. 결과가 server 설정에 따르지 않는다(tests/dsn/mysql-session.json). */
+    /** The session sql_mode decided per MySQL connection. The result does not depend on server settings (tests/dsn/mysql-session.json). */
     private const MYSQL_SQL_MODE = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
 
-    /** scheme마다 DSN이 받는 parameter다(docs/config.md). 다른 parameter는 CONFIG다. */
+    /** The parameters that each scheme's DSN accepts (docs/config.md). Other parameters are CONFIG. */
     private const DSN_PARAMETERS = [
         'mysql' => ['timezone', 'socket', 'ssl-mode', 'ssl-ca'],
         'postgres' => ['timezone', 'host', 'sslmode'],
@@ -19,11 +19,11 @@ final class Orm
     ];
 
     /**
-     * DSN URI(mysql://, postgres://, sqlite://)가 고르는 database를 열고 generated
-     * schema의 set을 utils()->schema()->register처럼 그 연결에 등록한다. generated code의
-     * connect helper가 부른다. text가 선언한 hash로 hash되지 않으면 연결을 열기 전에
-     * CONFIG다. 등록은 database를 읽지 않는다: database는 install과 addTablesAndColumns가
-     * 확인한다.
+     * Opens the database that the DSN URI (mysql://, postgres://, sqlite://) selects, and
+     * registers the generated schema's set on that connection, as utils()->schema()->register does. Called by the generated code's
+     * connect helper. If the text does not hash to the declared hash, it is CONFIG before the connection is opened.
+     * Registration does not read the database; install and addTablesAndColumns
+     * check it.
      */
     public static function connectSchema(string $dsn, Schema $schema, Config $config): Db
     {
@@ -34,11 +34,11 @@ final class Orm
     }
 
     /**
-     * DSN URI(mysql://, postgres://, sqlite://)가 고르는 database를 연다. 연결에는
-     * 등록된 set이 없으므로 model 요청은 install이 그 set을 등록할 때까지
-     * SCHEMA_HASH_MISMATCH다. 모든 connection은 datetime을 UTC로 읽고 쓴다
-     * (docs/dialects.md): MySQL과 PostgreSQL session의 time zone은 UTC다. 연결은
-     * Db마다 하나이고 Db와 함께 끝난다. PHP client는 pool을 두지 않는다.
+     * Opens the database that the DSN URI (mysql://, postgres://, sqlite://) selects. The connection
+     * has no registered set, so a model request gives SCHEMA_HASH_MISMATCH until install registers that set.
+     * All connections read and write datetime as UTC
+     * (docs/dialects.md): the time zone of MySQL and PostgreSQL sessions is UTC. A connection
+     * is one per Db and ends with the Db. The PHP client has no pool.
      */
     public static function connect(string $dsn, Config $config): Db
     {
@@ -50,8 +50,8 @@ final class Orm
         $options = [];
         switch ($driver) {
             case 'mysql':
-                // session 설정은 연결이 열릴 때 한 번 실행되는 init command 하나다. 설정마다
-                // statement를 따로 보내는 round trip이 들지 않는다.
+                // Session settings are one init command that runs once when the connection opens. Each setting
+                // does not incur a separate round trip to send a statement.
                 $options = [
                     \Pdo\Mysql::ATTR_FOUND_ROWS => true,
                     // MySQL bounds SELECT statements with max_execution_time.
@@ -59,9 +59,9 @@ final class Orm
                 ] + self::mysqlTlsOptions($sslCa);
                 break;
             case 'postgres':
-                // startup parameter는 client session에 속하므로 transaction mode의 pooler는
-                // 이 연결에 배정하는 모든 server connection에 그것을 두고 다른 연결에는 두지
-                // 않는다. time zone도 startup parameter이므로 연결은 SET statement를 보내지 않는다.
+                // Startup parameters belong to the client session, so a pooler in transaction mode
+                // puts them on every server connection assigned to this connection, and does not put them on other connections.
+                // Since the time zone is also a startup parameter, the connection does not send a SET statement.
                 $pdoDsn .= ";options='-c TimeZone=UTC" . ($config->statementTimeoutMs > 0 ? ' -c statement_timeout=' . $config->statementTimeoutMs : '') . "'";
                 break;
         }
@@ -69,7 +69,7 @@ final class Orm
             $pdo = \PDO::connect($pdoDsn, $user, $password, $options);
             $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
             if ($driver === 'sqlite') {
-                // pdo_sqlite가 link한 SQLite library의 version이다. 그것을 묻는 statement를 보내지 않는다.
+                // The version of the SQLite library that pdo_sqlite linked. It does not send a statement that asks for it.
                 $version = (string) $pdo->getAttribute(\PDO::ATTR_SERVER_VERSION);
                 if (version_compare($version, '3.46', '<')) {
                     throw new OrmException(Code::CAPABILITY_UNSUPPORTED, "SQLite $version is older than 3.46");
@@ -86,7 +86,7 @@ final class Orm
         return new Db($pdo, $driver, $config, new \DateTimeZone('UTC'));
     }
 
-    /** pool option과 statement timeout은 SQL 연결과 markdown 연결이 같은 규칙으로 검사한다. */
+    /** Pool options and statement timeout are checked by the same rules for SQL and markdown connections. */
     private static function checkConnectionConfig(Config $config): void
     {
         if ($config->poolSize !== 0 || $config->poolIdleSize !== 0 || $config->poolLifetimeMs !== 0) {
@@ -98,9 +98,9 @@ final class Orm
     }
 
     /**
-     * markdown://127.0.0.1:<port>/<corpus>?token=<token>이 가리키는 flowmark server에 연결한다
-     * (docs/protocol.md §5). 연결 하나를 열고 connect message로 corpus와 token을 보낸다: server가
-     * 거절한 corpus나 token은 그 CONFIG다. markdown executor는 statement timeout을 받지 않는다.
+     * Connects to the flowmark server that markdown://127.0.0.1:<port>/<corpus>?token=<token> points at
+     * (docs/protocol.md §5). Opens one connection and sends the corpus and token in a connect message: if the server
+     * rejects the corpus or token, it is CONFIG. The markdown executor does not accept a statement timeout.
      */
     private static function connectMarkdown(string $dsn, Config $config): Db
     {
@@ -112,7 +112,7 @@ final class Orm
         return new Db(null, 'markdown', $config, new \DateTimeZone('UTC'), MarkdownSession::dial($address, $corpus, $token));
     }
 
-    /** DSN URI의 scheme이다. 소문자다. URI가 아니면 CONFIG다. */
+    /** The scheme of the DSN URI, in lowercase. If it is not a URI, it is CONFIG. */
     private static function scheme(string $dsn): string
     {
         if (preg_match('#^([a-z][a-z0-9+.-]*)://#i', $dsn, $m) !== 1) {
@@ -122,9 +122,9 @@ final class Orm
     }
 
     /**
-     * markdown://127.0.0.1:<port>/<corpus>?token=<token>을 읽는다. flowmark server는 127.0.0.1에서만
-     * 듣고 token은 평문으로 가므로 host는 127.0.0.1뿐이다. 다른 host, 없는 port, 이름 하나가 아닌
-     * path, 없는 token과 다른 parameter는 CONFIG다.
+     * Reads markdown://127.0.0.1:<port>/<corpus>?token=<token>. The flowmark server listens only on 127.0.0.1,
+     * and the token travels in plain text, so the host is only 127.0.0.1. Another host, a missing port, a path that is not one name,
+     * a missing token, and any other parameter are CONFIG.
      *
      * @return array{0: string, 1: string, 2: string} the server address, the corpus name and the token
      */
@@ -170,8 +170,8 @@ final class Orm
     }
 
     /**
-     * `timezone` parameter는 UTC(`+00:00`, `UTC`)만 받는다. 다른 zone은 UTC 규칙과
-     * 맞지 않으므로 CONFIG로 실패한다.
+     * The `timezone` parameter accepts only UTC (`+00:00`, `UTC`). Another zone does not fit the UTC rule,
+     * so it fails as CONFIG.
      *
      * @return array{0: string, 1: string, 2: ?string, 3: ?string, 4: list<array{0: string, 1: string}>, 5: ?string}
      *     driver, PDO DSN, user, password, the SQLite `_pragma=name(value)` parameters, and the
@@ -249,8 +249,8 @@ final class Orm
                     }
                     $pragmas[] = [$pragma[1], $pragma[2]];
                 }
-                // parse_url 은 path 를 decode 하지 않는다. 잘못된 escape, NUL, UTF-8 이 아닌
-                // 결과는 다른 file 을 열게 되므로 거부한다.
+                // parse_url does not decode the path. An invalid escape, a NUL, or non-UTF-8
+                // would open a different file, so they are rejected.
                 if (preg_match('/%(?![0-9A-Fa-f]{2})/', $path) === 1) {
                     throw new OrmException(Code::CONFIG, 'sqlite DSN path has a % without two hexadecimal digits');
                 }
@@ -266,9 +266,9 @@ final class Orm
     }
 
     /**
-     * MySQL TLS parameter를 검사한다: `ssl-ca`에 CA file의 절대 경로를 둔
-     * `ssl-mode=VERIFY_IDENTITY`로 host 이름에 TCP 연결하거나, 둘 다 없다. CA 경로나 null을
-     * 돌려준다.
+     * Checks the MySQL TLS parameters: `ssl-ca` with the absolute path of a CA file, and
+     * `ssl-mode=VERIFY_IDENTITY` connecting over TCP to a host name, or neither. Returns the CA path or null
+     * (returns null when neither is present).
      *
      * @param array<array-key, mixed> $query
      */
@@ -291,7 +291,7 @@ final class Orm
         if (isset($query['socket'])) {
             throw new OrmException(Code::CONFIG, 'mysql DSN ssl-mode connects over TCP and does not accept socket');
         }
-        // identity 검사는 host 이름을 인증서와 비교한다.
+        // The identity check compares the host name with the certificate.
         if (filter_var(trim($host, '[]'), FILTER_VALIDATE_IP) !== false) {
             throw new OrmException(Code::CONFIG, "mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address $host");
         }
@@ -299,9 +299,9 @@ final class Orm
     }
 
     /**
-     * ssl-mode=VERIFY_IDENTITY의 `ssl-ca` 경로로 만드는 PDO option이거나 빈 배열이다: server
-     * 인증서를 CA와 host 이름으로 검사하는 TLS다. password는 TLS 안에서만 오가고, client는
-     * server public key를 두지 않으므로 RSA password 교환을 하지 않는다.
+     * Either the PDO option made from the ssl-ca path of ssl-mode=VERIFY_IDENTITY, or an empty array: the server
+     * certificate is checked against the CA and the host name, over TLS. The password travels only inside TLS, and the client
+     * holds no server public key, so it does not do an RSA password exchange.
      *
      * @return array<int, mixed>
      */

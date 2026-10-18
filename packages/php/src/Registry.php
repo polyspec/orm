@@ -4,18 +4,18 @@ declare(strict_types=1);
 namespace Polyspec\Orm;
 
 /**
- * process의 generated model을 그 model을 만든 document set의 manifestHash별로
- * 갖는다. 한 process는 여러 document set의 generated model을 읽으며, 각 model
- * class의 meta()는 자기 set의 manifest_hash를 갖는다. manifestHash는 manifest
- * text의 hash이므로 두 set이 같은 hash를 갖지 않는다. schema 값으로만 연결에
- * 등록한 set(install, Orm::connectSchema)은 generated class 없이 그 manifest
- * text와 external text를 갖는다.
+ * The generated models of the process are kept per manifestHash of the document set that made each model,
+ * holds them. One process reads the generated models of several document sets, and each model
+ * class's meta() has its own set's manifest_hash. manifestHash is the hash of the manifest
+ * text, so two sets never share a hash. A set registered on the connection by schema values only
+ * (install, Orm::connectSchema) has no generated class, and holds its manifest text
+ * and its external text.
  */
 final class Registry
 {
     /** @var array<string, string> manifest hash => manifest text */
     private static array $texts = [];
-    /** @var array<string, string> manifest hash => external text(외부 문서에서 쓰는 table) */
+    /** @var array<string, string> manifest hash => external text (the tables used from external documents) */
     private static array $externals = [];
     /** @var array<string, array<string, class-string<Model>>> manifest hash => entity => class */
     private static array $models = [];
@@ -23,9 +23,9 @@ final class Registry
     private static array $runtime = [];
 
     /**
-     * generated bootstrap.php가 model보다 먼저 manifest hash와 manifest text를
-     * 등록한다. text가 선언한 hash로 hash되지 않으면 어떤 statement보다 먼저
-     * SCHEMA_HASH_MISMATCH로 실패하고 아무것도 등록하지 않는다.
+     * generated bootstrap.php registers the manifest hash and manifest text before the model
+     * registers them. If the text does not hash to the declared hash, it fails before any statement with
+     * SCHEMA_HASH_MISMATCH and registers nothing.
      */
     public static function generated(string $hash, string $text, string $external = ''): void
     {
@@ -36,14 +36,14 @@ final class Registry
         self::$texts[$hash] = $text;
         self::$externals[$hash] = $external;
         self::$models[$hash] ??= [];
-        // 이 set의 runtime model은 이제 generated class의 meta()로 만든다.
+        // This set's runtime model is now made from the generated class's meta().
         unset(self::$runtime[$hash]);
     }
 
     /**
-     * schema 값으로 연결에 등록한 set의 manifest text와 external text를 기억한다. 그 set의
-     * generated bootstrap이 읽히지 않았어도 runtime model을 이 text로 만든다. Db::registerSet이
-     * 값을 검사한 뒤 부른다.
+     * Remembers the manifest text and external text of the set registered on the connection with schema values. That set's
+     * runtime model is made from this text even if the generated bootstrap was not read. Called by Db::registerSet after it
+     * checks the values.
      */
     public static function schema(Schema $schema): void
     {
@@ -67,7 +67,7 @@ final class Registry
         unset(self::$runtime[$hash]);
     }
 
-    /** manifest hash의 generated model이 읽혔는지 여부다. */
+    /** Whether the generated model of the manifest hash was read. */
     public static function loaded(string $hash): bool
     {
         return isset(self::$models[$hash]);
@@ -79,9 +79,9 @@ final class Registry
     }
 
     /**
-     * manifest hash의 runtime model이다. set의 generated bootstrap이 읽혔으면 등록된 model의
-     * meta() 배열로, 아니면 schema 값으로 등록한 manifest text와 external text를 한 번 parse해
-     * 만든다. 둘 다 없으면 SCHEMA_HASH_MISMATCH다.
+     * The runtime model of the manifest hash. If the set's generated bootstrap was read, the registered model's
+     * meta() array; otherwise the manifest text and external text registered with schema values are parsed once and
+     * made into the model. If neither exists, it is SCHEMA_HASH_MISMATCH.
      */
     public static function model(string $hash): RuntimeModel
     {
@@ -95,7 +95,7 @@ final class Registry
         return self::$runtime[$hash] = RuntimeModel::build(RuntimeModel::loadSet($text, self::$externals[$hash] ?? ''));
     }
 
-    /** @return array<string, class-string<Model>> 한 document set의 model을 entity별로 돌려준다. */
+    /** @return array<string, class-string<Model>> The model of one document set, per entity. */
     public static function models(string $hash): array
     {
         return self::$models[$hash] ?? throw self::unloaded($hash);

@@ -85,8 +85,8 @@ final class Utils
     }
 
     /**
-     * transaction-local 값을 정한다. PostgreSQL은 set_config, MySQL은 사용자
-     * 변수에도 쓰며, SQLite는 transaction 안에서만 값을 가진다.
+     * Sets the transaction-local value. PostgreSQL uses set_config, and MySQL uses user
+     * variables; SQLite holds the value only inside a transaction.
      */
     public function setLocal(string $key, string $value): void
     {

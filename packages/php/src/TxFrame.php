@@ -13,13 +13,13 @@ final class TxFrame
     /** @var list<string> */
     public array $locks = [];
     /**
-     * transaction이 시작할 때 삽입한 audit 기록의 table과 primary key 값이다. 감사 대상 행의
-     * audit column에 그 key를 쓴다. 없으면 null이다.
+     * The table and primary key value of the audit record inserted when the transaction started. That key is written to the
+     * audit column of audited rows. If there is none, it is null.
      *
      * @var array{table: string, key: mixed}|null
      */
     public ?array $audit = null;
 
-    /** @param int $number 연결에서 이 transaction의 번호다. statement event가 싣는다. */
+    /** @param int $number This transaction's number on the connection. A statement event carries it. */
     public function __construct(public readonly Db $db, public readonly bool $readOnly, public readonly string $isolation, public readonly int $number) {}
 }

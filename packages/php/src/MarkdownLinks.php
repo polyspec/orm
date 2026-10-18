@@ -3,11 +3,11 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm;
 
-/** @internal 한 markdown 답 행의 join과 relation 행이다. 행의 마지막 칸에 둔다. */
+/** @internal The join and relation rows of one markdown answer row. Kept in the row's last cell. */
 final class MarkdownLinks
 {
-    /** @var array<string, list<mixed>|null> join 이름 => 그 위치 행, 없으면 null */
+    /** @var array<string, list<mixed>|null> join name => its position row, or null if none */
     public array $joins = [];
-    /** @var array<string, list<list<mixed>>> relation 이름 => 그 위치 행들 */
+    /** @var array<string, list<list<mixed>>> relation name => its position rows */
     public array $rels = [];
 }

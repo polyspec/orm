@@ -33,7 +33,7 @@ final class Generator
     private const RESERVED_PREFIXES = ['and', 'or', 'get', 'set', 'new', 'plus', 'minus', 'order_by', 'group_by', 'tuple', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between'];
     private const RESERVED_COLUMNS = ['and', 'or', 'not', 'get', 'gets', 'gets_page', 'get_query', 'limit', 'alias', 'connect', 'create', 'creates', 'update', 'delete', 'restore', 'save', 'on', 'random'];
 
-    /** $m의 model을 $outDir에 생성하고 이전에 생성한 파일을 바꾼다. */
+    /** Generates the model of $m into $outDir and changes the files generated before. */
     public static function generate(RuntimeModel $m, string $outDir, string $namespace, array $scan = []): void
     {
         $files = self::files($m, $namespace, $scan);
@@ -49,8 +49,8 @@ final class Generator
     }
 
     /**
-     * $m의 model을 쓰지 않고 생성해, $outDir의 generated 파일 중 다르거나
-     * 없거나 남는 파일마다 한 줄을 경로 순서로 돌려준다.
+     * Generates the model of $m without writing it, and for each generated file in $outDir that differs,
+     * is missing, or is extra, returns one line in path order.
      * @return list<string>
      */
     public static function check(RuntimeModel $m, string $outDir, string $namespace, array $scan = []): array
@@ -100,7 +100,7 @@ final class Generator
         $boot = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\nuse Polyspec\\Orm\\Config;\nuse Polyspec\\Orm\\Db;\nuse Polyspec\\Orm\\Orm;\nuse Polyspec\\Orm\\Registry;\nuse Polyspec\\Orm\\Schema;\n\n"
             . "/** The manifestHash of the document set the models were generated from. */\nconst MANIFEST_HASH = " . self::str($m->manifestHash) . ";\n\n"
             . "/** The manifest text of the document set the models were generated from. */\nconst MANIFEST_TEXT = " . self::str($m->manifestText) . ";\n\n"
-            // 외부 문서를 쓰지 않는 set의 bootstrap은 external text를 쓰지 않으므로 그대로다.
+            // The bootstrap of a set that does not use external documents does not write external text, so it is unchanged.
             . ($external ? "/** The tables that the set uses from external documents, which other sets own. */\nconst EXTERNAL_TEXT = " . self::str($m->externalText) . ";\n\n" : '')
             . "/** The generated schema value: install takes it to create the tables and register the set. */\nfunction schema(): Schema\n{\n    return new Schema(MANIFEST_TEXT, MANIFEST_HASH" . ($external ? ', EXTERNAL_TEXT' : '') . ");\n}\n\n"
             . "/** Opens the database selected by the DSN URI and registers the set of these models on the connection. */\nfunction connect(string \$dsn, Config \$config): Db\n{\n    return Orm::connectSchema(\$dsn, schema(), \$config);\n}\n\n"
@@ -129,7 +129,7 @@ final class Generator
     {
         $name = $e['entity'];
         $b = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\nuse Polyspec\\Orm\\Model;\n\n" . self::classComment($name, $tags) . "\nfinal class $class extends Model\n{\n";
-        // meta()는 entity와 그 model을 만든 document set의 manifest_hash다.
+        // meta() is the manifest_hash of the document set that made the entity and its model.
         $b .= "    public static function meta(): array\n    {\n        return " . self::export($e + ['manifest_hash' => $hash], 2) . ";\n    }\n";
         foreach ($e['columns'] as $c) {
             $p = self::pascal($c['name']);
@@ -296,8 +296,8 @@ final class Generator
     }
 
     /**
-     * PHP 배열 literal이다. 값이 scalar이거나 scalar list뿐인 배열은 한 줄에,
-     * 그 밖의 배열은 원소마다 한 줄에 쓴다.
+     * A PHP array literal. An array whose values are scalars or only lists of scalars is written on one line;
+     * other arrays are written one line per element.
      */
     private static function export(mixed $v, int $depth): string
     {
@@ -357,7 +357,7 @@ final class Generator
         return '[' . implode(', ', array_map(self::str(...), $items)) . ']';
     }
 
-    /** codec이 없는 column, 또는 aes, hex, ip stage만 가진 column의 PHP 값 type이다. */
+    /** The PHP value type of a column with no codec, or with only aes, hex, or ip stages. */
     private static function type(array $c): string
     {
         if ($c['codec'] !== []) {

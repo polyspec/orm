@@ -16,7 +16,7 @@ namespace Polyspec\Orm\Dbspec;
  */
 final class Parser
 {
-    // 단어는 Go의 isWordRune과 같이 `.`을 포함한다(`a.b`는 한 token이고 1.5 같은 수도 한 token이다).
+    // As in Go's isWordRune, a word includes `.` (so `a.b` is one token, and a number like 1.5 is also one token).
     private const TOKEN = "/[A-Za-z0-9_.]+|'(?:[^']|'')*+'|<=|>=|<>|[^ ]/u";
     private const VALID_UTF8 = '/\A(?:[\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}|\xED[\x80-\x9F][\x80-\xBF]|\xF0[\x90-\xBF][\x80-\xBF]{2}|[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2})*+/';
     private const MAX_BYTES = 32 * 1024 * 1024;
@@ -31,9 +31,9 @@ final class Parser
     public const RESERVED = ['dbspec', 'use', 'table', 'diagram', 'primary', 'unique', 'index', 'foreign', 'check', 'settings', 'null', 'identity', 'default', 'true', 'false', 'and', 'or', 'not', 'in', 'between', 'is'];
     /** Codec stages that produce text; the others produce bytes. */
     private const TEXT_STAGES = ['hex', 'base64', 'ordered_json', 'yaml', 'serialize'];
-    /** markdown 저장 설정의 keyword다. cursor가 읽는다 (storageLine). */
+    /** The keyword of markdown storage settings. The cursor reads it (storageLine). */
     private const STORAGE_KEYWORDS = ['markdown', 'store', 'key_prefix', 'title', 'body', 'order', 'checkbox', 'state_machine'];
-    /** 표마다 한 번만 쓰는 저장 keyword다. 되풀이하면 keyword 위치에 setting 오류를 낸다. */
+    /** A storage keyword written only once per table. Repeating it is a setting error at the keyword's position. */
     private const ONCE_STORAGE = ['store', 'key_prefix', 'title', 'body', 'order'];
     /** The codec stages, the fixed words after a codec column (docs/dbspec.md "Keep, move or remove"; R12). */
     private const CODEC_STAGES = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];
@@ -111,9 +111,9 @@ final class Parser
     private array $tableSettings = [];
     /** @var array<string, true> */
     private array $settingKeys = [];
-    /** @var Settings|null 줄을 읽는 block: 표의 첫 block이거나, 반복된 block이면 유지하지 않는 block */
+    /** @var Settings|null The block that reads a line: the first block of a table, or a repeated block, which is not kept */
     private ?Settings $settingsBlock = null;
-    /** 반복된 settings block: 줄은 구문만 읽고 검사하지 않는다(Go의 detached block) */
+    /** A repeated settings block: lines are read only for syntax and not checked (Go's detached block) */
     private bool $detachedBlock = false;
     /** A primary key line of the table failed: its primary key columns are unknown. */
     private bool $failedPrimary = false;
@@ -141,15 +141,15 @@ final class Parser
     private array $deferredForeignKeys = [];
     /** @var list<array> audit settings whose history table is checked after the last line */
     private array $deferredAudits = [];
-    /** @var list<array{0: Table, 1: ?Column, 2: list<array{0: string, 1: int}>, 3: int, 4: bool}> audit setting의 기록 table 검사 */
+    /** @var list<array{0: Table, 1: ?Column, 2: list<array{0: string, 1: int}>, 3: int, 4: bool}> Checks the audit setting's record table */
     private array $deferredAuditRecords = [];
-    /** @var array<string, true> primary key 줄이 실패한 table */
+    /** @var array<string, true> Tables whose primary key line failed */
     private array $failedPrimaryTables = [];
-    /** @var list<array> state_machine history 줄의 history table을 마지막 줄 뒤에 검사한다 */
+    /** @var list<array> The history table of a state_machine history line, checked after the last line */
     private array $deferredHistories = [];
-    /** @var array<string, array{0: string, 1: int, 2: int}> column => [default 값, 줄, column], 처음 선언한 column만 */
+    /** @var array<string, array{0: string, 1: int, 2: int}> column => [default value, line, column], only the first declaration of a column */
     private array $defaultValues = [];
-    /** @var int 설정 줄을 읽는 커서가 다음에 읽을 token의 위치 */
+    /** @var int The position of the next token that the cursor reading the setting line will read */
     private int $cursor = 0;
     /** @var list<Position> the declaration positions in the order they were read; run sorts them */
     private array $positions = [];
@@ -367,7 +367,7 @@ final class Parser
         if (str_starts_with($source, "\xEF\xBB\xBF")) {
             $this->stop('encoding', 1, 1, 'the document starts with a byte order mark');
         }
-        // 맨 처음 encoding 오류의 줄 앞 줄들은 온전하므로 읽고, 그 줄부터는 읽지 않는다(Go의 splitSource).
+        // Lines before the line of the first encoding error are intact, so they are read; from that line on they are not read (as Go's splitSource).
         $encoding = self::encodingError($source);
         $lines = explode("\n", $source);
         if (end($lines) === '') {
@@ -405,7 +405,7 @@ final class Parser
             $this->tokenize();
             if ($this->lexError !== null) {
                 $this->error('syntax', $this->line, $this->lexError[0], $this->lexError[1]);
-                // 오류 글자를 뺀 token으로 읽는다(Go의 lexRecover): 맨 위 줄의 table 머리줄도 표를 연다.
+                // Reads with the error character removed from the token (as Go's lexRecover): a table header line at the top also opens its table.
                 $this->tokens = self::annotate(self::lexRecover($text), $this->line);
                 if ($this->lexedLine()) {
                     continue;
@@ -422,7 +422,7 @@ final class Parser
         if ($encoding !== null) {
             $this->stop('encoding', ...$encoding);
         }
-        // 가장 안쪽의 열린 block만 보고한다(Go처럼): 열린 settings block은 표의 `{`를 보고하지 않는다.
+        // Reports only the innermost open block (as Go does): an open settings block does not report the table's `{`.
         if ($this->state === 'settings') {
             $this->unclosed($this->settingsOpen[0], $this->settingsOpen[1], 'the settings block is not closed');
             $this->state = 'table';
@@ -842,8 +842,8 @@ final class Parser
     private function usedDocument(string $name): array
     {
         if (isset($this->used[$name])) {
-            // 읽는 중인 문서를 다시 쓰면 use cycle이다. 문서의 header 이름이 집합의 이름과 다르면 이름의
-            // 사슬로는 찾지 못하므로 읽는 중임을 표시해 둔다.
+            // Rewriting a document being read is a use cycle. If the document's header name differs from the set's name, the name
+            // cannot be found through the chain, so it is marked as being read.
             return $this->used[$name] === false ? [null, 'use cycle: ' . implode(' -> ', [...$this->using, $this->document->name, $name])] : $this->used[$name];
         }
         $this->used[$name] = false;
@@ -866,7 +866,7 @@ final class Parser
             $this->stop('limit', $this->line, $t[0][1], 'the document has more than ' . self::MAX_TABLES . ' tables');
         }
         $name = $t[1] ?? null;
-        // 표 줄이 실패했다(이름이 없거나, `{`가 없거나, `{` 뒤에 말이 더 있다). Go의 failed table이다.
+        // A table line failed (no name, no `{`, or more words after `{`). This is Go's failed table.
         $headerFailed = false;
         if ($name === null || !self::isWord($name[0])) {
             $this->error('syntax', $this->line, $name[1] ?? $this->endColumn(), 'expected a table name');
@@ -887,12 +887,12 @@ final class Parser
         $this->declare('table', [$name[0]], $name);
         if ($name[0] !== '') {
             if (isset($this->tables[$name[0]])) {
-                // Go는 표 줄이 실패한 표의 이름 중복을 보고하지 않는다(validate.go의 failed table).
+                // Go does not report a duplicate name of a table whose line failed (validate.go's failed table).
                 if (!$headerFailed) {
                     $this->error('name.duplicate', $this->line, $name[1], "table `{$name[0]}` is already defined or used");
                 }
             } else {
-                // Go은 표와 같은 이름의 제약을 제약의 자리에 보고한다(표가 뒤에 와도). 쓰는 문서의 제약은 표의 자리에 보고한다.
+                // Go reports a constraint with the same name as a table at the constraint's place, even if the table comes later. A constraint in a document being written is reported at the table's place.
                 if (isset($this->constraintAt[$name[0]])) {
                     [$constraintLine, $constraintColumn] = $this->constraintAt[$name[0]];
                     $this->error('name.duplicate', $constraintLine, $constraintColumn, "constraint name `{$name[0]}` is the name of a table");
@@ -954,7 +954,7 @@ final class Parser
                 return;
             case 'settings':
                 $this->mark($first, 'keyword');
-                // Go는 반복된 block의 키워드에 order를 줄이 올바른 형식(`settings {`만)일 때만 보고한다.
+                // Go reports the order of a repeated block's keyword only when the line is in correct form (`settings {` only).
                 $wellFormed = ($this->tokens[1][0] ?? null) === '{' && !isset($this->tokens[2]);
                 if ($this->tablePhase === 2 && $wellFormed) {
                     $this->error('order', $this->line, $first[1], 'a table has at most one settings block, after its other lines');
@@ -974,7 +974,7 @@ final class Parser
             $this->keepSyntaxSince($mark);
             $this->failColumnLine($first[0]);
         } elseif ($this->tablePhase > 0) {
-            // Go는 column 줄이 구문에 맞을 때만 order를 보고한다(columnLine의 c.done 뒤). 구문 오류가 난 줄은 syntax만 낸다.
+            // Go reports the order of a column only when the column line matches the syntax (after c.done in columnLine). A line with a syntax error gives only the syntax error.
             $this->error('order', $this->line, $first[1], 'column lines come before key, index, foreign key, check and settings lines');
         }
     }
@@ -1061,7 +1061,7 @@ final class Parser
             }
         }
         $column = new Column($name[0], $type ?? new ColumnType('invalid'), $nullable, $identity !== null, $canonical, $this->takeComments());
-        // renderer 가 type CHECK 를 쓰는 column 의 이름은 다른 생성 이름과 겹치면 안 된다.
+        // The name of a column whose renderer writes a type CHECK must not overlap another generated name.
         if ($identity === null && $type !== null && $type->name !== 'text' && $type->name !== 'bytes' && $wellFormed && self::validName($this->table->name)) {
             $this->claimGenerated(Names::render($this->table->name, $name[0]), "table {$this->table->name} column {$name[0]}", $this->line, $name[1]);
         }
@@ -1105,7 +1105,7 @@ final class Parser
         $parameters = [];
         $j = $i + 2;
         $malformed = false;
-        // Go처럼 값(수, 단어, `-` 수)과 구분자를 읽는다. 값 자리에 다른 token이 오거나 구분자가 `,`나 `)`가 아니면 구문 오류다.
+        // As in Go, reads the value (number, word, `-` number) and then the separator. A different token in value position, or a separator other than `,` or `)`, is a syntax error.
         for (;;) {
             $value = $t[$j] ?? null;
             if ($value !== null && $value[0] === '-' && isset($t[$j + 1]) && ctype_digit($t[$j + 1][0])) {
@@ -1337,7 +1337,7 @@ final class Parser
         $this->table->foreignKeys[] = $foreignKey;
         $this->declare('constraint', [$this->table->name, $name[0]], $name);
         $known = true;
-        // Go의 known이다: 자식 열이 모두 알려지고 겹치지 않을 때만 색인 검사를 한다.
+        // Go's known: the index check is done only when the child columns are all known and do not overlap.
         $childrenKnown = true;
         $seen = [];
         foreach ($children[0] as [$column, $position]) {
@@ -1388,7 +1388,7 @@ final class Parser
     }
 
     /**
-     * 표의 설정 block을 연다: 첫 block은 유지하고, 반복된 block은 표에 붙이지 않고 구문만 읽는다(Go의 detached block).
+     * Opens the table's settings block: the first block is kept, and a repeated block is not attached to the table; only its syntax is read (Go's detached block).
      */
     private function openSettingsBlock(Settings $settings): void
     {
@@ -1429,7 +1429,7 @@ final class Parser
             return;
         }
         $arguments = array_slice($t, 1);
-        // audit의 exclude와 include 목록은 열 낱말 뒤에 오며 앞의 낱말을 검사한 뒤 따로 읽는다.
+        // The exclude and include lists of audit come after the column word, and are read separately after checking the preceding word.
         $rest = [];
         if ($keyword === 'audit' && count($arguments) > 10) {
             $rest = array_slice($arguments, 10);
@@ -1485,7 +1485,7 @@ final class Parser
                     return;
                 }
             }
-            // audit의 인자는 history table, audit column, audit 기록 table, action, previous 순이다.
+            // The arguments of audit are the history table, audit column, audit record table, action, and previous, in order.
             $arguments = [$arguments[1], $arguments[3], $arguments[5], $arguments[7], $arguments[9]];
             if ($rest !== []) {
                 $lists = $this->auditListTokens($rest);
@@ -1507,7 +1507,7 @@ final class Parser
         foreach ($kind === 'codec' ? [$arguments[0]] : $arguments as $argument) {
             $this->name($argument);
         }
-        // 목록의 이름은 처음 나올 때만 검사한다. audit column은 검사가 따로 거부한다.
+        // Names in a list are checked only the first time they appear. An audit column is rejected by a separate check.
         $named = [];
         foreach ($lists as [, $columns]) {
             foreach ($columns as $token) {
@@ -1529,8 +1529,8 @@ final class Parser
     }
 
     /**
-     * audit의 `exclude (<column>, ...)`와 `include (<column>, ...)` 목록을 읽는다. 문법이 틀리면
-     * syntax 오류를 내고 null을 돌려준다.
+     * Reads the audit `exclude (<column>, ...)` and `include (<column>, ...)` lists. If the grammar is wrong,
+     * reports a syntax error and returns null.
      *
      * @param list<array{0: string, 1: int}> $tokens
      * @return list<array{0: array{0: string, 1: int}, 1: list<array{0: string, 1: int}>}>|null
@@ -1697,7 +1697,7 @@ final class Parser
                     $actionColumns[$child] ??= $foreignKey->name;
                 }
             }
-            // Go는 자식 열이 알려지지 않아도 set_null 검사를 알려진 자식에 대해 한다. 색인 검사만 건너뛴다.
+            // Go checks set_null against known children even when the child columns are unknown; it skips only the index check.
             if ($childrenKnown) {
                 $covered = false;
                 foreach ($leading as $columns) {
@@ -1741,8 +1741,8 @@ final class Parser
     }
 
     /**
-     * @param list<list<string>> $leading 표의 key와 index의 column 목록
-     * @param list<string> $checkColumns 표의 check가 읽는 column
+     * @param list<list<string>> $leading The column lists of the table's key and index
+     * @param list<string> $checkColumns The columns that the table's check reads
      */
     private function checkSettings(array $leading, bool $changedByForeignKeys, array $checkColumns): void
     {
@@ -1949,13 +1949,13 @@ final class Parser
             if ($target['table'] === null) {
                 continue;
             }
-            // Go는 표 줄이 실패한 target의 열, 짝과 type을 검사하지 않는다(validate.go의 foreignKey).
+            // Go does not check the column count, pairing, or type of a target whose table line failed (validate.go's foreignKey).
             if ($target['headerFailed'] ?? false) {
                 continue;
             }
             $targetColumns = $target['columns'];
-            // Go의 foreignKey와 같다: 개수 검사는 자식 열이 알려졌는지와 관계없이 하고, 짝과 type 검사는 참조 열이 모두
-            // 알려졌을 때 한다. type 검사는 알려진 자식만 보며, 첫 불일치에서 멈춘다.
+            // Same as Go's foreignKey: the count check is done regardless of whether the child columns are known, while the pairing and type checks are done when all the reference columns are known.
+            // Known. The type check looks only at known children, and stops at the first mismatch.
             $referencesKnown = true;
             foreach ($parents as [$parent, $position]) {
                 if (!isset($targetColumns[$parent])) {
@@ -1991,10 +1991,10 @@ final class Parser
     }
 
     /**
-     * audit의 exclude나 include 목록을 검사하고, column이 기록되는지 알리는 함수를 돌려준다
-     * (docs/dbspec.md "Audit"). 두 목록을 다 쓰면 둘째 목록의 keyword에서 거부하고 null을
-     * 돌려준다. 목록의 column은 table의 column이고, 한 번만 나오며, audit column이 아니다.
-     * audit column은 언제나 기록하므로 어느 목록에도 쓰지 않는다.
+     * Checks the audit's exclude or include list, and returns a function telling whether a column is recorded
+     * (docs/dbspec.md "Audit"). If both lists are used, it rejects at the keyword of the second list and returns null
+     * . The columns in the list are table columns, appear only once, and are not audit columns.
+     * Audit columns are always recorded, so they are not used in either list.
      *
      * @param list<array{0: array{0: string, 1: int}, 1: list<array{0: string, 1: int}>}> $lists
      * @param \Closure(array): ?Column $column
@@ -2028,11 +2028,11 @@ final class Parser
     }
 
     /**
-     * audit 기록 table을 검사한다. 그 table은 이 문서나 사용한 문서의 다른 table이며 history
-     * table이 아니고, 자신은 audit 대상이 아니며, column 하나의 primary key를 가지고 그 type이
-     * audit column의 type이다. audit column은 그 primary key를 restrict로 가리키는 선언한
-     * foreign key의 유일한 column이다. 그래서 audit 기록 행이 없는 audit column 값은 database가
-     * 거부한다.
+     * Checks the audit record table. That table is another table of this document or of a used document, and not a history
+     * table; it is not itself audited, and it has a primary key of one column whose type is
+     * the audit column's type. The audit column is the only column of a declared foreign key that restricts its primary key
+     * foreign key. So an audit column value without an audit record row is one the database
+     * rejects.
      */
     private function checkAuditRecords(): void
     {
@@ -2051,7 +2051,7 @@ final class Parser
             if ($record === null) {
                 continue;
             }
-            // Go는 표 줄이 실패한 audit 기록 table의 key를 검사하지 않는다(settings.go의 auditRecord).
+            // Go does not check the key of an audit record table whose table line failed (settings.go's auditRecord).
             if ($entry['headerFailed'] ?? false) {
                 continue;
             }
@@ -2110,7 +2110,7 @@ final class Parser
             if ($entry['table'] === null) {
                 continue;
             }
-            // Go는 표 줄이 실패한 history table의 열을 맞추어 보지 않는다(settings.go의 audit).
+            // Go does not match the columns of a history table whose table line failed (settings.go's audit).
             if ($entry['headerFailed'] ?? false) {
                 continue;
             }
@@ -2120,8 +2120,8 @@ final class Parser
                 $this->error('setting', $line, $historyToken[1], 'an audited table is not its own history table');
                 continue;
             }
-            // history table의 모양은 어긋난 곳마다 하나씩 보고한다: audit된 history table, i64
-            // identity primary key, action과 previous column, 기록하는 column의 사본, 남는 column.
+            // Reports each mismatch in the shape of the history table separately: an audited history table, an i64
+            // identity primary key, action and previous columns, a copy of the recorded columns, and remaining columns.
             foreach ($history->settings?->settings ?? [] as $setting) {
                 if ($setting->kind === 'audit') {
                     $this->error('setting', $line, $historyToken[1], "history table `{$history->name}` is audited itself");
@@ -2145,11 +2145,11 @@ final class Parser
                 $this->error('setting', $line, $previousToken[1], "the audit previous column `{$previousToken[0]}` is a separate null column of `{$history->name}` with the audit column's type");
             }
             $reserved[$previousToken[0]] = true;
-            // 두 목록을 다 쓴 setting은 기록하는 column이 정해지지 않으므로 column을 맞추어 보지 않는다.
+            // A setting that used both lists does not match columns, since the recorded columns are not determined.
             if ($recorded === null) {
                 continue;
             }
-            // 숫자로만 된 column 이름은 배열 key에서 int가 되므로 문자열로 되돌린다.
+            // A column name made only of digits becomes an int as an array key, so it is turned back into a string.
             foreach ($columns as $name => $column) {
                 $name = (string) $name;
                 if (!$recorded($name)) {
@@ -2175,12 +2175,12 @@ final class Parser
         }
     }
 
-    // ---------------------------------------------------- 저장 설정
+    // ---------------------------------------------------- storage settings
 
     /**
-     * markdown 저장 설정 줄 하나(`markdown`, `store`, `key_prefix`, `title`, `body`,
-     * `order`, `checkbox`, `state_machine`)를 cursor로 읽는다. Go의 settingsLine과 같이
-     * 첫 syntax 오류에서 줄이 끝난다. 표 전체의 규칙은 표가 닫힐 때 검사한다.
+     * Reads one markdown storage setting line (`markdown`, `store`, `key_prefix`, `title`, `body`,
+     * `order`, `checkbox`, `state_machine`) by the cursor. As in Go's settingsLine,
+     * the line ends at the first syntax error. The rules for the whole table are checked when the table closes.
      */
     private function storageLine(string $keyword, int $at): void
     {
@@ -2227,8 +2227,8 @@ final class Parser
     }
 
     /**
-     * cursor에서 저장 설정의 인자를 읽고, 이어서 줄 형태와 `require` 목록을 읽는다
-     * (transition과 terminal 줄에만 있다).
+     * From the cursor, reads the arguments of the storage setting, then reads the line form and the `require` list
+     * (only on transition and terminal lines).
      *
      * @return array{0: list<array{0:string,1:int}>, 1: ?string, 2: list<array{0: array{0:string,1:int}, 1: list<array{0:string,1:int}>}>}
      */
@@ -2249,8 +2249,8 @@ final class Parser
                 if ($kind[0] !== 'files') {
                     $arguments[] = $this->cursorOneOf('`list` or `table`', ['list', 'table']);
                 }
-                // shard 절은 block에서도 읽는다: block table의 shard는 setting error다. `shard` token은
-                // 위치를 위해 남기며 Setting의 인자에서는 뺀다.
+                // The shard clause is also read in a block: a shard in a block table is a setting error. The `shard` token
+                // is kept for position and removed from the Setting's arguments.
                 if (($this->tokens[$this->cursor][0] ?? null) === 'shard') {
                     $arguments[] = $this->take('keyword');
                     $arguments[] = $this->cursorWord('the shard column');
@@ -2270,8 +2270,8 @@ final class Parser
     }
 
     /**
-     * column 뒤의 state_machine 줄을 읽는다: initial, terminal, history, limit 또는
-     * transition 줄이며, Go의 settingsLine이 읽는 방식과 같다.
+     * Reads the state_machine line after the column: initial, terminal, history, limit, or
+     * transition line, the same way as Go's settingsLine reads it.
      *
      * @return array{0: list<array{0:string,1:int}>, 1: string, 2: list<array{0: array{0:string,1:int}, 1: list<array{0:string,1:int}>}>}
      */
@@ -2311,7 +2311,7 @@ final class Parser
     }
 
     /**
-     * 다음에 오면 `require (<column>, ...)`을 읽는다: 목록 하나이며 keyword token으로 식별한다.
+     * If `require (<column>, ...)` comes next, reads it: one list, identified by its keyword token.
      *
      * @return list<array{0: array{0:string,1:int}, 1: list<array{0:string,1:int}>}>
      */
@@ -2341,7 +2341,7 @@ final class Parser
         }
     }
 
-    /** cursor 위치의 syntax 오류다. 줄에 기록하고, 호출한 쪽이 줄을 멈춘다. */
+    /** A syntax error at the cursor position. Recorded on the line; the caller stops the line. */
     private function cursorFail(string $expected): SettingFailure
     {
         $token = $this->tokens[$this->cursor] ?? null;
@@ -2354,7 +2354,7 @@ final class Parser
         return new SettingFailure();
     }
 
-    /** @return array{0:string,1:int} 낱말 또는 숫자 token */
+    /** @return array{0:string,1:int} A word or number token */
     private function cursorWord(string $what): array
     {
         $token = $this->tokens[$this->cursor] ?? null;
@@ -2372,7 +2372,7 @@ final class Parser
         $this->take('keyword');
     }
 
-    /** @param list<string> $words @return array{0:string,1:int} 목록 가운데 하나인 token */
+    /** @param list<string> $words @return array{0:string,1:int} A token that is one of the list */
     private function cursorOneOf(string $what, array $words): array
     {
         $token = $this->tokens[$this->cursor] ?? null;
@@ -2382,7 +2382,7 @@ final class Parser
         return $this->take('keyword');
     }
 
-    /** 문자열 literal이다. 값은 따옴표 사이 글이며, 겹따옴표는 한 글자로 읽는다. @return array{0:string,1:int} */
+    /** A string literal. The value is the text between the quotes; a doubled quote is read as one character. @return array{0:string,1:int} */
     private function cursorQuoted(string $what): array
     {
         $token = $this->tokens[$this->cursor] ?? null;
@@ -2393,7 +2393,7 @@ final class Parser
         return [self::literalValue($token[0]), $token[1]];
     }
 
-    /** 행 수다: 낱말이나 소수점 숫자, 또는 숫자 앞의 minus다. @return array{0:string,1:int} */
+    /** A row count: a word, a decimal number, or a minus before a number. @return array{0:string,1:int} */
     private function cursorValue(string $what): array
     {
         $token = $this->tokens[$this->cursor] ?? null;
@@ -2422,13 +2422,13 @@ final class Parser
         $this->cursor += 2;
     }
 
-    /** keyword $text가 다음이고, transition의 from state가 아닌지 본다(뒤에 `->`가 오지 않는다). */
+    /** Whether the keyword $text comes next and is not the from state of a transition (no `->` follows). */
     private function formAhead(string $text): bool
     {
         return ($this->tokens[$this->cursor][0] ?? null) === $text && ($this->tokens[$this->cursor + 1][0] ?? null) !== '-';
     }
 
-    /** default literal token의 값이다: 문자열이면 따옴표를 뺀 글, 아니면 token 그대로다. */
+    /** The value of a default literal token: for a string, the text without quotes; otherwise the token as is. */
     private static function literalValue(string $text): string
     {
         return $text !== '' && $text[0] === "'" && strlen($text) >= 2 ? str_replace("''", "'", substr($text, 1, -1)) : $text;
@@ -2439,7 +2439,7 @@ final class Parser
         return preg_match('/^[0-9]+(?:\.[0-9]+)?$/D', $token) === 1;
     }
 
-    /** 행 수가 10진수 양의 int64인지 본다 (Go의 strconv.ParseInt와 n >= 1). */
+    /** Checks whether a row count is a positive decimal int64 (as Go's strconv.ParseInt with n >= 1). */
     private static function positiveCount(string $text): bool
     {
         if (preg_match('/^[0-9]+$/D', $text) !== 1) {
@@ -2450,8 +2450,8 @@ final class Parser
     }
 
     /**
-     * 설정이 이름 붙인 column이다: 이름을 검사한 뒤 표의 column이어야 한다. type이
-     * invalid여도 column을 돌려준다.
+     * The column the setting names: after checking the name, it must be a column of the table. Even if
+     * the type is invalid, it still returns the column.
      */
     private function columnRef(array $token, int $line, string $kind): ?Column
     {
@@ -2465,7 +2465,7 @@ final class Parser
         return $this->columns[$token[0]];
     }
 
-    /** `store block` 줄이 이름 붙인 foreign key는 표의 foreign key여야 한다. */
+    /** The foreign key that the `store block` line names must be a foreign key of the table. */
     private function foreignKeyNamed(array $token, int $line): void
     {
         if (!$this->name($token, $line) || isset($this->failedNames[$token[0]])) {
@@ -2480,10 +2480,10 @@ final class Parser
     }
 
     /**
-     * store의 shard 절은 non-null date 또는 datetime column을 적고, block table, self foreign key가
-     * 있는 table과 order가 있는 table에서는 거절한다.
+     * A store's shard clause names a non-null date or datetime column; it is rejected for a block table, a self foreign key,
+     * and a table that has order.
      *
-     * @param list<array{0:string,1:int}> $arguments kind의 인자 뒤에 `shard` token, column, period가 온다
+     * @param list<array{0:string,1:int}> $arguments After the kind's arguments come the `shard` token, a column, and a period
      */
     private function checkStoreShard(array $arguments, int $line, bool $order): void
     {
@@ -2510,7 +2510,7 @@ final class Parser
         }
     }
 
-    /** `key_prefix`는 varchar type의 single-column primary key가 필요하다. */
+    /** `key_prefix` requires a single-column primary key of varchar type. */
     private function checkKeyPrefix(int $line, int $at): void
     {
         if ($this->failedPrimary) {
@@ -2527,7 +2527,7 @@ final class Parser
         }
     }
 
-    /** column이 표의 primary key, unique key, index, foreign key 또는 check가 이름 붙였는지 본다. */
+    /** Checks whether the column is named by the table's primary key, unique key, index, foreign key, or check. */
     private function inKeyOrCheck(string $column, array $checkColumns): bool
     {
         $groups = [];
@@ -2552,9 +2552,9 @@ final class Parser
     }
 
     /**
-     * 표의 state_machine 줄들을 함께 검사한다 (Go의 stateMachineConsistency): column 하나,
-     * initial과 terminal state, terminal state에서 나가는 transition, limit 줄, history 줄
-     * (마지막 줄 뒤에 검사한다), state column의 default, 그리고 checkbox 줄이다.
+     * Checks the table's state_machine lines together (Go's stateMachineConsistency): one column,
+     * the initial and terminal states, transitions leaving a terminal state, the limit line, the history line
+     * (checked after the last line), the state column's default, and the checkbox line.
      */
     private function checkStateMachine(): void
     {
@@ -2650,10 +2650,10 @@ final class Parser
     }
 
     /**
-     * checkbox 줄들을 검사한다 (Go의 checkboxes): state_machine column을 이름 붙이고,
-     * 각 state를 한 글자 glyph로 한 번씩 덮으며, glyph는 서로 달라야 한다.
+     * Checks the checkbox lines (Go's checkboxes): names the state_machine column,
+     * covers each state once with a one-letter glyph, and the glyphs must differ.
      *
-     * @param array<string, true> $states 기계의 state 집합
+     * @param array<string, true> $states The state set of the machine
      */
     private function checkCheckboxes(string $column, array $states): void
     {
@@ -2704,11 +2704,11 @@ final class Parser
     }
 
     /**
-     * state_machine history 줄의 history table을 검사한다 (Go의 history). 마지막 줄 뒤에
-     * 검사하며, 문서나 사용한 문서의 table이어야 하고, row column이 기계의 table을 가리키는
-     * foreign key를 가져야 하며, from과 to column은 state type, at column은 datetime(6)이어야
-     * 한다. 필요한 column마다 nullable 사본이 있어야 하고, 줄이 이름 붙이지 않은 column은 없어야
-     * 한다. title이나 body를 선언하지 않는다.
+     * Checks the history table of a state_machine history line (Go's history). It is checked after the last line,
+     * and it must be a table of this document or of a used document. Its row columns that point at the machine's table must
+     * have a foreign key; the from and to columns are state type, and the at column is datetime(6).
+     * Each needed column must have a nullable copy, and no column that the line does not name may exist.
+     * It declares no title or body.
      */
     private function checkStateHistories(): void
     {
@@ -2926,7 +2926,7 @@ final class Parser
     }
 
     /**
-     * 구문 오류가 난 column 줄은 Go처럼 구문 오류만 남긴다: 이름과 type 검사는 줄이 구문에 맞을 때만 한다.
+     * As in Go, a column line with a syntax error keeps only the syntax error: name and type checks are done only when the line matches the syntax.
      */
     private function keepSyntaxSince(int $mark): void
     {
@@ -2938,7 +2938,7 @@ final class Parser
     }
 
     /**
-     * 문서 끝에서 닫히지 않은 block의 오류다. 같은 줄의 다른 syntax 오류와 함께 보고한다(Go는 줄당 한 번으로 제한하지 않는다).
+     * An error for a block not closed at the end of the document. Reported together with other syntax errors on the same line (Go does not limit it to one per line).
      */
     private function unclosed(int $line, int $column, string $message): void
     {

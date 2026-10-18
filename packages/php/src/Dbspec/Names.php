@@ -15,7 +15,7 @@ final class Names
     private const HASH_DIGITS = 8;
     private const PREFIX_BYTES = self::LIMIT - 1 - self::HASH_DIGITS;
 
-    /** 이름 `<table>$<suffix>`(suffix 는 column 이나 event)를 renderer 가 쓰는 이름으로 만든다. */
+    /** Makes the name `<table>$<suffix>` (the suffix is a column or event) into the name the renderer writes. */
     public static function render(string $table, string $suffix): string
     {
         $plain = $table . '$' . $suffix;

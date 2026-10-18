@@ -18,8 +18,8 @@ final class Schema
     ) {}
 
     /**
-     * text가 선언한 hash로 hash되는지 확인한다. 다르면 어떤 statement보다 먼저
-     * CONFIG다. manifestHash는 manifest text 뒤에 external text를 이은 text의 sha256이다.
+     * Checks that the text hashes to the declared hash. If not, it is CONFIG, before any statement.
+     * manifestHash is the sha256 of the manifest text followed by the external text.
      */
     public function verify(): void
     {
@@ -30,7 +30,7 @@ final class Schema
     }
 
     /**
-     * set의 parse한 문서다. 외부 문서는 external로 표시되며 소유한 문서가 쓰는 table만 갖는다.
+     * The parsed documents of the set. External documents are marked external and carry only the tables the owned documents use.
      *
      * @return list<Dbspec\Document>
      */

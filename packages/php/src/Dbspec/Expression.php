@@ -11,8 +11,8 @@ namespace Polyspec\Orm\Dbspec;
  * first column or type diagnostic in source order.
  * The tokens follow the opening parenthesis of `check <name> (`; the
  * predicate ends with the matching parenthesis, which ends the line.
- * tree에는 괄호가 없고, emission은 `and` 안의 `or`가 필요로 하는 괄호만
- * 쓴다.
+ * The tree has no parentheses; emission writes only the parentheses that an `or` inside `and` requires;
+ * it writes only those.
  *
  * @internal
  */
@@ -26,22 +26,22 @@ final class Expression
     private int $at = 0;
     /** @var array<int, string> index in the line => class of the tokens the predicate read (docs/dbspec.md "Syntax analysis") */
     private array $marks = [];
-    /** @var list<string> literal 의 텍스트; 타입 검사가 정규 형태로 바꾼다. */
+    /** @var list<string> The text of the literal; type checking turns it into canonical form. */
     private array $literals = [];
     /** @var list<array{0:string,1:int,2:int,3:string}> [rule, line, column, message] */
     private array $errors = [];
     /**
-     * source 순서로 읽은 predicate. operand는
-     * ['column', name, column, ?Column]이나 ['literal', text, column, literal index]이고,
-     * table의 column이 아닌 이름이면 Column은 null이다.
-     * predicate는 ['compare', left, [operator, column], right],
-     * ['in', operand, list, negated], ['null', operand, negated]이며, tree는 이들을
-     * ['and' | 'or', left, right]로 잇는다.
+     * Predicate read in source order. An operand is
+     * ['column', name, column, ?Column] or ['literal', text, column, literal index], and
+     * if the name is not a column of the table, Column is null.
+     * A predicate is ['compare', left, [operator, column], right],
+     * ['in', operand, list, negated], ['null', operand, negated], and the tree joins these
+     * with ['and' | 'or', left, right].
      *
      * @var list<array>
      */
     private array $predicates = [];
-    /** @var list<string> 파싱한 predicate가 읽는 column 이름 */
+    /** @var list<string> Column names that the parsed predicate reads */
     private array $refs = [];
 
     /**
@@ -59,7 +59,7 @@ final class Expression
     }
 
     /**
-     * @return array{0: ?string, 1: list<array{0:string,1:int,2:int,3:string}>, 2: list<string>, 3: array<int, string>} 표준 text 또는 null, 오류, 검사가 읽는 column 이름 (실패하면 빈 목록), 읽은 token의 class (줄 안의 index => class)
+     * @return array{0: ?string, 1: list<array{0:string,1:int,2:int,3:string}>, 2: list<string>, 3: array<int, string>} The canonical text or null; the errors; the column names the check reads (an empty list on failure); the class of each token read (index in the line => class)
      */
     public static function parse(array $tokens, int $line, int $endColumn, array $columns, array $actionColumns): array
     {
@@ -146,7 +146,7 @@ final class Expression
         return $left;
     }
 
-    /** 괄호는 술어를 묶을 뿐 노드를 남기지 않는다; emission 이 우선순위에 필요한 괄호를 쓴다. */
+    /** Parentheses only group a predicate and leave no node; emission writes the parentheses that precedence needs. */
     private function group(): array
     {
         if ($this->peek() === '(') {
@@ -199,15 +199,15 @@ final class Expression
             $this->expect('null', 'keyword');
             return $this->predicates[] = ['null', $left, $isNot];
         }
-        // 비교, in, is 가 따르지 않는 피연산자: and, or, ) 나 끝이 따르면 피연산자에서,
-        // 아니면 따르는 토큰에서 보고한다.
+        // Operands not followed by a comparison, in, or is: if followed by and, or, ), or end, report at the operand;
+        // otherwise report at the following token.
         if ($next !== null && $next !== 'and' && $next !== 'or' && $next !== ')') {
             $this->fail("`$next` is not allowed here");
         }
         $this->failAt($left[2], "`{$left[1]}` alone is not a predicate");
     }
 
-    /** `in`과 `is`는 왼쪽에 column을 받는다. */
+    /** `in` and `is` take a column on the left. */
     private function requireColumn(array $operand, string $keyword): void
     {
         if ($operand[0] === 'literal') {
@@ -259,7 +259,7 @@ final class Expression
         return ['literal', $text, $column, count($this->literals) - 1];
     }
 
-    /** 정규 텍스트: and 안의 or 만 괄호로 묶는다. */
+    /** Canonical text: only an `or` inside an `and` is wrapped in parentheses. */
     private function text(array $node): string
     {
         switch ($node[0]) {

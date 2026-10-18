@@ -74,23 +74,23 @@ final class Dialect
     }
 
     /**
-     * precision 자리 소수 초로 column에 쓰는 database clock이다: MySQL은 p > 0이면
-     * CURRENT_TIMESTAMP(p), 나머지는 CURRENT_TIMESTAMP다.
+     * The database clock written to a column as fractional seconds at precision digits: for MySQL, if p > 0,
+     * CURRENT_TIMESTAMP(p); otherwise CURRENT_TIMESTAMP.
      */
     public function now(int $precision): string
     {
         return $this->name === 'mysql' && $precision > 0 ? "CURRENT_TIMESTAMP($precision)" : 'CURRENT_TIMESTAMP';
     }
 
-    /** 쓰기에서 codec stage를 SQL에서 적용하는지 여부다(MySQL: ip). hex를 포함한 나머지는 executor가 적용한다. */
+    /** Whether the write codec stage is applied in SQL (MySQL: ip). The others, including hex, are applied by the executor. */
     public function handlesStyle(string $style): bool
     {
         return $this->name === 'mysql' && $style === 'ip';
     }
 
     /**
-     * 읽기에서 codec stage를 SQL에서 푸는지 여부다(MySQL: ip). hex는 어느 dialect도 SQL에서 풀지 않는다:
-     * UNHEX는 홀수 길이를 받고 공백이 있는 셀에 NULL을 내므로, executor가 hostDecode로 정확히 읽는다(docs/codec.md).
+     * Whether the read codec stage is decoded in SQL (MySQL: ip). No dialect decodes hex in SQL:
+     * UNHEX accepts odd lengths and gives NULL for a cell with whitespace, so the executor reads it exactly with hostDecode (docs/codec.md).
      */
     public function decodesStyle(string $style): bool
     {
@@ -98,8 +98,8 @@ final class Dialect
     }
 
     /**
-     * ORM이 쓰는 clock은 executor가 준다(column의 소수 자리로 자른 `now` slot): SQLite에는 sub-second clock 함수가
-     * 없고, PostgreSQL clock은 timestamp(p < 6)에 반올림된다(docs/protocol.md "Clock").
+     * The clock the ORM uses is given by the executor (the `now` slot truncated to the column's fractional digits): SQLite has no sub-second clock function,
+     * and the PostgreSQL clock is rounded to timestamp(p < 6) (docs/protocol.md "Clock").
      */
     public function hostNow(): bool
     {
@@ -107,8 +107,8 @@ final class Dialect
     }
 
     /**
-     * 값 함수의 여섯 자리 clock과 비교하는 datetime(p) column이다. SQLite는 text로 비교하므로 p < 6인 column을 0으로
-     * 여섯 자리까지 늘린다. MySQL과 PostgreSQL은 값으로 비교한다.
+     * A datetime(p) column compared with the six-digit clock of a value function. SQLite compares as text, so a column with p < 6 is extended with zeros to
+     * six digits. MySQL and PostgreSQL compare by value.
      */
     public function clockOperand(string $col, int $precision): string
     {
@@ -160,7 +160,7 @@ final class Dialect
         return ' ON CONFLICT (' . implode(', ', $q) . ') DO UPDATE SET ' . $assigns;
     }
 
-    /** column의 SQL 쪽 read stage다. decodesStyle이 고른 stage만 받는다. @param list<string> $styles */
+    /** The SQL-side read stage of a column. Accepts only the stage chosen by decodesStyle. @param list<string> $styles */
     public function readExpr(string $col, array $styles): string
     {
         for ($i = count($styles) - 1; $i >= 0; $i--) {
@@ -171,7 +171,7 @@ final class Dialect
         return $col;
     }
 
-    /** bind 값 주위의 SQL 쪽 write stage다. handlesStyle이 고른 stage만 받는다. @param list<string> $styles */
+    /** The SQL-side write stage around a bind value. Accepts only the stage chosen by handlesStyle. @param list<string> $styles */
     public function writeExpr(string $ph, array $styles): string
     {
         foreach ($styles as $s) {
@@ -183,8 +183,8 @@ final class Dialect
     }
 
     /**
-     * time(p) column을 소수 정확히 p자리의 값 text `HH:MM:SS`로 읽는 expression이다. database가 그 text를 쓴다(MySQL
-     * CAST AS CHAR, PostgreSQL to_char). SQLite는 그 text를 저장한다.
+     * An expression that reads a time(p) column as the value text `HH:MM:SS` with exactly p fractional digits. The database writes that text (MySQL
+     * CAST AS CHAR, PostgreSQL to_char). SQLite stores that text.
      */
     public function readTime(string $col, int $precision): string
     {
@@ -195,19 +195,19 @@ final class Dialect
         };
     }
 
-    /** time(p) 값을 text로 bind하는 expression이다. PostgreSQL은 text를 time으로 cast한다. */
+    /** An expression that binds a time(p) value as text. PostgreSQL casts the text to time. */
     public function writeTime(string $ph): string
     {
         return $this->name === 'postgres' ? "CAST(CAST($ph AS text) AS time)" : $ph;
     }
 
-    /** uuid column을 text로 읽는 expression이다. PostgreSQL은 uuid를 text로 cast한다. */
+    /** An expression that reads a uuid column as text. PostgreSQL casts uuid to text. */
     public function readUuid(string $col): string
     {
         return $this->name === 'postgres' ? "CAST($col AS text)" : $col;
     }
 
-    /** uuid 값을 text로 bind하는 expression이다. PostgreSQL은 text를 uuid로 cast한다. */
+    /** An expression that binds a uuid value as text. PostgreSQL casts the text to uuid. */
     public function writeUuid(string $ph): string
     {
         return $this->name === 'postgres' ? "CAST(CAST($ph AS text) AS uuid)" : $ph;
@@ -225,23 +225,23 @@ final class Dialect
         return ' FOR ' . strtoupper(str_replace('_', ' ', $mode));
     }
 
-    /** text를 SQL 문자열 literal로 quote한다. */
+    /** Quotes text as an SQL string literal. */
     public static function literal(string $text): string
     {
         return "'" . str_replace("'", "''", $text) . "'";
     }
 
     /**
-     * table의 identity column을 가장 큰 key 다음 값에서 다시 시작하는 statement다. 빈 table이면
-     * 다음 key는 1이다.
-     * MySQL: InnoDB는 AUTO_INCREMENT를 column의 가장 큰 값 이하로 정하면 가장 큰 값에 1을 더한
-     * 값으로 정하므로 1은 언제나 가장 큰 key 다음이다. DDL이므로 열린 transaction을 commit한다.
-     * PostgreSQL: identity sequence를 가장 큰 key에 1을 더한 값으로 정하고 is_called를 false로
-     * 두어 다음 nextval이 그 값을 돌려주게 한다. pg_get_serial_sequence의 첫 인자는 identifier로
-     * 읽히므로 quote한 table 이름이고, 둘째 인자는 column 이름 그대로다.
-     * SQLite: AUTOINCREMENT table의 다음 key는 sqlite_sequence의 seq에 1을 더한 값이므로 seq를
-     * 가장 큰 key로 정한다. table이 아직 행을 받은 적이 없어 sqlite_sequence에 행이 없으면 다음
-     * key는 이미 가장 큰 key 다음이다.
+     * The statement that restarts the table's identity column from the value after the largest key. For an empty table,
+     * the next key is 1.
+     * MySQL: if InnoDB sets AUTO_INCREMENT at or below the column's largest value, it sets it to the largest value plus 1,
+     * so 1 is always after the largest key. It is DDL, so it commits an open transaction.
+     * PostgreSQL: sets the identity sequence to the largest key plus 1, with is_called set to false
+     * so that the next nextval returns it. The first argument of pg_get_serial_sequence is read as an identifier, so it is the quoted table name;
+     * the second argument is the column name as is.
+     * SQLite: the next key of an AUTOINCREMENT table is the seq in sqlite_sequence plus 1, so seq is set
+     * to the largest key. If the table has never received a row and there is no row in sqlite_sequence, the next
+     * key is already after the largest key.
      */
     public function restartIdentity(string $table, string $column): string
     {
@@ -325,8 +325,8 @@ final class Dialect
                     default => self::guardResult(fn (): string => ($later ? 'DATE_ADD' : 'DATE_SUB') . '(NOW(6), INTERVAL ' . self::guardInterval($unit, '', $arg) . ' ' . strtoupper($unit) . ')'),
                 };
             case 'postgres':
-                // executor clock을 bind하므로 한 statement의 clock은 하나다: now()는 transaction 시작,
-                // statement_timestamp()는 statement 시작이다(postgres.now.transaction_start).
+                // The executor binds the clock, so one statement has one clock: now() is the transaction start,
+                // and statement_timestamp() is the statement start (postgres.now.transaction_start).
                 if ($fn === 'now') {
                     return 'CAST(' . $now() . ' AS timestamp(6))';
                 }
@@ -354,8 +354,8 @@ final class Dialect
                 if ($unit === null) {
                     return null;
                 }
-                // datetime은 초 단위를 돌려주므로 한 statement에서 첫 slot과 같은
-                // 두 번째 clock slot의 소수 여섯 자리를 붙인다.
+                // datetime returns seconds, so in one statement it is the same as the first slot
+                // with six fractional digits of the second clock slot appended.
                 return self::guardResult(function () use ($now, $arg, $unit, $later): string {
                     $clock = $now();
                     $modifier = ($later ? "'+'" : "'-'") . ' || CAST(' . $arg() . " AS TEXT) || ' {$unit}s'" . ($unit === 'month' ? ", 'floor'" : '');

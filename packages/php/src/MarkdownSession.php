@@ -4,8 +4,8 @@ declare(strict_types=1);
 namespace Polyspec\Orm;
 
 /**
- * @internal flowmark server와의 연결 하나, 곧 server session 하나다. PHP client는 pool을 두지
- * 않으므로 markdown Db 하나가 session 하나를 쓰고, transaction은 그 session에서 열린다.
+ * @internal One connection to the flowmark server, that is, one server session. The PHP client has no pool,
+ * so one markdown Db uses one session, and the transaction is opened on that session.
  */
 final class MarkdownSession
 {
@@ -18,14 +18,14 @@ final class MarkdownSession
         $this->conn = $conn;
     }
 
-    /** server에 연결하고 첫 message connect로 corpus와 token을 보낸다. */
+    /** Connects to the server and sends the corpus and token in the first connect message. */
     public static function dial(string $address, string $corpus, string $token): self
     {
         $conn = @stream_socket_client("tcp://$address", $errno, $errstr);
         if ($conn === false) {
             throw new OrmException(Code::DRIVER, "connecting to the flowmark server $address: $errstr; start flowmark serve for the corpus");
         }
-        // 답을 읽는 시간에 한도를 두지 않는다: lock을 기다리는 request의 답은 server의 lock 대기가 끝낸다.
+        // No limit is put on the time to read an answer: the answer to a request waiting for a lock is ended by the server's lock wait.
         stream_set_timeout($conn, -1);
         $session = new self($conn);
         try {
@@ -46,8 +46,8 @@ final class MarkdownSession
     }
 
     /**
-     * message 하나를 한 줄로 보내고 답 한 줄을 읽는다. 답이 {"error": {code, message}}이면 그 code의
-     * 오류다. 연결이 끊기면 CONNECTION_LOST이고 session은 끝난다.
+     * Sends one message as one line and reads one line of answer. If the answer is {"error": {code, message}}, that is the
+     * error with that code. If the connection drops, it is CONNECTION_LOST and the session ends.
      *
      * @param array<string, mixed> $message
      * @return array<string, mixed>
@@ -87,7 +87,7 @@ final class MarkdownSession
                 $this->close();
                 throw new OrmException(Code::INTERNAL, 'the flowmark server answered the error ' . json_encode($error) . ' without a code');
             }
-            // server는 CONNECTION_LOST를 쓴 뒤 연결을 닫는다(idle transaction).
+            // The server closes the connection after writing CONNECTION_LOST (idle transaction).
             if ($code === Code::CONNECTION_LOST) {
                 $this->close();
             }
