@@ -1013,9 +1013,13 @@ final class Db
      *     affected rows: the generated identity on a SQL database, the first key the markdown executor
      *     answers
      */
-    public function writeOf(?TxFrame $frame, Request $r): array
+    public function writeOf(?TxFrame $frame, Request $r, ?\Closure $afterHook = null): array
     {
         $this->hook($r);
+        // The hook has run and the planner has not yet renumbered the parameters: a caller that reads the request as the hook left it reads here.
+        if ($afterHook !== null) {
+            $afterHook($r);
+        }
         $this->enter($frame, $r->ir);
         if ($this->md !== null) {
             [$keys, $affected] = Markdown::write($this, $r);

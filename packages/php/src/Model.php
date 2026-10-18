@@ -1975,15 +1975,16 @@ abstract class Model implements \JsonSerializable
             }
             $r->ir['set'][] = $a;
         }
-        $db->writeOf($frame, $r);
-        // $r is the request as the hook left it, so its key is the key the planner picked.
-        $key = Validator::restoreKey(static::meta(), $r->ir)['key'];
         $keys = [];
         $args = [];
-        foreach ($key as $column) {
-            $keys[] = ['conn' => $keys === [] ? '' : 'and', 'op' => '', 'column' => $column, 'columns' => [], 'compare' => ''];
-            $args[] = $this->restoreKeyValue($r, $own, $column);
-        }
+        // The key is read from the request as the hook left it, before the planner renumbers its parameters, as Go reads it.
+        $db->writeOf($frame, $r, function (Request $hooked) use ($own, &$keys, &$args): void {
+            $key = Validator::restoreKey(static::meta(), $hooked->ir)['key'];
+            foreach ($key as $column) {
+                $keys[] = ['conn' => $keys === [] ? '' : 'and', 'op' => '', 'column' => $column, 'columns' => [], 'compare' => ''];
+                $args[] = $this->restoreKeyValue($hooked, $own, $column);
+            }
+        });
         $q = new static();
         $q->conn = $this->conn;
         $q->whereChain('', $keys, $args);

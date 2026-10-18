@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 04c71b1a7ee77d23e29b8858f311959780711c93d45439a34f345ad78155575b -->
+<!-- source-sha256: a79177d5b29e725d30da7f3bacdefee784c684111a0be32f07937a87fee78b98 -->
 # 변경 이력
 
 ## Unreleased
+- PHP restore는 request hook이 남긴 요청에서 키를 읽는다. planner가 파라미터 번호를 다시 매기기 전이며 Go와 같다 (T77-41).
 - Go 테스트가 date와 datetime 컬럼에 native 시간값 대신 setter와 같은 텍스트를 bind해, cancel, value-types, conditions 테스트가 다시 통과한다 (T77-40).
 - Go DSN 테스트가 T104가 설정하는 MySQL session sql_mode를 기대해, TestParseDSN이 다시 통과한다 (T77-39).
 - parity 실행이 Rust savepoint 테스트의 SQLite DSN을 내보내, Rust lib unit이 그 테스트 때문에 실패하지 않는다 (T77-38).
