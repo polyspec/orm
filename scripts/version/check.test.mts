@@ -1,4 +1,4 @@
-// version check가 VERSION과 다른 version 선언을 파일과 함께 거부하는지 확인한다.
+// Checks that the version check rejects, along with the file, any version declaration that differs from VERSION.
 import assert from 'node:assert/strict';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -7,7 +7,7 @@ import { changelogErrors, CHANGELOGS, versionErrors, DECLARATIONS } from './chec
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
 
 const root = resolve(import.meta.dirname, '..', '..');
-// 각 case는 version 선언 file을 읽고 임시 directory에 복사하는 계산이므로 COMPUTE 기한을 가진다.
+// Each case reads a version declaration file and copies it to a temporary directory, so it has a COMPUTE deadline.
 
 async function copyDeclarations() {
   const dir = await mkdtemp(join(tmpdir(), 'orm-version-'));
@@ -43,7 +43,7 @@ caseTest('a declaration that disappears is reported', COMPUTE, async () => {
   try {
     await writeFile(join(dir, 'contracts/features.json'), '{}\n');
     const errors = await versionErrors(dir);
-    // contracts/features.json은 schema로 읽으므로 그 선언이 없으면 schema가 contract_version이 없다고 보고한다.
+    // contracts/features.json is read as a schema, so if its declaration is missing, the schema reports that contract_version is missing.
     assert.ok(errors.some(e => e.includes('contracts/features.json') && e.includes('contract_version')), errors.join('\n'));
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -69,15 +69,15 @@ caseTest('the version of each Rust package in a lockfile and each version pin of
   }
 });
 
-// 변경 이력 case(G5.113-1)는 저장소의 CHANGELOG.md와 CHANGELOG.ko.md가 `## Unreleased`로 시작하는지 보고, 최소 file에서 release
-// PR의 결과를 받아들이며 빠지거나 둘인 `## Unreleased`, VERSION보다 큰 section, 순서가 틀린 section, 두 언어의 다른 section을
-// 거부한다.
+// The change history case (G5.113-1) checks whether the repository's CHANGELOG.md and CHANGELOG.ko.md start with `## Unreleased`, and accepts the result of a minimal-file release
+// PR, and rejects a missing or duplicated `## Unreleased`, a section greater than VERSION, sections out of order, and
+// sections that differ between the two languages.
 caseTest('the changelogs keep ## Unreleased at the top above the released versions', COMPUTE, async () => {
   const version = (await readFile(join(root, 'VERSION'), 'utf8')).trim();
   const files = Object.fromEntries(await Promise.all(CHANGELOGS.map(async (path): Promise<[string, string]> => [path, await readFile(join(root, path), 'utf8')])));
   assert.deepEqual(changelogErrors(version, files), []);
   const pair = (text: string) => ({ 'CHANGELOG.md': `# Changelog\n\n${text}`, 'CHANGELOG.ko.md': `# 변경 이력\n\n${text}` });
-  // release PR 0.0.2: VERSION은 0.0.2이고 `## Unreleased`는 `## 0.0.2`가 되며 그 위에 빈 `## Unreleased`가 온다.
+  // release PR 0.0.2: VERSION becomes 0.0.2, `## Unreleased` becomes `## 0.0.2`, and an empty `## Unreleased` is placed above it.
   assert.deepEqual(changelogErrors('0.0.2', pair('## Unreleased\n\n## 0.0.2\n\n- G1: a.\n\n## 0.0.1\n\n- G0: b.\n')), []);
   assert.deepEqual(changelogErrors('0.0.2', pair('## 0.0.2\n\n- G1: a.\n')), [
     'CHANGELOG.md: the first section is ## 0.0.2; write the entries of the changes that no tag released under ## Unreleased at the top',
