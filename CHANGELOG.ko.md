@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 326566139829bbb7dbab20027d8307148f642d420eeee7fc64efb347550a4475 -->
+<!-- source-sha256: 6800aef4fefab60c256fc094f538aa5b526d431db5133eb21571f1d6a8028ce0 -->
 # 변경 이력
 
 ## Unreleased
+- PHP extension의 arginfo header를 번역된 stub에 맞게 다시 생성해 그 검사가 통과한다(T131-10).
 - owner 선택 test가 모든 source 변경이 선택하는 comment-language-check를 기대한다(T131-9).
 - 각 conformance vector가 자기가 검증하는 공개 method `calls`를 선언하고, unit test가 모든 runner의 본문이 그것을 호출하는지 검사한다. contains_null은 타입 있는 client가 NULL predicate를 core로 설정한다고 밝힌다(T77-6-3).
 - NULL collection key vector를 recorder의 형식으로 저장해, 바뀌지 않은 출력을 기록해도 vector 파일이 그대로 남는다(T77-6-1-8).
