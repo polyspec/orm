@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-// 한 database 를 PHP client 로 introspect 해 tests/dbspec/introspect 의 출력
-// 형식으로 쓴다: stdout 에 canonical 문서와 미지원 객체 줄
-// "! kind<TAB>table<TAB>name", stderr 에 "elapsed <ms>".
+// Introspects one database with the PHP client and writes the output in the tests/dbspec/introspect format:
+// it writes the canonical document and unsupported object lines to stdout
+// "! kind<TAB>table<TAB>name", and "elapsed <ms>" to stderr.
 //
 // Usage: php packages/php/testing/dbspec/introspect/php.php <mysql|postgres|sqlite> <uri>
 

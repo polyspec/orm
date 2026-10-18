@@ -7,17 +7,17 @@ use Polyspec\Orm\Db;
 use Polyspec\Orm\OrmException;
 
 /**
- * PHP client의 test entry point다. package autoloader는 이 file을 map하지 않으므로,
- * process는 package의 `testing/Faults.php`를 path로 require한 뒤에만 이 class를
- * 가진다.
+ * Test entry point of the PHP client. The package autoloader does not map this file, so a
+ * process has this class only after it requires the package's `testing/Faults.php` by path,
+ * and holds it.
  */
 final class Faults
 {
     /**
-     * connection에 test fault를 설정한다: callback이 실패한 다음 transaction의
-     * rollback은 실행된 뒤 rollback 오류로 FAULT 오류를 보고하므로, transaction은
-     * callback 오류와 fault를 가진 ROLLBACK 오류를 throw한다. fault는 그런
-     * rollback이 소비할 때까지 남는다.
+     * Sets a test fault on the connection: after the callback fails, the transaction's
+     * rollback runs and then reports a FAULT error as a rollback error, so the transaction
+     * throws the callback error and a ROLLBACK error carrying the fault. The fault stays
+     * until a rollback consumes it.
      */
     public static function failNextRollback(Db $db): void
     {
@@ -27,10 +27,10 @@ final class Faults
     }
 
     /**
-     * connection에 statement fault를 설정한다: 다음 statement(transaction 제어 statement 제외)는
-     * 보내지 않고 $code와 $message의 OrmException으로 끝난다. 그 statement가 fault를 소비한다.
-     * 이미 설정된 statement fault는 대체된다. code나 message가 비면 \InvalidArgumentException이고
-     * 아무것도 설정하지 않는다.
+     * Sets a statement fault on the connection: the next statement (excluding transaction control statements)
+     * is not sent and ends with an OrmException carrying $code and $message. That statement consumes the fault.
+     * An already set statement fault is replaced. If code or message is empty, it is an \InvalidArgumentException and
+     * nothing is set.
      */
     public static function failNextStatement(Db $db, string $code, string $message): void
     {
@@ -46,8 +46,8 @@ final class Faults
     }
 
     /**
-     * connection의 executor clock을 $clock 시각으로 고정한다. $clock은 UTC의 `YYYY-MM-DD HH:MM:SS.ffffff` text다
-     * (docs/protocol.md "Test clock"). 형식이 다르면 \InvalidArgumentException이고 아무것도 설정하지 않는다.
+     * Pins the connection's executor clock to the $clock time. $clock is UTC text in the form `YYYY-MM-DD HH:MM:SS.ffffff`
+     * (docs/protocol.md "Test clock"). A different format is an \InvalidArgumentException and nothing is set.
      */
     public static function fixClock(Db $db, string $clock): void
     {
@@ -63,7 +63,7 @@ final class Faults
     }
 
     /**
-     * connection에서 마지막으로 성공한 write 결과의 affected다. 성공한 write가 없었으면 null이다
+     * The affected count of the last successful write on the connection. It is null if there was no successful write
      * (docs/protocol.md "Test write result").
      */
     public static function lastAffected(Db $db): ?int
