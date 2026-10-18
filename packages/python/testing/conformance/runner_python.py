@@ -894,7 +894,7 @@ def main():
     run("creates_and_save", creates_and_save)
 
     def contains_vector(cond, *patterns):
-        """tenant 902에 Apple, apple, Évian, évian, x_y 행을 만들고 각 pattern이 cond로 고르는 account_id를 모은 뒤 지운다."""
+        """Creates rows Apple, apple, Évian, évian, x_y for tenant 902, collects the account_id that each pattern selects with cond, then deletes them."""
         rows = [
             CompositeAccount().set_tenant_id(902).set_account_id(i + 1).set_name(name)
             for i, name in enumerate(["Apple", "apple", "Évian", "évian", "x_y"])
