@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The MySQL days_ago bind uses the bound instant, so the physical fixture is deterministic on every database (T77-33-1).
 - The physical fixture of TestPhysicalQueryForms passes on mysql, postgres and sqlite (T77-33).
 - Every go-orm unit runs only its own test, and the 45 units hold in every implementation (T77-35).
 - The Python connection UTC test binds the instant as offset text, as the protocol takes datetime parameters (T77-57).

@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e888a661626fdab49d143038da1867b53e5c86245e879b8eb551a98d1593268c -->
+<!-- source-sha256: 4454e11d1fb7a4901488a643877fed01252dbdd1349ca032c971f4cd5f8c944d -->
 # 변경 이력
 
 ## Unreleased
+- MySQL days_ago bind가 바인드된 시각을 써서, physical fixture가 모든 database에서 결정적이다 (T77-33-1).
 - TestPhysicalQueryForms의 physical fixture가 mysql, postgres, sqlite에서 통과한다 (T77-33).
 - 모든 go-orm unit은 자기 test만 실행하고, 45개 unit은 모든 구현에서 성립한다 (T77-35).
 - Python connection UTC 시험은 instant를 프로토콜이 받는 offset 텍스트로 bind한다 (T77-57).
