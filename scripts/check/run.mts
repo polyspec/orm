@@ -305,7 +305,7 @@ export async function runChecks({ root, jobSummary = false, servers: given, targ
 
   for (const { label, passed, notRun, elapsed } of results)
     console.log(`check: ${notRun ? 'NOT-RUN' : passed ? 'PASS' : 'FAIL'} ${label} elapsed=${duration(elapsed)}${notRun ? `: ${notRun}` : ''}`);
-  // 단계 밖에서 실패한 보고서 쓰기와 기록 쓰기도 실행의 기록과 summary에 남는다.
+  // Report writes and record writes that fail outside a step also remain in the run's record and summary.
   const stepErrors = new Set(results.flatMap(result => result.reportErrors ?? []));
   const runErrors = [...writer.failed.filter(error => !stepErrors.has(error)), ...recorder.writeErrors];
   if (current && runErrors.length) current.reportErrors = runErrors;
@@ -314,24 +314,24 @@ export async function runChecks({ root, jobSummary = false, servers: given, targ
   const writeFailures = writer.failed.length + recorder.writeErrors.length;
   if (writeFailures) console.log(`check: ${writeFailures} report or record write(s) failed:\n${[...writer.failed, ...recorder.writeErrors].join('\n')}`);
   if (failed.length) console.log(`check: ${failed.length} of ${results.length} step(s) failed or did not run; report ${relative(root, report)}`);
-  // summary는 기록에서 만든다. jobSummary인 실행(make run-databases, make bench, ci.yml의 job docs가 실행하는 make docs-ci)은
-  // 그 summary를 GITHUB_STEP_SUMMARY에도 쓴다: 그 실행 뒤에는 summary 단계(scripts/check/summary.mts)가 없다.
+  // The summary is built from the record. For runs that are jobSummary (make run-databases, make bench, and make docs-ci run by the docs job in ci.yml),
+  // that summary is also written to GITHUB_STEP_SUMMARY: after such a run there is no summary step (scripts/check/summary.mts).
   writer.run(join(report, 'summary.md'), () => publish(summary(finished, { run: current, report: relative(root, report) }), report, { step: jobSummary }));
   active = null;
   return failed.length || writeFailures ? 1 : 0;
 }
 
-// active는 진행 중인 실행이다. runner가 처리하지 못한 오류(uncaughtException, unhandledRejection)는 crash가 기록한다.
+// active is the run in progress. Errors the runner did not handle (uncaughtException, unhandledRejection) are recorded by the crash handler.
 let active: { recorder: Recorder; writer: ReportWriter; report: string; root: string; current: RunRecord } | null = null;
 
-// handleCrashes는 처리하지 못한 오류(uncaughtException, unhandledRejection)를 crash로 기록하고 1로 끝내게 한다.
+// handleCrashes records unhandled errors (uncaughtException, unhandledRejection) as a crash and makes the process exit with 1.
 export function handleCrashes() {
   for (const event of ['uncaughtException', 'unhandledRejection'])
     process.on(event, (error: unknown) => { crash(error); process.exit(1); });
 }
 
-// crash는 처리하지 못한 오류를 `runner error: <stack>`으로 실행 기록에 남기고 실행을 crashed로 적은 뒤 summary를 쓴다.
-// 그 쓰기도 던지지 않는다. 호출한 쪽이 0이 아닌 상태로 끝낸다.
+// crash records the unhandled error in the run record as `runner error: <stack>`, marks the run as crashed, and then writes the summary.
+// That write also does not throw. The caller ends with a non-zero status.
 export function crash(error: unknown): void {
   const reason = `runner error: ${error instanceof Error ? error.stack ?? error.message : String(error)}`;
   console.error(`check: ${reason}`);
@@ -355,9 +355,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   }
   const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
   handleCrashes();
-  // 30초마다 memory, disk, RSS가 큰 process, 보낸 group signal을 stdout에 쓴다(scripts/check/resources.mts).
+  // Every 30 seconds it writes memory, disk, the processes with large RSS, and the group signals sent, to stdout (scripts/check/resources.mts).
   const stopMonitor = monitor();
-  // servers `-`는 server 없는 실행이다.
+  // servers `-` is a run without a server.
   process.exitCode = await runChecks({ root, jobSummary, servers: serversArgument === '-' ? null : resolve(serversArgument), targets, run: command(root) });
   stopMonitor();
 }

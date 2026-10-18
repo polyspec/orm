@@ -201,7 +201,7 @@ export function runStep(program: string, args: string[], { cwd, env, step, label
   });
 }
 
-// plainStep은 guard 없이 program을 실행하고 출력 줄을 step으로 내보낸다(setup 단계).
+// plainStep runs the program without a guard and emits its output lines as the step (setup stage).
 function plainStep(program: string, args: string[], { cwd, env, step, spawned }: { cwd?: string | undefined; env: NodeJS.ProcessEnv; step: Step; spawned: (pid: number | undefined) => void }): Promise<void> {
   return new Promise<void>((finish, fail) => {
     const child = spawn(program, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });

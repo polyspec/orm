@@ -35,8 +35,8 @@ export function npmMissing(root: string, directory: string) {
     .map(([path, entry]) => `${directory}/${path} ${entry.version} is ${present[path] ? `installed as ${present[path].version}` : 'not installed'}`);
 }
 
-// composerMissing은 composer.lock의 package 가운데 vendor에 없거나 version이 다른 것이다.
-// vendor directory는 composer.json의 config.vendor-dir이고, 없으면 vendor다.
+// composerMissing is the packages in composer.lock that are absent from vendor or have a different version.
+// The vendor directory is config.vendor-dir in composer.json, and if absent it is vendor.
 export function composerMissing(root: string, directory: string) {
   const lock = join(root, directory, 'composer.lock');
   const manifest = join(root, directory, 'composer.json');
@@ -51,7 +51,7 @@ export function composerMissing(root: string, directory: string) {
     .map(entry => `${directory} ${entry.name} ${entry.version} is ${present.has(entry.name) ? `installed as ${present.get(entry.name)}` : 'not installed'}`);
 }
 
-// missingDownloads는 빠진 download를 need마다 적는다. run은 spawnSync와 같은 모양이다(test가 바꾼다).
+// missingDownloads lists each missing download per need. run has the same shape as spawnSync (the test changes it).
 /** A download the checks read that is missing: the need it serves and why. */
 export type Missing = { need: string; message: string };
 /** The run of a program that missingDownloads uses: spawnSync, or a stand-in of a test. */
@@ -81,7 +81,7 @@ export function missingDownloads(root: string, { run = spawnSync, env = process.
 }
 
 if (process.argv[1] && new URL(import.meta.url).pathname === process.argv[1]) {
-  // 인자는 확인할 checkout이고, 없으면 이 file의 checkout이다.
+  // The argument is the checkout to check; if absent, it is this file's checkout.
   const root = process.argv[2] ?? new URL('../..', import.meta.url).pathname;
   const missing = missingDownloads(root);
   for (const { message } of missing) console.error(`downloads: ${message}`);
@@ -89,13 +89,13 @@ if (process.argv[1] && new URL(import.meta.url).pathname === process.argv[1]) {
   console.log('downloads: every download of the checks is present');
 }
 
-// DOWNLOAD는 network에서 받는 명령이다.
+// DOWNLOAD is the command that downloads over the network.
 const DOWNLOAD = /\b(?:npm (?:ci|install)|composer (?:install|update|require)|cargo fetch|go (?:mod download|get)|curl|wget|rustup toolchain install)\b/;
-// OFFLINE은 Makefile이 export해야 하는 offline 설정이다.
+// OFFLINE is the offline setting that the Makefile must export.
 const OFFLINE = ['CARGO_NET_OFFLINE := true', 'GOPROXY := off', 'npm_config_offline := true', 'COMPOSER_DISABLE_NETWORK := 1'];
 
-// offlineMakeErrors는 Makefile이 check를 offline으로 실행하는지 본다: 네 offline 설정을 export하고, download하는
-// 명령과 $(ONLINE)은 install target(install, install-*)의 recipe에만 있다.
+// offlineMakeErrors checks whether the Makefile runs check offline: it exports the four offline settings, and the download
+// command and $(ONLINE) appear only in the recipes of the install targets (install, install-*).
 export function offlineMakeErrors(makefile: string) {
   const errors = OFFLINE.filter(setting => !makefile.split('\n').includes(`export ${setting}`)).map(setting => `Makefile does not export ${setting}`);
   for (const { target, commands } of makeTargets(makefile)) {

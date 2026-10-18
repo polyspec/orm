@@ -184,24 +184,24 @@ export function writeEnvironment(root: string, report: string, extra: Record<str
   writeFileSync(join(report, 'environment.txt'), `${lines.join('\n')}\n`);
 }
 
-// SPACE는 공간이 없어 실패한 줄이다: ENOSPC(errno 28)와 EDQUOT(errno 122).
+// SPACE is a line that failed for lack of space: ENOSPC (errno 28) and EDQUOT (errno 122).
 export const SPACE = /disk quota exceeded|No space left on device|errno:? (?:28|122)\b|ENOSPC|EDQUOT/i;
 
-// output은 명령 하나의 출력이다. 명령이 없거나 실패하면 그 사실을 출력으로 돌려준다.
+// output is the output of one command. If the command is absent or fails, it returns that fact as the output.
 function output(program: string, args: string[]): string {
   const result = spawnSync(program, args, { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
   if (result.error) return `${program}: ${errorCode(result.error) ?? result.error.message}\n`;
   return `${result.stdout}${result.stderr}${result.status ? `${program} exited with ${result.status}\n` : ''}`;
 }
 
-// diskSnapshot은 실행의 공간을 적는다: `/`, `/tmp`, process의 임시 directory(TMPDIR)와 보고서의 file system마다 df,
-// /tmp의 mount option(findmnt: tmpfs의 size와 quota), /tmp와 실행 directory(.runtime/run, .runtime/check/<run id>)의
-// 큰 항목, 그리고 지웠지만 process가 열어 둔 /tmp의 file(lsof +L1). places는 그 줄마다 남은 공간(KiB)이다. 어느
-// 명령이 없으면 그 사실이 출력이다.
+// diskSnapshot records the space of the run: df for each of `/`, `/tmp`, the process's temporary directory (TMPDIR), and the file system of the report,
+// the mount options of /tmp (findmnt: the size and quota of tmpfs), and of /tmp and the run directories (.runtime/run, .runtime/check/<run id>)
+// the large entries, and the /tmp files deleted but still held open by a process (lsof +L1). places is the remaining space (KiB) on each such line. Which
+// If a command is absent, that fact is its output.
 export function diskSnapshot(root: string, run: string): DiskSnapshot {
   const temporary = [...new Set(['/tmp', tmpdir()])];
   const filesystems = [...new Set(['/', ...temporary, run])];
-  // df는 path마다 따로 읽는다. 없는 path는 places에 들지 않고 그 오류가 출력에 남는다.
+  // df is read separately for each path. A missing path is not included in places, and its error remains in the output.
   const places: Record<string, number> = {};
   const df = filesystems.map(path => {
     const text = output('df', ['-k', path]);
