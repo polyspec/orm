@@ -164,7 +164,8 @@ pub fn emit(document: &Document) -> String {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Manifest {
     pub manifest_text: String,
-    /// Canonical text containing only the columns, primary key, and unique keys of tables that the owning document uses, for each external document.
+    /// Canonical text containing, for each external document, the tables that the owned documents use with their columns, primary key, unique keys,
+    /// and the foreign keys between used tables with the indexes that lead them.
     /// Empty if there are no external documents.
     pub external_text: String,
     pub schema_text: String,
@@ -299,24 +300,39 @@ pub fn manifest(documents: &[&Document]) -> Result<Manifest, Vec<Diagnostic>> {
     Ok(Manifest { manifest_text, external_text, schema_text, manifest_hash, schema_hash })
 }
 
-/// A document holding only the columns, primary key, and unique keys of `tables` from an external document, in document order. If the table does not exist,
-/// it is None. Foreign keys, indexes, checks, settings, and comments are owned by the external document, so they are not included.
+/// A document holding only the columns, primary key, unique keys, the foreign keys whose referenced table is also one of
+/// `tables`, and the indexes whose leading columns are such a foreign key's columns, of `tables` from an external document,
+/// in document order (docs/dbspec.md "Manifest and hashes"), so the reduced text satisfies the validation of the full
+/// document. If the table does not exist, it is None. Other foreign keys, indexes, checks, settings, and comments are
+/// owned by the external document, so they are not included.
 fn external_document(document: &Document, tables: &[&str]) -> Option<Document> {
     let kept: Vec<model::Table> = document
         .tables
         .iter()
         .filter(|t| tables.contains(&t.name.text.as_str()))
-        .map(|t| model::Table {
-            comments: Vec::new(),
-            name: t.name.clone(),
-            columns: t.columns.iter().map(|c| model::Column { comments: Vec::new(), ..c.clone() }).collect(),
-            primary: t.primary.iter().map(|k| model::PrimaryKey { comments: Vec::new(), ..k.clone() }).collect(),
-            uniques: t.uniques.iter().map(|u| model::Unique { comments: Vec::new(), ..u.clone() }).collect(),
-            indexes: Vec::new(),
-            foreign_keys: Vec::new(),
-            checks: Vec::new(),
-            settings: None,
-            closing: Vec::new(),
+        .map(|t| {
+            let foreign_keys: Vec<model::ForeignKey> = t
+                .foreign_keys
+                .iter()
+                .filter(|f| tables.contains(&f.table.text.as_str()))
+                .map(|f| model::ForeignKey { comments: Vec::new(), ..f.clone() })
+                .collect();
+            let leads = |columns: &[(model::Name, bool)]| {
+                foreign_keys.iter().any(|f| columns.len() >= f.columns.len() && f.columns.iter().zip(columns).all(|(c, (x, _))| c.text == x.text))
+            };
+            let indexes = t.indexes.iter().filter(|x| leads(&x.columns)).map(|x| model::Index { comments: Vec::new(), ..x.clone() }).collect();
+            model::Table {
+                comments: Vec::new(),
+                name: t.name.clone(),
+                columns: t.columns.iter().map(|c| model::Column { comments: Vec::new(), ..c.clone() }).collect(),
+                primary: t.primary.iter().map(|k| model::PrimaryKey { comments: Vec::new(), ..k.clone() }).collect(),
+                uniques: t.uniques.iter().map(|u| model::Unique { comments: Vec::new(), ..u.clone() }).collect(),
+                indexes,
+                foreign_keys,
+                checks: Vec::new(),
+                settings: None,
+                closing: Vec::new(),
+            }
         })
         .collect();
     if kept.is_empty() {

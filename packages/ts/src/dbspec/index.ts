@@ -83,7 +83,7 @@ export interface DbspecManifest {
   readonly manifestText: string;
   /**
    * For each external document in name order, the tables that owned documents use, with their columns,
-   * primary key and unique keys; empty without external documents.
+   * primary key, unique keys and the foreign keys between used tables; empty without external documents.
    */
   readonly externalText: string;
   readonly schemaText: string;
@@ -106,7 +106,8 @@ function textHash(text: string): string {
  * document name order, or the diagnostics of an invalid set (docs/dbspec.md,
  * "Manifest and hashes"). The manifest text holds the owned documents; the
  * external text holds, for each external document, the tables that owned
- * documents use, with their columns, primary key and unique keys; the schema
+ * documents use, with their columns, primary key, unique keys and the foreign
+ * keys between used tables; the schema
  * text holds the owned tables and a use line for each external document they
  * use; and manifestHash covers the manifest text followed by the external text.
  */
@@ -155,14 +156,23 @@ function compareText(a: string, b: string): number {
 }
 
 /**
- * A document of only the columns, primary key and unique keys of the tables, in document order, from the external document. If the table does not exist, null. foreign
- * key, index, check and setting are owned by the external document, so they are not included.
+ * A document of only the columns, primary key, unique keys, the foreign keys whose referenced table is also one of
+ * the tables, and the indexes whose leading columns are such a foreign key's columns, of the tables in document order,
+ * from the external document (docs/dbspec.md "Manifest and hashes"), so the reduced text satisfies the validation of
+ * the full document. If no table exists, null. Other foreign keys, indexes, checks and settings are owned by the
+ * external document, so they are not included.
  */
 function externalDocument(document: DbspecDocument, tables: readonly string[]): DbspecDocument | null {
-  const kept: DbspecTable[] = document.tables.filter(t => tables.includes(t.name)).map(t => ({
-    comments: [], name: t.name, columns: t.columns, primaryKey: { comments: [], columns: t.primaryKey.columns }, uniques: t.uniques,
-    indexes: [], foreignKeys: [], checks: [], settings: null, closingComments: [],
-  }));
+  const kept: DbspecTable[] = document.tables.filter(t => tables.includes(t.name)).map(t => {
+    const foreignKeys = t.foreignKeys.filter(f => tables.includes(f.table)).map(f => ({ ...f, comments: [] }));
+    const leads = (columns: readonly { name: string }[]) =>
+      foreignKeys.some(f => columns.length >= f.columns.length && f.columns.every((c, i) => columns[i]?.name === c));
+    const indexes = t.indexes.filter(x => leads(x.columns)).map(x => ({ ...x, comments: [] }));
+    return {
+      comments: [], name: t.name, columns: t.columns, primaryKey: { comments: [], columns: t.primaryKey.columns }, uniques: t.uniques,
+      indexes, foreignKeys, checks: [], settings: null, closingComments: [],
+    };
+  });
   if (kept.length === 0) return null;
   return { name: document.name, uses: [], tables: kept, diagrams: [], closingComments: [] };
 }

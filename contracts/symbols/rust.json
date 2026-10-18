@@ -9909,7 +9909,7 @@
   },
   "packages/rust/schema/src/dbspec/mod.rs::Manifest": {
     "exported": true,
-    "signature": "pub struct Manifest  { pub manifest_text : String , # [doc = \" Canonical text containing only the columns, primary key, and unique keys of tables that the owning document uses, for each external document.\"] # [doc = \" Empty if there are no external documents.\"] pub external_text : String , pub schema_text : String , pub manifest_hash : String , pub schema_hash : String , }"
+    "signature": "pub struct Manifest  { pub manifest_text : String , # [doc = \" Canonical text containing, for each external document, the tables that the owned documents use with their columns, primary key, unique keys,\"] # [doc = \" and the foreign keys between used tables with the indexes that lead them.\"] # [doc = \" Empty if there are no external documents.\"] pub external_text : String , pub schema_text : String , pub manifest_hash : String , pub schema_hash : String , }"
   },
   "packages/rust/schema/src/dbspec/mod.rs::Manifest#field.external_text": {
     "exported": true,

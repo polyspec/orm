@@ -547,6 +547,10 @@
     "exported": false,
     "signature": "func(d *Document, tables []string) *Document"
   },
+  "packages/go/engine/dbspec/dbspec.go::leadsWith": {
+    "exported": false,
+    "signature": "func(index []IndexColumn, columns []string) bool"
+  },
   "packages/go/engine/dbspec/dbspec.go::nullText": {
     "exported": false,
     "signature": "func(null bool) string"

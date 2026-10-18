@@ -158,6 +158,25 @@ fn set_vectors_case(case: &Value) {
         Ok(manifest) => {
             assert!(want.is_empty(), "{id}: manifest gave no errors, want {want:?}");
             if let Some(m) = expected {
+                // The runtime model is built from the manifest text and the external text, so they parse back as a set
+                // without diagnostics (docs/dbspec.md "Manifest and hashes").
+                let split = |text: &str| -> Vec<String> {
+                    let mut out: Vec<String> = Vec::new();
+                    for line in text.split_inclusive('\n') {
+                        match out.last_mut() {
+                            Some(last) if !line.starts_with("dbspec ") => last.push_str(line),
+                            _ => out.push(line.to_owned()),
+                        }
+                    }
+                    out
+                };
+                let (owned_texts, external_texts) = (split(&manifest.manifest_text), split(&manifest.external_text));
+                let owned_refs: Vec<&str> = owned_texts.iter().map(String::as_str).collect();
+                let external_refs: Vec<&str> = external_texts.iter().map(String::as_str).collect();
+                for r in dbspec::parse_set(&owned_refs, &external_refs) {
+                    let messages: Vec<String> = r.diagnostics.iter().map(|d| format!("{d:?}")).collect();
+                    assert!(messages.is_empty(), "{id}: manifest and external text of {:?}: {messages:?}", r.name);
+                }
                 assert_eq!(manifest.manifest_text, lines_text(&m["manifestText"]), "{id}: manifestText");
                 assert_eq!(manifest.external_text, lines_text(&m["externalText"]), "{id}: externalText");
                 assert_eq!(manifest.schema_text, lines_text(&m["schemaText"]), "{id}: schemaText");

@@ -15,6 +15,8 @@ from polyspec.orm.dbspec import (
     parse_dbspec,
     read_dbspec_file,
 )
+from polyspec.orm.engine.model import RuntimeModel
+from polyspec.orm.errors import OrmError
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -192,6 +194,12 @@ def check_sets(test: unittest.TestCase, case) -> None:
         failures.append(f"{case['id']}: manifest is None without errors")
     if manifest is not None and case.get("manifest") is not None:
         want = case["manifest"]
+        # The runtime model is built from the manifest text and the external text, so they parse back as a set
+        # without diagnostics (docs/dbspec.md "Manifest and hashes").
+        try:
+            RuntimeModel.load_set(manifest.manifest_text, manifest.external_text)
+        except OrmError as error:
+            failures.append(f"{case['id']}: runtime model of the manifest and external text: {error}")
         for field, value in (
             (
                 "manifest_text",

@@ -327,8 +327,11 @@ final class Dbspec
     }
 
     /**
-     * Only the columns, primary key, and unique keys of $tables, from the external document, in document order. If that table
-     * is absent, null. Foreign keys, indexes, checks, and settings are owned by the external document, so they are not included.
+     * Only the columns, primary key, unique keys, the foreign keys whose referenced table is also one of $tables, and the
+     * indexes whose leading columns are such a foreign key's columns, of $tables, from the external document, in document
+     * order (docs/dbspec.md "Manifest and hashes"), so the reduced text satisfies the validation of the full document. If
+     * that table is absent, null. Other foreign keys, indexes, checks, and settings are owned by the external document, so
+     * they are not included.
      *
      * @param list<string> $tables
      */
@@ -343,6 +346,20 @@ final class Dbspec
             $trimmed->columns = $table->columns;
             $trimmed->primaryKey = $table->primaryKey === null ? null : new PrimaryKey($table->primaryKey->columns);
             $trimmed->uniqueKeys = array_map(static fn(UniqueKey $u): UniqueKey => new UniqueKey($u->name, $u->columns), $table->uniqueKeys);
+            foreach ($table->foreignKeys as $f) {
+                if (in_array($f->table, $tables, true)) {
+                    $trimmed->foreignKeys[] = new ForeignKey($f->name, $f->columns, $f->table, $f->referencedColumns, $f->onDelete, $f->onUpdate);
+                }
+            }
+            foreach ($table->indexes as $x) {
+                $names = array_map(static fn(IndexColumn $c): string => $c->name, $x->columns);
+                foreach ($trimmed->foreignKeys as $f) {
+                    if (array_slice($names, 0, count($f->columns)) === $f->columns) {
+                        $trimmed->indexes[] = new Index($x->name, $x->columns);
+                        break;
+                    }
+                }
+            }
             $out->tables[] = $trimmed;
         }
         return $out->tables === [] ? null : $out;

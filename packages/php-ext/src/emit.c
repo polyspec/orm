@@ -353,7 +353,10 @@ void dbs_set_check(const documentv *in, documentv *ordered, diags *out)
     *ordered = docs;
 }
 
-/* A document holding only the columns, primary key, and unique keys of tables from the external document, in document order. NULL if the table does not exist. */
+/* A document holding only the columns, primary key, unique keys, the foreign keys whose referenced table is also one of
+ * tables, and the indexes whose leading columns are such a foreign key's columns, of tables from the external document, in
+ * document order (docs/dbspec.md "Manifest and hashes"), so the reduced text satisfies the validation of the full
+ * document. NULL if the table does not exist. */
 static document *external_document(const document *d, const strs *tables)
 {
     document *out = document_new(d->name);
@@ -373,6 +376,34 @@ static document *external_document(const document *d, const strs *tables)
             u->name = t->uniques.v[k]->name;
             u->columns = t->uniques.v[k]->columns;
             PUSH(trimmed->uniques, u);
+        }
+        for (size_t k = 0; k < t->fks.n; k++) {
+            fkey *f = t->fks.v[k];
+            if (!strs_has(tables, f->table)) {
+                continue;
+            }
+            fkey *kept = dbs_alloc(sizeof *kept);
+            *kept = *f;
+            kept->comments = (strs){0};
+            PUSH(trimmed->fks, kept);
+        }
+        for (size_t k = 0; k < t->indexes.n; k++) {
+            xindex *x = t->indexes.v[k];
+            bool leads = false;
+            for (size_t j = 0; j < trimmed->fks.n && !leads; j++) {
+                const strs *c = &trimmed->fks.v[j]->columns;
+                leads = x->columns.n >= c->n;
+                for (size_t q = 0; leads && q < c->n; q++) {
+                    leads = str_eq(x->columns.v[q].name, c->v[q]);
+                }
+            }
+            if (leads) {
+                xindex *kept = dbs_alloc(sizeof *kept);
+                kept->name = x->name;
+                kept->columns = x->columns;
+                kept->comments = (strs){0};
+                PUSH(trimmed->indexes, kept);
+            }
         }
         PUSH(out->tables, trimmed);
     }

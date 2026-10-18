@@ -134,6 +134,20 @@ func textOf(lines []string) string {
 	return joinLines(lines, false)
 }
 
+// splitManifest splits a manifest or external text into its document texts at each header line.
+func splitManifest(text string) []string {
+	var out []string
+	for text != "" {
+		end := strings.Index(text, "\ndbspec ")
+		if end < 0 {
+			return append(out, text)
+		}
+		out = append(out, text[:end+1])
+		text = text[end+1:]
+	}
+	return out
+}
+
 // createdTables is the table names that CREATE TABLE statements create.
 func createdTables(statements []string) []string {
 	var out []string
@@ -196,6 +210,13 @@ func TestDocumentSets(t *testing.T) {
 					return fmt.Errorf("manifest present: %v with %d errors", manifest != nil, len(c.Errors))
 				}
 				if want := c.Manifest; want != nil {
+					// The runtime model is built from the manifest text and the external text, so they parse
+					// back as a set without diagnostics (docs/dbspec.md "Manifest and hashes").
+					for _, r := range ParseSet(splitManifest(manifest.ManifestText), splitManifest(manifest.ExternalText)) {
+						if len(r.Diagnostics) > 0 {
+							return fmt.Errorf("manifest and external text of %s: %v", r.Name, r.Diagnostics)
+						}
+					}
 					for _, field := range []struct{ name, got, want string }{
 						{"manifestText", manifest.ManifestText, textOf(want.ManifestText)},
 						{"externalText", manifest.ExternalText, textOf(want.ExternalText)},

@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 1811aa61a62b31339c656193e1ca7ec8c26c0004e31e4101ab97bc597ac5c820 -->
+<!-- source-sha256: 6350431b3ee2276773c860a415ffc76ff753ebdee674d6f196554543edda30c0 -->
 # dbspec
 
 [English](dbspec.md)
@@ -310,7 +310,7 @@ table audit_table {
 manifest와 [rendered statements](dialects.md#rendered-statements)는 한 집합의 parse된 문서를 받는다. 집합은 각 문서를 한 번씩, 그리고 그 문서들이 쓰는 모든 문서를 담는다. 반복된 문서 이름은 `name.duplicate` diagnostic, 집합에 없는 쓰이는 문서는 `use` diagnostic이며, 둘 다 뒤쪽 문서나 쓰는 문서의 header 이름(1줄 10열)에 위치하고 message에 문서 이름을 담는다. 문서는 이름 순으로, 한 문서가 쓰는 이름도 이름 순으로 확인한다. diagnostic이 있는 집합에는 manifest도 statement도 없다.
 
 - 문서의 **manifest text**는 모든 comment와 diagram을 뺀 canonical emission이다. 문서 집합의 manifest text는 소유한 문서들의 manifest text를 문서 이름 순으로 이어 붙인 것이다. 각 text는 header로 시작하고 줄 끝으로 끝나므로 이어 붙인 결과는 모호하지 않다.
-- **external text**는 외부 문서가 없는 집합에서 비어 있다. 그 밖에는 쓰는 table이 있는 외부 문서마다 이름 순으로, 그 문서의 manifest text를 소유한 문서가 `use` 줄에 적은 table로만 줄인 것을 담는다. table은 문서 순서이고 각 table은 column, primary key, unique key만 갖는다.
+- **external text**는 외부 문서가 없는 집합에서 비어 있다. 그 밖에는 쓰는 table이 있는 외부 문서마다 이름 순으로, 그 문서의 manifest text를 소유한 문서가 `use` 줄에 적은 table로만 줄인 것을 담는다. table은 문서 순서이고 canonical emission으로 쓰며, 각 table은 column, primary key, unique key, 참조하는 table도 같은 외부 문서의 쓰는 table인 foreign key, 그리고 그런 foreign key의 column을 leading column으로 갖는 index만 갖는다. 따라서 줄인 text는 전체 문서와 같은 validation을 만족한다: [audit](#audit) `tables` table이 audit record table에 선언하는 foreign key처럼 쓰는 table에 걸친 규칙이 manifest text와 external text로 만든 runtime model에서도 성립한다. 쓰는 두 table 사이의 foreign key와 그것을 이끄는 index는 external text와 `manifestHash`에 들어가고, 어떤 소유한 문서도 쓰지 않는 table로의 foreign key는 들어가지 않으므로 그것을 바꿔도 hash는 그대로다.
 - **schema text**는 집합이 소유한 모든 table을 table 이름 순으로, 그리고 쓰는 table이 있는 외부 문서마다 그 table을 이름 순으로 적은 `use` 줄 하나를 담은 `schema`라는 문서 하나의 canonical emission이며, `immutable`과 `audit`을 뺀 모든 setting을 지우고, `audit` setting은 기록하지 않는 column을 column 순서로 적은 `exclude` 목록으로, 모든 column을 기록하면 목록 없이 쓴다([Audit](#audit)). 비게 된 `settings` block은 canonical form처럼 쓰지 않는다. `use` 줄은 소유한 table이 쓰는 [외부 문서](#external-documents)만 적고 comment와 diagram은 없으므로 table에만 달려 있다. table을 다른 문서로 옮기거나 문서 이름을 바꾸거나 나눠도 같고, 집합을 렌더링한 database를 introspect해도 같다.
 - `manifestHash`는 `sha256:` 뒤에 manifest text와 그 뒤의 external text의 UTF-8 bytes에 대한 SHA-256을 소문자 16진수로 붙인 것이고, `schemaHash`는 schema text에 대해 같은 방식으로 계산한다.
 

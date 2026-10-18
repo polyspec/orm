@@ -101,27 +101,39 @@ def _text_hash(text: str) -> str:
 
 
 def _external_document(document: DbspecDocument, tables):
-    """An external document that keeps only the columns, primary key, and unique keys of tables, in document order,
-    is returned. If the table is missing, None is returned. Foreign keys, indexes, checks, and settings are not kept, because the external
-    document owns them."""
+    """An external document that keeps only the columns, primary key, unique keys, the foreign keys whose referenced
+    table is also one of tables, and the indexes whose leading columns are such a foreign key's columns, of tables in
+    document order (docs/dbspec.md "Manifest and hashes"), so the reduced text satisfies the validation of the full
+    document. If the table is missing, None is returned. Other foreign keys, indexes, checks, and settings are not
+    kept, because the external document owns them."""
+    import dataclasses
+
     from polyspec.orm.dbspec.model import DbspecPrimaryKey, DbspecTable
 
-    kept = [
-        DbspecTable(
+    def reduced(t):
+        fks = tuple(dataclasses.replace(f, comments=()) for f in t.foreign_keys if f.table in tables)
+
+        def leads(columns):
+            return any(
+                len(columns) >= len(f.columns) and all(columns[i].name == c for i, c in enumerate(f.columns))
+                for f in fks
+            )
+
+        indexes = tuple(dataclasses.replace(x, comments=()) for x in t.indexes if leads(x.columns))
+        return DbspecTable(
             (),
             t.name,
             t.columns,
             DbspecPrimaryKey((), t.primary_key.columns),
             t.uniques,
-            (),
-            (),
+            indexes,
+            fks,
             (),
             None,
             (),
         )
-        for t in document.tables
-        if t.name in tables
-    ]
+
+    kept = [reduced(t) for t in document.tables if t.name in tables]
     if not kept:
         return None
     return DbspecDocument(document.name, (), tuple(kept), (), (), document.external)

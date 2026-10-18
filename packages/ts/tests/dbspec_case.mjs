@@ -5,7 +5,7 @@ import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dbspecManifest, emitDbspec, parseDbspec, readDbspecBytes, readDbspecFile, renderDbspec } from '../dist/dbspec/index.js';
+import { dbspecManifest, emitDbspec, parseDbspec, parseDbspecSet, readDbspecBytes, readDbspecFile, renderDbspec } from '../dist/dbspec/index.js';
 import { readCases } from '../../../tests/dbspec/cases.mts';
 
 export const root = new URL('../../../', import.meta.url);
@@ -203,6 +203,12 @@ export function setCases() {
       expectErrors(manifest.diagnostics, c.errors);
       assert.equal(manifest.manifest === null, c.errors.length > 0);
       if (c.manifest !== undefined) {
+        // The runtime model is built from the manifest text and the external text, so they parse back as a set
+        // without diagnostics (docs/dbspec.md "Manifest and hashes").
+        const split = text => (text === '' ? [] : text.split(/(?<=\n)(?=dbspec )/));
+        for (const r of parseDbspecSet(split(manifest.manifest.manifestText), split(manifest.manifest.externalText))) {
+          assert.deepEqual(r.diagnostics, [], `manifest and external text of ${r.name}`);
+        }
         for (const [field, want] of [
           ['manifestText', textOf(c.manifest.manifestText)],
           ['externalText', textOf(c.manifest.externalText)],

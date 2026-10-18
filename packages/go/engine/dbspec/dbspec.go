@@ -111,8 +111,9 @@ func Emit(document *Document) string {
 // hashes (docs/dbspec.md, "Manifest and hashes").
 type Manifest struct {
 	ManifestText string
-	// ExternalText is the canonical text holding, for each external document, only the columns, primary key,
-	// and unique keys of the tables it owns that the external document writes. It is empty if there are no external documents.
+	// ExternalText is the canonical text holding, for each external document, the tables that owned documents use,
+	// with their columns, primary key, unique keys, the foreign keys between used tables and the indexes leading them.
+	// It is empty if there are no external documents.
 	ExternalText string
 	SchemaText   string
 	ManifestHash string
@@ -176,7 +177,7 @@ func checkSet(documents []*Document) ([]*Document, []Diagnostic) {
 // taken in document name order, or the diagnostics of an invalid set. The
 // manifest text holds the owned documents; the external text holds, for each
 // external document, the tables that owned documents use, with their columns,
-// primary key and unique keys; the schema text holds the owned tables and a
+// primary key, unique keys and the foreign keys between used tables; the schema text holds the owned tables and a
 // use line for each external document they use; and manifestHash covers the
 // manifest text followed by the external text.
 func ManifestOf(documents []*Document) (*Manifest, []Diagnostic) {
@@ -226,20 +227,47 @@ func ManifestOf(documents []*Document) (*Manifest, []Diagnostic) {
 	}, nil
 }
 
-// externalDocument is a document holding, from an external document's tables, only the columns, primary key, and unique keys
-// in document order. It is nil if the table does not exist. Foreign keys, indexes,
-// checks, and settings are owned by the external document, so they are not held.
+// externalDocument is a document holding, from an external document's tables, only the columns, primary key, unique keys,
+// the foreign keys whose referenced table is also one of the tables, and the indexes whose leading columns are such a
+// foreign key's columns, in document order (docs/dbspec.md "Manifest and hashes"), so the reduced text satisfies the
+// validation of the full document. It is nil if no table exists. Other foreign keys, indexes, checks, and settings are
+// owned by the external document, so they are not held.
 func externalDocument(d *Document, tables []string) *Document {
 	out := &Document{Name: d.Name}
 	for _, t := range d.Tables {
-		if slices.Contains(tables, t.Name) {
-			out.Tables = append(out.Tables, Table{Name: t.Name, Columns: t.Columns, PrimaryKey: PrimaryKey{Columns: t.PrimaryKey.Columns}, Uniques: t.Uniques})
+		if !slices.Contains(tables, t.Name) {
+			continue
 		}
+		kept := Table{Name: t.Name, Columns: t.Columns, PrimaryKey: PrimaryKey{Columns: t.PrimaryKey.Columns}, Uniques: t.Uniques}
+		for _, f := range t.ForeignKeys {
+			if slices.Contains(tables, f.Table) {
+				kept.ForeignKeys = append(kept.ForeignKeys, ForeignKey{Name: f.Name, Columns: f.Columns, Table: f.Table, References: f.References, OnDelete: f.OnDelete, OnUpdate: f.OnUpdate})
+			}
+		}
+		for _, x := range t.Indexes {
+			if slices.ContainsFunc(kept.ForeignKeys, func(f ForeignKey) bool { return leadsWith(x.Columns, f.Columns) }) {
+				kept.Indexes = append(kept.Indexes, Index{Name: x.Name, Columns: x.Columns})
+			}
+		}
+		out.Tables = append(out.Tables, kept)
 	}
 	if len(out.Tables) == 0 {
 		return nil
 	}
 	return out
+}
+
+// leadsWith reports whether the index columns start with the columns, in order.
+func leadsWith(index []IndexColumn, columns []string) bool {
+	if len(index) < len(columns) {
+		return false
+	}
+	for i, c := range columns {
+		if index[i].Name != c {
+			return false
+		}
+	}
+	return true
 }
 
 // ExternalDifferences checks that the tables the set uses from external documents exist in the database
