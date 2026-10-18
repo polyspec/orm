@@ -1,7 +1,7 @@
 //! The statements that create the tables of a dbspec document set in one
 //! dialect (docs/dialects.md, "Rendered statements").
 
-use super::model::{Action, Column, DefaultValue, Document, Expr, ForeignKey, Operand, Setting, Table, Type};
+use super::model::{Action, AuditTables, Column, DefaultValue, Document, Expr, ForeignKey, Operand, Setting, Table, Type};
 use super::names::renderer_name;
 use super::{check_set, Diagnostic};
 
@@ -370,8 +370,15 @@ impl Renderer {
             out.extend(self.reject(t, "immutable_delete", "BEFORE DELETE", &message));
         }
         for line in &settings.lines {
-            if let Setting::Audit { into, column, action, previous, .. } = &line.setting {
-                let audit = Audit { history: &into.text, action: &action.text, previous: &previous.text, setting: &line.setting };
+            if let Setting::Audit { into, column, action, previous, tables, .. } = &line.setting {
+                let audit = Audit {
+                    history: &into.text,
+                    column: &column.text,
+                    action: &action.text,
+                    previous: &previous.text,
+                    tables: tables.as_ref(),
+                    setting: &line.setting,
+                };
                 out.extend(self.history(t, &audit, "audit_insert", "AFTER INSERT", "'insert'", "NULL"));
                 let old = format!("OLD.{}", self.q(&column.text));
                 out.extend(self.history(t, &audit, "audit_update", "AFTER UPDATE", "'update'", &old));
@@ -416,7 +423,18 @@ impl Renderer {
             columns.push(self.q(&c.name.text));
             values.push(format!("NEW.{}", self.q(&c.name.text)));
         }
-        let body = format!("INSERT INTO {} ({}) VALUES ({})", self.q(a.history), columns.join(", "), values.join(", "));
+        let mut body = format!("INSERT INTO {} ({}) VALUES ({})", self.q(a.history), columns.join(", "), values.join(", "));
+        if let Some(tt) = a.tables {
+            // The tables table keeps one row per audit record and audited table (docs/dialects.md "Triggers").
+            let name = self.q(&tt.name.text);
+            let tables =
+                format!("INSERT INTO {} ({}, {name}) VALUES (NEW.{}, '{}')", self.q(&tt.table.text), self.q(&tt.record.text), self.q(a.column), t.name.text);
+            body = if self.d == Dialect::MySql {
+                format!("BEGIN {body}; {tables} ON DUPLICATE KEY UPDATE {name} = {name}; END")
+            } else {
+                format!("{body}; {tables} ON CONFLICT DO NOTHING")
+            };
+        }
         self.trigger(t, event, timing, &body, false)
     }
 }
@@ -424,6 +442,8 @@ impl Renderer {
 /// The history table and columns of an `audit` setting. `setting` determines the recorded columns.
 struct Audit<'a> {
     history: &'a str,
+    column: &'a str,
+    tables: Option<&'a AuditTables>,
     action: &'a str,
     previous: &'a str,
     setting: &'a Setting,

@@ -173,8 +173,11 @@ fn compare_tables(s: &Table, t: &Table, found: &mut Vec<(&'static str, String)>)
     // audit compares even the columns on both sides that are not recorded. A column that exists on only one side
     // is left as a difference by add_column or drop_column.
     let audit = |setting: &Setting| match setting {
-        Setting::Audit { into, column, references, action, previous, .. } => {
+        Setting::Audit { into, column, references, action, previous, tables, .. } => {
             let mut def = format!("{} {} {} {} {}", into.text, column.text, references.text, action.text, previous.text);
+            if let Some(tables) = tables {
+                def.push_str(&format!(" tables {} {} {}", tables.table.text, tables.record.text, tables.name.text));
+            }
             for c in t.columns.iter().filter(|c| s.column(&c.name.text).is_some() && !setting.records(&c.name.text)) {
                 def.push(' ');
                 def.push_str(&c.name.text);

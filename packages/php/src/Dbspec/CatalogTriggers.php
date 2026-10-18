@@ -13,6 +13,7 @@ final class CatalogTriggers
 {
     private const AUDIT_INSERT = '/^INSERT INTO [`"]([a-z0-9_]+)[`"] \(([^)]*)\) VALUES /';
     private const AUDIT_COLUMN = '/^[`"]([a-z0-9_]+)[`"]$/D';
+    private const AUDIT_TABLES = '/; INSERT INTO [`"]([a-z0-9_]+)[`"] \\([`"]([a-z0-9_]+)[`"], [`"]([a-z0-9_]+)[`"]\\) VALUES \\(NEW\\./';
     private const AUDIT_UPDATE = '/VALUES \(\'update\', OLD\.[`"]([a-z0-9_]+)[`"],/';
 
     /**
@@ -74,7 +75,8 @@ final class CatalogTriggers
             $update = $names[Names::render($t->name, 'audit_update')] ?? null;
             if (preg_match(self::AUDIT_INSERT, self::body($insert['statements']), $m)
                 && preg_match(self::AUDIT_UPDATE, self::body($update['statements'] ?? []), $u)) {
-                $audit = self::audit($t, $m[1], explode(', ', $m[2]), $u[1]);
+                $tables = preg_match(self::AUDIT_TABLES, self::body($insert['statements']), $tm) === 1 ? [$tm[1], $tm[2], $tm[3]] : [];
+                $audit = self::audit($t, $m[1], explode(', ', $m[2]), $u[1], $tables);
                 if ($audit !== null) {
                     $settings[] = $audit;
                 }
@@ -116,7 +118,8 @@ final class CatalogTriggers
      *
      * @param list<string> $quoted
      */
-    private static function audit(CatalogTable $t, string $history, array $quoted, string $column): ?Setting
+    /** @param list<string> $tables the tables table and its record and name columns, or empty without the clause */
+    private static function audit(CatalogTable $t, string $history, array $quoted, string $column, array $tables): ?Setting
     {
         $names = [];
         foreach ($quoted as $q) {
@@ -148,7 +151,7 @@ final class CatalogTriggers
             }
         }
         // The arguments of audit are the history table, audit column, audit record table, action, and previous, in order.
-        return new Setting('audit', [$history, $column, $references, $names[0], $names[1]], [], $excluded === [] ? null : $excluded);
+        return new Setting('audit', [$history, $column, $references, $names[0], $names[1], ...$tables], [], $excluded === [] ? null : $excluded);
     }
 
     /**

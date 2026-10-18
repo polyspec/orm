@@ -201,6 +201,7 @@ def _setting_of(x, kind: str, s, t):
         setting.references,
         setting.action,
         setting.previous,
+        " ".join(setting.tables) if setting.tables is not None else "",
         *excluded,
     ]
     return " ".join(parts)

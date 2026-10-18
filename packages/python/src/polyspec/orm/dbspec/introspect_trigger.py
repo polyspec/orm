@@ -23,6 +23,9 @@ _AUDIT_INSERT_PATTERN = re.compile(
     r'^INSERT INTO [`"]([a-z0-9_]+)[`"] \(([^)]*)\) VALUES '
 )
 _AUDIT_COLUMN_PATTERN = re.compile(r'^[`"]([a-z0-9_]+)[`"]$')
+_AUDIT_TABLES_PATTERN = re.compile(
+    r"; INSERT INTO [`\"]([a-z0-9_]+)[`\"] \([`\"]([a-z0-9_]+)[`\"], [`\"]([a-z0-9_]+)[`\"]\) VALUES \(NEW\."
+)
 _AUDIT_UPDATE_PATTERN = re.compile(r"VALUES \('update', OLD\.[`\"]([a-z0-9_]+)[`\"],")
 
 
@@ -69,8 +72,9 @@ def _trigger_setting(dialect: str, t: dict, listed: list):
         u = _AUDIT_UPDATE_PATTERN.search(
             _statement_body(update["statements"] if update else [])
         )
+        tm = _AUDIT_TABLES_PATTERN.search(_statement_body(insert["statements"]))
         audit = (
-            _audit_of(t, m.group(1), m.group(2).split(", "), u.group(1))
+            _audit_of(t, m.group(1), m.group(2).split(", "), u.group(1), tm.groups() if tm else None)
             if m is not None and u is not None
             else None
         )
@@ -98,7 +102,7 @@ def _trigger_setting(dialect: str, t: dict, listed: list):
     ]
 
 
-def _audit_of(t: dict, into: str, quoted: list, column: str):
+def _audit_of(t: dict, into: str, quoted: list, column: str, tables):
     """The audit insert trigger's column list (action, previous, the recorded columns) and
     the audit columns of the update trigger make the audit setting. The audit record table is
     the table that a foreign key of a table with only one audit column points to. A column that is not recorded
@@ -129,6 +133,7 @@ def _audit_of(t: dict, into: str, quoted: list, column: str):
         references=references[0],
         action=names[0],
         previous=names[1],
+        tables=tables,
         exclude=tuple(excluded) if excluded else None,
         include=None,
     )

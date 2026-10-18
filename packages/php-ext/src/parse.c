@@ -2127,6 +2127,30 @@ static void settings_line(parser *p)
         for (int n = 0; n < 5; n++) {
             PUSH(picked, args.v[2 * n + 1]);
         }
+        /* `tables <table> (<record>, <name>)` follows previous and precedes the lists; its names are arguments 5 to 7. */
+        if (rest.n > 0 && str_eqc(rest.v[0].text, "tables")) {
+            mark_token(p, &rest.v[0], "keyword");
+            const char *want[] = {NULL, "(", NULL, ",", NULL, ")"};
+            for (size_t k = 1; k <= 6; k++) {
+                token *tk = k < rest.n ? &rest.v[k] : NULL;
+                if (want[k - 1] == NULL) {
+                    if (tk == NULL || !str_dotted(tk->text)) {
+                        error(p, "syntax", p->line, tk != NULL ? tk->column : end_column(p), SL("expected a name"));
+                        return;
+                    }
+                    mark_token(p, tk, "name");
+                    PUSH(picked, *tk);
+                } else if (tk == NULL || !str_eqc(tk->text, want[k - 1])) {
+                    error(p, "syntax", p->line, tk != NULL ? tk->column : end_column(p), fmt("expected `%s`", want[k - 1]));
+                    return;
+                }
+            }
+            tokens left = {0};
+            for (size_t k = 7; k < rest.n; k++) {
+                PUSH(left, rest.v[k]);
+            }
+            rest = left;
+        }
         args = picked;
         if (rest.n > 0 && !audit_list_tokens(p, &rest, &lists)) {
             return;
@@ -3235,6 +3259,88 @@ static void check_audit_records(parser *p)
     }
 }
 
+/* Checks the tables table of `tables <table> (<record>, <name>)`: another table than the audited, the history and the
+ * audit record table, not audited itself, with exactly the record and the name column, the name column a varchar(n)
+ * with n >= 63, the primary key (record, name) and the foreign key (record) references the audit record table's key
+ * with restrict (docs/dbspec.md "Audit"). */
+static void check_audit_tables(parser *p)
+{
+    for (size_t i = 0; i < p->deferred_records.n; i++) {
+        drecord_rec *r = &p->deferred_records.v[i];
+        if (r->args.n != 8) {
+            continue;
+        }
+        token *history = &r->args.v[0], *refs = &r->args.v[2], *tt = &r->args.v[5], *rec = &r->args.v[6], *nm = &r->args.v[7];
+        str name = tt->text;
+        tentry *entry = smap_get(&p->tables, name);
+        if (entry == NULL && smap_has(&p->failed_tables, name)) {
+            continue;
+        }
+        if (entry == NULL) {
+            error(p, "setting", r->line, tt->column, fmt("tables table `%S` is not a table of this document or a used table", name));
+            continue;
+        }
+        table *tables = entry->table;
+        if (tables->header_failed) {
+            continue;
+        }
+        if (tables == r->audited || str_eq(name, history->text) || str_eq(name, refs->text)) {
+            error(p, "setting", r->line, tt->column, SL("the tables table is another table than the audited, the history and the audit record table"));
+            continue;
+        }
+        bool audited = false;
+        if (tables->settings != NULL) {
+            for (size_t k = 0; k < tables->settings->list.n; k++) {
+                audited = audited || str_eqc(tables->settings->list.v[k]->kind, "audit");
+            }
+        }
+        if (audited) {
+            error(p, "setting", r->line, tt->column, fmt("tables table `%S` is audited itself", name));
+            continue;
+        }
+        bool known = true;
+        token *both[] = {rec, nm};
+        for (int k = 0; k < 2; k++) {
+            if (smap_get(entry->columns, both[k]->text) == NULL) {
+                error(p, "setting", r->line, both[k]->column, fmt("column `%S` is not a column of tables table `%S`", both[k]->text, name));
+                known = false;
+            }
+        }
+        if (!known) {
+            continue;
+        }
+        column *nc = smap_get(entry->columns, nm->text);
+        if (!str_eqc(nc->type->name, "invalid") && !(str_eqc(nc->type->name, "varchar") && nc->type->np == 1 && nc->type->p[0] >= 63)) {
+            error(p, "setting", r->line, nm->column, SL("the name column is a varchar(n) with n >= 63"));
+        }
+        for (size_t k = 0; k < tables->columns.n; k++) {
+            str c = tables->columns.v[k]->name;
+            if (!str_eq(c, rec->text) && !str_eq(c, nm->text)) {
+                error(p, "setting", r->line, tt->column, fmt("tables table `%S` has the extra column `%S`", name, c));
+            }
+        }
+        bool pk_ok = tables->pk != NULL && tables->pk->columns.n == 2 && str_eq(tables->pk->columns.v[0], rec->text) && str_eq(tables->pk->columns.v[1], nm->text);
+        if (!pk_ok && !smap_has(&p->failed_primary_tables, name)) {
+            error(p, "setting", r->line, tt->column, fmt("the primary key of tables table `%S` is (%S, %S)", name, rec->text, nm->text));
+        }
+        tentry *re = smap_get(&p->tables, refs->text);
+        if (re == NULL || re->table->header_failed || re->table->pk == NULL || re->table->pk->columns.n != 1 || smap_has(&p->failed_key_tables, name)) {
+            continue;
+        }
+        str key = re->table->pk->columns.v[0];
+        bool declared = false;
+        for (size_t k = 0; k < tables->fks.n && !declared; k++) {
+            fkey *f = tables->fks.v[k];
+            declared = f->columns.n == 1 && str_eq(f->columns.v[0], rec->text) && str_eq(f->table, refs->text) && f->refs.n == 1
+                && str_eq(f->refs.v[0], key) && str_eqc(f->on_delete, "restrict") && str_eqc(f->on_update, "restrict");
+        }
+        if (!declared) {
+            error(p, "setting", r->line, tt->column, fmt("tables table `%S` needs the foreign key (%S) references %S (%S) on delete restrict on update restrict",
+                name, rec->text, refs->text, key));
+        }
+    }
+}
+
 static void check_audit_histories(parser *p)
 {
     for (size_t i = 0; i < p->deferred_audits.n; i++) {
@@ -3407,6 +3513,7 @@ static void read_source(parser *p, str source)
     p->doc->trailing = take_comments(p);
     check_foreign_key_targets(p);
     check_audit_records(p);
+    check_audit_tables(p);
     check_audit_histories(p);
     check_state_histories(p);
 }

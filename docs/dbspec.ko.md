@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: f06941f1d60f0ad0f9ac50b7983b5fb56da0c48e1a9edac56b769ae1f2a35de6 -->
+<!-- source-sha256: 69d5508f15e6202b7b6a305ecb92d4ad08f7570e4471db150627b42c8903c610 -->
 # dbspec
 
 [English](dbspec.md)
@@ -241,7 +241,7 @@ codec stage는 쓸 때 적힌 순서로 실행한다. 저장 type은 마지막 s
 | `state_machine <column> history <table> row <foreign key column> from <column> to <column> at <column>` | 기계 전환의 history table이다. foreign key column은 이 table을 가리키고, `from`과 `to`는 state column의 type, `at`은 `datetime(6)`이며, 필요한 column마다 같은 type의 nullable column이 있고, key와 이것들 외의 column은 없다 | manifest |
 | `state_machine <column> limit <state> <count>` | 그 state의 행은 `count`개를 넘을 수 없다. count는 양의 정수이고 state는 state 집합에 속한다 | manifest |
 | `immutable` | database가 생성된 row trigger로 table row의 `UPDATE`와 `DELETE`를 거부한다. `TRUNCATE`는 포함하지 않는다. `cascade`나 `set_null` foreign key의 자식 table에서는 거부된다 | schema |
-| `audit into <history table> column <column> references <table> action <history column> previous <history column> [exclude (<column>, ...) \| include (<column>, ...)]` | 생성된 row trigger가 모든 `INSERT`와 `UPDATE`의 기록하는 column을 이력 table에 복사한다. [Audit](#audit) 참조 | schema |
+| `audit into <history table> column <column> references <table> action <history column> previous <history column> [tables <table> (<record column>, <name column>)] [exclude (<column>, ...) \| include (<column>, ...)]` | 생성된 row trigger가 모든 `INSERT`와 `UPDATE`의 기록하는 column을 이력 table에 복사하고, `tables`가 있으면 audit 기록마다 감사 대상 table을 기록한다. [Audit](#audit) 참조 | schema |
 
 `schemaHash`는 table 정의와 schema로 표시한 settings를 포함하며, database를 바꿔야 할 때 정확히 바뀐다. `manifestHash`는 정의와 모든 settings를 포함하며 생성 코드가 확인한다. diagram과 comment는 어느 쪽에도 속하지 않는다. 두 hash는 [Manifest와 hash](#manifest-and-hashes)에서 정한다.
 
@@ -260,7 +260,7 @@ table service {
   foreign key fk_service_audit (audit_seq) references audit (seq) on delete restrict on update restrict
   settings {
     soft_delete deleted_at
-    audit into service_history column audit_seq references audit action change previous previous_audit_seq
+    audit into service_history column audit_seq references audit action change previous previous_audit_seq tables audit_table (audit_seq, table_name)
   }
 }
 
@@ -283,14 +283,22 @@ table audit {
   action varchar(64) null
   primary key (seq)
 }
+
+table audit_table {
+  audit_seq i64
+  table_name varchar(64)
+  primary key (audit_seq, table_name)
+  foreign key fk_audit_table_audit (audit_seq) references audit (seq) on delete restrict on update restrict
+}
 ```
 
 - **Audit column.** `column <column>`은 감사 대상 table의 non-null column의 이름이다. executor는 그 table의 모든 `INSERT`와 `UPDATE`에서 transaction의 audit 기록 key를 이 column에 쓴다([사용법](usage.ko.md#audited-writes)). `NEW.<column>`은 변경의 audit 기록이고 `OLD.<column>`은 이전 version의 audit 기록이다.
 - **Audit 기록 table.** `references <table>`은 이 문서의 table이나 쓰는 table의 이름이다. 감사 대상 table, 이력 table과 다른 table이고, 자신은 감사하지 않으며, type이 audit column의 type인 column 하나의 primary key를 갖는다. 감사 대상 table은 모든 foreign key가 요구하는 앞쪽 index와 함께 foreign key `(<column>) references <table> (<key>) on delete restrict on update restrict`를 선언한다. 그래서 database는 어떤 audit 기록의 key도 아닌 audit column 값과, row가 key로 쓰는 audit 기록의 삭제를 거부한다. 이 foreign key는 다른 foreign key처럼 렌더링하고 introspect한다. 없는 table, 감사 대상이나 이력 table, 감사하는 table, 다른 모양이나 type의 key, 빠진 foreign key는 table 이름이나 audit column에서 `setting` error다.
 - **기록하는 column.** 목록이 없으면 trigger는 감사 대상 table의 모든 column을 기록한다. `exclude (<column>, ...)`는 적은 column 말고 모든 column을, `include (<column>, ...)`는 적은 column만 기록한다. audit column은 언제나 기록하므로 어느 목록에도 쓰지 않는다. setting은 목록을 많아야 하나 가지며, 목록의 column은 감사 대상 table의 column이고 한 번만 나온다. 없는 column, 두 번 적은 column, 두 목록, 목록에 적은 audit column은 적은 column이나 둘째 목록의 keyword에서 `setting` error다. 나중에 table에 더한 column은 `exclude`에서는 기록하고 `include`에서는 기록하지 않는다.
 - **이력 table.** `into <history table>`은 이 문서의 table이나 쓰는 table의 이름이다. 이력 table은 감사 대상과 다른 table이다. `i64 identity` primary key, `action` column(non-null `varchar(8)`), `previous` column(nullable, audit column의 type), 그리고 감사 대상 table의 기록하는 column마다 같은 이름과 type의 column을 하나씩 갖고, 다른 column은 없다. 기록하는 column의 사본이 없거나, type이 다른 column이 있거나, 기록하지 않는 감사 대상 column을 포함해 다른 column이 있는 이력 table은 어긋난 곳마다 하나씩 이력 table 이름에서 `setting` error다. 이력 column은 nullable일 수 있다. 이력 table 자신은 감사하지 않는다.
-- **Trigger.** `AFTER INSERT` row trigger는 `action = 'insert'`, `previous = NULL`과 기록하는 모든 column의 `NEW` 값을 쓴다. `AFTER UPDATE` row trigger는 `action = 'update'`, `previous = OLD.<audit column>`과 기록하는 모든 column의 `NEW` 값을 쓴다. `BEFORE DELETE` row trigger는 삭제를 거부한다. 값을 column 대 column으로 복사하므로 이력 row는 세 database에서 같다. row를 JSON으로 만들지 않는다.
-- **Schema text와 introspection.** database는 trigger가 적은 기록하는 column만 갖는다. 그래서 schema text는 setting을 기록하지 않는 column을 column 순서로 적은 `exclude`로 쓰고, 모든 column을 기록하면 목록 없이 쓴다. `include (title)`과 나머지 column의 `exclude` 목록은 같은 `schemaHash`를 주며, manifest text는 쓴 목록을 그대로 둔다. introspection은 `audit_insert` trigger에서 기록하는 column을, audit column의 foreign key에서 audit 기록 table을 읽어 setting을 schema text 형식으로 되살린다. database에 다른 것은 저장하지 않는다.
+- **감사한 table.** `tables <table> (<record column>, <name column>)`은 tables table의 이름이다. tables table은 이 문서의 table이나 쓰는 table이며, trigger는 각 audit 기록이 바꾼 감사 대상 table을 여기에 기록한다. 감사 대상, 이력, audit 기록 table과 다른 table이고, 자신은 감사하지 않는다. 적은 두 column, record column과 name column만 갖는다. name column은 table 이름([이름](#이름))을 담는 n >= 63인 `varchar(n)`이다. primary key는 `(<record column>, <name column>)`이므로 두 column은 non-null이고, primary key가 앞쪽 index가 되는 foreign key `(<record column>) references <audit record table> (<key>) on delete restrict on update restrict`를 선언하므로 record column은 audit 기록 key의 type을 갖는다. 그래서 이 table은 audit 기록과 감사 대상 table마다 row 하나를 갖고, 모든 row는 있는 audit 기록을 가리키며, row가 가리키는 audit 기록은 삭제되지 않는다. 여러 감사 대상 table이 같은 tables table을 적을 수 있다. 없는 table, 감사 대상·이력·audit 기록 table, 감사하는 table, 없는 column, 다른 type의 name column, 다른 column, 다른 primary key, 빠진 foreign key는 table 이름이나 그 column에서 `setting` error다. `tables`가 없는 setting은 table을 기록하지 않는다. tables table은 그 문서의 평범한 table이다. 생성된 model이 이를 읽으며, audit 기록 table과 이 table의 join이 한 table의 audit 기록을 거르고 page로 나눈다([사용법](usage.ko.md#audited-writes)).
+- **Trigger.** `AFTER INSERT` row trigger는 `action = 'insert'`, `previous = NULL`과 기록하는 모든 column의 `NEW` 값을 쓴다. `AFTER UPDATE` row trigger는 `action = 'update'`, `previous = OLD.<audit column>`과 기록하는 모든 column의 `NEW` 값을 쓴다. `BEFORE DELETE` row trigger는 삭제를 거부한다. `tables`가 있으면 insert와 update trigger는 이어서 `(NEW.<audit column>, '<audited table>')`을 tables table의 record column과 name column에, 그 row가 없을 때만 삽입한다. 그래서 한 table의 row 여럿을 바꾼 transaction은 그 table의 row 하나를 쓰고, 그 table의 row를 바꾸지 않은 transaction은 아무것도 쓰지 않는다. 값을 column 대 column으로 복사하므로 이력 row는 세 database에서 같다. row를 JSON으로 만들지 않는다.
+- **Schema text와 introspection.** database는 trigger가 적은 기록하는 column만 갖는다. 그래서 schema text는 setting을 기록하지 않는 column을 column 순서로 적은 `exclude`로 쓰고, 모든 column을 기록하면 목록 없이 쓴다. `include (title)`과 나머지 column의 `exclude` 목록은 같은 `schemaHash`를 주며, manifest text는 쓴 목록을 그대로 둔다. introspection은 `audit_insert` trigger에서 기록하는 column과 `tables` 절을, audit column의 foreign key에서 audit 기록 table을 읽어 setting을 schema text 형식으로 되살린다. database에 다른 것은 저장하지 않는다.
 - **암호화한 값.** 암호화가 필요한 값은 `aes` stage가 있는 codec을 갖고, executor가 쓰기 전에 그 값을 encode한다([codecs](codec.md)). 그래서 row는 ciphertext를 갖고 trigger는 그 ciphertext를 이력 table에 복사하며, trigger가 평문을 보는 일은 없다. 그 이력 column은 같은 storage type이다. 이력에서 그 값을 빼려면 그 column을 exclude한다.
 - **삭제.** `BEFORE DELETE` trigger 때문에 physical `DELETE`는 실패한다. `soft_delete`를 선언한 table은 soft delete column의 `UPDATE`로 삭제하며, 이력이 그 audit 기록과 함께 기록한다. soft delete한 row의 restore도 이력이 같은 방법으로 기록하는 `UPDATE`다. `audit`은 `soft_delete`를 요구하지 않는다. schema setting은 database에서 다시 읽히고 manifest setting은 읽히지 않으므로, schema setting은 manifest setting에 의존하지 않는다.
 - **한계.** `cascade`나 `set_null` foreign key의 자식 table에서는 이 setting을 거부한다. MySQL trigger는 foreign key action이 바꾼 row에서 실행되지 않기 때문이다. `TRUNCATE`는 포함하지 않는다. raw SQL은 audit column에 있는 audit 기록을 지정해야 하며 foreign key가 이를 확인한다. 이 column을 쓰지 않는 `UPDATE`는 이전 audit 기록을 다시 기록하며, executor는 언제나 이 column을 쓴다. binary logging이 켜진 MySQL에서 trigger를 만들려면 `SUPER` 또는 `log_bin_trust_function_creators=ON`이 필요하며, apply가 이를 먼저 확인한다.

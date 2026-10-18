@@ -1046,6 +1046,20 @@ static bool audit_update(str body, str *column)
     return false;
 }
 
+/* AUDIT_TABLES: the first `; INSERT INTO [`"]([a-z0-9_]+)[`"] \([`"]([a-z0-9_]+)[`"], [`"]([a-z0-9_]+)[`"]\) VALUES \(NEW\.` */
+static bool audit_tables(str body, str *tables, str *record, str *name)
+{
+    const char *prefix = "; INSERT INTO ";
+    for (ssize_t at = str_find(body, prefix, 0); at >= 0; at = str_find(body, prefix, (size_t)at + 1)) {
+        size_t i = (size_t)at + strlen(prefix);
+        if (quoted_name(body, &i, tables) && slit(body, &i, " (") && quoted_name(body, &i, record) && slit(body, &i, ", ")
+            && quoted_name(body, &i, name) && slit(body, &i, ") VALUES (NEW.")) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /* Builds the audit setting from the column list of the audit insert trigger and the audit column of the update trigger. */
 static setting *audit_setting(const itable *t, str history, const strs *quoted, str column)
 {
@@ -1135,6 +1149,12 @@ static strs *trigger_setting(dialect d, const itable *t, itriggerv *list)
                 start = (size_t)at + 2;
             }
             setting *a = audit_setting(t, history, &parts, column);
+            str tt, tr, tn;
+            if (a != NULL && audit_tables(trigger_body(&insert->statements), &tt, &tr, &tn)) {
+                PUSH(a->args, tt);
+                PUSH(a->args, tr);
+                PUSH(a->args, tn);
+            }
             if (a != NULL) {
                 PUSH(found, a);
                 PUSH(lines, setting_audit_line(a, "exclude", a->exclude));

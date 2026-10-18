@@ -374,6 +374,17 @@ class Renderer:
             f"INSERT INTO {self.q(a.into)} ({', '.join(columns)}) "
             f"VALUES ({', '.join(values)})"
         )
+        if a.tables is not None:
+            # The tables table keeps one row per audit record and audited table (docs/dialects.md "Triggers").
+            table, record, name = a.tables
+            tables = (
+                f"INSERT INTO {self.q(table)} ({self.q(record)}, {self.q(name)}) "
+                f"VALUES (NEW.{self.q(a.column)}, '{t.name}')"
+            )
+            if self.d == "mysql":
+                body = f"BEGIN {body}; {tables} ON DUPLICATE KEY UPDATE {self.q(name)} = {self.q(name)}; END"
+            else:
+                body = f"{body}; {tables} ON CONFLICT DO NOTHING"
         return self.trigger(t, event, timing, body, False)
 
 

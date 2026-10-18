@@ -1149,13 +1149,21 @@ func (p *parser) settingsLine(c *cursor) {
 			c.keyword("references") && arg("the audit record table") &&
 			c.keyword("action") && arg("the action column") &&
 			c.keyword("previous") && arg("the previous column")
+		if ok && c.peekIs(tokenWord, "tables") {
+			ok = c.keyword("tables") && arg("the tables table") && c.punct("(") && arg("the record column") &&
+				c.punct(",") && arg("the name column") && c.punct(")")
+		}
 		for ok && (c.peekIs(tokenWord, "exclude") || c.peekIs(tokenWord, "include")) {
 			list := columnList{keyword: c.take(classKeyword)}
 			list.columns, _, ok = c.names(false)
 			line.lists = append(line.lists, list)
 		}
 		if ok && c.more() && c.lexErr == nil {
-			ok = c.fail("'exclude', 'include' or the end of the line")
+			if len(line.args) == 5 {
+				ok = c.fail("'tables', 'exclude', 'include' or the end of the line")
+			} else {
+				ok = c.fail("'exclude', 'include' or the end of the line")
+			}
 		}
 	default:
 		if c.lexErr != nil {

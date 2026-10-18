@@ -310,20 +310,25 @@ type ImmutableSetting struct {
 }
 
 // AuditSetting is `audit into <history> column <column> references <table>
-// action <column> previous <column> [exclude (<column>, ...) | include
-// (<column>, ...)]`. Column is the column that holds the primary key of the audit record table that References names.
+// action <column> previous <column> [tables <table> (<column>, <column>)]
+// [exclude (<column>, ...) | include (<column>, ...)]`. Tables, TablesRecord
+// and TablesName are the tables table and its record and name columns, all
+// empty without the clause. Column is the column that holds the primary key of the audit record table that References names.
 // It is the column that holds the key.
 // If there is no list, Exclude and Include are nil, and a parsed setting has only one of them
 // (docs/dbspec.md "Audit").
 type AuditSetting struct {
-	Comments   []string
-	History    string
-	Column     string
-	References string
-	Action     string
-	Previous   string
-	Exclude    []string
-	Include    []string
+	Comments     []string
+	History      string
+	Column       string
+	References   string
+	Action       string
+	Previous     string
+	Tables       string
+	TablesRecord string
+	TablesName   string
+	Exclude      []string
+	Include      []string
 }
 
 // Records tells whether the audit trigger copies a column. Audit columns are always
@@ -357,6 +362,9 @@ func (a *AuditSetting) Excluded(t *Table) []string {
 // keyword and its columns.
 func (a *AuditSetting) line(list string, columns []string) string {
 	s := "audit into " + a.History + " column " + a.Column + " references " + a.References + " action " + a.Action + " previous " + a.Previous
+	if a.Tables != "" {
+		s += " tables " + a.Tables + " (" + a.TablesRecord + ", " + a.TablesName + ")"
+	}
 	if columns != nil {
 		s += " " + list + " (" + strings.Join(columns, ", ") + ")"
 	}

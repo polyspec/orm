@@ -30,6 +30,8 @@ def audit_line(a: DbspecSetting, list_kind: str, columns) -> str:
         f"audit into {a.into} column {a.column} references {a.references} "
         f"action {a.action} previous {a.previous}"
     )
+    if a.tables is not None:
+        head += f" tables {a.tables[0]} ({a.tables[1]}, {a.tables[2]})"
     if not columns:
         return head
     return f"{head} {list_kind} ({', '.join(columns)})"

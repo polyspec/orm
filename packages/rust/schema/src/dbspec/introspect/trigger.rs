@@ -1,7 +1,7 @@
 //! Compares the `immutable` and `audit` triggers the renderer writes exactly with the catalog triggers
 //! and recognizes that setting.
 
-use super::super::model::{audit_line, AuditList, Column, Name, Setting, SettingLine, Settings, Table};
+use super::super::model::{audit_line, AuditList, AuditTables, Column, Name, Setting, SettingLine, Settings, Table};
 use super::super::names::renderer_name;
 use super::super::render::{Dialect, Renderer};
 use super::{group, Catalog, ITable};
@@ -18,6 +18,9 @@ pub(super) struct ITrigger {
 
 static AUDIT_INSERT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"^INSERT INTO [`"]([a-z0-9_]+)[`"] \(([^)]*)\) VALUES "#).expect("audit insert pattern"));
 static AUDIT_COLUMN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"^[`"]([a-z0-9_]+)[`"]$"#).expect("audit column pattern"));
+static AUDIT_TABLES: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"; INSERT INTO [`"]([a-z0-9_]+)[`"] \([`"]([a-z0-9_]+)[`"], [`"]([a-z0-9_]+)[`"]\) VALUES \(NEW\."#).expect("audit tables pattern")
+});
 static AUDIT_UPDATE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"VALUES \('update', OLD\.[`"]([a-z0-9_]+)[`"],"#).expect("audit update pattern"));
 
 impl Catalog {
@@ -58,7 +61,12 @@ fn trigger_setting(dialect: Dialect, t: &ITable, list: &[ITrigger]) -> Option<Ve
         let update = names.get(renderer_name(&t.name, "audit_update").as_str()).map_or(&[][..], |u| &u.statements[..]);
         let m = AUDIT_INSERT.captures(statement_body(&insert.statements));
         let u = AUDIT_UPDATE.captures(statement_body(update));
-        if let Some(candidate) = m.zip(u).and_then(|(m, u)| audit_of(t, group(&m, 1), group(&m, 2), group(&u, 1))) {
+        let tables = AUDIT_TABLES.captures(statement_body(&insert.statements)).map(|c| AuditTables {
+            table: name(group(&c, 1)),
+            record: name(group(&c, 2)),
+            name: name(group(&c, 3)),
+        });
+        if let Some(candidate) = m.zip(u).and_then(|(m, u)| audit_of(t, group(&m, 1), group(&m, 2), group(&u, 1), tables)) {
             found.push(candidate);
         }
     }
@@ -84,7 +92,7 @@ fn trigger_setting(dialect: Dialect, t: &ITable, list: &[ITrigger]) -> Option<Ve
 /// is the table that the table's foreign key points to. Columns not recorded are excluded in table column order
 /// become the list. Returns None if the list is not in renderer form, does not record the audit column, or its foreign key
 /// is not exactly one. The setting made is rendered again and compared with the catalog trigger.
-fn audit_of(t: &ITable, history: &str, quoted: &str, column: &str) -> Option<(Setting, String)> {
+fn audit_of(t: &ITable, history: &str, quoted: &str, column: &str, tables: Option<AuditTables>) -> Option<(Setting, String)> {
     let names = quoted.split(", ").map(|q| AUDIT_COLUMN.captures(q).map(|m| group(&m, 1).to_owned())).collect::<Option<Vec<String>>>()?;
     let [action, previous, recorded @ ..] = names.as_slice() else { return None };
     if !recorded.iter().any(|c| c == column) {
@@ -96,11 +104,18 @@ fn audit_of(t: &ITable, history: &str, quoted: &str, column: &str) -> Option<(Se
         return None;
     }
     let excluded: Vec<&str> = t.columns.iter().map(|c| c.name.as_str()).filter(|c| !recorded.iter().any(|r| r == c)).collect();
-    let line = audit_line(history, column, &references, action, previous, "exclude", &excluded);
+    let line = audit_line(history, column, &references, action, previous, tables.as_ref(), "exclude", &excluded);
     let lists =
         if excluded.is_empty() { Vec::new() } else { vec![AuditList { keyword: name("exclude"), columns: excluded.iter().map(|c| name(c)).collect() }] };
-    let setting =
-        Setting::Audit { into: name(history), column: name(column), references: name(&references), action: name(action), previous: name(previous), lists };
+    let setting = Setting::Audit {
+        into: name(history),
+        column: name(column),
+        references: name(&references),
+        action: name(action),
+        previous: name(previous),
+        tables,
+        lists,
+    };
     Some((setting, line))
 }
 

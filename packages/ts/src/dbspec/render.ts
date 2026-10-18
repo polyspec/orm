@@ -395,7 +395,14 @@ export class Renderer {
     const recorded = t.columns.filter(c => auditRecords(a, c.name));
     const columns = [this.q(a.action), this.q(a.previous), ...recorded.map(c => this.q(c.name))];
     const values = [action, previous, ...recorded.map(c => `NEW.${this.q(c.name)}`)];
-    const body = `INSERT INTO ${this.q(a.into)} (${columns.join(', ')}) VALUES (${values.join(', ')})`;
+    let body = `INSERT INTO ${this.q(a.into)} (${columns.join(', ')}) VALUES (${values.join(', ')})`;
+    if (a.tables !== null) {
+      // The tables table keeps one row per audit record and audited table (docs/dialects.md "Triggers").
+      const tables = `INSERT INTO ${this.q(a.tables.table)} (${this.q(a.tables.record)}, ${this.q(a.tables.name)}) VALUES (NEW.${this.q(a.column)}, '${t.name}')`;
+      body = this.d === 'mysql'
+        ? `BEGIN ${body}; ${tables} ON DUPLICATE KEY UPDATE ${this.q(a.tables.name)} = ${this.q(a.tables.name)}; END`
+        : `${body}; ${tables} ON CONFLICT DO NOTHING`;
+    }
     return this.trigger(t, event, timing, body, false);
   }
 }

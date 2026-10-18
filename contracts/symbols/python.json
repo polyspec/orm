@@ -1319,6 +1319,10 @@
     "exported": true,
     "signature": "str"
   },
+  "packages/python/src/polyspec/orm/dbspec/model.py::DbspecSetting#field.tables": {
+    "exported": true,
+    "signature": "tuple | None"
+  },
   "packages/python/src/polyspec/orm/dbspec/model.py::DbspecSetting#field.to_column": {
     "exported": true,
     "signature": "str"

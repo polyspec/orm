@@ -153,6 +153,8 @@ type ISetting = { readonly kw: Tk; readonly comments: string[] } & (
       readonly references: Tk;
       readonly action: Tk;
       readonly previous: Tk;
+      /** `tables <table> (<record>, <name>)`, or null without the clause. */
+      readonly tables: { readonly table: Tk; readonly record: Tk; readonly name: Tk } | null;
       /** The exclude and include lists. A setting that uses both is rejected by the check. */
       readonly lists: readonly { readonly kw: Tk; readonly columns: readonly Tk[] }[];
     }
@@ -1521,6 +1523,22 @@ class DocumentParser {
           parts.push(w);
           i += 2;
         }
+        let tables: { table: Tk; record: Tk; name: Tk } | null = null;
+        if (isWord(toks[i], 'tables')) {
+          this.mark(present(toks[i], 'toks[i]'), 'keyword');
+          const names: Tk[] = [];
+          for (const [k, want] of [[1, 'name'], [2, '('], [3, 'name'], [4, ','], [5, 'name'], [6, ')']] as const) {
+            const w = toks[i + k];
+            if (want === 'name') {
+              if (w === undefined || w.k !== K.Word) return this.syntax(toks, i + k, line, 'expected a name');
+              this.mark(w, 'name');
+              this.name(w);
+              names.push(w);
+            } else if (!isPunct(w, want)) return this.syntax(toks, i + k, line, `expected ${want}`);
+          }
+          tables = { table: present(names[0], 'names[0]'), record: present(names[1], 'names[1]'), name: present(names[2], 'names[2]') };
+          i += 7;
+        }
         const lists: { kw: Tk; columns: Tk[] }[] = [];
         while (isWord(toks[i], 'exclude') || isWord(toks[i], 'include')) {
           if (!isPunct(toks[i + 1], '(')) return this.syntax(toks, i + 1, line, 'expected (');
@@ -1531,8 +1549,8 @@ class DocumentParser {
           lists.push({ kw: present(toks[i], 'toks[i]'), columns: listed[0] });
           i = listed[1];
         }
-        if (i < toks.length) return this.syntax(toks, i, line, 'expected exclude, include or the end of the line');
-        entry = { kw, comments, kind: 'audit', into: present(parts[0], 'parts[0]'), column: present(parts[1], 'parts[1]'), references: present(parts[2], 'parts[2]'), action: present(parts[3], 'parts[3]'), previous: present(parts[4], 'parts[4]'), lists };
+        if (i < toks.length) return this.syntax(toks, i, line, tables === null && !lists.length ? 'expected tables, exclude, include or the end of the line' : 'expected exclude, include or the end of the line');
+        entry = { kw, comments, kind: 'audit', into: present(parts[0], 'parts[0]'), column: present(parts[1], 'parts[1]'), references: present(parts[2], 'parts[2]'), action: present(parts[3], 'parts[3]'), previous: present(parts[4], 'parts[4]'), tables, lists };
         break;
       }
       default:
@@ -2689,6 +2707,7 @@ class DocumentParser {
     if (column && column.nullable) this.at('setting', s.column, 'the audit column is a non-null column');
     const recorded = this.auditLists(table, s);
     this.auditRecord(table, s, column ?? undefined, available);
+    if (s.tables !== null) this.auditTables(table, s, s.tables, available);
     if (!wellFormed(s.into.t)) return;
     if (!available.has(s.into.t)) {
       this.at('setting', s.into, `history table ${s.into.t} is not defined or used`);
@@ -2769,6 +2788,61 @@ class DocumentParser {
     const audited = s.column.t;
     if (s.lists.length === 1 && present(s.lists[0], 's.lists[0]').kw.t === 'include') return column => column === audited || listed.has(column);
     return column => column === audited || !listed.has(column);
+  }
+
+  /**
+   * Checks the tables table of `tables <table> (<record>, <name>)`: another table than the audited, the history and the
+   * audit record table, not audited itself, with exactly the record and the name column, the name column a varchar(n)
+   * with n >= 63, the primary key (record, name) and the foreign key (record) references the audit record table's key
+   * with restrict (docs/dbspec.md "Audit").
+   */
+  private auditTables(
+    table: ITable,
+    s: Extract<ISetting, { kind: 'audit' }>,
+    c: { readonly table: Tk; readonly record: Tk; readonly name: Tk },
+    available: Map<string, ITable | null>,
+  ): void {
+    const ref = c.table;
+    if (!wellFormed(ref.t)) return;
+    if (!available.has(ref.t)) {
+      this.at('setting', ref, `tables table ${ref.t} is not a table of this document or a used table`);
+      return;
+    }
+    const tables = available.get(ref.t) ?? null;
+    if (tables === null || tables.headerFailed) return;
+    if (tables === table || ref.t === s.into.t || ref.t === s.references.t) {
+      this.at('setting', ref, 'the tables table is another table than the audited, the history and the audit record table');
+      return;
+    }
+    if (tables.settings?.entries.some(e => e.kind === 'audit')) {
+      this.at('setting', ref, `tables table ${ref.t} is audited itself`);
+      return;
+    }
+    let known = true;
+    for (const tok of [c.record, c.name]) {
+      if (wellFormed(tok.t) && !tables.colMap.has(tok.t) && !tables.failed.has(tok.t)) {
+        this.at('setting', tok, `column ${tok.t} is not a column of tables table ${ref.t}`);
+        known = false;
+      }
+    }
+    if (!known) return;
+    const name = tables.colMap.get(c.name.t);
+    if (name !== undefined && name.type !== null && !(name.type.kind === 'varchar' && name.type.length >= 63)) {
+      this.at('setting', c.name, 'the name column is a varchar(n) with n >= 63');
+    }
+    for (const col of tables.columns) {
+      if (col.name.t !== c.record.t && col.name.t !== c.name.t) this.at('setting', ref, `tables table ${ref.t} has the extra column ${col.name.t}`);
+    }
+    const pk = tables.pks[0];
+    if (!tables.failedPrimary && (tables.pks.length !== 1 || pk === undefined || pk.cols.length !== 2 || pk.cols[0]?.tok.t !== c.record.t || pk.cols[1]?.tok.t !== c.name.t)) {
+      this.at('setting', ref, `the primary key of tables table ${ref.t} is (${c.record.t}, ${c.name.t})`);
+    }
+    const record = available.get(s.references.t) ?? null;
+    if (record === null || record.headerFailed || record.pks.length !== 1 || present(record.pks[0], 'record.pks[0]').cols.length !== 1 || tables.failedKey) return;
+    const key = present(present(record.pks[0], 'record.pks[0]').cols[0], 'record.pks[0].cols[0]').tok.t;
+    const declared = tables.fks.some(fk => fk.cols.length === 1 && present(fk.cols[0], 'fk.cols[0]').t === c.record.t && fk.table.t === s.references.t
+      && fk.refs.length === 1 && present(fk.refs[0], 'fk.refs[0]').t === key && fk.onDelete === 'restrict' && fk.onUpdate === 'restrict');
+    if (!declared) this.at('setting', ref, `tables table ${ref.t} needs the foreign key (${c.record.t}) references ${s.references.t} (${key}) on delete restrict on update restrict`);
   }
 
   /**
@@ -3026,6 +3100,7 @@ function settingOf(s: ISetting): DbspecSetting {
         references: s.references.t,
         action: s.action.t,
         previous: s.previous.t,
+        tables: s.tables === null ? null : Object.freeze({ table: s.tables.table.t, record: s.tables.record.t, name: s.tables.name.t }),
         exclude: listOf(s, 'exclude'),
         include: listOf(s, 'include'),
       };

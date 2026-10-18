@@ -436,6 +436,7 @@ final class Parser
         $this->document->trailingComments = $this->takeComments();
         $this->checkForeignKeyTargets();
         $this->checkAuditRecords();
+        $this->checkAuditTables();
         $this->checkAuditHistories();
         $this->checkStateHistories();
     }
@@ -1487,6 +1488,25 @@ final class Parser
             }
             // The arguments of audit are the history table, audit column, audit record table, action, and previous, in order.
             $arguments = [$arguments[1], $arguments[3], $arguments[5], $arguments[7], $arguments[9]];
+            // `tables <table> (<record>, <name>)` follows previous and precedes the lists; its three names are arguments 5 to 7.
+            if (($rest[0][0] ?? null) === 'tables') {
+                $this->mark($rest[0], 'keyword');
+                foreach ([1 => null, 2 => '(', 3 => null, 4 => ',', 5 => null, 6 => ')'] as $k => $want) {
+                    $token = $rest[$k] ?? null;
+                    if ($want === null) {
+                        if ($token === null || !self::isWord($token[0])) {
+                            $this->error('syntax', $this->line, $token[1] ?? $this->endColumn(), 'expected a name');
+                            return;
+                        }
+                        $this->mark($token, 'name');
+                        $arguments[] = $token;
+                    } elseif (($token[0] ?? null) !== $want) {
+                        $this->error('syntax', $this->line, $token[1] ?? $this->endColumn(), "expected `$want`");
+                        return;
+                    }
+                }
+                $rest = array_slice($rest, 7);
+            }
             if ($rest !== []) {
                 $lists = $this->auditListTokens($rest);
                 if ($lists === null) {
@@ -2092,6 +2112,79 @@ final class Parser
             if (!$failedKeys) {
                 $this->error('setting', $line, $columnToken[1], "the audit column needs the foreign key ($columnToken[0]) references $name ({$key[0]}) on delete restrict on update restrict");
             }
+        }
+    }
+
+    /**
+     * Checks the tables table of `tables <table> (<record>, <name>)`: another table than the audited, the history and the
+     * audit record table, not audited itself, with exactly the record and the name column, the name column a varchar(n)
+     * with n >= 63, the primary key (record, name) and the foreign key (record) references the audit record table's key
+     * with restrict (docs/dbspec.md "Audit").
+     */
+    private function checkAuditTables(): void
+    {
+        foreach ($this->deferredAuditRecords as [$audited, , $arguments, $line]) {
+            if (count($arguments) !== 8) {
+                continue;
+            }
+            [$historyToken, , $referencesToken, , , $tablesToken, $recordToken, $nameToken] = $arguments;
+            $name = $tablesToken[0];
+            $entry = $this->tables[$name] ?? null;
+            if ($entry === null && isset($this->failedTables[$name])) {
+                continue;
+            }
+            if ($entry === null) {
+                $this->error('setting', $line, $tablesToken[1], "tables table `$name` is not a table of this document or a used table");
+                continue;
+            }
+            $tables = $entry['table'];
+            if ($tables === null || ($entry['headerFailed'] ?? false)) {
+                continue;
+            }
+            if ($tables === $audited || $name === $historyToken[0] || $name === $referencesToken[0]) {
+                $this->error('setting', $line, $tablesToken[1], 'the tables table is another table than the audited, the history and the audit record table');
+                continue;
+            }
+            foreach ($tables->settings?->settings ?? [] as $setting) {
+                if ($setting->kind === 'audit') {
+                    $this->error('setting', $line, $tablesToken[1], "tables table `$name` is audited itself");
+                    continue 2;
+                }
+            }
+            $known = true;
+            foreach ([$recordToken, $nameToken] as $token) {
+                if (!isset($entry['columns'][$token[0]])) {
+                    $this->error('setting', $line, $token[1], "column `{$token[0]}` is not a column of tables table `$name`");
+                    $known = false;
+                }
+            }
+            if (!$known) {
+                continue;
+            }
+            $type = $entry['columns'][$nameToken[0]]->type;
+            if ($type->name !== 'invalid' && !($type->name === 'varchar' && (int) $type->parameters[0] >= 63)) {
+                $this->error('setting', $line, $nameToken[1], 'the name column is a varchar(n) with n >= 63');
+            }
+            foreach ($tables->columns as $column) {
+                if ($column->name !== $recordToken[0] && $column->name !== $nameToken[0]) {
+                    $this->error('setting', $line, $tablesToken[1], "tables table `$name` has the extra column `{$column->name}`");
+                }
+            }
+            if (!isset($this->failedPrimaryTables[$name]) && ($tables->primaryKey?->columns ?? []) !== [$recordToken[0], $nameToken[0]]) {
+                $this->error('setting', $line, $tablesToken[1], "the primary key of tables table `$name` is ({$recordToken[0]}, {$nameToken[0]})");
+            }
+            $record = $this->tables[$referencesToken[0]]['table'] ?? null;
+            $key = $record?->primaryKey?->columns ?? [];
+            if ($record === null || ($this->tables[$referencesToken[0]]['headerFailed'] ?? false) || count($key) !== 1 || isset($this->failedKeyTables[$name])) {
+                continue;
+            }
+            foreach ($tables->foreignKeys as $foreignKey) {
+                if ($foreignKey->columns === [$recordToken[0]] && $foreignKey->table === $referencesToken[0] && $foreignKey->referencedColumns === $key
+                    && $foreignKey->onDelete === 'restrict' && $foreignKey->onUpdate === 'restrict') {
+                    continue 2;
+                }
+            }
+            $this->error('setting', $line, $tablesToken[1], "tables table `$name` needs the foreign key ({$recordToken[0]}) references {$referencesToken[0]} ({$key[0]}) on delete restrict on update restrict");
         }
     }
 

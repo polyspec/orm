@@ -2917,7 +2917,7 @@
   },
   "packages/ts/src/dbspec/introspect_trigger.ts::auditOf": {
     "exported": false,
-    "signature": "function auditOf(t: ITable, into: string, quoted: readonly string[], column: string): DbspecSetting | null"
+    "signature": "function auditOf(t: ITable, into: string, quoted: readonly string[], column: string, tables: { readonly table: string; readonly record: string; readonly name: string; } | null): DbspecSetting | null"
   },
   "packages/ts/src/dbspec/introspect_trigger.ts::recognizeTriggers": {
     "exported": true,
@@ -3514,6 +3514,10 @@
   "packages/ts/src/dbspec/parse.ts::DocumentParser.auditRecord": {
     "exported": false,
     "signature": "private auditRecord(table: ITable, s: Extract\u003cISetting, { kind: 'audit'; }\u003e, column: IColumn | undefined, available: Map\u003cstring, ITable | null\u003e): void"
+  },
+  "packages/ts/src/dbspec/parse.ts::DocumentParser.auditTables": {
+    "exported": false,
+    "signature": "private auditTables(table: ITable, s: Extract\u003cISetting, { kind: 'audit'; }\u003e, c: { readonly table: Tk; readonly record: Tk; readonly name: Tk; }, available: Map\u003cstring, ITable | null\u003e): void"
   },
   "packages/ts/src/dbspec/parse.ts::DocumentParser.blindIndex": {
     "exported": false,

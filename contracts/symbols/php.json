@@ -5361,7 +5361,7 @@
   },
   "packages/php/src/Dbspec/CatalogTriggers.php::Polyspec\\Orm\\Dbspec\\CatalogTriggers::audit": {
     "exported": false,
-    "signature": "private static function audit(Polyspec\\Orm\\Dbspec\\CatalogTable $t, string $history, array $quoted, string $column): ?Polyspec\\Orm\\Dbspec\\Setting"
+    "signature": "private static function audit(Polyspec\\Orm\\Dbspec\\CatalogTable $t, string $history, array $quoted, string $column, array $tables): ?Polyspec\\Orm\\Dbspec\\Setting"
   },
   "packages/php/src/Dbspec/CatalogTriggers.php::Polyspec\\Orm\\Dbspec\\CatalogTriggers::body": {
     "exported": false,
@@ -6890,6 +6890,10 @@
   "packages/php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::checkAuditRecords": {
     "exported": false,
     "signature": "private function checkAuditRecords(): void"
+  },
+  "packages/php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::checkAuditTables": {
+    "exported": false,
+    "signature": "private function checkAuditTables(): void"
   },
   "packages/php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::checkCheckboxes": {
     "exported": false,

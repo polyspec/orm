@@ -21,6 +21,7 @@ export function auditExcluded(a: DbspecAuditSetting, t: DbspecTable): string[] {
 
 /** A setting line. If columns is null, it writes no list; otherwise it writes the list keyword and its columns. */
 export function auditLine(a: DbspecAuditSetting, list: 'exclude' | 'include', columns: readonly string[] | null): string {
-  const head = `audit into ${a.into} column ${a.column} references ${a.references} action ${a.action} previous ${a.previous}`;
+  const tables = a.tables === null ? '' : ` tables ${a.tables.table} (${a.tables.record}, ${a.tables.name})`;
+  const head = `audit into ${a.into} column ${a.column} references ${a.references} action ${a.action} previous ${a.previous}${tables}`;
   return columns === null || columns.length === 0 ? head : `${head} ${list} (${columns.join(', ')})`;
 }

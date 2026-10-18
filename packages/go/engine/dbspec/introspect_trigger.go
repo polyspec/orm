@@ -16,6 +16,7 @@ type itrigger struct {
 var (
 	auditInsertPattern = regexp.MustCompile("^INSERT INTO [`\"]([a-z0-9_]+)[`\"] \\(([^)]*)\\) VALUES ")
 	auditColumnPattern = regexp.MustCompile("^[`\"]([a-z0-9_]+)[`\"]$")
+	auditTablesPattern = regexp.MustCompile("; INSERT INTO [`\"]([a-z0-9_]+)[`\"] \\([`\"]([a-z0-9_]+)[`\"], [`\"]([a-z0-9_]+)[`\"]\\) VALUES \\(NEW\\.")
 	auditUpdatePattern = regexp.MustCompile("VALUES \\('update', OLD\\.[`\"]([a-z0-9_]+)[`\"],")
 )
 
@@ -74,6 +75,9 @@ func (c *catalog) triggerSetting(dialect Dialect, t *itable, list []itrigger) (b
 		u := auditUpdatePattern.FindStringSubmatch(statementBody(update.statements))
 		if m != nil && u != nil {
 			settings.Audit = auditOf(t, m[1], strings.Split(m[2], ", "), u[1])
+			if tm := auditTablesPattern.FindStringSubmatch(body); settings.Audit != nil && tm != nil {
+				settings.Audit.Tables, settings.Audit.TablesRecord, settings.Audit.TablesName = tm[1], tm[2], tm[3]
+			}
 		}
 	}
 	if settings.Immutable == nil && settings.Audit == nil {

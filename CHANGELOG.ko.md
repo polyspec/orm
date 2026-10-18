@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 640de2d36ec74adf2e01a267ceaaecf9f95d601114432154342df9c019316254 -->
+<!-- source-sha256: d6e58a64e0634265b5cd0660a8c7e9a09fae33ba9aa0294a76cce8b0f065af69 -->
 # 변경 이력
 
 ## Unreleased
+- audit setting이 `tables <table> (<record column>, <name column>)`를 받는다: 그 trigger가 transaction의 감사 대상 table을 한 번씩 기록한다. 여섯 dbspec 구현에서(T201).
 - 호환 깨짐: 아무것도 일치하지 않는 select 읽기가 다섯 client에서 빈 값을 돌려준다. `get()`과 `getBy…()`는 `NO_ROWS` 대신 null을, `getSum()`은 남은 값이 없으면 0을, `getAvg()`는 null을 돌려주며, 컬렉션과 개수는 빈 값과 0으로 남는다. `restore()`와 `local()`은 `NO_ROWS`를 유지한다(T204).
 - bench set을 고정한 test가 새 table, entity 개수, manifest hash를 읽는다(T200-1).
 - `restoreOrCreate()`가 다섯 client에서 한 transaction 안에 key의 soft-delete된 행을 되돌리거나 만든다. 그 key의 살아 있는 행은 `ROW_NOT_DELETED`로 실패한다. conformance check의 `RECORD=1`은 `VECTOR`가 이름 붙인 vector만 기록하기도 한다(T200).

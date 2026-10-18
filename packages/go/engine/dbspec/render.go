@@ -594,5 +594,15 @@ func (r renderer) history(t *Table, a *AuditSetting, event, timing, action, prev
 		values = append(values, "NEW."+r.q(c.Name))
 	}
 	body := "INSERT INTO " + r.q(a.History) + " (" + strings.Join(columns, ", ") + ") VALUES (" + strings.Join(values, ", ") + ")"
+	if a.Tables != "" {
+		// The tables table keeps one row per audit record and audited table (docs/dialects.md "Triggers").
+		tables := "INSERT INTO " + r.q(a.Tables) + " (" + r.q(a.TablesRecord) + ", " + r.q(a.TablesName) + ") VALUES (NEW." + r.q(a.Column) + ", '" + t.Name + "')"
+		if r.d == DialectMySQL {
+			tables += " ON DUPLICATE KEY UPDATE " + r.q(a.TablesName) + " = " + r.q(a.TablesName)
+			body = "BEGIN " + body + "; " + tables + "; END"
+		} else {
+			body += "; " + tables + " ON CONFLICT DO NOTHING"
+		}
+	}
 	return r.trigger(t, event, timing, body, false)
 }

@@ -9609,7 +9609,7 @@
   },
   "packages/rust/schema/src/dbspec/introspect/trigger.rs::audit_of": {
     "exported": false,
-    "signature": " fn audit_of (t : \u0026 ITable , history : \u0026 str , quoted : \u0026 str , column : \u0026 str) -\u003e Option \u003c (Setting , String) \u003e"
+    "signature": " fn audit_of (t : \u0026 ITable , history : \u0026 str , quoted : \u0026 str , column : \u0026 str , tables : Option \u003c AuditTables \u003e) -\u003e Option \u003c (Setting , String) \u003e"
   },
   "packages/rust/schema/src/dbspec/introspect/trigger.rs::model": {
     "exported": false,
@@ -10115,6 +10115,26 @@
     "exported": true,
     "signature": "{\"columns\":\"list\u003cName\u003e\",\"keyword\":\"Name\"}"
   },
+  "packages/rust/schema/src/dbspec/model.rs::AuditTables": {
+    "exported": true,
+    "signature": "pub struct AuditTables  { pub table : Name , pub record : Name , pub name : Name , }"
+  },
+  "packages/rust/schema/src/dbspec/model.rs::AuditTables#field.name": {
+    "exported": true,
+    "signature": "Name"
+  },
+  "packages/rust/schema/src/dbspec/model.rs::AuditTables#field.record": {
+    "exported": true,
+    "signature": "Name"
+  },
+  "packages/rust/schema/src/dbspec/model.rs::AuditTables#field.table": {
+    "exported": true,
+    "signature": "Name"
+  },
+  "packages/rust/schema/src/dbspec/model.rs::AuditTables#wire": {
+    "exported": true,
+    "signature": "{\"name\":\"Name\",\"record\":\"Name\",\"table\":\"Name\"}"
+  },
   "packages/rust/schema/src/dbspec/model.rs::Check": {
     "exported": true,
     "signature": "pub struct Check  { pub comments : Vec \u003c String \u003e , pub name : Name , pub expr : Expr , }"
@@ -10433,11 +10453,11 @@
   },
   "packages/rust/schema/src/dbspec/model.rs::Setting": {
     "exported": true,
-    "signature": "pub enum Setting  { Entity (Name) , Updated (Name) , SoftDelete (Name) , SelectExplicit (Vec \u003c Name \u003e) , Codec (Name , Vec \u003c Name \u003e) , AesVersion (Name) , BlindIndex (Name , Name) , Navigation (Name , Name , Name) , # [doc = \" `markdown \u003ccolumn\u003e`: the prose column of the manifest.\"] Markdown (Name) , # [doc = \" `store files`, `store document \u003cshape\u003e` or `store block \u003cforeign key\u003e \u003cshape\u003e`. `kind` is\"] # [doc = \" `files`, `document` or `block`; `foreign` is set for `block` and `shape` for `document` and `block`;\"] # [doc = \" `shard` is the optional `shard \u003ccolumn\u003e \u003cperiod\u003e` clause.\"] Store { kind : Name , foreign : Option \u003c Name \u003e , shape : Option \u003c Name \u003e , shard : Option \u003c StoreShard \u003e , } , # [doc = \" `key_prefix '\u003cprefix\u003e'`. The name holds the prefix without its quotes.\"] KeyPrefix (Name) , Title (Name) , Body (Name) , Order (Name) , # [doc = \" `checkbox \u003ccolumn\u003e \u003cstate\u003e '\u003cglyph\u003e'`. The glyph name holds the glyph without its quotes.\"] Checkbox { column : Name , state : Name , glyph : Name , } , # [doc = \" One line of `state_machine \u003ccolumn\u003e ...`.\"] StateMachine { column : Name , line : StateLine , } , Immutable , # [doc = \" `lists` are the exclude and include lists. A valid document has at most one (docs/dbspec.md \\\"Audit\\\").\"] # [doc = \" `column` is the column holding the primary key of the audit record table `references`.\"] Audit { into : Name , column : Name , references : Name , action : Name , previous : Name , lists : Vec \u003c AuditList \u003e , } , }"
+    "signature": "pub enum Setting  { Entity (Name) , Updated (Name) , SoftDelete (Name) , SelectExplicit (Vec \u003c Name \u003e) , Codec (Name , Vec \u003c Name \u003e) , AesVersion (Name) , BlindIndex (Name , Name) , Navigation (Name , Name , Name) , # [doc = \" `markdown \u003ccolumn\u003e`: the prose column of the manifest.\"] Markdown (Name) , # [doc = \" `store files`, `store document \u003cshape\u003e` or `store block \u003cforeign key\u003e \u003cshape\u003e`. `kind` is\"] # [doc = \" `files`, `document` or `block`; `foreign` is set for `block` and `shape` for `document` and `block`;\"] # [doc = \" `shard` is the optional `shard \u003ccolumn\u003e \u003cperiod\u003e` clause.\"] Store { kind : Name , foreign : Option \u003c Name \u003e , shape : Option \u003c Name \u003e , shard : Option \u003c StoreShard \u003e , } , # [doc = \" `key_prefix '\u003cprefix\u003e'`. The name holds the prefix without its quotes.\"] KeyPrefix (Name) , Title (Name) , Body (Name) , Order (Name) , # [doc = \" `checkbox \u003ccolumn\u003e \u003cstate\u003e '\u003cglyph\u003e'`. The glyph name holds the glyph without its quotes.\"] Checkbox { column : Name , state : Name , glyph : Name , } , # [doc = \" One line of `state_machine \u003ccolumn\u003e ...`.\"] StateMachine { column : Name , line : StateLine , } , Immutable , # [doc = \" `lists` are the exclude and include lists. A valid document has at most one (docs/dbspec.md \\\"Audit\\\").\"] # [doc = \" `column` is the column holding the primary key of the audit record table `references`.\"] Audit { into : Name , column : Name , references : Name , action : Name , previous : Name , # [doc = \" `tables \u003ctable\u003e (\u003crecord\u003e, \u003cname\u003e)`, or None without the clause.\"] tables : Option \u003c AuditTables \u003e , lists : Vec \u003c AuditList \u003e , } , }"
   },
   "packages/rust/schema/src/dbspec/model.rs::Setting#wire": {
     "exported": true,
-    "signature": "{\"action\":\"Name\",\"column\":\"Name\",\"foreign\":\"Name\",\"glyph\":\"Name\",\"into\":\"Name\",\"kind\":\"Name\",\"line\":\"StateLine\",\"lists\":\"list\u003cAuditList\u003e\",\"previous\":\"Name\",\"references\":\"Name\",\"shape\":\"Name\",\"shard\":\"StoreShard\",\"state\":\"Name\"}"
+    "signature": "{\"action\":\"Name\",\"column\":\"Name\",\"foreign\":\"Name\",\"glyph\":\"Name\",\"into\":\"Name\",\"kind\":\"Name\",\"line\":\"StateLine\",\"lists\":\"list\u003cAuditList\u003e\",\"previous\":\"Name\",\"references\":\"Name\",\"shape\":\"Name\",\"shard\":\"StoreShard\",\"state\":\"Name\",\"tables\":\"AuditTables\"}"
   },
   "packages/rust/schema/src/dbspec/model.rs::Setting::rank": {
     "exported": true,
@@ -10629,7 +10649,7 @@
   },
   "packages/rust/schema/src/dbspec/model.rs::audit_line": {
     "exported": true,
-    "signature": "pub fn audit_line (into : \u0026 str , column : \u0026 str , references : \u0026 str , action : \u0026 str , previous : \u0026 str , list : \u0026 str , columns : \u0026 [\u0026 str]) -\u003e String"
+    "signature": "pub fn audit_line (into : \u0026 str , column : \u0026 str , references : \u0026 str , action : \u0026 str , previous : \u0026 str , tables : Option \u003c \u0026 AuditTables \u003e , list : \u0026 str , columns : \u0026 [\u0026 str] ,) -\u003e String"
   },
   "packages/rust/schema/src/dbspec/names.rs::rendered_column": {
     "exported": false,
@@ -12009,9 +12029,13 @@
   },
   "packages/rust/schema/src/dbspec/render.rs::Audit": {
     "exported": false,
-    "signature": " struct Audit \u003c 'a \u003e { history : \u0026 'a str , action : \u0026 'a str , previous : \u0026 'a str , setting : \u0026 'a Setting , }"
+    "signature": " struct Audit \u003c 'a \u003e { history : \u0026 'a str , column : \u0026 'a str , tables : Option \u003c \u0026 'a AuditTables \u003e , action : \u0026 'a str , previous : \u0026 'a str , setting : \u0026 'a Setting , }"
   },
   "packages/rust/schema/src/dbspec/render.rs::Audit#field.action": {
+    "exported": false,
+    "signature": "\u0026 'a str"
+  },
+  "packages/rust/schema/src/dbspec/render.rs::Audit#field.column": {
     "exported": false,
     "signature": "\u0026 'a str"
   },
@@ -12027,9 +12051,13 @@
     "exported": false,
     "signature": "\u0026 'a Setting"
   },
+  "packages/rust/schema/src/dbspec/render.rs::Audit#field.tables": {
+    "exported": false,
+    "signature": "Option \u003c \u0026 'a AuditTables \u003e"
+  },
   "packages/rust/schema/src/dbspec/render.rs::Audit#wire": {
     "exported": false,
-    "signature": "{\"action\":\"unsupported:\u0026 'a str\",\"history\":\"unsupported:\u0026 'a str\",\"previous\":\"unsupported:\u0026 'a str\",\"setting\":\"unsupported:\u0026 'a Setting\"}"
+    "signature": "{\"action\":\"unsupported:\u0026 'a str\",\"column\":\"unsupported:\u0026 'a str\",\"history\":\"unsupported:\u0026 'a str\",\"previous\":\"unsupported:\u0026 'a str\",\"setting\":\"unsupported:\u0026 'a Setting\",\"tables\":\"unsupported:\u0026 'a AuditTables\"}"
   },
   "packages/rust/schema/src/dbspec/render.rs::Dialect": {
     "exported": true,
@@ -12713,7 +12741,7 @@
   },
   "packages/rust/schema/src/dbspec/validate.rs::TableRules \u003c 's , 'd \u003e::audit": {
     "exported": false,
-    "signature": " fn audit (\u0026 mut self , setting : \u0026 Setting , into : \u0026 Name , column : \u0026 Name , references : \u0026 Name , action : \u0026 Name , previous : \u0026 Name , lists : \u0026 [AuditList])"
+    "signature": " fn audit (\u0026 mut self , setting : \u0026 Setting , into : \u0026 Name , column : \u0026 Name , references : \u0026 Name , action : \u0026 Name , previous : \u0026 Name , tables : Option \u003c \u0026 AuditTables \u003e , lists : \u0026 [AuditList] ,)"
   },
   "packages/rust/schema/src/dbspec/validate.rs::TableRules \u003c 's , 'd \u003e::audit_lists": {
     "exported": false,
@@ -12722,6 +12750,10 @@
   "packages/rust/schema/src/dbspec/validate.rs::TableRules \u003c 's , 'd \u003e::audit_record": {
     "exported": false,
     "signature": " fn audit_record (\u0026 mut self , audit_column : Option \u003c \u0026 Column \u003e , column : \u0026 Name , references : \u0026 Name , into : \u0026 Name)"
+  },
+  "packages/rust/schema/src/dbspec/validate.rs::TableRules \u003c 's , 'd \u003e::audit_tables": {
+    "exported": false,
+    "signature": " fn audit_tables (\u0026 mut self , c : \u0026 AuditTables , references : \u0026 Name , into : \u0026 Name)"
   },
   "packages/rust/schema/src/dbspec/validate.rs::TableRules \u003c 's , 'd \u003e::blind_index": {
     "exported": false,

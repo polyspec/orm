@@ -914,6 +914,191 @@
           "want": "1"
         }
       ]
+    },
+    {
+      "id": "audit-tables",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table service {",
+          "  id i64 identity",
+          "  name varchar(32)",
+          "  audit_seq i64",
+          "  primary key (id)",
+          "  index ix_service_audit (audit_seq)",
+          "  foreign key fk_service_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
+          "  settings {",
+          "    audit into service_history column audit_seq references audit action change previous previous_audit_seq tables audit_table (audit_seq, table_name)",
+          "  }",
+          "}",
+          "",
+          "table service_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_audit_seq i64 null",
+          "  id i64",
+          "  name varchar(32)",
+          "  audit_seq i64",
+          "  primary key (history_id)",
+          "}",
+          "",
+          "table team {",
+          "  id i64 identity",
+          "  audit_seq i64",
+          "  primary key (id)",
+          "  index ix_team_audit (audit_seq)",
+          "  foreign key fk_team_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
+          "  settings {",
+          "    audit into team_history column audit_seq references audit action change previous previous_audit_seq tables audit_table (audit_seq, table_name)",
+          "  }",
+          "}",
+          "",
+          "table team_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_audit_seq i64 null",
+          "  id i64",
+          "  audit_seq i64",
+          "  primary key (history_id)",
+          "}",
+          "",
+          "table audit {",
+          "  seq i64 identity",
+          "  actor varchar(64)",
+          "  primary key (seq)",
+          "}",
+          "",
+          "table audit_table {",
+          "  audit_seq i64",
+          "  table_name varchar(64)",
+          "  primary key (audit_seq, table_name)",
+          "  foreign key fk_audit_table_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
+          "}"
+        ]
+      },
+      "statements": {
+        "mysql": [
+          "CREATE TABLE `service` (`id` BIGINT NOT NULL AUTO_INCREMENT, `name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `audit_seq` BIGINT NOT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+          "CREATE INDEX `ix_service_audit` ON `service` (`audit_seq`)",
+          "CREATE TABLE `service_history` (`history_id` BIGINT NOT NULL AUTO_INCREMENT, `change` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `previous_audit_seq` BIGINT NULL, `id` BIGINT NOT NULL, `name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `audit_seq` BIGINT NOT NULL, PRIMARY KEY (`history_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+          "CREATE TABLE `team` (`id` BIGINT NOT NULL AUTO_INCREMENT, `audit_seq` BIGINT NOT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+          "CREATE INDEX `ix_team_audit` ON `team` (`audit_seq`)",
+          "CREATE TABLE `team_history` (`history_id` BIGINT NOT NULL AUTO_INCREMENT, `change` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `previous_audit_seq` BIGINT NULL, `id` BIGINT NOT NULL, `audit_seq` BIGINT NOT NULL, PRIMARY KEY (`history_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+          "CREATE TABLE `audit` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `actor` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, PRIMARY KEY (`seq`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+          "CREATE TABLE `audit_table` (`audit_seq` BIGINT NOT NULL, `table_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, PRIMARY KEY (`audit_seq`, `table_name`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+          "ALTER TABLE `service` ADD CONSTRAINT `fk_service_audit` FOREIGN KEY (`audit_seq`) REFERENCES `audit` (`seq`) ON DELETE RESTRICT ON UPDATE RESTRICT",
+          "ALTER TABLE `team` ADD CONSTRAINT `fk_team_audit` FOREIGN KEY (`audit_seq`) REFERENCES `audit` (`seq`) ON DELETE RESTRICT ON UPDATE RESTRICT",
+          "ALTER TABLE `audit_table` ADD CONSTRAINT `fk_audit_table_audit` FOREIGN KEY (`audit_seq`) REFERENCES `audit` (`seq`) ON DELETE RESTRICT ON UPDATE RESTRICT",
+          "CREATE TRIGGER `service$audit_insert` AFTER INSERT ON `service` FOR EACH ROW BEGIN INSERT INTO `service_history` (`change`, `previous_audit_seq`, `id`, `name`, `audit_seq`) VALUES ('insert', NULL, NEW.`id`, NEW.`name`, NEW.`audit_seq`); INSERT INTO `audit_table` (`audit_seq`, `table_name`) VALUES (NEW.`audit_seq`, 'service') ON DUPLICATE KEY UPDATE `table_name` = `table_name`; END",
+          "CREATE TRIGGER `service$audit_update` AFTER UPDATE ON `service` FOR EACH ROW BEGIN INSERT INTO `service_history` (`change`, `previous_audit_seq`, `id`, `name`, `audit_seq`) VALUES ('update', OLD.`audit_seq`, NEW.`id`, NEW.`name`, NEW.`audit_seq`); INSERT INTO `audit_table` (`audit_seq`, `table_name`) VALUES (NEW.`audit_seq`, 'service') ON DUPLICATE KEY UPDATE `table_name` = `table_name`; END",
+          "CREATE TRIGGER `service$audit_delete` BEFORE DELETE ON `service` FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'table service deletes through its soft delete column'",
+          "CREATE TRIGGER `team$audit_insert` AFTER INSERT ON `team` FOR EACH ROW BEGIN INSERT INTO `team_history` (`change`, `previous_audit_seq`, `id`, `audit_seq`) VALUES ('insert', NULL, NEW.`id`, NEW.`audit_seq`); INSERT INTO `audit_table` (`audit_seq`, `table_name`) VALUES (NEW.`audit_seq`, 'team') ON DUPLICATE KEY UPDATE `table_name` = `table_name`; END",
+          "CREATE TRIGGER `team$audit_update` AFTER UPDATE ON `team` FOR EACH ROW BEGIN INSERT INTO `team_history` (`change`, `previous_audit_seq`, `id`, `audit_seq`) VALUES ('update', OLD.`audit_seq`, NEW.`id`, NEW.`audit_seq`); INSERT INTO `audit_table` (`audit_seq`, `table_name`) VALUES (NEW.`audit_seq`, 'team') ON DUPLICATE KEY UPDATE `table_name` = `table_name`; END",
+          "CREATE TRIGGER `team$audit_delete` BEFORE DELETE ON `team` FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'table team deletes through its soft delete column'"
+        ],
+        "postgres": [
+          "CREATE TABLE \"service\" (\"id\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"name\" varchar(32) COLLATE \"C\" NOT NULL, \"audit_seq\" bigint NOT NULL, PRIMARY KEY (\"id\"))",
+          "CREATE INDEX \"ix_service_audit\" ON \"service\" (\"audit_seq\")",
+          "CREATE TABLE \"service_history\" (\"history_id\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"change\" varchar(8) COLLATE \"C\" NOT NULL, \"previous_audit_seq\" bigint NULL, \"id\" bigint NOT NULL, \"name\" varchar(32) COLLATE \"C\" NOT NULL, \"audit_seq\" bigint NOT NULL, PRIMARY KEY (\"history_id\"))",
+          "CREATE TABLE \"team\" (\"id\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"audit_seq\" bigint NOT NULL, PRIMARY KEY (\"id\"))",
+          "CREATE INDEX \"ix_team_audit\" ON \"team\" (\"audit_seq\")",
+          "CREATE TABLE \"team_history\" (\"history_id\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"change\" varchar(8) COLLATE \"C\" NOT NULL, \"previous_audit_seq\" bigint NULL, \"id\" bigint NOT NULL, \"audit_seq\" bigint NOT NULL, PRIMARY KEY (\"history_id\"))",
+          "CREATE TABLE \"audit\" (\"seq\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"actor\" varchar(64) COLLATE \"C\" NOT NULL, PRIMARY KEY (\"seq\"))",
+          "CREATE TABLE \"audit_table\" (\"audit_seq\" bigint NOT NULL, \"table_name\" varchar(64) COLLATE \"C\" NOT NULL, PRIMARY KEY (\"audit_seq\", \"table_name\"))",
+          "ALTER TABLE \"service\" ADD CONSTRAINT \"fk_service_audit\" FOREIGN KEY (\"audit_seq\") REFERENCES \"audit\" (\"seq\") ON DELETE RESTRICT ON UPDATE RESTRICT",
+          "ALTER TABLE \"team\" ADD CONSTRAINT \"fk_team_audit\" FOREIGN KEY (\"audit_seq\") REFERENCES \"audit\" (\"seq\") ON DELETE RESTRICT ON UPDATE RESTRICT",
+          "ALTER TABLE \"audit_table\" ADD CONSTRAINT \"fk_audit_table_audit\" FOREIGN KEY (\"audit_seq\") REFERENCES \"audit\" (\"seq\") ON DELETE RESTRICT ON UPDATE RESTRICT",
+          "CREATE FUNCTION \"service$audit_insert\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\") VALUES ('insert', NULL, NEW.\"id\", NEW.\"name\", NEW.\"audit_seq\"); INSERT INTO \"audit_table\" (\"audit_seq\", \"table_name\") VALUES (NEW.\"audit_seq\", 'service') ON CONFLICT DO NOTHING; RETURN NULL; END$$",
+          "CREATE TRIGGER \"service$audit_insert\" AFTER INSERT ON \"service\" FOR EACH ROW EXECUTE FUNCTION \"service$audit_insert\"()",
+          "CREATE FUNCTION \"service$audit_update\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\") VALUES ('update', OLD.\"audit_seq\", NEW.\"id\", NEW.\"name\", NEW.\"audit_seq\"); INSERT INTO \"audit_table\" (\"audit_seq\", \"table_name\") VALUES (NEW.\"audit_seq\", 'service') ON CONFLICT DO NOTHING; RETURN NULL; END$$",
+          "CREATE TRIGGER \"service$audit_update\" AFTER UPDATE ON \"service\" FOR EACH ROW EXECUTE FUNCTION \"service$audit_update\"()",
+          "CREATE FUNCTION \"service$audit_delete\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'table service deletes through its soft delete column'; END$$",
+          "CREATE TRIGGER \"service$audit_delete\" BEFORE DELETE ON \"service\" FOR EACH ROW EXECUTE FUNCTION \"service$audit_delete\"()",
+          "CREATE FUNCTION \"team$audit_insert\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"team_history\" (\"change\", \"previous_audit_seq\", \"id\", \"audit_seq\") VALUES ('insert', NULL, NEW.\"id\", NEW.\"audit_seq\"); INSERT INTO \"audit_table\" (\"audit_seq\", \"table_name\") VALUES (NEW.\"audit_seq\", 'team') ON CONFLICT DO NOTHING; RETURN NULL; END$$",
+          "CREATE TRIGGER \"team$audit_insert\" AFTER INSERT ON \"team\" FOR EACH ROW EXECUTE FUNCTION \"team$audit_insert\"()",
+          "CREATE FUNCTION \"team$audit_update\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"team_history\" (\"change\", \"previous_audit_seq\", \"id\", \"audit_seq\") VALUES ('update', OLD.\"audit_seq\", NEW.\"id\", NEW.\"audit_seq\"); INSERT INTO \"audit_table\" (\"audit_seq\", \"table_name\") VALUES (NEW.\"audit_seq\", 'team') ON CONFLICT DO NOTHING; RETURN NULL; END$$",
+          "CREATE TRIGGER \"team$audit_update\" AFTER UPDATE ON \"team\" FOR EACH ROW EXECUTE FUNCTION \"team$audit_update\"()",
+          "CREATE FUNCTION \"team$audit_delete\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'table team deletes through its soft delete column'; END$$",
+          "CREATE TRIGGER \"team$audit_delete\" BEFORE DELETE ON \"team\" FOR EACH ROW EXECUTE FUNCTION \"team$audit_delete\"()"
+        ],
+        "sqlite": [
+          "CREATE TABLE \"service\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"name\" varchar(32) NOT NULL, \"audit_seq\" bigint NOT NULL, CONSTRAINT \"fk_service_audit\" FOREIGN KEY (\"audit_seq\") REFERENCES \"audit\" (\"seq\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"service$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')))",
+          "CREATE INDEX \"ix_service_audit\" ON \"service\" (\"audit_seq\")",
+          "CREATE TABLE \"service_history\" (\"history_id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"change\" varchar(8) NOT NULL, \"previous_audit_seq\" bigint NULL, \"id\" bigint NOT NULL, \"name\" varchar(32) NOT NULL, \"audit_seq\" bigint NOT NULL, CONSTRAINT \"service_history$change\" CHECK (length(\"change\") <= 8), CONSTRAINT \"service_history$previous_audit_seq\" CHECK (typeof(\"previous_audit_seq\") IN ('integer', 'null')), CONSTRAINT \"service_history$id\" CHECK (typeof(\"id\") IN ('integer', 'null')), CONSTRAINT \"service_history$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service_history$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')))",
+          "CREATE TABLE \"team\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"audit_seq\" bigint NOT NULL, CONSTRAINT \"fk_team_audit\" FOREIGN KEY (\"audit_seq\") REFERENCES \"audit\" (\"seq\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"team$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')))",
+          "CREATE INDEX \"ix_team_audit\" ON \"team\" (\"audit_seq\")",
+          "CREATE TABLE \"team_history\" (\"history_id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"change\" varchar(8) NOT NULL, \"previous_audit_seq\" bigint NULL, \"id\" bigint NOT NULL, \"audit_seq\" bigint NOT NULL, CONSTRAINT \"team_history$change\" CHECK (length(\"change\") <= 8), CONSTRAINT \"team_history$previous_audit_seq\" CHECK (typeof(\"previous_audit_seq\") IN ('integer', 'null')), CONSTRAINT \"team_history$id\" CHECK (typeof(\"id\") IN ('integer', 'null')), CONSTRAINT \"team_history$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')))",
+          "CREATE TABLE \"audit\" (\"seq\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"actor\" varchar(64) NOT NULL, CONSTRAINT \"audit$actor\" CHECK (length(\"actor\") <= 64))",
+          "CREATE TABLE \"audit_table\" (\"audit_seq\" bigint NOT NULL, \"table_name\" varchar(64) NOT NULL, PRIMARY KEY (\"audit_seq\", \"table_name\"), CONSTRAINT \"fk_audit_table_audit\" FOREIGN KEY (\"audit_seq\") REFERENCES \"audit\" (\"seq\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"audit_table$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')), CONSTRAINT \"audit_table$table_name\" CHECK (length(\"table_name\") <= 64))",
+          "CREATE TRIGGER \"service$audit_insert\" AFTER INSERT ON \"service\" FOR EACH ROW BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\") VALUES ('insert', NULL, NEW.\"id\", NEW.\"name\", NEW.\"audit_seq\"); INSERT INTO \"audit_table\" (\"audit_seq\", \"table_name\") VALUES (NEW.\"audit_seq\", 'service') ON CONFLICT DO NOTHING; END",
+          "CREATE TRIGGER \"service$audit_update\" AFTER UPDATE ON \"service\" FOR EACH ROW BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\") VALUES ('update', OLD.\"audit_seq\", NEW.\"id\", NEW.\"name\", NEW.\"audit_seq\"); INSERT INTO \"audit_table\" (\"audit_seq\", \"table_name\") VALUES (NEW.\"audit_seq\", 'service') ON CONFLICT DO NOTHING; END",
+          "CREATE TRIGGER \"service$audit_delete\" BEFORE DELETE ON \"service\" FOR EACH ROW BEGIN SELECT RAISE(ABORT, 'table service deletes through its soft delete column'); END",
+          "CREATE TRIGGER \"team$audit_insert\" AFTER INSERT ON \"team\" FOR EACH ROW BEGIN INSERT INTO \"team_history\" (\"change\", \"previous_audit_seq\", \"id\", \"audit_seq\") VALUES ('insert', NULL, NEW.\"id\", NEW.\"audit_seq\"); INSERT INTO \"audit_table\" (\"audit_seq\", \"table_name\") VALUES (NEW.\"audit_seq\", 'team') ON CONFLICT DO NOTHING; END",
+          "CREATE TRIGGER \"team$audit_update\" AFTER UPDATE ON \"team\" FOR EACH ROW BEGIN INSERT INTO \"team_history\" (\"change\", \"previous_audit_seq\", \"id\", \"audit_seq\") VALUES ('update', OLD.\"audit_seq\", NEW.\"id\", NEW.\"audit_seq\"); INSERT INTO \"audit_table\" (\"audit_seq\", \"table_name\") VALUES (NEW.\"audit_seq\", 'team') ON CONFLICT DO NOTHING; END",
+          "CREATE TRIGGER \"team$audit_delete\" BEFORE DELETE ON \"team\" FOR EACH ROW BEGIN SELECT RAISE(ABORT, 'table team deletes through its soft delete column'); END"
+        ]
+      },
+      "behavior": [
+        {
+          "sql": "INSERT INTO audit (actor) VALUES ('a')"
+        },
+        {
+          "sql": "INSERT INTO audit (actor) VALUES ('b')"
+        },
+        {
+          "sql": "INSERT INTO audit (actor) VALUES ('c')"
+        },
+        {
+          "sql": "INSERT INTO service (name, audit_seq) VALUES ('a', 1)"
+        },
+        {
+          "sql": "INSERT INTO service (name, audit_seq) VALUES ('b', 1)"
+        },
+        {
+          "sql": "UPDATE service SET name = 'c', audit_seq = 1 WHERE id = 1"
+        },
+        {
+          "sql": "UPDATE service SET name = 'd', audit_seq = 2"
+        },
+        {
+          "sql": "INSERT INTO team (audit_seq) VALUES (2)"
+        },
+        {
+          "sql": "UPDATE service SET name = 'e', audit_seq = 3 WHERE id = 999"
+        },
+        {
+          "query": "SELECT count(*) FROM audit_table",
+          "want": "3"
+        },
+        {
+          "query": "SELECT count(*) FROM audit_table WHERE audit_seq = 1 AND table_name = 'service'",
+          "want": "1"
+        },
+        {
+          "query": "SELECT count(*) FROM audit_table WHERE audit_seq = 2",
+          "want": "2"
+        },
+        {
+          "query": "SELECT count(*) FROM audit_table WHERE audit_seq = 2 AND table_name = 'team'",
+          "want": "1"
+        },
+        {
+          "query": "SELECT count(*) FROM audit_table WHERE audit_seq = 3",
+          "want": "0"
+        },
+        {
+          "sql": "DELETE FROM audit WHERE seq = 3"
+        },
+        {
+          "sql": "DELETE FROM audit WHERE seq = 1",
+          "fails": true
+        },
+        {
+          "sql": "INSERT INTO audit_table (audit_seq, table_name) VALUES (99, 'service')",
+          "fails": true
+        }
+      ]
     }
   ]
 }

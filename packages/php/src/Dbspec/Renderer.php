@@ -659,6 +659,14 @@ final class Renderer
             $values[] = 'NEW.' . $this->q($column->name);
         }
         $body = 'INSERT INTO ' . $this->q($history) . ' (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $values) . ')';
+        if (count($audit->arguments) === 8) {
+            // The tables table keeps one row per audit record and audited table (docs/dialects.md "Triggers").
+            [, $column, , , , $tablesTable, $record, $name] = $audit->arguments;
+            $tables = 'INSERT INTO ' . $this->q($tablesTable) . ' (' . $this->q($record) . ', ' . $this->q($name) . ') VALUES (NEW.' . $this->q($column) . ", '{$t->name}')";
+            $body = $this->dialect === 'mysql'
+                ? "BEGIN $body; $tables ON DUPLICATE KEY UPDATE {$this->q($name)} = {$this->q($name)}; END"
+                : "$body; $tables ON CONFLICT DO NOTHING";
+        }
         return $this->trigger($t, $event, $timing, $body, false);
     }
 }

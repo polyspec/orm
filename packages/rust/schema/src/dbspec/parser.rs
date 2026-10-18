@@ -1443,6 +1443,17 @@ impl Parser {
                 let action = self.name(&mut cursor)?;
                 self.expect(&mut cursor, "previous")?;
                 let previous = self.name(&mut cursor)?;
+                let mut tables = None;
+                if cursor.peek_is("tables") {
+                    self.word(&mut cursor, |_| Class::Keyword)?;
+                    let table = self.name(&mut cursor)?;
+                    self.expect(&mut cursor, "(")?;
+                    let record = self.name(&mut cursor)?;
+                    self.expect(&mut cursor, ",")?;
+                    let name = self.name(&mut cursor)?;
+                    self.expect(&mut cursor, ")")?;
+                    tables = Some(AuditTables { table, record, name });
+                }
                 let mut lists = Vec::new();
                 while cursor.peek_is("exclude") || cursor.peek_is("include") {
                     let keyword = self.word(&mut cursor, |_| Class::Keyword)?;
@@ -1456,7 +1467,7 @@ impl Parser {
                         self.check_name(&listed.text, listed.pos);
                     }
                 }
-                Some(Setting::Audit { into, column, references, action, previous, lists })
+                Some(Setting::Audit { into, column, references, action, previous, tables, lists })
             })(),
             _ => {
                 self.report(err(keyword.pos, "setting", format!("unknown setting '{}'", keyword.text)));

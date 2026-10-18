@@ -683,6 +683,14 @@ static void history(renderer *r, const table *t, const setting *audit, const cha
         PUSH(values, fmt("NEW.%S", r_q(r, name)));
     }
     str body = fmt("INSERT INTO %S (%S) VALUES (%S)", r_q(r, audit->args.v[0]), strs_join(&columns, ", "), strs_join(&values, ", "));
+    if (audit->args.n == 8) {
+        /* The tables table keeps one row per audit record and audited table (docs/dialects.md "Triggers"). */
+        str name = r_q(r, audit->args.v[7]);
+        str tables = fmt("INSERT INTO %S (%S, %S) VALUES (NEW.%S, '%S')", r_q(r, audit->args.v[5]), r_q(r, audit->args.v[6]), name,
+            r_q(r, audit->args.v[1]), t->name);
+        body = r->d == D_MYSQL ? fmt("BEGIN %S; %S ON DUPLICATE KEY UPDATE %S = %S; END", body, tables, name, name)
+            : fmt("%S; %S ON CONFLICT DO NOTHING", body, tables);
+    }
     trigger(r, t, event, timing, body, false, out);
 }
 

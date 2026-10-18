@@ -1581,7 +1581,7 @@
   },
   "packages/go/engine/dbspec/model.go::AuditSetting": {
     "exported": true,
-    "signature": "type AuditSetting struct { Comments []string History string Column string References string Action string Previous string Exclude []string Include []string }"
+    "signature": "type AuditSetting struct { Comments []string History string Column string References string Action string Previous string Tables string TablesRecord string TablesName string Exclude []string Include []string }"
   },
   "packages/go/engine/dbspec/model.go::AuditSetting#field.Action": {
     "exported": true,
@@ -1612,6 +1612,18 @@
     "signature": "string"
   },
   "packages/go/engine/dbspec/model.go::AuditSetting#field.References": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/go/engine/dbspec/model.go::AuditSetting#field.Tables": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/go/engine/dbspec/model.go::AuditSetting#field.TablesName": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/go/engine/dbspec/model.go::AuditSetting#field.TablesRecord": {
     "exported": true,
     "signature": "string"
   },
@@ -3930,6 +3942,10 @@
   "packages/go/engine/dbspec/settings.go::validator.auditRecord": {
     "exported": false,
     "signature": "receiver=*validator func(t *tableNode, column *columnNode, columnRef, referencesRef, historyRef token)"
+  },
+  "packages/go/engine/dbspec/settings.go::validator.auditTables": {
+    "exported": false,
+    "signature": "receiver=*validator func(t *tableNode, tablesRef, recordRef, nameRef, referencesRef, historyRef token)"
   },
   "packages/go/engine/dbspec/settings.go::validator.blindIndex": {
     "exported": false,

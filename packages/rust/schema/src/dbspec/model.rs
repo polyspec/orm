@@ -353,8 +353,18 @@ pub enum Setting {
         references: Name,
         action: Name,
         previous: Name,
+        /// `tables <table> (<record>, <name>)`, or None without the clause.
+        tables: Option<AuditTables>,
         lists: Vec<AuditList>,
     },
+}
+
+/// The tables table of an `audit` setting and its record and name columns (docs/dbspec.md "Audit").
+#[derive(Clone, Debug)]
+pub struct AuditTables {
+    pub table: Name,
+    pub record: Name,
+    pub name: Name,
 }
 
 /// A line of a `state_machine` setting after its column.
@@ -399,8 +409,21 @@ pub struct AuditList {
 }
 
 /// The audit setting line. If the `list` columns are empty, no list is written; otherwise the list keyword and its columns are written.
-pub fn audit_line(into: &str, column: &str, references: &str, action: &str, previous: &str, list: &str, columns: &[&str]) -> String {
-    let line = format!("audit into {into} column {column} references {references} action {action} previous {previous}");
+#[expect(clippy::too_many_arguments, reason = "each argument is one field of the audit setting line, as docs/dbspec.md \"Audit\" names them")]
+pub fn audit_line(
+    into: &str,
+    column: &str,
+    references: &str,
+    action: &str,
+    previous: &str,
+    tables: Option<&AuditTables>,
+    list: &str,
+    columns: &[&str],
+) -> String {
+    let mut line = format!("audit into {into} column {column} references {references} action {action} previous {previous}");
+    if let Some(t) = tables {
+        line = format!("{line} tables {} ({}, {})", t.table.text, t.record.text, t.name.text);
+    }
     if columns.is_empty() {
         line
     } else {

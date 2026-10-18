@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 97883a9916482978ac63c77049af543a989fd1b89232e9f049d85412a5714b09 -->
+<!-- source-sha256: 6dba97a2ce408dbe7681fb1c43d16ca78fec80c01001a9046f34bf4c98ddfe96 -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript·Python 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
@@ -349,6 +349,7 @@ await master.transaction(async () => {
 - `audit`을 가진 트랜잭션은 시작하기 전에 source를 한 번 부르고, callback 전에, 재시도하는 트랜잭션이면 시도마다, source의 값과 자기 값으로 audit 기록 테이블에 행 하나를 삽입한다. 같은 컬럼이면 트랜잭션의 값이 source의 값을 이긴다. 트랜잭션 안의 감사 대상 테이블의 모든 insert, update, soft delete, restore는 그 행의 primary key(생성된 identity나 준 값)를 테이블의 audit 컬럼에 쓰고, 데이터베이스 trigger가 각 버전을 history 테이블에 복사한다. callback이 실패하면 audit 행도 변경과 함께 되돌아간다.
 - audit 기록 테이블은 연결에 등록한 set의 감사 대상 테이블들의 `references`가 정한 테이블 하나이며, 연결에 등록한 set의 테이블이다. 그런 테이블이 없거나 여럿이거나 primary key가 컬럼 둘 이상이면 `CONFIG`로 실패한다. 연결에 audit source가 없거나, source나 트랜잭션의 값이 audit 기록 테이블에 없는 컬럼을 정하거나, 값이 하나도 없으면 트랜잭션은 시작하기 전에 `CONFIG`로 실패한다. source의 오류는 그 오류로 트랜잭션을 실패시킨다.
 - `audit`을 가진 트랜잭션 밖에서 감사 대상 테이블을 쓰면 `CONFIG`로 실패한다. 중첩 트랜잭션은 바깥 트랜잭션의 audit을 쓰며 `audit`을 받지 않는다. audit 컬럼을 직접 할당하는 요청은 `IR_INVALID`로 실패한다.
+- setting에 `tables`가 있으면([audit](dbspec.ko.md#audit)) trigger는 transaction이 바꾼 감사 대상 테이블마다 행 하나를 `audit_table (audit_seq, table_name)` 같은 tables table에 함께 쓴다. 이 테이블은 audit 집합의 평범한 테이블이므로 생성된 model이 읽고, audit 기록에서의 join이 한 테이블의 audit을 거르고 page로 나눈다: `(new Audit)->connect($db)->ltSeq($last)->joinSeqWithAuditSeq((new AuditTable)->tableName('service'))->orderBySeqDesc()->limit(0, 20)->gets()`, 같은 chain의 `getCount()`가 개수를 센다. primary key `(audit_seq, table_name)` 덕분에 audit 하나에 join 행 하나다. 어떤 audit도 바꾸지 않은 테이블은 어떤 행과도 맞지 않는다: 다른 읽기처럼 빈 목록, 개수 0, 행 하나 읽기는 null이다.
 
 ### Soft delete한 행 되돌리기 {#restore-a-soft-deleted-row}
 

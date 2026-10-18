@@ -658,11 +658,11 @@ impl<'s, 'd> TableRules<'s, 'd> {
                         self.report(line.pos, "setting", "immutable is rejected on a child of a cascade or set_null foreign key");
                     }
                 }
-                Setting::Audit { into, column, references, action, previous, lists } => {
+                Setting::Audit { into, column, references, action, previous, tables, lists } => {
                     if changes_rows {
                         self.report(line.pos, "setting", "audit is rejected on a child of a cascade or set_null foreign key");
                     }
-                    self.audit(&line.setting, into, column, references, action, previous, lists);
+                    self.audit(&line.setting, into, column, references, action, previous, tables.as_ref(), lists);
                 }
             }
         }
@@ -1017,7 +1017,17 @@ impl<'s, 'd> TableRules<'s, 'd> {
     /// "Audit"). The history table has only an i64 identity primary key, action and previous columns, and columns
     /// with the same names and types as the recorded columns, and reports one diagnostic for each mismatch.
     #[expect(clippy::too_many_arguments, reason = "each argument is one field of the audit setting, as docs/dbspec.md \"Audit\" names them")]
-    fn audit(&mut self, setting: &Setting, into: &Name, column: &Name, references: &Name, action: &Name, previous: &Name, lists: &[AuditList]) {
+    fn audit(
+        &mut self,
+        setting: &Setting,
+        into: &Name,
+        column: &Name,
+        references: &Name,
+        action: &Name,
+        previous: &Name,
+        tables: Option<&AuditTables>,
+        lists: &[AuditList],
+    ) {
         let table = self.own.table;
         let audit_column = self.setting_column(column);
         if audit_column.is_some_and(|c| c.nullable) {
@@ -1025,6 +1035,9 @@ impl<'s, 'd> TableRules<'s, 'd> {
         }
         let listed = self.audit_lists(column, lists);
         self.audit_record(audit_column, column, references, into);
+        if let Some(tables) = tables {
+            self.audit_tables(tables, references, into);
+        }
         if !well_formed(&into.text) {
             return;
         }
@@ -1123,6 +1136,84 @@ impl<'s, 'd> TableRules<'s, 'd> {
     /// is not audited, and has a one-column primary key whose type matches the audit column's
     /// type. The audit column is the only column of a declared foreign key that refers to that primary key with restrict,
     /// so the database rejects an audit column value that has no audit record row.
+    /// Checks the tables table of `tables <table> (<record>, <name>)`: another table than the audited, the history and
+    /// the audit record table, not audited itself, with exactly the record and the name column, the name column a
+    /// varchar(n) with n >= 63, the primary key (record, name) and the foreign key (record) references the audit record
+    /// table's key with restrict (docs/dbspec.md "Audit").
+    fn audit_tables(&mut self, c: &AuditTables, references: &Name, into: &Name) {
+        let table = self.own.table;
+        let r = &c.table;
+        if !well_formed(&r.text) {
+            return;
+        }
+        let Some(tables) = self.scope.table(&r.text) else {
+            if !self.scope.unresolved(&r.text) {
+                self.report(r.pos, "setting", format!("tables table '{}' is not a table of this document or a used table", r.text));
+            }
+            return;
+        };
+        if tables.header_failed {
+            return;
+        }
+        if tables.table.name.text == table.name.text || r.text == into.text || r.text == references.text {
+            self.report(r.pos, "setting", "the tables table is another table than the audited, the history and the audit record table");
+            return;
+        }
+        if tables.table.settings.as_ref().is_some_and(|s| s.lines.iter().any(|l| matches!(l.setting, Setting::Audit { .. }))) {
+            self.report(r.pos, "setting", format!("tables table '{}' is audited itself", r.text));
+            return;
+        }
+        let mut known = true;
+        for tok in [&c.record, &c.name] {
+            if well_formed(&tok.text) && tables.table.column(&tok.text).is_none() {
+                self.report(tok.pos, "setting", format!("column '{}' is not a column of tables table '{}'", tok.text, r.text));
+                known = false;
+            }
+        }
+        if !known {
+            return;
+        }
+        if let Some(name) = tables.table.column(&c.name.text) {
+            if !matches!(name.ty, Type::Varchar(n) if n >= 63) {
+                self.report(c.name.pos, "setting", "the name column is a varchar(n) with n >= 63");
+            }
+        }
+        for col in &tables.table.columns {
+            if col.name.text != c.record.text && col.name.text != c.name.text {
+                self.report(r.pos, "setting", format!("tables table '{}' has the extra column '{}'", r.text, col.name.text));
+            }
+        }
+        let pk_ok = matches!(tables.table.primary.as_slice(), [only] if only.columns.len() == 2 && only.columns[0].text == c.record.text && only.columns[1].text == c.name.text);
+        if !pk_ok && !tables.failed_keys.primary {
+            self.report(r.pos, "setting", format!("the primary key of tables table '{}' is ({}, {})", r.text, c.record.text, c.name.text));
+        }
+        let Some(record) = self.scope.table(&references.text) else { return };
+        let key = match record.table.primary.as_slice() {
+            [only] if only.columns.len() == 1 && !record.header_failed => only.columns[0].text.clone(),
+            _ => return,
+        };
+        if tables.failed_keys.any {
+            return;
+        }
+        let declared = tables.table.foreign_keys.iter().any(|f| {
+            matches!(f.columns.as_slice(), [only] if only.text == c.record.text)
+                && f.table.text == references.text
+                && matches!(f.references.as_slice(), [only] if only.text == key)
+                && f.on_delete == Action::Restrict
+                && f.on_update == Action::Restrict
+        });
+        if !declared {
+            self.report(
+                r.pos,
+                "setting",
+                format!(
+                    "tables table '{}' needs the foreign key ({}) references {} ({key}) on delete restrict on update restrict",
+                    r.text, c.record.text, references.text
+                ),
+            );
+        }
+    }
+
     fn audit_record(&mut self, audit_column: Option<&Column>, column: &Name, references: &Name, into: &Name) {
         if !well_formed(&references.text) {
             return;

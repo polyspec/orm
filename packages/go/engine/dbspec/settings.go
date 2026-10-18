@@ -547,6 +547,9 @@ func (v *validator) audit(t *tableNode, s *settingNode) {
 	}
 	recorded := v.auditLists(t, s, columnRef)
 	v.auditRecord(t, column, columnRef, referencesRef, historyRef)
+	if len(s.args) == 8 {
+		v.auditTables(t, s.args[5], s.args[6], s.args[7], referencesRef, historyRef)
+	}
 	if !v.ref(historyRef) {
 		return
 	}
@@ -639,6 +642,69 @@ func (v *validator) audit(t *tableNode, s *settingNode) {
 			v.add(RuleSetting, historyRef, "history table %q has column %q, which table %q does not record", historyRef.text, h.name.text, t.name.text)
 		}
 	}
+}
+
+// auditTables checks the tables table of `tables <table> (<record>, <name>)`: another table than the
+// audited, the history and the audit record table, not audited itself, with exactly the record and the
+// name column, the name column a varchar(n) with n >= 63, the primary key (record, name) and the foreign key
+// (record) references the audit record table's key with restrict (docs/dbspec.md "Audit").
+func (v *validator) auditTables(t *tableNode, tablesRef, recordRef, nameRef, referencesRef, historyRef token) {
+	if !v.ref(tablesRef) {
+		return
+	}
+	tables := v.table(tablesRef.text)
+	switch {
+	case tables == nil:
+		v.add(RuleSetting, tablesRef, "tables table %q is not a table of this document or a used table", tablesRef.text)
+		return
+	case tables.failed:
+		return
+	case tables == t || tablesRef.text == historyRef.text || tablesRef.text == referencesRef.text:
+		v.add(RuleSetting, tablesRef, "the tables table is another table than the audited, the history and the audit record table")
+		return
+	}
+	if tables.settings != nil {
+		for _, line := range tables.settings.lines {
+			if line.keyword.text == "audit" {
+				v.add(RuleSetting, tablesRef, "tables table %q is audited itself", tablesRef.text)
+				return
+			}
+		}
+	}
+	known := true
+	for _, ref := range []token{recordRef, nameRef} {
+		if v.ref(ref) && tables.column(ref.text) == nil && !tables.failedName(ref.text) {
+			v.add(RuleSetting, ref, "column %q is not a column of tables table %q", ref.text, tablesRef.text)
+			known = false
+		}
+	}
+	if !known {
+		return
+	}
+	if name := tables.column(nameRef.text); name != nil && name.typ.valid && !(name.typ.typ.Kind == TypeVarchar && name.typ.typ.Length >= 63) {
+		v.add(RuleSetting, nameRef, "the name column is a varchar(n) with n >= 63")
+	}
+	for _, c := range tables.columns {
+		if c.name.text != recordRef.text && c.name.text != nameRef.text {
+			v.add(RuleSetting, tablesRef, "tables table %q has the extra column %q", tablesRef.text, c.name.text)
+		}
+	}
+	if !tables.failedPK && (len(tables.primaryKeys) != 1 || len(tables.primaryKeys[0].columns) != 2 ||
+		tables.primaryKeys[0].columns[0].text != recordRef.text || tables.primaryKeys[0].columns[1].text != nameRef.text) {
+		v.add(RuleSetting, tablesRef, "the primary key of tables table %q is (%s, %s)", tablesRef.text, recordRef.text, nameRef.text)
+	}
+	record := v.table(referencesRef.text)
+	if record == nil || record.failed || len(record.primaryKeys) != 1 || len(record.primaryKeys[0].columns) != 1 || tables.failedKey {
+		return
+	}
+	key := record.primaryKeys[0].columns[0].text
+	for _, fk := range tables.foreignKeys {
+		if len(fk.columns) == 1 && fk.columns[0].text == recordRef.text && fk.target.text == referencesRef.text &&
+			len(fk.references) == 1 && fk.references[0].text == key && actionOf(fk.onDelete) == ActionRestrict && actionOf(fk.onUpdate) == ActionRestrict {
+			return
+		}
+	}
+	v.add(RuleSetting, tablesRef, "tables table %q needs the foreign key (%s) references %s (%s) on delete restrict on update restrict", tablesRef.text, recordRef.text, referencesRef.text, key)
 }
 
 // auditRecord checks the audit record table. That table is another table of this document or of a used

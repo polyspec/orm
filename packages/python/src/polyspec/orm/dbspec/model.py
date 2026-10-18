@@ -198,6 +198,8 @@ class DbspecSetting:
     references: str = ""
     action: str = ""
     previous: str = ""
+    # The tables table and its record and name columns of `tables <table> (<record>, <name>)`, or None.
+    tables: tuple | None = None
     exclude: tuple | None = None
     include: tuple | None = None
     # For markdown, store, key_prefix, title, body, order, checkbox, and state_machine only. The kind of store is form,

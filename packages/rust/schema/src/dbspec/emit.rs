@@ -226,10 +226,12 @@ fn setting_text(setting: &Setting, table: &Table, view: View) -> String {
             }
         }
         Setting::Immutable => "immutable".into(),
-        Setting::Audit { into, column, references, action, previous, lists } => {
+        Setting::Audit { into, column, references, action, previous, tables, lists } => {
             // The schema text is determined by the database state, so the columns that are not recorded are passed as an exclude
             // list in column order. Other views use the written list as is.
-            let line = |list: &str, columns: Vec<&str>| audit_line(&into.text, &column.text, &references.text, &action.text, &previous.text, list, &columns);
+            let line = |list: &str, columns: Vec<&str>| {
+                audit_line(&into.text, &column.text, &references.text, &action.text, &previous.text, tables.as_ref(), list, &columns)
+            };
             match (view, lists.first()) {
                 (View::Schema, _) => line("exclude", table.columns.iter().filter(|c| !setting.records(&c.name.text)).map(|c| c.name.text.as_str()).collect()),
                 (_, Some(list)) => line(&list.keyword.text, list.columns.iter().map(|c| c.text.as_str()).collect()),

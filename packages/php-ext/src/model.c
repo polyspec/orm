@@ -149,6 +149,9 @@ str setting_audit_line(const setting *s, const char *list, const strs *columns)
 {
     str line = fmt("audit into %S column %S references %S action %S previous %S", s->args.v[0], s->args.v[1], s->args.v[2],
         s->args.v[3], s->args.v[4]);
+    if (s->args.n == 8) {
+        line = fmt("%S tables %S (%S, %S)", line, s->args.v[5], s->args.v[6], s->args.v[7]);
+    }
     if (columns == NULL || columns->n == 0) {
         return line;
     }

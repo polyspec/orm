@@ -15,6 +15,7 @@ export interface ITrigger {
 
 const AUDIT_INSERT_PATTERN = /^INSERT INTO [`"]([a-z0-9_]+)[`"] \(([^)]*)\) VALUES /;
 const AUDIT_COLUMN_PATTERN = /^[`"]([a-z0-9_]+)[`"]$/;
+const AUDIT_TABLES_PATTERN = /; INSERT INTO [`"]([a-z0-9_]+)[`"] \([`"]([a-z0-9_]+)[`"], [`"]([a-z0-9_]+)[`"]\) VALUES \(NEW\./;
 const AUDIT_UPDATE_PATTERN = /VALUES \('update', OLD\.[`"]([a-z0-9_]+)[`"],/;
 
 /**
@@ -55,7 +56,10 @@ function triggerSetting(dialect: DbspecDialect, t: ITable, list: readonly ITrigg
     const update = names.get(rendererName(t.name, 'audit_update'));
     const m = AUDIT_INSERT_PATTERN.exec(statementBody(insert.statements));
     const u = AUDIT_UPDATE_PATTERN.exec(statementBody(update?.statements ?? []));
-    const audit = m !== null && u !== null ? auditOf(t, present(m[1], 'm[1]'), present(m[2], 'm[2]').split(', '), present(u[1], 'u[1]')) : null;
+    const body = statementBody(insert.statements);
+    const tm = AUDIT_TABLES_PATTERN.exec(body);
+    const tables = tm === null ? null : { table: present(tm[1], 'tm[1]'), record: present(tm[2], 'tm[2]'), name: present(tm[3], 'tm[3]') };
+    const audit = m !== null && u !== null ? auditOf(t, present(m[1], 'm[1]'), present(m[2], 'm[2]').split(', '), present(u[1], 'u[1]'), tables) : null;
     if (audit !== null) settings.push(audit);
   }
   if (settings.length === 0) return null;
@@ -79,7 +83,13 @@ function triggerSetting(dialect: DbspecDialect, t: ITable, list: readonly ITrigg
  * or the audit columns are not recorded, or the foreign key is not exactly one, the result is null. The made setting is then
  * rendered again and compared with the catalog triggers.
  */
-function auditOf(t: ITable, into: string, quoted: readonly string[], column: string): DbspecSetting | null {
+function auditOf(
+  t: ITable,
+  into: string,
+  quoted: readonly string[],
+  column: string,
+  tables: { readonly table: string; readonly record: string; readonly name: string } | null,
+): DbspecSetting | null {
   const names: string[] = [];
   for (const q of quoted) {
     const m = AUDIT_COLUMN_PATTERN.exec(q);
@@ -92,7 +102,7 @@ function auditOf(t: ITable, into: string, quoted: readonly string[], column: str
   if (references.length !== 1) return null;
   const excluded = t.columns.filter(c => !recorded.includes(c.name)).map(c => c.name);
   return {
-    comments: [], kind: 'audit', into, column, references: present(references[0], 'references[0]'), action: present(names[0], 'names[0]'), previous: present(names[1], 'names[1]'),
+    comments: [], kind: 'audit', into, column, references: present(references[0], 'references[0]'), action: present(names[0], 'names[0]'), previous: present(names[1], 'names[1]'), tables,
     exclude: excluded.length === 0 ? null : excluded, include: null,
   };
 }

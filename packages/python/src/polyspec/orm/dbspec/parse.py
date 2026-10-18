@@ -585,6 +585,7 @@ class _Setting:
         "references",
         "action",
         "previous",
+        "tables",
         "lists",
         "args",
         "form",
@@ -606,6 +607,8 @@ class _Setting:
         self.references = fields.get("references")
         self.action = fields.get("action")
         self.previous = fields.get("previous")
+        # The tables table, record and name column tokens of audit `tables <table> (<record>, <name>)`, or None.
+        self.tables = fields.get("tables")
         # The exclude and include lists of audit. A setting that writes both is rejected by the check.
         self.lists = fields.get("lists", ())
         # Tokens and form of the markdown, store, key_prefix, title, body, order, checkbox, and state_machine lines.
@@ -1768,6 +1771,22 @@ class DocumentParser:
                 self._name(w)
                 parts.append(w)
                 i += 2
+            tables = None
+            if is_word(toks[i] if i < len(toks) else None, "tables"):
+                _mark(toks[i], "keyword")
+                names = []
+                for k, want in ((1, None), (2, "("), (3, None), (4, ","), (5, None), (6, ")")):
+                    w = toks[i + k] if i + k < len(toks) else None
+                    if want is None:
+                        if w is None or w.k != WORD:
+                            return self._syntax(toks, i + k, line, "expected a name")
+                        _mark(w, "name")
+                        self._name(w)
+                        names.append(w)
+                    elif not is_punct(w, want):
+                        return self._syntax(toks, i + k, line, f"expected {want}")
+                tables = tuple(names)
+                i += 7
             lists = []
             while is_word(toks[i] if i < len(toks) else None, "exclude") or is_word(
                 toks[i] if i < len(toks) else None, "include"
@@ -1795,6 +1814,7 @@ class DocumentParser:
                 references=parts[2],
                 action=parts[3],
                 previous=parts[4],
+                tables=tables,
                 lists=tuple(lists),
             )
         else:
@@ -3312,6 +3332,8 @@ class DocumentParser:
             self._at("setting", s.column, "the audit column is a non-null column")
         recorded = self._audit_lists(table, s)
         self._audit_record(table, s, column, available)
+        if s.tables is not None:
+            self._audit_tables(table, s, available)
         if not well_formed(s.into.t):
             return
         if s.into.t not in available:
@@ -3450,6 +3472,64 @@ class DocumentParser:
         if len(s.lists) == 1 and s.lists[0][0].t == "include":
             return lambda column: column == audited or column in listed
         return lambda column: column == audited or column not in listed
+
+    def _audit_tables(self, table: _Table, s: _Setting, available) -> None:
+        """Checks the tables table of `tables <table> (<record>, <name>)`: another table than the audited, the history
+        and the audit record table, not audited itself, with exactly the record and the name column, the name column a
+        varchar(n) with n >= 63, the primary key (record, name) and the foreign key (record) references the audit record
+        table's key with restrict (docs/dbspec.md "Audit")."""
+        ref, rec, nm = s.tables
+        if not well_formed(ref.t):
+            return
+        if ref.t not in available:
+            self._at("setting", ref, f"tables table {ref.t} is not a table of this document or a used table")
+            return
+        tables = available[ref.t]
+        if tables is None or tables.header_failed:
+            return
+        if tables is table or ref.t == s.into.t or ref.t == s.references.t:
+            self._at("setting", ref, "the tables table is another table than the audited, the history and the audit record table")
+            return
+        if tables.settings is not None and any(e.kind == "audit" for e in tables.settings.entries):
+            self._at("setting", ref, f"tables table {ref.t} is audited itself")
+            return
+        known = True
+        for tok in (rec, nm):
+            if well_formed(tok.t) and tok.t not in tables.col_map and tok.t not in tables.failed:
+                self._at("setting", tok, f"column {tok.t} is not a column of tables table {ref.t}")
+                known = False
+        if not known:
+            return
+        name = tables.col_map.get(nm.t)
+        if name is not None and name.type is not None and not (name.type.kind == "varchar" and name.type.length >= 63):
+            self._at("setting", nm, "the name column is a varchar(n) with n >= 63")
+        for c in tables.columns:
+            if c.name.t not in (rec.t, nm.t):
+                self._at("setting", ref, f"tables table {ref.t} has the extra column {c.name.t}")
+        pk = tables.pks[0] if len(tables.pks) == 1 else None
+        if not tables.failed_primary and (pk is None or [c.tok.t for c in pk.cols] != [rec.t, nm.t]):
+            self._at("setting", ref, f"the primary key of tables table {ref.t} is ({rec.t}, {nm.t})")
+        record = available.get(s.references.t)
+        if record is None or record.header_failed or len(record.pks) != 1 or len(record.pks[0].cols) != 1 or tables.failed_key:
+            return
+        key = record.pks[0].cols[0].tok.t
+        declared = any(
+            len(fk.cols) == 1
+            and fk.cols[0].t == rec.t
+            and fk.table.t == s.references.t
+            and len(fk.refs) == 1
+            and fk.refs[0].t == key
+            and fk.on_delete == "restrict"
+            and fk.on_update == "restrict"
+            for fk in tables.fks
+        )
+        if not declared:
+            self._at(
+                "setting",
+                ref,
+                f"tables table {ref.t} needs the foreign key ({rec.t}) references {s.references.t} ({key}) "
+                f"on delete restrict on update restrict",
+            )
 
     def _audit_record(self, table: _Table, s: _Setting, column, available) -> None:
         """Checks the audit record table. It is another table of this document or of a used document,
@@ -3734,6 +3814,7 @@ class DocumentParser:
             references=s.references.t if s.references is not None else "",
             action=s.action.t if s.action is not None else "",
             previous=s.previous.t if s.previous is not None else "",
+            tables=tuple(t.t for t in s.tables) if getattr(s, "tables", None) is not None else None,
             exclude=exclude,
             include=include,
         )

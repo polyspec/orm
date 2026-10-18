@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The audit setting takes `tables <table> (<record column>, <name column>)`: its triggers record each audited table of a transaction once, in the six dbspec implementations (T201).
 - Breaking: a select read that matches nothing returns its empty value in the five clients: `get()` and `getBy…()` return null instead of `NO_ROWS`, `getSum()` returns 0 and `getAvg()` null when no value is left, and the collections and counts stay empty and 0; `restore()` and `local()` keep `NO_ROWS` (T204).
 - The tests that pin the bench set read its new table, entity count and manifest hash (T200-1).
 - `restoreOrCreate()` restores the soft-deleted row of a key, or creates it, in one transaction, in the five clients; a live row of the key fails with `ROW_NOT_DELETED`. `RECORD=1` of the conformance check also records only the vectors that `VECTOR` names (T200).

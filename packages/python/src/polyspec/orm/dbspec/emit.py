@@ -79,6 +79,8 @@ def _audit_line(setting, kind: str, columns) -> str:
         f"audit into {setting.into} column {setting.column} "
         f"references {setting.references} action {setting.action} previous {setting.previous}"
     )
+    if setting.tables is not None:
+        head += f" tables {setting.tables[0]} ({setting.tables[1]}, {setting.tables[2]})"
     if columns is None or len(columns) == 0:
         return head
     return f"{head} {kind} ({', '.join(columns)})"

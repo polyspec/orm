@@ -150,6 +150,8 @@ export type DbspecSetting = { readonly comments: readonly string[] } & (
       readonly references: string;
       readonly action: string;
       readonly previous: string;
+      /** The tables table and its record and name columns, or null without the `tables` clause (docs/dbspec.md "Audit"). */
+      readonly tables: { readonly table: string; readonly record: string; readonly name: string } | null;
       /** The list of columns that are not recorded. Null if there is no list. */
       readonly exclude: readonly string[] | null;
       /** The list of columns recorded besides the audit columns. Null if there is no list. */

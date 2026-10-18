@@ -85,6 +85,9 @@ final class Setting
     {
         [$history, $column, $references, $action, $previous] = $this->arguments;
         $line = "audit into $history column $column references $references action $action previous $previous";
+        if (count($this->arguments) === 8) {
+            $line .= " tables {$this->arguments[5]} ({$this->arguments[6]}, {$this->arguments[7]})";
+        }
         return $columns === null || $columns === [] ? $line : $line . " $list (" . implode(', ', $columns) . ')';
     }
 }
