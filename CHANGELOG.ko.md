@@ -3,6 +3,7 @@
 # 변경 이력
 
 ## Unreleased
+- Go feature unit들은 feature-check와 같은 함수가 준 환경을 가진 wrapper 하나로 실행된다 (T77-46).
 - 모든 추적 시험 파일은 owner target 아래에서 실행되며, 시험 파일은 scope 선언을 받지 않는다. owner target이 없던 파일 16개는 연결되거나 헬퍼로 선언되었다 (T77-45).
 - CHECK_TARGETS의 input은 추적 파일을 가리키고, Python 인터페이스 unit 검사는 빈 디렉터리 대신 자기 두 test 파일을 실행한다 (T77-44).
 - 모든 런타임의 restore는 hook이 남긴 요청에서 키를 canonicalize 전에 읽고, 공유 케이스 restore_rewritten_key_set_scope가 이를 확인한다 (T77-43).

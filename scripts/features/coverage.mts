@@ -133,6 +133,28 @@ const selectedParts = new WeakMap<Feature, Set<string>>();
 /** One database item of a test file: the database, its DSN variable and the DSN the variable holds (null without a database). */
 export type FileItem = { database: string; dsn_env?: string; dsn: string | null };
 
+/** The DSN of a database item, read from the environment the item names (dsn_env). A database item without its DSN
+ * fails: the native test of it would have nothing to connect to. A `none` item has no DSN. */
+export function databaseDsn(env: NodeJS.ProcessEnv, item: { database: string; dsn_env?: string }): string | null {
+  if (item.database === 'none') return null;
+  const dsn = env[item.dsn_env ?? ''];
+  if (!dsn) throw new Error(`${item.database} database DSN is not set in ${item.dsn_env}; run it through make feature-check`);
+  return dsn;
+}
+
+/** The environment of one database item of a feature: ORM_FEATURE_DATABASE and ORM_FEATURE_DSN are the item's database
+ * and DSN, and both are absent when the item has no DSN, so no native test reads a stale value from the base environment. */
+export function featureEnvironment(base: NodeJS.ProcessEnv, database: string, dsn: string | null): NodeJS.ProcessEnv {
+  const env = { ...base };
+  delete env.ORM_FEATURE_DATABASE;
+  delete env.ORM_FEATURE_DSN;
+  if (dsn) {
+    env.ORM_FEATURE_DATABASE = database;
+    env.ORM_FEATURE_DSN = dsn;
+  }
+  return env;
+}
+
 // coverageItems is the resolver of a test file: every database item the manifest lists for the file (its owner or dependent
 // commands on each database), with the DSN its variable holds in env. A test file calls it at startup and runs its cases once
 // per item; it never reads the database from the environment of the checker. A file without a database gives one item
@@ -155,9 +177,7 @@ export function coverageItems(manifest: Manifest, file: string, env: NodeJS.Proc
   }
   return [...found.values()].map(item => {
     if (item.database === 'none') return { database: 'none', dsn: null };
-    const dsn = env[item.dsn_env ?? ''];
-    if (!dsn) throw new Error(`${file}: ${item.database} database DSN is not set in ${item.dsn_env}; run it through make feature-check`);
-    return { database: item.database, dsn_env: item.dsn_env, dsn };
+    return { database: item.database, dsn_env: item.dsn_env, dsn: databaseDsn(env, item) };
   });
 }
 
@@ -731,13 +751,7 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
         if (!shared || !command) continue;
         const executions: Report[] = [];
         reports[key] = executions;
-        const testEnv = { ...process.env };
-        delete testEnv.ORM_FEATURE_DATABASE;
-        delete testEnv.ORM_FEATURE_DSN;
-        if (dsn) {
-          testEnv.ORM_FEATURE_DATABASE = item.database;
-          testEnv.ORM_FEATURE_DSN = dsn;
-        }
+        const testEnv = featureEnvironment(process.env, item.database, dsn);
         let processes: Prepared[][];
         try { processes = native.map(spec => prepared(spec, shared)); }
         catch (error) { errors.push(`${key}: ${error instanceof Error ? error.message : String(error)}`); continue; }
