@@ -18,8 +18,8 @@ use Polyspec\Orm\Tests\Model\Author;
 
 function transactionResult(Db $db): string
 {
-    $author = $db->transaction(static fn(): Author => (new Author())->seq(1)->get());
-    return $author->getName();
+    $author = $db->transaction(static fn(): ?Author => (new Author())->seq(1)->get());
+    return $author?->getName() ?? '';
 }
 
 function transactionScalar(Db $db): int
