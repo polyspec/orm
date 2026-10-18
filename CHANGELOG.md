@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The CodeMirror and VS Code adapters of the dbspec editor stack are complete (T128-8).
 - Every language adapter of the tests lives in its package; no parity root names tests/ (T77-9).
 - TestApplyStressPlan proves that each apply statement commits separately at 100 tables: the applying PostgreSQL session holds no relation lock after any step, and every 200 steps it prints its progress and elapsed time (T148-4-5).
 - The Unicode word tables are generated in English: the generator's headers match the committed tables, so TestCommittedTablesAreGenerated passes (T131-8-1).
