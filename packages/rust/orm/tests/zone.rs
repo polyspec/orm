@@ -19,6 +19,12 @@ fn require_dsn(var: &str) -> String {
     }
 }
 
+/// A datetime parameter is its canonical text, `YYYY-MM-DD HH:MM:SS.ffffff` in UTC (docs/protocol.md): a native chrono
+/// value is refused as CODEC_ENCODE in every client (#T89-3).
+fn datetime_param(t: NaiveDateTime) -> Param {
+    Param::Str(t.format("%Y-%m-%d %H:%M:%S%.6f").to_string())
+}
+
 static SCHEMA: Schema =
     Schema::new(include_str!("../../../../contracts/fixtures/zone.dbs"), "sha256:c889e6d039d9245e5093d386a7c707419fddf5f9a303d39a5eb7cca4c8499891");
 
@@ -91,7 +97,7 @@ async fn connections_use_utc() {
             db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{label}: install: {e}"));
             let before = Utc::now().naive_utc();
             let mut row = event(&db);
-            row.core_mut().set("start_dt", Param::DateTime(start));
+            row.core_mut().set("start_dt", datetime_param(start));
             polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{label}: create: {e}"));
             let got = polyspec_orm::model::get(&event(&db)).await.unwrap_or_else(|e| panic!("{label}: {e}"));
             assert_eq!(got.start_dt, start, "{label}: start_dt");
@@ -99,7 +105,7 @@ async fn connections_use_utc() {
             let skew = (got.created_ts - before).num_seconds().abs();
             assert!(skew < 60, "{label}: created_ts {} is not about {before}", got.created_ts);
             const KEYS: &[ChainKey] = &[ChainKey { conn: "", op: "", column: "start_dt", columns: &[], compare: "" }];
-            let filter = event(&db).core().by(KEYS, vec![Arg::Value(polyspec_orm::args::Value::One(Param::DateTime(start)))]);
+            let filter = event(&db).core().by(KEYS, vec![Arg::Value(polyspec_orm::args::Value::One(datetime_param(start)))]);
             let found = polyspec_orm::model::get_count(&filter).await.unwrap_or_else(|e| panic!("{label}: count: {e}"));
             assert_eq!(found, 1, "{label}: where start_dt");
             let text = |v: &str| Param::Str(v.to_owned());
@@ -325,7 +331,7 @@ async fn statement_timeout() {
         let db = Db::connect(database.dsn(), 2, cfg).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
         let mut row = event(&db);
-        row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
+        row.core_mut().set("start_dt", datetime_param(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
         polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
         let holder = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         let held = HeldRows::hold(&holder, "zone_event").await;
@@ -370,7 +376,7 @@ async fn statement_timeout_through_a_pooler() {
         let mut core = Core::new(entity);
         core.connect(&setup);
         let mut row = ZoneEvent::from_core(core);
-        row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
+        row.core_mut().set("start_dt", datetime_param(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
         polyspec_orm::model::create(&mut row).await.unwrap();
     }
     // A direct connection holds the rows, so a locking read through the pooler
@@ -430,12 +436,12 @@ async fn dropping_a_query_cancels_it() {
         let db = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
         let mut row = event(&db);
-        row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
+        row.core_mut().set("start_dt", datetime_param(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
         let mut row = polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
         let holder = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         let held = HeldRows::hold(&holder, "zone_event").await;
 
-        row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 3).unwrap().and_hms_opt(0, 0, 0).unwrap()));
+        row.core_mut().set("start_dt", datetime_param(NaiveDate::from_ymd_opt(2026, 1, 3).unwrap().and_hms_opt(0, 0, 0).unwrap()));
         let started = std::time::Instant::now();
         let dropped = tokio::time::timeout(std::time::Duration::from_millis(300), polyspec_orm::model::update(&mut row, false)).await;
         assert!(dropped.is_err(), "{driver}: the blocked statement finished");
@@ -471,7 +477,7 @@ async fn dropping_a_transaction_frees_a_single_connection() {
             None
         } else {
             let mut row = event(&db);
-            row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 1).unwrap().and_hms_opt(0, 0, 0).unwrap()));
+            row.core_mut().set("start_dt", datetime_param(NaiveDate::from_ymd_opt(2026, 1, 1).unwrap().and_hms_opt(0, 0, 0).unwrap()));
             polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
             let holder = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
             let held = HeldRows::hold(&holder, "zone_event").await;
@@ -483,7 +489,7 @@ async fn dropping_a_transaction_frees_a_single_connection() {
             std::time::Duration::from_millis(300),
             db.transaction(async || {
                 let mut row = event(&tx_db);
-                row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
+                row.core_mut().set("start_dt", datetime_param(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
                 polyspec_orm::model::create(&mut row).await?;
                 if driver == "sqlite" {
                     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
