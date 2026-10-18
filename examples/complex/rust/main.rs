@@ -6,7 +6,7 @@ polyspec_orm::models!();
 use model::{Author, Service, ServiceMember, User};
 use serde::Serialize;
 
-/// 출력 문서의 member를 Go와 PHP 프로그램과 같은 순서로 선언한다.
+/// Declares the members of the output document in the same order as the Go and PHP programs.
 #[derive(Serialize)]
 struct Output<'a, R: Serialize> {
     rows: &'a R,
@@ -18,14 +18,14 @@ struct Output<'a, R: Serialize> {
     page_length: usize,
 }
 
-/// binary64 값을 Go와 PHP처럼 가장 짧은 십진 표기로, 정수 값에는 소수부 없이 쓴다.
-/// serde_json은 f64에 항상 소수부를 붙인다(456000.0).
+/// Writes binary64 values in the shortest decimal form as Go and PHP do, and integer values without a fractional part.
+/// serde_json always adds a fractional part to f64 (456000.0).
 fn shortest_number(v: f64) -> serde_json::Result<serde_json::Number> {
     v.to_string().parse()
 }
 
-/// 시드된 bench database를 가리키는 `ORM_BENCH_MYSQL_DSN`이다. 없거나 비어 있으면 연결하지
-/// 않고 그 변수 이름을 출력하며 끝난다.
+/// `ORM_BENCH_MYSQL_DSN` points to the seeded bench database. If it is missing or empty, it does not connect
+/// and ends after printing that variable name.
 fn dsn() -> String {
     match std::env::var("ORM_BENCH_MYSQL_DSN") {
         Ok(v) if !v.is_empty() => v,
@@ -115,7 +115,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .gets_page(2, 10)
         .await?;
 
-    // 세 언어가 같은 byte를 내도록 member 순서는 Output이 고정하고 compact JSON으로 쓴다.
+    // So that the three languages emit the same bytes, Output fixes the member order and writes compact JSON.
     let out = Output {
         rows: &rows,
         groups: groups.len(),
