@@ -80,6 +80,7 @@ fn runtime_model_of_bench() {
             "hex_cell",
             "time_cell",
             "clock_cell",
+            "day_cell",
             "upsert_cell",
             "uuid_cell",
             "bind_cell"

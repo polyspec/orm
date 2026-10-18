@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: dbb16c55dd3966ef06de7e14aef24ece5984cb0ee32a5923d521ac3228bf7e6b -->
+<!-- source-sha256: de385e411ab57a8d420d0377bff8b992f2eb1085ec0b38c10f1d0b6cc0a6b8a8 -->
 # 변경 이력
 
 ## Unreleased
@@ -9,6 +9,7 @@
 - Python conformance binding이 변경되지 않은 runner로 모든 vector를 이름으로 실행한다. 코드 변경 없이 Python suite가 충족된다 (T77-9-4-6).
 - Go coverage suite는 implementation마다 binding 하나로 모든 case를 실행한다. parity 규칙이 이미 충족되어 코드는 바뀌지 않았다 (T77-9-4-1).
 - NULL collection key conformance vector가 SQLite, MySQL, PostgreSQL에서 다섯 runner로 실행되며 출력이 일치한다. PHP extension 경로는 보류 상태로 남는다 (T77-6-1).
+- Rust dbspec runtime test가 bench schema가 선언하고 다른 모든 client가 model로 가진 day_cell을 기대한다 (T148-3-11).
 - Rust integration, conformance와 benchmark parity binding이 library가 아니라 자기 test가 든 target을 실행한다 (T148-3-14).
 - client bench, example, benchmark와 seeded test의 Rust parity binding이 tests/cargo-test.mts로 실행된다. 이 runner가 test가 읽는 복사된 program을 준다 (T148-3-9).
 - parity의 sqlite send-savepoint test가 parity-prepare가 만드는 단계의 run directory에 file을 연다 (T148-3-10).

@@ -8,6 +8,7 @@
 - The Python conformance bindings run every vector by name through the unchanged runner, so the Python suite holds without code change (T77-9-4-6).
 - The Go coverage suites run every case through one binding per implementation, which the parity rules already held, so no code changed (T77-9-4-1).
 - The NULL collection key conformance vector runs in the five runners on SQLite, MySQL and PostgreSQL with identical output; the PHP extension leg stays held (T77-6-1).
+- The Rust dbspec runtime test expects day_cell, which the bench schema declares and every other client models (T148-3-11).
 - The Rust integration, conformance and benchmark parity bindings run the target that holds their test, not a library target (T148-3-14).
 - The Rust parity bindings of the client bench, example, benchmark and seeded tests run through tests/cargo-test.mts, which gives the copied programs the tests read (T148-3-9).
 - The sqlite send-savepoint test of parity opens its file in the step's run directory, which parity-prepare creates (T148-3-10).
