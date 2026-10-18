@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
-// PHP UnicodeWord의 표(Go의 Unicode 자료에서 tests/dbspec/unicode 생성기가 쓴 표)가 모든 code point에서 그 구간과 같은지 본다.
-// Go의 구간은 그 생성기의 test가 Go와 맞춰 본다.
+// Checks that the PHP UnicodeWord table (the table the tests/dbspec/unicode generator wrote from Go's Unicode data) matches its ranges at every code point.
+// Go's ranges are checked against Go by that generator's test.
 
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
@@ -14,7 +14,7 @@ final class DbspecUnicodeTest extends TestCase
 
     public function test_every_code_point(): void
     {
-        // listed[cp]는 cp가 표의 구간 하나에 들면 '1'이다.
+        // listed[cp] is '1' if cp falls in one range of the table.
         $listed = str_repeat('0', self::LAST_CODE_POINT + 1);
         foreach (UnicodeWord::RANGES as [$lo, $hi]) {
             $listed = substr_replace($listed, str_repeat('1', $hi - $lo + 1), $lo, $hi - $lo + 1);

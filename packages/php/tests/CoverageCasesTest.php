@@ -1,7 +1,7 @@
 <?php
-// feature coverage helper(packages/php/tests/coverage_cases.php)의 unit test다. helper는
-// packages/php/tests/Coverage*Test.php가 함께 쓰므로, 그 변경은 모든 기능의 coverage가 아니라 이
-// test가 검사한다(contracts/features.json의 helpers). 전체 coverage는 make check가 실행한다.
+// Unit test of the feature coverage helper (packages/php/tests/coverage_cases.php). The helper
+// is shared by packages/php/tests/Coverage*Test.php, so a change to it is checked by this
+// test (the helpers in contracts/features.json), not by the coverage of all features. Full coverage is run by make check.
 declare(strict_types=1);
 
 require_once __DIR__ . '/coverage_cases.php';

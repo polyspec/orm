@@ -21,7 +21,7 @@ final class DbspecTest extends TestCase
         self::$started = caseClockStart();
     }
 
-    // 모든 vector를 합친 CPU 시간이 10 s 기준값을 넘으면 경고한다.
+    // Warns if the CPU time of all vectors together exceeds the 10 s baseline.
     public static function tearDownAfterClass(): void
     {
         [$cpuMs, $wallMs] = caseClockElapsed(self::$started);
@@ -79,10 +79,10 @@ final class DbspecTest extends TestCase
         dbspec_check_position_case($case, 2.0);
     }
 
-    // files case는 Dbspec::readFile에 path를 주어, Dbspec::readBytes에 파일 byte와 case path를
-    // 이름으로 주어 두 번 읽는다. signature가 없는 byte는 "<name> is not a dbspec document",
-    // UTF-8이 아닌 byte는 "<name> is not valid UTF-8" diagnostic 하나와 null text를, 나머지는
-    // 그 byte를 돌려주며 그 text는 parse와 emit에서 바뀌지 않는다.
+    // The files case passes a path to Dbspec::readFile, and passes the file bytes and the case path
+    // by name to Dbspec::readBytes, and reads twice. Bytes without a signature give "<name> is not a dbspec document",
+    // bytes that are not UTF-8 give one "<name> is not valid UTF-8" diagnostic and a null text, and the rest
+    // return those bytes, and that text does not change in parse and emit.
     public static function fileCases(): iterable
     {
         foreach (dbspec_read_cases()['files'] as $case) {
@@ -107,7 +107,7 @@ final class DbspecTest extends TestCase
             'bytes' => [$case['path'], static fn(): ReadResult => Dbspec::readBytes($case['path'], (string) file_get_contents($path))],
         ][$kind];
         $id = 'files/' . $case['id'] . '/' . $kind;
-        // files case는 file 하나를 읽고 parse하는 계산이며 CPU 기준값 2 s를 가진다.
+        // The files case is a computation that reads and parses one file, and has a CPU baseline of 2 s.
         $clock = cpuCaseBegin(2.0);
         $read = $reader();
         if ($case['errors'] !== []) {

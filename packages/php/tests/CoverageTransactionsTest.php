@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
-// transactions feature coverage: transaction callback의 오류는 호출자에게
-// 전달되고 쓴 행을 rollback하며, 중첩 transaction의 실패는 savepoint만
-// 되돌린다. tenant 990003의 composite_account 행만 쓰고 모두 지운다.
+// transactions feature coverage: an error from a transaction callback reaches the caller,
+// rolls back the rows written, and a failure in a nested transaction reverts only the savepoint.
+// Writes only rows of composite_account for tenant 990003, and removes them all.
 
 require_once __DIR__ . '/coverage_cases.php';
 
@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 
 const TRANSACTION_TENANT = 990003;
 
-/** tenant 990003의 행이 없을 때 $body를 실행하고, 끝나면 그 tenant의 행을 지운다. */
+/** Runs $body when no row of tenant 990003 exists, and removes that tenant's rows at the end. */
 function transactionCase(Closure $body): void
 {
     [, $dsn] = coverageItem();

@@ -34,8 +34,8 @@ final class StatementFaultTest extends TestCase
     /** The fixture of the file: what the script did before its cases, once per class. */
     private static function fixture(): void
     {
-        // package autoloader는 test entry point를 load하지 않으므로 이 test는 그 path로
-        // require한다.
+        // The package autoloader does not load the test entry point, so this test requires it by that path
+        // require.
         $faultsAutoloaded = class_exists(\Polyspec\Orm\Testing\Faults::class);
         require_once dirname(__DIR__) . '/testing/Faults.php';
 

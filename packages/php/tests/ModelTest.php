@@ -33,9 +33,9 @@ use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
-// 실제 server 는 transaction 끝의 cleanup statement 와 rollback 을 거부하지 않으므로
-// PDO 가 rejects 가 고른 statement 와, rejectRollback 이면 rollback 을 실패시킨다.
-// rollback 은 실제로 끝낸 뒤 실패를 돌려준다.
+// A real server does not refuse the cleanup statement and the rollback at the end of a transaction, so
+// PDO rejects the chosen statement, and with rejectRollback it makes the rollback fail.
+// The rollback is actually finished first, and then the failure is returned.
 final class ModelTestFailingPdo extends PDO
 {
     /** @var ?Closure(string): bool */
@@ -53,7 +53,7 @@ final class ModelTestFailingPdo extends PDO
     {
         $this->check($statement);
         $result = parent::exec($statement);
-        // rejectRollback은 client의 ROLLBACK을 실행한 뒤 실패로 보고한다.
+        // rejectRollback runs the client's ROLLBACK and then reports it as a failure.
         if ($statement === 'ROLLBACK' && $this->rejectRollback) {
             throw new PDOException('rollback rejected by the test driver');
         }
@@ -92,8 +92,8 @@ final class ModelTest extends TestCase
             exec('rm -rf ' . escapeshellarg(self::$work));
         });
 
-        // 공유 test database다. schema를 설치하지 않고 연결만 하는 case가 쓰며, 그 database에는 아무것도
-        // 만들지 않는다. schema를 설치하는 case는 caseDsn()으로 자기 case database를 받는다.
+        // A shared test database. The cases that only connect, without installing a schema, use it, and nothing is
+        // created in that database. A case that installs a schema gets its own case database from caseDsn().
         self::$targets = ['sqlite' => "sqlite://" . self::$work . "/model.sqlite"];
         foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $env) {
             $v = requiredDsn($env);
@@ -106,7 +106,7 @@ final class ModelTest extends TestCase
         self::$start = new DateTimeImmutable('2026-01-02 03:04:05', new DateTimeZone('UTC'));
     }
 
-    /** 열린 case의 case database다. tearDown이 case가 실패했어도 지운다. */
+    /** The case database of the open case. tearDown removes it even if the case failed. */
     private static function caseDatabase(string $driver): CaseDatabase
     {
         $database = case_database($driver, static function (string $step): void {});
@@ -134,7 +134,7 @@ final class ModelTest extends TestCase
         return 'no error';
     }
 
-    /** $dsn의 database(case database)에 bench schema를 설치한 connection이다. */
+    /** The connection with the bench schema installed in the database of $dsn (the case database). */
     private static function database(string $driver, string $dsn): Db
     {
         $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
@@ -374,7 +374,7 @@ final class ModelTest extends TestCase
         }
     }
 
-    // ip, gz, base64 codec column은 저장한 값을 읽고, ip column은 같음으로 찾는다.
+    // ip, gz, and base64 codec columns store the value and read it back, and the ip column is found by equality.
     private static function case_codec_columns(Db $db, string $dsn): void {
         $f = self::seed($db);
         $seq = $f['authors'][0]->getSeq();
@@ -571,8 +571,8 @@ final class ModelTest extends TestCase
     }
 
     /**
-     * 다른 zone의 값을 UTC wall clock으로 쓰고 UTC로 읽으며, clock default와
-     * text 같음 filter가 같은 UTC 규칙을 쓰는지 확인한다.
+     * Writes the values of another zone as UTC wall clock and reads them as UTC, and the clock default and
+     * the text equality filter use the same UTC rule.
      */
     private static function connectionUtc(Db $db): void
     {
@@ -606,8 +606,8 @@ final class ModelTest extends TestCase
     }
 
     /**
-     * 다른 연결의 열린 transaction에서 table의 모든 행을 갱신해 그 행의 lock을 잡는다(MySQL, PostgreSQL).
-     * rollback하면 lock을 놓는다.
+     * Updates every row of the table in an open transaction of another connection, taking the lock on that row (MySQL, PostgreSQL).
+     * Rollback releases the lock.
      */
     private static function holdRows(string $driver, string $dsn, string $table): PDO
     {
@@ -619,8 +619,8 @@ final class ModelTest extends TestCase
     }
 
     /**
-     * 다른 process가 PostgreSQL table의 모든 행을 $ms millisecond 동안 잡는다. process가 행을 잡은 뒤에
-     * 돌아오고, 돌려준 resource는 proc_close로 기다린다.
+     * Another process holds every row of the PostgreSQL table for $ms milliseconds. The process returns after it holds
+     * the rows, and the resource it returns is waited for with proc_close.
      *
      * @return resource
      */
@@ -637,7 +637,7 @@ final class ModelTest extends TestCase
         return $process;
     }
 
-    /** $db의 transaction에서 $model의 행을 FOR UPDATE로 읽는다. 다른 연결이 그 행을 잡고 있으면 기다린다. */
+    /** Reads the row of $model with FOR UPDATE in $db's transaction. Waits if another connection holds that row. */
     private static function lockedRead(\Polyspec\Orm\Db $db, string $model): void
     {
         $db->transaction(static function () use ($db, $model): void {
@@ -671,8 +671,8 @@ final class ModelTest extends TestCase
         $status = $source->query('SHOW BINARY LOG STATUS')->fetch(PDO::FETCH_NUM);
         [, $pdoDsn, $user, $password] = Orm::parseDsn($replica);
         $target = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        // 기한은 60초다: replica는 병렬로 실행하는 모든 client의 쓰기를 차례로 적용하므로, 4 vCPU Linux
-        // runner에서 10초 안에 primary 위치에 닿지 못했다.
+        // The deadline is 60 s: the replica applies the writes of all clients running in parallel in turn, so on a 4 vCPU Linux
+        // runner it could not reach the primary's position within 10 s.
         $st = $target->prepare('SELECT SOURCE_POS_WAIT(?, ?, 60)');
         $st->execute([$status[0], (int) $status[1]]);
         $waited = $st->fetchColumn();
@@ -681,7 +681,7 @@ final class ModelTest extends TestCase
         }
     }
 
-    /** fn 이 던진 오류의 message 다. 오류가 없으면 'no error' 다. */
+    /** The message of the error that fn threw. 'no error' if there was none. */
     private static function failureMessage(callable $fn): string
     {
         try {
@@ -692,7 +692,7 @@ final class ModelTest extends TestCase
         return 'no error';
     }
 
-    /** message 가 callback 오류와 transaction 끝의 오류를 함께 담은 ROLLBACK 인지 확인한다. */
+    /** Checks that the message holds both the callback error and the error at the end of the transaction, in a ROLLBACK. */
     private static function checkBoth(string $what, string $message, string $cause, string $end): void
     {
         self::check(str_starts_with($message, "ROLLBACK: transaction failed ($cause) and rollback failed (") && str_contains($message, $end), "$what reports the cause and the failed transaction end: $message");
@@ -794,9 +794,9 @@ final class ModelTest extends TestCase
     // turn. Through ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server
     // connection, so the statement timeout of one connection must bound only the
     // statements of that connection.
-    // PgBouncer의 orm_test_single은 ORM_TEST_POSTGRES_DSN의 database에 묶여 있어 case database에 닿지
-    // 않는다. 그래서 이 case는 그 database에 자기 이름(case_name())의 table 하나만 만들고, 끝나면(실패해도)
-    // 그 table만 지운다. table의 model은 실행 중에 만든 dbspec 문서에서 생성한다.
+    // PgBouncer's orm_test_single is bound to the database of ORM_TEST_POSTGRES_DSN, so it cannot reach the case database.
+    // So this case creates only one table named after itself (case_name()) in that database, and removes only that table at the end (even on failure).
+    // The table's model is generated from the dbspec document made during the run.
     public function test_statement_timeout_through_a_pooler(): void
     {
         $probeSetup = null;
@@ -872,7 +872,7 @@ final class ModelTest extends TestCase
     {
         $base = self::$targets[$driver];
         $utc = in_array($zoneName, ['', '+00:00', 'UTC'], true);
-        // UTC 연결은 schema를 설치하므로 자기 case database를, 거부되는 연결은 공유 database를 쓴다.
+        // The UTC connection installs a schema, so it uses its own case database; the refused connection uses the shared database.
         $plain = preg_replace('/[?&]timezone=[^&]*/', '', $utc ? self::caseDsn($driver): $base);
         $dsn = $zoneName === '' ? $plain : $plain . (str_contains($plain, '?') ? '&' : '?') . 'timezone=' . rawurlencode($zoneName);
         if ($utc) {
@@ -893,8 +893,8 @@ final class ModelTest extends TestCase
         if ($replica === false || $replica === '') {
             throw new RuntimeException("ORM_TEST_{$env}_REPLICA_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers");
         }
-        // replica는 primary의 case database를 같은 이름으로 복제한다. MySQL은 그 database가 replica에
-        // 생긴 뒤에야 연결할 수 있으므로 공유 replica database로 기다린 뒤 연결한다.
+        // The replica copies the primary's case database under the same name. MySQL needs that database on the replica
+        // before it can connect, so it waits on the shared replica database and then connects.
         $primary = self::caseDatabase($driver);
         $master = self::database($driver, $primary->dsn);
         $name = 'replica-' . hrtime(true);
@@ -932,8 +932,8 @@ final class ModelTest extends TestCase
         $readOnly->close();
     }
 
-    // transaction 끝의 MySQL local 값 reset 이 실패하면 commit 과 rollback 이 그 오류를
-    // 보고한다. MySQL user variable 은 COMMIT 과 ROLLBACK 뒤에도 남는다
+    // If the MySQL local value reset at the end of the transaction fails, commit and rollback report that error.
+    // A MySQL user variable remains after COMMIT and ROLLBACK.
     // (mysql.context.user_variable_session_scope).
     public function test_failed_local_reset(): void
     {
@@ -952,8 +952,8 @@ final class ModelTest extends TestCase
         self::checkBoth('rollback', $rolledBack, 'callback failed', 'statement rejected by the test driver');
     }
 
-    // transaction 끝의 MySQL RELEASE_LOCK 이 실패하거나 lock 을 풀지 못하면 commit 과
-    // rollback 이 그 오류를 보고한다. 풀리지 않은 named lock 은 connection 에 남는다.
+    // If the MySQL RELEASE_LOCK at the end of the transaction fails, or does not release the lock, commit and
+    // rollback report that error. A named lock that is not released remains on the connection.
     public function test_failed_lock_release(): void
     {
         [, $pdoDsn, $user, $password] = Orm::parseDsn(self::$targets['mysql']);
@@ -971,7 +971,7 @@ final class ModelTest extends TestCase
         }, retry: 0));
         self::checkBoth('rollback', $rolledBack, 'callback failed', 'statement rejected by the test driver');
         $pdo->rejects = null;
-        // lock 을 미리 풀면 transaction 끝의 RELEASE_LOCK 은 0 을 돌려준다.
+        // If the lock is released in advance, RELEASE_LOCK at the end of the transaction returns 0.
         $notHeld = self::failureMessage(fn() => $failing->transaction(function () use ($failing, $pdo, $key): void {
             $failing->utils()->lock($key('released'));
             $pdo->prepare('DO RELEASE_LOCK(?)')->execute([$key('released')]);
@@ -979,8 +979,8 @@ final class ModelTest extends TestCase
         self::check(str_contains($notHeld, 'lock ' . $key('released') . ' was not held at transaction end'), "a lock released early is reported: $notHeld");
     }
 
-    // native rollback, SQLite mode 복원, begin 뒤의 rollback 이 실패하면 transaction 이
-    // 그 오류를 원인과 함께 보고한다.
+    // If the native rollback, the SQLite mode restore, or the rollback after begin fails, the transaction
+    // reports that error together with its cause.
     public function test_failed_rollback(): void
     {
         $pdo = new ModelTestFailingPdo("sqlite:" . self::$work . "/transaction-end.sqlite");
@@ -992,7 +992,7 @@ final class ModelTest extends TestCase
         self::checkBoth('rollback', $rolledBack, 'callback failed', 'rollback rejected by the test driver');
         $pdo->rejects = static fn(string $sql): bool => $sql === 'PRAGMA query_only = 1';
         $began = self::failureMessage(fn() => $failing->transaction(fn() => null, readOnly: true, retry: 0));
-        // catalog에 없는 driver 오류는 DRIVER code의 원인이다.
+        // A driver error that is not in the catalog is a cause with the code DRIVER.
         self::checkBoth('begin', $began, 'DRIVER: statement rejected by the test driver', 'rollback rejected by the test driver');
         $pdo->rejectRollback = false;
         $pdo->rejects = static fn(string $sql): bool => $sql === 'PRAGMA query_only = 0';
@@ -1004,9 +1004,9 @@ final class ModelTest extends TestCase
         self::checkBoth('mode reset', $rolledBack, 'callback failed', 'statement rejected by the test driver');
     }
 
-    // 중첩 transaction 의 savepoint 를 끝내는 ROLLBACK TO SAVEPOINT 나 RELEASE SAVEPOINT 가
-    // 실패하면 callback 오류와 그 오류를 함께 보고하고, 성공한 callback 은 실패한
-    // RELEASE SAVEPOINT 를 보고한다.
+    // If the ROLLBACK TO SAVEPOINT or RELEASE SAVEPOINT that ends a nested transaction's savepoint fails,
+    // it reports the callback error together with that error, and a callback that succeeded reports the failure of
+    // RELEASE SAVEPOINT.
     public function test_failed_savepoint_end(): void
     {
         $pdo = new ModelTestFailingPdo("sqlite:" . self::$work . "/savepoint-end.sqlite");

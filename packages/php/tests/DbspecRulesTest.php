@@ -442,7 +442,7 @@ final class DbspecRulesTest extends TestCase
         self::$started = caseClockStart();
     }
 
-    // 모든 rule case를 합친 CPU 시간이 60 s 기준값을 넘으면 경고한다.
+    // Warns if the CPU time of all rule cases together exceeds the 60 s baseline.
     public static function tearDownAfterClass(): void
     {
         [$cpuMs, $wallMs] = caseClockElapsed(self::$started);

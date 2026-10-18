@@ -42,13 +42,13 @@ final class CodecVectorsTest extends TestCase
         return json_encode(self::canon($v), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     }
 
-    /** vector의 style 이름 json은 dbspec codec stage ordered_json이다. */
+    /** The style name json of the vector is the dbspec codec stage ordered_json. */
     private static function styles(array $v): array
     {
         return array_map(static fn(string $s): string => $s === 'json' ? 'ordered_json' : $s, $v['styles']);
     }
 
-    /** @return iterable<string, array{array<string, mixed>}> tests/codec/vectors.json의 vector마다 */
+    /** @return iterable<string, array{array<string, mixed>}> for each vector in tests/codec/vectors.json */
     public static function vectors(): iterable
     {
         $vectors = json_decode(file_get_contents(dirname(__DIR__, 3) . '/tests/codec/vectors.json'), true, 512, JSON_THROW_ON_ERROR)['vectors'];
@@ -57,7 +57,7 @@ final class CodecVectorsTest extends TestCase
         }
     }
 
-    // memory 안에서 vector를 decode하고 encode한다.
+    // Decodes and encodes the vector in memory.
     /** @param array<string, mixed> $v */
     #[DataProvider('vectors')]
     public function test_php_vector(array $v): void
@@ -128,9 +128,9 @@ final class CodecVectorsTest extends TestCase
     }
 
     /**
-     * Go(TestCodecVectors), Rust(codec test), TypeScript(codec-vector.mjs), Python(codec_vector.py)의 출력은 make codec-check가 이 실행에서
-     * 그 test를 실행해 ORM_CODEC_OUT directory에 쓴 것만 읽는다. 다른 target이나 앞선 실행이 쓴 출력을 읽으면 이
-     * 실행의 code를 비교하지 않는다. 없는 출력을 건너뛰면 비교하지 않은 언어가 통과로 보인다.
+     * The output of Go(TestCodecVectors), Rust(codec test), TypeScript(codec-vector.mjs), and Python(codec_vector.py) is checked by make codec-check, which in this run
+     * runs that test and reads only what it wrote to the ORM_CODEC_OUT directory. Reading output written by another target or an earlier run
+     * does not compare this run's code. Skipping a missing output makes a language that was not compared look like it passed.
      */
     private static function assertOutput(string $lang, array $v): void
     {

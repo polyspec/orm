@@ -2,11 +2,11 @@
 declare(strict_types=1);
 
 /*
- * markdown IR executor의 unit case다(docs/protocol.md §5): markdown DSN, client가 보내는 connect와
- * control message와 error 줄의 해석, server가 거절한 connect, markdown 연결이 거절하는 SQL 전용
- * surface, 그리고 message encoder가 parameter마다 slot의 form을 읽는 Validator::paramUses다.
- * 한 class의 크기는 가장 큰 case(하위 process)의 Large다.
- * flowmark server 대신 markdown_fake_server.php가 한 연결의 message를 받아 적고 정한 답을 쓴다.
+ * markdown IR executor unit case (docs/protocol.md §5): the markdown DSN, the connect the client sends,
+ * the reading of control messages and error lines, the connect the server refuses, the SQL-only surface that a markdown connection refuses,
+ * and Validator::paramUses, which reads the slot form for each parameter in the message encoder.
+ * The size of a class is Large, that of the largest case (a child process).
+ * Instead of the flowmark server, markdown_fake_server.php records the messages of one connection and writes the chosen answers.
  */
 
 require_once dirname(__DIR__) . '/markdownmodel/bootstrap.php';
@@ -25,7 +25,7 @@ use Polyspec\Orm\Validator;
 const MARKDOWN_TOKEN = '0123456789abcdef0123456789abcdef';
 const MARKDOWN_CONNECT_LINE = '{"op":"connect","corpus":"tracker","token":"' . MARKDOWN_TOKEN . '"}';
 
-/** 오류 code다. 던지지 않으면 null이다. */
+/** The error code. null if nothing is thrown. */
 function markdown_error(Closure $fn): ?OrmException
 {
     try {
@@ -37,8 +37,8 @@ function markdown_error(Closure $fn): ?OrmException
 }
 
 /**
- * markdown_fake_server.php를 $answers로 시작한다. 돌려주는 값은 [process, stdout, dsn, stderr]이다.
- * stderr는 pipe로 받는다: 이 process의 STDERR를 넘기면 file로 redirect한 출력의 앞부분이 사라진다.
+ * Starts markdown_fake_server.php with $answers. The values returned are [process, stdout, dsn, stderr].
+ * stderr is received through a pipe: passing this process's STDERR loses the front of the output redirected to a file.
  *
  * @param list<string> $answers
  * @return array{0: resource, 1: resource, 2: string, 3: resource}
@@ -61,7 +61,7 @@ function markdown_fake_server(array $answers): array
 }
 
 /**
- * fake server가 받은 message 줄이다. server가 끝나기를 기다린다.
+ * The message line the fake server received. Waits for the server to finish.
  *
  * @param array{0: resource, 1: resource, 2: string, 3: resource} $server
  * @return list<string>
@@ -168,8 +168,8 @@ final class MarkdownTest extends TestCase
 
     public function test_request_message(): void
     {
-        // request message는 parameter를 slot의 form으로 쓴다: date column과 비교하는 시각은 YYYY-MM-DD다. 행이 없는
-        // group count는 빈 결과다.
+        // The request message writes parameters in the slot form: the time compared with a date column is YYYY-MM-DD. A row that is absent
+        // group count is an empty result.
         $server = markdown_fake_server(['{"ok":true}', '{"rows":[]}']);
         $db = \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
         $groups = (new \Polyspec\Orm\Tests\MarkdownModel\Tasks())->connect($db)
@@ -185,8 +185,8 @@ final class MarkdownTest extends TestCase
 
     public function test_bind_message_vectors(): void
     {
-        // tests/bind/vectors.json의 message case: IR executor message parameter의 runtime value model JSON이다
-        // (docs/protocol.md §5 "Parameters"). Go의 TestBindMessageVectors와 같은 case다.
+        // Message case of tests/bind/vectors.json: the runtime value model JSON of an IR executor message parameter
+        // (docs/protocol.md §5 "Parameters"). It is the same case as Go's TestBindMessageVectors.
         $vectors = json_decode((string) file_get_contents(__DIR__ . '/../../../tests/bind/vectors.json'), true, flags: JSON_THROW_ON_ERROR);
         $server = markdown_fake_server(['{"ok":true}']);
         $db = Orm::connect($server[2], new Config());
@@ -214,11 +214,11 @@ final class MarkdownTest extends TestCase
 
     public function test_bind_vectors(): void
     {
-        // tests/bind/vectors.json의 bind case: parameter 값을 그 slot의 논리 type으로 검사한다(docs/protocol.md §5
-        // "Parameters"). Go의 TestBindVectors와 같은 case다.
+        // Bind case of tests/bind/vectors.json: checks the parameter value against the logical type of its slot (docs/protocol.md §5
+        // "Parameters"). It is the same case as Go's TestBindVectors.
         $vectors = json_decode((string) file_get_contents(__DIR__ . '/../../../tests/bind/vectors.json'), true, flags: JSON_THROW_ON_ERROR);
         $zone = new \DateTimeZone($vectors['zone']);
-        // {"int": text}는 int, {"f64": text}는 무한이나 NaN인 float, {"bytes": base64}는 Bytes다.
+        // {"int": text} is an int, {"f64": text} is a float that is infinite or NaN, and {"bytes": base64} is Bytes.
         $value = static function (mixed $v): mixed {
             if (!is_array($v)) {
                 return $v;
@@ -279,7 +279,7 @@ final class MarkdownTest extends TestCase
         }
         ']));
         $validator = new Validator($model);
-        /** paramUses의 각 use를 [type, column 이름]으로 줄인 값이다. */
+        /** Each use of paramUses reduced to [type, column name]. */
         $usesOf = static fn(array $uses): array => array_map(
             static fn(array $list): array => array_map(static fn(array $u): array => [$u['type'], $u['column']['name'] ?? ''], $list),
             $uses,

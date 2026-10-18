@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
-// audit_triggers feature coverage: contracts/fixtures/audit.dbs를 bench database에 설치하고
-// packages/go/orm/audit_transaction_test.go의 auditCase와 같은 순서로 audit transaction으로 쓴 뒤,
-// trigger가 남긴 item_history와 audit 기록을 확인하고 설치한 table과 PostgreSQL function을 지운다.
-// soft_delete_restore는 contracts/fixtures/restore.dbs로 같은 일을 한다. fixture의 model은
-// fixture마다 자기 namespace로 임시 directory에 생성하며 bench model은 읽지 않는다.
+// audit_triggers feature coverage: installs contracts/fixtures/audit.dbs in the bench database
+// and writes it in an audit transaction in the same order as auditCase in packages/go/orm/audit_transaction_test.go,
+// checks the item_history and audit record left by the trigger, and removes the installed table and PostgreSQL function.
+// soft_delete_restore does the same with contracts/fixtures/restore.dbs. The fixture's model
+// is created per fixture in a temporary directory under its own namespace, and the bench model is not read.
 
 require_once __DIR__ . '/coverage_cases.php';
 require_once __DIR__ . '/restore_case.php';
@@ -21,7 +21,7 @@ use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
-/** connection의 database에 table이 있는지 catalog에서 읽는다. */
+/** Reads from the catalog whether the connection's database has the table. */
 function auditTable(Db $db, string $table): bool
 {
     $sql = match ($db->driver()) {
@@ -35,11 +35,11 @@ function auditTable(Db $db, string $table): bool
 }
 
 /**
- * 설치한 table을 audit 기록 table을 가리키는 table부터 지우고, table과 함께 지워지지 않는
- * PostgreSQL trigger function을 지운다.
+ * Removes the installed tables, starting with the table that points at the audit record table, and the
+ * PostgreSQL trigger functions that are not removed with the table.
  *
- * @param list<string> $tables 지울 순서의 table
- * @param list<string> $audited audit trigger function을 가진 table
+ * @param list<string> $tables the tables, in the order to remove
+ * @param list<string> $audited tables that have an audit trigger function
  */
 function dropFixture(Db $db, array $tables, array $audited): void
 {
@@ -57,8 +57,8 @@ function dropFixture(Db $db, array $tables, array $audited): void
 }
 
 /**
- * contracts/fixtures/<fixture>.dbs의 model을 임시 directory의 $namespace에 한 번 생성하고 autoload에
- * 등록한다. 한 process의 여러 case가 같은 model을 쓴다. directory는 process가 끝날 때 지운다.
+ * Creates the model of contracts/fixtures/<fixture>.dbs once in $namespace in a temporary directory and
+ * registers it with autoload. Several cases in one process use the same model. The directory is removed when the process ends.
  */
 function fixtureModels(string $fixture, string $namespace): void
 {
@@ -92,18 +92,18 @@ function fixtureModels(string $fixture, string $namespace): void
     require_once "$work/gen/bootstrap.php";
 }
 
-/** audit document의 model을 CoverageAudit\Orm에 생성한다. */
+/** Creates the model of the audit document in CoverageAudit\Orm. */
 function auditModels(): void
 {
     fixtureModels('audit', 'Polyspec\\Orm\\Tests\\CoverageAudit');
 }
 
-/** audit fixture가 만드는 table이다. */
+/** The table that the audit fixture creates. */
 const AUDIT_TABLES = ['audit', 'item', 'item_history'];
 
 /**
- * actor 'default'를 주는 audit source로 고른 database에 연결해 audit document를 설치하고
- * $body($db, $dsn)를 실행한 뒤, 실패해도 설치한 table과 function을 지운다.
+ * Connects with the audit source that gives the actor 'default' to the chosen database, installs the audit document,
+ * runs $body($db, $dsn), and removes the installed tables and functions even if it fails.
  *
  * @param Closure(Db, string): void $body
  */
@@ -131,7 +131,7 @@ function withAudit(Closure $body): void
 #[Medium]
 final class CoverageAuditTriggersTest extends TestCase
 {
-    // audit transaction은 audit 기록 하나를 삽입하고 audit table의 write가 그 key를 쓴다(audit_case.php).
+    // The audit transaction inserts one audit record, and the write to the audit table writes its key (audit_case.php).
     public function test_audit_history(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -140,9 +140,9 @@ final class CoverageAuditTriggersTest extends TestCase
         }
     }
 
-    // 모든 transaction 진입점이 audit 값을 받는다: PHP의 진입점은 audit source를 가진 연결의 Db::transaction
-    // 하나이며, 두 transaction이 audit 기록을 하나씩 삽입하고 audit 대상 write가 그 key를 쓰고, 중첩
-    // transaction은 audit을 받지 않는다.
+    // Every transaction entry point takes the audit values: PHP's entry point is one Db::transaction on a connection with an audit source,
+    // and two transactions each insert one audit record, the audited write writes its key, and nested
+    // transactions take no audit.
     public function test_audit_transaction_entry_points(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -166,8 +166,8 @@ final class CoverageAuditTriggersTest extends TestCase
         }
     }
 
-    // soft delete한 행을 restore로 되돌린다(restore_case.php): unique key와 exclude 목록을 가진 audit table과
-    // audit 없는 table이다. 끝나면 설치한 table과 PostgreSQL trigger function을 지운다.
+    // Restores a soft-deleted row with restore (restore_case.php): an audit table with a unique key and exclude list, and
+    // a table without audit. At the end it removes the installed tables and PostgreSQL trigger functions.
     public function test_soft_delete_restore(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {

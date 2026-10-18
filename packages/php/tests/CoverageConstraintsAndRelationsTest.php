@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
-// constraints_and_relations feature coverage: 참조되는 행의 삭제, check 위반,
-// unique 중복은 각각 FOREIGN_KEY, CONSTRAINT, DUPLICATE_KEY로 실패하고 아무 행도
-// 바꾸지 않는다.
+// constraints_and_relations feature coverage: deleting a referenced row, a check violation,
+// and unique duplicates fail with FOREIGN_KEY, CONSTRAINT, and DUPLICATE_KEY respectively, and no row
+// is changed.
 
 require_once __DIR__ . '/coverage_cases.php';
 

@@ -1,9 +1,9 @@
 <?php
-// PHP client의 DSN parameter와 MySQL TLS 연결(docs/config.md): DSN은 scheme의 parameter만
-// 쓰고, 절대 경로 `ssl-ca`와 host 이름을 둔 `ssl-mode=VERIFY_IDENTITY`가 유일한 MySQL TLS
-// mode이며, 다른 parameter와 mode는 모두 CONFIG다. 연결 case는 `make test-servers`의
-// ORM_TEST_MYSQL_TLS_DSN, ORM_TEST_MYSQL_TLS_OTHER_CA_DSN, ORM_TEST_MYSQL_TLS_MISMATCH_DSN이
-// 필요하며, 하나라도 없으면 실패한다.
+// The DSN parameters of the PHP client and the MySQL TLS connection (docs/config.md): the DSN uses only the parameters of the scheme,
+// and `ssl-mode=VERIFY_IDENTITY` with an absolute `ssl-ca` path and a host name is the only MySQL TLS
+// mode; every other parameter and mode is CONFIG. Connection cases need the ORM_TEST_MYSQL_TLS_DSN from `make test-servers`,
+// ORM_TEST_MYSQL_TLS_OTHER_CA_DSN, and ORM_TEST_MYSQL_TLS_MISMATCH_DSN,
+// and the test fails if any of them is missing.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/MysqlTlsTest.php
 declare(strict_types=1);
 
@@ -16,7 +16,7 @@ use Polyspec\Orm\Config;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
 
-// parameter case는 memory 안의 parse이고, connection case는 TLS server에 세 번 연결한다.
+// Parameter cases are a parse in memory, and connection cases connect to the TLS server three times.
 #[Medium]
 final class MysqlTlsTest extends TestCase
 {

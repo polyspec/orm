@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
-// model_generation feature coverage: commit된 생성 명령과 같은 인자로
-// orm-gen의 check mode를 실행하면 packages/php/gen이 generator 출력과 같다고
-// 보고하고, 한 byte를 바꾼 사본은 다르다고 보고한다.
+// model_generation feature coverage: with the same arguments as the committed generation command,
+// running the orm-gen check mode reports that packages/php/gen is the same as the generator output,
+// and reports that a copy with one byte changed is different.
 
 require_once __DIR__ . '/coverage_cases.php';
 
@@ -10,7 +10,7 @@ use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
 
-/** @return array{int, string} 저장소 root에서 실행한 orm-gen check의 종료 코드와 출력 */
+/** @return array{int, string} exit code and output of orm-gen check, run at the repository root */
 function generationCheck(string $root, string $out): array
 {
     [$status, $stdout, $stderr] = coverageProcess(
@@ -40,7 +40,7 @@ final class CoverageModelGenerationTest extends TestCase
             }
             [$status, $output] = generationCheck($root, $copy);
             Assert::assertTrue($status === 0 && $output === '', "check of the unchanged copy exited $status: $output");
-            // 생성된 PHP 본문의 한 byte를 바꾼다: `final class Author`의 `B`를 `C`로.
+            // Changes one byte of the generated PHP body: the `B` of `final class Author` to `C`.
             $changed = "$copy/Author.php";
             $text = file_get_contents($changed);
             $at = $text === false ? false : strpos($text, 'final class Author');

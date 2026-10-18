@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 /*
- * tests/markdown/cases.json의 모든 case를 그 순서대로, FLOWMARK가 가리키는 flowmark build의 server
- * 하나에 대해 PHP client로 실행한다(tests/markdown/README.md). 그 build는 flowmark.version이 고정한
- * build여야 하고, 없거나 다른 build이면 실행은 실패한다(건너뛰지 않는다). case는 앞 case가 쓴 corpus를
- * 읽으므로 첫 실패에서 멈춘다(make target이 PHPUnit을 --stop-on-defect로 실행한다). case마다 cases.json의 id로
- * 이름 붙은 data set이다.
+ * Runs every case of tests/markdown/cases.json, in order, with the PHP client against the server of the flowmark build that FLOWMARK points at,
+ * one at a time (tests/markdown/README.md). That build must be the one pinned by flowmark.version; if it is missing or a different build, the run fails (it does not skip). A case reads
+ * the corpus that the earlier case wrote, so it stops at the first failure (the make target runs PHPUnit with --stop-on-defect).
+ * Each case is
+ * a data set named by its id in cases.json.
  *
  * Usage: FLOWMARK=<flowmark> vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --stop-on-defect packages/php/tests/MarkdownConformanceTest.php
  */
@@ -22,7 +22,7 @@ use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
-/** test가 시작한 flowmark server와 그 corpus다. */
+/** The flowmark server the test started, and its corpus. */
 final class Served
 {
     public ?Db $db = null;
@@ -41,7 +41,7 @@ final class Served
     }
 }
 
-/** transaction을 rollback시키려고 callback이 던지는 오류다. */
+/** The error the callback throws to roll back the transaction. */
 final class Stop extends RuntimeException
 {
 }
@@ -49,9 +49,9 @@ final class Stop extends RuntimeException
 #[Large]
 final class MarkdownConformanceTest extends TestCase
 {
-    // conformanceDir는 공유 suite의 directory다: cases.json, flowmark.version, corpus/.
+    // conformanceDir is the directory of the shared suite: cases.json, flowmark.version, corpus/.
     private const MARKDOWN_CONFORMANCE_DIR = __DIR__ . '/../../../tests/markdown';
-    // FLOWMARK가 가리키는 build의 main module이어야 하는 module path다.
+    // The module path, which must be the main module of the build that FLOWMARK points at.
     private const FLOWMARK_MODULE = 'github.com/polyspec/flowmark';
 
     /** @return list<array{id: string, expect: mixed}> */
@@ -70,8 +70,8 @@ final class MarkdownConformanceTest extends TestCase
     }
 
     /**
-     * FLOWMARK가 가리키는 flowmark binary다. `go version -m`이 읽은 build 정보가 flowmark module의
-     * flowmark.version 판이 아니면 실패한다.
+     * The flowmark binary that FLOWMARK points at. Fails unless the build information that `go version -m` reads is the flowmark module's
+     * flowmark.version pin.
      */
     private static function pinned_flowmark(): string
     {
@@ -99,10 +99,10 @@ final class MarkdownConformanceTest extends TestCase
     }
 
     /**
-     * $command를 실행하고 끝나기를 기다린다.
+     * Runs $command and waits for it to finish.
      *
      * @param list<string> $command
-     * @return array{0: int, 1: string, 2: string} 종료 코드, stdout, stderr
+     * @return array{0: int, 1: string, 2: string} exit code, stdout, stderr
      */
     private static function run_process(array $command): array
     {
@@ -117,7 +117,7 @@ final class MarkdownConformanceTest extends TestCase
         return [proc_close($process), $out, $err];
     }
 
-    /** $path와 그 아래를 지운다. */
+    /** Removes $path and everything under it. */
     private static function remove_tree(string $path): void
     {
         if (!file_exists($path) && !is_link($path)) {
@@ -136,8 +136,8 @@ final class MarkdownConformanceTest extends TestCase
     }
 
     /**
-     * corpus/를 새 corpus로 install하고 그 server를 시작해 연결한다. stop_serving이 연결을 닫고
-     * server를 멈춘 뒤 끝나기를 기다리고 directory를 지운다.
+     * Installs corpus/ as a new corpus, starts that server, and connects to it. stop_serving closes the connection
+     * and waits for the server to stop, then removes the directory.
      */
     private static function serve(Served $s, string $bin, callable $step): void
     {
@@ -177,7 +177,7 @@ final class MarkdownConformanceTest extends TestCase
         }
     }
 
-    /** 연결을 닫고 server를 멈춘 뒤 끝나기를 기다리고 corpus directory를 지운다. */
+    /** Closes the connection, stops the server, waits for it to finish, and removes the corpus directory. */
     private static function stop_serving(Served $s): void
     {
         try {
@@ -194,7 +194,7 @@ final class MarkdownConformanceTest extends TestCase
         }
     }
 
-    /** 날짜 하나다. */
+    /** One date. */
     /** The text form of a date, which the date setters take; the text is checked by its parse. */
     private static function day(string $text): string
     {
@@ -203,8 +203,8 @@ final class MarkdownConformanceTest extends TestCase
     }
 
     /**
-     * cases.json의 id마다 그 case를 실행하는 함수다. 함수는 README가 정한 결과 값을 돌려주고,
-     * OrmException은 그 code의 {"error": code} 결과가 된다.
+     * The function that runs the case of each cases.json id. It returns the result value that the README fixes,
+     * and an OrmException becomes the result {"error": code} with that code.
      *
      * @return array<string, Closure(Served): mixed>
      */
@@ -372,7 +372,7 @@ final class MarkdownConformanceTest extends TestCase
                 try {
                     $s->db->transaction(static function () use ($s): void {
                         (new People())->id('P1')->get()->setName('Ann C')->update();
-                        // engine 밖의 편집: transaction이 쓸 file을 commit 전에 바꾼다.
+                        // Edit outside the engine: changes the file the transaction writes before the commit.
                         $path = "{$s->dir}/people.flowmark.md";
                         $text = (string) file_get_contents($path);
                         if (!str_contains($text, 'Cara')) {
@@ -414,7 +414,7 @@ final class MarkdownConformanceTest extends TestCase
         ];
     }
 
-    /** 결과를 JSON으로 썼다 읽고 object의 member를 이름 순서로 둔 값이다: cases.json의 expect와 같은 형태다. */
+    /** The result, written as JSON and read back, with the object's members in name order: the same shape as expect in cases.json. */
     public static function normalize(mixed $v): mixed
     {
         $sorted = static function (mixed $v) use (&$sorted): mixed {

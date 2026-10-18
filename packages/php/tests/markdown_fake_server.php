@@ -2,9 +2,9 @@
 declare(strict_types=1);
 
 /*
- * MarkdownTest.php가 flowmark server 대신 쓰는 server다. 127.0.0.1의 빈 port에서 연결 하나를
- * 받고, 받은 message 줄마다 인자의 답을 차례로 쓴다. 듣기 시작하면 port를 한 줄로 쓰고, 연결이
- * 끝나거나 답이 떨어지면 연결을 닫고 받은 줄들을 JSON 배열 한 줄로 쓰고 끝난다.
+ * The server MarkdownTest.php uses instead of the flowmark server. It accepts one connection on an empty port on 127.0.0.1
+ * and writes the chosen answers in turn for each message line it receives. When it starts listening, it writes the port on one line; when the connection
+ * ends or the answers run out, it closes the connection, writes the lines it received as one line of a JSON array, and ends.
  *
  *   php markdown_fake_server.php <answer>...
  *

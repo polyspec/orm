@@ -19,7 +19,7 @@ final class DbspecRenderTest extends TestCase
         self::$started = caseClockStart();
     }
 
-    // 모든 vector를 합친 CPU 시간이 10 s 기준값을 넘으면 경고한다.
+    // Warns if the CPU time of all vectors together exceeds the 10 s baseline.
     public static function tearDownAfterClass(): void
     {
         [$cpuMs, $wallMs] = caseClockElapsed(self::$started);
@@ -45,7 +45,7 @@ final class DbspecRenderTest extends TestCase
         }
     }
 
-    // 각 vector는 memory 안에서 문서 하나를 세 dialect로 렌더링한다.
+    // Each vector renders one document in memory in three dialects.
     #[DataProvider('ddlCases')]
     public function test_ddl(array $case): void
     {
@@ -64,7 +64,7 @@ final class DbspecRenderTest extends TestCase
         foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
             $this->assertArrayHasKey($dialect, $case['statements'], "{$case['id']}: no $dialect statements");
             $want = $case['statements'][$dialect];
-            // 문서 집합의 순서는 결과를 바꾸지 않는다.
+            // The order of the document set does not change the result.
             foreach ([$documents, array_reverse($documents)] as $set) {
                 $rendered = Dbspec::render($set, $dialect);
                 $this->assertNotNull($rendered->statements, "{$case['id']}/$dialect: diagnostics " . json_encode(array_map(fn($d) => [$d->rule, $d->line, $d->column, $d->message], $rendered->diagnostics)));

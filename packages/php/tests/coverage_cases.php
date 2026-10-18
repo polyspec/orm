@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
-// packages/php/tests/Coverage*Test.php가 함께 쓰는 feature coverage helper다(scripts/features/coverage.mts가
-// 그 test method를 PHPUnit으로 실행한다).
+// Feature coverage helper shared by packages/php/tests/Coverage*Test.php (scripts/features/coverage.mts
+// runs those test methods with PHPUnit).
 
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
@@ -55,13 +55,13 @@ function coverageItem(): array
 
 require_once __DIR__ . '/../testing/required_dsn.php';
 
-/** seed된 bench database의 AES와 blind index key로 연결한다(scripts/bench-db.sh). */
+/** Connects with the AES and blind index keys of the seeded bench database (scripts/bench-db.sh). */
 function coverageConnect(string $dsn): Db
 {
     return \Polyspec\Orm\Tests\Model\connect($dsn, new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index'));
 }
 
-/** 저장소 파일의 JSON을 읽는다. 읽거나 해석할 수 없으면 실패한다. */
+/** Reads the JSON of a repository file. Fails if it cannot be read or parsed. */
 function coverageJson(string $path, bool $associative = true): mixed
 {
     $text = file_get_contents($path);
@@ -71,7 +71,7 @@ function coverageJson(string $path, bool $associative = true): mixed
     return json_decode($text, $associative, 512, JSON_THROW_ON_ERROR);
 }
 
-/** $fn이 던진 OrmException의 code다. 다른 예외는 그대로 전파하고, 성공하면 'no error'다. */
+/** The OrmException code thrown by $fn. Other exceptions propagate as they are; on success, 'no error'. */
 function coverageCode(Closure $fn): string
 {
     try {
@@ -83,8 +83,8 @@ function coverageCode(Closure $fn): string
 }
 
 /**
- * $body를 실행하고, 성공이든 실패든 $restore로 test가 쓴 행을 되돌린다.
- * 두 단계가 모두 실패하면 두 오류를 함께 보고한다.
+ * Runs $body, and whether it succeeds or fails, rolls back the rows the test wrote with $restore.
+ * If both steps fail, reports both errors together.
  */
 function coverageRestoring(Closure $body, Closure $restore): void
 {
@@ -102,8 +102,8 @@ function coverageRestoring(Closure $body, Closure $restore): void
 }
 
 /**
- * 자식 process를 실행해 종료 코드와 stdout, stderr를 돌려준다. 출력은 test 출력에
- * 섞이지 않으며, 호출자가 실패 오류에 넣는다.
+ * Runs a child process and returns its exit code, stdout, and stderr. The output does not mix
+ * into the test output; the caller puts it in the failure error.
  *
  * @param list<string> $command
  * @param array<string, string>|null $env
@@ -115,7 +115,7 @@ function coverageProcess(array $command, string $cwd, ?array $env = null): array
     if (!is_resource($process)) {
         throw new RuntimeException('cannot start ' . $command[0]);
     }
-    // stdout과 stderr를 함께 읽어 한쪽 pipe가 가득 차 자식이 멈추지 않게 한다.
+    // Reads stdout and stderr together, so that a full pipe on one side does not block the child.
     stream_set_blocking($pipes[1], false);
     stream_set_blocking($pipes[2], false);
     $out = ['', ''];

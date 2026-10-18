@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
-// model_writes feature coverage: 생성된 CompositeAccount model의 create,
-// creates, update, duplication(upsert), count, delete를 tenant 990002의 행으로
-// 실행하고 그 행을 모두 지운다. composite_account에는 identity column이 없어
-// database state가 실행 전과 같게 남는다.
+// model_writes feature coverage: the create of the generated CompositeAccount model,
+// update, duplication (upsert), count, and delete, on rows of tenant 990002,
+// and removes all those rows. composite_account has no identity column, so
+// the database state is left the same as before the run.
 
 require_once __DIR__ . '/coverage_cases.php';
 

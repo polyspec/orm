@@ -14,7 +14,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
 
-/** 두 JSON 값이 같은지 비교한다: 배열은 순서대로, object는 key 집합과 값으로, 수는 값으로. */
+/** Compares two JSON values: arrays in order, objects by key set and values, numbers by value. */
 function sameJson(mixed $a, mixed $b): bool
 {
     if ($a instanceof stdClass || $b instanceof stdClass) {

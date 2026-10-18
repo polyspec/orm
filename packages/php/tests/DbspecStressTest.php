@@ -10,7 +10,7 @@ use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
 
-/** stress 문서의 기준 작업: byte마다 h = h*31 + b(mod 2^32)를 차례로 계산한다. */
+/** Base work of the stress document: for each byte, computes h = h*31 + b (mod 2^32) in order. */
 function dbspec_stress_reference_scan(string $text): int
 {
     $h = 0;
@@ -28,7 +28,7 @@ final class DbspecStressTest extends TestCase
 {
     public function test_stress(): void
     {
-        // stress case의 CPU 기준값은 60 s다. 문서 생성(node process 하나), parse 다섯 번, emit 두 번을 담는다. 넘으면 경고한다.
+        // The CPU baseline for the stress case is 60 s. It covers document creation (one node process), five parses, and two emits. Warns if exceeded.
         $clock = cpuCaseBegin(60.0);
         $started = $clock[0];
         fwrite(STDERR, 'memoryLimit=' . ini_get('memory_limit') . "\n");
@@ -54,8 +54,8 @@ final class DbspecStressTest extends TestCase
         }
         sort($parses);
         $parseMs = $parses[2];
-        // 기준 작업은 같은 문서의 byte마다 checksum을 갱신하는 loop다. 같은 process에서 같은 시계로 재고, parse 시간과의
-        // 비율을 출력한다(docs/dbspec.md, Verification).
+        // The base work is a loop that updates a checksum for each byte of the same document. It is measured in the same process with the same clock, and
+        // prints the ratio to the parse time (docs/dbspec.md, Verification).
         $references = [];
         for ($i = 0; $i < 5; $i++) {
             $referenceStarted = caseClockStart();

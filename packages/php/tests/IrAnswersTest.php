@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 /*
- * contracts/fixtures/ir_answers.json의 case마다 그 chain(tests/markdown/cases.json의 case)을 실행한다: flowmark server
- * 대신 markdown_fake_server.php가 connect에 {"ok":true}, chain의 request 하나에 case의 answer를 쓰고, chain의 결과가
- * expect와 같은지 본다(docs/protocol.md §5 Read). flowmark는 필요 없다.
+ * For each case of contracts/fixtures/ir_answers.json, runs its chain (a case of tests/markdown/cases.json). Instead of the flowmark server,
+ * markdown_fake_server.php replies {"ok":true} to connect and writes the case's answer to one chain request, and checks that the chain's result
+ * matches expect (docs/protocol.md §5 Read). flowmark is not needed.
  *
  * Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/IrAnswersTest.php
  */

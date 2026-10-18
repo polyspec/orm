@@ -11,7 +11,7 @@ use Polyspec\Orm\Tests\Model\Author;
 #[Small]
 final class DecimalModelTest extends TestCase
 {
-    /** @return iterable<string, array{array<string, mixed>, array<string, mixed>}> contracts/fixtures/decimal_model.json의 case와 그 column */
+    /** @return iterable<string, array{array<string, mixed>, array<string, mixed>}> the case and its column of contracts/fixtures/decimal_model.json */
     public static function cases(): iterable
     {
         $fixture = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/decimal_model.json'), true, 512, JSON_THROW_ON_ERROR);

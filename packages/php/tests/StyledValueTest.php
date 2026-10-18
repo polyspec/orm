@@ -18,7 +18,7 @@ final class StyledValueTest extends TestCase
         return json_decode(file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/styled_column_states.json'), true, 512, JSON_THROW_ON_ERROR);
     }
 
-    /** @return iterable<string, array{array<string, mixed>}> fixture의 case마다 */
+    /** @return iterable<string, array{array<string, mixed>}> for each case of the fixture */
     public static function cases(): iterable
     {
         foreach (self::fixture()['cases'] as $case) {
@@ -36,10 +36,10 @@ final class StyledValueTest extends TestCase
     public function test_styled_value(array $case): void
     {
         $id = $case['id'];
-        // fixture의 Mermaid style 이름 json과 jsons는 둘 다 dbspec codec stage ordered_json이다.
+        // The Mermaid style name json and jsons of the fixture are both the dbspec codec stage ordered_json.
         $styles = [in_array($case['style'], ['json', 'jsons'], true) ? 'ordered_json' : $case['style']];
         if (!array_key_exists('stored_text', $case) && !array_key_exists('write_text', $case)) {
-            // test_model_states가 읽는 case다.
+            // The case that test_model_states reads.
             self::assertContains($id, ['unselected', 'nonnull_sql_null'], "$id: fixture case has no codec operation");
             return;
         }

@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
-// schema_definition feature coverage: contracts/fixtures/schema_definition.json의
-// 각 case를 PHP dbspec 구현(Polyspec\Orm\Dbspec\Dbspec)으로 실행한다: parse 후 emit의
-// byte 단위 재현, document set의 manifest hash, dialect별 rendered statement, the tokens of syntax analysis,
+// schema_definition feature coverage: each case of contracts/fixtures/schema_definition.json
+// runs on the PHP dbspec implementation (Polyspec\Orm\Dbspec\Dbspec): after parse, emit reproduces
+// byte for byte, the manifest hash of the document set, the per-dialect rendered statements, the tokens of syntax analysis,
 // formatting and its refusal, and the declaration positions of a parse.
 // packages/php-ext/tests/CoverageSchemaDefinitionTest.php runs the same cases on the extension.
 
@@ -15,10 +15,10 @@ use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
 /**
- * fixture가 나열한 문서를 읽고 각 문서를 그 집합 안에서 parse한다.
+ * Reads the documents the fixture lists and parses each document within that set.
  *
  * @param list<string> $paths
- * @return array{array<string, string>, list<Document>} 경로별 text와 parse한 문서
+ * @return array{array<string, string>, list<Document>} text by path and the parsed documents
  */
 function fixtureDocuments(string $root, array $paths, string $dbspec = Dbspec::class): array
 {
@@ -43,7 +43,7 @@ function fixtureDocuments(string $root, array $paths, string $dbspec = Dbspec::c
     return [$texts, $documents];
 }
 
-/** @return array<string, mixed> fixture에서 id가 같은 case */
+/** @return array<string, mixed> the case in the fixture with the same id */
 function fixtureCase(array $fixture, string $id, string $operation): array
 {
     foreach ($fixture['cases'] as $case) {
