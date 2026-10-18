@@ -8,6 +8,7 @@
 - The Python conformance bindings run every vector by name through the unchanged runner, so the Python suite holds without code change (T77-9-4-6).
 - The Go coverage suites run every case through one binding per implementation, which the parity rules already held, so no code changed (T77-9-4-1).
 - The NULL collection key conformance vector runs in the five runners on SQLite, MySQL and PostgreSQL with identical output; the PHP extension leg stays held (T77-6-1).
+- The Rust parity bindings of the client bench, example, benchmark and seeded tests run through tests/cargo-test.mts, which gives the copied programs the tests read (T148-3-9).
 - The sqlite send-savepoint test of parity opens its file in the step's run directory, which parity-prepare creates (T148-3-10).
 - The parity-check step owns its run directory (STEP_RUN_DIR, removed when the step ends), so no leftover is reported (T77-58).
 - The MySQL days_ago bind uses the bound instant, so the physical fixture is deterministic on every database (T77-33-1).

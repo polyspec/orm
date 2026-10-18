@@ -832,6 +832,14 @@ feature-unit-check/select:
 feature-go-unit:
 	$(NODE) packages/go/testing/feature-json.mts --database $(FEATURE_DATABASE) --dsn-env $(FEATURE_DSN_ENV) --test $(FEATURE_TEST) $(FEATURE_PACKAGE)
 
+# feature-rust-unit runs one Rust test target of a feature, as a parity binding names it: the make variables FEATURE_CRATE
+# (the directory of the crate's Cargo.toml, from the checkout root) and FEATURE_CARGO_TARGET (the cargo target option, such as
+# `--test client_bench_dsn` or `--bin conformance`) are passed by config/parity.json. It runs through tests/cargo-test.mts,
+# the runner of every Rust test, which gives the test binaries the copied programs they read (polyspec_orm_testcase::program).
+.PHONY: feature-rust-unit
+feature-rust-unit:
+	$(WITH_TEST_ENV) cd $(FEATURE_CRATE) && $(CARGO_TEST) feature-rust-unit -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline $(FEATURE_CARGO_TARGET) -- --test-threads=1
+
 # feature-check는 기능의 coverage와 모든 검증 명령이고, make check는 그것을 세 target으로 실행한다: feature-coverage는
 # coverage, feature-verify-rust는 shard rust(cargo로 Rust를 build하고 실행하는 명령)의 검증 명령, feature-verify-other는
 # shard other의 검증 명령이다(contracts/features.json의 `shard`). CI는 셋을 서로 다른 group에서 동시에 실행한다. 같은

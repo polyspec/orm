@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: eeaa8dcd52358aa71acb954b7e53542feefb5a040b1cec58bf07f115cd0b61d5 -->
+<!-- source-sha256: e9ff6e91ff1edc266608bb0200194549a576a28b6f24055f3220b855db440c86 -->
 # 변경 이력
 
 ## Unreleased
@@ -9,6 +9,7 @@
 - Python conformance binding이 변경되지 않은 runner로 모든 vector를 이름으로 실행한다. 코드 변경 없이 Python suite가 충족된다 (T77-9-4-6).
 - Go coverage suite는 implementation마다 binding 하나로 모든 case를 실행한다. parity 규칙이 이미 충족되어 코드는 바뀌지 않았다 (T77-9-4-1).
 - NULL collection key conformance vector가 SQLite, MySQL, PostgreSQL에서 다섯 runner로 실행되며 출력이 일치한다. PHP extension 경로는 보류 상태로 남는다 (T77-6-1).
+- client bench, example, benchmark와 seeded test의 Rust parity binding이 tests/cargo-test.mts로 실행된다. 이 runner가 test가 읽는 복사된 program을 준다 (T148-3-9).
 - parity의 sqlite send-savepoint test가 parity-prepare가 만드는 단계의 run directory에 file을 연다 (T148-3-10).
 - parity-check 단계가 자기 실행 디렉터리(STEP_RUN_DIR, 단계가 끝나면 삭제)를 가지므로 남은 디렉터리가 보고되지 않는다 (T77-58).
 - MySQL days_ago bind가 바인드된 시각을 써서, physical fixture가 모든 database에서 결정적이다 (T77-33-1).
