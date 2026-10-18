@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The MySQL migration case of the test servers reads the TAP lines of its steps (T221).
 - The test servers' PostgreSQL replica keeps its WAL through a physical replication slot, so it streams again after falling behind (T218).
 - The PHP insert parts case proves the batch refusal with one repeated model, within the memory limit (T216).
 - The generator scans type a name by the classes it may hold, refuse a call only when none declares it, and accept getters of used-document entities (T219).

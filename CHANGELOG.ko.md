@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1f6d8dabc8fcb466c9b39abe76b4ed6f0cc9a3efc8cc6a1cc30556a25cbadeeb -->
+<!-- source-sha256: 8184b00a64990ee45d56a0f4c23c8ac103f73dbf383c4e07891780f3fa2c63aa -->
 # 변경 이력
 
 ## Unreleased
+- test server의 MySQL migration case가 단계의 TAP 줄을 읽는다(T221).
 - test server의 PostgreSQL replica가 물리 replication slot으로 WAL을 보존해, 뒤처진 뒤에도 다시 streaming한다(T218).
 - PHP insert parts case가 반복한 model 하나로 묶음 거부를 memory 한도 안에서 증명한다(T216).
 - generator scan은 이름을 가질 수 있는 class로 판정해 어떤 class도 선언하지 않을 때만 호출을 거부하고, use한 문서 entity의 getter를 받아들인다 (T219).
