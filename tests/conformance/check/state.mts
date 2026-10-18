@@ -42,9 +42,9 @@ export async function snapshotDatabase(db: StateDatabase, driver: string): Promi
     default:
       throw new Error(`unsupported state database ${JSON.stringify(driver)}`);
   }
-  // orm__row_lock은 SQLite client가 연결의 첫 transaction 전에 transaction 밖에서 만드는 ORM의 row lock table이다
-  // (docs/usage.md). 그 table은 test가 바꾼 database 상태가 아니라 client가 처음 transaction을 연 흔적이므로 상태에
-  // 넣지 않는다.
+  // orm__row_lock is the ORM's row lock table, which the SQLite client creates outside a transaction before its first transaction on the connection
+  // (docs/usage.md). That table is a trace of the client opening its first transaction, not a database state changed by the test, so it is not
+  // included in the state.
   const tables = (await db.query(namesQuery)).rows.map(row => {
     const name = row[0];
     return name instanceof Uint8Array ? Buffer.from(name).toString('utf8') : String(name);
@@ -59,7 +59,7 @@ export async function snapshotDatabase(db: StateDatabase, driver: string): Promi
     } catch (error) {
       throw new Error(`read state table ${table}: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
     }
-    // row마다 값을 type과 함께 encode한 byte의 hash를 모으고 정렬해 row 순서와 상관없는 digest를 만든다.
+    // For each row, the hashes of the bytes encoding each value with its type are collected and sorted, producing a digest that does not depend on row order.
     const digests: Buffer[] = [];
     for (const row of rows.rows) {
       let encoded: Buffer;

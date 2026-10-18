@@ -13,7 +13,7 @@ import { buildRustRunner, languageDeadline, longError, runLanguage, vectorsPath 
 
 lockBench();
 const root = resolve(import.meta.dirname, '../../..');
-// build는 장기 작업이므로 기한 없이 실행하고, Rust runner는 이 file의 directory로 복사한다.
+// The build is a long task, so it runs with no deadline, and the Rust runner is copied to this file's directory.
 const binaries = mkdtempSync(join(tmpdir(), 'orm-conformance-rust-'));
 after(() => rmSync(binaries, { recursive: true, force: true }));
 const built = await longError('conformance/rust-build', context => buildRustRunner(context, root, binaries));

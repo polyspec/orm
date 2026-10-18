@@ -1,4 +1,4 @@
-// diff case는 차이를 더해지고 빠진 statement로, 그 위치와 kind와 text와 함께 적는지 확인한다(stmtdiff.mts).
+// The diff case checks that differences are recorded as added and missing statements, with their position, kind and text (stmtdiff.mts).
 import assert from 'node:assert/strict';
 import { COMPUTE, caseTest } from '../../testcase.mts';
 import { changeLine, diff, statementGroup, summary, type Statement } from './stmtdiff.mts';

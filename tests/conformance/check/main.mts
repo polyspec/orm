@@ -39,17 +39,17 @@ const repository = resolve(import.meta.dirname, '../../..');
 const vectorListSchema = join(repository, 'scripts/schema/conformance-vector-list.schema.json');
 const outputSchema = join(repository, 'scripts/schema/conformance-output.schema.json');
 
-// runner 실행과 확인의 기한이다. runner의 build는 장기 작업이므로 기한 없이 run 한 번에 한 번만 하고(runLong, 명령
-// 출력을 단계로), 모든 database와 두 번의 실행이 build된 runner를 실행한다.
-// runnerDeadline: build된 runner process 하나가 bench database에서 모든 vector를 실행한다(개발 machine에서 1-3 s).
-// 1분이 지난 runner는 멈춘 것이다.
+// Deadlines for running the runner and checking it. The runner's build is a long task, so it runs once per run with no deadline (runLong, with the command
+// output as steps), and the built runner runs against all databases, twice.
+// runnerDeadline: one built runner process runs all vectors on the bench database (1-3 s on the development machine).
+// A runner that runs longer than 1 minute is stuck.
 const runnerDeadline = 60_000;
-// stateDeadline: database state digest(state.mts)나 counter(counters.mts)를 읽고 되돌리는 일 하나의 기한이다. bench
-// database의 digest는 1 s 안에 읽힌다.
+// stateDeadline: the deadline for one read-and-restore of the database state digest (state.mts) or the counter (counters.mts). The bench
+// database's digest is read within 1 s.
 export const stateDeadline = 60_000;
-// languageDeadline: 한 언어의 case는 runner를 두 번 실행하고, 실행마다 state를 앞뒤로 읽고 counter를 되돌린다(8분).
+// languageDeadline: a case for one language runs the runner twice, and for each run reads the state before and after and restores the counter (8 min).
 export const languageDeadline = 2 * runnerDeadline + 6 * stateDeadline;
-// compareDeadline: 다섯 output을 vector 기대값과 비교하는 memory 안의 계산이다.
+// compareDeadline: an in-memory computation that compares the five outputs with the vector expected values.
 const compareDeadline = COMPUTE;
 
 export const requiredLanguages = clientLanguages();
@@ -316,7 +316,7 @@ async function runOne(context: Context, root: string, target: Target, output: st
       if (runners.go === '') throw new Error('go runner is not built');
       return runCommand(context, root, output, runnerDeadline, runners.go, goFlags);
     case 'php': {
-      // PHP는 TZ를 읽지 않고 date.timezone을 읽는다. 다른 runner처럼 TZ의 시간대로 실행한다.
+      // PHP does not read TZ, it reads date.timezone. It runs with the time zone of TZ, as the other runners do.
       const zone = process.env.TZ ?? '';
       return runCommand(context, root, output, runnerDeadline, 'php', [...(zone === '' ? [] : ['-d', `date.timezone=${zone}`]), 'packages/php/testing/conformance/runner.php', ...flags]);
     }

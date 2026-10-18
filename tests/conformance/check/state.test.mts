@@ -57,8 +57,8 @@ caseTest('TestRestoreDeclaredSequenceAfterWrite', DATABASE, () => withTemporaryD
   }
 }));
 
-// TestSnapshotIgnoresTheRowLockTable는 SQLite client가 첫 transaction 전에 만드는 orm__row_lock과 그 행이 상태를
-// 바꾸지 않는지 확인한다. 그 table이 생겨도 test가 database에 남긴 것은 없다.
+// TestSnapshotIgnoresTheRowLockTable checks that orm__row_lock, which the SQLite client creates before the first transaction, and its rows do not
+// change the state. Even when that table exists, the test leaves nothing in the database.
 caseTest('TestSnapshotIgnoresTheRowLockTable', DATABASE, () => withTemporaryDirectory('orm-state-test-', async temp => {
   const { sqlite, db } = open(temp, 'lock.sqlite');
   try {

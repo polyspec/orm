@@ -162,8 +162,8 @@ caseTest('TestCommandLogDoesNotExposeDSN', COMPUTE, () => {
   }
 });
 
-// difference case는 output이 vector 기대값과 다를 때 다른 result의 두 값과 더해지거나 빠진 statement를 그 위치, kind,
-// SQL, binds와 함께 적는지 확인한다.
+// The difference case checks that when output differs from the vector's expected value, it records the two values of the other result and the added or missing statement with its position, kind,
+// SQL and binds.
 caseTest('TestDifferenceNamesStatementsAndResult', COMPUTE, () => {
   const want = decodeExact('{"result":1,"statements":[{"binds":[1],"error":null,"kind":"insert","sql":"INSERT a"}]}');
   const got = decodeExact('{"result":2,"statements":[{"binds":[],"error":null,"kind":"begin","sql":"START TRANSACTION"},{"binds":[2],"error":null,"kind":"insert","sql":"INSERT a"}]}');
