@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 33a5dd54a72d8b6bfebe1ca24daa2eea04f3362abdb1d4f6606d12e54d5daf90 -->
+<!-- source-sha256: fc5f0c6e153fdba290ac39d6602a4183dba0f0d688f6cdeefc6b420146903f91 -->
 # 변경 이력
 
 ## Unreleased
+- Go DSN 테스트가 T104가 설정하는 MySQL session sql_mode를 기대해, TestParseDSN이 다시 통과한다 (T77-39).
 - parity 실행이 Rust savepoint 테스트의 SQLite DSN을 내보내, Rust lib unit이 그 테스트 때문에 실패하지 않는다 (T77-38).
 - PHP 확장 테스트 helper requiredDsn은 packages/php/tests/required_dsn.php에 한 번만 선언하고, 확장과 PHP 클라이언트 bootstrap이 함께 로드해도 redeclare가 나지 않는다 (T77-37).
 - Go 성능 gate는 tools root인 packages/go/bench의 benchmark다. 이 root는 어떤 구현에도 속하지 않으므로 그 go-internal parity unit을 없앴다. gate는 performance_gate feature로 계속 실행된다. (#T77-8-1-1)

@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The Go DSN test expects the MySQL session sql_mode that T104 sets, so TestParseDSN passes again (T77-39).
 - The parity run exports the SQLite DSN of the Rust savepoint test, so the Rust lib units no longer fail on it (T77-38).
 - The PHP extension test helper requiredDsn is declared once, in packages/php/tests/required_dsn.php, so the extension and PHP client bootstraps load it together without a redeclare (T77-37).
 - The Go performance gate is a benchmark of the tools root packages/go/bench, which belongs to no implementation, so its go-internal parity unit is removed; the gate still runs as the performance_gate feature. (#T77-8-1-1)
