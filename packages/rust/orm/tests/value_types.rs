@@ -112,7 +112,7 @@ async fn runtime_value_types() {
         row.core_mut().set("small", Param::from(i16::MIN));
         row.core_mut().set("code", Param::from(uuid));
         row.core_mut().set("opens", Param::from("08:30:00.250"));
-        row.core_mut().set("day", Param::Date(day));
+        row.core_mut().set("day", Param::Str(day.format("%Y-%m-%d").to_string()));
         row.core_mut().set("note", Param::from("hidden"));
         polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
 
@@ -132,12 +132,12 @@ async fn runtime_value_types() {
         short.core_mut().set("small", Param::from(1i16));
         short.core_mut().set("code", Param::from(uuid));
         short.core_mut().set("opens", Param::from("08:30:00.2501"));
-        short.core_mut().set("day", Param::Date(day));
+        short.core_mut().set("day", Param::Str(day.format("%Y-%m-%d").to_string()));
         assert_eq!(code(polyspec_orm::model::create(&mut short).await), polyspec_orm::codes::CODEC_ENCODE, "{driver}: time text with a non-zero digit past p");
         let mut missing = connected(&db);
         missing.core_mut().set("code", Param::from(uuid));
         missing.core_mut().set("opens", Param::from("08:30:00.250"));
-        missing.core_mut().set("day", Param::Date(day));
+        missing.core_mut().set("day", Param::Str(day.format("%Y-%m-%d").to_string()));
         assert_eq!(
             code(polyspec_orm::model::create(&mut missing).await),
             polyspec_orm::codes::IR_INVALID,
