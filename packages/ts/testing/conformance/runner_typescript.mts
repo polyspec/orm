@@ -534,6 +534,37 @@ async function main() {
     result.left = await new SoftLink().connect(db).getCount();
     return result;
   });
+  await run('expect_revision', async () => {
+    // expectRevision makes an update or a delete write only while author 42's like_count still holds the expected
+    // revision; an update stores revision + 1, and a mismatch is REVISION_CHANGED and writes nothing (docs/dsl.md
+    // "Writes"). The transaction rolls back at the end, so the database is as it was.
+    const boom = new Error('boom');
+    const result: Record<string, unknown> = {};
+    const read = async () => {
+      const row = await new Author().getBySeq(42);
+      return { name: row.getName(), like_count: row.getLikeCount() };
+    };
+    let failed: unknown;
+    try {
+      await db.transaction(async () => {
+        const before = await read();
+        result.before = before;
+        const revision = before.like_count;
+        await new Author().setSeq(42).setName('revision-1').expectRevision('like_count', revision).update();
+        result.updated = await read();
+        result.update_mismatch = await caught(new Author().setSeq(42).setName('revision-stale').expectRevision('like_count', revision).update());
+        result.after_mismatch = await read();
+        result.delete_mismatch = await caught(new Author().setSeq(42).expectRevision('like_count', revision).delete());
+        result.kept = await new Author().seq(42).getCount();
+        result.delete_match = await caught(new Author().setSeq(42).expectRevision('like_count', revision + 1).delete());
+        result.deleted = await new Author().seq(42).getCount();
+        throw boom;
+      }, { retry: 0 });
+    } catch (error) { failed = error; }
+    if (failed !== boom) throw failed;
+    result.left = await new Author().connect(db).seq(42).getCount();
+    return result;
+  });
   await run('joins_soft_deleted', async () => {
     // A joined soft_record row that is soft deleted meets no parent: the inner join drops the parent and the left join
     // gives it a null child. The transaction rolls back at the end, so the database is as it was.

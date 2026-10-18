@@ -1033,6 +1033,54 @@ func run() (status int) {
 		result["left"] = left
 		return result, err
 	})
+	run("expect_revision", func() (any, error) {
+		// ExpectRevision makes an update or a delete write only while author 42's like_count still holds the
+		// expected revision; an update stores revision + 1, and a mismatch is REVISION_CHANGED and writes nothing
+		// (docs/dsl.md "Writes"). The transaction rolls back at the end, so the database is as it was.
+		boom := errors.New("boom")
+		result := map[string]any{}
+		read := func() (map[string]any, error) {
+			row, err := model.Author().GetBySeq(42)
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"name": row.GetName(), "like_count": row.GetLikeCount()}, nil
+		}
+		err := db.Transaction(func() error {
+			before, err := read()
+			if err != nil {
+				return err
+			}
+			result["before"] = before
+			revision := int64(before["like_count"].(int32))
+			if _, err := model.Author().SetSeq(42).SetName("revision-1").ExpectRevision("like_count", revision).Update(); err != nil {
+				return err
+			}
+			if result["updated"], err = read(); err != nil {
+				return err
+			}
+			_, mismatch := model.Author().SetSeq(42).SetName("revision-stale").ExpectRevision("like_count", revision).Update()
+			result["update_mismatch"] = code(mismatch)
+			if result["after_mismatch"], err = read(); err != nil {
+				return err
+			}
+			result["delete_mismatch"] = code(model.Author().SetSeq(42).ExpectRevision("like_count", revision).Delete())
+			if result["kept"], err = model.Author().Seq(42).GetCount(); err != nil {
+				return err
+			}
+			result["delete_match"] = code(model.Author().SetSeq(42).ExpectRevision("like_count", revision+1).Delete())
+			if result["deleted"], err = model.Author().Seq(42).GetCount(); err != nil {
+				return err
+			}
+			return boom
+		}, orm.Retry(0))
+		if !errors.Is(err, boom) {
+			return nil, err
+		}
+		left, err := model.Author().Connect(db).Seq(42).GetCount()
+		result["left"] = left
+		return result, err
+	})
 	run("joins_soft_deleted", func() (any, error) {
 		// A joined soft_record row that is soft deleted meets no parent: the inner join drops the
 		// parent and the left join gives it a null child. The transaction rolls back at the end, so

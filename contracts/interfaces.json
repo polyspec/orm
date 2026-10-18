@@ -39,11 +39,11 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:8d8e17751a92fb1ee6e5cc0f07b82552bd8a7ae5a75679cb8a7bb6afee8bbf4a",
-    "php": "sha256:c2e92e6055839c85c37e47814cb0734a4a46e2c46254e1ed6166958381d1339c",
-    "rust": "sha256:5ebbc3db4c7e92afaf19c29b54c987cc65e5e3fb73b8678aa944085f7b12b1e8",
-    "typescript": "sha256:67b78ed82495e5929a73b2179675d371efd8e59281293d844271587e72652a12",
-    "python": "sha256:f0aeb2bfabff52434f16aa3d3f7e2c1423a2a19994d5f1f8967b9bf1d680a023"
+    "go": "sha256:e0b72ae2a0d97a56c5fe606ec873bbcd4d89e72736811d153d6f8335da662a84",
+    "php": "sha256:4084db91e636f793d1e451d5e563077287640f7ded0a5064a6744f040e4ba3ed",
+    "rust": "sha256:6fdaafbeb1fac5a87b4e1de85e22587115e20dd32457a26f5c31d78ae79139e2",
+    "typescript": "sha256:d2f415e28fb36adb833ed1cb571e11b9fb62765c41529c6bc8f7598abb1e6ca8",
+    "python": "sha256:dd5730acac9adb3a996323cc3b9c9acfc2a693ed7aa7a2f1ff5ebe23d58cd93b"
   },
   "extensions": {
     "php-extension": {
@@ -138,6 +138,7 @@
         "delete",
         "restore",
         "restoreOrCreate",
+        "expectRevision",
         "toArray"
       ],
       "ownership": "Generated per entity. Holds the column values of a new or loaded row and the chain state in its Core.",

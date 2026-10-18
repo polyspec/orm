@@ -547,6 +547,10 @@
     "exported": false,
     "signature": "pub fn duplication (mut self , m : Self) -\u003e Self"
   },
+  "packages/rust/build/src/fixed.rs.txt::T::expect_revision": {
+    "exported": false,
+    "signature": "pub fn expect_revision (mut self , column : \u0026 str , revision : i64) -\u003e Self"
+  },
   "packages/rust/build/src/fixed.rs.txt::T::fetch_key": {
     "exported": false,
     "signature": "pub fn fetch_key \u003c K : Into \u003c polyspec_orm :: Key \u003e \u003e (mut self , f : impl Fn (\u0026 Self) -\u003e K + Send + Sync + 'static) -\u003e Self"
@@ -2549,7 +2553,7 @@
   },
   "packages/rust/orm/src/core.rs::Core": {
     "exported": true,
-    "signature": "pub struct Core  { pub (crate) id : u64 , pub (crate) ent : \u0026 'static Entity , pub (crate) conn : Option \u003c Db \u003e , pub (crate) err : Option \u003c (String , String) \u003e , pub (crate) group : bool , pub (crate) subject : Option \u003c u64 \u003e , pub (crate) where_ : CondGroup , pub (crate) on : Option \u003c Vec \u003c CondNode \u003e \u003e , pub (crate) joins : Vec \u003c JoinSpec \u003e , pub (crate) relations : Vec \u003c RelSpec \u003e , pub (crate) columns : Columns , pub (crate) order : Vec \u003c OrderSpec \u003e , pub (crate) group_by : Vec \u003c String \u003e , pub (crate) limit : Option \u003c (u32 , u32) \u003e , pub (crate) index : String , pub (crate) lock : \u0026 'static str , pub (crate) agg : String , pub (crate) agg_fn : \u0026 'static str , # [doc = \" relation key component (parent column, child column): adds one pair per `add_match`, in call order.\"] pub (crate) matches : Vec \u003c (\u0026 'static str , \u0026 'static str) \u003e , pub (crate) alias : String , pub (crate) parent_node : bool , pub (crate) possible : Option \u003c (String , Param) \u003e , pub (crate) group_limit : u32 , pub (crate) delete_lock : bool , pub (crate) key_name : String , pub (crate) fetch_key : Option \u003c KeyFn \u003e , pub (crate) fetch_value : Option \u003c ValueFn \u003e , pub (crate) sets : Vec \u003c SetSpec \u003e , pub (crate) news : IndexMap \u003c String , serde_json :: Value \u003e , pub (crate) duplication : Option \u003c Box \u003c Core \u003e \u003e , pub (crate) row : Option \u003c RowState \u003e , ready_fields : std :: collections :: HashSet \u003c String \u003e , invalidated_fields : std :: collections :: HashSet \u003c String \u003e , }"
+    "signature": "pub struct Core  { pub (crate) id : u64 , pub (crate) ent : \u0026 'static Entity , pub (crate) conn : Option \u003c Db \u003e , pub (crate) err : Option \u003c (String , String) \u003e , pub (crate) group : bool , pub (crate) subject : Option \u003c u64 \u003e , pub (crate) where_ : CondGroup , pub (crate) on : Option \u003c Vec \u003c CondNode \u003e \u003e , pub (crate) joins : Vec \u003c JoinSpec \u003e , pub (crate) relations : Vec \u003c RelSpec \u003e , pub (crate) columns : Columns , pub (crate) order : Vec \u003c OrderSpec \u003e , pub (crate) group_by : Vec \u003c String \u003e , pub (crate) limit : Option \u003c (u32 , u32) \u003e , pub (crate) index : String , pub (crate) lock : \u0026 'static str , pub (crate) agg : String , pub (crate) agg_fn : \u0026 'static str , # [doc = \" relation key component (parent column, child column): adds one pair per `add_match`, in call order.\"] pub (crate) matches : Vec \u003c (\u0026 'static str , \u0026 'static str) \u003e , pub (crate) alias : String , pub (crate) parent_node : bool , pub (crate) possible : Option \u003c (String , Param) \u003e , pub (crate) group_limit : u32 , pub (crate) delete_lock : bool , # [doc = \" The revision column and the expected revision of the next update or delete (docs/dsl.md \\\"Writes\\\").\"] pub (crate) expected_revision : Option \u003c (String , i64) \u003e , pub (crate) key_name : String , pub (crate) fetch_key : Option \u003c KeyFn \u003e , pub (crate) fetch_value : Option \u003c ValueFn \u003e , pub (crate) sets : Vec \u003c SetSpec \u003e , pub (crate) news : IndexMap \u003c String , serde_json :: Value \u003e , pub (crate) duplication : Option \u003c Box \u003c Core \u003e \u003e , pub (crate) row : Option \u003c RowState \u003e , ready_fields : std :: collections :: HashSet \u003c String \u003e , invalidated_fields : std :: collections :: HashSet \u003c String \u003e , }"
   },
   "packages/rust/orm/src/core.rs::Core#field.agg": {
     "exported": false,
@@ -2586,6 +2590,10 @@
   "packages/rust/orm/src/core.rs::Core#field.err": {
     "exported": false,
     "signature": "Option \u003c (String , String) \u003e"
+  },
+  "packages/rust/orm/src/core.rs::Core#field.expected_revision": {
+    "exported": false,
+    "signature": "Option \u003c (String , i64) \u003e"
   },
   "packages/rust/orm/src/core.rs::Core#field.fetch_key": {
     "exported": false,
@@ -2685,7 +2693,7 @@
   },
   "packages/rust/orm/src/core.rs::Core#wire": {
     "exported": true,
-    "signature": "{\"agg\":\"text\",\"agg_fn\":\"unsupported:\u0026 'static str\",\"alias\":\"text\",\"columns\":\"Columns\",\"conn\":\"Db\",\"delete_lock\":\"bool\",\"duplication\":\"Core\",\"ent\":\"unsupported:\u0026 'static Entity\",\"err\":\"unsupported:(String , String)\",\"fetch_key\":\"KeyFn\",\"fetch_value\":\"ValueFn\",\"group\":\"bool\",\"group_by\":\"list\u003ctext\u003e\",\"group_limit\":\"integer\",\"id\":\"integer\",\"index\":\"text\",\"invalidated_fields\":\"HashSet\",\"joins\":\"list\u003cJoinSpec\u003e\",\"key_name\":\"text\",\"limit\":\"unsupported:(u32 , u32)\",\"lock\":\"unsupported:\u0026 'static str\",\"matches\":\"list\u003cunsupported:(\u0026 'static str , \u0026 'static str)\u003e\",\"news\":\"IndexMap\",\"on\":\"list\u003cCondNode\u003e\",\"order\":\"list\u003cOrderSpec\u003e\",\"parent_node\":\"bool\",\"possible\":\"unsupported:(String , Param)\",\"ready_fields\":\"HashSet\",\"relations\":\"list\u003cRelSpec\u003e\",\"row\":\"RowState\",\"sets\":\"list\u003cSetSpec\u003e\",\"subject\":\"integer\",\"where_\":\"CondGroup\"}"
+    "signature": "{\"agg\":\"text\",\"agg_fn\":\"unsupported:\u0026 'static str\",\"alias\":\"text\",\"columns\":\"Columns\",\"conn\":\"Db\",\"delete_lock\":\"bool\",\"duplication\":\"Core\",\"ent\":\"unsupported:\u0026 'static Entity\",\"err\":\"unsupported:(String , String)\",\"expected_revision\":\"unsupported:(String , i64)\",\"fetch_key\":\"KeyFn\",\"fetch_value\":\"ValueFn\",\"group\":\"bool\",\"group_by\":\"list\u003ctext\u003e\",\"group_limit\":\"integer\",\"id\":\"integer\",\"index\":\"text\",\"invalidated_fields\":\"HashSet\",\"joins\":\"list\u003cJoinSpec\u003e\",\"key_name\":\"text\",\"limit\":\"unsupported:(u32 , u32)\",\"lock\":\"unsupported:\u0026 'static str\",\"matches\":\"list\u003cunsupported:(\u0026 'static str , \u0026 'static str)\u003e\",\"news\":\"IndexMap\",\"on\":\"list\u003cCondNode\u003e\",\"order\":\"list\u003cOrderSpec\u003e\",\"parent_node\":\"bool\",\"possible\":\"unsupported:(String , Param)\",\"ready_fields\":\"HashSet\",\"relations\":\"list\u003cRelSpec\u003e\",\"row\":\"RowState\",\"sets\":\"list\u003cSetSpec\u003e\",\"subject\":\"integer\",\"where_\":\"CondGroup\"}"
   },
   "packages/rust/orm/src/core.rs::Core::add": {
     "exported": false,
@@ -2778,6 +2786,10 @@
   "packages/rust/orm/src/core.rs::Core::err": {
     "exported": true,
     "signature": "pub fn err (\u0026 self) -\u003e Option \u003c Error \u003e"
+  },
+  "packages/rust/orm/src/core.rs::Core::expect_revision": {
+    "exported": true,
+    "signature": "pub fn expect_revision (\u0026 mut self , column : \u0026 str , revision : i64)"
   },
   "packages/rust/orm/src/core.rs::Core::fail": {
     "exported": false,
@@ -6738,6 +6750,14 @@
   "packages/rust/orm/src/model.rs::restore_step": {
     "exported": false,
     "signature": " async fn restore_step \u003c M : Model \u003e (m : \u0026 M) -\u003e Result \u003c (u64 , Core) \u003e"
+  },
+  "packages/rust/orm/src/model.rs::revision_checked": {
+    "exported": false,
+    "signature": " fn revision_checked (c : \u0026 Core , column : Option \u003c \u0026 str \u003e , affected : u64) -\u003e Result \u003c () \u003e"
+  },
+  "packages/rust/orm/src/model.rs::revision_guard": {
+    "exported": false,
+    "signature": " fn revision_guard (c : \u0026 Core , ent : \u0026 dbspec :: Entity , req : \u0026 mut Req , update : bool , optimistic : bool) -\u003e Result \u003c Option \u003c String \u003e \u003e"
   },
   "packages/rust/orm/src/model.rs::root_in_parts": {
     "exported": false,

@@ -843,6 +843,47 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         result.insert("left".into(), json!(left));
         Ok::<Value, polyspec_orm::Error>(Value::Object(result))
     });
+    run!("expect_revision", async {
+        // expect_revision makes an update or a delete write only while author 42's like_count still holds the expected
+        // revision; an update stores revision + 1, and a mismatch is REVISION_CHANGED and writes nothing (docs/dsl.md
+        // "Writes"). The transaction rolls back at the end, so the database is as it was.
+        let result = Mutex::new(Map::new());
+        let read = async || -> polyspec_orm::Result<(Value, i64)> {
+            let row = Author::new().get_by_seq(42).await?.ok_or(polyspec_orm::Error::NoRows)?;
+            let like_count = i64::from(row.get_like_count()?);
+            Ok((json!({"name": row.get_name()?, "like_count": like_count}), like_count))
+        };
+        let ended: polyspec_orm::Result<()> = db
+            .transaction(async || {
+                let (before, revision) = read().await?;
+                result.lock().unwrap().insert("before".into(), before);
+                Author::new().set_seq(42).set_name("revision-1").expect_revision("like_count", revision).update(false).await?;
+                let (updated, _) = read().await?;
+                result.lock().unwrap().insert("updated".into(), updated);
+                let mismatch = Author::new().set_seq(42).set_name("revision-stale").expect_revision("like_count", revision).update(false).await;
+                result.lock().unwrap().insert("update_mismatch".into(), code_of(mismatch));
+                let (after, _) = read().await?;
+                result.lock().unwrap().insert("after_mismatch".into(), after);
+                let mismatch = Author::new().set_seq(42).expect_revision("like_count", revision).delete(false).await;
+                result.lock().unwrap().insert("delete_mismatch".into(), code_of(mismatch));
+                let kept = Author::new().seq(42).get_count().await?;
+                result.lock().unwrap().insert("kept".into(), json!(kept));
+                let matched = Author::new().set_seq(42).expect_revision("like_count", revision + 1).delete(false).await;
+                result.lock().unwrap().insert("delete_match".into(), code_of(matched));
+                let deleted = Author::new().seq(42).get_count().await?;
+                result.lock().unwrap().insert("deleted".into(), json!(deleted));
+                Err(polyspec_orm::Error::Config("boom".into()))
+            })
+            .retry(0)
+            .await;
+        if !matches!(&ended, Err(polyspec_orm::Error::Config(m)) if m == "boom") {
+            ended?;
+        }
+        let left = Author::new().connect(db).seq(42).get_count().await?;
+        let mut result = result.into_inner().unwrap();
+        result.insert("left".into(), json!(left));
+        Ok::<Value, polyspec_orm::Error>(Value::Object(result))
+    });
     run!("joins_soft_deleted", async {
         // A joined soft_record row that is soft deleted meets no parent: the inner join drops the parent and the
         // left join gives it a null child. The transaction rolls back at the end, so the database is as it was.

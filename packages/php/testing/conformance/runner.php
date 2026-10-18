@@ -596,6 +596,40 @@ vector('restore_or_create', function () use ($db): array {
     return $result;
 });
 
+vector('expect_revision', function () use ($db): array {
+    // expectRevision makes an update or a delete write only while author 42's like_count still holds the expected
+    // revision; an update stores revision + 1, and a mismatch is REVISION_CHANGED and writes nothing (docs/dsl.md "Writes").
+    // The transaction ends with a rollback, so the database is unchanged.
+    $boom = new RuntimeException('boom');
+    $result = [];
+    $read = function (): array {
+        $row = (new Author)->getBySeq(42);
+        return ['name' => $row->getName(), 'like_count' => $row->getLikeCount()];
+    };
+    try {
+        $db->transaction(function () use ($boom, $read, &$result): void {
+            $result['before'] = $read();
+            $revision = $result['before']['like_count'];
+            (new Author)->setSeq(42)->setName('revision-1')->expectRevision('like_count', $revision)->update();
+            $result['updated'] = $read();
+            $result['update_mismatch'] = caught(fn() => (new Author)->setSeq(42)->setName('revision-stale')->expectRevision('like_count', $revision)->update());
+            $result['after_mismatch'] = $read();
+            $result['delete_mismatch'] = caught(fn() => (new Author)->setSeq(42)->expectRevision('like_count', $revision)->delete());
+            $result['kept'] = (new Author)->seq(42)->getCount();
+            $result['delete_match'] = caught(fn() => (new Author)->setSeq(42)->expectRevision('like_count', $revision + 1)->delete());
+            $result['deleted'] = (new Author)->seq(42)->getCount();
+            throw $boom;
+        }, retry: 0);
+        throw new RuntimeException('the expect_revision transaction committed');
+    } catch (RuntimeException $e) {
+        if ($e !== $boom) {
+            throw $e;
+        }
+    }
+    $result['left'] = (new Author)($db)->seq(42)->getCount();
+    return $result;
+});
+
 vector('joins_soft_deleted', function () use ($db): array {
     // A joined soft_record row that is soft deleted meets no parent: the inner join drops the parent and the left join
     // gives it a null child. The transaction rolls back at the end, so the database is as it was.

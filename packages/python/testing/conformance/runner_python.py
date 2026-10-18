@@ -1119,6 +1119,55 @@ def main():
 
     run("restore_or_create", restore_or_create)
 
+    def expect_revision():
+        # expect_revision makes an update or a delete write only while author 42's like_count still holds the expected
+        # revision; an update stores revision + 1, and a mismatch is REVISION_CHANGED and writes nothing (docs/dsl.md
+        # "Writes"). The transaction rolls back at the end.
+        class Boom(Exception):
+            pass
+
+        result = {}
+        failed = None
+
+        def read():
+            row = Author().get_by_seq(42)
+            return {"name": row.get_name(), "like_count": row.get_like_count()}
+
+        try:
+
+            def body():
+                result["before"] = read()
+                revision = result["before"]["like_count"]
+                Author().set_seq(42).set_name("revision-1").expect_revision("like_count", revision).update()
+                result["updated"] = read()
+                result["update_mismatch"] = caught(
+                    lambda: Author()
+                    .set_seq(42)
+                    .set_name("revision-stale")
+                    .expect_revision("like_count", revision)
+                    .update()
+                )
+                result["after_mismatch"] = read()
+                result["delete_mismatch"] = caught(
+                    lambda: Author().set_seq(42).expect_revision("like_count", revision).delete()
+                )
+                result["kept"] = Author().seq(42).get_count()
+                result["delete_match"] = caught(
+                    lambda: Author().set_seq(42).expect_revision("like_count", revision + 1).delete()
+                )
+                result["deleted"] = Author().seq(42).get_count()
+                raise Boom()
+
+            db.transaction(body, {"retry": 0})
+        except Boom as error:
+            failed = error
+        if failed is None:
+            raise RuntimeError("expect_revision transaction did not roll back")
+        result["left"] = Author().connect(db).seq(42).get_count()
+        return result
+
+    run("expect_revision", expect_revision)
+
     def joins_soft_deleted():
         # A joined soft_record row that is soft deleted meets no parent: the inner join drops the parent and the left
         # join gives it a null child. The transaction rolls back at the end, so the database is as it was.

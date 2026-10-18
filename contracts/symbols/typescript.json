@@ -423,6 +423,10 @@
     "exported": true,
     "signature": "OrmError | undefined"
   },
+  "packages/ts/src/core.ts::Core#field.expectedRevision": {
+    "exported": true,
+    "signature": "{ column: string; revision: number | bigint } | undefined"
+  },
   "packages/ts/src/core.ts::Core#field.fetchKey": {
     "exported": true,
     "signature": "((m: ModelLike) =\u003e unknown) | undefined"
@@ -8763,6 +8767,10 @@
     "exported": true,
     "signature": "public duplication(model: this): this"
   },
+  "packages/ts/src/model.ts::Model.expectRevision": {
+    "exported": true,
+    "signature": "public expectRevision(column: string, revision: number | bigint): this"
+  },
   "packages/ts/src/model.ts::Model.fetchKey": {
     "exported": true,
     "signature": "public fetchKey(fn: (row: this) =\u003e Key): this"
@@ -9134,6 +9142,14 @@
   "packages/ts/src/model.ts::restoreStep": {
     "exported": false,
     "signature": "async function restoreStep(c: Core): Promise\u003c{ restored: number; query: Model; }\u003e"
+  },
+  "packages/ts/src/model.ts::revisionChecked": {
+    "exported": false,
+    "signature": "function revisionChecked(c: Core, column: string | undefined, affected: number): void"
+  },
+  "packages/ts/src/model.ts::revisionGuard": {
+    "exported": false,
+    "signature": "function revisionGuard(c: Core, schema: Entity, r: WriteRequest, update: boolean, optimistic: boolean): string | undefined"
   },
   "packages/ts/src/model.ts::rowText": {
     "exported": false,

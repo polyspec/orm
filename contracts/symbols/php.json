@@ -9271,6 +9271,10 @@
     "exported": false,
     "signature": "private ?Throwable"
   },
+  "packages/php/src/Model.php::Polyspec\\Orm\\Model::$expectedRevision": {
+    "exported": false,
+    "signature": "private ?array"
+  },
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::$fetchKey": {
     "exported": false,
     "signature": "private ?Closure"
@@ -9506,6 +9510,10 @@
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::executor": {
     "exported": false,
     "signature": "private function executor(): array"
+  },
+  "packages/php/src/Model.php::Polyspec\\Orm\\Model::expectRevision": {
+    "exported": true,
+    "signature": "public function expectRevision(string $column, int $revision): static"
   },
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::fail": {
     "exported": false,
@@ -9750,6 +9758,10 @@
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::resultName": {
     "exported": false,
     "signature": "private function resultName(bool $many): string"
+  },
+  "packages/php/src/Model.php::Polyspec\\Orm\\Model::revisionGuard": {
+    "exported": false,
+    "signature": "private function revisionGuard(Polyspec\\Orm\\Request $r, bool $update, bool $optimistic): ?string"
   },
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::rowShape": {
     "exported": false,

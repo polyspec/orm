@@ -6251,6 +6251,10 @@
     "exported": true,
     "signature": "receiver=*AccountModel func(m *AccountModel) *AccountModel"
   },
+  "packages/go/model/account.go::AccountModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*AccountModel func(column string, revision int64) *AccountModel"
+  },
   "packages/go/model/account.go::AccountModel.FetchKey": {
     "exported": true,
     "signature": "receiver=*AccountModel func(fn func(*AccountModel) any) *AccountModel"
@@ -6558,6 +6562,10 @@
   "packages/go/model/account_project.go::AccountProjectModel.Duplication": {
     "exported": true,
     "signature": "receiver=*AccountProjectModel func(m *AccountProjectModel) *AccountProjectModel"
+  },
+  "packages/go/model/account_project.go::AccountProjectModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*AccountProjectModel func(column string, revision int64) *AccountProjectModel"
   },
   "packages/go/model/account_project.go::AccountProjectModel.FetchKey": {
     "exported": true,
@@ -7298,6 +7306,10 @@
   "packages/go/model/author.go::AuthorModel.EmailBlindIndex": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argStringEqNull](v0 T0) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func(column string, revision int64) *AuthorModel"
   },
   "packages/go/model/author.go::AuthorModel.FetchKey": {
     "exported": true,
@@ -8927,6 +8939,10 @@
     "exported": true,
     "signature": "receiver=*BindCellModel func(m *BindCellModel) *BindCellModel"
   },
+  "packages/go/model/bind_cell.go::BindCellModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*BindCellModel func(column string, revision int64) *BindCellModel"
+  },
   "packages/go/model/bind_cell.go::BindCellModel.FetchKey": {
     "exported": true,
     "signature": "receiver=*BindCellModel func(fn func(*BindCellModel) any) *BindCellModel"
@@ -9302,6 +9318,10 @@
   "packages/go/model/clock_cell.go::ClockCellModel.Duplication": {
     "exported": true,
     "signature": "receiver=*ClockCellModel func(m *ClockCellModel) *ClockCellModel"
+  },
+  "packages/go/model/clock_cell.go::ClockCellModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*ClockCellModel func(column string, revision int64) *ClockCellModel"
   },
   "packages/go/model/clock_cell.go::ClockCellModel.FetchKey": {
     "exported": true,
@@ -9703,6 +9723,10 @@
     "exported": true,
     "signature": "receiver=*CompositeAccountModel func(m *CompositeAccountModel) *CompositeAccountModel"
   },
+  "packages/go/model/composite_account.go::CompositeAccountModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*CompositeAccountModel func(column string, revision int64) *CompositeAccountModel"
+  },
   "packages/go/model/composite_account.go::CompositeAccountModel.FetchKey": {
     "exported": true,
     "signature": "receiver=*CompositeAccountModel func(fn func(*CompositeAccountModel) any) *CompositeAccountModel"
@@ -10058,6 +10082,10 @@
   "packages/go/model/composite_membership.go::CompositeMembershipModel.Duplication": {
     "exported": true,
     "signature": "receiver=*CompositeMembershipModel func(m *CompositeMembershipModel) *CompositeMembershipModel"
+  },
+  "packages/go/model/composite_membership.go::CompositeMembershipModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*CompositeMembershipModel func(column string, revision int64) *CompositeMembershipModel"
   },
   "packages/go/model/composite_membership.go::CompositeMembershipModel.FetchKey": {
     "exported": true,
@@ -10415,6 +10443,10 @@
     "exported": true,
     "signature": "receiver=*DayCellModel func(m *DayCellModel) *DayCellModel"
   },
+  "packages/go/model/day_cell.go::DayCellModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*DayCellModel func(column string, revision int64) *DayCellModel"
+  },
   "packages/go/model/day_cell.go::DayCellModel.FetchKey": {
     "exported": true,
     "signature": "receiver=*DayCellModel func(fn func(*DayCellModel) any) *DayCellModel"
@@ -10770,6 +10802,10 @@
   "packages/go/model/hex_cell.go::HexCellModel.Duplication": {
     "exported": true,
     "signature": "receiver=*HexCellModel func(m *HexCellModel) *HexCellModel"
+  },
+  "packages/go/model/hex_cell.go::HexCellModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*HexCellModel func(column string, revision int64) *HexCellModel"
   },
   "packages/go/model/hex_cell.go::HexCellModel.FetchKey": {
     "exported": true,
@@ -11183,6 +11219,10 @@
     "exported": true,
     "signature": "receiver=*ProjectModel func(m *ProjectModel) *ProjectModel"
   },
+  "packages/go/model/project.go::ProjectModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*ProjectModel func(column string, revision int64) *ProjectModel"
+  },
   "packages/go/model/project.go::ProjectModel.FetchKey": {
     "exported": true,
     "signature": "receiver=*ProjectModel func(fn func(*ProjectModel) any) *ProjectModel"
@@ -11474,6 +11514,10 @@
   "packages/go/model/service.go::ServiceModel.Duplication": {
     "exported": true,
     "signature": "receiver=*ServiceModel func(m *ServiceModel) *ServiceModel"
+  },
+  "packages/go/model/service.go::ServiceModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*ServiceModel func(column string, revision int64) *ServiceModel"
   },
   "packages/go/model/service.go::ServiceModel.FetchKey": {
     "exported": true,
@@ -11822,6 +11866,10 @@
   "packages/go/model/service_member.go::ServiceMemberModel.Duplication": {
     "exported": true,
     "signature": "receiver=*ServiceMemberModel func(m *ServiceMemberModel) *ServiceMemberModel"
+  },
+  "packages/go/model/service_member.go::ServiceMemberModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*ServiceMemberModel func(column string, revision int64) *ServiceMemberModel"
   },
   "packages/go/model/service_member.go::ServiceMemberModel.FetchKey": {
     "exported": true,
@@ -12211,6 +12259,10 @@
     "exported": true,
     "signature": "receiver=*ServiceRegionModel func(m *ServiceRegionModel) *ServiceRegionModel"
   },
+  "packages/go/model/service_region.go::ServiceRegionModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*ServiceRegionModel func(column string, revision int64) *ServiceRegionModel"
+  },
   "packages/go/model/service_region.go::ServiceRegionModel.FetchKey": {
     "exported": true,
     "signature": "receiver=*ServiceRegionModel func(fn func(*ServiceRegionModel) any) *ServiceRegionModel"
@@ -12579,6 +12631,10 @@
     "exported": true,
     "signature": "receiver=*SoftLinkModel func(m *SoftLinkModel) *SoftLinkModel"
   },
+  "packages/go/model/soft_link.go::SoftLinkModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(column string, revision int64) *SoftLinkModel"
+  },
   "packages/go/model/soft_link.go::SoftLinkModel.FetchKey": {
     "exported": true,
     "signature": "receiver=*SoftLinkModel func(fn func(*SoftLinkModel) any) *SoftLinkModel"
@@ -12935,6 +12991,10 @@
     "exported": true,
     "signature": "receiver=*SoftRecordModel func(m *SoftRecordModel) *SoftRecordModel"
   },
+  "packages/go/model/soft_record.go::SoftRecordModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*SoftRecordModel func(column string, revision int64) *SoftRecordModel"
+  },
   "packages/go/model/soft_record.go::SoftRecordModel.FetchKey": {
     "exported": true,
     "signature": "receiver=*SoftRecordModel func(fn func(*SoftRecordModel) any) *SoftRecordModel"
@@ -13266,6 +13326,10 @@
   "packages/go/model/task.go::TaskModel.Duplication": {
     "exported": true,
     "signature": "receiver=*TaskModel func(m *TaskModel) *TaskModel"
+  },
+  "packages/go/model/task.go::TaskModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*TaskModel func(column string, revision int64) *TaskModel"
   },
   "packages/go/model/task.go::TaskModel.FetchKey": {
     "exported": true,
@@ -13599,6 +13663,10 @@
     "exported": true,
     "signature": "receiver=*TimeCellModel func(m *TimeCellModel) *TimeCellModel"
   },
+  "packages/go/model/time_cell.go::TimeCellModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*TimeCellModel func(column string, revision int64) *TimeCellModel"
+  },
   "packages/go/model/time_cell.go::TimeCellModel.FetchKey": {
     "exported": true,
     "signature": "receiver=*TimeCellModel func(fn func(*TimeCellModel) any) *TimeCellModel"
@@ -13926,6 +13994,10 @@
   "packages/go/model/upsert_cell.go::UpsertCellModel.Duplication": {
     "exported": true,
     "signature": "receiver=*UpsertCellModel func(m *UpsertCellModel) *UpsertCellModel"
+  },
+  "packages/go/model/upsert_cell.go::UpsertCellModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*UpsertCellModel func(column string, revision int64) *UpsertCellModel"
   },
   "packages/go/model/upsert_cell.go::UpsertCellModel.FetchKey": {
     "exported": true,
@@ -14259,6 +14331,10 @@
     "exported": true,
     "signature": "receiver=*UserModel func(m *UserModel) *UserModel"
   },
+  "packages/go/model/user.go::UserModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*UserModel func(column string, revision int64) *UserModel"
+  },
   "packages/go/model/user.go::UserModel.FetchKey": {
     "exported": true,
     "signature": "receiver=*UserModel func(fn func(*UserModel) any) *UserModel"
@@ -14566,6 +14642,10 @@
   "packages/go/model/uuid_cell.go::UuidCellModel.Duplication": {
     "exported": true,
     "signature": "receiver=*UuidCellModel func(m *UuidCellModel) *UuidCellModel"
+  },
+  "packages/go/model/uuid_cell.go::UuidCellModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*UuidCellModel func(column string, revision int64) *UuidCellModel"
   },
   "packages/go/model/uuid_cell.go::UuidCellModel.FetchKey": {
     "exported": true,
@@ -15401,7 +15481,7 @@
   },
   "packages/go/orm/core.go::Core": {
     "exported": true,
-    "signature": "type Core struct { ent *Entity self Model conn *DB err error kind modelKind target *Core *statement sets []setSpec news []string newValues map[string]any duplication *Core row *rowState }"
+    "signature": "type Core struct { ent *Entity self Model conn *DB err error kind modelKind target *Core *statement sets []setSpec news []string expected *expectedRevision newValues map[string]any duplication *Core row *rowState }"
   },
   "packages/go/orm/core.go::Core#field.conn": {
     "exported": false,
@@ -15418,6 +15498,10 @@
   "packages/go/orm/core.go::Core#field.err": {
     "exported": false,
     "signature": "error"
+  },
+  "packages/go/orm/core.go::Core#field.expected": {
+    "exported": false,
+    "signature": "*expectedRevision"
   },
   "packages/go/orm/core.go::Core#field.kind": {
     "exported": false,
@@ -15522,6 +15606,10 @@
   "packages/go/orm/core.go::Core.Err": {
     "exported": true,
     "signature": "receiver=*Core func() error"
+  },
+  "packages/go/orm/core.go::Core.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*Core func(column string, revision int64)"
   },
   "packages/go/orm/core.go::Core.FetchKey": {
     "exported": true,
@@ -15786,6 +15874,18 @@
   "packages/go/orm/core.go::condNode#field.pred": {
     "exported": false,
     "signature": "*predSpec"
+  },
+  "packages/go/orm/core.go::expectedRevision": {
+    "exported": false,
+    "signature": "type expectedRevision struct { column string revision int64 }"
+  },
+  "packages/go/orm/core.go::expectedRevision#field.column": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/go/orm/core.go::expectedRevision#field.revision": {
+    "exported": false,
+    "signature": "int64"
   },
   "packages/go/orm/core.go::funcSpec": {
     "exported": false,
@@ -17418,6 +17518,14 @@
   "packages/go/orm/model.go::Core.restoreStep": {
     "exported": false,
     "signature": "receiver=*Core func() (int64, *Core, error)"
+  },
+  "packages/go/orm/model.go::Core.revisionChecked": {
+    "exported": false,
+    "signature": "receiver=*Core func(column string, affected int64) error"
+  },
+  "packages/go/orm/model.go::Core.revisionGuard": {
+    "exported": false,
+    "signature": "receiver=*Core func(r *request, ent *runtimemodel.Entity, update, optimistic bool) (string, error)"
   },
   "packages/go/orm/model.go::Core.terminal": {
     "exported": false,

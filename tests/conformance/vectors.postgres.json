@@ -3208,6 +3208,185 @@
       }
     },
     {
+      "name": "expect_revision",
+      "chain": "transaction: getBySeq(42) reads like_count r; setSeq(42)-\u003esetName('revision-1')-\u003eexpectRevision('like_count', r)-\u003eupdate() bumps it to r + 1; the same update with r is REVISION_CHANGED and changes nothing; setSeq(42)-\u003eexpectRevision('like_count', r)-\u003edelete() is REVISION_CHANGED and keeps the row; expectRevision('like_count', r + 1)-\u003edelete() deletes it; rollback",
+      "calls": [
+        "expectRevision",
+        "update",
+        "delete"
+      ],
+      "expect": {
+        "result": {
+          "after_mismatch": {
+            "like_count": 43,
+            "name": "revision-1"
+          },
+          "before": {
+            "like_count": 42,
+            "name": "author-42"
+          },
+          "delete_match": null,
+          "delete_mismatch": "REVISION_CHANGED",
+          "deleted": 0,
+          "kept": 1,
+          "left": 1,
+          "update_mismatch": "REVISION_CHANGED",
+          "updated": {
+            "like_count": 43,
+            "name": "revision-1"
+          }
+        },
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "BEGIN",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              42
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_club_reader_count\" AS \"a__target_club_reader_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"reader_count\" AS \"a__reader_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"photo_url\" AS \"a__photo_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_work\" AS \"a__is_single_work\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"aes_key_version\" AS \"a__aes_key_version\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = $1 LIMIT 1 OFFSET 0",
+            "tables": [
+              "author"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "revision-1",
+              1,
+              "$NOW",
+              42,
+              42
+            ],
+            "error": null,
+            "kind": "update",
+            "sql": "UPDATE \"author\" SET \"name\" = $1, \"like_count\" = \"author\".\"like_count\" + $2, \"updated_ts\" = $3 WHERE \"author\".\"seq\" = $4 AND \"author\".\"like_count\" = $5",
+            "tables": [
+              "author"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              42
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_club_reader_count\" AS \"a__target_club_reader_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"reader_count\" AS \"a__reader_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"photo_url\" AS \"a__photo_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_work\" AS \"a__is_single_work\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"aes_key_version\" AS \"a__aes_key_version\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = $1 LIMIT 1 OFFSET 0",
+            "tables": [
+              "author"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "revision-stale",
+              1,
+              "$NOW",
+              42,
+              42
+            ],
+            "error": null,
+            "kind": "update",
+            "sql": "UPDATE \"author\" SET \"name\" = $1, \"like_count\" = \"author\".\"like_count\" + $2, \"updated_ts\" = $3 WHERE \"author\".\"seq\" = $4 AND \"author\".\"like_count\" = $5",
+            "tables": [
+              "author"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              42
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_club_reader_count\" AS \"a__target_club_reader_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"reader_count\" AS \"a__reader_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"photo_url\" AS \"a__photo_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_work\" AS \"a__is_single_work\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"aes_key_version\" AS \"a__aes_key_version\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = $1 LIMIT 1 OFFSET 0",
+            "tables": [
+              "author"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              42,
+              42
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"author\" WHERE \"author\".\"seq\" = $1 AND \"author\".\"like_count\" = $2",
+            "tables": [
+              "author"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              42
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = $1",
+            "tables": [
+              "author"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              42,
+              43
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"author\" WHERE \"author\".\"seq\" = $1 AND \"author\".\"like_count\" = $2",
+            "tables": [
+              "author"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              42
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = $1",
+            "tables": [
+              "author"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "rollback",
+            "sql": "ROLLBACK",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              42
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = $1",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          }
+        ]
+      }
+    },
+    {
       "name": "joins_soft_deleted",
       "chain": "transaction: create a live and a soft-deleted soft_record beside two services, joinNameWithName(soft_record) and leftJoinNameWithName(soft_record), rollback",
       "calls": [

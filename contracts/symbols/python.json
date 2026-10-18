@@ -3175,6 +3175,10 @@
     "exported": true,
     "signature": "@property def entity_def(self) -\u003e EntityDef"
   },
+  "packages/python/src/polyspec/orm/model.py::Model.expect_revision": {
+    "exported": true,
+    "signature": "def expect_revision(self, column: str, revision: int) -\u003e Self"
+  },
   "packages/python/src/polyspec/orm/model.py::Model.fetch_key": {
     "exported": true,
     "signature": "def fetch_key(self, fn)"
