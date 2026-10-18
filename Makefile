@@ -1303,11 +1303,11 @@ install-cli-check: lease-tool
 .PHONY: dbspec-go-check dbspec-go-check/engine dbspec-go-check/unicode
 dbspec-go-check: dbspec-go-check/engine dbspec-go-check/unicode
 dbspec-go-check/engine:
-	$(GO_TEST) ./packages/go/engine/dbspec -count=1
+	$(RUN_TESTS) go --cwd packages/go -- ./engine/dbspec -count=1
 # dbspec-go-check/unicode는 tests/dbspec/unicode의 생성기가 쓴 표 세 파일이 현재 Go 표와 같고, C 확장과 Python 모듈이
 # 모든 code point에서 Go와 같은 분류를 내는지 본다.
 dbspec-go-check/unicode:
-	$(GO_TEST) ./tests/dbspec/unicode -count=1
+	$(RUN_TESTS) go --cwd . -- ./tests/dbspec/unicode -count=1
 
 docs-dev:
 	$(NPM) run docs:dev
