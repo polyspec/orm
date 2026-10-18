@@ -875,46 +875,48 @@ fuzz-check/clients-go-orm:
 # PHP는 client-unit-check가 실행하는 PHP program이다. 검사는 .php-version의 PHP를 PATH의 php로
 # 쓰고, php-min-check는 composer.json이 지원하는 최저 release를 준다.
 PHP = php
+# RUN_TESTS is kit's run-tests: it runs a unit tool with its reader and fails when no test ran (kit package, ./run-tests).
+RUN_TESTS = $(NODE) node_modules/@polyspec/kit/dist/run-tests.mjs
 client-unit-check: client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/hostcodec client-unit-check/codec-aes client-unit-check/insert-parts client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/model-methods client-unit-check/orm-gen-scan client-unit-check/orm-gen-scan-parity client-unit-check/client-generics client-unit-check/perf-extensions
 client-unit-check/dsn: php-vendor-check
-	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DsnTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DsnTest.php
 client-unit-check/markdown: php-vendor-check
-	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/MarkdownTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/MarkdownTest.php
 client-unit-check/relation-keys: php-vendor-check
-	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php
 # client-unit-check/code-catalog compares the generated Code.php with docs/errors.yaml.
 client-unit-check/code-catalog: php-vendor-check
-	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodeCatalogTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodeCatalogTest.php
 client-unit-check/hostcodec: php-vendor-check
-	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/HostcodecTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/HostcodecTest.php
 # client-unit-check/codec-aes runs the AES v2 vectors of tests/codec/aes-vectors.json, one data set per name.
 client-unit-check/codec-aes: php-vendor-check
-	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecAesVectorsTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecAesVectorsTest.php
 # client-unit-check/insert-parts runs the cases of contracts/fixtures/insert_parts.json in PHP and TypeScript.
 client-unit-check/insert-parts: php-vendor-check lease-tool
 	$(HOLD_TYPESCRIPT)
-	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/InsertPartsTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/InsertPartsTest.php
 	$(TSC_BUILD)
 	$(NODE) --conditions=orm-test --test packages/ts/tests/insert-parts.mjs
 client-unit-check/engine: php-vendor-check
-	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php
 client-unit-check/runtime-model: php-vendor-check
-	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeModelTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeModelTest.php
 client-unit-check/orm-gen: php-vendor-check
-	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php
 client-unit-check/model-methods: php-vendor-check
-	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelMethodsTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelMethodsTest.php
 client-unit-check/orm-gen-scan: php-vendor-check
-	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanTest.php
 # orm-gen-scan-parity compares the PHP scan with the node scan, which runs from the built packages/ts.
 client-unit-check/orm-gen-scan-parity: php-vendor-check lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanParityTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanParityTest.php
 client-unit-check/client-generics: php-vendor-check
-	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ClientGenericsTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ClientGenericsTest.php
 client-unit-check/perf-extensions: php-vendor-check
-	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/PerfExtensionsTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/PerfExtensionsTest.php
 
 # php-min-check runs the PHP client unit tests on the lowest PHP release that
 # packages/php/composer.json supports.
