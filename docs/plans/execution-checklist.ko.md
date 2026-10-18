@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 0ce3b1b26736d8242278cbb24f64e4e55b93bfa0964daded4b43fffbc79880ad -->
+<!-- source-sha256: 46431a115063bec02bed91306908d72c357625271caef454da45bfd7dc6a0777 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1544,8 +1544,8 @@
   - docs/dsl.md, docs/interfaces.md, docs/usage.md와 ko 쌍, contracts/interfaces.json, 생성된 wrapper, parity unit.
 - [ ] T202 upsert의 conflict key를 request hook 뒤에 검증한다(consumer hyper ScopeHook). 원인: request hook이 insert의 scope column을 할당하지만 `duplication()->create()`의 conflict key 검증이 hook 전의 request를 읽으므로, hook이 완성하는 key가 거부된다. 완료 기준: 검증 위치(Go ir.go, PHP Validator.php, Python validate.py, Rust validate.rs, TS validate.ts)가 hook이 돌려준 request를 읽는다. 언어마다 unit case, 전 red, 후 green.
   재개 (2026-10-19): 코드 읽기만으로 결함 없음으로 닫았다. 다음: client마다 request hook이 `duplication()->create()`의 conflict key를 채우는 case를 red 후 green으로 실행한다. 코드 읽기(각 client에서 hook이 검증보다 먼저)는 출발점이지 증명이 아니다.
-- [o] T203 `relation()`과 `relations()`가 service scope 아래에서 실행된다(consumer). 원인: service scope 아래에서 둘 다 `CONFIG`로 실패한다. 완료 기준: 원인을 찾아 여기에 적고, 언어마다 case, 전 red, 후 green.
-  재현되지 않음으로 닫는다 (2026-10-19, c2b2bd6f 코드 읽기): request hook은 root request마다 한 번 적용되고 (Go exec.go:448, PHP Db.php:211, Python database.py:2042, TypeScript database.ts:1197, Rust db.rs:64), relation child는 root statement 안에서, external relation은 그 뒤에 읽힌다. 다섯 client 어디에도 hook 아래 relation()/relations()가 `CONFIG`를 내는 경로가 없다. consumer에는 message와 호출 위치가 없다 (`CONFIG`라고만 보고됨). S-286-19-4는 relation()을 직접 쓰고, 마지막 실행에서 `CONFIG`가 나면 message, file:line, hook 본문과 함께 새 행을 연다.
+- [ ] T203 `relation()`과 `relations()`가 service scope 아래에서 실행된다(consumer). 원인: service scope 아래에서 둘 다 `CONFIG`로 실패한다. 완료 기준: 원인을 찾아 여기에 적고, 언어마다 case, 전 red, 후 green.
+  재개 (2026-10-19): 재현되지 않음으로 닫았다. 다음: consumer가 ScopeHook 아래 canister relation()/relations() case를 한 번 실행해 CONFIG message, file:line, hook 본문을 기록하고, 그 case를 client마다 red 후 green으로 만든다.
 - [o] T206 orm이 행이 대기나 진행 중인 동안 `make check`와 `parity-check`를 거부하는 kit full-run guard를 쓴다(kit K233, K234). 완료 기준: orm에서 각각 한 번의 dry run이 열린 행을 말하고 거부한다.
   증거: e095582f에서 `make check`는 대기 행(T205 … T211)을 나열하고 거부한다. parity-prepare는 UNITS가 비어 있으면 full-run gate를 먼저 실행하므로, 전체 parity-check는 extension과 Rust conformance binary를 빌드하기 전에 거부한다 (`make -n parity-prepare`에서 gate가 자기 첫 줄이다).
 - [o] T207 database server가 그 checkout과 함께 멈춘다. 원인: 지워진 worktree의 mysqld 쌍과 같은 datadir의 이전 시작이 며칠씩 돈다. 완료 기준: worktree를 지우거나 datadir에 server 쌍을 시작하면 먼저 그것에 속한 server를 멈춘다. 전 red, 후 green인 test. 지금 도는 고아 process는 사용자가 멈출 일이다.
