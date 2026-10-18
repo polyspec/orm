@@ -11,7 +11,7 @@ license = "MIT"
 rustix = { version = "1.1.5", features = ["time"] }
 
 [dev-dependencies]
-# test case가 시작, 결과, 경과 시간과 자기 기한을 보고한다.
+# The test case reports its start, result, elapsed time, and its own deadline.
 polyspec-orm-testcase = { path = "../testcase" }
 
 [lints]
