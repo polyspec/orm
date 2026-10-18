@@ -2,7 +2,7 @@
 // the catalog is an exported constant whose value is the code and whose note is the note of the catalog, and the file
 // holds no other code. Usage: node packages/ts/tests/code-catalog.mjs
 import { readFile } from 'node:fs/promises';
-import { cases, COMPUTE } from '../../../tests/testcase.mts';
+import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 
 // readCatalog reads docs/errors.yaml, a flat list of "- code: X  # comment" lines each followed by "origin: Y", and returns
 // each code with the note that its generated constant carries: the origin, then ": " and the comment when it has one.
@@ -27,8 +27,8 @@ function readCatalog(yaml) {
 
 const escape = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const run = cases();
-await run.run('code-catalog/matches-errors-yaml', COMPUTE, async () => {
+// Each case is a node:test test, the form that the parity runner reads (tests/testcase.mts, caseTest).
+caseTest('code-catalog/matches-errors-yaml', COMPUTE, async () => {
   const catalog = readCatalog(await readFile(new URL('../../../docs/errors.yaml', import.meta.url), 'utf8'));
   const source = await readFile(new URL('../src/codes.ts', import.meta.url), 'utf8');
   const problems = [];
@@ -41,10 +41,9 @@ await run.run('code-catalog/matches-errors-yaml', COMPUTE, async () => {
   if (constants.length !== catalog.length) problems.push(`codes.ts holds ${constants.length} codes, docs/errors.yaml ${catalog.length}`);
   if (problems.length > 0) throw new Error(`${problems.join('; ')}; run orm-gen errors --lang typescript --out packages/ts/src/codes.ts`);
 });
-await run.run('code-catalog/exported-from-package-root', COMPUTE, async () => {
+caseTest('code-catalog/exported-from-package-root', COMPUTE, async () => {
   const catalog = readCatalog(await readFile(new URL('../../../docs/errors.yaml', import.meta.url), 'utf8'));
   const exported = await import('../dist/index.js');
   const missing = catalog.filter(({ code }) => exported.codes?.[code] !== code).map(({ code }) => code);
   if (missing.length > 0) throw new Error(`the package root does not export codes.${missing.join(', codes.')} with its code as value; run make typescript-build`);
 });
-run.finish();
