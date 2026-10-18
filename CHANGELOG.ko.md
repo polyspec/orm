@@ -3,7 +3,6 @@
 # 변경 이력
 
 ## Unreleased
-- parity 선언 검사는 링크된 kit main 2fc6e2bd를 읽는다. 이 kit은 support 파일과 환경 참조 결함을 고쳤으므로 모든 선언이 성립한다(T77).
 - Rust interface snapshot가 번역된 doc comment를 다시 기록한다 (T131-8).
 - PHP extension 선언 unit 다섯이 parity 실행에서 통과한다. binding이 parity-check가 지정한 build된 extension을 불러온다 (T148-4-3).
 - Python decimal unit이 parity 실행에서 통과한다. round trip이 parity-check가 내보내는 DECIMAL_*_DSN 이름을 읽는다 (T148-4-1).

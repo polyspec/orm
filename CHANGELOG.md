@@ -2,7 +2,6 @@
 # Changelog
 
 ## Unreleased
-- The parity declarations check reads the linked kit main 2fc6e2bd, which fixes the support-file and env-reference defects, so every declaration holds (T77).
 - The Rust interface snapshot records the translated doc comments again (T131-8).
 - The Python decimal unit passes in the parity run: its round trip reads the DECIMAL_*_DSN names that parity-check exports (T148-4-1).
 - The five PHP extension declaration units pass in the parity run: the binding loads the built extension that parity-check names (T148-4-3).
