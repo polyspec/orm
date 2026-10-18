@@ -1,5 +1,5 @@
-//! constraints_and_relations: database constraint 위반은 그 종류의 error code가 되고
-//! 아무것도 바꾸지 않는다.
+//! constraints_and_relations: a database constraint violation becomes an error code of its kind,
+//! and changes nothing.
 use super::coverage_env::{code, connect, run};
 use super::model::{Author, User};
 

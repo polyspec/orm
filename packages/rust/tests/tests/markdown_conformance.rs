@@ -1,7 +1,7 @@
-//! markdown IR executor conformance(tests/markdown/README.md): tests/markdown/cases.json의 모든 case를 그
-//! 순서대로, FLOWMARK가 가리키는 flowmark build의 server 하나에 대해 이 client로 실행한다. 그 build는
-//! tests/markdown/flowmark.version이 고정한 build여야 하고, 없거나 다른 build이면 test는 실패한다(건너뛰지
-//! 않는다). model은 build.rs가 tests/markdown/corpus/dbspec/conformance.dbs에서 만든다.
+//! markdown IR executor conformance (tests/markdown/README.md): runs every case in tests/markdown/cases.json, in order,
+//! with this client, against one server of the flowmark build that FLOWMARK points to. That build
+//! must be the one pinned by tests/markdown/flowmark.version; if it is missing or a different build, the test fails (it does not
+//! skip). The model is made by build.rs from tests/markdown/corpus/dbspec/conformance.dbs.
 
 #[allow(
     dead_code,
@@ -24,10 +24,10 @@ use polyspec_orm::chrono::NaiveDate;
 use polyspec_orm::{Config, Db, Error, Isolation};
 use serde_json::{json, Value};
 
-/// FLOWMARK가 가리키는 build의 main module이어야 하는 module path다.
+/// The module path that must be the main module of the build FLOWMARK points to.
 const FLOWMARK_MODULE: &str = "github.com/polyspec/flowmark";
 
-/// 이 runner가 구현한 case다. cases.json의 case 집합과 같아야 한다.
+/// The case this runner implements. It must equal the case set in cases.json.
 const CASES: &[&str] = &[
     "insert_one",
     "insert_rows",
@@ -66,12 +66,12 @@ const CASES: &[&str] = &[
     "connect_token_mismatch",
 ];
 
-/// 공유 suite의 directory다: cases.json, flowmark.version, corpus/.
+/// The directory of the shared suite: cases.json, flowmark.version, corpus/.
 fn conformance_dir() -> PathBuf {
     polyspec_orm_testcase::manifest_dir().join("../../../tests/markdown")
 }
 
-/// 지울 directory다. drop하면 그 안의 모든 것을 지운다.
+/// The directory to delete. Dropping it deletes everything inside.
 struct Scratch(PathBuf);
 
 impl Drop for Scratch {
@@ -80,7 +80,7 @@ impl Drop for Scratch {
     }
 }
 
-/// test가 시작한 flowmark server다. drop하면 process를 끝내고 기다린다.
+/// The flowmark server the test started. Dropping it ends the process and waits for it.
 struct Server(Child);
 
 impl Drop for Server {
@@ -90,7 +90,7 @@ impl Drop for Server {
     }
 }
 
-/// test가 시작한 flowmark server와 그 corpus다.
+/// The flowmark server the test started, and its corpus.
 struct Served {
     db: Db,
     dir: PathBuf,
@@ -239,12 +239,12 @@ fn main() {
     });
 }
 
-/// 이름이 겹치지 않도록 directory 이름에 붙이는 시각이다.
+/// The timestamp appended to the directory name so that names do not collide.
 fn unique() -> u128 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
 }
 
-/// cases.json의 case: id와 expect를 순서대로 돌려준다. id가 비었거나 겹치면 실패한다.
+/// The cases from cases.json: returns each id and expect in order. Fails if an id is empty or duplicated.
 fn load_cases() -> Vec<(String, Value)> {
     let path = conformance_dir().join("cases.json");
     let doc: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display())))
@@ -259,8 +259,8 @@ fn load_cases() -> Vec<(String, Value)> {
     out
 }
 
-/// FLOWMARK가 가리키는 flowmark binary다. binary의 Go build 정보가 flowmark module의 flowmark.version 판이
-/// 아니면 실패한다.
+/// The flowmark binary that FLOWMARK points to. Fails if the binary's Go build info does not show
+/// the flowmark.version of the flowmark module.
 fn pinned_flowmark() -> PathBuf {
     let version = conformance_dir().join("flowmark.version");
     let pin = std::fs::read_to_string(&version).unwrap_or_else(|e| panic!("{}: {e}", version.display())).trim().to_owned();
@@ -282,8 +282,8 @@ fn pinned_flowmark() -> PathBuf {
     PathBuf::from(bin)
 }
 
-/// Go binary의 build 정보에서 main module의 path와 version을 읽는다. Go linker는 module 정보 text를 두
-/// 16 byte 표지 사이에 두며, 그 text의 `mod\t<path>\t<version>` 줄이 main module이다.
+/// Reads the main module's path and version from the Go binary's build info. The Go linker puts the module info text between two
+/// 16-byte markers, and the `mod\t<path>\t<version>` line in that text is the main module.
 fn main_module(binary: &[u8]) -> Option<(String, String)> {
     const START: [u8; 16] = [0x30, 0x77, 0xaf, 0x0c, 0x92, 0x74, 0x08, 0x02, 0x41, 0xe1, 0xc1, 0x07, 0xe6, 0xd6, 0x18, 0xe6];
     const END: [u8; 16] = [0xf9, 0x32, 0x43, 0x31, 0x86, 0x18, 0x20, 0x72, 0x00, 0x82, 0x42, 0x10, 0x41, 0x16, 0xd8, 0xf2];
@@ -295,7 +295,7 @@ fn main_module(binary: &[u8]) -> Option<(String, String)> {
     Some((fields.next()?.to_owned(), fields.next()?.to_owned()))
 }
 
-/// corpus/를 새 corpus로 install하고 그 server를 시작해 연결한다.
+/// Installs corpus/ as a new corpus, starts that server, and connects to it.
 async fn serve(bin: &Path, scratch: &Path) -> (Served, Server) {
     let corpus = "conformance".to_owned();
     let dir = scratch.join(&corpus);
@@ -329,7 +329,7 @@ async fn serve(bin: &Path, scratch: &Path) -> (Served, Server) {
     (Served { db, dir, corpus, port, token }, server)
 }
 
-/// 두 JSON 값이 같다: 수는 그 값이 같으면 같다(16과 16.0).
+/// Two JSON values are equal: numbers are equal if their values are equal (16 and 16.0).
 fn same(a: &Value, b: &Value) -> bool {
     match (a, b) {
         (Value::Number(x), Value::Number(y)) => x.as_f64() == y.as_f64(),
@@ -343,7 +343,7 @@ fn day(text: &str) -> NaiveDate {
     NaiveDate::parse_from_str(text, "%Y-%m-%d").unwrap()
 }
 
-/// transaction을 rollback시키려고 callback이 돌려주는 오류다.
+/// The error the callback returns to roll back the transaction.
 fn stop() -> Error {
     Error::Config("stop".into())
 }
@@ -352,7 +352,7 @@ fn is_stop(error: &Error) -> bool {
     matches!(error, Error::Config(message) if message == "stop")
 }
 
-/// case `id`를 실행하고 README가 정한 결과 값을 돌려준다. 오류는 그 code의 {"error": code} 결과가 된다.
+/// Runs case `id` and returns the result value that the README defines. An error becomes the {"error": code} result for that code.
 async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
     let db = &s.db;
     Ok(match id {
@@ -527,7 +527,7 @@ async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
                 .transaction(async || {
                     let mut m = People::new().id("P1").get().await?.set_name("Ann C");
                     m.update(false).await?;
-                    // engine 밖의 편집: transaction이 쓸 file을 commit 전에 바꾼다.
+                    // An edit outside the engine: changes a file the transaction writes before commit.
                     let path = s.dir.join("people.flowmark.md");
                     let text = std::fs::read_to_string(&path).map_err(|e| Error::Config(format!("{}: {e}", path.display())))?;
                     if !text.contains("Cara") {

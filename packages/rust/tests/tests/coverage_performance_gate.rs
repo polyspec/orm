@@ -1,6 +1,6 @@
-//! performance_gate (Rust는 측정만 한다): 생성된 client의 hot path benchmark를 작은 반복
-//! 횟수로 공유 bench database에서 실행하고 세 통계 줄을 확인한다. ORM_BENCH_MYSQL_DSN은
-//! 시드된 공유 bench database이며 읽기만 한다.
+//! performance_gate (Rust only measures): runs the generated client's hot-path benchmark on the shared bench database with a small number of
+//! repetitions and checks three statistics lines. ORM_BENCH_MYSQL_DSN is
+//! the seeded shared bench database, and it is only read.
 mod common;
 
 use std::process::Command;
@@ -8,7 +8,7 @@ use std::time::Duration;
 
 const ITERATIONS: usize = 100;
 
-/// benchmark 한 번의 기한. database가 하는 일을 포함하므로 wall-clock 시간이다.
+/// The deadline of one benchmark run. It is wall-clock time because it includes what the database does.
 const DEADLINE: Duration = Duration::from_secs(300);
 
 #[test]
@@ -26,7 +26,7 @@ fn coverage_hot_path_gate() {
     for name in ["client pk one", "client list100", "plan cache hit (no db)"] {
         let matching: Vec<&&str> = lines.iter().filter(|line| line.starts_with(name)).collect();
         let [line] = matching.as_slice() else { panic!("statistics line {name:?} appears {} times: {stdout}", matching.len()) };
-        // 줄은 "<name> n=<count> mean=<ns>ns p50=<ns>ns p90=<ns>ns p99=<ns>ns"이며 값 앞에 공백이 올 수 있다.
+        // A line is "<name> n=<count> mean=<ns>ns p50=<ns>ns p90=<ns>ns p99=<ns>ns", and a space may come before the value.
         let mut rest = &line[name.len()..];
         let mut value = |label: &str| {
             let at = rest.find(label).unwrap_or_else(|| panic!("{name}: no {label} field: {line}"));

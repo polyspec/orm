@@ -1,13 +1,13 @@
-//! catalog_connection: orm-build의 live-db catalog가 시드된 bench database의 table metadata,
-//! author table page, read-only query를 읽고, identity column이 없는 composite_account에 row를
-//! 넣고 고치고 지운다. database는 시작한 상태로 끝난다.
+//! catalog_connection: orm-build's live-db catalog reads the table metadata of the seeded bench database,
+//! the author table page, and a read-only query, and inserts, updates, and deletes a row in composite_account, which has no identity column.
+//! The database ends in the state it started in.
 use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableRef};
 use polyspec_orm_build::tool_db::{GridCell, QueryLimits, Val, P};
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-/// 한 case의 기한. database가 하는 일을 제한하므로 wall-clock 시간이다.
+/// The deadline for one case. It is wall-clock time because it limits what the database does.
 const DEADLINE: Duration = Duration::from_secs(300);
 
 const TENANT: i64 = 990005;
@@ -39,7 +39,7 @@ async fn within<F: std::future::Future<Output = ()>>(case: &str, body: F) {
     polyspec_orm_testcase::step(format_args!("{case} {:?}", started.elapsed()));
 }
 
-/// `column`의 page 안 위치.
+/// The position of `column` within the page.
 fn column(page: &polyspec_orm_build::catalog::TablePage, column: &str) -> usize {
     page.result.columns.iter().position(|c| c.name == column).unwrap_or_else(|| panic!("page has no column {column}"))
 }
@@ -64,8 +64,8 @@ async fn coverage_catalog_read() {
         assert_eq!(metadata.primary_key, ["seq"], "{driver}: author key");
         assert!(metadata.reliable_row_identity, "{driver}: author row identity");
 
-        // author의 page는 세 database에서 datetime(6) column을 dbspec text 형식의 같은
-        // DateTime cell로 읽는다(docs/interfaces.md).
+        // In the author page, the datetime(6) column of the three databases reads as the same
+        // DateTime cell in dbspec text form (docs/interfaces.md).
         let page = catalog.table_page(&author, 3, 0).await.expect("author page");
         assert_eq!(page.order_by, ["seq"], "{driver}: page order");
         assert!(page.has_more, "{driver}: more author rows follow");
@@ -109,7 +109,7 @@ async fn coverage_catalog_row_mutation() {
         assert_eq!(inserted.rows.len(), 1, "{driver}: inserted rows");
         assert_eq!(phases.lock().unwrap().last(), Some(&MutationPhase::Committed), "{driver}: insert phase");
 
-        // 이 tenant의 row를 page에서 찾는다.
+        // Finds this tenant's row on the page.
         let find = async |catalog: &mut CatalogConnection| {
             let page = catalog.table_page(&table, 1000, 0).await.expect("composite_account page");
             let (tenant, name) = (column(&page, "tenant_id"), column(&page, "name"));

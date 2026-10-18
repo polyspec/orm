@@ -1,5 +1,5 @@
-//! parameter_chunking: 모든 driver의 bind 한도를 넘는 root IN 목록은 나뉘어 실행되고 중복
-//! 값은 한 번 읽힌다. 나누면 결과가 바뀌는 limit 모양은 IR_INVALID다.
+//! parameter_chunking: a root IN list that exceeds the bind limit of every driver is split and run in parts, and duplicate
+//! values are read once. A limit shape whose result changes when split is IR_INVALID.
 use super::coverage_env::{code, connect, run};
 use super::model::Author;
 

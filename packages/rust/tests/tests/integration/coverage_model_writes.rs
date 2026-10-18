@@ -1,5 +1,5 @@
-//! model_writes: 생성된 CompositeAccount model의 create, creates, update, duplication
-//! create, delete를 identity column이 없는 composite_account에서 실행하고 쓴 row를 모두 지운다.
+//! model_writes: runs create, creates, update, duplication,
+//! create, and delete on the generated CompositeAccount model against composite_account, which has no identity column, and deletes all the rows it wrote.
 use super::coverage_env::{code, connect, run};
 use super::model::CompositeAccount;
 

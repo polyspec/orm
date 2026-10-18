@@ -1,15 +1,15 @@
-//! feature-check가 고른 database와 DSN, 그리고 coverage case의 기한과 진행 출력.
-//! feature-check는 ORM_FEATURE_DATABASE와 ORM_FEATURE_DSN을 주고 시드된 bench
-//! database에서 ignored coverage test를 --include-ignored로 실행한다.
+//! The database and DSN that feature-check chose, and the coverage case's deadline and progress output.
+//! feature-check gives ORM_FEATURE_DATABASE and ORM_FEATURE_DSN, and runs the ignored coverage tests with --include-ignored on the seeded bench
+//! database.
 use polyspec_orm::Db;
 use std::future::Future;
 use std::time::{Duration, Instant};
 
-/// 한 database case의 기한. database가 하는 일을 제한하므로 wall-clock 시간으로 잰다.
+/// The deadline of one database case. It is measured in wall-clock time because it limits what the database does.
 const DEADLINE: Duration = Duration::from_secs(300);
 
-/// ORM_FEATURE_DATABASE와 ORM_FEATURE_DSN으로 연결한다. 둘 중 하나가 없거나 DSN이
-/// 다른 database를 고르면 실패한다.
+/// Connects with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN. Fails if either is missing, or if the DSN
+/// selects a different database.
 pub async fn connect() -> Db {
     let driver = std::env::var("ORM_FEATURE_DATABASE")
         .expect("ORM_FEATURE_DATABASE is required; run it through make feature-check, which sets it for each coverage case");
@@ -21,7 +21,7 @@ pub async fn connect() -> Db {
     db
 }
 
-/// `body`를 기한 안에서 실행하고 시작, 성공, 걸린 시간을 출력한다.
+/// Runs `body` within the deadline and prints its start, success, and elapsed time.
 pub async fn run<F: Future<Output = ()>>(case: &str, body: F) {
     let started = Instant::now();
     polyspec_orm_testcase::step(format_args!("start {case}"));
@@ -31,7 +31,7 @@ pub async fn run<F: Future<Output = ()>>(case: &str, body: F) {
     polyspec_orm_testcase::step(format_args!("{case} {:?}", started.elapsed()));
 }
 
-/// 결과의 error code. 성공은 "ok"다.
+/// The error code of the result. Success is "ok".
 pub fn code<T>(r: polyspec_orm::Result<T>) -> String {
     match r {
         Ok(_) => "ok".into(),

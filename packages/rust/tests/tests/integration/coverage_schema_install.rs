@@ -1,5 +1,5 @@
-//! schema_install: 설치된 bench manifest를 다시 설치하면 아무것도 바꾸지 않고, table 일부만
-//! 있는 manifest의 설치는 CONFIG로 실패하며 없는 table을 만들지 않는다.
+//! schema_install: reinstalling the installed bench manifest changes nothing, and
+//! installing a manifest where only some tables exist fails with CONFIG and does not create the missing tables.
 use super::coverage_env::{code, connect, run};
 use polyspec_orm::db::Pool;
 use polyspec_orm::Db;
@@ -30,7 +30,7 @@ async fn coverage_schema_install_existing() {
     .await;
 }
 
-/// 연결의 database(MySQL), current schema(PostgreSQL), file(SQLite)에 `table`이 있는지 읽는다.
+/// Reads whether `table` exists in the connection's database (MySQL), current schema (PostgreSQL), or file (SQLite).
 async fn table_exists(db: &Db, table: &str) -> bool {
     let count: i64 = match db.pool() {
         Pool::MySql(p) => sqlx::query_scalar("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?")
@@ -58,7 +58,7 @@ async fn coverage_schema_install_partial() {
             .map(|parsed| parsed.document)
             .unwrap_or_else(|errors| panic!("partial document: {errors:?}"));
         let manifest = polyspec_orm::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("partial manifest: {errors:?}"));
-        // Schema는 생성된 model처럼 'static text를 받는다.
+        // Schema takes 'static text, as the generated model does.
         let schema = polyspec_orm::Schema::new(Box::leak(manifest.manifest_text.into_boxed_str()), Box::leak(manifest.manifest_hash.into_boxed_str()));
         let db = connect().await;
         assert!(table_exists(&db, "user").await, "the bench user table");
@@ -70,8 +70,8 @@ async fn coverage_schema_install_partial() {
     .await;
 }
 
-/// bench database의 table user를 외부 문서로 쓰는 document set의 외부 문서다. drift는 database에 없는 column을
-/// 더한다.
+/// External document of a document set that uses the table user of the bench database as an external document. Drift adds a column
+/// that the database does not have.
 const EXTERNAL_USER: &str = "dbspec 1 bench_user
 
 table user {
@@ -81,7 +81,7 @@ table user {
 }
 ";
 
-/// EXTERNAL_USER의 user를 쓰고 coverage_external_post만 소유한다.
+/// Uses EXTERNAL_USER's user and owns only coverage_external_post.
 const EXTERNAL_MEMBER: &str = "dbspec 1 coverage_external
 
 use bench_user { user }
@@ -95,7 +95,7 @@ table coverage_external_post {
 }
 ";
 
-/// EXTERNAL_MEMBER가 `external`을 외부 문서로 쓰는 set의 schema 값. generated model처럼 'static text다.
+/// The schema value of the set where EXTERNAL_MEMBER uses `external` as an external document. Like the generated model, it is 'static text.
 fn external_schema(external: &str) -> &'static polyspec_orm::Schema {
     let set = |name: &str, text: &str| std::collections::BTreeMap::from([(name.to_owned(), text.to_owned())]);
     let member = polyspec_orm::dbspec::parse(EXTERNAL_MEMBER, &set("bench_user", external))
@@ -110,8 +110,8 @@ fn external_schema(external: &str) -> &'static polyspec_orm::Schema {
     Box::leak(Box::new(polyspec_orm::Schema::with_external(leak(manifest.manifest_text), leak(manifest.external_text), leak(manifest.manifest_hash))))
 }
 
-/// 외부 문서를 쓰는 set의 install이 외부 table을 database에서 확인하는지 본다. 외부 문서의 column이 database에
-/// 없으면 install이 CONFIG이며 소유한 table을 만들지 않는다. 등록은 database를 읽지 않으므로 그 set으로도 연결한다.
+/// Checks whether installing a set that uses an external document confirms the external table in the database. If an external document's column is not in the database,
+/// the install fails with CONFIG and does not create the tables it owns. Registration does not read the database, so it connects with that set too.
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_schema_install_external_documents() {

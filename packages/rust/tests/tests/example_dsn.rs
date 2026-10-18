@@ -1,7 +1,7 @@
 use std::process::Command;
 
-// 예제 프로그램 complex와 demo는 ORM_BENCH_MYSQL_DSN이 없거나 비어 있으면 연결하지 않고
-// 그 변수 이름을 출력하며 실패한다.
+// The example programs complex and demo fail, without connecting, if ORM_BENCH_MYSQL_DSN is missing or empty,
+// and print that variable name.
 fn run_without_dsn(program: &str, value: Option<&str>) -> std::process::Output {
     let mut command = Command::new(program);
     match value {

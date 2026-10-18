@@ -1,11 +1,11 @@
-//! composite_keys: 두 key 구성 요소로 row를 찾고, foreign key의 두 성분(tenant_id,
-//! account_id)으로 잇는 account의 memberships relation을 읽고, account를 지우면
-//! ON DELETE CASCADE가 membership을 지운다. 쓴 row를 모두 지운다.
+//! composite_keys: finds a row by two key components, and reads the memberships relation of the account, which joins on the two foreign key components (tenant_id,
+//! account_id); deleting the account
+//! triggers ON DELETE CASCADE to delete the membership. It deletes all the rows it wrote.
 use super::coverage_env::{connect, run};
 use super::model::{CompositeAccount, CompositeMembership};
 
 const TENANT: i64 = 990004;
-/// 다른 tenant에도 account 2가 있어야 account_id 한 성분만으로 잇는 relation이 드러난다.
+/// Account 2 must also exist in another tenant so that the relation joined by the account_id component alone is revealed.
 const OTHER_TENANT: i64 = 990006;
 
 #[tokio::test]
@@ -27,8 +27,8 @@ async fn coverage_composite_key_rows() {
         membership().set_tenant_id(TENANT).set_account_id(2).set_role("owner").create().await.unwrap();
         membership().set_tenant_id(OTHER_TENANT).set_account_id(2).set_role("guest").create().await.unwrap();
         let by_key = account().get_by_tenant_id_and_account_id(TENANT, 2).await.unwrap().get_name().unwrap().to_owned();
-        // relation은 foreign key의 두 성분을 key 순서대로 잇는다. 자식이 자기 연결을 가지면 부모 row를
-        // 읽은 뒤 따로 읽는다. 두 경로의 결과를 모은 뒤 row를 지우고 나서 비교한다.
+        // The relation joins the two foreign key components in key order. When a child has its own link, the parent row is read
+        // separately after it is read. The results of both paths are collected, the rows are deleted, and then they are compared.
         let same = account()
             .tenant_id(TENANT)
             .relations(CompositeMembership::new().match_tenant_id_with_tenant_id().match_account_id_with_account_id().alias_memberships())
