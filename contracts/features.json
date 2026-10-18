@@ -8519,7 +8519,8 @@
           "restore_condition",
           "restore_no_key",
           "restore_rewritten_key",
-          "restore_hook_set_key"
+          "restore_hook_set_key",
+          "restore_rewritten_key_set_scope"
         ],
         "owners": {
           "go": {
@@ -8546,7 +8547,8 @@
                     "restore_condition",
                     "restore_no_key",
                     "restore_rewritten_key",
-                    "restore_hook_set_key"
+                    "restore_hook_set_key",
+                    "restore_rewritten_key_set_scope"
                   ],
                   "symbols": {
                     "without_hook": "TestCoverageRequestHookWithoutHook",
@@ -8558,7 +8560,8 @@
                     "restore_condition": "TestCoverageRequestHookRestoreCondition",
                     "restore_no_key": "TestCoverageRequestHookRestoreNoKey",
                     "restore_rewritten_key": "TestCoverageRequestHookRestoreRewrittenKey",
-                    "restore_hook_set_key": "TestCoverageRequestHookRestoreHookSetKey"
+                    "restore_hook_set_key": "TestCoverageRequestHookRestoreHookSetKey",
+                    "restore_rewritten_key_set_scope": "TestCoverageRequestHookRestoreRewrittenKeySetScope"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -8577,7 +8580,8 @@
                     "restore_condition",
                     "restore_no_key",
                     "restore_rewritten_key",
-                    "restore_hook_set_key"
+                    "restore_hook_set_key",
+                    "restore_rewritten_key_set_scope"
                   ],
                   "symbols": {
                     "without_hook": "TestCoverageRequestHookWithoutHook",
@@ -8589,7 +8593,8 @@
                     "restore_condition": "TestCoverageRequestHookRestoreCondition",
                     "restore_no_key": "TestCoverageRequestHookRestoreNoKey",
                     "restore_rewritten_key": "TestCoverageRequestHookRestoreRewrittenKey",
-                    "restore_hook_set_key": "TestCoverageRequestHookRestoreHookSetKey"
+                    "restore_hook_set_key": "TestCoverageRequestHookRestoreHookSetKey",
+                    "restore_rewritten_key_set_scope": "TestCoverageRequestHookRestoreRewrittenKeySetScope"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -8608,7 +8613,8 @@
                     "restore_condition",
                     "restore_no_key",
                     "restore_rewritten_key",
-                    "restore_hook_set_key"
+                    "restore_hook_set_key",
+                    "restore_rewritten_key_set_scope"
                   ],
                   "symbols": {
                     "without_hook": "TestCoverageRequestHookWithoutHook",
@@ -8620,7 +8626,8 @@
                     "restore_condition": "TestCoverageRequestHookRestoreCondition",
                     "restore_no_key": "TestCoverageRequestHookRestoreNoKey",
                     "restore_rewritten_key": "TestCoverageRequestHookRestoreRewrittenKey",
-                    "restore_hook_set_key": "TestCoverageRequestHookRestoreHookSetKey"
+                    "restore_hook_set_key": "TestCoverageRequestHookRestoreHookSetKey",
+                    "restore_rewritten_key_set_scope": "TestCoverageRequestHookRestoreRewrittenKeySetScope"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -8652,7 +8659,8 @@
                     "restore_condition",
                     "restore_no_key",
                     "restore_rewritten_key",
-                    "restore_hook_set_key"
+                    "restore_hook_set_key",
+                    "restore_rewritten_key_set_scope"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -8671,7 +8679,8 @@
                     "restore_condition",
                     "restore_no_key",
                     "restore_rewritten_key",
-                    "restore_hook_set_key"
+                    "restore_hook_set_key",
+                    "restore_rewritten_key_set_scope"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -8690,7 +8699,8 @@
                     "restore_condition",
                     "restore_no_key",
                     "restore_rewritten_key",
-                    "restore_hook_set_key"
+                    "restore_hook_set_key",
+                    "restore_rewritten_key_set_scope"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -8720,7 +8730,8 @@
                     "restore_condition",
                     "restore_no_key",
                     "restore_rewritten_key",
-                    "restore_hook_set_key"
+                    "restore_hook_set_key",
+                    "restore_rewritten_key_set_scope"
                   ],
                   "symbols": {
                     "without_hook": "coverage_request_hook_without_hook",
@@ -8732,7 +8743,8 @@
                     "restore_condition": "coverage_request_hook_restore_condition",
                     "restore_no_key": "coverage_request_hook_restore_no_key",
                     "restore_rewritten_key": "coverage_request_hook_restore_rewritten_key",
-                    "restore_hook_set_key": "coverage_request_hook_restore_hook_set_key"
+                    "restore_hook_set_key": "coverage_request_hook_restore_hook_set_key",
+                    "restore_rewritten_key_set_scope": "coverage_request_hook_restore_rewritten_key_set_scope"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -8751,7 +8763,8 @@
                     "restore_condition",
                     "restore_no_key",
                     "restore_rewritten_key",
-                    "restore_hook_set_key"
+                    "restore_hook_set_key",
+                    "restore_rewritten_key_set_scope"
                   ],
                   "symbols": {
                     "without_hook": "coverage_request_hook_without_hook",
@@ -8763,7 +8776,8 @@
                     "restore_condition": "coverage_request_hook_restore_condition",
                     "restore_no_key": "coverage_request_hook_restore_no_key",
                     "restore_rewritten_key": "coverage_request_hook_restore_rewritten_key",
-                    "restore_hook_set_key": "coverage_request_hook_restore_hook_set_key"
+                    "restore_hook_set_key": "coverage_request_hook_restore_hook_set_key",
+                    "restore_rewritten_key_set_scope": "coverage_request_hook_restore_rewritten_key_set_scope"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -8782,7 +8796,8 @@
                     "restore_condition",
                     "restore_no_key",
                     "restore_rewritten_key",
-                    "restore_hook_set_key"
+                    "restore_hook_set_key",
+                    "restore_rewritten_key_set_scope"
                   ],
                   "symbols": {
                     "without_hook": "coverage_request_hook_without_hook",
@@ -8794,7 +8809,8 @@
                     "restore_condition": "coverage_request_hook_restore_condition",
                     "restore_no_key": "coverage_request_hook_restore_no_key",
                     "restore_rewritten_key": "coverage_request_hook_restore_rewritten_key",
-                    "restore_hook_set_key": "coverage_request_hook_restore_hook_set_key"
+                    "restore_hook_set_key": "coverage_request_hook_restore_hook_set_key",
+                    "restore_rewritten_key_set_scope": "coverage_request_hook_restore_rewritten_key_set_scope"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -8826,7 +8842,8 @@
                     "restore_condition",
                     "restore_no_key",
                     "restore_rewritten_key",
-                    "restore_hook_set_key"
+                    "restore_hook_set_key",
+                    "restore_rewritten_key_set_scope"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -8845,7 +8862,8 @@
                     "restore_condition",
                     "restore_no_key",
                     "restore_rewritten_key",
-                    "restore_hook_set_key"
+                    "restore_hook_set_key",
+                    "restore_rewritten_key_set_scope"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -8864,7 +8882,8 @@
                     "restore_condition",
                     "restore_no_key",
                     "restore_rewritten_key",
-                    "restore_hook_set_key"
+                    "restore_hook_set_key",
+                    "restore_rewritten_key_set_scope"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -8896,7 +8915,8 @@
                     "restore_condition",
                     "restore_no_key",
                     "restore_rewritten_key",
-                    "restore_hook_set_key"
+                    "restore_hook_set_key",
+                    "restore_rewritten_key_set_scope"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -8915,7 +8935,8 @@
                     "restore_condition",
                     "restore_no_key",
                     "restore_rewritten_key",
-                    "restore_hook_set_key"
+                    "restore_hook_set_key",
+                    "restore_rewritten_key_set_scope"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -8934,7 +8955,8 @@
                     "restore_condition",
                     "restore_no_key",
                     "restore_rewritten_key",
-                    "restore_hook_set_key"
+                    "restore_hook_set_key",
+                    "restore_rewritten_key_set_scope"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }

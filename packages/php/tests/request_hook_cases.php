@@ -335,6 +335,27 @@ function restoreHookSetKeyCase(string $dsn): void
     $db->close();
 }
 
+/** The hook gives the model's label its own value y and sets part a after it, with no where parameter. */
+function restoreRewrittenKeySetScopeCase(string $dsn): void
+{
+    $db = hookConnect($dsn);
+    $ids = seedDeletedEntries($db);
+    $h = $db->withRequestHook(static function (Request $r): void {
+        if ($r->ir['kind'] === 'restore') {
+            foreach ($r->ir['set'] as $i => $a) {
+                if ($a['column'] === 'label') {
+                    $r->ir['set'][$i]['p'] = $r->param('y');
+                }
+            }
+            $r->ir['set'][] = ['column' => 'part', 'p' => $r->param('a')];
+        }
+    });
+    $row = (new HookEntry)($h)->setLabel('x')->setNote('n6')->restore();
+    hookCheck([$row->getId(), $row->getLabel(), $row->getNote()] === [$ids['ay'], 'y', 'n6'], 'the restore returns (a, y) with note n6: ' . json_encode($row->toArray()));
+    hookCheck(entryRows($db) === [[$ids['ay'], 'n6']], 'the connection reads only (a, y) with note n6: ' . json_encode(entryRows($db)));
+    $db->close();
+}
+
 /** The case functions by shared case ID; each takes the DSN of an empty database. */
 const REQUEST_HOOK_CASES = [
     'without_hook' => 'withoutHook',
@@ -347,6 +368,7 @@ const REQUEST_HOOK_CASES = [
     'restore_no_key' => 'restoreNoKeyCase',
     'restore_rewritten_key' => 'restoreRewrittenKeyCase',
     'restore_hook_set_key' => 'restoreHookSetKeyCase',
+    'restore_rewritten_key_set_scope' => 'restoreRewrittenKeySetScopeCase',
 ];
 
 /** Runs case $id on the empty database of $dsn; a failed check of it fails the running PHPUnit test. */

@@ -215,6 +215,21 @@ export const cases = {
     assert.deepEqual(await entryRows(db), [[ids.ay, 'n4']], 'the connection reads only (a, y) with note n4');
   },
 
+  /** The hook gives the model's label its own value y and sets part a after it, with no where parameter. */
+  async restore_rewritten_key_set_scope(db) {
+    const ids = await seedDeletedEntries(db);
+    const hooked = db.withRequestHook((request, addParam) => {
+      if (request.kind === 'restore') {
+        for (const a of request.set ?? []) if (a.column === 'label') a.p = addParam('y');
+        request.set = [...(request.set ?? []), { column: 'part', p: addParam('a') }];
+      }
+      return request;
+    });
+    const values = (await entry({ label: 'x', note: 'n6' }).connect(hooked).restore()).toArray();
+    assert.deepEqual([values.id, values.label, values.note], [ids.ay, 'y', 'n6'], 'the restore returns (a, y) with note n6');
+    assert.deepEqual(await entryRows(db), [[ids.ay, 'n6']], 'the connection reads only (a, y) with note n6');
+  },
+
   /** The hook puts part a first in the set; the model's label completes the unique key. */
   async restore_hook_set_key(db) {
     const ids = await seedDeletedEntries(db);

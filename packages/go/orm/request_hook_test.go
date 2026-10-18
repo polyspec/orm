@@ -461,6 +461,33 @@ var requestHookCases = []struct {
 			t.Fatalf("connection reads %v, want only (a, x) with note n5", rows)
 		}
 	}},
+	{"restore_rewritten_key_set_scope", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
+		ids := seedDeletedEntries(t, entry, db)
+		// The hook gives the model's label its own value y and sets part a after it, with no where parameter.
+		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int, params []any) error {
+			if r.Kind == "restore" {
+				for i := range r.Set {
+					if r.Set[i].Column == "label" {
+						p := addParam("y")
+						r.Set[i].P = &p
+					}
+				}
+				p := addParam("a")
+				r.Set = append(r.Set, ir.Assign{Column: "part", P: &p})
+			}
+			return nil
+		})
+		row, err := hookEntry(entry, hooked, map[string]any{"label": "x", "note": "n6"}).Restore()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if vals := row.(*keywordRow).vals; vals["id"] != ids["ay"] || vals["label"] != "y" || vals["note"] != "n6" {
+			t.Fatalf("restore returned %v, want (a, y) with note n6", vals)
+		}
+		if rows := entryRows(t, entry, db); len(rows) != 1 || rows[0]["id"] != ids["ay"] || rows[0]["note"] != "n6" {
+			t.Fatalf("connection reads %v, want only (a, y) with note n6", rows)
+		}
+	}},
 }
 
 // TestRequestHook은 각 case를 SQLite temp file에서 실행한다. file은 test가 끝나면 지워진다.

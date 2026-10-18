@@ -1194,7 +1194,7 @@ interface Hooked { request: Request; params: readonly unknown[]; }
  * 더하고, client 는 hook 이 돌려준 request 의 n_params 를 그 길이로 쓴다. validation 은 plan 이 한다. hook 이
  * 없는 handle 은 request 와 params 를 그대로 돌려준다.
  */
-function hooked(ex: Executor, request: Request, params: readonly unknown[]): Hooked {
+function hooked(ex: Executor, request: Request, params: readonly unknown[], afterHook?: (hooked: Hooked) => void): Hooked {
   const hook = ex.db.requestHook;
   let planned: Hooked = { request, params };
   if (hook !== undefined) {
@@ -1204,6 +1204,8 @@ function hooked(ex: Executor, request: Request, params: readonly unknown[]): Hoo
     out.n_params = values.length;
     planned = { request: out, params: values };
   }
+  // The hook has run and the planner has not yet renumbered the parameters: a caller reads the request as the hook left it here.
+  afterHook?.(planned);
   // A SQL connection plans the canonical form (T169-3): the IN lists pad to their buckets and the parameters are renumbered.
   if (ex.db.md !== undefined) return planned;
   const canon = canonicalize(planned.request, planned.params);
@@ -1340,8 +1342,8 @@ export interface Written extends Hooked { key: number | string | null; affected:
  * the generated identity on a SQL database, the first key the markdown executor answers. It also returns the
  * request it ran, as the request hook left it.
  */
-export async function write(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<Written> {
-  const { request, params } = hooked(ex, given, givenParams);
+export async function write(ex: Executor, given: Request, givenParams: readonly unknown[], afterHook?: (hooked: Hooked) => void): Promise<Written> {
+  const { request, params } = hooked(ex, given, givenParams, afterHook);
   const { key, affected } = await guarded(ex, async (): Promise<{ key: number | string | null; affected: number }> => {
     const db = ex.db;
     if (db.md !== undefined) {

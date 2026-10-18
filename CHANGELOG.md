@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- Every runtime reads a restore key from the request the hook left, before canonicalize renumbers the parameters, and the shared case restore_rewritten_key_set_scope covers it (T77-43).
 - The Python request-hook coverage module runs its cases per item, so it exits 0 when every case passes (T77-42).
 - A PHP restore reads its key from the request the request hook left, before the planner renumbers parameters, as Go does (T77-41).
 - The Go tests bind text to date and datetime columns, as the setters do, so the cancel, value-types and conditions tests pass again (T77-40).

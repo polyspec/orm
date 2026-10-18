@@ -76,3 +76,8 @@ func TestCoverageRequestHookRestoreHookSetKey(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	runRequestHookCoverage(t, "restore_hook_set_key")
 }
+
+func TestCoverageRequestHookRestoreRewrittenKeySetScope(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	runRequestHookCoverage(t, "restore_rewritten_key_set_scope")
+}

@@ -1069,6 +1069,12 @@ func paginate(ex executor, r *request) (*result, int64, error) {
 // inserted row and the affected row count: the generated identity on a SQL
 // database, the first key the markdown executor answers.
 func write(ex executor, r *request) (key any, affected int64, err error) {
+	return writeAfterHook(ex, r, nil)
+}
+
+// writeAfterHook is write. When after is not nil it reads the request as the hook left it, before the planner
+// renumbers the parameters (canonicalize), so a key read there keeps the numbers the model gave its own values.
+func writeAfterHook(ex executor, r *request, after func(*request) error) (key any, affected int64, err error) {
 	done, err := ex.enter()
 	if err != nil {
 		return nil, 0, err
@@ -1081,6 +1087,11 @@ func write(ex executor, r *request) (key any, affected int64, err error) {
 	}()
 	if err := applyRequestHook(ex, r); err != nil {
 		return nil, 0, err
+	}
+	if after != nil {
+		if err := after(r); err != nil {
+			return nil, 0, err
+		}
 	}
 	d, ctx := ex.base(), ex.context()
 	if d.md != nil {

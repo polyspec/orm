@@ -277,6 +277,31 @@ class RequestHookTest(unittest.TestCase):
         )
         self.assertEqual(self.entry_rows(self.db), [(ids["ay"], "n4")])
 
+    def test_restore_rewritten_key_set_scope(self):
+        ids = self.seed_deleted_entries()
+        # The hook gives the model's label its own value y and sets part a after it, with no where parameter.
+
+        def hook(request, add_param, params):
+            if request["kind"] == "restore":
+                for a in request.get("set") or []:
+                    if a["column"] == "label":
+                        a["p"] = add_param("y")
+                request["set"] = list(request.get("set") or []) + [
+                    {"column": "part", "p": add_param("a")}
+                ]
+            return request
+
+        row = (
+            self.entry(self.db.with_request_hook(hook))
+            .set_label("x")
+            .set_note("n6")
+            .restore()
+        )
+        self.assertEqual(
+            (row.get_id(), row.get_label(), row.get_note()), (ids["ay"], "y", "n6")
+        )
+        self.assertEqual(self.entry_rows(self.db), [(ids["ay"], "n6")])
+
     def test_restore_hook_set_key(self):
         ids = self.seed_deleted_entries()
         # The hook puts part a first in the set; the model's label completes the unique key.

@@ -714,9 +714,16 @@ def restore(c: Core):
     # own은 model이 set 값마다 더한 parameter의 그 set 값이다. hook은 그 뒤에 parameter를 더한다.
     own = {a["p"]: s for a, s in zip(set_list, c.sets) if a.get("p") is not None}
     request.finish()
-    written = write(ex, request.ir, request.params)
-    # written은 hook이 남긴 request이므로 그 key는 planner가 고른 key다.
-    key = restore_key(schema, written["request"])["key"]
+    found = {}
+
+    def read_key(hooked, hooked_params):
+        # The key is read from the request as the hook left it, before the planner renumbers its parameters, as Go reads it.
+        written = {"request": hooked, "params": hooked_params}
+        found["key"] = restore_key(schema, hooked)["key"]
+        found["args"] = [_restore_key_value(own, written, column) for column in found["key"]]
+
+    write(ex, request.ir, request.params, read_key)
+    key = found["key"]
     q = _new_model(c.ent)
     q.conn = c.conn
     q.where_chain(
@@ -735,7 +742,7 @@ def restore(c: Core):
             )()
             for i, column in enumerate(key)
         ],
-        [_restore_key_value(own, written, column) for column in key],
+        found["args"],
     )
     return q.self.get()
 

@@ -2039,7 +2039,7 @@ def _sqlite_busy(error) -> bool:
     return code is not None and (code & 0xFF) == 5
 
 
-def _hooked(db: Db, request: dict, params):
+def _hooked(db: Db, request: dict, params, after_hook=None):
     """Applies the request hook of the handle to the request before it is planned, and returns (request, params).
     The hook adds values to a copy of params with add_param, and n_params becomes their count. A non-markdown request
     is then canonicalized (canonical.py), so the plan cache key does not depend on IN list lengths."""
@@ -2057,6 +2057,9 @@ def _hooked(db: Db, request: dict, params):
         if not isinstance(request, dict):
             raise OrmError(codes.CONFIG, "the request hook returns the request to plan")
         request["n_params"] = len(values)
+    # The hook has run and the planner has not yet renumbered the parameters: a caller reads the request as the hook left it.
+    if after_hook is not None:
+        after_hook(request, values)
     if db.driver == "markdown":
         return request, values
     # The plan cache is keyed by the canonical request (canonical.py), so IN lists of one bucket share a plan.
@@ -2393,11 +2396,11 @@ def paginate(ex: Executor, request: dict, params):
     return _guarded(ex, work)
 
 
-def write(ex: Executor, request: dict, params):
+def write(ex: Executor, request: dict, params, after_hook=None):
     """insert, update, delete, restore를 실행하고 insert한 행의 key와 영향 줄 수를 낸다: SQL database에서는 생성된
     identity, markdown executor에서는 그 답의 첫 key다. 'request'와 'params'는 request hook이 남긴 실행한 request와 그
     parameter다."""
-    request, params = _hooked(ex.db, request, params)
+    request, params = _hooked(ex.db, request, params, after_hook)
 
     def work():
         db = ex.db

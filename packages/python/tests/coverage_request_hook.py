@@ -19,6 +19,7 @@ CASES = (
     "restore_no_key",
     "restore_rewritten_key",
     "restore_hook_set_key",
+    "restore_rewritten_key_set_scope",
 )
 
 
@@ -77,6 +78,12 @@ class CoverageTest(CoverageCase):
         self.each_item(
             "restore_rewritten_key",
             lambda item: run_case("restore_rewritten_key", item),
+        )
+
+    def test_restore_rewritten_key_set_scope(self):
+        self.each_item(
+            "restore_rewritten_key_set_scope",
+            lambda item: run_case("restore_rewritten_key_set_scope", item),
         )
 
     def test_restore_hook_set_key(self):

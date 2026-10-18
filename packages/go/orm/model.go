@@ -1260,27 +1260,31 @@ func (c *Core) Restore() (Model, error) {
 		r.ir.Set = append(r.ir.Set, a)
 	}
 	r.ir.NParams = len(r.params)
-	if _, _, err := write(ex, r); err != nil {
-		return nil, err
-	}
-	// r is the request as the hook left it, so its key is the key the planner picked.
-	parts, err := ir.RestoreKey(ent, &r.ir)
-	if err != nil {
+	// The key is read from the request as the hook left it, before the planner renumbers its parameters.
+	var keys []ChainKey
+	var args []any
+	if _, _, err := writeAfterHook(ex, r, func(hooked *request) error {
+		parts, err := ir.RestoreKey(ent, &hooked.ir)
+		if err != nil {
+			return err
+		}
+		keys = make([]ChainKey, len(parts.Key))
+		args = make([]any, len(parts.Key))
+		for i, column := range parts.Key {
+			keys[i] = ChainKey{Column: column}
+			if i > 0 {
+				keys[i].Conn = "and"
+			}
+			if args[i], err = restoreKeyValue(own, hooked, column); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 	q := NewCore(c.ent)
 	q.conn = c.conn
-	keys := make([]ChainKey, len(parts.Key))
-	args := make([]any, len(parts.Key))
-	for i, column := range parts.Key {
-		keys[i] = ChainKey{Column: column}
-		if i > 0 {
-			keys[i].Conn = "and"
-		}
-		if args[i], err = restoreKeyValue(own, r, column); err != nil {
-			return nil, err
-		}
-	}
 	q.Where("", keys, args...)
 	return q.Get()
 }

@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e9bd8d342f13c5978734852348c1c907c9133d256c796d1a89368d8ec29fc545 -->
+<!-- source-sha256: 53deccece0769dd86ab750ccf520ced51e5a88af686705f0f74c65251dd125d0 -->
 # 변경 이력
 
 ## Unreleased
+- 모든 런타임의 restore는 hook이 남긴 요청에서 키를 canonicalize 전에 읽고, 공유 케이스 restore_rewritten_key_set_scope가 이를 확인한다 (T77-43).
 - Python request-hook coverage 모듈은 항목별로 case를 실행해, 모든 case가 통과하면 exit 0이다 (T77-42).
 - PHP restore는 request hook이 남긴 요청에서 키를 읽는다. planner가 파라미터 번호를 다시 매기기 전이며 Go와 같다 (T77-41).
 - Go 테스트가 date와 datetime 컬럼에 native 시간값 대신 setter와 같은 텍스트를 bind해, cancel, value-types, conditions 테스트가 다시 통과한다 (T77-40).

@@ -95,6 +95,14 @@ final class CoverageRequestHookTest extends TestCase
         }
     }
 
+    public function test_restore_rewritten_key_set_scope(): void
+    {
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            self::run_case('restore_rewritten_key_set_scope');
+        }
+    }
+
     private static function run_case(string $id): void
     {
         [$driver] = coverageItem();

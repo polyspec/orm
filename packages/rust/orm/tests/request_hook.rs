@@ -465,6 +465,41 @@ async fn restore_hook_set_key_case(driver: &str) {
     database.drop().await;
 }
 
+/// The hook gives the model's label its own value y and sets part a after it, with no where parameter.
+async fn restore_rewritten_key_set_scope_case(driver: &str) {
+    let database = CaseDatabase::create(driver).await;
+    let db = installed(&database).await;
+    let ids = seed_deleted_entries(&db).await;
+    let hooked = db.with_request_hook(|request: &mut Request, params: &mut RequestParams| {
+        if request.kind == "restore" {
+            for a in request.set.iter_mut().filter(|a| a.column == "label") {
+                a.p = Some(params.add("y"));
+            }
+            let p = params.add("a");
+            request.set.push(Assign { column: "part".into(), p: Some(p), ..Default::default() });
+        }
+        Ok(())
+    });
+    let row = polyspec_orm::model::restore(&entry(&hooked, &[("label", Param::from("x")), ("note", Param::from("n6"))])).await.expect("restore");
+    assert_eq!((id_of(&row), text_of(&row, "label"), text_of(&row, "note")), (ids["ay"], "y".into(), "n6".into()));
+    assert_eq!(entry_rows(&db).await, vec![(ids["ay"], "n6".to_owned())], "the connection reads only (a, y)");
+    db.close().await;
+    database.drop().await;
+}
+
+#[tokio::test]
+async fn restore_rewritten_key_set_scope() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    restore_rewritten_key_set_scope_case("sqlite").await;
+}
+
+#[tokio::test]
+#[ignore = "run by feature-check"]
+async fn coverage_request_hook_restore_rewritten_key_set_scope() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    restore_rewritten_key_set_scope_case(feature_database()).await;
+}
+
 /// feature-check가 고른 database(ORM_FEATURE_DATABASE)다. coverage case는 그 database에 자기 case database를
 /// 만들고 지우며, ORM_FEATURE_DSN의 database는 읽거나 쓰지 않는다.
 fn feature_database() -> &'static str {

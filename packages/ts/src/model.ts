@@ -1,7 +1,7 @@
 import { CORE, Core, RowState, configError, isModel, styledField, type EntityDef, type ModelLike, type SetSpec } from './core.js';
 import { encodeStyled } from './codec.js';
 import { Value as OrderedJsonValue, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
-import { Db, keyOfValues, keyText, keyValue, paginate, query, readTime, resolve, rowKey, scalar, scalarKey, statement, write, type Executor, type Key, type Result, type Written } from './database.js';
+import { Db, keyOfValues, keyText, keyValue, paginate, query, readTime, resolve, rowKey, scalar, scalarKey, statement, write, type Executor, type Key, type Result } from './database.js';
 import { restoreKey } from './engine/validate.js';
 import { fieldOf, type Entity, type Field, type RuntimeModel } from './engine/model.js';
 import type { Assemble, Request } from './ir.js';
@@ -852,12 +852,16 @@ async function restore(c: Core): Promise<Model> {
   // own 은 model 이 set 값마다 더한 parameter 의 그 set 값이다. hook 은 그 뒤에 parameter 를 더한다.
   const own = new Map<number, SetSpec>();
   set.forEach((a, i) => { if (a.p !== undefined) own.set(a.p, present(c.sets[i], `set value ${i}`)); });
-  const written = await write(ex, r.finish(), r.params);
-  // written 은 hook 이 남긴 request 이므로 그 key 는 planner 가 고른 key 다.
-  const key = restoreKey(schema, written.request).key;
+  // The key is read from the request as the hook left it, before the planner renumbers its parameters, as Go reads it.
+  let key: readonly string[] = [];
+  let args: unknown[] = [];
+  await write(ex, r.finish(), r.params, hooked => {
+    key = restoreKey(schema, hooked.request).key;
+    args = key.map(column => restoreKeyValue(own, hooked, column));
+  });
   const q = newModel(c.ent);
   q.conn = c.conn;
-  q.whereChain('', key.map((column, i) => ({ conn: i > 0 ? 'and' : '', op: '', column, columns: [], compare: '' })), key.map(column => restoreKeyValue(own, written, column)));
+  q.whereChain('', key.map((column, i) => ({ conn: i > 0 ? 'and' : '', op: '', column, columns: [], compare: '' })), args);
   return asModel(q.self).get();
 }
 
@@ -865,7 +869,7 @@ async function restore(c: Core): Promise<Model> {
  * hook 이 남긴 restore request 에서 key column 의 값이다. parameter 가 model 이 같은 column 에 더한 것인 set item 은 model
  * 자신의 set 값(read 가 다른 조건 값처럼 변환한다)을, 다른 set item 과 where 의 그 column eq 조건은 hook 이 남긴 parameter 를 쓴다.
  */
-function restoreKeyValue(own: ReadonlyMap<number, SetSpec>, written: Written, column: string): unknown {
+function restoreKeyValue(own: ReadonlyMap<number, SetSpec>, written: { request: Request; params: readonly unknown[] }, column: string): unknown {
   const p = written.request.set?.find(a => a.column === column && a.p !== undefined)?.p;
   if (p !== undefined) {
     const s = own.get(p);
