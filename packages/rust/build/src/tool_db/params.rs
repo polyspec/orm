@@ -24,7 +24,7 @@ pub enum P {
     Decimal(String),
     Boolean(bool),
     Binary(Vec<u8>),
-    /// dbspec text 형식의 date, time, datetime 값(GridCell과 같은 형식).
+    /// A date, time, or datetime value in dbspec text form (same form as GridCell).
     Date(String),
     Time(String),
     DateTime(String),
@@ -74,7 +74,7 @@ pub(super) fn validate_refs<'a>(values: impl Iterator<Item = &'a P>, dialect: &s
         bytes = bytes.checked_add(size).filter(|n| *n <= 16 * 1024 * 1024).ok_or_else(limit)?;
         match value {
             P::S(value) if dialect == "postgres" && value.contains('\0') => return Err(invalid()),
-            // temporal 값은 dbspec text 형식이어야 한다. 다른 형식을 database 변환에 맡기지 않는다.
+            // A temporal value must be in dbspec text form. A different form is not left to database conversion.
             P::Date(value) if !super::is_temporal("date", value) => return Err(invalid()),
             P::Time(value) if !super::is_temporal("time", value) => return Err(invalid()),
             P::DateTime(value) if !super::is_temporal("datetime", value) => return Err(invalid()),
@@ -109,7 +109,7 @@ fn limit() -> sqlx::Error {
 #[path = "../../tests/unit/typed_bind_validation.rs"]
 mod tests;
 
-/// 검사된 dbspec text를 chrono 값으로 읽는다.
+/// Reads a checked dbspec text as a chrono value.
 pub(super) fn date(value: &str) -> Result<polyspec_orm::chrono::NaiveDate, sqlx::Error> {
     polyspec_orm::chrono::NaiveDate::parse_from_str(value, "%Y-%m-%d").map_err(|_| invalid())
 }

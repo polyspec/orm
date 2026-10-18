@@ -12,11 +12,11 @@ pub enum GridCell {
     Text(String),
     Boolean(bool),
     Binary(Vec<u8>),
-    /// MySQL `DATE`와 PostgreSQL `date`: `YYYY-MM-DD`.
+    /// MySQL `DATE` and PostgreSQL `date`: `YYYY-MM-DD`.
     Date(String),
-    /// MySQL `TIME`과 PostgreSQL `time`: 하루 안의 `HH:MM:SS`와 소수 자릿수.
+    /// MySQL `TIME` and PostgreSQL `time`: `HH:MM:SS` within a day, and fractional digits.
     Time(String),
-    /// MySQL `DATETIME`과 PostgreSQL time zone 없는 `timestamp`: UTC의 `YYYY-MM-DD HH:MM:SS`와 소수 자릿수.
+    /// MySQL `DATETIME` and PostgreSQL `timestamp` without time zone: `YYYY-MM-DD HH:MM:SS` in UTC, and fractional digits.
     DateTime(String),
 }
 impl From<Val> for GridCell {
@@ -64,7 +64,7 @@ fn temporal_error(message: &str) -> sqlx::Error {
     sqlx::Error::Decode(format!("Unsupported or invalid grid temporal value: {message}").into())
 }
 
-/// dbspec date 범위 0001-01-01부터 9999-12-31 안의 `YYYY-MM-DD`.
+/// `YYYY-MM-DD` within the dbspec date range 0001-01-01 to 9999-12-31.
 fn date_text(date: NaiveDate) -> Result<String, sqlx::Error> {
     use polyspec_orm::chrono::Datelike;
     if !(1..=9999).contains(&date.year()) {
@@ -73,7 +73,7 @@ fn date_text(date: NaiveDate) -> Result<String, sqlx::Error> {
     Ok(date.format("%Y-%m-%d").to_string())
 }
 
-/// 소수 여섯 자리의 `HH:MM:SS.ffffff`. 기술된 table의 read는 column precision으로 줄인다.
+/// `HH:MM:SS.ffffff` with six fractional digits. A read of a described table is reduced to the column precision.
 fn time_text(time: NaiveTime) -> String {
     time.format("%H:%M:%S%.6f").to_string()
 }
@@ -82,8 +82,8 @@ fn datetime_text(value: NaiveDateTime) -> Result<String, sqlx::Error> {
     Ok(format!("{} {}", date_text(value.date())?, time_text(value.time())))
 }
 
-/// MySQL `DATE`, `TIME`, `DATETIME`. time zone을 따르는 `TIMESTAMP`는 여기 오지 않는다.
-/// `TIME`은 하루 안의 시각만 받고, 음수나 24시간 이상인 interval은 거부한다.
+/// MySQL `DATE`, `TIME`, `DATETIME`. `TIMESTAMP`, which follows a time zone, does not come here.
+/// `TIME` accepts only a time of day; an interval that is negative or 24 hours or more is rejected.
 pub(super) fn mysql_temporal(row: &sqlx::mysql::MySqlRow, index: usize) -> Result<Option<GridCell>, sqlx::Error> {
     use sqlx::{Column, Row, TypeInfo};
     Ok(Some(match row.columns()[index].type_info().name() {
@@ -108,8 +108,8 @@ pub(super) fn mysql_temporal(row: &sqlx::mysql::MySqlRow, index: usize) -> Resul
     }))
 }
 
-/// PostgreSQL `date`, `time`, time zone 없는 `timestamp`의 binary 값. sqlx의 chrono decoder는
-/// 24:00:00을 00:00:00으로 넘기고 infinity를 overflow하므로 값을 직접 읽어 범위를 검사한다.
+/// Binary values of PostgreSQL `date`, `time`, and `timestamp` without time zone. sqlx's chrono decoder
+/// passes 24:00:00 as 00:00:00 and overflows infinity, so the value is read directly and its range checked.
 pub(super) fn postgres_temporal(row: &sqlx::postgres::PgRow, index: usize) -> Result<Option<GridCell>, sqlx::Error> {
     use sqlx::{Column, Row, TypeInfo, ValueRef};
     let name = row.columns()[index].type_info().name();
@@ -149,14 +149,14 @@ pub(super) fn postgres_temporal(row: &sqlx::postgres::PgRow, index: usize) -> Re
     }))
 }
 
-/// dbspec date `YYYY-MM-DD`: 0001-01-01부터 9999-12-31까지의 달력 날짜.
+/// dbspec date `YYYY-MM-DD`: a calendar date from 0001-01-01 to 9999-12-31.
 pub(crate) fn is_date(text: &str) -> bool {
     use polyspec_orm::chrono::{Datelike, NaiveDate};
     text.len() == 10
         && NaiveDate::parse_from_str(text, "%Y-%m-%d").is_ok_and(|date| (1..=9999).contains(&date.year()) && date.format("%Y-%m-%d").to_string() == text)
 }
 
-/// dbspec time `HH:MM:SS`와 0~6자리 소수: 하루 안의 시각.
+/// dbspec time `HH:MM:SS` with 0 to 6 fractional digits: a time of day.
 pub(crate) fn is_time(text: &str) -> bool {
     use polyspec_orm::chrono::NaiveTime;
     let (whole, digits) = text.split_once('.').map_or((text, None), |(whole, digits)| (whole, Some(digits)));
@@ -165,7 +165,7 @@ pub(crate) fn is_time(text: &str) -> bool {
         && digits.is_none_or(|digits| (1..=6).contains(&digits.len()) && digits.bytes().all(|digit| digit.is_ascii_digit()))
 }
 
-/// dbspec text 형식의 date, time, datetime 값. `kind`는 date, time, datetime 중 하나다.
+/// A date, time, or datetime value in dbspec text form. `kind` is one of date, time, datetime.
 pub(crate) fn is_temporal(kind: &str, text: &str) -> bool {
     match kind {
         "date" => is_date(text),

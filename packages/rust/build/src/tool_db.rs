@@ -185,8 +185,8 @@ macro_rules! grid_mysql {
         } else if let Some(cell) = grid::mysql_temporal(row, i)? {
             Ok(cell)
         } else if <String as sqlx::Type<MySql>>::compatible(row.columns()[i].type_info()) {
-            // `_bin` collation의 문자열 column은 BINARY flag 때문에 VARBINARY로 이름이
-            // 붙지만 collation이 binary가 아니므로 text다.
+            // A string column of `_bin` collation gets the VARBINARY name because of the BINARY flag,
+            // but since its collation is not binary, it is text.
             row.try_get::<Option<String>, _>(i).map(|value| value.map_or(GridCell::Null, GridCell::Text))
         } else {
             grid_cell!(row, i, cell, "BINARY" | "VARBINARY" | "TINYBLOB" | "BLOB" | "MEDIUMBLOB" | "LONGBLOB")
@@ -386,7 +386,7 @@ impl ToolDsn {
             }
             "sqlite" if !url.path().starts_with('/') || !host.is_empty() => return Err("MIGRATION_CONFIG: sqlite DSN must be sqlite://<absolute path>".into()),
             "mysql" | "postgres" | "sqlite" => {}
-            // url scheme은 ASCII 문자, 숫자, `+`, `-`, `.`만 가지므로 따옴표로만 감싼다.
+            // A URL scheme has only ASCII letters, digits, `+`, `-`, `.`, so it is only wrapped in quotes.
             _ => return Err(format!("MIGRATION_CONFIG: unsupported DSN scheme \"{dialect}\"; want mysql, postgres, or sqlite")),
         }
         Ok(ToolDsn { dialect, url })

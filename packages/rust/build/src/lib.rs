@@ -34,7 +34,7 @@ use std::path::{Path, PathBuf};
 /// The name of the generated file in `OUT_DIR`.
 pub const MODEL_FILE: &str = "orm_model.rs";
 
-/// generated model이 `include_str!`로 담는 manifest text file의 `OUT_DIR` 안 이름.
+/// The name, inside `OUT_DIR`, of the manifest text file that the generated model embeds with `include_str!`.
 pub const MANIFEST_FILE: &str = "orm_manifest.dbs";
 
 /// The text of the tables that the set uses from external documents, written next to the manifest text when
@@ -86,8 +86,8 @@ impl Builder {
         let out_dir = self.output_dir()?;
         let loaded = self.load(&set_path)?;
         std::fs::create_dir_all(&out_dir).map_err(|e| format!("{}: {e}", out_dir.display()))?;
-        // generated source는 manifest file의 path를 include_str!로 담는다. path를 어떻게 썼든(`./`, `..`,
-        // 끝의 `/`, 상대 path) 같은 directory는 같은 source가 되도록 canonical path로 바꾼다.
+        // The generated source embeds the manifest file's path with include_str!. However the path was written (`./`, `..`,
+        // a trailing `/`, a relative path), the same directory is converted to a canonical path so it gives the same source.
         let out_dir = std::fs::canonicalize(&out_dir).map_err(|e| format!("{}: {e}", out_dir.display()))?;
         let manifest_file = out_dir.join(MANIFEST_FILE);
         write_if_changed(&manifest_file, loaded.set.manifest_text.as_bytes())?;

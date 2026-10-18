@@ -105,7 +105,7 @@ fn engine_op(op: &str) -> &'static str {
 
 const COMPARE: &[&str] = &["eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"];
 
-/// equality와 목록 비교만 하는 operator.
+/// Operators that only do equality and list comparison.
 const EQUALITY: &[&str] = &["eq", "not_eq", "in", "not_in", "is_null", "is_not_null"];
 
 /// The operator table of the engine.
