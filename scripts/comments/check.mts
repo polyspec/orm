@@ -13,6 +13,8 @@ const HANGUL = /\p{Script=Hangul}/u;
 
 export interface Comment {
   line: number;
+  // col is the offset in the line where text starts; a continuation line of a block comment starts at 0.
+  col: number;
   text: string;
 }
 
@@ -124,7 +126,8 @@ export function commentsOf(text: string, syntax: Syntax): Comment[] {
   const found: Comment[] = [];
   const addSpan = (start: number, end: number) => {
     const first = lineOf(starts, start);
-    text.slice(start, end).split('\n').forEach((part, index) => found.push({ line: first + index, text: part }));
+    const firstCol = start - (starts[first - 1] ?? 0);
+    text.slice(start, end).split('\n').forEach((part, index) => found.push({ line: first + index, col: index === 0 ? firstCol : 0, text: part }));
   };
   let i = 0;
   while (i < text.length) {
@@ -188,10 +191,12 @@ async function trackedFiles(root: string): Promise<string[]> {
   return stdout.split('\0').filter(path => path !== '');
 }
 
-// commentErrors returns one message per Hangul comment line of the tracked code files, naming file and line.
-export async function commentErrors(root: string): Promise<string[]> {
+// commentErrors returns one message per Hangul comment line of the tracked code files, naming file and line. With
+// prefixes, only the tracked files under those paths are read, so a directory can be checked on its own.
+export async function commentErrors(root: string, prefixes: string[] = []): Promise<string[]> {
   const errors: string[] = [];
-  for (const path of await trackedFiles(root)) {
+  const files = (await trackedFiles(root)).filter(path => prefixes.length === 0 || prefixes.some(prefix => path === prefix || path.startsWith(prefix.endsWith('/') ? prefix : `${prefix}/`)));
+  for (const path of files) {
     let text: string;
     try { text = await readFile(resolve(root, path), 'utf8'); }
     catch (error) {
@@ -208,7 +213,7 @@ export async function commentErrors(root: string): Promise<string[]> {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   const root = resolve(import.meta.dirname, '..', '..');
-  const errors = await commentErrors(root);
+  const errors = await commentErrors(root, process.argv.slice(2));
   if (errors.length > 0) {
     console.error(errors.join('\n'));
     console.error(`comment-language-check: ${errors.length} comment line(s) contain Hangul; translate each comment to English (AGENTS.md), then rerun make comment-language-check`);
