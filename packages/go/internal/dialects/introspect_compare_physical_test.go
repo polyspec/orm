@@ -25,27 +25,27 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// introspectReference는 2000 table stress database를 introspect하는 시간의 문서 기준값이다(docs/dialects.md
-// "Introspection"). 넘으면 경고할 뿐 test를 실패시키지 않는다(AGENTS.md).
+// introspectReference is the documented reference value for the time to introspect the 2000-table stress database (docs/dialects.md
+// "Introspection"). Exceeding it only warns and does not fail the test (AGENTS.md).
 const introspectReference = 5 * time.Second
 
-// compareRunnerDeadline은 introspection runner process 하나의 기한이다. runner는 `go run`이면
-// compile을 포함하고, 기준값을 넘긴 runner도 끝까지 기다려 그 시간을 보고한다.
+// compareRunnerDeadline is the deadline of one introspection runner process. If the runner is `go run`, it includes
+// compile, and a runner that exceeds the reference still waits to the end and reports that time.
 const compareRunnerDeadline = 5 * time.Minute
 
-// compareDeadline은 database 하나의 case 기한이다. 2000 table 문서의 statement 22000개를
-// 따로 실행해 적용하는 일과 네 runner를 차례로 실행하는 일을 담는다. 가장 긴 MySQL이 이
-// machine에서 6-7.7분 걸린다(T27 측정: 공유 server 5m57s, 부하가 있는 별도 server 7m44s).
-// MySQL DDL은 table이 늘수록 statement 하나가 느려지는 database의 일이고, durability 설정을
-// 낮춰도 14%만 줄었다. 측정값의 약 1.3배다.
+// compareDeadline is the case deadline for one database. It covers applying the 22000 statements of the 2000-table document
+// separately and running the four runners in turn. The longest, MySQL, takes 6-7.7 minutes on
+// the machine (T27 measurement: 5m57s on a shared server, 7m44s on a separate server under load).
+// MySQL DDL is a database matter where each statement gets slower as tables grow, and even lowering the durability setting
+// reduced it by only 14%. That is about 1.3 times the measured value.
 const compareDeadline = 10 * time.Minute
 
-// applyProgressEvery는 statement를 몇 개 적용할 때마다 단계 줄을 출력하는지다.
+// applyProgressEvery is how many statements are applied between progress lines.
 const applyProgressEvery = 1000
 
-// TestIntrospectCompare는 stress 문서를 세 database에 적용하고 네 client와 PHP 확장 orm_dbspec의
-// introspection runner가 같은 출력을 내는지, 그 문서의 schema text가 원본과
-// 같은지, 미지원 객체가 없는지 확인하고, 각 client의 시간을 출력하며 기준값을 넘으면 경고한다.
+// TestIntrospectCompare applies the stress document to three databases, and checks that four clients and the PHP extension orm_dbspec
+// give the same output from the introspection runner, that the schema text of the document is the same as the original,
+// and that there are no unsupported objects; it prints each client's time and warns if the reference is exceeded.
 func TestIntrospectCompare(t *testing.T) {
 	testcase.Group(t)
 	stressPath, rustRunner, extension := os.Getenv("DBSPEC_STRESS_DOCUMENT"), os.Getenv("DBSPEC_INTROSPECT_RUST"), os.Getenv("ORM_DBSPEC_EXTENSION")
@@ -58,7 +58,7 @@ func TestIntrospectCompare(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// make는 자기 실행 directory(RUN_DIR)의 문서와 program 복사본을 절대 경로로 준다.
+	// make gives the document and program copy in its own run directory (RUN_DIR) as absolute paths.
 	if !filepath.IsAbs(stressPath) || !filepath.IsAbs(rustRunner) || !filepath.IsAbs(extension) || !filepath.IsAbs(pythonRunner) {
 		t.Fatalf("DBSPEC_STRESS_DOCUMENT %q, DBSPEC_INTROSPECT_RUST %q, ORM_DBSPEC_EXTENSION %q and DBSPEC_INTROSPECT_PYTHON %q must be absolute paths in the run directory of make", stressPath, rustRunner, extension, pythonRunner)
 	}
@@ -132,7 +132,7 @@ func TestIntrospectCompare(t *testing.T) {
 	}
 }
 
-// compareDatabase는 dialect의 빈 database를 만들고 그 URI와 지우는 함수를 돌려준다.
+// compareDatabase creates an empty database for the dialect and returns its URI and a function to delete it.
 func compareDatabase(t *testing.T, dialect, name, mysqlDSN, postgresDSN string) (string, func()) {
 	t.Helper()
 	switch dialect {
@@ -165,8 +165,8 @@ func compareDatabase(t *testing.T, dialect, name, mysqlDSN, postgresDSN string) 
 	}
 }
 
-// applyStatements는 statement를 한 connection에서 c의 기한 안에 차례로 실행하고,
-// applyProgressEvery개마다 단계 줄을 출력한다.
+// applyStatements runs the statements in order on one connection within c's deadline,
+// and prints a progress line every applyProgressEvery.
 func applyStatements(t *testing.T, c *testcase.Case, dialect, uri string, statements []string) {
 	t.Helper()
 	db := openURI(t, dialect, uri)
@@ -192,7 +192,7 @@ func applyStatements(t *testing.T, c *testcase.Case, dialect, uri string, statem
 	}
 }
 
-// openURI는 runner와 같은 URI 형식을 database/sql driver로 연다.
+// openURI opens the URI, in the same format as the runner, with the database/sql driver.
 func openURI(t *testing.T, dialect, uri string) *sql.DB {
 	t.Helper()
 	u, err := url.Parse(uri)
@@ -229,7 +229,7 @@ func mustExec(t *testing.T, db *sql.DB, statement string) {
 	}
 }
 
-// runnerElapsed는 runner stderr의 "elapsed <ms>" 줄을 읽는다.
+// runnerElapsed reads the "elapsed <ms>" line of the runner stderr.
 func runnerElapsed(stderr string) (time.Duration, error) {
 	for _, line := range strings.Split(stderr, "\n") {
 		if ms, ok := strings.CutPrefix(line, "elapsed "); ok {
@@ -243,8 +243,8 @@ func runnerElapsed(stderr string) (time.Duration, error) {
 	return 0, fmt.Errorf("no elapsed line in %q", stderr)
 }
 
-// checkIntrospected는 runner 출력의 문서가 원본 schema text를 갖고 미지원 객체가
-// 없는지 확인한다.
+// checkIntrospected checks that the document in the runner output has the original schema text and
+// no unsupported objects.
 func checkIntrospected(t *testing.T, output, want string) {
 	t.Helper()
 	if i := strings.Index(output, "\n! "); i >= 0 {

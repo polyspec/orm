@@ -20,7 +20,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// planCaseText는 tests/dbspec/plans.json case의 source와 plan text다.
+// planCaseText is the source and plan text of the tests/dbspec/plans.json case.
 type planCaseText struct {
 	Source []string `json:"source"`
 	Plan   []string `json:"plan"`
@@ -58,8 +58,8 @@ func parsePlan(t *testing.T, text string) *dbspec.Plan {
 	return p
 }
 
-// applyChain은 tests/dbspec/plans.json의 create-from-empty와 그 target에서
-// 시작하는 rename-table-and-column이다.
+// applyChain is the create-from-empty of tests/dbspec/plans.json and the rename-table-and-column
+// starting from its target.
 func applyChain(t *testing.T) []*dbspec.Plan {
 	t.Helper()
 	cases := planCases(t)
@@ -73,7 +73,7 @@ func applyChain(t *testing.T) []*dbspec.Plan {
 	return plans
 }
 
-// caseChain은 case의 source를 만드는 첫 plan base와 case의 plan으로 된 chain이다.
+// caseChain is a chain of the first plan base that creates the case's source, and the case's plan.
 func caseChain(t *testing.T, id string) []*dbspec.Plan {
 	t.Helper()
 	c := planCases(t)[id]
@@ -85,7 +85,7 @@ func caseChain(t *testing.T, id string) []*dbspec.Plan {
 	return []*dbspec.Plan{base, plan}
 }
 
-// planSteps는 chain에서 plan i의 step이다.
+// planSteps are the steps of plan i in the chain.
 func planSteps(t *testing.T, plans []*dbspec.Plan, i int, db string) []dbspec.PlanStep {
 	t.Helper()
 	var source *dbspec.Document
@@ -99,7 +99,7 @@ func planSteps(t *testing.T, plans []*dbspec.Plan, i int, db string) []dbspec.Pl
 	return steps
 }
 
-// finalizeAt은 첫 finalize step의 index다.
+// finalizeAt is the index of the first finalize step.
 func finalizeAt(steps []dbspec.PlanStep) int {
 	for i, s := range steps {
 		if s.Finalize {
@@ -109,7 +109,7 @@ func finalizeAt(steps []dbspec.PlanStep) int {
 	return len(steps)
 }
 
-// chainCounts는 dialect마다 chain plan의 step 수와 finalize 앞 step 수다.
+// chainCounts is, per dialect, the step count of the chain plans and the step count before finalize.
 type chainCounts map[string][][2]int
 
 func countsOf(t *testing.T, plans []*dbspec.Plan) chainCounts {
@@ -126,13 +126,13 @@ func countsOf(t *testing.T, plans []*dbspec.Plan) chainCounts {
 
 var fixedNow = func() time.Time { return time.Date(2026, 10, 1, 0, 0, 0, 123456789, time.UTC) }
 
-// mysqlApplyLock와 postgresApplyLock은 docs/plans.md "Apply"의 lock 이름과 key다.
+// mysqlApplyLock and postgresApplyLock are the lock name and key of "Apply" in docs/plans.md.
 const (
 	mysqlApplyLock    = "CONCAT('dbspec$plans$', LEFT(SHA2(DATABASE(), 256), 51))"
 	postgresApplyLock = "hashtext('dbspec$plans'), hashtext(current_schema())"
 )
 
-// historyOf는 dialect에서 따옴표로 감싼 history table 이름이다.
+// historyOf is the history table name for the dialect, quoted.
 func historyOf(db string) string {
 	if db == "mysql" {
 		return "`dbspec$plans`"
@@ -140,7 +140,7 @@ func historyOf(db string) string {
 	return `"dbspec$plans"`
 }
 
-// applyCode는 apply error의 code다. ApplyError가 아니면 빈 문자열이다.
+// applyCode is the code of an apply error. It is an empty string if the error is not an ApplyError.
 func applyCode(err error) string {
 	var a *dbspec.ApplyError
 	if errors.As(err, &a) {
@@ -151,8 +151,8 @@ func applyCode(err error) string {
 
 type command func(ctx context.Context, c dbspec.Execer, dialect dbspec.Dialect, plans []*dbspec.Plan, now func() time.Time, events func(dbspec.ApplyEvent) error) error
 
-// stopAfter는 plan의 step 번째 statement가 실행된 뒤, step을 기록하기 전에 명령을
-// 멈추는 event handler다.
+// stopAfter is an event handler that, after the plan's step-th statement has run and before the step is recorded, stops the command
+// there.
 func stopAfter(plan string, step int, stop error) func(dbspec.ApplyEvent) error {
 	return func(ev dbspec.ApplyEvent) error {
 		if ev.Kind == "applied" && ev.Plan == plan && ev.Step == step {
@@ -162,13 +162,13 @@ func stopAfter(plan string, step int, stop error) func(dbspec.ApplyEvent) error 
 	}
 }
 
-// TestApplyChain은 docs/plans.md "Apply"를 세 database에서 확인한다: chain 적용과
-// history, 다시 적용해도 그대로임, drift, lock, 아무것도 풀지 않은 unlock, 검증,
-// representative plan의 모든 step 뒤 중단에서 recover와 rollback, 중단된 rollback의
-// 계속, 그사이 쓴 row를 지키는 rollback과 다시 적용, null 검사, finalize.
+// TestApplyChain checks "Apply" of docs/plans.md on three databases: applying the chain and its
+// history, that re-applying leaves it unchanged, drift, the lock, an unlock that releases nothing, verification,
+// recover and rollback after a stop after every step of the representative plan, continuing an interrupted rollback,
+// rollback and re-apply keeping rows written in between, null checks, and finalize.
 func TestApplyChain(t *testing.T) {
 	testcase.Group(t)
-	// scenario는 lock과 session 설정을 server에서 확인하므로 pooler가 아니라 server DSN을 쓴다.
+	// scenario checks the lock and session settings on the server, so it uses the server DSN, not the pooler.
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_SERVER_DSN"), os.Getenv("ORM_TEST_POSTGRES_SERVER_DSN")
 	if mysqlDSN == "" || postgresDSN == "" {
 		t.Fatal("ORM_TEST_MYSQL_SERVER_DSN and ORM_TEST_POSTGRES_SERVER_DSN are required; pass TEST_ENV")
@@ -194,7 +194,7 @@ func TestApplyChain(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	// schemaIs는 introspect한 schema text가 want인지 확인한다.
+	// schemaIs checks that the introspected schema text is want.
 	schemaIs := func(e *Env, db string, want string) {
 		if e.Err != nil {
 			return
@@ -213,12 +213,12 @@ func TestApplyChain(t *testing.T) {
 			e.fail("schema text\n--- want\n%s--- got\n%s", want, got)
 		}
 	}
-	// historyIs는 history row의 name, state, step이 want인지 확인한다.
+	// historyIs checks that the name, state, and step of the history row are want.
 	historyIs := func(e *Env, db, want string) {
 		e.WantRows("SELECT name, state, step FROM "+historyOf(db)+" ORDER BY name", want)
 	}
-	// run은 명령을 실행하고 error code를 확인한다. code가 빈 문자열이면 성공해야 하며,
-	// stop이면 그 error로 멈춰야 한다.
+	// run executes the command and checks the error code. If the code is an empty string it must succeed,
+	// and for stop it must halt with that error.
 	run := func(e *Env, db, what string, f command, chain []*dbspec.Plan, events func(dbspec.ApplyEvent) error, code string, stop error) error {
 		if e.Err != nil {
 			return e.Err
@@ -285,8 +285,8 @@ func TestApplyChain(t *testing.T) {
 			}
 		}},
 		{"other_database", all, func(e *Env, db string) {
-			// 첫 database의 apply가 lock을 잡은 동안 두 번째 database, schema 또는 file에
-			// 같은 chain을 적용한다. lock은 database 하나만 덮으므로 locked가 아니다.
+			// While the apply on the first database holds the lock, the same chain is applied to a second database, schema, or file.
+			// The lock covers only one database, so it is not locked.
 			other, err := e.Second()
 			if err != nil {
 				e.fail("second %s: %v", db, err)
@@ -312,7 +312,7 @@ func TestApplyChain(t *testing.T) {
 			}
 		}},
 		{"empty_chain", all, func(e *Env, db string) {
-			// plan이 없는 chain은 table이 없는 database에 아무것도 적용하지 않는다.
+			// A chain with no plans applies nothing to a database without the table.
 			var events []string
 			record := func(ev dbspec.ApplyEvent) error {
 				events = append(events, ev.Kind)
@@ -331,7 +331,7 @@ func TestApplyChain(t *testing.T) {
 			run(e, db, "apply of the empty chain to a database with a table", dbspec.Apply, []*dbspec.Plan{}, nil, "drift", nil)
 		}},
 		{"unlock_not_held", []string{"postgres"}, func(e *Env, db string) {
-			// event에서 advisory lock을 먼저 풀면 명령 끝의 unlock은 아무것도 풀지 않는다.
+			// If the advisory lock is released first in an event, the unlock at the end of the command releases nothing.
 			release := func(ev dbspec.ApplyEvent) error {
 				if ev.Kind == "plan" && ev.Plan == plans[0].Name {
 					_, err := e.Conn.ExecContext(e.Ctx, "SELECT pg_advisory_unlock("+postgresApplyLock+")")
@@ -345,8 +345,8 @@ func TestApplyChain(t *testing.T) {
 			}
 		}},
 		{"verify_failure", all, func(e *Env, db string) {
-			// 마지막 statement 뒤에 plan 밖의 table을 만들면 검증이 실패하고 row는 모든
-			// step을 기록한 채 applying으로 남는다.
+			// If a table outside the plan is created after the last statement, verification fails and the row stays
+			// at applying, with the step recorded.
 			n := planCounts[db][0][1]
 			sneak := func(ev dbspec.ApplyEvent) error {
 				if ev.Kind == "applied" && ev.Plan == plans[0].Name && ev.Step == n-1 {
@@ -359,9 +359,9 @@ func TestApplyChain(t *testing.T) {
 			historyIs(e, db, fmt.Sprintf("%s|applying|%d", plans[0].Name, n))
 		}},
 		{"rows_between", all, func(e *Env, db string) {
-			// 적용한 plan에 쓴 row는 rollback 뒤에도 남고 지운 column의 값과 default가
-			// 돌아오며, 다시 적용하면 더한 column의 값이 돌아온다. finalize 뒤 rollback은
-			// 되돌릴 수 없다.
+			// Rows written for the applied plan remain after rollback, and the values and defaults of a dropped column
+			// come back, and re-applying brings back the values of the added column. Rollback after finalize
+			// cannot be undone.
 			chain, c := representative, repCounts[db]
 			run(e, db, "apply base", dbspec.Apply, chain[:1], nil, "", nil)
 			e.Exec("INSERT INTO users (mail, legacy_code, age, nick) VALUES ('a@x', 7, 3, 'n1')")
@@ -383,8 +383,8 @@ func TestApplyChain(t *testing.T) {
 			schemaIs(e, db, repTarget.SchemaText)
 		}},
 		{"nulls", all, func(e *Env, db string) {
-			// 숨긴 non-null default 없는 column에 그사이 NULL row가 생기면 rollback은 아무것도
-			// 바꾸지 않고 row 수를 적은 nulls error로 멈춘다.
+			// If a NULL row appears in between in a hidden column with no non-null default, rollback changes nothing
+			// and stops with a nulls error that reports the row count.
 			chain, c := required, requiredCounts[db]
 			run(e, db, "apply", dbspec.Apply, chain, nil, "", nil)
 			e.Exec("INSERT INTO t (a) VALUES ('y')")
@@ -394,9 +394,9 @@ func TestApplyChain(t *testing.T) {
 			historyIs(e, db, fmt.Sprintf("base|applied|%d,drop_required_column|applied|%d", c[0][1], c[1][1]))
 		}},
 	}
-	// representative plan의 step k마다: apply를 statement 뒤에 멈추고 rollback하고, 다시
-	// 멈추고 recover하고, 적용한 plan의 rollback을 step k의 rollback statement 뒤에
-	// 멈추고 rollback을 이어 간다.
+	// For each step k of the representative plan: stop after the statement and roll back, then re-apply
+	// stop and recover, then continue the rollback of the applied plan after the rollback statement of step k
+	// stop, and continue the rollback.
 	for _, db := range all {
 		c := repCounts[db]
 		baseRow := fmt.Sprintf("base|applied|%d", c[0][1])
@@ -438,12 +438,12 @@ func TestApplyChain(t *testing.T) {
 	t.Logf("apply runs: %d", index)
 }
 
-// TestApplyThroughTransactionPooler는 docs/plans.md "Apply"의 server session 요구를 PgBouncer의
-// transaction pooling으로 확인한다. transaction pooler는 statement마다 server connection을 다시
-// 고르므로 lock이 command 전체를 덮지 못한다. apply는 lock을 잡을 때와 step마다 server session을
-// 확인하고, 바뀌었거나 다른 client와 나눠 쓰면 다음 statement 전에 session error로 멈춘다.
-// 각 scenario는 server에 자기 database를 만들고 PgBouncer로 그 database에 연결한다. PgBouncer는
-// 쉬는 server connection을 LIFO로 다시 쓰므로(server_round_robin = 0) 아래 순서가 정해진다.
+// TestApplyThroughTransactionPooler checks the server session requirement of "Apply" in docs/plans.md
+// with PgBouncer transaction pooling. A transaction pooler picks a server connection again for every statement,
+// so the lock cannot cover the whole command. Apply checks the server session when taking the lock and at every step,
+// and if it changed or is shared with another client, it stops with a session error before the next statement.
+// Each scenario creates its own database on the server and connects to it through PgBouncer. PgBouncer
+// reuses idle server connections in LIFO order (server_round_robin = 0), so the order below is fixed.
 func TestApplyThroughTransactionPooler(t *testing.T) {
 	testcase.Group(t)
 	serverDSN, poolerDSN := os.Getenv("ORM_TEST_POSTGRES_SERVER_DSN"), os.Getenv("ORM_TEST_PGBOUNCER_DSN")
@@ -455,15 +455,15 @@ func TestApplyThroughTransactionPooler(t *testing.T) {
 		name string
 		run  func(ctx context.Context, apply, other *sql.Conn) error
 	}{
-		// 다른 client가 session advisory lock을 잡은 server connection을 apply가 이어받는다.
+		// Apply takes over a server connection on which another client holds a session advisory lock.
 		{"lock_shared", func(ctx context.Context, apply, other *sql.Conn) error {
 			if _, err := other.ExecContext(ctx, "SELECT pg_advisory_lock("+postgresApplyLock+")"); err != nil {
 				return err
 			}
 			return dbspec.Apply(ctx, apply, dbspec.DialectPostgres, plans, fixedNow, nil)
 		}},
-		// 첫 step 앞에서 다른 client가 transaction으로 apply의 server connection을 잡으므로 apply의
-		// 다음 statement는 다른 server connection에서 실행된다.
+		// Before the first step, another client takes apply's server connection in a transaction,
+		// so the next statement of apply runs on a different server connection.
 		{"session_changed", func(ctx context.Context, apply, other *sql.Conn) error {
 			var tx *sql.Tx
 			defer func() {
@@ -528,8 +528,8 @@ func TestApplyThroughTransactionPooler(t *testing.T) {
 	}
 }
 
-// retargetPostgres는 PostgreSQL DSN의 database를 name으로 바꾸고 simple protocol을 쓰게 한다.
-// pooler 뒤의 server connection은 statement마다 바뀔 수 있으므로 prepared statement를 쓰지 않는다.
+// retargetPostgres changes the database of a PostgreSQL DSN to the given name and makes it use the simple protocol.
+// A server connection behind the pooler can change with each statement, so prepared statements are not used.
 func retargetPostgres(t *testing.T, dsn, name string) string {
 	t.Helper()
 	u, err := url.Parse(dsn)

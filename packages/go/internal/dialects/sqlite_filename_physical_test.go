@@ -52,7 +52,7 @@ func TestSQLiteFileNameWithQuery(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.id, func(t *testing.T) {
-			// 각 opener는 probeDeadline 안에 file 하나를 만드는 process나 connection 하나다.
+			// Each opener is one process or connection that creates one file within probeDeadline.
 			tc := testcase.Start(t, probeCaseDeadline)
 			ctx, cancel := context.WithTimeout(tc.Context(), probeDeadline)
 			defer cancel()

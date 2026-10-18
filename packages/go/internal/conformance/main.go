@@ -4,8 +4,8 @@
 //
 // Usage: runner_go -dsn URI [-vector NAME]...
 //
-// -vector는 반복할 수 있고, 주어지면 이름이 같은 vector만 실행해 출력한다.
-// 선언되지 않은 이름은 아무 vector도 실행하기 전에 error로 끝난다.
+// -vector can be repeated; when given, only the vectors with matching names are run and printed.
+// A name that is not declared ends with an error before any vector runs.
 package main
 
 import (
@@ -28,9 +28,9 @@ import (
 	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
 )
 
-// stmt는 statement event 하나다(docs/usage.md "Statement events"). transaction은
-// vector 안에서 처음 나온 순서로 1부터 다시 센 번호이고 밖이면 null이다. error는
-// statement의 오류 code이거나 null이다.
+// stmt is one statement event (docs/usage.md "Statement events"). transaction is
+// the number counted from 1 again in order of first appearance within the vector, and null outside one. error is
+// the error code of the statement, or null.
 type stmt struct {
 	SQL         string   `json:"sql"`
 	Binds       []any    `json:"binds"`
@@ -47,7 +47,7 @@ type vector struct {
 
 var (
 	log []stmt
-	// transactions는 vector 안의 transaction 번호를 처음 나온 순서의 번호로 바꾼다.
+	// transactions renumbers the transaction numbers in the vector in order of first appearance.
 	transactions map[int64]int64
 	maskSeqs     map[int64]bool
 	maskTs       map[string]bool
@@ -222,8 +222,8 @@ func executeVector(name string, fn func() (any, error), transaction func(func() 
 	return result, nil
 }
 
-// containsVector는 tenant 902에 이름 Apple, apple, Évian, évian, x_y의 행을 만들고, 각 pattern이 cond로
-// 고르는 account_id를 차례로 모은 뒤 행을 지운다.
+// containsVector creates rows in tenant 902 with the names Apple, apple, Évian, évian, x_y, and
+// collects, in order, the account_id each pattern selects with cond, then deletes the rows.
 func containsVector(db *orm.DB, cond func(*model.CompositeAccountModel, string) *model.CompositeAccountModel, patterns ...string) (any, error) {
 	var rows []*model.CompositeAccountModel
 	for i, name := range []string{"Apple", "apple", "Évian", "évian", "x_y"} {
@@ -247,13 +247,13 @@ func containsVector(db *orm.DB, cond func(*model.CompositeAccountModel, string) 
 	return matches, all.Delete()
 }
 
-// main은 run의 종료 코드로 끝난다. os.Exit는 defer를 실행하지 않으므로 run 안에서는 부르지 않는다: 실패한
-// check는 exit panic으로 run까지 올라오고, 그 사이의 defer(연결 닫기)가 실행된다.
+// main ends with the exit code of run. os.Exit does not run defers, so it is not called inside run: a failed
+// check is raised up to run as an exit panic, and the defers in between (closing connections) run.
 func main() {
 	os.Exit(run())
 }
 
-// exit는 check가 run을 끝내는 panic이고, 값은 종료 코드다.
+// exit is the panic by which check ends run; its value is the exit code.
 type exit int
 
 func run() (status int) {
@@ -310,7 +310,7 @@ func run() (status int) {
 		"datetime_p0_roundtrip": true, "time_p3_roundtrip": true, "date_roundtrip": true, "date_null": true, "upsert_one_key": true, "uuid_roundtrip": true, "affected_counts": true,
 		"clock_truncate_write": true, "clock_compare_six_digits": true,
 	}
-	// vector는 선언 순서대로 모은 뒤, 선택을 검사하고 그 순서로 실행한다.
+	// vectors are collected in declaration order, then the selection is checked and they run in that order.
 	var declared []declaredVector
 	run := func(name string, fn func() (any, error)) {
 		declared = append(declared, declaredVector{name: name, fn: fn})
@@ -846,9 +846,9 @@ func run() (status int) {
 		return events, err
 	})
 	run("restore", func() (any, error) {
-		// soft delete한 행을 primary key로 되돌린다. 지운 시각은 고정한 값으로 써서 모든
-		// database와 runner의 bind가 같다. transaction은 끝에 rollback하므로 database는 처음과
-		// 같다.
+		// Restores a soft-deleted row to its primary key. The deleted time is written as a fixed value so that all
+		// the database and the runner's bind are the same. The transaction is rolled back at the end, so the database
+		// is the same as at the start.
 		boom := errors.New("boom")
 		result := map[string]any{}
 		err := db.Transaction(func() error {
@@ -864,8 +864,8 @@ func run() (status int) {
 			}
 			_, hidden := model.SoftRecord().GetBySeq(seq)
 			result["hidden"] = code(hidden)
-			// key 밖의 값은 지워진 행을 되돌릴 때만 쓴다. 두 번째 restore는 지워지지 않은
-			// 행을 바꾸지 않고 돌려준다.
+			// Values outside the key are used only when restoring a deleted row. The second restore
+			// returns the row without changing a row that was not deleted.
 			for _, step := range [][2]string{{"restored", "restore-2"}, {"again", "ignored"}} {
 				name := step[0]
 				row, err := model.SoftRecord().SetSeq(seq).SetName(step[1]).Restore()
@@ -1342,14 +1342,14 @@ func run() (status int) {
 	return 0
 }
 
-// declaredVector는 runner가 선언한 vector 하나다.
+// declaredVector is one vector declared by the runner.
 type declaredVector struct {
 	name string
 	fn   func() (any, error)
 }
 
-// parseArgs는 -dsn URI 한 번과 반복할 수 있는 -vector NAME을 읽는다.
-// selected가 nil이면 모든 vector를 실행한다.
+// parseArgs reads one -dsn URI and the repeatable -vector NAME.
+// If selected is nil, all vectors run.
 func parseArgs(args []string) (string, map[string]bool, error) {
 	uri := ""
 	var selected map[string]bool
@@ -1381,8 +1381,8 @@ func parseArgs(args []string) (string, map[string]bool, error) {
 	return uri, selected, nil
 }
 
-// selectVectors는 선택된 vector를 선언 순서로 반환한다. selected가 nil이면
-// 모든 vector이고, 선언되지 않은 이름은 error다.
+// selectVectors returns the selected vectors in declaration order. If selected is nil,
+// all vectors are selected, and a name that is not declared is an error.
 func selectVectors(declared []declaredVector, selected map[string]bool) ([]declaredVector, error) {
 	if selected == nil {
 		return declared, nil

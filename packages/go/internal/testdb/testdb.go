@@ -1,12 +1,12 @@
-// Package testdb는 database case 하나가 혼자 쓰는 database(case database)를 만든다.
+// Package testdb creates the database that one database case uses alone (the case database).
 //
-// ORM_TEST_MYSQL_DSN과 ORM_TEST_POSTGRES_DSN이 가리키는 database는 여러 실행과 session이
-// 함께 쓰므로 비어 있다고 가정할 수 없다. schema를 설치하거나 빈 database를 확인하는
-// case는 New로 자기 database를 만들고, database는 case가 끝날 때(실패한 뒤에도) 지워진다.
-// 공유 DSN은 admin 연결로만 쓰고 그 database에는 아무것도 만들지 않는다.
+// The database that ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN point to is shared by several runs and sessions,
+// so it cannot be assumed empty. Installing a schema or checking for an empty database
+// A case creates its own database with New, and the database is deleted when the case ends (even after a failure).
+// The shared DSN is used only as an admin connection and creates nothing in its database.
 //
-// PostgreSQL도 schema가 아니라 database를 만든다. Empty()는 public이 아닌 schema를
-// 내용으로 세므로 공유 database 안의 case schema로는 빈 database를 확인할 수 없다.
+// PostgreSQL also creates a database, not a schema. Empty() counts the non-public schemas
+// by their content, so an empty database cannot be checked with a case schema inside a shared database.
 package testdb
 
 import (
@@ -25,22 +25,22 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// counter는 이 process가 만든 case database의 번호다. 이름은 process id와 이 번호로
-// 정해지므로 동시에 실행되는 process끼리 겹치지 않는다.
+// counter is the number of the case database created by this process. The name is determined by the process id and this number,
+// so concurrently running processes do not overlap.
 var counter atomic.Int64
 
-// Name은 다음 case database 이름 orm_case_<pid>_<번호>를 돌려준다. PgBouncer가 하나의
-// database에 묶은 case처럼 database를 만들 수 없는 case가 자기 table 이름으로 쓴다.
+// Name returns the next case database name, orm_case_<pid>_<number>. For a case that cannot create a database,
+// such as a case bound to one PgBouncer database, it is used as its table name.
 func Name() string {
 	return fmt.Sprintf("orm_case_%d_%d", os.Getpid(), counter.Add(1))
 }
 
-// New는 driver("sqlite", "mysql", "postgres")의 case database를 만들고 그 DSN을
-// 돌려준다. MySQL과 PostgreSQL은 ORM_TEST_<DRIVER>_DSN의 server에 orm_case_<pid>_<번호>
-// database를 만들고 DSN의 path만 그 이름으로 바꾼다(query는 그대로다). SQLite는 OS temp
-// directory의 새 file orm-case-<pid>-<번호>.sqlite다. 만들고 지운 일은 t를 감싼
-// case(testcase.Of)의 STEP 줄로 보고하고, 지우기는 t.Cleanup에서 실행되므로 실패한
-// case 뒤에도 실행된다. 지우지 못하면 database 이름과 함께 case를 실패시킨다.
+// New creates a case database for the driver ("sqlite", "mysql", "postgres") and
+// returns its DSN. For MySQL and PostgreSQL it creates the database orm_case_<pid>_<number> on the server of ORM_TEST_<DRIVER>_DSN
+// and changes only the path of the DSN to that name (the query stays as it is). SQLite uses the new file
+// orm-case-<pid>-<number>.sqlite in the OS temp directory. Creating and deleting it is reported as a STEP line
+// of the case (testcase.Of) wrapping t, and deletion runs in t.Cleanup, so it runs even after the case fails.
+// If deletion fails, the case fails with the database name.
 func New(t testing.TB, driver string) string {
 	t.Helper()
 	c := testcase.Of(t)
@@ -90,8 +90,8 @@ func New(t testing.TB, driver string) string {
 	return Retarget(t, base, name)
 }
 
-// Retarget은 dsn의 path를 database name으로 바꾼 DSN이다. case database를 다른 server
-// (replica)에서 같은 이름으로 열 때 쓴다.
+// Retarget is the DSN with the path of dsn changed to the database name. Use it to open the case database
+// on another server (replica) under the same name.
 func Retarget(t testing.TB, dsn, name string) string {
 	t.Helper()
 	u, err := url.Parse(dsn)
@@ -102,7 +102,7 @@ func Retarget(t testing.TB, dsn, name string) string {
 	return u.String()
 }
 
-// DatabaseOf는 MySQL이나 PostgreSQL DSN의 database 이름이다.
+// DatabaseOf is the database name of a MySQL or PostgreSQL DSN.
 func DatabaseOf(t testing.TB, dsn string) string {
 	t.Helper()
 	u, err := url.Parse(dsn)
@@ -112,8 +112,8 @@ func DatabaseOf(t testing.TB, dsn string) string {
 	return strings.TrimPrefix(u.Path, "/")
 }
 
-// Open은 MySQL이나 PostgreSQL client DSN의 database를 native database/sql driver로
-// 연다.
+// Open opens the database of a MySQL or PostgreSQL client DSN
+// with the native database/sql driver.
 func Open(t testing.TB, driver, dsn string) *sql.DB {
 	t.Helper()
 	sqlDriver, native := "pgx", dsn
@@ -133,7 +133,7 @@ func Open(t testing.TB, driver, dsn string) *sql.DB {
 		sqlDriver, native = "mysql", cfg.FormatDSN()
 	}
 	if driver == "sqlite" {
-		// sqlite:///path의 path다. driver "sqlite"는 SQLite driver package를 import한 test가 등록한다.
+		// the path of sqlite:///path. The driver "sqlite" is registered by a test that imports the SQLite driver package.
 		sqlDriver, native = "sqlite", strings.TrimPrefix(strings.SplitN(dsn, "?", 2)[0], "sqlite://")
 	}
 	raw, err := sql.Open(sqlDriver, native)

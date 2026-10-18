@@ -1,15 +1,15 @@
-// Command go는 plans.json(tests/dbspec/plans.json)의 chain(create-from-empty와
-// rename-table-and-column)을 Go engine으로 한 database에 적용한다
-// (docs/plans.md "Apply"). action은 다음 중 하나다:
+// Command go applies the chain of plans.json (tests/dbspec/plans.json; create-from-empty and
+// rename-table-and-column) to one database with the Go engine
+// (docs/plans.md "Apply"). action is one of the following:
 //
-//   - apply-first: chain의 첫 plan만 적용한다.
-//   - apply: chain 전체를 적용한다.
-//   - stop: chain 전체를 적용하다가 둘째 plan의 statement 1이 실행된 뒤 멈춘다.
-//   - recover: 중단된 plan을 이어서 끝낸다.
-//   - rollback: history의 마지막 plan을 되돌린다.
+//   - apply-first: applies only the first plan of the chain.
+//   - apply: applies the whole chain.
+//   - stop: applies the whole chain, and stops after statement 1 of the second plan has run.
+//   - recover: finishes an interrupted plan.
+//   - rollback: rolls back the last plan in history.
 //
-// stdout에는 결과 한 줄을 쓴다: 성공은 "ok", stop이 멈춘 것은 "stopped", apply
-// error는 "error <code>"다. 그 밖의 error는 stderr에 쓰고 1로 끝난다.
+// stdout gets one result line: "ok" on success, "stopped" when stop halted, apply
+// error is "error <code>". Other errors are written to stderr and exit with 1.
 //
 // Usage: go run ./packages/go/internal/dbspec/apply <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
 package main
@@ -32,7 +32,7 @@ import (
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
 )
 
-// connectionRules는 모든 client가 새 connection에서 실행하는 statement다
+// connectionRules is the statements that every client runs on a new connection
 // (packages/go/internal/dialects connectionRules).
 var connectionRules = map[string][]string{
 	"mysql":    {"SET time_zone = '+00:00'"},
@@ -40,7 +40,7 @@ var connectionRules = map[string][]string{
 	"sqlite":   {"PRAGMA foreign_keys = ON"},
 }
 
-// errStop은 stop action이 event에서 apply를 멈추는 error다.
+// errStop is the error with which the stop action halts apply on an event.
 var errStop = errors.New("stop")
 
 func main() {
@@ -116,7 +116,7 @@ func run(action, dialect, uri, vectors string) (string, error) {
 	return "", err
 }
 
-// chain은 path의 plans.json에서 create-from-empty와 rename-table-and-column이다.
+// chain is create-from-empty and rename-table-and-column from the plans.json at path.
 func chain(path string) ([]*dbspec.Plan, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -148,7 +148,7 @@ func chain(path string) ([]*dbspec.Plan, error) {
 	return plans, nil
 }
 
-// open은 URI를 dialect의 database/sql driver로 연다.
+// open opens the URI with the dialect's database/sql driver.
 func open(dialect, uri string) (*sql.DB, error) {
 	u, err := url.Parse(uri)
 	if err != nil {
