@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: fc2716bcafef72a13b63d250c05880dd177a3feb079572ca7e4ea778954b51a9 -->
+<!-- source-sha256: c50dd4bd4b249902d9a746222f366ca353a8f9c7d7b7bfc1b68f1f0d4cc1f09d -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1546,8 +1546,8 @@
   재개 (2026-10-19): 코드 읽기만으로 결함 없음으로 닫았다. 다음: client마다 request hook이 `duplication()->create()`의 conflict key를 채우는 case를 red 후 green으로 실행한다. 코드 읽기(각 client에서 hook이 검증보다 먼저)는 출발점이지 증명이 아니다.
 - [ ] T203 `relation()`과 `relations()`가 service scope 아래에서 실행된다(consumer). 원인: service scope 아래에서 둘 다 `CONFIG`로 실패한다. 완료 기준: 원인을 찾아 여기에 적고, 언어마다 case, 전 red, 후 green.
   재개 (2026-10-19): 재현되지 않음으로 닫았다. 다음: consumer가 ScopeHook 아래 canister relation()/relations() case를 한 번 실행해 CONFIG message, file:line, hook 본문을 기록하고, 그 case를 client마다 red 후 green으로 만든다.
-- [ ] T206 orm이 행이 대기나 진행 중인 동안 `make check`와 `parity-check`를 거부하는 kit full-run guard를 쓴다(kit K233, K234). 완료 기준: orm에서 각각 한 번의 dry run이 열린 행을 말하고 거부한다.
-  재개 (2026-10-19): parity-prepare의 gate(45a2b2a5)는 make -n으로만 보였다. 다음: 45a2b2a5 이전 전체 parity-check가 빌드 후 거부하는 red 실행과, 이후 먼저 거부하는 green 실행.
+- [o] T206 orm이 행이 대기나 진행 중인 동안 `make check`와 `parity-check`를 거부하는 kit full-run guard를 쓴다(kit K233, K234). 완료 기준: orm에서 각각 한 번의 dry run이 열린 행을 말하고 거부한다.
+  증거 (2026-10-19): RED: var/t206-red.log, 89cf4323에서 `make run-databases TARGETS=parity-check`가 interface-check에서 TypeScript와 Rust interface를 빌드한 뒤(87-147줄) `full-run.mjs gate`가 거부한다(149줄). gate가 선행 target 뒤의 recipe 줄이었기 때문이다. 수정은 kit K236(215202a5)이다: parity-check가 UNITS 없이 goal이면 kit.mk가 makefile을 읽는 동안 gate를 실행한다. orm이 parity-prepare에 넣었던 gate 줄은 지운다. GREEN: var/t206-green.log, 이 Makefile로 `make parity-check`가 대기 행 23개와 `kit.mk:290: *** parity-check: the gate of full-run refuses the full run`으로 거부하고 아무것도 빌드하지 않는다(run-long, cargo, typescript-build, parity-bench 줄 0개). `make check`도 같은 행으로 거부한다(e095582f).
 - [o] T207 database server가 그 checkout과 함께 멈춘다. 원인: 지워진 worktree의 mysqld 쌍과 같은 datadir의 이전 시작이 며칠씩 돈다. 완료 기준: worktree를 지우거나 datadir에 server 쌍을 시작하면 먼저 그것에 속한 server를 멈춘다. 전 red, 후 green인 test. 지금 도는 고아 process는 사용자가 멈출 일이다.
   근거: test server 시작은 같은 datadir에 이전 시작이 남긴 server를 .runtime/servers의 pid 파일(mysqld --pid-file, postmaster.pid, pooler의 pid 파일)로만 알아보고 먼저 멈춘 뒤 새로 시작한다. `make worktree-remove WORKTREE=<path>`는 `git worktree remove` 전에 그 worktree의 server를 멈춘다(AGENTS.md). scripts/test-servers.test.mts의 unit case는 가짜 server를 pid 파일로 멈추며 database를 시작하지 않는다. 지금 도는 고아 process는 사용자에게 남긴다.
 - [o] T208 metadata가 manifest와 다른 generated model을 거부한다(consumer PlanBinds 경고). 원인: consumer의 PHP model이 orm-gen이 varchar `length`를 쓰기 전(adc4d518) 생성됐고, runtime은 그것을 거부하지 않고 PlanBinds.php:91의 PHP 경고와 null length로 읽는다. 완료 기준: runtime model을 만들 때 각 generated model의 metadata를 그 manifest가 주는 entity와 비교하고, 다르면 class, entity, 처음 다른 필드, orm-gen 명령을 말하는 `CONFIG`로 실패한다. 낡은 model로 red, 뒤 green. generated code가 metadata를 갖는 모든 client에서.

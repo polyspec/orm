@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- A full parity-check refuses before interface-check builds anything, through the parse-time gate of kit K236; orm drops its own gate line (T206).
 - PHP refuses a generated model whose metadata its manifest contradicts, naming the class, the field and the orm-gen command (T208).
 - T203 is closed as not reproduced: no client raises CONFIG from relation() or relations() under a request hook (T203).
 - A start of the test servers stops the servers an earlier start left on its datadir, and `make worktree-remove` stops a worktree's servers before removing it (T207).

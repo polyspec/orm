@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 779ce1a08754a89a654a2261873a6fe211d525f8fbfdfe6ef724a38af51f7f07 -->
+<!-- source-sha256: 03412a851e6ea60e783df284304d3632a73c9a30856421aa6a8491f99bc282cf -->
 # 변경 이력
 
 ## Unreleased
+- 전체 parity-check는 kit K236의 parse 시점 gate로 interface-check가 빌드하기 전에 거부한다. orm 자체 gate 줄은 지운다 (T206).
 - PHP가 manifest와 metadata가 어긋나는 generated model을 거부하며, class, 필드, orm-gen 명령을 말한다(T208).
 - T203을 재현되지 않음으로 닫는다: request hook 아래 relation()/relations()가 CONFIG를 내는 client가 없다 (T203).
 - test server 시작이 같은 datadir에 이전 시작이 남긴 server를 멈추고, `make worktree-remove`가 worktree를 지우기 전에 그 server를 멈춘다(T207).
