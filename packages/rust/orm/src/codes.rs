@@ -39,6 +39,8 @@ pub const ENTITY_NOT_JOINED: &str = "ENTITY_NOT_JOINED";
 pub const LIMIT_IN_RELATION: &str = "LIMIT_IN_RELATION";
 /// executor: strict one-row query matched no row
 pub const NO_ROWS: &str = "NO_ROWS";
+/// executor: restoreOrCreate found its key on a row that is not deleted; nothing was written
+pub const ROW_NOT_DELETED: &str = "ROW_NOT_DELETED";
 /// executor: a requested column was not included in the loaded row
 pub const COLUMN_UNSELECTED: &str = "COLUMN_UNSELECTED";
 /// executor: updateOptimistic matched no row (updated_ts changed)

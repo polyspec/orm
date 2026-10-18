@@ -6201,6 +6201,18 @@
       ]
     },
     {
+      "id": "error-code-row-not-deleted",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRowNotDeleted" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::ROW_NOT_DELETED" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!codes.ROW_NOT_DELETED:var" },
+        { "implementation": "python", "symbol": "orm.codes.ROW_NOT_DELETED" },
+        { "implementation": "rust", "symbol": "polyspec_orm::codes::ROW_NOT_DELETED" }
+      ]
+    },
+    {
       "id": "error-code-column-unselected",
       "kind": "api",
       "profile": "client",

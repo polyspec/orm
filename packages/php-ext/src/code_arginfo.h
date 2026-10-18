@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 9a8837c5324afa4e93a8c40a3ad56a50ce3b5e18 */
+ * Stub hash: f3e9ccf0b8880db7b038849331a14ed4bdf26d7d */
 
 static zend_class_entry *register_class_Polyspec_Orm_Native_Code(void)
 {
@@ -140,6 +140,13 @@ static zend_class_entry *register_class_Polyspec_Orm_Native_Code(void)
 	zend_string *const_NO_ROWS_name = zend_string_init_interned("NO_ROWS", sizeof("NO_ROWS") - 1, 1);
 	zend_declare_typed_class_constant(class_entry, const_NO_ROWS_name, &const_NO_ROWS_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
 	zend_string_release(const_NO_ROWS_name);
+
+	zval const_ROW_NOT_DELETED_value;
+	zend_string *const_ROW_NOT_DELETED_value_str = zend_string_init("ROW_NOT_DELETED", strlen("ROW_NOT_DELETED"), 1);
+	ZVAL_STR(&const_ROW_NOT_DELETED_value, const_ROW_NOT_DELETED_value_str);
+	zend_string *const_ROW_NOT_DELETED_name = zend_string_init_interned("ROW_NOT_DELETED", sizeof("ROW_NOT_DELETED") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_ROW_NOT_DELETED_name, &const_ROW_NOT_DELETED_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_ROW_NOT_DELETED_name);
 
 	zval const_COLUMN_UNSELECTED_value;
 	zend_string *const_COLUMN_UNSELECTED_value_str = zend_string_init("COLUMN_UNSELECTED", strlen("COLUMN_UNSELECTED"), 1);
