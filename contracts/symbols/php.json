@@ -4893,7 +4893,7 @@
   },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::writeOf": {
     "exported": true,
-    "signature": "public function writeOf(?Polyspec\\Orm\\TxFrame $frame, Polyspec\\Orm\\Request $r): array"
+    "signature": "public function writeOf(?Polyspec\\Orm\\TxFrame $frame, Polyspec\\Orm\\Request $r, ?Closure $afterHook=null): array"
   },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::zone": {
     "exported": true,

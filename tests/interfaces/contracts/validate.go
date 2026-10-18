@@ -162,7 +162,7 @@ var inputs = map[string]map[string]string{
 	"CompiledStatement":      {"go": "st*plan.Step,params[]any", "php": "array$step,array$params", "rust": "step:&Step,params:&[Param]", "typescript": "step:PlanStep,params:readonlyunknown[]", "python": "step:dict,params:list"},
 	"RequestHook":            {"go": "hookRequestHook", "php": "Closure$hook", "rust": "hook:implFn(&mutcrate::ir::Request,&mutRequestParams)->Result<()>+Send+Sync+'static", "typescript": "hook:RequestHook", "python": "hook:RequestHook"},
 	"StatementSubscriber":    {"go": "fnSubscriber", "php": "Closure$subscriber", "rust": "subscriber:F", "typescript": "subscriber:(event:StatementEvent)=>void", "python": "subscriber:Callable[[StatementEvent],None]"},
-	"CollectionKey":          {"go": "keyany", "php": "string|int$key", "rust": "key:implInto<Key>", "typescript": "key:Key", "python": "key"},
+	"CollectionKey":          {"go": "keyany", "php": "Polyspec\\Orm\\Bytes|DateTimeInterface|string|int|bool$key", "rust": "key:implInto<Key>", "typescript": "key:Key", "python": "key"},
 	"CollectionConnection":   {"go": "db*DB", "php": "Polyspec\\Orm\\Db$db", "rust": "db:&crate::Db", "typescript": "db:Db", "python": "db:Db"},
 	"LocalKey":               {"go": "keystring", "php": "string$key", "rust": "key:&str", "typescript": "key:string", "python": "key:str"},
 	"LocalKeyValue":          {"go": "key,valuestring", "php": "string$key,string$value", "rust": "key:&str,value:&str", "typescript": "key:string,value:string", "python": "key:str,value:str"},

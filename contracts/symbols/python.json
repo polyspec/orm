@@ -457,7 +457,7 @@
   },
   "packages/python/src/polyspec/orm/database.py::write": {
     "exported": true,
-    "signature": "def write(ex: Executor, request: dict, params)"
+    "signature": "def write(ex: Executor, request: dict, params, after_hook=None)"
   },
   "packages/python/src/polyspec/orm/dbspec/__init__.py::emit_dbspec": {
     "exported": true,

@@ -16347,6 +16347,10 @@
     "exported": false,
     "signature": "func(ex executor, r *request) (key any, affected int64, err error)"
   },
+  "packages/go/orm/exec.go::writeAfterHook": {
+    "exported": false,
+    "signature": "func(ex executor, r *request, after func(*request) error) (key any, affected int64, err error)"
+  },
   "packages/go/orm/fault_ormtest.go::FailNextRollback": {
     "exported": true,
     "signature": "func(db *DB)"

@@ -2,6 +2,8 @@
 # Changelog
 
 ## Unreleased
+- The PHP CollectionKey contract lists the key set PHP implements, and the recorded interface hashes follow it (T77-52).
+- Every check target in CHECK_TARGETS runs in a CI group: the Go dbspec engine and perf-check (T77-53).
 - The interface record run writes the symbol hashes of contracts/interfaces.json, so the manifest is not edited by hand (T77-51).
 - The goexit test binds its date text as the setters do, so its transaction test passes again (T77-50).
 - The PHP extension's dbspec test copies match the PHP client's and read the shared plan vectors and cases; the shared DSN helper moves to packages/php/testing (T77-49).

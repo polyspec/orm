@@ -3,6 +3,8 @@
 # 변경 이력
 
 ## Unreleased
+- PHP CollectionKey 계약은 PHP가 구현하는 키 집합을 나열하고, 기록된 interface 해시가 그것을 따른다 (T77-52).
+- CHECK_TARGETS의 모든 검사 대상은 CI 그룹에서 실행된다: Go dbspec engine과 perf-check (T77-53).
 - interface 기록 실행은 contracts/interfaces.json의 symbol hash를 쓴다. manifest를 손으로 고치지 않는다 (T77-51).
 - goexit 시험은 setter와 같은 날짜 텍스트를 bind해 transaction 시험이 다시 통과한다 (T77-50).
 - PHP 확장의 dbspec 시험 복사본은 PHP client와 맞고 공유 plan vector와 case를 읽는다. 공유 DSN helper는 packages/php/testing으로 옮겨졌다 (T77-49).
