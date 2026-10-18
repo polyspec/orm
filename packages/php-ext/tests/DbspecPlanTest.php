@@ -9,6 +9,7 @@ declare(strict_types=1);
 // diagnostic, every comparison's differences or `compare` diagnostics, and
 // the unknown dialect rule.
 require_once dirname(__DIR__, 2) . '/php/tests/case_clock.php';
+require_once dirname(__DIR__, 2) . '/php/tests/dbspec_plan_cases.php';
 
 use Polyspec\Orm\Dbspec\Native\Change;
 use Polyspec\Orm\Dbspec\Native\Dbspec;
@@ -55,16 +56,6 @@ function step_fields(PlanStep $s): array
     }
     ksort($out);
     return $out;
-}
-
-/** The vectors of tests/dbspec/plans.json; every section must hold cases. */
-function plan_vectors(): array
-{
-    $vectors = json_decode(file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/plans.json'), true, 512, JSON_THROW_ON_ERROR);
-    if ($vectors['version'] !== 1 || ($vectors['cases'] ?? []) === [] || ($vectors['invalid'] ?? []) === [] || ($vectors['chains'] ?? []) === [] || ($vectors['parse'] ?? []) === [] || ($vectors['comparisons'] ?? []) === []) {
-        throw new RuntimeException('tests/dbspec/plans.json has no version 1 cases, invalid cases, chains, parse cases and comparisons');
-    }
-    return $vectors;
 }
 
 /** @param list<string> $lines */

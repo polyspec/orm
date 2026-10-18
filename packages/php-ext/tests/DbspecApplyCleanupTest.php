@@ -8,6 +8,8 @@ declare(strict_types=1);
 // outside the plan, an effect query that returns no row, and a result that
 // cannot be closed.
 
+require_once dirname(__DIR__, 2) . '/php/tests/dbspec_plan_cases.php';
+
 use Polyspec\Orm\Dbspec\Native\ApplyCleanupError;
 use Polyspec\Orm\Dbspec\Native\ApplyError;
 use Polyspec\Orm\Dbspec\Native\ApplyEvent;
@@ -85,9 +87,8 @@ final class FailingStatement extends PDOStatement
 /** The create-from-empty plan of tests/dbspec/plans.json, the one plan the cases apply. */
 function apply_cleanup_plans(): array
 {
-    $vectors = json_decode(file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/plans.json'), true, 512, JSON_THROW_ON_ERROR);
     $plans = [];
-    foreach ($vectors['cases'] as $case) {
+    foreach (plan_vectors()['cases'] as $case) {
         if ($case['id'] === 'create-from-empty') {
             $parsed = Dbspec::parsePlan(implode("\n", $case['plan']) . "\n");
             $plans[] = $parsed->plan ?? throw new RuntimeException('create-from-empty: ' . json_encode($parsed->diagnostics));

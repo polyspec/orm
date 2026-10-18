@@ -1,5 +1,8 @@
 <?php
 declare(strict_types=1);
+
+require_once dirname(__DIR__, 2) . '/php/tests/coverage_cases.php';
+require_once dirname(__DIR__, 2) . '/php/tests/dbspec_plan_cases.php';
 // Applies the plans.json chains through Polyspec\Orm\Dbspec\Native\Dbspec::apply,
 // ::recover, ::rollback and ::finalize of the PHP extension orm_dbspec on
 // MySQL, PostgreSQL and SQLite, the same scenarios as the PHP client's
@@ -165,9 +168,8 @@ function apply_scenarios(): array
     if ($made !== null) {
         return $made;
     }
-    $vectors = json_decode(file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/plans.json'), true, 512, JSON_THROW_ON_ERROR);
     $cases = [];
-    foreach ($vectors['cases'] as $case) {
+    foreach (plan_vectors()['cases'] as $case) {
         $cases[$case['id']] = $case;
     }
     $parse = static function (string $id, string $text): Plan {

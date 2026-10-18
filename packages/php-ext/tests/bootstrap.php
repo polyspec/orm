@@ -8,5 +8,5 @@ if (!extension_loaded('orm_dbspec')) {
     throw new RuntimeException('the extension orm_dbspec is not loaded; run make dbspec-php-extension-check, which builds and loads it');
 }
 
-// requiredDsn is declared once, in the shared helper that the PHP client's test support loads too.
-require_once dirname(__DIR__, 2) . '/php/tests/required_dsn.php';
+// requiredDsn is declared once, in the shared helper of the PHP client's testing directory.
+require_once dirname(__DIR__, 2) . '/php/testing/required_dsn.php';

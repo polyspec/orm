@@ -53,7 +53,7 @@ function coverageItem(): array
     return $item;
 }
 
-require_once __DIR__ . '/required_dsn.php';
+require_once __DIR__ . '/../testing/required_dsn.php';
 
 /** seed된 bench database의 AES와 blind index key로 연결한다(scripts/bench-db.sh). */
 function coverageConnect(string $dsn): Db
