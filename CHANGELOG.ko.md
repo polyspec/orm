@@ -1,10 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 940fb0b8a9d980b140edf77e783190fa1251c0e23dff0762f3fc55961661cdf5 -->
+<!-- source-sha256: 7c78419d7a16d24655408bbf071efc1976ab605c2839207eb15c5f1dff55f67b -->
 # 변경 이력
 
 ## Unreleased
 - parity-check 단계가 바인딩이 읽는 bench와 decimal DSN, ORM_DBSPEC_EXTENSION을 내보낸다 (T148-5).
 - 모든 push가 parity 검사를 실행한다: parity-check와 parity-declarations-check가 CHECK_TARGETS와 CI 그룹에 있다 (T77-12).
+- Go coverage suite는 implementation마다 binding 하나로 모든 case를 실행한다. parity 규칙이 이미 충족되어 코드는 바뀌지 않았다 (T77-9-4-1).
 - parity-check 단계가 자기 실행 디렉터리(STEP_RUN_DIR, 단계가 끝나면 삭제)를 가지므로 남은 디렉터리가 보고되지 않는다 (T77-58).
 - MySQL days_ago bind가 바인드된 시각을 써서, physical fixture가 모든 database에서 결정적이다 (T77-33-1).
 - TestPhysicalQueryForms의 physical fixture가 mysql, postgres, sqlite에서 통과한다 (T77-33).
