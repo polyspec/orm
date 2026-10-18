@@ -54,7 +54,7 @@ $native = p50(static function () use ($stmt, $lastArgs): void {
 });
 fwrite(STDERR, sprintf("php: client p50 %dµs, native p50 %dµs (%d iterations)\n", $client, $native, ITERATIONS));
 
-/** 시드된 bench database 를 가리키는 ORM_BENCH_MYSQL_DSN 이다. 없거나 비어 있으면 연결하지 않고 끝난다. */
+/** ORM_BENCH_MYSQL_DSN points to the seeded bench database. If it is missing or empty, it ends without connecting. */
 function dsn(): string
 {
     $dsn = getenv('ORM_BENCH_MYSQL_DSN');
