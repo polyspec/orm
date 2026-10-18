@@ -558,7 +558,9 @@ final class ModelTest extends TestCase
         $three = array_map(static fn(int $i): Service => (new Service)->setName("refused-$i"), range(1, 3));
         self::check(self::code(fn() => (new Service)($db)->creates($three, 0)) === Code::CONFIG, 'batch 0 is CONFIG');
         $limit = Db::bindLimit($db->driver()) + 1;
-        $over = array_map(static fn(int $i): Service => (new Service)->setName("over-$i"), range(1, $limit));
+        // The refusal counts rows and columns before any statement, so one model repeated proves it; distinct
+        // models would cost about 1.8 KB each, 115 MB for the mysql limit (T216).
+        $over = array_fill(0, $limit, (new Service)->setName('over'));
         self::check(self::code(fn() => (new Service)($db)->creates($over, $limit)) === Code::BATCH_TOO_LARGE, 'a batch over the bind limit is BATCH_TOO_LARGE');
         self::check($inserts === [], 'refused creates send no insert');
         $inserts = [];
