@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 36cd0e2a5da94fff66038edbbee2e244cdb7d729ef1b69d5258f3773eaa93247 -->
+<!-- source-sha256: b2ac755e31495179550f8d8da41d5407e20be174e6cc94d3fad9dac21144938b -->
 # 변경 이력
 
 ## Unreleased
+- Rust integration case `conditions`가 시간 비교를 text로 넘긴다(T217).
 - PHP generics case가 `get()`의 nullable 결과를 type한다(T215).
 - external document의 table을 쓰는 set의 읽기 전용 entity로 읽는다: select, join, subquery, relation이 되고, 모든 쓰기는 `CONFIG`로 실패한다. 다섯 client에서(T209).
 - `expectRevision(column, revision)`이 update()와 delete()가 그 revision의 행만 쓰게 하고 update()는 그것을 1 늘리며, 아니면 새 code `REVISION_CHANGED`로 실패한다. 다섯 client에서(T212).

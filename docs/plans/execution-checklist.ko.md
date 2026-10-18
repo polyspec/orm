@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 43e84371c8636b632fcca62e18f8af3c20b8b5af5e4071fd9188a296a1cbbb41 -->
+<!-- source-sha256: 8c500ec4b00b9d701ab3175a3629807f05b778cc6d51809b8919b3f0b29097a8 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1570,5 +1570,6 @@
 - [o] T215 ClientGenericsTest의 PHPStan case가 T204 뒤에 통과한다. 원인: closure가 이제 `Author|null`을 반환해 ClientGenericsTest.php:100이 실패한다. T204부터 `get()`이 null을 반환하는데 case는 여전히 `Author`를 선언한다. 완료 기준: case가 nullable 결과를 type하고, 전 red, 후 green.
   근거: source는 이미 nullable 읽기를 선언했다(`Model::get(): ?static`, packages/php/src/Model.php:1485, `TModel|null`을 반환하는 `Collection::get`). case는 `fn(): Author`를 선언하고 null 검사 없이 이름을 읽었다. red: `calls.php:9: Anonymous function should return ...Author but returns ...Author|null [return.type]`, Failures: 1. case는 이제 `?Author`로 type하고 `$author?->getName() ?? ''`로 읽는다. green: ClientGenericsTest.php만 실행해 OK (1 test, 1 assertion).
 - [ ] T216 PHP ModelTest test_insert_parts@mysql가 memory 한도 안에서 실행된다. 원인: Service object 65536개를 만들며 Model.php:403에서 128M 한도를 다 쓴다. 완료 기준: 원인(test의 크기 또는 client의 행당 memory)을 적고 case가 통과한다. 전 red, 후 green.
-- [ ] T217 Rust integration case `conditions`가 통과한다. 원인: integration.rs:185가 native DateTime을 넘기며, native time 값은 text만 받으므로 parameter 검사가 `CODEC_ENCODE ... is not a datetime value`로 거부한다. 완료 기준: 정규 text를 넘기고, 전 red, 후 green.
+- [o] T217 Rust integration case `conditions`가 통과한다. 원인: integration.rs:185가 native DateTime을 넘기며, native time 값은 text만 받으므로 parameter 검사가 `CODEC_ENCODE ... is not a datetime value`로 거부한다. 완료 기준: 정규 text를 넘기고, 전 red, 후 green.
+  근거: integration.rs:185가 이제 시간 비교를 그 파일의 `txt()` text helper로 넘긴다. T210이 Go와 TypeScript에서 한 방식이다. 다른 Rust test는 native time 값을 parameter로 넘기지 않는다(conformance.rs는 이미 `txt()`를 쓰고, orm test는 시간 값을 읽거나 고정 clock을 쓴다). red: `packages/rust/target/debug/integration contracts/fixtures/bench/dbspec-set.json --case conditions`가 integration.rs:185에서 `CODEC_ENCODE: parameter 0 (DateTime(...)) is not a datetime value`로 panic. green: 같은 명령이 sqlite, mysql, postgres에서 0으로 끝난다.
 - [ ] T218 test server의 PostgreSQL replica가 동기를 유지한다. 원인: log가 `requested WAL segment ... has already been removed`를 반복해, synchronous replication을 기다리는 commit이 멈추고 primary_and_replica postgres case가 막힌다. 완료 기준: server 설정의 원인을 적고 고치며(WAL 보존 또는 replication slot), 긴 실행 동안 replica가 streaming을 유지하는 case를 둔다.

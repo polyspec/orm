@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The Rust integration case `conditions` passes its time compare as text (T217).
 - The PHP generics case types the nullable result of `get()` (T215).
 - A table of an external document is read through a read-only entity of the using set: select, joins, subqueries and relations work, and every write fails with `CONFIG`, in the five clients (T209).
 - `expectRevision(column, revision)` makes update() and delete() write only a row at that revision, update() incrementing it, and fails otherwise with the new code `REVISION_CHANGED`, in the five clients (T212).
