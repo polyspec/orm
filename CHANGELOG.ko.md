@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: db4120e441a6a01eacc0c5c68bf3fd034cc4067714495f360c8fc7188390bf47 -->
+<!-- source-sha256: 39715928816be1ebe984ba0f4d831ad831763ebf8b5cbeb7c2cfed131eccf3cf -->
 # 변경 이력
 
 ## Unreleased
+- 0개 케이스 규칙은 kit의 run-tests를 쓰고, orm의 카운터 scripts/check/count-cases.mts는 제거한다 (T77-55).
 - 케이스를 하나도 보고하지 않은 시험 실행은 실패한다. scripts/check/count-cases.mts가 kit의 이벤트 리더로 케이스를 센다 (T77-54).
 - PHP CollectionKey 계약은 PHP가 구현하는 키 집합을 나열하고, 기록된 interface 해시가 그것을 따른다 (T77-52).
 - CHECK_TARGETS의 모든 검사 대상은 CI 그룹에서 실행된다: Go dbspec engine과 perf-check (T77-53).
