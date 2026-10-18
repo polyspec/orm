@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The TypeScript statement-fault entry-point check runs in its own file, so the fault suite reports only its four cases (T148-3-ts-4).
 - The TypeScript collection-key tests report their cases by id as node:test tests, so the parity run passes both units (T148-3-ts-6).
 - The TypeScript code-catalog test reports its cases by id as node:test tests, so the parity run passes its unit (T148-3-ts-5).
 - The parity-check step exports the bench and decimal DSNs and ORM_DBSPEC_EXTENSION that its bindings read (T148-5).

@@ -2148,6 +2148,7 @@
         "packages/php/tests/StatementFaultTest.php",
         "packages/rust/orm/tests/statement_fault.rs",
         "packages/ts/tests/statement_fault.mjs",
+        "packages/ts/tests/statement_fault_entry.mjs",
         "packages/python/tests/statement_fault.py",
         "packages/python/tests/test_statement_fault_entry.py",
         "packages/rust/orm/src/tx.rs",
@@ -2241,10 +2242,11 @@
         },
         {
           "id": "statement-fault-typescript",
-          "command": "node --conditions=orm-test packages/ts/tests/statement_fault.mjs",
+          "command": "node --conditions=orm-test packages/ts/tests/statement_fault.mjs && node --conditions=orm-test packages/ts/tests/statement_fault_entry.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/statement_fault.mjs",
+            "packages/ts/tests/statement_fault_entry.mjs",
             "contracts/fixtures/statement_fault.json",
             "contracts/fixtures/rollback.dbs"
           ]

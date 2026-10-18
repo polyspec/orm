@@ -9,13 +9,13 @@
 // own (case-database.mjs); the test fails when ORM_TEST_MYSQL_DSN or
 // ORM_TEST_POSTGRES_DSN is unset.
 //
+// The entry point's own check (the fault is exported under orm-test only) is in statement_fault_entry.mjs.
+//
 // Usage: node --conditions=orm-test packages/ts/tests/statement_fault.mjs (after npm run typescript:build)
-import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 import { Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel, CORE } from '../dist/index.js';
-import * as packageEntry from '../dist/index.js';
 import * as testing from '@polyspec/orm/testing';
 
 const fixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/statement_fault.json', import.meta.url), 'utf8'));
@@ -148,16 +148,6 @@ async function emptyArgumentRefused(driver, dsn) {
   } finally { await db.close(); }
 }
 
-/** The test entry point exports the fault under orm-test only, and the package entry point exports none. */
-function checkFaultEntry() {
-  const packageRoot = new URL('..', import.meta.url).pathname;
-  const load = "await import('@polyspec/orm/testing')";
-  const plain = spawnSync(process.execPath, ['--input-type=module', '-e', load], { cwd: packageRoot, encoding: 'utf8' });
-  check(plain.status !== 0 && plain.stderr.includes('ERR_PACKAGE_PATH_NOT_EXPORTED'), `the test entry point resolves without the condition orm-test: status ${plain.status} ${plain.stderr}`);
-  check(typeof testing.failNextStatement === 'function', '@polyspec/orm/testing does not export failNextStatement');
-  check(!('failNextStatement' in packageEntry), 'the package entry point exports failNextStatement');
-}
-
 /** Returns failNextStatement of the test entry point, or fails the case when the entry point does not export it. */
 function requireFaultEntry() {
   if (typeof testing.failNextStatement !== 'function') {
@@ -180,16 +170,6 @@ for (const name of Object.keys(cases)) {
 }
 for (const name of fixture.cases) {
   if (cases[name] === undefined) { failures++; console.error(`FAIL guard: fixture case ${name} has no test`); }
-}
-
-{
-  caseTest('statement-fault-entry/entry_point', CASE_DEADLINE_MS, async ({ step }) => {
-    const before = failures;
-    current = 'entry_point';
-    step('spawn the entry point checks');
-    checkFaultEntry();
-    if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
-  });
 }
 
 if (failures > 0) process.exitCode = 1;

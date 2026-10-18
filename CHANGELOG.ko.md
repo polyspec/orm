@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5a4b3845e44e4f780e4a3c10d4332d47ff133b3bf7b905dcdd279b0fd5eaf36f -->
+<!-- source-sha256: de940616e18554ed2539adf81ba4cd4eaae150ddb649f184d2e95b739a0149bc -->
 # 변경 이력
 
 ## Unreleased
+- TypeScript statement-fault entry point 검사가 자기 file에서 실행되어, fault suite는 자기 네 case만 보고한다 (T148-3-ts-4).
 - TypeScript collection-key test가 case를 id로 node:test test로 보고해 parity unit 둘이 통과한다 (T148-3-ts-6).
 - TypeScript code-catalog test가 case를 id로 node:test test로 보고해 parity unit이 통과한다 (T148-3-ts-5).
 - parity-check 단계가 바인딩이 읽는 bench와 decimal DSN, ORM_DBSPEC_EXTENSION을 내보낸다 (T148-5).
