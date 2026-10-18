@@ -176,6 +176,17 @@ impl Scanner<'_> {
         self.scopes.last_mut().expect("scope").insert(name, b);
     }
 
+    /// Whether the type wraps its model in an Option, whose `unwrap` and `expect` give the model; Box, Rc and Arc
+    /// dereference to it, so their calls are the model's.
+    fn optional(t: &Type) -> bool {
+        match t {
+            Type::Reference(r) => Self::optional(&r.elem),
+            Type::Paren(p) => Self::optional(&p.elem),
+            Type::Path(p) => p.path.segments.last().is_some_and(|s| s.ident == "Option"),
+            _ => false,
+        }
+    }
+
     fn type_name(&self, t: &Type) -> Option<String> {
         match t {
             Type::Reference(r) => self.type_name(&r.elem),
@@ -276,7 +287,8 @@ impl Scanner<'_> {
         for p in params {
             if let Some((name, ty)) = pat_ident(p) {
                 let model = ty.and_then(|t| self.type_name(t));
-                self.bind(name, Binding { model, aliases: Vec::new(), result: false });
+                let result = ty.is_some_and(Self::optional);
+                self.bind(name, Binding { model, aliases: Vec::new(), result });
             }
         }
     }
@@ -388,7 +400,7 @@ impl<'ast> Visit<'ast> for Scanner<'_> {
                 None => l.init.as_ref().and_then(|i| self.model_of(&i.expr)),
             };
             let aliases = l.init.as_ref().map(|i| aliases_in(&i.expr)).unwrap_or_default();
-            let result = l.init.as_ref().is_some_and(|init| self.result_of(&init.expr));
+            let result = ty.is_some_and(Self::optional) || l.init.as_ref().is_some_and(|init| self.result_of(&init.expr));
             self.bind(name, Binding { model, aliases, result });
         }
     }

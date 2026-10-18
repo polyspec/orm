@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: b18e56a05161d350f9336f654842eafb42850800c10f41424e298a2aba7a6fee -->
+<!-- source-sha256: acdabd242bd70cc8ffb74b0c125ff92eddad4b744c7be14bb2ea56d3f37c0b53 -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
