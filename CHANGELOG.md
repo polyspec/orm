@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The PHP insert parts case proves the batch refusal with one repeated model, within the memory limit (T216).
 - The generator scans type a name by the classes it may hold, refuse a call only when none declares it, and accept getters of used-document entities (T219).
 - The Rust integration case `conditions` passes its time compare as text (T217).
 - The PHP generics case types the nullable result of `get()` (T215).

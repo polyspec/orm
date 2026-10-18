@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 24485f442e39a937bbf6dd7fc24c44994807a32fe66c3f2af1fb2c04883821ff -->
+<!-- source-sha256: 06fb93628d67cdb0fa140069f11390e6b01a5243e7b45e179538055df9178b60 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1569,7 +1569,8 @@
   증거 (2026-10-19), 각 round-trip test 단독 실행: RED (299f9976): Go TestMermaidRoundTripVectors/bench, Python test_dbspec_mermaid_round_trip, TypeScript dbspec-mermaid-round-trip.mjs, Rust dbspec_mermaid `round_trip::bench`, PHP와 PHP extension DbspecMermaidTest test_round_trip이 이 네 object로 실패 (var/mermaid-red*.log). GREEN: 여섯 모두 통과 (var/mermaid-green-*.log).
 - [o] T215 ClientGenericsTest의 PHPStan case가 T204 뒤에 통과한다. 원인: closure가 이제 `Author|null`을 반환해 ClientGenericsTest.php:100이 실패한다. T204부터 `get()`이 null을 반환하는데 case는 여전히 `Author`를 선언한다. 완료 기준: case가 nullable 결과를 type하고, 전 red, 후 green.
   근거: source는 이미 nullable 읽기를 선언했다(`Model::get(): ?static`, packages/php/src/Model.php:1485, `TModel|null`을 반환하는 `Collection::get`). case는 `fn(): Author`를 선언하고 null 검사 없이 이름을 읽었다. red: `calls.php:9: Anonymous function should return ...Author but returns ...Author|null [return.type]`, Failures: 1. case는 이제 `?Author`로 type하고 `$author?->getName() ?? ''`로 읽는다. green: ClientGenericsTest.php만 실행해 OK (1 test, 1 assertion).
-- [ ] T216 PHP ModelTest test_insert_parts@mysql가 memory 한도 안에서 실행된다. 원인: Service object 65536개를 만들며 Model.php:403에서 128M 한도를 다 쓴다. 완료 기준: 원인(test의 크기 또는 client의 행당 memory)을 적고 case가 통과한다. 전 red, 후 green.
+- [o] T216 PHP ModelTest test_insert_parts@mysql가 memory 한도 안에서 실행된다. 원인: Service object 65536개를 만들며 Model.php:403에서 128M 한도를 다 쓴다. 완료 기준: 원인(test의 크기 또는 client의 행당 memory)을 적고 case가 통과한다. 전 red, 후 green.
+  근거: 원인은 client가 아니라 test다. MySQL에서 case가 BATCH_TOO_LARGE에 닿으려 bind 한도 + 1 = 65536개의 서로 다른 Service model을 만들었고, 하나당 약 1846 byte(10000개에 memory_get_peak_usage 4,116,816에서 22,745,304 byte)라 creates가 실행되기 전에 PHP가 ModelTest.php:561에서 128M를 다 썼다. creates는 큰 묶음을 행 수와 column 수로 어떤 statement보다 먼저 거부하며 묶음마다 복사본을 두지 않는다. case는 이제 model 하나를 반복하며(`array_fill`) 같은 경로로 같은 거부를 증명한다. memory_limit은 그대로다. red: `Allowed memory size of 134217728 bytes exhausted ... ModelTest.php on line 561`. green: `--filter test_insert_parts`가 sqlite, mysql, postgres에서 OK (3 tests, 24 assertions), 최대 28 MB.
 - [o] T217 Rust integration case `conditions`가 통과한다. 원인: integration.rs:185가 native DateTime을 넘기며, native time 값은 text만 받으므로 parameter 검사가 `CODEC_ENCODE ... is not a datetime value`로 거부한다. 완료 기준: 정규 text를 넘기고, 전 red, 후 green.
   근거: integration.rs:185가 이제 시간 비교를 그 파일의 `txt()` text helper로 넘긴다. T210이 Go와 TypeScript에서 한 방식이다. 다른 Rust test는 native time 값을 parameter로 넘기지 않는다(conformance.rs는 이미 `txt()`를 쓰고, orm test는 시간 값을 읽거나 고정 clock을 쓴다). red: `packages/rust/target/debug/integration contracts/fixtures/bench/dbspec-set.json --case conditions`가 integration.rs:185에서 `CODEC_ENCODE: parameter 0 (DateTime(...)) is not a datetime value`로 panic. green: 같은 명령이 sqlite, mysql, postgres에서 0으로 끝난다.
 - [ ] T218 test server의 PostgreSQL replica가 동기를 유지한다. 원인: log가 `requested WAL segment ... has already been removed`를 반복해, synchronous replication을 기다리는 commit이 멈추고 primary_and_replica postgres case가 막힌다. 완료 기준: server 설정의 원인을 적고 고치며(WAL 보존 또는 replication slot), 긴 실행 동안 replica가 streaming을 유지하는 case를 둔다.
