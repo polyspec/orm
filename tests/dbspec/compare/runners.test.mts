@@ -1,5 +1,5 @@
-// 모든 dbspec compare runner가 자기가 읽는 vector file의 없거나 type이 다른 vector section, id, document,
-// line을 위치를 밝힌 error와 nonzero exit로 거부하는지 확인한다. In cases.json a section or field that the format does
+// Checks that every dbspec compare runner rejects, with an error stating the location and a nonzero exit, a vector file it reads whose vector section, id, document,
+// or line is missing or of another type. In cases.json a section or field that the format does
 // not name is refused too.
 //
 // Usage: DBSPEC_STRESS_DOCUMENT=<stress document> node --test tests/dbspec/compare/runners.test.mts
@@ -13,8 +13,8 @@ import { join } from 'node:path';
 import { root, runRunner, runners } from './runners.mts';
 import { readCases } from '../cases.mts';
 
-// TIMEOUT은 case 하나의 기한이다. case는 Go, PHP, TypeScript, Rust, PHP 확장 runner process를 vector file 하나로
-// 실행하고, Go runner는 `go run` compile을 포함한다.
+// TIMEOUT is the deadline for one case. A case runs the Go, PHP, TypeScript, Rust, and PHP extension runner processes on one vector file,
+// and the Go runner includes the `go run` compile.
 const TIMEOUT = 120000;
 const stress = process.env.DBSPEC_STRESS_DOCUMENT;
 if (stress === undefined || stress === '') throw new Error('DBSPEC_STRESS_DOCUMENT is required; run it through make dbspec-compare-check, which writes the stress document');
@@ -35,7 +35,7 @@ type Edit = ['delete', string] | ['set', string, unknown];
 /** A mutation: the vector file it edits, the location and problem every runner reports, and the edit. */
 type Mutation = { file: string; location: string; problem: string; edit: Edit };
 
-// 각 경우는 vector file 하나를 고치고, runner가 stderr에 써야 할 위치와 문제를 정한다.
+// Each case alters one vector file and sets the location and problem the runner must write to stderr.
 const mutations: Mutation[] = [
   { file: 'cases', location: 'canonical', problem: 'is missing', edit: ['delete', '/canonical'] },
   { file: 'cases', location: 'hashes', problem: 'is not an array', edit: ['set', '/hashes', {}] },
@@ -127,7 +127,7 @@ const refusals: { file: string; problems: string[]; edits: Edit[] }[] = [
   { file: 'cases', problems: ['version is not 1', 'extra is not a known field'], edits: [['set', '/version', 2], ['set', '/extra', true]] },
 ];
 
-// inputsWith는 바뀐 vector file을 쓰고, 그 file과 나머지 원래 vector file의 경로를 runner 인자 순서로 돌려준다.
+// inputsWith writes the altered vector file and returns the paths of that file and the other original vector files in runner argument order.
 function inputsWith(index: number | string, mutation: Mutation | { file: string; location: string; edits: Edit[] }): { path: string; location: string; inputs: string[] } {
   const value: unknown = JSON.parse(vectors[mutation.file] ?? '');
   for (const change of 'edits' in mutation ? mutation.edits : [mutation.edit]) edit(value, change);
@@ -145,7 +145,7 @@ caseTest('the unchanged vectors run in every runner', TIMEOUT, async () => {
   }
 });
 
-// runner는 자기가 읽는 vector file(runners.mts의 reads)의 잘못된 vector를 거부한다.
+// The runner rejects invalid vectors in the vector files it reads (reads in runners.mts).
 mutations.forEach((mutation, index) => {
   const { path, location, inputs } = inputsWith(index, mutation);
   for (const runner of runners.filter(runner => runner.reads.includes(mutation.file))) {

@@ -1,10 +1,10 @@
-// 결정적 dbspec 부하 문서를 표준 출력으로 쓴다: 기본은 table 2000개, column 60000개, foreign key
-// 10000개다. 모든 client가 같은 문서를 parse하고 emit해 시간을 잰다(make bench). 출력은 canonical
-// form이다.
+// Writes a deterministic dbspec load document to standard output. Default: 2000 tables, 60000 columns, foreign keys
+// 10000. All clients parse and emit the same document to time it (make bench). The output is in canonical
+// form.
 //
 // Usage: node tests/dbspec/stress.mts [tables]
-// tables를 주면 table마다 column 30개와 foreign key 5개인 같은 모양의 작은 문서를 쓴다. make check는
-// 이것으로 같은 code path(render, apply, introspect, 비교)를 짧게 실행한다.
+// Given tables, it writes a small document of the same shape, with 30 columns and 5 foreign keys per table. make check
+// runs the same code paths (render, apply, introspect, comparison) briefly with this.
 
 const TABLES = process.argv[2] === undefined ? 2000 : Number(process.argv[2]);
 if (!Number.isInteger(TABLES) || TABLES < 2) throw new Error('usage: node tests/dbspec/stress.mts [tables >= 2]');
@@ -25,7 +25,7 @@ function seeded(seed: number) {
 
 const rand = seeded(1);
 const name = (i: number) => `t${String(i).padStart(4, '0')}`;
-// table마다 id 하나와 foreign key column 다섯 개, 나머지는 data column으로 채워 합계를 정확히 맞춘다.
+// Fills each table with one id and five foreign key columns, and the rest with data columns, so the totals match exactly.
 const perTable = COLUMNS / TABLES;
 const fkPerTable = FOREIGN_KEYS / TABLES;
 const out = ['dbspec 1 stress', ''];

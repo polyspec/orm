@@ -14,10 +14,10 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// repoRoot는 이 test package(tests/dbspec/unicode)에서 저장소 root다.
+// repoRoot is the repository root from this test package (tests/dbspec/unicode).
 const repoRoot = "../../.."
 
-// goWord는 모든 code point의 Go 분류를 한 byte씩 '1'(word rune)이나 '0'으로 돌려준다.
+// goWord returns Go's classification of every code point as one byte each: '1' (word rune) or '0'.
 func goWord() []byte {
 	out := make([]byte, lastCodePoint+1)
 	for r := rune(0); r <= lastCodePoint; r++ {
@@ -29,7 +29,7 @@ func goWord() []byte {
 	return out
 }
 
-// TestCommittedTablesAreGenerated는 세 생성 파일이 현재 Go의 표에서 나온 내용과 같은지 본다.
+// TestCommittedTablesAreGenerated checks that the three generated files match the content produced from Go's current table.
 func TestCommittedTablesAreGenerated(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	spans := wordSpans()
@@ -44,7 +44,7 @@ func TestCommittedTablesAreGenerated(t *testing.T) {
 	}
 }
 
-// TestSpansMatchGoForEveryCodePoint는 구간의 이진 탐색이 모든 code point에서 Go의 분류와 같은지 본다.
+// TestSpansMatchGoForEveryCodePoint checks that binary search over the ranges matches Go's classification at every code point.
 func TestSpansMatchGoForEveryCodePoint(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	spans := wordSpans()
@@ -57,8 +57,8 @@ func TestSpansMatchGoForEveryCodePoint(t *testing.T) {
 	}
 }
 
-// TestCTableAgreesWithGo는 C 확장의 unicode_word_rune을 모든 code point에서 Go와 비교한다. C driver는 이 test의
-// 임시 directory에서 cc로 build하고 실행한다.
+// TestCTableAgreesWithGo compares the C extension's unicode_word_rune with Go at every code point. The C driver is
+// built with cc and run in a temporary directory of this test.
 func TestCTableAgreesWithGo(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	dir := t.TempDir()
@@ -82,8 +82,8 @@ func TestCTableAgreesWithGo(t *testing.T) {
 	compareAll(t, "C unicode_word_rune", got, goWord())
 }
 
-// TestPythonTableAgreesWithGo는 Python 모듈의 is_word_rune_code_point를 모든 code point에서 Go와 비교한다.
-// Python interpreter는 ORM_PYTHON이 있으면 그것을, 없으면 PATH의 python3를 쓴다.
+// TestPythonTableAgreesWithGo compares the Python module's is_word_rune_code_point with Go at every code point.
+// The Python interpreter is ORM_PYTHON if set, otherwise python3 from PATH.
 func TestPythonTableAgreesWithGo(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	python := os.Getenv("ORM_PYTHON")
@@ -103,7 +103,7 @@ func TestPythonTableAgreesWithGo(t *testing.T) {
 	compareAll(t, "Python is_word_rune_code_point", got, goWord())
 }
 
-// compareAll은 두 분류 열이 같은지 보고, 다르면 처음 다른 code point를 이름과 함께 알린다.
+// compareAll checks whether two classification columns are equal, and if not, reports the first differing code point by name.
 func compareAll(t *testing.T, name string, got, want []byte) {
 	t.Helper()
 	if len(got) != len(want) {

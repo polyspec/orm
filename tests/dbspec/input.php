@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-// tests/dbspec runner가 input file을 읽는다. 읽을 수 없는 input은 빈 text가 되지 않고
-// "<path>: <reason>"을 stderr에 쓰고 1로 끝난다.
+// The tests/dbspec runners read input files. An unreadable input does not become empty text,
+// but writes "<path>: <reason>" to stderr and exits 1.
 
-/** $path의 내용을 돌려준다. directory나 읽을 수 없는 file이면 그 경로와 이유를 쓰고 끝낸다. */
+/** Returns the content of $path. If it is a directory or an unreadable file, it writes that path and the reason and ends. */
 function dbspec_read_input(string $path): string
 {
-    // PHP는 directory를 열 수 있고 읽기에서 빈 text를 돌려주므로 먼저 거부한다.
+    // PHP can open a directory and returns empty text when reading it, so it rejects that first.
     if (is_dir($path)) {
         fwrite(STDERR, "$path: is a directory\n");
         exit(1);

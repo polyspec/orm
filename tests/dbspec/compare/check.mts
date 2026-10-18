@@ -1,28 +1,28 @@
-// 다섯 dbspec 구현(Go, PHP, TypeScript, Rust client와 PHP 확장)을 비교한다. 네 client의 runner는 공유 case,
-// stress 문서, statement vector, plan vector, Mermaid vector를 읽고 case마다 이름과 그 emission, manifest나 렌더링한
-// statement("| "와 "= " 줄) 또는 diagnostic("! rule line column")을 출력한다. stress
-// 문서는 그대로 다시 emit되면 "= unchanged"를 출력한다. plan case는 emit한 plan, 그다음
-// "<name>/changes"와 "| kind table name" 줄, "<name>/<dialect>"와 statement를 출력한다.
-// invalid plan case는 diagnostic이나 change를, chain case는 순서("| name")나 diagnostic을,
-// parse case는 diagnostic이나 emit한 plan을, comparison은 차이("| kind table name")나
-// diagnostic을 출력한다. plan, chain, compare diagnostic은 client가 공유하는 message로
-// 끝난다. Mermaid export case는 Mermaid text와 빠진 객체(이유 없이
-// "= kind<TAB>table<TAB>name") 또는 문서의 diagnostic을, import와 invalid case는 emit한
-// 문서와 빠진 객체 또는 diagnostic을, round trip case는 문서의 export와 그다음
-// "<name>/import"와 그 export의 import를 출력한다. Each positions case of cases.json prints the declaration positions
+// Compares five dbspec implementations (Go, PHP, TypeScript, Rust client, and the PHP extension). The runners of the four clients read the shared case,
+// stress document, statement vectors, plan vectors, and Mermaid vectors, and print for each case its name and its emission: manifest or rendered
+// statements ("| " and "= " lines) or diagnostics ("! rule line column"). A stress
+// document re-emitted unchanged prints "= unchanged". A plan case prints the emitted plan, then
+// "<name>/changes" and "| kind table name" lines, then "<name>/<dialect>" and the statements.
+// an invalid plan case prints diagnostics or changes, a chain case prints the order ("| name") or diagnostics,
+// a parse case prints the diagnostics or the emitted plan, and a comparison prints the differences ("| kind table name") or
+// print diagnostics. Plan, chain, and compare diagnostics end with the message clients share.
+// end. A Mermaid export case ends with the Mermaid text and the missing objects (without a reason
+// ("= kind<TAB>table<TAB>name") or the document's diagnostics, and import and invalid cases print the emitted
+// document and the missing objects or diagnostics, and a round trip case prints the document's export and then
+// "<name>/import" and the import of that export. Each positions case of cases.json prints the declaration positions
 // of its main document ("| kind<TAB>line<TAB>column<TAB>path..." lines) or its diagnostics. Each case of syntax.json
 // prints, from the input of cases.json that its id names, the tokens of the analysis ("| line start end class") and
-// its diagnostics, then "syntax/<id>/format" and the formatted text or the diagnostics of the refusal. 각 runner는 두 번
-// 실행하며 모든 출력이 첫 Go 출력과 같아야 한다.
+// its diagnostics, then "syntax/<id>/format" and the formatted text or the diagnostics of the refusal. Each runner runs twice
+// and all output must match the first Go output.
 //
 // Usage: node tests/dbspec/compare/check.mts <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
-// (TypeScript build, Rust example의 debug build와 PHP 확장의 build 뒤)
+// (after the TypeScript build, the debug build of the Rust example, and the build of the PHP extension)
 import { compare, type Output } from './compare.mts';
 import { runRunner, runners, type Runner } from './runners.mts';
 import { COMPUTE, runCase } from '../../testcase.mts';
 
-// TIMEOUT은 runner 실행 하나의 기한이다. Go runner는 `go run` compile을 포함하고 모든
-// runner가 stress 문서와 vector file 여섯 개를 읽는다.
+// TIMEOUT is the deadline for one runner run. The Go runner includes the `go run` compile, and all
+// runner reads the stress document and six vector files.
 const TIMEOUT = 120000;
 const inputs = process.argv.slice(2);
 if (inputs.length !== 6) {
