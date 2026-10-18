@@ -55,9 +55,10 @@ func sampleModel(t *testing.T) *runtimemodel.Model {
 	return m
 }
 
-// TestGenerateLeavesExternalTablesOut checks that a set using external documents (external)
-// generates only the model of the tables it owns, and that the text of tables used from external documents is carried in the schema value.
-func TestGenerateLeavesExternalTablesOut(t *testing.T) {
+// TestGenerateExternalTables checks that a set using external documents (external) generates the
+// models of the tables it owns and the read-only models of the tables it uses from external documents,
+// and none of an unused external table, and that the text of the used tables is carried in the schema value.
+func TestGenerateExternalTables(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	fixtures := filepath.Join("..", "..", "..", "contracts", "fixtures", "external")
 	text := func(name string) string {
@@ -83,8 +84,8 @@ func TestGenerateLeavesExternalTablesOut(t *testing.T) {
 	for _, e := range entries {
 		files = append(files, e.Name())
 	}
-	if strings.Join(files, " ") != "ext_post.go ext_post_history.go orm.go" {
-		t.Fatalf("generated files %v, want the owned tables ext_post and ext_post_history and orm.go", files)
+	if strings.Join(files, " ") != "ext_account.go ext_audit.go ext_post.go ext_post_history.go orm.go" {
+		t.Fatalf("generated files %v, want the used external tables ext_account and ext_audit, the owned tables ext_post and ext_post_history and orm.go", files)
 	}
 	body, err := os.ReadFile(filepath.Join(out, "orm.go"))
 	if err != nil {

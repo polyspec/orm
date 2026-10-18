@@ -13,6 +13,7 @@ import unittest
 from polyspec.orm.errors import OrmError
 from polyspec.orm.models import models
 from . import testcase
+from .bench_set import install_bench
 from .case_database import case_database
 
 DIALECTS = ("sqlite", "mysql", "postgres")
@@ -47,7 +48,7 @@ class ConnectionPoolTest(unittest.TestCase):
             with self.subTest(dialect=dialect):
                 with case_database(dialect, TEMP["dir"].name, "orm_pool") as dsn:
                     setup = models.connect(dsn)
-                    setup.utils().schema().install(models.SCHEMA)
+                    install_bench(setup)
                     setup.close()
                     body(dialect, dsn)
 

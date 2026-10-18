@@ -1,12 +1,15 @@
 // Engine test: the runtime model of the embedded manifest, request validation and plans.
 // Usage: node packages/ts/tests/engine.mjs (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
-import { Db, Engine, MANIFEST_HASH, MANIFEST_TEXT, dbspecManifest, loadSet, parseDbspec, registerModel } from '../dist/index.js';
+import { Db, EXTERNAL_TEXT, Engine, MANIFEST_HASH, MANIFEST_TEXT, dbspecManifest, loadSet, parseDbspec, parseDbspecSet, registerModel } from '../dist/index.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { caseTest, cases, COMPUTE } from '../../../tests/testcase.mts';
 
 const text = await readFile(new URL('../../../contracts/fixtures/bench/bench.dbs', import.meta.url), 'utf8');
+const bench = name => readFile(new URL(`../../../contracts/fixtures/bench/${name}`, import.meta.url), 'utf8');
+// The bench set of contracts/fixtures/bench/dbspec-set.json: its owned documents and its external document.
+const setDocuments = parseDbspecSet([text, await bench('bench_reader.dbs')], [await bench('bench_shared.dbs')]).map(r => r.document);
 let failures = 0;
 function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL: ${message}`); }
@@ -21,17 +24,17 @@ async function codeOf(promise) {
 // The engine check runs model registration, request validation, and the plan in memory as one case.
 const run = cases();
 await run.run('engine', COMPUTE, async () => {
-  // The generated models embed the manifest of contracts/fixtures/bench/bench.dbs.
-  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
-  check(MANIFEST_TEXT === manifest.manifestText && MANIFEST_HASH === manifest.manifestHash, 'the generated models embed the manifest of bench.dbs');
-  const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH);
-  check(registerModel(MANIFEST_TEXT, MANIFEST_HASH) === model, 'registering the same manifest returns the registered model');
-  check([...model.entities.keys()].join(',') === 'author,user,service,service_region,service_member,composite_account,composite_membership,soft_record,soft_link,account,project,account_project,task,hex_cell,time_cell,clock_cell,day_cell,upsert_cell,uuid_cell,bind_cell', 'entities in document order');
+  // The generated models embed the manifest and the external text of the bench set (contracts/fixtures/bench/dbspec-set.json).
+  const { manifest } = dbspecManifest(setDocuments);
+  check(MANIFEST_TEXT === manifest.manifestText && MANIFEST_HASH === manifest.manifestHash && EXTERNAL_TEXT === manifest.externalText, 'the generated models embed the manifest of the bench set');
+  const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH, EXTERNAL_TEXT);
+  check(registerModel(MANIFEST_TEXT, MANIFEST_HASH, EXTERNAL_TEXT) === model, 'registering the same manifest returns the registered model');
+  check([...model.entities.keys()].join(',') === 'author,user,service,service_region,service_member,composite_account,composite_membership,soft_record,soft_link,account,project,account_project,task,hex_cell,time_cell,clock_cell,day_cell,upsert_cell,uuid_cell,bind_cell,note_reader,shared_note', 'entities in document order');
   // Text that does not hash to the declared hash is SCHEMA_HASH_MISMATCH, even if that hash is already registered.
   const edited = MANIFEST_TEXT.replace('table author', 'table authors');
   check(edited !== MANIFEST_TEXT, 'the edited manifest text differs');
-  check(code(() => registerModel(edited, MANIFEST_HASH)) === 'SCHEMA_HASH_MISMATCH', 'an edited manifest text is rejected');
-  check(registerModel(MANIFEST_TEXT, MANIFEST_HASH) === model, 'a rejected text leaves the registered model');
+  check(code(() => registerModel(edited, MANIFEST_HASH, EXTERNAL_TEXT)) === 'SCHEMA_HASH_MISMATCH', 'an edited manifest text is rejected');
+  check(registerModel(MANIFEST_TEXT, MANIFEST_HASH, EXTERNAL_TEXT) === model, 'a rejected text leaves the registered model');
   check(code(() => registerModel(`${MANIFEST_TEXT}# note\n`, manifest.manifestHash.replace(/.$/, '0'))) === 'SCHEMA_INVALID', 'a text that is not a manifest text is rejected');
   check(code(() => registerModel('{', 'sha256:00')) === 'SCHEMA_INVALID', 'a text that is not dbspec is rejected');
   check(code(() => new Engine(model, 'oracle')) === 'DIALECT_UNKNOWN', 'unknown dialect');

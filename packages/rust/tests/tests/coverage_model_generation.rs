@@ -1,19 +1,20 @@
-//! model_generation: the model and manifest made by orm-build from contracts/fixtures/bench/bench.dbs and the source that build.rs scans
-//! are the same when generated twice, and the same as the OUT_DIR output that this crate built.
+//! model_generation: the model, manifest and external text made by orm-build from contracts/fixtures/bench/dbspec-set.json and the
+//! source that build.rs scans are the same when generated twice, and the same as the OUT_DIR output that this crate built.
 use std::path::Path;
 
-/// Generates into `out` with the same document and scan path as build.rs, and reads the model and manifest text.
-fn generate(out: &Path) -> (String, String) {
+/// Generates into `out` with the same set and scan paths as build.rs, and reads the model, manifest and external text.
+fn generate(out: &Path) -> (String, String, String) {
     let root = polyspec_orm_testcase::manifest_dir();
     let model = polyspec_orm_build::Builder::set(root.join("../../../contracts/fixtures/bench/dbspec-set.json"))
         .scan(root.join("src"))
+        .scan(root.join("tests/integration"))
         .scan(root.join("../../../examples/complex/rust"))
         .scan(root.join("../../../examples/thin-slice/rust"))
         .out_dir(out)
         .try_generate()
         .unwrap_or_else(|e| panic!("generate: {e}"));
     let read = |path: &Path| std::fs::read_to_string(path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
-    (read(&model), read(&out.join(polyspec_orm_build::MANIFEST_FILE)))
+    (read(&model), read(&out.join(polyspec_orm_build::MANIFEST_FILE)), read(&out.join(polyspec_orm_build::EXTERNAL_FILE)))
 }
 
 #[test]
@@ -35,13 +36,17 @@ fn coverage_model_generation_check() {
     fresh(&out);
     assert!(first == second, "two generations from the same input differ");
 
-    // The generated model includes the manifest file as an absolute path. The build's path is replaced with this generation's path before comparing.
+    // The generated model includes the manifest file and the external file as absolute paths. The build's paths are replaced with this
+    // generation's paths before comparing.
     let built_dir = &std::fs::canonicalize(env!("OUT_DIR")).expect("canonical OUT_DIR");
-    let built_model = std::fs::read_to_string(built_dir.join(polyspec_orm_build::MODEL_FILE)).expect("built model");
-    let built_manifest = std::fs::read_to_string(built_dir.join(polyspec_orm_build::MANIFEST_FILE)).expect("built manifest");
-    let built_path = built_dir.join(polyspec_orm_build::MANIFEST_FILE).display().to_string();
-    let generated_path = out.join(polyspec_orm_build::MANIFEST_FILE).display().to_string();
-    assert_eq!(built_model.matches(&built_path).count(), 1, "the built model includes its manifest file once");
-    assert!(built_model.replace(&built_path, &generated_path) == first.0, "the generated model differs from the model this crate builds with");
-    assert!(built_manifest == first.1, "the generated manifest differs from the manifest this crate builds with");
+    let mut built_model = std::fs::read_to_string(built_dir.join(polyspec_orm_build::MODEL_FILE)).expect("built model");
+    for file in [polyspec_orm_build::MANIFEST_FILE, polyspec_orm_build::EXTERNAL_FILE] {
+        let built_path = built_dir.join(file).display().to_string();
+        assert_eq!(built_model.matches(&built_path).count(), 1, "the built model includes {file} once");
+        built_model = built_model.replace(&built_path, &out.join(file).display().to_string());
+    }
+    let built = |file: &str| std::fs::read_to_string(built_dir.join(file)).unwrap_or_else(|e| panic!("built {file}: {e}"));
+    assert!(built_model == first.0, "the generated model differs from the model this crate builds with");
+    assert!(built(polyspec_orm_build::MANIFEST_FILE) == first.1, "the generated manifest differs from the manifest this crate builds with");
+    assert!(built(polyspec_orm_build::EXTERNAL_FILE) == first.2, "the generated external text differs from the one this crate builds with");
 }

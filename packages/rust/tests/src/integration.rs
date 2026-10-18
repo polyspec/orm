@@ -3,10 +3,12 @@
 //! the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN and dropped when
 //! the case ends; the test fails when either is unset.
 //!
-//! Usage: integration <bench.dbs> [--case <case>]
+//! Usage: integration <dbspec-set.json> [--case <case>]: the bench set (contracts/fixtures/bench/dbspec-set.json).
 use std::cell::Cell;
 
 polyspec_orm::models!();
+
+mod bench_set;
 
 #[cfg(test)]
 #[allow(
@@ -93,8 +95,8 @@ impl Target {
     /// changes nothing).
     async fn installed(driver: &str) -> Target {
         let t = Target::empty(driver).await;
-        t.db.utils().schema().install(&model::SCHEMA).await.unwrap_or_else(|e| panic!("{}: schema().install: {e}", t.driver));
-        t.db.utils().schema().install(&model::SCHEMA).await.unwrap_or_else(|e| panic!("{}: schema().install again: {e}", t.driver));
+        bench_set::install(&t.db).await.unwrap_or_else(|e| panic!("{}: schema().install: {e}", t.driver));
+        bench_set::install(&t.db).await.unwrap_or_else(|e| panic!("{}: schema().install again: {e}", t.driver));
         t
     }
 
@@ -528,7 +530,7 @@ async fn schema_empty(t: &Target) {
         assert!(!with_schema.unwrap(), "postgres: schema().empty() with an empty schema other than public");
         assert!(db.utils().schema().empty().await.unwrap(), "postgres: schema().empty() after the empty schema is dropped");
     }
-    db.utils().schema().install(&model::SCHEMA).await.unwrap();
+    bench_set::install(db).await.unwrap();
     assert!(!db.utils().schema().empty().await.unwrap(), "{}: schema().empty() with the installed tables", t.driver);
 }
 
@@ -670,14 +672,22 @@ async fn main() {
         [_, _] => None,
         [_, _, flag, case] if flag == "--case" && CASES.contains(&case.as_str()) => Some(case.as_str()),
         _ => {
-            eprintln!("usage: integration <bench.dbs> [--case <case>]; supported cases: {}", CASES.join(", "));
+            eprintln!("usage: integration <dbspec-set.json> [--case <case>]; supported cases: {}", CASES.join(", "));
             std::process::exit(2);
         }
     };
-    let text = polyspec_orm::dbspec::read_file(std::path::Path::new(&args[1])).unwrap_or_else(|e| panic!("{}: {e}", args[1]));
-    let document =
-        polyspec_orm::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("{}: {errors:?}", args[1]));
-    let manifest = polyspec_orm::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("{}: {errors:?}", args[1]));
+    let set = polyspec_orm::dbspec::read_set(std::path::Path::new(&args[1])).unwrap_or_else(|errors| panic!("{}: {errors:?}", args[1]));
+    let text = |file: &polyspec_orm::dbspec::SetFile| {
+        polyspec_orm::dbspec::read_bytes(&file.path.display().to_string(), file.bytes.clone())
+            .unwrap_or_else(|errors| panic!("{}: {errors:?}", file.path.display()))
+    };
+    let owned: Vec<String> = set.documents.iter().map(text).collect();
+    let external: Vec<String> = set.external.iter().map(text).collect();
+    let parsed =
+        polyspec_orm::dbspec::parse_set(&owned.iter().map(String::as_str).collect::<Vec<_>>(), &external.iter().map(String::as_str).collect::<Vec<_>>());
+    let documents: Vec<polyspec_orm::dbspec::Document> =
+        parsed.into_iter().map(|d| d.document.unwrap_or_else(|| panic!("{}: {:?}", args[1], d.diagnostics))).collect();
+    let manifest = polyspec_orm::dbspec::manifest(&documents.iter().collect::<Vec<_>>()).unwrap_or_else(|errors| panic!("{}: {errors:?}", args[1]));
     assert_eq!(manifest.manifest_hash, model::MANIFEST_HASH, "the models were generated from another document set");
     const DRIVERS: [&str; 3] = ["sqlite", "mysql", "postgres"];
     if selected.is_none_or(|case| case == "schema_empty") {

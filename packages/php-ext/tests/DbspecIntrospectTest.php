@@ -188,10 +188,21 @@ final class DbspecIntrospectTest extends TestCase
         foreach ($ddl['cases'] as $case) {
             $sets['ddl_' . str_replace('-', '_', $case['id'])] = array_map(lines_text(...), $case['documents']);
         }
-        // The same list as schemaDocumentPatterns in packages/go/internal/dialects.
+        // The same list as schemaDocumentPatterns in packages/go/internal/dialects. Each schema document is one set with the
+        // documents of its directory that it uses.
         foreach (["$root/contracts/fixtures/bench/*.dbs", "$root/contracts/fixtures/*.dbs"] as $pattern) {
+            $paths = [];
             foreach (glob($pattern) ?: throw new RuntimeException("no document matches $pattern") as $path) {
-                $sets['schema_' . basename($path, '.dbs')] = [basename($path, '.dbs') => $path];
+                $paths[basename($path, '.dbs')] = $path;
+            }
+            foreach ($paths as $name => $path) {
+                $others = array_map(static fn(string $other): string => (string) file_get_contents($other), array_diff_key($paths, [$name => true]));
+                $document = Dbspec::parse((string) file_get_contents($path), $others)->document ?? throw new RuntimeException("$path does not parse");
+                $set = [$name => $path];
+                foreach ($document->uses as $use) {
+                    $set[$use->document] = $paths[$use->document];
+                }
+                $sets['schema_' . $name] = $set;
             }
         }
         foreach ($sets as $setId => $texts) {
@@ -201,15 +212,16 @@ final class DbspecIntrospectTest extends TestCase
         }
     }
 
-    // A schema document is read here with Dbspec::readFile: the provider names its path.
+    // The documents of a schema set are read here with Dbspec::readFile: the provider names their paths.
     #[DataProvider('roundTripCases')]
     public function test_round_trip(string $dialect, string $setId, array $texts): void
     {
         if (str_starts_with($setId, 'schema_')) {
-            $path = reset($texts);
-            $read = Dbspec::readFile($path);
-            $this->assertNotNull($read->text, "$path: " . json_encode($read->diagnostics));
-            $texts = [key($texts) => $read->text];
+            foreach ($texts as $name => $path) {
+                $read = Dbspec::readFile($path);
+                $this->assertNotNull($read->text, "$path: " . json_encode($read->diagnostics));
+                $texts[$name] = $read->text;
+            }
         }
         $id = "introspect/$dialect/$setId";
         $documents = parse_set($setId, $texts);

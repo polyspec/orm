@@ -5,8 +5,10 @@ package dialects
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -17,10 +19,64 @@ import (
 )
 
 // schemaDocumentPatterns finds the dbspec documents that the clients and
-// tests use as schemas; each document is one set.
+// tests use as schemas; each document is one set with the documents of its
+// directory that it uses (schemaDocumentSets).
 var schemaDocumentPatterns = []string{
 	filepath.Join(repoRoot, "contracts", "fixtures", "bench", "*.dbs"),
 	filepath.Join(repoRoot, "contracts", "fixtures", "*.dbs"),
+}
+
+// schemaDocument is one schema document and its set: the texts by name of the
+// document and of the documents of its directory that it uses.
+type schemaDocument struct {
+	name, path string
+	documents  map[string]string
+}
+
+// schemaDocumentSets reads every schema document of schemaDocumentPatterns
+// with dbspec.ReadFile, in path order, each with the documents it uses.
+func schemaDocumentSets(t *testing.T) []schemaDocument {
+	t.Helper()
+	var out []schemaDocument
+	for _, pattern := range schemaDocumentPatterns {
+		paths, err := filepath.Glob(pattern)
+		if err != nil {
+			t.Fatal(err)
+		}
+		texts := map[string]string{}
+		for _, path := range paths {
+			text, diagnostics, err := dbspec.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(diagnostics) > 0 {
+				t.Fatalf("%s: %v", path, diagnostics)
+			}
+			texts[strings.TrimSuffix(filepath.Base(path), ".dbs")] = text
+		}
+		for _, path := range paths {
+			name := strings.TrimSuffix(filepath.Base(path), ".dbs")
+			others := map[string]string{}
+			for other, text := range texts {
+				if other != name {
+					others[other] = text
+				}
+			}
+			document, _, diagnostics := dbspec.Parse(texts[name], others)
+			if len(diagnostics) > 0 {
+				t.Fatalf("%s: %v", path, diagnostics)
+			}
+			set := map[string]string{name: texts[name]}
+			for _, u := range document.Uses {
+				set[u.Document] = texts[u.Document]
+			}
+			out = append(out, schemaDocument{name: name, path: path, documents: set})
+		}
+	}
+	if len(out) == 0 {
+		t.Fatal("no schema document found")
+	}
+	return out
 }
 
 // TestSchemaDocumentsApply renders every schema document for MySQL,
@@ -32,17 +88,7 @@ func TestSchemaDocumentsApply(t *testing.T) {
 	if mysqlDSN == "" || postgresDSN == "" {
 		t.Fatal("ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV")
 	}
-	var paths []string
-	for _, pattern := range schemaDocumentPatterns {
-		found, err := filepath.Glob(pattern)
-		if err != nil {
-			t.Fatal(err)
-		}
-		paths = append(paths, found...)
-	}
-	if len(paths) == 0 {
-		t.Fatal("no schema document found")
-	}
+	documents := schemaDocumentSets(t)
 	connect, cancel := context.WithTimeout(context.Background(), probeDeadline)
 	servers, err := OpenServers(connect, mysqlDSN, postgresDSN, t.TempDir(), "doc"+strconv.Itoa(os.Getpid()))
 	cancel()
@@ -56,23 +102,20 @@ func TestSchemaDocumentsApply(t *testing.T) {
 	})
 	started := time.Now()
 	index := 0
-	for _, path := range paths {
-		text, diagnostics, err := dbspec.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
+	for _, sd := range documents {
+		path, name := sd.path, sd.name
+		var set []*dbspec.Document
+		for _, other := range slices.Sorted(maps.Keys(sd.documents)) {
+			rest := maps.Clone(sd.documents)
+			delete(rest, other)
+			document, _, diagnostics := dbspec.Parse(sd.documents[other], rest)
+			if len(diagnostics) > 0 {
+				t.Fatalf("%s/%s: %v", path, other, diagnostics)
+			}
+			set = append(set, document)
 		}
-		if len(diagnostics) > 0 {
-			t.Errorf("%s: %v", path, diagnostics)
-			continue
-		}
-		document, _, diagnostics := dbspec.Parse(text, nil)
-		if len(diagnostics) > 0 {
-			t.Errorf("%s: %v", path, diagnostics)
-			continue
-		}
-		name := strings.TrimSuffix(filepath.Base(path), ".dbs")
 		for _, db := range []string{"mysql", "postgres", "sqlite"} {
-			statements, diagnostics := dbspec.Render([]*dbspec.Document{document}, dbspec.Dialect(db))
+			statements, diagnostics := dbspec.Render(set, dbspec.Dialect(db))
 			if len(diagnostics) > 0 {
 				t.Errorf("%s on %s: %v", path, db, diagnostics)
 				continue
@@ -92,5 +135,5 @@ func TestSchemaDocumentsApply(t *testing.T) {
 			})
 		}
 	}
-	t.Logf("summary: %d documents on three databases in %s", len(paths), time.Since(started).Round(time.Millisecond))
+	t.Logf("summary: %d documents on three databases in %s", len(documents), time.Since(started).Round(time.Millisecond))
 }

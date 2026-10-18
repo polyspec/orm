@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/polyspec/orm/packages/go/internal/benchset"
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
@@ -37,8 +38,7 @@ func openSQLite(t *testing.T, dsn string, count int, install bool) []*orm.DB {
 		out[i] = db
 	}
 	if install {
-		manifest := model.Schema
-		if err := out[0].Utils().Schema().Install(manifest); err != nil {
+		if err := benchset.Install(out[0]); err != nil {
 			t.Fatalf("install: %v", err)
 		}
 	}

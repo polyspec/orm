@@ -50,11 +50,23 @@ fn round_trip_sets() -> Vec<RoundTripSet> {
         let documents = case["documents"].as_object().expect("documents").iter().map(|(name, l)| (name.clone(), lines(l))).collect();
         out.push(RoundTripSet { id, documents });
     }
+    // Each schema document is one set with the documents of its directory that it uses.
     for directory in SCHEMA_DOCUMENT_DIRECTORIES {
-        for path in schema_documents(&root.join(directory)) {
-            let name = path.file_stem().expect("stem").to_string_lossy().into_owned();
-            let text = dbspec::read_file(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
-            out.push(RoundTripSet { id: format!("schema_{name}"), documents: BTreeMap::from([(name, text)]) });
+        let texts: BTreeMap<String, String> = schema_documents(&root.join(directory))
+            .into_iter()
+            .map(|path| {
+                let name = path.file_stem().expect("stem").to_string_lossy().into_owned();
+                (name, dbspec::read_file(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display())))
+            })
+            .collect();
+        for (name, text) in &texts {
+            let others: BTreeMap<String, String> = texts.iter().filter(|(other, _)| *other != name).map(|(o, t)| (o.clone(), t.clone())).collect();
+            let document = dbspec::parse(text, &others).unwrap_or_else(|e| panic!("{directory}/{name}.dbs: {e:?}")).document;
+            let mut documents = BTreeMap::from([(name.clone(), text.clone())]);
+            for used in &document.uses {
+                documents.insert(used.document.text.clone(), texts[&used.document.text].clone());
+            }
+            out.push(RoundTripSet { id: format!("schema_{name}"), documents });
         }
     }
     out

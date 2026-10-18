@@ -13,6 +13,7 @@ import unittest
 from polyspec.orm.errors import OrmError
 from polyspec.orm.models import models
 from . import testcase
+from .bench_set import install_bench
 from .case_database import case_database
 
 DIALECTS = ("sqlite", "mysql", "postgres")
@@ -45,7 +46,7 @@ class ConnectionUtcTest(unittest.TestCase):
     deadline = testcase.DATABASE
 
     def connections_use_utc(self, dialect: str, db) -> None:
-        db.utils().schema().install(models.SCHEMA)
+        install_bench(db)
         user = models.User().connect(db).set_name("zone-user").create()
         service = models.Service().connect(db).set_name("zone-service").create()
         region = (

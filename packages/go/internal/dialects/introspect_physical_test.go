@@ -59,22 +59,8 @@ func roundTripSets(t *testing.T) []roundTripSet {
 		}
 		out = append(out, set)
 	}
-	for _, pattern := range schemaDocumentPatterns {
-		paths, err := filepath.Glob(pattern)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, path := range paths {
-			text, diagnostics, err := dbspec.ReadFile(path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(diagnostics) > 0 {
-				t.Fatal(diagnostics)
-			}
-			name := strings.TrimSuffix(filepath.Base(path), ".dbs")
-			out = append(out, roundTripSet{id: "schema_" + name, documents: map[string]string{name: text}})
-		}
+	for _, sd := range schemaDocumentSets(t) {
+		out = append(out, roundTripSet{id: "schema_" + sd.name, documents: sd.documents})
 	}
 	return out
 }

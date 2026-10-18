@@ -339,8 +339,9 @@ fn relation_getters_report_a_mismatched_relation_value() {
     }
 }
 
-/// A set that uses an external document (`uses`) makes models only for the tables it owns, and
-/// carries the text of tables used from external documents in the schema value.
+/// A set that uses an external document (`uses`) makes models for the tables it owns and read-only models
+/// for the tables it uses from external documents, none for an unused external table, and carries the
+/// text of the used tables in the schema value.
 #[test]
 fn generation_leaves_external_tables_out() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -354,7 +355,8 @@ fn generation_leaves_external_tables_out() {
     let _ = std::fs::remove_dir_all(&dir);
     let text = text.unwrap_or_else(|e| panic!("generate: {e}"));
     assert!(text.contains("pub struct ExtPost ") && text.contains("pub struct ExtPostHistory "), "the owned tables have models");
-    assert!(!text.contains("pub struct ExtAccount ") && !text.contains("pub struct ExtAudit "), "the external tables have no model");
+    assert!(text.contains("pub struct ExtAccount ") && text.contains("pub struct ExtAudit "), "the used external tables have models");
+    assert!(!text.contains("pub struct ExtSession "), "the unused external table ext_session has a model");
     assert!(text.contains("polyspec_orm::Schema::with_external("), "the schema value carries the external text:\n{text}");
     let external = external.unwrap_or_else(|e| panic!("orm_external.dbs: {e}"));
     assert!(external.starts_with("dbspec 1 ext_core\n"), "external text: {external}");

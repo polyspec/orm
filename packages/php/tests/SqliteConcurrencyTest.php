@@ -60,7 +60,7 @@ final class SqliteConcurrencyTest extends TestCase
     private static function database(string $name): string
     {
         $dsn = "sqlite://" . self::$work . "/$name.sqlite";
-        self::connect($dsn)->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
+        \Polyspec\Orm\Tests\installBench(self::connect($dsn));
         return $dsn;
     }
 

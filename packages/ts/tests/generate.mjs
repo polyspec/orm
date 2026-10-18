@@ -132,7 +132,9 @@ caseTest('generate', PROCESS, async () => {
     await rm(join(out, 'models.ts'));
     checked = run(...genCheck);
     check(checked.status === 1 && checked.stdout === `missing: ${out}/models.ts\n`, `gen --check on missing models: ${checked.status} ${checked.stdout}${checked.stderr}`);
-    // A set that uses external documents creates models only for the tables it owns, and puts the text of the tables used from external documents into the schema value.
+    // A set that uses external documents creates models for the tables it owns and read-only models for the tables it uses
+    // from external documents, documents in name order (docs/dbspec.md "Runtime model"), and puts the text of the tables
+    // used from external documents into the schema value.
     const external = join(root, 'contracts/fixtures/external');
     const memberOut = join(work, 'member');
     // The set owns member.dbs and names core.dbs in a sibling directory, through a `..` path.
@@ -144,7 +146,7 @@ caseTest('generate', PROCESS, async () => {
     if (member.status === 0) {
       const generated = await readFile(join(memberOut, 'models.ts'), 'utf8');
       const classes = [...generated.matchAll(/^export class (\w+) extends Model/gm)].map(m => m[1]);
-      check(JSON.stringify(classes) === JSON.stringify(['ExtPost', 'ExtPostHistory']), `classes of the member set ${JSON.stringify(classes)}, want the owned tables`);
+      check(JSON.stringify(classes) === JSON.stringify(['ExtAccount', 'ExtAudit', 'ExtPost', 'ExtPostHistory']), `classes of the member set ${JSON.stringify(classes)}, want the used external tables and the owned tables`);
       check(generated.includes('export const EXTERNAL_TEXT = `dbspec 1 ext_core\n'), 'the generated models carry the external text');
       check(generated.includes('externalText: EXTERNAL_TEXT') && generated.includes('registerModel(MANIFEST_TEXT, MANIFEST_HASH, EXTERNAL_TEXT)'), 'the schema value and the registered model carry the external text');
       check(!generated.includes('ext_session'), 'the generated models carry ext_session, which the set does not use');

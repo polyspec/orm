@@ -3,16 +3,28 @@
 //! second connection reads while a write transaction is open, and a write that
 //! waits longer than busy_timeout returns CANCELED.
 
+use std::sync::LazyLock;
 use std::time::{Duration, Instant};
 
 use futures_util::future::join_all;
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
 
-static SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/bench/bench.dbs"), "sha256:18b7c53c3dd768b76732c743c89659ec5dd7a1cdc2a818b7792d389740e50a88");
+/// The manifest text of contracts/fixtures/bench/bench.dbs alone: the document carries comments, which its manifest text
+/// leaves out, so the document text itself is not the manifest text.
+static MANIFEST_TEXT: LazyLock<String> = LazyLock::new(|| {
+    let text = include_str!("../../../../contracts/fixtures/bench/bench.dbs");
+    let document = polyspec_orm::dbspec::parse(text, &Default::default()).expect("bench.dbs parses").document;
+    polyspec_orm::dbspec::manifest(&[&document]).expect("the manifest of bench.dbs").manifest_text
+});
 
-static ENTITY: Entity =
-    Entity { name: "service", schema: &SCHEMA, new: polyspec_orm::model::new_boxed::<Service>, collect: polyspec_orm::model::collect_boxed::<Service> };
+static SCHEMA: LazyLock<Schema> = LazyLock::new(|| Schema::new(&MANIFEST_TEXT, "sha256:18b7c53c3dd768b76732c743c89659ec5dd7a1cdc2a818b7792d389740e50a88"));
+
+static ENTITY: LazyLock<Entity> = LazyLock::new(|| Entity {
+    name: "service",
+    schema: &SCHEMA,
+    new: polyspec_orm::model::new_boxed::<Service>,
+    collect: polyspec_orm::model::collect_boxed::<Service>,
+});
 
 /// The database of a writer process started by `writers_in_several_processes`.
 const WRITER_DSN: &str = "ORM_SQLITE_WRITER_DSN";

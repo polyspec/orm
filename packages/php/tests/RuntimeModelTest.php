@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// The runtime model of contracts/fixtures/bench/bench.dbs (docs/dbspec.md "Runtime model"):
+// The runtime model of the bench set contracts/fixtures/bench/dbspec-set.json (docs/dbspec.md "Runtime model"):
 // entities, the default select set, codec value types, the generated models
 // and their manifest hash, i16 fields, and a connection configuration without
 // a schema path. Database behavior is in RuntimeDbTest.php.
@@ -23,7 +23,7 @@ final class RuntimeModelTest extends TestCase
 {
     private static function bench(): RuntimeModel
     {
-        return RuntimeModel::build(RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/bench/bench.dbs']));
+        return RuntimeModel::build(RuntimeModel::set(dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json'));
     }
 
     private static function errorCode(Closure $fn): string
@@ -39,7 +39,7 @@ final class RuntimeModelTest extends TestCase
     public function test_entities_in_document_order(): void
     {
         $bench = self::bench();
-        $want = ['author', 'user', 'service', 'service_region', 'service_member', 'composite_account', 'composite_membership', 'soft_record', 'soft_link', 'account', 'project', 'account_project', 'task', 'hex_cell', 'time_cell', 'clock_cell', 'day_cell', 'upsert_cell', 'uuid_cell', 'bind_cell'];
+        $want = ['author', 'user', 'service', 'service_region', 'service_member', 'composite_account', 'composite_membership', 'soft_record', 'soft_link', 'account', 'project', 'account_project', 'task', 'hex_cell', 'time_cell', 'clock_cell', 'day_cell', 'upsert_cell', 'uuid_cell', 'bind_cell', 'note_reader', 'shared_note'];
         self::assertTrue(array_keys($bench->entities) === $want, 'entities ' . implode(',', array_keys($bench->entities)));
         $author = $bench->entities['author'];
         self::assertTrue($author['identity'] === 'seq' && $author['pk'] === ['seq'], 'author keys');
@@ -67,7 +67,7 @@ final class RuntimeModelTest extends TestCase
     {
         $root = dirname(__DIR__, 3);
         $bench = self::bench();
-        $manifest = Dbspec::manifest(RuntimeModel::files(["$root/contracts/fixtures/bench/bench.dbs"]))->manifest;
+        $manifest = Dbspec::manifest(RuntimeModel::set("$root/contracts/fixtures/bench/dbspec-set.json"))->manifest;
         $hash = Author::meta()['manifest_hash'];
         self::assertTrue($hash === $manifest->manifestHash, "manifest hash $hash");
         self::assertTrue(str_starts_with($hash, 'sha256:'), 'manifest hash form');
@@ -88,10 +88,10 @@ final class RuntimeModelTest extends TestCase
         };
         $hash = Author::meta()['manifest_hash'];
         $text = Registry::manifestText($hash);
-        self::assertTrue(RuntimeModel::fromModels($hash, $text, [Author::class])->entities['author'] === self::bench()->entities['author'], 'a current model is taken');
+        self::assertTrue(RuntimeModel::fromModels($hash, $text, [Author::class], \Polyspec\Orm\Tests\Model\EXTERNAL_TEXT)->entities['author'] === self::bench()->entities['author'], 'a current model is taken');
         $message = '';
         try {
-            RuntimeModel::fromModels($hash, $text, [$stale::class]);
+            RuntimeModel::fromModels($hash, $text, [$stale::class], \Polyspec\Orm\Tests\Model\EXTERNAL_TEXT);
         } catch (OrmException $e) {
             self::assertTrue($e->code_ === Code::CONFIG, "code {$e->code_}");
             $message = $e->getMessage();

@@ -3,20 +3,27 @@
 //! timestamp. Statements are captured from SQLite, which every environment
 //! provides.
 
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 
 use chrono::NaiveDateTime;
 use polyspec_orm::{Config, Core, Db, Entity, Model, Param, Schema, StatementEvent, Val};
 
-static SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/bench/bench.dbs"), "sha256:18b7c53c3dd768b76732c743c89659ec5dd7a1cdc2a818b7792d389740e50a88");
+/// The manifest text of contracts/fixtures/bench/bench.dbs alone: the document carries comments, which its manifest text
+/// leaves out, so the document text itself is not the manifest text.
+static MANIFEST_TEXT: LazyLock<String> = LazyLock::new(|| {
+    let text = include_str!("../../../../contracts/fixtures/bench/bench.dbs");
+    let document = polyspec_orm::dbspec::parse(text, &Default::default()).expect("bench.dbs parses").document;
+    polyspec_orm::dbspec::manifest(&[&document]).expect("the manifest of bench.dbs").manifest_text
+});
 
-static ENTITY: Entity = Entity {
+static SCHEMA: LazyLock<Schema> = LazyLock::new(|| Schema::new(&MANIFEST_TEXT, "sha256:18b7c53c3dd768b76732c743c89659ec5dd7a1cdc2a818b7792d389740e50a88"));
+
+static ENTITY: LazyLock<Entity> = LazyLock::new(|| Entity {
     name: "soft_record",
     schema: &SCHEMA,
     new: polyspec_orm::model::new_boxed::<SoftRecord>,
     collect: polyspec_orm::model::collect_boxed::<SoftRecord>,
-};
+});
 
 #[derive(Clone)]
 struct SoftRecord {

@@ -116,14 +116,15 @@ final class SchemaSetTest extends TestCase
     }
 
     /**
-     * The connection opened with the bench helper installs the bench and decimal sets (decimal twice,
+     * The connection opened with the bench helper installs the bench set (installBench) and the decimal set (decimal twice,
      * and the second install changes nothing), and uses the models of both sets inside and outside a transaction.
      */
     private static function severalSchemas(string $dsn): void
     {
         $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config());
         try {
-            foreach ([\Polyspec\Orm\Tests\Model\schema(), \Polyspec\Orm\Tests\SchemaSetDecimal\schema(), \Polyspec\Orm\Tests\SchemaSetDecimal\schema()] as $schema) {
+            \Polyspec\Orm\Tests\installBench($db);
+            foreach ([\Polyspec\Orm\Tests\SchemaSetDecimal\schema(), \Polyspec\Orm\Tests\SchemaSetDecimal\schema()] as $schema) {
                 $db->utils()->schema()->install($schema);
             }
             (new User)($db)->setName('core')->create();
@@ -370,7 +371,7 @@ final class SchemaSetTest extends TestCase
         ['member' => $member] = self::externalSets();
         $installer = Orm::connect($dsn, new Config());
         try {
-            $installer->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
+            \Polyspec\Orm\Tests\installBench($installer);
         } finally {
             $installer->close();
         }

@@ -17,6 +17,7 @@ import {
 } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { DATABASE, sections } from '../../../tests/testcase.mts';
+import { installBench } from './bench-set.mjs';
 import { caseName, mysqlConnection, postgresClient, relatedDsn, withCaseDatabase } from './case-database.mjs';
 
 /** Drops the table of a case through the pooler's single database; a failure names the table. */
@@ -148,8 +149,8 @@ async function install(dsn) {
   const db = await connect(dsn);
   try {
     check(await db.utils().schema().empty(), 'schema().empty() before install');
-    await db.utils().schema().install(SCHEMA);
-    await db.utils().schema().install(SCHEMA);
+    await installBench(db);
+    await installBench(db);
   } finally { await db.close(); }
 }
 
@@ -168,7 +169,7 @@ async function schemaEmpty(dialect, dsn) {
       } finally { await postgres(dsn, ['DROP SCHEMA unowned_empty']); }
       check(await db.utils().schema().empty(), 'the empty schema dropped');
     }
-    await db.utils().schema().install(SCHEMA);
+    await installBench(db);
     check(!(await db.utils().schema().empty()), 'installed tables');
   } finally { await db.close(); }
 }

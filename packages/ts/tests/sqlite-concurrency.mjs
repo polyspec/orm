@@ -11,7 +11,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { after } from 'node:test';
-import { OrmError, SCHEMA, Service, connect } from '../dist/index.js';
+import { OrmError, Service, connect } from '../dist/index.js';
+import { installBench } from './bench-set.mjs';
 import { PROCESS, caseTest } from '../../../tests/testcase.mts';
 
 
@@ -48,7 +49,7 @@ function check(cond, message) {
 async function database(name) {
   const dsn = `sqlite://${join(work, `${name}.sqlite`)}`;
   const db = await connect(dsn);
-  try { await db.utils().schema().install(SCHEMA); } finally { await db.close(); }
+  try { await installBench(db); } finally { await db.close(); }
   return dsn;
 }
 

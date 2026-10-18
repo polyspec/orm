@@ -10,11 +10,12 @@ use PHPUnit\Framework\TestCase;
 #[Medium]
 final class SqliteWithoutMysqlTest extends TestCase
 {
-    // The child program: it refuses a MySQL driver, then runs the SQLite case with the autoloader and work directory it is given.
+    // The child program: it refuses a MySQL driver, then runs the SQLite case with the autoloader, the bench install helper and the work directory it is given.
     private const CHILD = <<<'PHP'
         $autoload = $argv[1];
         $work = $argv[2];
         require $autoload;
+        require $argv[3];
         // orm's MySQL dialect classes: a load of one of them fails the child, before its code runs. It is registered after
         // the Composer loader, which prepends itself, so this guard sees every class load first.
         $mysqlDialect = ['Polyspec\\Orm\\Dbspec\\MysqlCatalog'];
@@ -30,7 +31,7 @@ final class SqliteWithoutMysqlTest extends TestCase
             fwrite(STDERR, "the sqlite DSN selected the dialect {$db->driver()} and the PDO driver $driver");
             exit(4);
         }
-        $db->utils()->schema()->install(Polyspec\Orm\Tests\Model\schema());
+        \Polyspec\Orm\Tests\installBench($db);
         $created = (new Polyspec\Orm\Tests\Model\Service)($db)->setName('without-mysql')->create();
         $read = (new Polyspec\Orm\Tests\Model\Service)($db)->getBySeq($created->getSeq());
         $db->close();
@@ -58,7 +59,7 @@ final class SqliteWithoutMysqlTest extends TestCase
         }
         try {
             $process = proc_open(
-                [PHP_BINARY, '-n', '-r', self::CHILD, '--', "$root/vendor-php/autoload.php", $work],
+                [PHP_BINARY, '-n', '-r', self::CHILD, '--', "$root/vendor-php/autoload.php", $work, __DIR__ . '/bench.php'],
                 [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
                 $pipes,
             );

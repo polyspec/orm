@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/polyspec/orm/packages/go/internal/benchset"
 	"github.com/polyspec/orm/packages/go/internal/testdb"
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
@@ -87,7 +88,6 @@ func awaitReplica(t *testing.T, driver, primary, replicaServer string) {
 // transaction.
 func TestPrimaryAndReplica(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	manifest := model.Schema
 	for driver, dsns := range replicaTargets(t) {
 		t.Run(driver, func(t *testing.T) {
 			// It creates the case database on the primary, and on the replica opens the replicated database of the same name.
@@ -98,7 +98,7 @@ func TestPrimaryAndReplica(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer master.Close()
-			if err := master.Utils().Schema().Install(manifest); err != nil {
+			if err := benchset.Install(master); err != nil {
 				t.Fatal(err)
 			}
 			name := fmt.Sprintf("replica-%d", time.Now().UnixNano())
@@ -150,14 +150,13 @@ func TestPrimaryAndReplica(t *testing.T) {
 // and a write returns READ_ONLY.
 func TestReadOnlySQLite(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	manifest := model.Schema
 	path := filepath.Join(t.TempDir(), "read-only.sqlite")
 	dsn := "sqlite://" + path
 	writable, err := model.Connect(dsn, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := writable.Utils().Schema().Install(manifest); err != nil {
+	if err := benchset.Install(writable); err != nil {
 		t.Fatal(err)
 	}
 	must(model.User().Connect(writable).SetName("read-only").Create())

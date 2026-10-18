@@ -138,7 +138,7 @@ final class ModelTest extends TestCase
     private static function database(string $driver, string $dsn): Db
     {
         $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
-        $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
+        \Polyspec\Orm\Tests\installBench($db);
         return $db;
     }
 
@@ -159,7 +159,7 @@ final class ModelTest extends TestCase
             }
             self::check($db->utils()->schema()->empty() === true, 'the empty schema dropped');
         }
-        $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
+        \Polyspec\Orm\Tests\installBench($db);
         self::check($db->utils()->schema()->empty() === false, 'installed tables');
         $db->close();
     }
@@ -864,7 +864,7 @@ final class ModelTest extends TestCase
         $inside = null;
         $db->transaction(function () use ($db, &$inside): void {
             try {
-                $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
+                \Polyspec\Orm\Tests\installBench($db);
             } catch (OrmException $e) {
                 $inside = $e;
             }

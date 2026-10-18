@@ -24,7 +24,7 @@ export const CONNECTION_RULES = {
   postgres: ["SET TimeZone = 'UTC'"],
   sqlite: ['PRAGMA foreign_keys = ON'],
 };
-// The *.dbs files in the same directory as packages/go/internal/dialects schemaDocumentPatterns.
+// The *.dbs files in the same directories as packages/go/internal/dialects schemaDocumentPatterns.
 const SCHEMA_DIRECTORIES = ['contracts/fixtures/bench', 'contracts/fixtures'];
 
 const mysqlDSN = process.env.ORM_TEST_MYSQL_DSN;
@@ -50,12 +50,21 @@ export function roundTripSets() {
     out.push({ id: 'ddl_' + c.id.replaceAll('-', '_'), documents });
   }
   for (const directory of SCHEMA_DIRECTORIES) {
-    const files = readdirSync(new URL(directory + '/', root)).filter(f => f.endsWith('.dbs')).sort();
-    for (const file of files) {
-      const name = file.slice(0, -'.dbs'.length);
+    // Each schema document is one set with the documents of its directory that it uses.
+    const texts = {};
+    for (const file of readdirSync(new URL(directory + '/', root)).filter(f => f.endsWith('.dbs')).sort()) {
       const read = readDbspecFile(fileURLToPath(new URL(`${directory}/${file}`, root)));
       if (read.text === null) throw new Error(read.diagnostics[0].message);
-      out.push({ id: 'schema_' + name, documents: { [name]: read.text } });
+      texts[file.slice(0, -'.dbs'.length)] = read.text;
+    }
+    for (const [name, source] of Object.entries(texts)) {
+      const others = { ...texts };
+      delete others[name];
+      const { document, diagnostics } = parseDbspec(source, others);
+      if (document === null) throw new Error(`${directory}/${name}.dbs: ${JSON.stringify(diagnostics)}`);
+      const documents = { [name]: source };
+      for (const use of document.uses) documents[use.document] = texts[use.document];
+      out.push({ id: 'schema_' + name, documents });
     }
   }
   return out;

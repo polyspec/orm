@@ -5,3 +5,4 @@ declare(strict_types=1);
 // Polyspec\Orm\Tests\Model\ (gen) and Polyspec\Orm\Tests\MarkdownModel\ (markdownmodel) and gen/bootstrap.php, the
 // registration of the generated test models.
 require_once dirname(__DIR__, 3) . '/vendor-php/autoload.php';
+require_once __DIR__ . '/bench.php';

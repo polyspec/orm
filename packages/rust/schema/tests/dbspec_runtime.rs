@@ -73,6 +73,7 @@ fn runtime_model_of_bench() {
             "composite_account",
             "composite_membership",
             "soft_record",
+            "soft_link",
             "account",
             "project",
             "account_project",

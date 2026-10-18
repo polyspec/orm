@@ -6,6 +6,7 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/polyspec/orm/packages/go/decimalmodel"
+	"github.com/polyspec/orm/packages/go/internal/benchset"
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
 	_ "github.com/polyspec/orm/packages/go/orm/pg"
@@ -23,7 +24,7 @@ func schemaSetDatabase(t *testing.T, driver string) string {
 	return testdb.New(t, driver)
 }
 
-// schemaSet connects with the bench set's connect helper and installs the bench and decimal schemas
+// schemaSet connects with the bench set's connect helper and installs the bench set (benchset.Install) and the decimal schema
 // (decimal twice; the second install changes nothing), and uses the generated models of both sets
 // inside and outside transactions on that connection.
 func schemaSet(t *testing.T, driver string) {
@@ -33,7 +34,10 @@ func schemaSet(t *testing.T, driver string) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	for _, schema := range []*orm.Schema{model.Schema, decimalmodel.Schema, decimalmodel.Schema} {
+	if err := benchset.Install(db); err != nil {
+		t.Fatal(err)
+	}
+	for _, schema := range []*orm.Schema{decimalmodel.Schema, decimalmodel.Schema} {
 		if err := db.Utils().Schema().Install(schema); err != nil {
 			t.Fatal(err)
 		}

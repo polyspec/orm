@@ -14,6 +14,7 @@ import (
 	_ "github.com/polyspec/orm/packages/go/orm/pg"
 	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
 
+	"github.com/polyspec/orm/packages/go/internal/benchset"
 	"github.com/polyspec/orm/packages/go/internal/testdb"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
@@ -25,7 +26,6 @@ import (
 func databases(t *testing.T) map[string]*orm.DB {
 	t.Helper()
 	out := map[string]*orm.DB{}
-	manifest := model.Schema
 	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
 		dsn := testdb.New(t, driver)
 		if driver == "sqlite" {
@@ -37,7 +37,7 @@ func databases(t *testing.T) map[string]*orm.DB {
 		}
 		t.Cleanup(func() { db.Close() })
 		dsns.Store(db, dsn)
-		if err := db.Utils().Schema().Install(manifest); err != nil {
+		if err := benchset.Install(db); err != nil {
 			t.Fatalf("%s install: %v", driver, err)
 		}
 		out[driver] = db
@@ -198,8 +198,7 @@ func TestGetMissingReturnsNil(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	manifest := model.Schema
-	if err := db.Utils().Schema().Install(manifest); err != nil {
+	if err := benchset.Install(db); err != nil {
 		t.Fatal(err)
 	}
 	row, err := model.User().Connect(db).Seq(999999999).Get()

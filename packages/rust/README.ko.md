@@ -130,7 +130,7 @@ cd packages/rust
 cargo clippy --workspace --all-targets -- -D warnings
 ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ORM_TEST_MYSQL_SERVER_DSN=… ORM_TEST_POSTGRES_SERVER_DSN=… cargo test --workspace
 cargo build -p polyspec-orm-tests
-ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ./target/debug/integration ../../contracts/fixtures/bench/bench.dbs
+ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ./target/debug/integration ../../contracts/fixtures/bench/dbspec-set.json
 ./target/debug/conformance --dsn "mysql://…" ../../contracts/fixtures/bench/bench.dbs
 ```
 

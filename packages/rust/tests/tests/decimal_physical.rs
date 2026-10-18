@@ -4,6 +4,10 @@
 polyspec_orm::models!();
 
 #[cfg(test)]
+#[path = "../src/bench_set.rs"]
+mod bench_set;
+
+#[cfg(test)]
 #[allow(
     dead_code,
     unused_imports,
@@ -109,7 +113,7 @@ async fn schema_set_server(driver: &str, statement: &str) {
     }
 }
 
-/// The bench helper connects, installs the bench and decimal document sets
+/// The bench helper connects, installs the bench set (bench_set::install) and the decimal document set
 /// (the decimal set twice; the second installation changes nothing), and uses
 /// the generated models of both sets on the connection inside and outside a
 /// transaction.
@@ -120,7 +124,8 @@ async fn schema_set(driver: &str) {
 
     let (dsn, name) = schema_set_database(driver).await;
     let db = model::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
-    for schema in [&model::SCHEMA, &decimal_model::SCHEMA, &decimal_model::SCHEMA] {
+    bench_set::install(&db).await.unwrap_or_else(|e| panic!("{driver}: install of the bench set: {e}"));
+    for schema in [&decimal_model::SCHEMA, &decimal_model::SCHEMA] {
         db.utils().schema().install(schema).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
     }
     User::new().connect(&db).set_name("core").create().await.unwrap();
