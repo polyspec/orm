@@ -1,4 +1,4 @@
-# Error codes shared by the planner and every executor. `orm-gen errors --lang go|php|rust`
+# Error codes shared by the planner and every executor. `orm-gen errors --lang go|php|php-extension|rust|typescript|python`
 # generates one constants file per language from this file; codes are the stable `error.code`.
 # origin: engine = raised while planning a request in the client process;
 #         executor = raised by the language runtime; driver = reported by the DB driver: the listed

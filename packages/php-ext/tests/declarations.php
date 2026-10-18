@@ -1,17 +1,21 @@
 <?php
 declare(strict_types=1);
 
-// Reads the class declarations of Polyspec\Orm\Dbspec\Native with Reflection and prints them as JSON: each class and its modifiers, parent and
+// Reads the class declarations of the extension's native classes with Reflection and prints them as JSON: each class and its modifiers, parent and
 // interfaces, constants and values, property modifiers, types and defaults, method modifiers, arguments and return types.
 //
 // Usage: php -d extension=<orm_dbspec library> declarations.php extension
 //        php declarations.php stub
 //        php declarations.php client
 // The extension reads the classes that the loaded extension orm_dbspec registers, and the stub reads the
-// classes that stubs/orm_dbspec.stub.php declares. The two outputs must match (DeclarationsTest.php). The client reads the PHP client's Polyspec\Orm\Dbspec
-// classes that are not @internal as Polyspec\Orm\Dbspec\Native names: the extension must have the same public declarations for each class.
+// classes that the stubs (stubs/*.stub.php) declare. The two outputs must match (DeclarationsTest.php). The client reads the PHP client classes that
+// the extension implements, the Polyspec\Orm\Dbspec classes that are not @internal and Polyspec\Orm\Code, as their native names: the extension
+// must have the same public declarations for each class. A native name is the client's name with Native as the last namespace segment:
+// Polyspec\Orm\Dbspec\Dbspec is Polyspec\Orm\Dbspec\Native\Dbspec, and Polyspec\Orm\Code is Polyspec\Orm\Native\Code.
 
-const NATIVE_NAMESPACE = 'Polyspec\\Orm\\Dbspec\\Native\\';
+const NATIVE_NAMESPACES = ['Polyspec\\Orm\\Dbspec\\Native\\', 'Polyspec\\Orm\\Native\\'];
+/** The PHP client classes outside Polyspec\Orm\Dbspec that the extension implements. */
+const CLIENT_CLASSES = ['Polyspec\\Orm\\Code'];
 
 $mode = $argv[1] ?? '';
 if ($mode === 'extension') {
@@ -26,7 +30,9 @@ if ($mode === 'extension') {
         exit(1);
     }
     $before = get_declared_classes();
-    require dirname(__DIR__) . '/stubs/orm_dbspec.stub.php';
+    foreach (glob(dirname(__DIR__) . '/stubs/*.stub.php') as $file) {
+        require $file;
+    }
     $classes = array_values(array_diff(get_declared_classes(), $before));
 } elseif ($mode === 'client') {
     if (extension_loaded('orm_dbspec')) {
@@ -41,12 +47,17 @@ if ($mode === 'extension') {
             $classes[] = $client->getName();
         }
     }
+    array_push($classes, ...CLIENT_CLASSES);
 } else {
     fwrite(STDERR, "usage: php declarations.php extension|stub|client\n");
     exit(2);
 }
-// The client's name and self are read as the extension's name.
-$native = static fn(string $text, string $class): string => preg_replace(['/\\bPolyspec\\\\Orm\\\\Dbspec\\\\(?!Native\\\\)/', '/\\bself\\b/'], ['Polyspec\\Orm\\Dbspec\\Native\\', $class], $text);
+// The client's names and self are read as the extension's names: Native becomes the last namespace segment of each Polyspec\Orm name.
+$native = static fn(string $text, string $class): string => preg_replace(
+    ['/\\bPolyspec\\\\Orm\\\\(?!(?:[A-Z][A-Za-z0-9]*\\\\)*Native\\\\)((?:[A-Z][A-Za-z0-9]*\\\\)*)([A-Z][A-Za-z0-9]*)\\b(?!\\\\)/', '/\\bself\\b/'],
+    ['Polyspec\\Orm\\\\${1}Native\\\\${2}', $class],
+    $text,
+);
 
 $type = static fn(?ReflectionType $t): string => $t === null ? '' : (string) $t;
 $client = $mode === 'client';
@@ -55,8 +66,8 @@ $out = [];
 sort($classes);
 foreach ($classes as $source) {
     $name = $client ? $native($source, '') : $source;
-    if (!str_starts_with($name, NATIVE_NAMESPACE)) {
-        fwrite(STDERR, "declarations.php $mode: $name is outside " . NATIVE_NAMESPACE . "\n");
+    if (array_filter(NATIVE_NAMESPACES, static fn(string $namespace): bool => str_starts_with($name, $namespace)) === []) {
+        fwrite(STDERR, "declarations.php $mode: $name is outside " . implode(' and ', NATIVE_NAMESPACES) . "\n");
         exit(1);
     }
     $class = new ReflectionClass($source);

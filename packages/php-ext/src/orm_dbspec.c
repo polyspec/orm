@@ -1,6 +1,7 @@
 /*
  * Module of the orm_dbspec extension. It uses the arginfo generated from stubs/orm_dbspec.stub.php to
  * register the classes of Polyspec\Orm\Dbspec\Native, and implements their constructors, methods, and Dbspec's static methods the same as the PHP client (packages/php/src/Dbspec).
+ * The arginfo generated from stubs/code.stub.php (orm-gen errors) registers Polyspec\Orm\Native\Code, the error codes of docs/errors.yaml.
  */
 #include "dbspec.h"
 #include "ext/pdo/php_pdo_driver.h"
@@ -11,6 +12,7 @@
 #include "Zend/zend_interfaces.h"
 #include "Zend/zend_closures.h"
 #include "orm_dbspec_arginfo.h"
+#include "code_arginfo.h"
 
 #define ORM_DBSPEC_VERSION "0.0.18"
 
@@ -2251,6 +2253,7 @@ static void array_constant(zend_class_entry *ce, const char *name, const char *c
 
 static PHP_MINIT_FUNCTION(orm_dbspec)
 {
+    register_class_Polyspec_Orm_Native_Code();
     dbs_ce_Diagnostic = register_class_Polyspec_Orm_Dbspec_Native_Diagnostic();
     dbs_ce_Document = register_class_Polyspec_Orm_Dbspec_Native_Document();
     dbs_ce_UseLine = register_class_Polyspec_Orm_Dbspec_Native_UseLine();

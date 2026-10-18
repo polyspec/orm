@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The PHP extension registers the error codes of docs/errors.yaml as Polyspec\Orm\Native\Code, from a stub that `orm-gen errors --lang php-extension` writes (T182-1).
 - The PHP extension's mirrored dbspec tests have the same bodies as the PHP client's again (T131-11).
 - The PHP extension's arginfo header is regenerated for its translated stub, so its check passes (T131-10).
 - The owner selection tests expect comment-language-check, which every source change selects (T131-9).

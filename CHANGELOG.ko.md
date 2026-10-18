@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: bf43cb7d822cb35ec1da4fdd0d4af4c466cc3272b3dcb6370d0bfeb3d6f7aafe -->
+<!-- source-sha256: cb991a89d63b1a783a38fbd41cc7c5eb9bede58aaf961b2f2a9d32fbaef21e9d -->
 # 변경 이력
 
 ## Unreleased
+- PHP extension이 docs/errors.yaml의 error code를 `orm-gen errors --lang php-extension`이 쓰는 stub에서 Polyspec\Orm\Native\Code로 등록한다(T182-1).
 - PHP extension의 mirror dbspec test가 다시 PHP client와 같은 본문을 갖는다(T131-11).
 - PHP extension의 arginfo header를 번역된 stub에 맞게 다시 생성해 그 검사가 통과한다(T131-10).
 - owner 선택 test가 모든 source 변경이 선택하는 comment-language-check를 기대한다(T131-9).

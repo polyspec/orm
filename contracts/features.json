@@ -9065,6 +9065,7 @@
         "docs/errors.yaml",
         "packages/go/orm/codes.go",
         "packages/php/src/Code.php",
+        "packages/php-ext/stubs/code.stub.php",
         "packages/rust/orm/src/codes.rs",
         "packages/go/cmd/orm-gen/errors.go",
         "packages/ts/src/codes.ts",
@@ -9077,7 +9078,7 @@
         "packages/ts/tests/code-catalog.mjs",
         "packages/python/tests/test_code_catalog.py"
       ],
-      "command": "sh -c 'dir=$(mktemp -d) && trap \"rm -rf \\\"$dir\\\"\" EXIT && for pair in go:packages/go/orm/codes.go php:packages/php/src/Code.php rust:packages/rust/orm/src/codes.rs; do node tests/go-run.mts orm-gen ./packages/go/cmd/orm-gen errors --lang \"${pair%%:*}\" --out \"$dir/${pair%%:*}\" && diff -u \"${pair#*:}\" \"$dir/${pair%%:*}\" || exit 1; done'"
+      "command": "sh -c 'dir=$(mktemp -d) && trap \"rm -rf \\\"$dir\\\"\" EXIT && for pair in go:packages/go/orm/codes.go php:packages/php/src/Code.php php-extension:packages/php-ext/stubs/code.stub.php rust:packages/rust/orm/src/codes.rs; do node tests/go-run.mts orm-gen ./packages/go/cmd/orm-gen errors --lang \"${pair%%:*}\" --out \"$dir/${pair%%:*}\" && diff -u \"${pair#*:}\" \"$dir/${pair%%:*}\" || exit 1; done'"
     },
     {
       "id": "go-decimal-model-generated",

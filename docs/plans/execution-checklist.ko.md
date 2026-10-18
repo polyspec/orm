@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 89fc73ee70838347cadea074368348109f975b17c9ede3f407b6a1d1b558ab70 -->
+<!-- source-sha256: 41c87f837d44d1663e4a6397cf891fb79a5186a3f18361cbcaf0d396333940cb -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1459,7 +1459,7 @@
   - [o] T181-4 `push-gate`를 mise.toml을 읽는 setup-node release에 고정한다 (T181에 이어). 원인: T181이 node를 mise.toml로 옮기고 node-version-file: mise.toml을 썼는데, `push-gate.yml`은 actions/setup-node를 mise.toml을 읽지 못하는 이전 v7 commit 82076278에 고정해, T181 뒤 main의 모든 `push-gate` run이 실패했다("Unable to find Node version '[tools]'"). 완료 조건: `push-gate`가 kit의 release.yml과 같은 949feb24(v7.1.0)에 고정되고 main에서 `push-gate`가 통과한다.
     Evidence: 2a934dc6부터 a2232a24까지 main의 `push-gate` run이 setup-node에서 그 message로 실패했고, 949feb24로 해석되는 v7 tag를 쓰는 docs-pages는 mise.toml을 읽어 통과했다. `push-gate.yml`은 이제 949feb24에 고정된다.
 - [ ] T182 PHP extension에 protocol 전체를 구현한다. 원인: packages/php-ext는 dbspec parser와 emitter(parse.c, emit.c)만 구현한다. IR 검증기, message encoder, planner, 실행기가 없어 planner, bind, conformance vector를 하나도 실행하지 않고, 다른 구현은 모두 실행한다(T79, T81, T91, T92에서 발견). owner 판정(2026-10-15): extension은 구현이 중단된 것이며 명세 전체를 구현해야 한다. 지금 병렬로 진행하면 열린 항목의 완료가 늦어지므로 orm 안정 release 뒤에 시작한다. 완료 조건: extension이 다른 다섯 구현과 함께 모든 공유 vector(planner, bind, MySQL, PostgreSQL, SQLite의 conformance)를 통과하고, parity가 모든 query unit에 그것을 포함한다. Retry: orm 안정 release가 나오면 시작한다. 결정(사용자, 2026-10-18): 개발은 릴리스 없이 로컬 링크로 한다. orm 릴리스를 기다리는 retry는 변경이 orm main에 있으면 충족된다. retry가 main에서 충족됐다.
-  - [ ] T182-1 extension의 error catalog (T182에 이어). 완료 기준: extension이 다른 client처럼 orm-gen이 생성한 catalog에서 errors.yaml의 code를 낸다. client profile의 error-code api unit이 이것을 센다.
+  - [o] T182-1 extension의 error catalog (T182에 이어). 완료 기준: extension이 다른 client처럼 orm-gen이 생성한 stub에서 errors.yaml의 code를 Polyspec\Orm\Native\Code로 등록하고, 상수는 PHP client의 Code와 같다. profile은 그 구현의 모든 unit을 요구하므로, client profile의 error-code api unit은 T182-6이 extension을 그 profile에 넣을 때 이것을 센다. 증거: `orm-gen errors --lang php-extension`이 packages/php-ext/stubs/code.stub.php를 쓴다. packages/php-ext/scripts/arginfo.php가 gen_stub.php로 src/code_arginfo.h를 만든다. MINIT이 class를 등록한다. declarations.php가 native 명명 규칙(마지막 namespace 단계가 Native)으로 Polyspec\Orm\Code와 비교한다. RED: `make -s dbspec-php-extension-check/declarations`가 test_client에서 Polyspec\Orm\Native\Code와 상수 40개가 `(not declared)`로 실패했다. GREEN: arginfo 검사와 declarations target이 test 5개로 두 번 통과한다. catalog drift loop가 go, php, php-extension, rust에서 같은 파일을 낸다. interface 검사가 class를 기록한다(contracts/symbols/php-extension.json). `make -s feature-unit-check`가 exit 0이다.
   - [ ] T182-2 extension의 codec (T182-1에 이어). 완료 기준: 모든 logical type의 encode와 decode, AES와 decode vector. codec, codec-aes, codec-decode suite가 id로 실행된다.
   - [ ] T182-3 extension의 IR validator (T182-1에 이어). 완료 기준: tests/ir/validate.json이 case 이름으로 실행되고 다른 client와 같은 code를 낸다.
   - [ ] T182-4 extension의 planner (T182-3에 이어). 완료 기준: planner, insert-parts, ir-answers가 id로 실행된다.

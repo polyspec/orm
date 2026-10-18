@@ -1,4 +1,8 @@
 {
+  "packages/php-ext/stubs/code.stub.php::Polyspec\\Orm\\Native\\Code": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Native\\Code extends  implements  uses "
+  },
   "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Analysis": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\Analysis extends  implements  uses "

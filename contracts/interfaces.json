@@ -47,13 +47,13 @@
   },
   "extensions": {
     "php-extension": {
-      "description": "The PHP extension orm_dbspec (packages/php-ext) implements the dbspec surface of the PHP client in C as Polyspec\\Orm\\Dbspec\\Native\\Dbspec, with the same classes, properties and methods as Polyspec\\Orm\\Dbspec. Its declarations are read from its stub with the PHP parser; make dbspec-php-extension-check checks that the loaded extension declares the same.",
+      "description": "The PHP extension orm_dbspec (packages/php-ext) implements the dbspec surface of the PHP client in C as Polyspec\\Orm\\Dbspec\\Native\\Dbspec, with the same classes, properties and methods as Polyspec\\Orm\\Dbspec, and the error codes of Polyspec\\Orm\\Code as Polyspec\\Orm\\Native\\Code. Its declarations are read from its stub with the PHP parser; make dbspec-php-extension-check checks that the loaded extension declares the same.",
       "syntax": "php",
       "roots": [
         "packages/php-ext/stubs"
       ],
       "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:2c156fbd6cddc0480772dfa720a31817a0751662abef13c5eb26e6ed3306caec",
+      "symbol_hash": "sha256:713f81950e47de7d726e7840dba180d170b790723f5722c38a21add67a0c4121",
       "rules": [
         "Dbspec.readFile",
         "Dbspec.readBytes",
