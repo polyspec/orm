@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0cd7c2f417293747a89c4f761d7938f385fee380942c6b85bc26fbc204828aae -->
+<!-- source-sha256: 389638c9cb38e84d6c0322fccb5b68b9366fc04b3a0cfd302f572205f7ce536a -->
 # 변경 이력
 
 ## Unreleased
+- Names::column이 문자열이 아닌 column에 대해 extension처럼 자기 TypeError를 밝힌다(T182-0-2-2).
 - 공유 vector가 고정하지 않는 PHP dbspec 동작을 PHP library에서 기록한 결과를 가진 case로 두어, test 하나가 Polyspec\Orm\Dbspec의 각 구현을 자기 process에서 검사한다(T182-0-1).
 - PHP library가 array에 다른 type을 담은 document, document set, plan 목록, unsupported 목록을 경고와 함께 읽지 않고, extension과 같은 TypeError로 거부한다(T182-0-1-1).
 - PHP extension이 docs/errors.yaml의 error code를 `orm-gen errors --lang php-extension`이 쓰는 stub에서 Polyspec\Orm\Native\Code로 등록한다(T182-1).

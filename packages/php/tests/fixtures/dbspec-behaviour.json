@@ -370,7 +370,7 @@
         ],
         "names/column/non-string-element": [
             "TypeError",
-            "Polyspec\\Orm\\Dbspec\\Names::render(): Argument #2 ($suffix) must be of type string, int given"
+            "Polyspec\\Orm\\Dbspec\\Names::column(): Argument #3 ($columns) must contain only strings, int given"
         ],
         "names/of-table": [
             [],

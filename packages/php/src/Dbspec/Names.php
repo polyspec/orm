@@ -54,13 +54,22 @@ final class Names
 
     /**
      * The column among $columns whose renderer name is $name, or null. Recomputes
-     * each name; never splits $name on $.
+     * each name; never splits $name on $. An element that is not a string is a
+     * TypeError of this argument.
      *
      * @param Traversable<int, string>|array<int, string> $columns
      */
     public static function column(string $table, string $name, \Traversable|array $columns): ?string
     {
         foreach ($columns as $column) {
+            if (!is_string($column)) {
+                $given = match (true) {
+                    $column === true => 'true',
+                    $column === false => 'false',
+                    default => get_debug_type($column),
+                };
+                throw new \TypeError(__METHOD__ . "(): Argument #3 (\$columns) must contain only strings, $given given");
+            }
             if (self::render($table, $column) === $name) {
                 return $column;
             }
