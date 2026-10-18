@@ -1247,6 +1247,10 @@
     "exported": false,
     "signature": " fn model_of (\u0026 self , e : \u0026 Expr) -\u003e Option \u003c String \u003e"
   },
+  "packages/rust/build/src/scan.rs::Scanner \u003c '_ \u003e::optional": {
+    "exported": false,
+    "signature": " fn optional (t : \u0026 Type) -\u003e bool"
+  },
   "packages/rust/build/src/scan.rs::Scanner \u003c '_ \u003e::pos": {
     "exported": false,
     "signature": " fn pos (\u0026 self , span : proc_macro2 :: Span) -\u003e String"

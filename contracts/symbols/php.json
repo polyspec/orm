@@ -10691,6 +10691,10 @@
     "exported": true,
     "signature": "public static function files(array $paths, array $external=[]): array"
   },
+  "packages/php/src/RuntimeModel.php::Polyspec\\Orm\\RuntimeModel::firstDifference": {
+    "exported": false,
+    "signature": "private static function firstDifference(mixed $got, mixed $want, string $path): ?string"
+  },
   "packages/php/src/RuntimeModel.php::Polyspec\\Orm\\RuntimeModel::fromModels": {
     "exported": true,
     "signature": "public static function fromModels(string $manifestHash, string $manifestText, array $classes, string $externalText=\"\"): Polyspec\\Orm\\RuntimeModel"
@@ -10767,6 +10771,10 @@
     "exported": false,
     "signature": "private readonly array"
   },
+  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$namespace": {
+    "exported": false,
+    "signature": "private string"
+  },
   "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$out": {
     "exported": false,
     "signature": "private array"
@@ -10776,6 +10784,10 @@
     "signature": "private array"
   },
   "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$scopes": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$uses": {
     "exported": false,
     "signature": "private array"
   },
@@ -10794,6 +10806,10 @@
   "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::call": {
     "exported": false,
     "signature": "private function call(PhpParser\\Node\\Expr\\MethodCall|PhpParser\\Node\\Expr\\NullsafeMethodCall $node): void"
+  },
+  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::docValue": {
+    "exported": false,
+    "signature": "private function docValue(string $doc, string $var): ?array"
   },
   "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::enterNode": {
     "exported": true,
