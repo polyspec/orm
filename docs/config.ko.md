@@ -71,7 +71,7 @@ ORM은 문을 서버 사이에서 분배하지 않는다. replica에서 읽을 �
 - 스키마 도구와 `utils().schema().install`은 primary에서 실행하고, replica는 복제로 스키마를 적용한다.
 - SQLite는 단일 노드 전용이다. SQLite 데이터베이스는 절대 경로로 지정한 로컬 파일이며, ORM은 SQLite replica를 지원하지 않는다.
 
-`make test-servers`는 MySQL primary의 replica와 PostgreSQL primary의 standby를 시작하고, 다섯 클라이언트의 데이터베이스 테스트는 두 데이터베이스에서 이 규칙을 검사한다.
+`make test-servers`는 MySQL primary의 replica와 PostgreSQL primary의 standby를 시작하고, 다섯 클라이언트의 데이터베이스 테스트는 두 데이터베이스에서 이 규칙을 검사한다. PostgreSQL standby는 physical replication slot `orm_replica`로 stream하므로, standby가 멈춘 동안에도 primary는 standby가 아직 받지 않은 WAL을 보존한다.
 
 ## 연결 pooler {#connection-poolers}
 

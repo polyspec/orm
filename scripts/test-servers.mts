@@ -19,7 +19,8 @@
 //
 // Each replica applies every change of its primary. The PostgreSQL primary names the replica in
 // synchronous_standby_names with synchronous_commit=local, so a transaction that sets synchronous_commit=remote_apply and
-// writes WAL commits after the replica has applied it, and the other transactions do not wait. A transaction that writes
+// writes WAL commits after the replica has applied it, and the other transactions do not wait. The replica streams
+// through the physical replication slot orm_replica, so the primary keeps the WAL the replica still needs. A transaction that writes
 // no WAL besides its commit record does not wait either.
 //
 // LEASE and STOP_PROCESS are the Go programs that the Makefile builds (tests/lease, tests/stop-process): Node has no
@@ -339,14 +340,23 @@ export function startLogged(dir: string, name: string, line: string, command: st
   });
 }
 
+// postgresBaseBackupArguments are the arguments of the pg_basebackup that makes the PostgreSQL replica in data from the
+// primary on port. -R writes the standby configuration with the application_name that synchronous_standby_names of the
+// primary lists. -C -S creates the physical replication slot orm_replica on the primary and -R names it in
+// primary_slot_name, so the primary keeps every WAL segment the replica has not received, also while the replica is
+// stopped; without the slot the primary removes them at a checkpoint and the replica cannot stream again. The slot
+// keeps WAL without a limit (max_slot_wal_keep_size=-1); start makes both data directories again, which drops it.
+export function postgresBaseBackupArguments(data: string, port: number): string[] {
+  return ['-D', data, '-R', '-C', '-S', 'orm_replica', '-X', 'stream', '-d', `host=127.0.0.1 port=${port} user=orm application_name=orm_replica`];
+}
+
 async function startPostgres(p: Paths, ports: Ports): Promise<void> {
   run('initdb', ['-D', p.postgresData, '-U', 'orm', '--auth=trust', '--encoding=UTF8', '--locale=C'], { stdio: ['ignore', openSync(join(p.dir, 'postgres-init.log'), 'w'), 'inherit'] });
   // `pg_ctl start -w` would wait at most 60 s; startLogged waits for the ready line.
   await startLogged(p.dir, 'postgres', 'database system is ready to accept connections', 'postgres', ['-D', p.postgresData, '-p', String(ports.postgres),
     '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories=', '-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local']);
   console.log(`test-servers: PostgreSQL on 127.0.0.1:${ports.postgres}`);
-  // -R writes the standby configuration with the application_name that synchronous_standby_names of the primary lists.
-  run('pg_basebackup', ['-D', p.postgresReplicaData, '-R', '-X', 'stream', '-d', `host=127.0.0.1 port=${ports.postgres} user=orm application_name=orm_replica`]);
+  run('pg_basebackup', postgresBaseBackupArguments(p.postgresReplicaData, ports.postgres));
   // A standby logs that it accepts read-only connections.
   await startLogged(p.dir, 'postgres-replica', 'database system is ready to accept read-only connections', 'postgres', ['-D', p.postgresReplicaData,
     '-p', String(ports.postgresReplica), '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories=']);

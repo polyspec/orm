@@ -70,7 +70,7 @@ The ORM does not route statements between servers. Reads from replicas use one c
 - The schema tools and `utils().schema().install` run on the primary, and the replicas apply the schema through replication.
 - SQLite is single-node only. A SQLite database is a local file named by an absolute path, and the ORM supports no SQLite replica.
 
-`make test-servers` starts a replica of the MySQL primary and a standby of the PostgreSQL primary, and the database tests of the five clients check these rules on both databases.
+`make test-servers` starts a replica of the MySQL primary and a standby of the PostgreSQL primary, and the database tests of the five clients check these rules on both databases. The PostgreSQL standby streams through the physical replication slot `orm_replica`, so the primary keeps the WAL the standby has not received, also while it is stopped.
 
 ## Connection poolers {#connection-poolers}
 

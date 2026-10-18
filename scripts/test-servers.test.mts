@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { createServer } from 'node:net';
 import { isolatedEnvironment } from '../tests/environment.mts';
 import { caseTest, COMPUTE, DATABASE } from '../tests/testcase.mts';
-import { environment, MYSQLD_BINLOG, mysqldArguments, paths, stopEarlierStart, stopPid } from './test-servers.mts';
+import { environment, MYSQLD_BINLOG, mysqldArguments, paths, postgresBaseBackupArguments, stopEarlierStart, stopPid } from './test-servers.mts';
 
 // processState is the state that ps reports for a process, empty when it is gone. exited is whether it has ended: an ended
 // process is gone, or a zombie (state Z) until the process that adopted it reaps it, and kill(pid, 0) still succeeds on a
@@ -307,6 +307,51 @@ caseTest('the test MySQL server removes an expired binary log by itself', DATABA
     }
     rmSync(root, { recursive: true, force: true });
     rmSync(socketDir, { recursive: true, force: true });
+  }
+});
+
+// The replica WAL case (T218) makes a fixture PostgreSQL primary and replica on a temporary directory and free ports with
+// the pg_basebackup arguments of test-servers.mts, leaving the shared servers alone. While the replica is stopped, the
+// primary writes and switches WAL segments and checks points, so a primary that keeps no WAL for the replica removes the
+// segments the replica still needs. The replica started again must stream, and a commit that waits for it must return.
+caseTest('the test PostgreSQL replica streams again after the primary wrote WAL while it was stopped', DATABASE, async () => {
+  const root = mkdtempSync(join(tmpdir(), 'orm-pgwal-'));
+  const free = () => new Promise<number>((resolve, reject) => {
+    const server = createServer();
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      if (address === null || typeof address === 'string') { reject(new Error(`the server listens on ${String(address)}, not a port`)); return; }
+      server.close(() => resolve(address.port));
+    });
+  });
+  const [primaryPort, replicaPort] = [await free(), await free()];
+  const primary = join(root, 'primary');
+  const replica = join(root, 'replica');
+  const psql = (port: number, sql: string, timeout?: number) => execFileSync('psql', ['-X', '-q', '-t', '-A', '-v', 'ON_ERROR_STOP=1', '-h', '127.0.0.1', '-p', String(port), '-U', 'orm', '-d', 'postgres', '-c', sql],
+    { encoding: 'utf8', timeout }).trim();
+  const start = (data: string, port: number, options: string) => execFileSync('pg_ctl', ['-D', data, '-l', `${data}.log`, '-w', '-t', '60', '-o',
+    `-p ${port} -c listen_addresses=127.0.0.1 -c unix_socket_directories= ${options}`, 'start'], { stdio: 'ignore' });
+  const stop = (data: string) => { if (existsSync(join(data, 'postmaster.pid'))) execFileSync('pg_ctl', ['-D', data, '-m', 'fast', '-w', 'stop'], { stdio: 'ignore' }); };
+  try {
+    execFileSync('initdb', ['-D', primary, '-U', 'orm', '--auth=trust', '--encoding=UTF8', '--locale=C'], { stdio: 'ignore' });
+    start(primary, primaryPort, '-c synchronous_standby_names=orm_replica -c synchronous_commit=local');
+    execFileSync('pg_basebackup', postgresBaseBackupArguments(replica, primaryPort), { stdio: 'ignore' });
+    start(replica, replicaPort, '');
+    psql(primaryPort, 'CREATE TABLE t (v text)');
+    stop(replica);
+    for (let i = 0; i < 8; i++) psql(primaryPort, "INSERT INTO t SELECT repeat('x', 1000) FROM generate_series(1, 2000); SELECT pg_switch_wal(); CHECKPOINT");
+    start(replica, replicaPort, '');
+    const state = psql(primaryPort, "SELECT coalesce((SELECT state FROM pg_stat_replication WHERE application_name = 'orm_replica'), 'absent')");
+    let commit = 'returned';
+    try { psql(primaryPort, "SET synchronous_commit = remote_apply; INSERT INTO t VALUES ('y')", 20_000); } catch (error) { commit = `did not return within 20 s (${(error as Error).message.split('\n')[0]})`; }
+    const log = readFileSync(`${replica}.log`, 'utf8').split('\n').filter(line => line.includes('has already been removed')).slice(0, 1).join('');
+    assert.ok(commit === 'returned', `a synchronous commit ${commit}; the replica is ${state} in pg_stat_replication${log === '' ? '' : `, and logs: ${log}`}`);
+    assert.equal(psql(primaryPort, "SELECT state FROM pg_stat_replication WHERE application_name = 'orm_replica'"), 'streaming');
+  } finally {
+    stop(replica);
+    stop(primary);
+    rmSync(root, { recursive: true, force: true });
   }
 });
 
