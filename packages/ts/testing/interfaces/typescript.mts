@@ -1,7 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
 
-// typescript는 packages/ts/testing/interfaces/typescript project의 dependency다(TypeScript 6.0.3, config/toolchain.json의 예외): 그 project에서 찾는다.
+// typescript is a dependency of the packages/ts/testing/interfaces/typescript project (TypeScript 6.0.3, an exception in config/toolchain.json): it is found from that project.
 // make install-interfaces-typescript installs it; the import of its file gives the compiler API with its declarations.
 const ts = (await import('./typescript/node_modules/typescript/lib/typescript.js')).default;
 type Node = import('./typescript/node_modules/typescript/lib/typescript.js').Node;

@@ -42,7 +42,7 @@ const { dsn, vectors: selected } = parsed;
 type Logged = { sql: string; binds: unknown[]; kind: string; tables: string[]; transaction: number | null; error: string | null };
 
 let log: Logged[] = [];
-// transactions는 vector 안의 transaction 번호를 처음 나온 순서의 번호로 바꾼다.
+// transactions renumbers the transaction numbers in a vector by their order of first appearance.
 let transactions = new Map<unknown, number>();
 let maskSeqs = new Set<number>();
 let maskTs = new Set<string>();
@@ -384,7 +384,7 @@ async function main() {
     const left = await new CompositeAccount().connect(db).tenantId([900, 901]).getCount();
     return { inserted, pairs: pairs.toArray(), left };
   });
-  // tenant 902에 Apple, apple, Évian, évian, x_y 행을 만들고 각 pattern이 cond로 고르는 account_id를 모은 뒤 지운다.
+  // Creates the rows Apple, apple, Évian, évian, and x_y for tenant 902, collects the account_id that each pattern selects with cond, then deletes them.
   const containsVector = async (cond: (p: string) => CompositeAccount, ...patterns: string[]) => {
     const rows = ['Apple', 'apple', 'Évian', 'évian', 'x_y'].map((name, i) => new CompositeAccount().setTenantId(902).setAccountId(i + 1).setName(name));
     await new CompositeAccount().connect(db).creates(rows);
@@ -441,8 +441,8 @@ async function main() {
     return events;
   });
   await run('restore', async () => {
-    // soft delete 한 행을 primary key 로 되돌린다. 지운 시각은 고정한 값으로 써서 모든 database 와 runner 의 bind 가
-    // 같다. transaction 은 끝에 rollback 하므로 database 는 처음과 같다.
+    // Restores a soft-deleted row by its primary key. The deletion time is written as a fixed value, so the binds of every database and runner
+    // are the same. The transaction rolls back at the end, so the database stays as it was at the start.
     const boom = new Error('boom');
     const result: Record<string, unknown> = {};
     let failed: unknown;

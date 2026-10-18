@@ -1,9 +1,9 @@
-// plans.json(tests/dbspec/plans.json)의 chain(create-from-empty와
-// rename-table-and-column)을 TypeScript client로 한 database에 적용한다
-// (docs/plans.md "Apply"). action은 apply-first(첫 plan만), apply(chain 전체),
-// stop(둘째 plan의 statement 1이 실행된 뒤 멈춤), recover(중단된 plan을 이어
-// 끝냄), rollback(history의 마지막 plan을 되돌림) 중 하나다. stdout에는 결과 한 줄을 쓴다: "ok", "stopped" 또는
-// "error <code>". 그 밖의 error는 stderr에 쓰고 1로 끝난다.
+// The chain of plans.json (tests/dbspec/plans.json) (create-from-empty and
+// rename-table-and-column) is applied to one database with the TypeScript client
+// (docs/plans.md "Apply"). The action is apply-first (first plan only), apply (the whole chain),
+// stop (stops after statement 1 of the second plan runs), recover (finishes an interrupted plan),
+// or rollback (reverts the last plan in history). One of these. stdout gets one result line: "ok", "stopped", or
+// "error <code>". Any other error is written to stderr and the process exits with 1.
 //
 // Usage: node packages/ts/testing/dbspec/apply/typescript.mts <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
 import { DatabaseSync } from 'node:sqlite';
@@ -12,7 +12,7 @@ import pg from 'pg';
 import { DbspecApplyError, applyPlans, parsePlan, recoverPlans, rollbackPlans, type DbspecApplyHandler, type DbspecPlan } from '../../../dist/dbspec/index.js';
 import { readVectors } from '../../../../../tests/dbspec/vectors.mts';
 
-// 모든 client가 새 connection에서 실행하는 statement다(packages/go/internal/dialects connectionRules).
+// The statements that every client runs on a new connection (packages/go/internal/dialects connectionRules).
 const CONNECTION_RULES = {
   mysql: ["SET time_zone = '+00:00'"],
   postgres: ["SET TimeZone = 'UTC'"],
@@ -42,7 +42,7 @@ type Opened =
   | { dialect: 'postgres'; connection: pg.Client; exec: (sql: string) => Promise<unknown>; close: () => Promise<void> }
   | { dialect: 'sqlite'; connection: DatabaseSync; exec: (sql: string) => Promise<unknown>; close: () => Promise<void> };
 
-// connect는 URI를 dialect의 driver connection으로 연다.
+// connect opens the URI as the dialect's driver connection.
 async function connect(): Promise<Opened> {
   if (dialect === 'mysql' && url.protocol === 'mysql:' && url.search === '') {
     const connection = await mysql.createConnection({
@@ -75,7 +75,7 @@ function operate(operation: Operation, opened: Opened, list: readonly DbspecPlan
 }
 
 const opened = await connect();
-// tool clock: 2026-10-01T00:00:00.123456789Z를 microsecond로 자른 값(epoch 이후 microsecond)이다.
+// tool clock: 2026-10-01T00:00:00.123456789Z truncated to microseconds (microseconds since the epoch).
 const now = () => Date.UTC(2026, 9, 1, 0, 0, 0) * 1000 + 123456;
 const stop = new Error('stop');
 let result: string;
