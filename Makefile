@@ -636,11 +636,14 @@ rust-send-savepoint-check/test: cargo-downloads-check
 # the plan vectors of tests/dbspec/plans.json, the Mermaid vectors of tests/dbspec/mermaid.json, and the apply cleanup errors injected through a wrapped SQLite
 # connection, each twice. The stress document is run by make
 # bench.
-dbspec-php-check: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set dbspec-php-check/set-parse
-.PHONY: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set dbspec-php-check/set-parse
+dbspec-php-check: dbspec-php-check/documents dbspec-php-check/graph dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set dbspec-php-check/set-parse
+.PHONY: dbspec-php-check/documents dbspec-php-check/graph dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set dbspec-php-check/set-parse
 dbspec-php-check/documents: php-vendor-check
 	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecTest.php
 	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecTest.php
+# dbspec-php-check/graph checks that a document, document set, plan list or unsupported list whose array holds another type is a TypeError.
+dbspec-php-check/graph: php-vendor-check
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecGraphTest.php
 dbspec-php-check/rules: php-vendor-check
 	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRulesTest.php
 	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRulesTest.php

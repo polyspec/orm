@@ -232,6 +232,7 @@ final class Dbspec
     /** Writes a document in its canonical text: `emit(parse(s)) === s` for canonical input. */
     public static function emit(Document $document): string
     {
+        Graph::document($document);
         return Emitter::emit($document, View::Canonical);
     }
 
@@ -248,6 +249,7 @@ final class Dbspec
         if (!in_array($dialect, Renderer::DIALECTS, true)) {
             throw new \InvalidArgumentException("Unknown dialect `$dialect`; the dialects are mysql, postgres and sqlite");
         }
+        Graph::documents($documents, 'the document set');
         [, $diagnostics] = DocumentSet::check($documents);
         return $diagnostics === [] ? RenderResult::valid(Renderer::render($documents, $dialect)) : RenderResult::invalid($diagnostics);
     }
@@ -280,6 +282,7 @@ final class Dbspec
      */
     public static function manifest(array $documents): ManifestResult
     {
+        Graph::documents($documents, 'the document set');
         [$ordered, $diagnostics] = DocumentSet::check($documents);
         if ($diagnostics !== []) {
             return ManifestResult::invalid($diagnostics);
@@ -356,6 +359,8 @@ final class Dbspec
      */
     public static function externalDifferences(Document $live, array $documents): array
     {
+        Graph::document($live);
+        Graph::documents($documents, 'the document set');
         $external = [];
         foreach ($documents as $document) {
             if ($document->external) {
@@ -438,6 +443,7 @@ final class Dbspec
     /** Writes a plan in its canonical text: `emitPlan(parsePlan(s)) === s` for canonical input. */
     public static function emitPlan(Plan $plan): string
     {
+        Graph::plan($plan);
         return PlanText::emit($plan);
     }
 
@@ -449,6 +455,7 @@ final class Dbspec
      */
     public static function chain(array $plans): ChainResult
     {
+        Graph::plans($plans, 'the plans');
         return PlanChain::chain($plans);
     }
 
@@ -458,6 +465,10 @@ final class Dbspec
      */
     public static function diff(?Document $source, Plan $plan): DiffResult
     {
+        if ($source !== null) {
+            Graph::document($source);
+        }
+        Graph::plan($plan);
         [$diff, $diagnostics] = PlanDiff::of($source, $plan);
         return $diff === null ? DiffResult::invalid($diagnostics) : DiffResult::valid($diff->changes);
     }
@@ -468,6 +479,8 @@ final class Dbspec
      */
     public static function compareSchemas(Document $source, Document $target): ComparisonResult
     {
+        Graph::document($source);
+        Graph::document($target);
         return SchemaComparison::compare($source, $target);
     }
 
@@ -484,6 +497,9 @@ final class Dbspec
      */
     public static function installedDifferences(Document $live, array $unsupported, Document $target): array
     {
+        Graph::document($live);
+        Graph::unsupported($unsupported, 'the unsupported objects');
+        Graph::document($target);
         [, $source, $comparison, $differences] = self::compareSet($live, $unsupported, $target);
         if ($source === null) {
             return $differences;
@@ -554,6 +570,9 @@ final class Dbspec
      */
     public static function addTablesAndColumnsSteps(Document $live, array $unsupported, Document $target, string $dialect): array
     {
+        Graph::document($live);
+        Graph::unsupported($unsupported, 'the unsupported objects');
+        Graph::document($target);
         $qualified = self::qualified(...);
         [$declared, $source, $comparison, $differences] = self::compareSet($live, $unsupported, $target);
         if ($source === null) {
@@ -660,6 +679,10 @@ final class Dbspec
     public static function planSteps(?Document $source, Plan $plan, string $dialect): PlanStepsResult
     {
         $renderer = new Renderer($dialect);
+        if ($source !== null) {
+            Graph::document($source);
+        }
+        Graph::plan($plan);
         [$diff, $diagnostics] = PlanDiff::of($source, $plan);
         return $diff === null ? PlanStepsResult::invalid($diagnostics) : PlanStepsResult::valid(PlanSteps::write($diff, $renderer, $plan));
     }
@@ -745,6 +768,7 @@ final class Dbspec
      */
     public static function exportMermaid(Document $document): MermaidExportResult
     {
+        Graph::document($document);
         return Mermaid::export($document);
     }
 

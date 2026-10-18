@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cb991a89d63b1a783a38fbd41cc7c5eb9bede58aaf961b2f2a9d32fbaef21e9d -->
+<!-- source-sha256: fa25a937adf2477decd6895faeb05d32d98efce8293a7e424e227b3143b309b9 -->
 # 변경 이력
 
 ## Unreleased
+- PHP library가 array에 다른 type을 담은 document, document set, plan 목록, unsupported 목록을 경고와 함께 읽지 않고, extension과 같은 TypeError로 거부한다(T182-0-1-1).
 - PHP extension이 docs/errors.yaml의 error code를 `orm-gen errors --lang php-extension`이 쓰는 stub에서 Polyspec\Orm\Native\Code로 등록한다(T182-1).
 - PHP extension의 mirror dbspec test가 다시 PHP client와 같은 본문을 갖는다(T131-11).
 - PHP extension의 arginfo header를 번역된 stub에 맞게 다시 생성해 그 검사가 통과한다(T131-10).

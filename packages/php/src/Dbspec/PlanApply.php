@@ -87,6 +87,7 @@ final class PlanApply
         if ($c->getAttribute(\PDO::ATTR_ERRMODE) !== \PDO::ERRMODE_EXCEPTION) {
             throw new \InvalidArgumentException('apply needs a connection whose error mode is PDO::ERRMODE_EXCEPTION');
         }
+        Graph::plans($plans, 'the plans');
         $chain = PlanChain::chain($plans);
         if ($chain->plans === null) {
             throw new ApplyError('chain', '', 0, $chain->diagnostics[0]->message);
