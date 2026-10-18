@@ -177,12 +177,12 @@ CHECK_TARGETS = runner-check scripts-typecheck documents-check commits-check rel
 #   stress_pg_sqlite: stress 문서의 bench와 PostgreSQL, SQLite 적용(feature-stress-pg-sqlite-check)
 CI_GROUPS = static clients_db clients_pooler conformance dbspec dbspec_apply feature_coverage feature_verify_rust feature_verify_other feature_helpers stress_mysql stress_pg_sqlite python
 CI_TARGETS_static = runner-check documents-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check testcase-check repo-check test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check install-cli-check markdown-table-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check codec-check bind-check ir-answers-check fuzz-check package-check ts-model-check dbspec-language-check feature-unit-check parity-declarations-check
-CI_TARGETS_clients_db = rust-driver-check example-check client-db-check dialect-facts-check go-test-check
+CI_TARGETS_clients_db = perf-check rust-driver-check example-check client-db-check dialect-facts-check go-test-check
 CI_TARGETS_clients_pooler = client-pooler-check
 CI_TARGETS_conformance = ts-check scripts-typecheck ts-min-check conformance-check conformance-ts-suite-check markdown-conformance-check parity-check
 CI_TARGETS_feature_helpers = feature-helper-check
 CI_TARGETS_python = python-check
-CI_TARGETS_dbspec = case-database-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-plan-ts-check dbspec-plan-rust-check dbspec-plan-php-check dbspec-php-extension-check
+CI_TARGETS_dbspec = dbspec-go-check/engine case-database-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-plan-ts-check dbspec-plan-rust-check dbspec-plan-php-check dbspec-php-extension-check
 CI_TARGETS_dbspec_apply = dbspec-apply-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check
 CI_TARGETS_feature_coverage = feature-coverage
 CI_TARGETS_feature_verify_rust = feature-verify-rust
