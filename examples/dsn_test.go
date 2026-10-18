@@ -1,6 +1,6 @@
-// Package examples_test는 Go와 PHP 예제 프로그램이 ORM_BENCH_MYSQL_DSN 없이
-// 연결하지 않고 그 변수 이름을 출력하며 실패하는지 확인한다. Rust 예제는
-// packages/rust/tests/tests/example_dsn.rs가 확인한다.
+// Package examples_test checks that the Go and PHP example programs, without ORM_BENCH_MYSQL_DSN,
+// do not connect, and fail while printing that variable name. The Rust example
+// is checked by packages/rust/tests/tests/example_dsn.rs.
 package examples_test
 
 import (
@@ -15,7 +15,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// withoutBenchDSN은 ORM_BENCH_MYSQL_DSN을 뺀 환경이다. empty면 빈 값으로 둔다.
+// withoutBenchDSN is the environment without ORM_BENCH_MYSQL_DSN. If empty, it is set to an empty value.
 // pythonThinSlice is the Python client example of the thin slice; it lives in the Python package, relative to this directory.
 var pythonThinSlice = filepath.Join("..", "packages", "python", "examples", "thin_slice", "main.py")
 

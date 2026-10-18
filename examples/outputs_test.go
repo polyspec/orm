@@ -13,9 +13,9 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestExampleOutputsAreIdentical는 README가 diff로 비교하는 대로 각 예제의 Go, PHP,
-// Rust 프로그램이 시드된 bench database에서 byte 단위로 같은 stdout을 내는지 확인한다.
-// Rust 프로그램 경로는 EXAMPLE_RUST_COMPLEX와 EXAMPLE_RUST_DEMO가 선언한다.
+// TestExampleOutputsAreIdentical checks, as the README compares them with diff, that the Go, PHP,
+// and Rust programs of each example print the same stdout byte for byte on the seeded bench database.
+// The Rust program paths are declared by EXAMPLE_RUST_COMPLEX and EXAMPLE_RUST_DEMO.
 func TestExampleOutputsAreIdentical(t *testing.T) {
 	testcase.Group(t)
 	if os.Getenv("ORM_BENCH_MYSQL_DSN") == "" {
@@ -24,7 +24,7 @@ func TestExampleOutputsAreIdentical(t *testing.T) {
 	examples := map[string]string{"complex": "EXAMPLE_RUST_COMPLEX", "thin-slice": "EXAMPLE_RUST_DEMO"}
 	for name, rustVar := range examples {
 		t.Run(name, func(t *testing.T) {
-			// 예제 하나는 Go program을 build하고 세 program을 한 번씩 실행한다.
+			// One example builds the Go program and runs the three programs once each.
 			c := testcase.Start(t, testcase.Process)
 			rust := os.Getenv(rustVar)
 			if rust == "" {
@@ -58,7 +58,7 @@ func TestExampleOutputsAreIdentical(t *testing.T) {
 	}
 }
 
-// runExample는 프로그램 하나를 실행해 stdout을 돌려주고 실행 시간을 기록한다.
+// runExample runs one program, returns its stdout, and records its run time.
 func runExample(t *testing.T, c *testcase.Case, lang string, args ...string) []byte {
 	t.Helper()
 	start := time.Now()
