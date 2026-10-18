@@ -4,6 +4,7 @@
 ## Unreleased
 - The parity-check step exports the bench and decimal DSNs and ORM_DBSPEC_EXTENSION that its bindings read (T148-5).
 - Every push runs the parity checks: parity-check and parity-declarations-check are in CHECK_TARGETS and the CI groups (T77-12).
+- The Python conformance bindings run every vector by name through the unchanged runner, so the Python suite holds without code change (T77-9-4-6).
 - The Go coverage suites run every case through one binding per implementation, which the parity rules already held, so no code changed (T77-9-4-1).
 - The parity-check step owns its run directory (STEP_RUN_DIR, removed when the step ends), so no leftover is reported (T77-58).
 - The MySQL days_ago bind uses the bound instant, so the physical fixture is deterministic on every database (T77-33-1).
