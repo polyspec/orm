@@ -259,6 +259,13 @@ func (x *HexCellModel) GroupLimit(n int) *HexCellModel { x.m.GroupLimit(n); retu
 // DeleteLock excludes the relation from recursive delete.
 func (x *HexCellModel) DeleteLock() *HexCellModel { x.m.DeleteLock(); return x }
 
+// ExpectRevision makes the next Update or Delete write only while column holds
+// revision; a mismatch returns CodeRevisionChanged and changes nothing.
+func (x *HexCellModel) ExpectRevision(column string, revision int64) *HexCellModel {
+	x.m.ExpectRevision(column, revision)
+	return x
+}
+
 // FetchKey computes the collection key of each row.
 func (x *HexCellModel) FetchKey(fn func(*HexCellModel) any) *HexCellModel {
 	x.m.FetchKey(func(m orm.Model) any { return fn(m.(*HexCellModel)) })

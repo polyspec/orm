@@ -47,6 +47,8 @@ abstract class Model implements \JsonSerializable
     private ?array $possible = null;
     private int $groupLimit = 0;
     private bool $deleteLock = false;
+    /** @var ?array{string, int} the revision column and the expected revision of the next update or delete */
+    private ?array $expectedRevision = null;
     private string $keyName = '';
     private ?\Closure $fetchKey = null;
     private ?\Closure $fetchValue = null;
@@ -308,6 +310,44 @@ abstract class Model implements \JsonSerializable
             $this->groupLimit = $count;
         }
         return $this;
+    }
+
+    /**
+     * Makes the next update() or delete() write only while the integer column holds $revision; update() also stores
+     * $revision + 1. A mismatch fails with REVISION_CHANGED and changes nothing (docs/dsl.md "Writes").
+     */
+    public function expectRevision(string $column, int $revision): static
+    {
+        $this->expectedRevision = [$column, $revision];
+        return $this;
+    }
+
+    /**
+     * Checks the expected revision before any statement and adds its condition to the key predicate of $r, and on an
+     * update the bound increment of the column; null when no revision is expected.
+     */
+    private function revisionGuard(Request $r, bool $update, bool $optimistic): ?string
+    {
+        if ($this->expectedRevision === null) {
+            return null;
+        }
+        [$column, $revision] = $this->expectedRevision;
+        $meta = static::meta();
+        $col = $meta['columns'][$column] ?? null;
+        if ($col === null || !in_array($col['type'], ['i16', 'i32', 'i64'], true) || $col['codec'] !== [] || in_array($column, $meta['pk'], true)) {
+            throw new OrmException(Code::CONFIG, "expectRevision: $column is not an integer column of {$meta['entity']} outside its primary key");
+        }
+        if (isset($this->sets[$column])) {
+            throw new OrmException(Code::CONFIG, "expectRevision: $column is also set in the write");
+        }
+        if ($optimistic) {
+            throw new OrmException(Code::CONFIG, 'expectRevision does not combine with update(true)');
+        }
+        $r->ir['where']['items'][] = ['pred' => ['column' => $column, 'op' => 'eq', 'p' => $r->param($revision), 'conn' => 'and']];
+        if ($update) {
+            $r->ir['set'][] = ['column' => $column, 'plus_p' => $r->param(1)];
+        }
+        return $column;
     }
 
     public function deleteLock(): static
@@ -1897,10 +1937,11 @@ abstract class Model implements \JsonSerializable
             }
             $r->ir['set'][] = $this->assignIr($r, $column, $spec);
         }
-        if (($r->ir['set'] ?? []) === []) {
+        if (($r->ir['set'] ?? []) === [] && $this->expectedRevision === null) {
             return $this;
         }
         $this->keyWhere($r, $keys);
+        $revision = $this->revisionGuard($r, true, $optimistic);
         $updated = $meta['updated'];
         if ($optimistic) {
             $raw = $loaded && $updated !== '' ? ($this->row['original'][$updated] ?? null) : null;
@@ -1911,7 +1952,11 @@ abstract class Model implements \JsonSerializable
             $text = $raw instanceof PendingTime ? $raw->text : self::resolved($raw)->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s.u');
             $r->ir['optimistic'] = ['column' => $updated, 'p' => $r->param($text)];
         }
-        $db->writeOf($frame, $r);
+        [, $affected] = $db->writeOf($frame, $r);
+        if ($revision !== null && $affected === 0) {
+            throw new OrmException(Code::REVISION_CHANGED, "the row's $revision is not {$this->expectedRevision[1]}");
+        }
+        $this->expectedRevision = null;
         if ($loaded) {
             foreach ($this->sets as $column => $spec) {
                 if (in_array($column, $meta['pk'], true) && array_key_exists('value', $spec)) {
@@ -1967,7 +2012,12 @@ abstract class Model implements \JsonSerializable
         }
         $r = $this->writeRequest('delete', $db);
         $this->keyWhere($r, $this->keyValues());
-        $db->writeOf($frame, $r);
+        $revision = $this->revisionGuard($r, false, false);
+        [, $affected] = $db->writeOf($frame, $r);
+        if ($revision !== null && $affected === 0) {
+            throw new OrmException(Code::REVISION_CHANGED, "the row's $revision is not {$this->expectedRevision[1]}");
+        }
+        $this->expectedRevision = null;
     }
 
     /**

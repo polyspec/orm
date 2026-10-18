@@ -263,6 +263,13 @@ func (x *TimeCellModel) GroupLimit(n int) *TimeCellModel { x.m.GroupLimit(n); re
 // DeleteLock excludes the relation from recursive delete.
 func (x *TimeCellModel) DeleteLock() *TimeCellModel { x.m.DeleteLock(); return x }
 
+// ExpectRevision makes the next Update or Delete write only while column holds
+// revision; a mismatch returns CodeRevisionChanged and changes nothing.
+func (x *TimeCellModel) ExpectRevision(column string, revision int64) *TimeCellModel {
+	x.m.ExpectRevision(column, revision)
+	return x
+}
+
 // FetchKey computes the collection key of each row.
 func (x *TimeCellModel) FetchKey(fn func(*TimeCellModel) any) *TimeCellModel {
 	x.m.FetchKey(func(m orm.Model) any { return fn(m.(*TimeCellModel)) })

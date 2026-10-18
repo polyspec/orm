@@ -289,6 +289,13 @@ func (x *ClockCellModel) GroupLimit(n int) *ClockCellModel { x.m.GroupLimit(n); 
 // DeleteLock excludes the relation from recursive delete.
 func (x *ClockCellModel) DeleteLock() *ClockCellModel { x.m.DeleteLock(); return x }
 
+// ExpectRevision makes the next Update or Delete write only while column holds
+// revision; a mismatch returns CodeRevisionChanged and changes nothing.
+func (x *ClockCellModel) ExpectRevision(column string, revision int64) *ClockCellModel {
+	x.m.ExpectRevision(column, revision)
+	return x
+}
+
 // FetchKey computes the collection key of each row.
 func (x *ClockCellModel) FetchKey(fn func(*ClockCellModel) any) *ClockCellModel {
 	x.m.FetchKey(func(m orm.Model) any { return fn(m.(*ClockCellModel)) })

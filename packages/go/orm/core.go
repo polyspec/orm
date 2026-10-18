@@ -136,6 +136,9 @@ type Core struct {
 
 	sets        []setSpec
 	news        []string
+	// expected is the revision column and the expected revision of the next
+	// update or delete (docs/dsl.md "Writes"); nil when none is expected.
+	expected *expectedRevision
 	newValues   map[string]any
 	duplication *Core
 
@@ -564,6 +567,20 @@ func (c *Core) GroupLimit(n int) {
 
 // DeleteLock excludes the relation from recursive delete.
 func (c *Core) DeleteLock() { c.ensureStatement(); c.deleteLock = true }
+
+// expectedRevision is the revision column and the revision that the next
+// update or delete expects the row to hold.
+type expectedRevision struct {
+	column   string
+	revision int64
+}
+
+// ExpectRevision makes the next Update or Delete write only while the integer
+// column holds revision; Update also stores revision + 1. A mismatch fails with
+// REVISION_CHANGED and changes nothing (docs/dsl.md "Writes").
+func (c *Core) ExpectRevision(column string, revision int64) {
+	c.expected = &expectedRevision{column: column, revision: revision}
+}
 
 // KeyName sets the collection key column.
 func (c *Core) KeyName(column string) { c.ensureStatement(); c.keyName = column }

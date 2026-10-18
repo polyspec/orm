@@ -283,6 +283,13 @@ func (x *BindCellModel) GroupLimit(n int) *BindCellModel { x.m.GroupLimit(n); re
 // DeleteLock excludes the relation from recursive delete.
 func (x *BindCellModel) DeleteLock() *BindCellModel { x.m.DeleteLock(); return x }
 
+// ExpectRevision makes the next Update or Delete write only while column holds
+// revision; a mismatch returns CodeRevisionChanged and changes nothing.
+func (x *BindCellModel) ExpectRevision(column string, revision int64) *BindCellModel {
+	x.m.ExpectRevision(column, revision)
+	return x
+}
+
 // FetchKey computes the collection key of each row.
 func (x *BindCellModel) FetchKey(fn func(*BindCellModel) any) *BindCellModel {
 	x.m.FetchKey(func(m orm.Model) any { return fn(m.(*BindCellModel)) })

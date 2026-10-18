@@ -25,6 +25,7 @@ const (
 	CodeNoRows                = "NO_ROWS"                // executor: strict one-row query matched no row
 	CodeRowNotDeleted         = "ROW_NOT_DELETED"        // executor: restoreOrCreate found its key on a row that is not deleted; nothing was written
 	CodeBatchTooLarge         = "BATCH_TOO_LARGE"        // executor: a batch of creates binds more parameters than the dialect allows; names the batch, its bind count and the limit; nothing was written
+	CodeRevisionChanged       = "REVISION_CHANGED"       // executor: an update or delete given an expected revision found the row at another revision, or no row; nothing was written
 	CodeColumnUnselected      = "COLUMN_UNSELECTED"      // executor: a requested column was not included in the loaded row
 	CodeOptimisticLock        = "OPTIMISTIC_LOCK"        // executor: updateOptimistic matched no row (updated_ts changed)
 	CodeWriteConflict         = "WRITE_CONFLICT"         // executor: a target changed since it was read, or a change since the read makes the transaction's writes other writes; names the file and line; the client never retries it

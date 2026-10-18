@@ -243,6 +243,13 @@ func (x *ServiceModel) GroupLimit(n int) *ServiceModel { x.m.GroupLimit(n); retu
 // DeleteLock excludes the relation from recursive delete.
 func (x *ServiceModel) DeleteLock() *ServiceModel { x.m.DeleteLock(); return x }
 
+// ExpectRevision makes the next Update or Delete write only while column holds
+// revision; a mismatch returns CodeRevisionChanged and changes nothing.
+func (x *ServiceModel) ExpectRevision(column string, revision int64) *ServiceModel {
+	x.m.ExpectRevision(column, revision)
+	return x
+}
+
 // FetchKey computes the collection key of each row.
 func (x *ServiceModel) FetchKey(fn func(*ServiceModel) any) *ServiceModel {
 	x.m.FetchKey(func(m orm.Model) any { return fn(m.(*ServiceModel)) })

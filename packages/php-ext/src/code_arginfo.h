@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 55a808a3e1b9f302d98ab3fd4b678c44313fbb82 */
+ * Stub hash: dd2876f6e048909e051ee82e062de4567d49dcb6 */
 
 static zend_class_entry *register_class_Polyspec_Orm_Native_Code(void)
 {
@@ -154,6 +154,13 @@ static zend_class_entry *register_class_Polyspec_Orm_Native_Code(void)
 	zend_string *const_BATCH_TOO_LARGE_name = zend_string_init_interned("BATCH_TOO_LARGE", sizeof("BATCH_TOO_LARGE") - 1, 1);
 	zend_declare_typed_class_constant(class_entry, const_BATCH_TOO_LARGE_name, &const_BATCH_TOO_LARGE_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
 	zend_string_release(const_BATCH_TOO_LARGE_name);
+
+	zval const_REVISION_CHANGED_value;
+	zend_string *const_REVISION_CHANGED_value_str = zend_string_init("REVISION_CHANGED", strlen("REVISION_CHANGED"), 1);
+	ZVAL_STR(&const_REVISION_CHANGED_value, const_REVISION_CHANGED_value_str);
+	zend_string *const_REVISION_CHANGED_name = zend_string_init_interned("REVISION_CHANGED", sizeof("REVISION_CHANGED") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_REVISION_CHANGED_name, &const_REVISION_CHANGED_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_REVISION_CHANGED_name);
 
 	zval const_COLUMN_UNSELECTED_value;
 	zend_string *const_COLUMN_UNSELECTED_value_str = zend_string_init("COLUMN_UNSELECTED", strlen("COLUMN_UNSELECTED"), 1);

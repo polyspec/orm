@@ -343,6 +343,13 @@ func (x *PeopleModel) GroupLimit(n int) *PeopleModel { x.m.GroupLimit(n); return
 // DeleteLock excludes the relation from recursive delete.
 func (x *PeopleModel) DeleteLock() *PeopleModel { x.m.DeleteLock(); return x }
 
+// ExpectRevision makes the next Update or Delete write only while column holds
+// revision; a mismatch returns CodeRevisionChanged and changes nothing.
+func (x *PeopleModel) ExpectRevision(column string, revision int64) *PeopleModel {
+	x.m.ExpectRevision(column, revision)
+	return x
+}
+
 // FetchKey computes the collection key of each row.
 func (x *PeopleModel) FetchKey(fn func(*PeopleModel) any) *PeopleModel {
 	x.m.FetchKey(func(m orm.Model) any { return fn(m.(*PeopleModel)) })

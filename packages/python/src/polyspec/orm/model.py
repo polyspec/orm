@@ -698,6 +698,12 @@ class Model:
         self.core.delete_lock = True
         return self
 
+    def expect_revision(self, column: str, revision: int) -> Self:
+        """Makes the next update() or delete() write only while the integer column holds revision; update() also
+        stores revision + 1. A mismatch fails with REVISION_CHANGED and changes nothing (docs/dsl.md "Writes")."""
+        self.core.expected_revision = (column, revision)
+        return self
+
     def fetch_key(self, fn):
         self.core.fetch_key = fn
         return self

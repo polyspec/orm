@@ -667,6 +667,38 @@
       }
     },
     {
+      "id": "Model.expectRevision",
+      "for": "entity",
+      "inputs": [
+        "ColumnRevision"
+      ],
+      "output": "Chain",
+      "errors": [],
+      "state": "Returns the same model whose next update or delete writes only while the integer column holds the expected revision, update also storing revision + 1; a mismatch fails with REVISION_CHANGED and nothing changes, and a column that is not a non-key integer column, a set value of it or update(true) fails that write with CONFIG",
+      "native": {
+        "go": {
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.ExpectRevision",
+          "signature": "receiver=*{Entity}Model func(column string, revision int64) *{Entity}Model"
+        },
+        "php": {
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::expectRevision",
+          "signature": "public function expectRevision(string $column, int $revision): static"
+        },
+        "rust": {
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::expect_revision",
+          "signature": "pub fn expect_revision(mut self, column: &str, revision: i64) -> Self"
+        },
+        "typescript": {
+          "symbol": "packages/ts/src/model.ts::Model.expectRevision",
+          "signature": "public expectRevision(column: string, revision: number | bigint): this"
+        },
+        "python": {
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.expect_revision",
+          "signature": "def expect_revision(self, column: str, revision: int) -> Self"
+        }
+      }
+    },
+    {
       "id": "Model.duplication",
       "for": "entity",
       "inputs": [
@@ -1059,7 +1091,8 @@
         "CONFIG",
         "IR_INVALID",
         "driver or codec error",
-        "OPTIMISTIC_LOCK"
+        "OPTIMISTIC_LOCK",
+        "REVISION_CHANGED"
       ],
       "state": "Writes the changed columns of a loaded model by its primary key",
       "native": {
@@ -1132,7 +1165,8 @@
         "CONFIG",
         "IR_INVALID",
         "driver or codec error",
-        "FOREIGN_KEY"
+        "FOREIGN_KEY",
+        "REVISION_CHANGED"
       ],
       "state": "Deletes a loaded model, and its relation rows when recursive",
       "native": {

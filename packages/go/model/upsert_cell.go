@@ -273,6 +273,13 @@ func (x *UpsertCellModel) GroupLimit(n int) *UpsertCellModel { x.m.GroupLimit(n)
 // DeleteLock excludes the relation from recursive delete.
 func (x *UpsertCellModel) DeleteLock() *UpsertCellModel { x.m.DeleteLock(); return x }
 
+// ExpectRevision makes the next Update or Delete write only while column holds
+// revision; a mismatch returns CodeRevisionChanged and changes nothing.
+func (x *UpsertCellModel) ExpectRevision(column string, revision int64) *UpsertCellModel {
+	x.m.ExpectRevision(column, revision)
+	return x
+}
+
 // FetchKey computes the collection key of each row.
 func (x *UpsertCellModel) FetchKey(fn func(*UpsertCellModel) any) *UpsertCellModel {
 	x.m.FetchKey(func(m orm.Model) any { return fn(m.(*UpsertCellModel)) })

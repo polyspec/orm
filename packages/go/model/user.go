@@ -241,6 +241,13 @@ func (x *UserModel) GroupLimit(n int) *UserModel { x.m.GroupLimit(n); return x }
 // DeleteLock excludes the relation from recursive delete.
 func (x *UserModel) DeleteLock() *UserModel { x.m.DeleteLock(); return x }
 
+// ExpectRevision makes the next Update or Delete write only while column holds
+// revision; a mismatch returns CodeRevisionChanged and changes nothing.
+func (x *UserModel) ExpectRevision(column string, revision int64) *UserModel {
+	x.m.ExpectRevision(column, revision)
+	return x
+}
+
 // FetchKey computes the collection key of each row.
 func (x *UserModel) FetchKey(fn func(*UserModel) any) *UserModel {
 	x.m.FetchKey(func(m orm.Model) any { return fn(m.(*UserModel)) })

@@ -4390,6 +4390,26 @@
     {"id": "ts-package-declarations", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/package-declarations.mjs", "id": "package-declarations/no-driver-imports"}]},
     {"id": "ts-param-uses", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/param-uses.mjs", "id": "param-uses/kinds"}]},
     {"id": "ts-request_hook", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/request_hook.mjs", "id": "request-hook/without_hook"}]},
+    {"id": "ts-revision-update-match", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/revision.mjs", "id": "revision/update-match"}]},
+    {"id": "go-internal-packages-go-orm-revision-update-match", "kind": "feature", "profile": "go-internal", "bindings": [{"implementation": "go", "test": "packages/go/orm/revision_test.go", "id": "TestRevisionUpdateMatchBumpsTheRevision"}]},
+    {"id": "php-internal-revision-update-match", "kind": "feature", "profile": "php-internal", "bindings": [{"implementation": "php", "test": "packages/php/tests/RevisionTest.php", "id": "RevisionTest::test_update_match_bumps_the_revision"}]},
+    {"id": "python-internal-revision-update-match", "kind": "feature", "profile": "python-internal", "bindings": [{"implementation": "python", "test": "packages/python/tests/test_revision.py", "id": "test_update_match_bumps_the_revision"}]},
+    {"id": "rust-revision-update-match", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/orm/tests/revision.rs", "id": "revision_update_match_bumps_the_revision"}]},
+    {"id": "ts-revision-update-mismatch", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/revision.mjs", "id": "revision/update-mismatch"}]},
+    {"id": "go-internal-packages-go-orm-revision-update-mismatch", "kind": "feature", "profile": "go-internal", "bindings": [{"implementation": "go", "test": "packages/go/orm/revision_test.go", "id": "TestRevisionUpdateMismatchChangesNothing"}]},
+    {"id": "php-internal-revision-update-mismatch", "kind": "feature", "profile": "php-internal", "bindings": [{"implementation": "php", "test": "packages/php/tests/RevisionTest.php", "id": "RevisionTest::test_update_mismatch_changes_nothing"}]},
+    {"id": "python-internal-revision-update-mismatch", "kind": "feature", "profile": "python-internal", "bindings": [{"implementation": "python", "test": "packages/python/tests/test_revision.py", "id": "test_update_mismatch_changes_nothing"}]},
+    {"id": "rust-revision-update-mismatch", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/orm/tests/revision.rs", "id": "revision_update_mismatch_changes_nothing"}]},
+    {"id": "ts-revision-delete-match", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/revision.mjs", "id": "revision/delete-match"}]},
+    {"id": "go-internal-packages-go-orm-revision-delete-match", "kind": "feature", "profile": "go-internal", "bindings": [{"implementation": "go", "test": "packages/go/orm/revision_test.go", "id": "TestRevisionDeleteMatchDeletes"}]},
+    {"id": "php-internal-revision-delete-match", "kind": "feature", "profile": "php-internal", "bindings": [{"implementation": "php", "test": "packages/php/tests/RevisionTest.php", "id": "RevisionTest::test_delete_match_deletes"}]},
+    {"id": "python-internal-revision-delete-match", "kind": "feature", "profile": "python-internal", "bindings": [{"implementation": "python", "test": "packages/python/tests/test_revision.py", "id": "test_delete_match_deletes"}]},
+    {"id": "rust-revision-delete-match", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/orm/tests/revision.rs", "id": "revision_delete_match_deletes"}]},
+    {"id": "ts-revision-delete-mismatch", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/revision.mjs", "id": "revision/delete-mismatch"}]},
+    {"id": "go-internal-packages-go-orm-revision-delete-mismatch", "kind": "feature", "profile": "go-internal", "bindings": [{"implementation": "go", "test": "packages/go/orm/revision_test.go", "id": "TestRevisionDeleteMismatchChangesNothing"}]},
+    {"id": "php-internal-revision-delete-mismatch", "kind": "feature", "profile": "php-internal", "bindings": [{"implementation": "php", "test": "packages/php/tests/RevisionTest.php", "id": "RevisionTest::test_delete_mismatch_changes_nothing"}]},
+    {"id": "python-internal-revision-delete-mismatch", "kind": "feature", "profile": "python-internal", "bindings": [{"implementation": "python", "test": "packages/python/tests/test_revision.py", "id": "test_delete_mismatch_changes_nothing"}]},
+    {"id": "rust-revision-delete-mismatch", "kind": "feature", "profile": "rust-internal", "bindings": [{"implementation": "rust", "test": "packages/rust/orm/tests/revision.rs", "id": "revision_delete_mismatch_changes_nothing"}]},
     {"id": "ts-rollback", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/rollback.mjs", "id": "rollback/rollback_failed/sqlite"}]},
     {"id": "ts-sqlite-concurrency", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/sqlite-concurrency.mjs", "id": "sqlite-concurrency/writersInSeveralProcesses"}]},
     {"id": "ts-statement-events", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/statement-events.mjs", "id": "statement_events/model_statements/sqlite"}]},
@@ -6232,6 +6252,18 @@
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.BATCH_TOO_LARGE:var" },
         { "implementation": "python", "symbol": "orm.codes.BATCH_TOO_LARGE" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::BATCH_TOO_LARGE" }
+      ]
+    },
+    {
+      "id": "error-code-revision-changed",
+      "kind": "api",
+      "profile": "client",
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRevisionChanged" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::REVISION_CHANGED" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!codes.REVISION_CHANGED:var" },
+        { "implementation": "python", "symbol": "orm.codes.REVISION_CHANGED" },
+        { "implementation": "rust", "symbol": "polyspec_orm::codes::REVISION_CHANGED" }
       ]
     },
     {

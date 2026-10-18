@@ -146,6 +146,8 @@ class Core:
         self.possible = None
         self.group_limit = 0
         self.delete_lock = False
+        # the revision column and the expected revision of the next update or delete (docs/dsl.md "Writes").
+        self.expected_revision = None
         self.key_name = ""
         self.fetch_key = None
         self.fetch_value = None
@@ -553,6 +555,7 @@ class Core:
             "possible",
             "group_limit",
             "delete_lock",
+            "expected_revision",
             "key_name",
             "fetch_key",
             "fetch_value",

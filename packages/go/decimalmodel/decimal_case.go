@@ -279,6 +279,13 @@ func (x *DecimalCaseModel) GroupLimit(n int) *DecimalCaseModel { x.m.GroupLimit(
 // DeleteLock excludes the relation from recursive delete.
 func (x *DecimalCaseModel) DeleteLock() *DecimalCaseModel { x.m.DeleteLock(); return x }
 
+// ExpectRevision makes the next Update or Delete write only while column holds
+// revision; a mismatch returns CodeRevisionChanged and changes nothing.
+func (x *DecimalCaseModel) ExpectRevision(column string, revision int64) *DecimalCaseModel {
+	x.m.ExpectRevision(column, revision)
+	return x
+}
+
 // FetchKey computes the collection key of each row.
 func (x *DecimalCaseModel) FetchKey(fn func(*DecimalCaseModel) any) *DecimalCaseModel {
 	x.m.FetchKey(func(m orm.Model) any { return fn(m.(*DecimalCaseModel)) })

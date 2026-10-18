@@ -66,6 +66,7 @@ const FIXED: &[&str] = &[
     "parent_node",
     "group_limit",
     "delete_lock",
+    "expect_revision",
     "fetch_key",
     "fetch_value",
     "for_update",

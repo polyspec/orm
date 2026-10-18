@@ -172,6 +172,8 @@ pub struct Core {
     pub(crate) possible: Option<(String, Param)>,
     pub(crate) group_limit: u32,
     pub(crate) delete_lock: bool,
+    /// The revision column and the expected revision of the next update or delete (docs/dsl.md "Writes").
+    pub(crate) expected_revision: Option<(String, i64)>,
     pub(crate) key_name: String,
     pub(crate) fetch_key: Option<KeyFn>,
     pub(crate) fetch_value: Option<ValueFn>,
@@ -217,6 +219,7 @@ impl Core {
             possible: None,
             group_limit: 0,
             delete_lock: false,
+            expected_revision: None,
             key_name: String::new(),
             fetch_key: None,
             fetch_value: None,
@@ -470,6 +473,12 @@ impl Core {
 
     pub fn delete_lock(&mut self) {
         self.delete_lock = true;
+    }
+
+    /// Makes the next update or delete write only while the integer column holds `revision`; update also stores
+    /// `revision + 1`. A mismatch fails with REVISION_CHANGED and changes nothing (docs/dsl.md "Writes").
+    pub fn expect_revision(&mut self, column: &str, revision: i64) {
+        self.expected_revision = Some((column.to_owned(), revision));
     }
 
     pub fn key_name(&mut self, column: &str) {

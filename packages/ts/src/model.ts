@@ -133,6 +133,11 @@ export abstract class Model implements ModelLike {
   public parentNode(): this { this[CORE].parentNode = true; return this; }
   public groupLimit(n: number): this { this[CORE].setGroupLimit(n); return this; }
   public deleteLock(): this { this[CORE].deleteLock = true; return this; }
+  /**
+   * Makes the next update() or delete() write only while the integer column holds revision; update() also stores
+   * revision + 1. A mismatch fails with REVISION_CHANGED and changes nothing (docs/dsl.md "Writes").
+   */
+  public expectRevision(column: string, revision: number | bigint): this { this[CORE].expectedRevision = { column, revision }; return this; }
   public fetchKey(fn: (row: this) => Key): this { this[CORE].fetchKey = m => fn(modelOf(this, m)); return this; }
   public fetchValue(fn: (row: this) => unknown): this { this[CORE].fetchValue = m => fn(modelOf(this, m)); return this; }
   public forUpdate(): this { this[CORE].lock = 'update'; return this; }
@@ -790,6 +795,33 @@ function withAesColumns(c: Core, schema: Entity): SetSpec[] {
   return out;
 }
 
+/**
+ * Checks the expected revision before any statement and adds its condition to the key predicate of r, and on an update the
+ * bound increment of the column; undefined when no revision is expected.
+ */
+function revisionGuard(c: Core, schema: Entity, r: WriteRequest, update: boolean, optimistic: boolean): string | undefined {
+  const expected = c.expectedRevision;
+  if (expected === undefined) return undefined;
+  const { column, revision } = expected;
+  const f = fieldOf(schema, column);
+  if (f === undefined || !['i16', 'i32', 'i64'].includes(f.type) || f.stages.length > 0 || schema.primaryKey.includes(column)) {
+    throw configError(`expectRevision: ${column} is not an integer column of ${schema.name} outside its primary key`);
+  }
+  if (c.sets.some(s => s.column === column)) throw configError(`expectRevision: ${column} is also set in the write`);
+  if (optimistic) throw configError('expectRevision does not combine with update(true)');
+  present(r.ir.where, 'the key predicate of the write').items.push({ pred: { conn: 'and', column, op: 'eq', p: param(r, revision) } });
+  if (update) (r.ir.set ??= []).push({ column, plus_p: param(r, 1) });
+  return column;
+}
+
+/** Fails with REVISION_CHANGED when a write with an expected revision matched no row, and clears the expectation. */
+function revisionChecked(c: Core, column: string | undefined, affected: number): void {
+  if (column !== undefined && affected === 0) {
+    throw new OrmError(codes.REVISION_CHANGED, `the row's ${column} is not ${String(present(c.expectedRevision, 'the expected revision').revision)}`);
+  }
+  c.expectedRevision = undefined;
+}
+
 async function update(c: Core, optimistic: boolean): Promise<void> {
   const ex = terminal(c);
   const schema = c.ent.entity;
@@ -797,16 +829,17 @@ async function update(c: Core, optimistic: boolean): Promise<void> {
   const keys = keyValues(c, schema);
   const loaded = c.row?.loaded === true;
   const sets = withAesColumns(c, schema).filter(s => loaded || !schema.primaryKey.includes(s.column));
-  if (sets.length === 0) return;
+  if (sets.length === 0 && c.expectedRevision === undefined) return;
   r.ir.set = sets.map(s => assign(r, schema, s));
   keyWhere(r, schema, keys);
+  const revision = revisionGuard(c, schema, r, true, optimistic);
   const column = schema.updated;
   if (optimistic) {
     const version = loaded && column !== '' ? present(c.row, 'the loaded row of an update').original.get(column) : undefined;
     if (version === undefined || version === null) throw configError('update(true) requires a row loaded with its update time column');
     r.ir.optimistic = { column, p: param(r, version) };
   }
-  await write(ex, finishWrite(r), r.params);
+  revisionChecked(c, revision, (await write(ex, finishWrite(r), r.params)).affected);
   if (loaded) {
     const loadedRow = present(c.row, 'the loaded row of an update');
     for (const s of c.sets) if (schema.primaryKey.includes(s.column) && !s.plus && !s.minus) loadedRow.original.set(s.column, s.value);
@@ -846,7 +879,8 @@ async function deleteOne(c: Core, recursive: boolean): Promise<void> {
   const schema = c.ent.entity;
   const r = writeRequest(c, 'delete');
   keyWhere(r, schema, keyValues(c, schema));
-  await write(ex, finishWrite(r), r.params);
+  const revision = revisionGuard(c, schema, r, false, false);
+  revisionChecked(c, revision, (await write(ex, finishWrite(r), r.params)).affected);
 }
 
 /**

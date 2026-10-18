@@ -253,6 +253,13 @@ func (x *LogsModel) GroupLimit(n int) *LogsModel { x.m.GroupLimit(n); return x }
 // DeleteLock excludes the relation from recursive delete.
 func (x *LogsModel) DeleteLock() *LogsModel { x.m.DeleteLock(); return x }
 
+// ExpectRevision makes the next Update or Delete write only while column holds
+// revision; a mismatch returns CodeRevisionChanged and changes nothing.
+func (x *LogsModel) ExpectRevision(column string, revision int64) *LogsModel {
+	x.m.ExpectRevision(column, revision)
+	return x
+}
+
 // FetchKey computes the collection key of each row.
 func (x *LogsModel) FetchKey(fn func(*LogsModel) any) *LogsModel {
 	x.m.FetchKey(func(m orm.Model) any { return fn(m.(*LogsModel)) })

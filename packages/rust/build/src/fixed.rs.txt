@@ -190,6 +190,13 @@ impl T {
         self
     }
 
+    /// Makes the next update or delete write only while `column` holds `revision`; a mismatch fails with
+    /// REVISION_CHANGED and changes nothing.
+    pub fn expect_revision(mut self, column: &str, revision: i64) -> Self {
+        self.__orm.expect_revision(column, revision);
+        self
+    }
+
     /// Computes the collection key of each row.
     pub fn fetch_key<K: Into<polyspec_orm::Key>>(mut self, f: impl Fn(&Self) -> K + Send + Sync + 'static) -> Self {
         self.__orm.fetch_key_with::<Self, K>(f);

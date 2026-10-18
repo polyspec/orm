@@ -298,6 +298,13 @@ func (x *CompositeMembershipModel) GroupLimit(n int) *CompositeMembershipModel {
 // DeleteLock excludes the relation from recursive delete.
 func (x *CompositeMembershipModel) DeleteLock() *CompositeMembershipModel { x.m.DeleteLock(); return x }
 
+// ExpectRevision makes the next Update or Delete write only while column holds
+// revision; a mismatch returns CodeRevisionChanged and changes nothing.
+func (x *CompositeMembershipModel) ExpectRevision(column string, revision int64) *CompositeMembershipModel {
+	x.m.ExpectRevision(column, revision)
+	return x
+}
+
 // FetchKey computes the collection key of each row.
 func (x *CompositeMembershipModel) FetchKey(fn func(*CompositeMembershipModel) any) *CompositeMembershipModel {
 	x.m.FetchKey(func(m orm.Model) any { return fn(m.(*CompositeMembershipModel)) })

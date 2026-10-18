@@ -49,6 +49,8 @@ final class Code
     public const ROW_NOT_DELETED = 'ROW_NOT_DELETED';
     /** executor: a batch of creates binds more parameters than the dialect allows; names the batch, its bind count and the limit; nothing was written */
     public const BATCH_TOO_LARGE = 'BATCH_TOO_LARGE';
+    /** executor: an update or delete given an expected revision found the row at another revision, or no row; nothing was written */
+    public const REVISION_CHANGED = 'REVISION_CHANGED';
     /** executor: a requested column was not included in the loaded row */
     public const COLUMN_UNSELECTED = 'COLUMN_UNSELECTED';
     /** executor: updateOptimistic matched no row (updated_ts changed) */

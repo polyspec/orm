@@ -268,6 +268,7 @@ rows, err := model.Product().Connect(slave1).
 | `duplication(model)`과 `create()` | `model`의 변경 값으로 중복 키 갱신을 포함한 삽입 |
 | `update()` | 행의 변경 컬럼 갱신 |
 | `update(true)` | 저장된 `updated_ts`가 조회 값과 같을 때만 갱신, 다르면 `OPTIMISTIC_LOCK` |
+| `expectRevision(column, revision)`과 `update()` 또는 `delete()` | 행의 `column`이 아직 `revision`일 때만 쓰기. `update()`는 `revision + 1`도 저장. 다르면 `REVISION_CHANGED`이며 아무것도 바꾸지 않는다. 아래 규칙 참고 |
 | `save()` | 기본 키가 있으면 `update()`, 없으면 `create()` |
 | `delete()` | 행 또는 컬렉션의 모든 행 삭제 |
 | `delete(true)` | `deleteLock()` 관계를 제외하고 조회한 관계 행을 재귀 삭제 |
@@ -275,6 +276,7 @@ rows, err := model.Product().Connect(slave1).
 쓰기가 성공하면 속성 변경 기록을 비운다.
 
 - `create()`와 `creates()`는 identity column 값을, `update()`와 `duplication` 모델의 변경은 primary key나 identity column 값을 statement 실행 전에 `IR_INVALID`로 거부한다. PostgreSQL identity는 명시한 key를 지나 나아가지 않아 다음 생성 key가 충돌하므로, identity key는 모두 database가 만든다. identity key를 쓰는 것은 적재뿐이다: `load`가 있는 `insert` 요청, 그다음 `restart_identity` 요청을 연결의 `execute`로 실행한다([protocol](protocol.ko.md#_1-6-load)).
+- `expectRevision(column, revision)`은 모델의 다음 `update()`나 `delete()`를 expected revision을 가진 쓰기로 만든다. revision column은 dbspec setting이 아니라 chain이 지정한다. revision column은 chain이 이미 지정하는(`plus<Col>`처럼) 평범한 정수 column이고, expected revision은 chain만 전달할 수 있는 쓰기 하나의 값이며, setting은 그것을 선언한 모든 document set의 manifest와 manifest hash를 바꾸기 때문이다. column은 entity의 primary key가 아닌 `i16`, `i32`, `i64` column이다. 다른 column, 같은 쓰기에서 설정한 그 column의 값, expectation과 함께한 `update(true)`는 statement 실행 전에 `CONFIG`로 실패한다. 쓰기는 두 번째 mechanism 없이 모델이 이미 보내는 요청 위에 선다. `update()`와 `delete()`의 key predicate에 `column = revision`을 더하고, `update()`는 변경 컬럼과 함께 바인드한 증가 `column = column + 1`(`plus<Col>(1)`처럼)을 할당하며, 다른 컬럼이 바뀌지 않았어도 그렇다. 조건이 있는 statement 하나가 일치한 행을 연결의 트랜잭션(열려 있으면) 안에서 lock하고, 비교와 쓰기 사이에 틈 없이 비교하고 쓴다. `FOR UPDATE`가 없는 SQLite는 statement 동안 write lock을 가진다. 행이 다른 revision이거나 더는 없어서 일치하는 행이 없는 statement는 `REVISION_CHANGED`로 실패하고 아무것도 쓰지 않는다. `delete(true)`는 자신의 트랜잭션에서 실행하므로 root의 `REVISION_CHANGED`는 이미 삭제한 관계 행을 rollback한다. soft delete도 같은 방식으로 비교한다. 모델을 다시 읽지 않으며, 성공한 `update()` 뒤 행의 revision은 `revision + 1`이다. expectation은 성공한 `update()` 뒤 다른 변경과 함께 비워지고, 그 모델에만 적용되며 컬렉션의 행에는 적용되지 않는다. `update(true)`의 `optimistic` 요청 slot은 실행기가 쓰는 `updated_ts`를 비교한다. revision은 form을 그린 revision처럼 호출자가 가진 값이며 `delete()`도 보호한다.
 - `new<Name>`은 계산한 금액이나 화면용 표시 값처럼 행이 출력까지 전달하는 데이터를 추가한다. 이 값은 `INSERT`, `UPDATE`, `SELECT` 문장에 사용하지 않는다. 조회와 쓰기 뒤에도 `get<Name>()`, `toArray()`, JSON 출력에 포함되며 `create()`가 반환한 모델도 추가한 값을 유지한다.
 - `new<Name>`에 실제 컬럼 명칭을 사용하면 거부한다. 저장 컬럼 값은 `set<Col>`을 사용한다.
 - Go와 Rust는 읽은 소스가 호출하는 명칭의 `New<Name>`과 `Get<Name>`을 생성한다. 값 타입은 Go의 `any`, Rust의 공통 값 타입이다.

@@ -153,6 +153,8 @@ export class Core {
   public possible: { column: string; value: unknown } | undefined;
   public groupLimit = 0;
   public deleteLock = false;
+  /** The revision column and the expected revision of the next update or delete (docs/dsl.md "Writes"). */
+  public expectedRevision: { column: string; revision: number | bigint } | undefined;
   public keyName = '';
   public fetchKey: ((m: ModelLike) => unknown) | undefined;
   public fetchValue: ((m: ModelLike) => unknown) | undefined;

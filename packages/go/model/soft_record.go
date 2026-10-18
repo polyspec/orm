@@ -277,6 +277,13 @@ func (x *SoftRecordModel) GroupLimit(n int) *SoftRecordModel { x.m.GroupLimit(n)
 // DeleteLock excludes the relation from recursive delete.
 func (x *SoftRecordModel) DeleteLock() *SoftRecordModel { x.m.DeleteLock(); return x }
 
+// ExpectRevision makes the next Update or Delete write only while column holds
+// revision; a mismatch returns CodeRevisionChanged and changes nothing.
+func (x *SoftRecordModel) ExpectRevision(column string, revision int64) *SoftRecordModel {
+	x.m.ExpectRevision(column, revision)
+	return x
+}
+
 // FetchKey computes the collection key of each row.
 func (x *SoftRecordModel) FetchKey(fn func(*SoftRecordModel) any) *SoftRecordModel {
 	x.m.FetchKey(func(m orm.Model) any { return fn(m.(*SoftRecordModel)) })

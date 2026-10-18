@@ -631,6 +631,47 @@ def _with_aes_columns(c: Core, schema: Entity) -> list:
     return out
 
 
+def _revision_guard(c: Core, schema: Entity, r: dict, update: bool, optimistic: bool):
+    """Checks the expected revision before any statement and adds its condition to the key predicate of r, and on an
+    update the bound increment of the column; None when no revision is expected."""
+    if c.expected_revision is None:
+        return None
+    column, revision = c.expected_revision
+    field = field_of(schema, column)
+    if (
+        field is None
+        or field.type not in ("i16", "i32", "i64")
+        or field.stages
+        or column in schema.primary_key
+    ):
+        raise OrmError(
+            codes.CONFIG,
+            f"expectRevision: {column} is not an integer column of {schema.name} outside its primary key",
+        )
+    if any(s.column == column for s in c.sets):
+        raise OrmError(codes.CONFIG, f"expectRevision: {column} is also set in the write")
+    if optimistic:
+        raise OrmError(codes.CONFIG, "expectRevision does not combine with update(true)")
+    r["ir"]["where"]["items"].append(
+        {"pred": {"conn": "and", "column": column, "op": "eq", "p": len(r["params"])}}
+    )
+    r["params"].append(revision)
+    if update:
+        r["ir"].setdefault("set", []).append({"column": column, "plus_p": len(r["params"])})
+        r["params"].append(1)
+    return column
+
+
+def _revision_checked(c: Core, column, affected: int) -> None:
+    """Fails with REVISION_CHANGED when a write with an expected revision matched no row, and clears the expectation."""
+    if column is not None and affected == 0:
+        raise OrmError(
+            codes.REVISION_CHANGED,
+            f"the row's {column} is not {c.expected_revision[1]}",
+        )
+    c.expected_revision = None
+
+
 def update(c: Core, optimistic: bool = False) -> None:
     """Writes the changed columns; update(True) requires that the update time did not change."""
     ex = _terminal(c)
@@ -643,10 +684,11 @@ def update(c: Core, optimistic: bool = False) -> None:
         for s in _with_aes_columns(c, schema)
         if loaded or s.column not in schema.primary_key
     ]
-    if not sets:
+    if not sets and c.expected_revision is None:
         return
     r["ir"]["set"] = [_assign(r, schema, s) for s in sets]
     _key_where(r, schema, keys)
+    revision = _revision_guard(c, schema, r, True, optimistic)
     column = schema.updated
     if optimistic:
         version = c.row.original.get(column) if loaded and column != "" else None
@@ -658,7 +700,7 @@ def update(c: Core, optimistic: bool = False) -> None:
         r["ir"]["optimistic"] = {"column": column, "p": len(r["params"])}
         r["params"].append(version)
     r["ir"]["n_params"] = len(r["params"])
-    write(ex, r["ir"], r["params"])
+    _revision_checked(c, revision, write(ex, r["ir"], r["params"])["affected"])
     if loaded:
         for s in c.sets:
             if s.column in schema.primary_key and not s.plus and not s.minus:
@@ -703,8 +745,9 @@ def _delete_one(c: Core, recursive: bool) -> None:
     schema = c.ent.entity
     r = _write_request(c, "delete")
     _key_where(r, schema, _key_values(c, schema))
+    revision = _revision_guard(c, schema, r, False, False)
     r["ir"]["n_params"] = len(r["params"])
-    write(ex, r["ir"], r["params"])
+    _revision_checked(c, revision, write(ex, r["ir"], r["params"])["affected"])
 
 
 def restore(c: Core):

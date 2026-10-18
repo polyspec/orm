@@ -1155,10 +1155,14 @@ func (c *Core) Update(optimistic []bool) error {
 		}
 		r.ir.Set = append(r.ir.Set, a)
 	}
-	if len(r.ir.Set) == 0 {
+	if len(r.ir.Set) == 0 && c.expected == nil {
 		return nil
 	}
 	keyWhere(r, ent, keys)
+	revision, err := c.revisionGuard(r, ent, true, len(optimistic) == 1 && optimistic[0])
+	if err != nil {
+		return err
+	}
 	column := ent.Updated
 	if len(optimistic) == 1 && optimistic[0] {
 		version, ok := any(nil), false
@@ -1181,7 +1185,11 @@ func (c *Core) Update(optimistic []bool) error {
 		r.ir.Optimistic = &ir.Optimist{Column: column, P: r.param(version)}
 	}
 	r.ir.NParams = len(r.params)
-	if _, _, err := write(ex, r); err != nil {
+	_, affected, err := write(ex, r)
+	if err != nil {
+		return err
+	}
+	if err := c.revisionChecked(revision, affected); err != nil {
 		return err
 	}
 	if loaded {
@@ -1438,9 +1446,55 @@ func (c *Core) delete(recursive []bool) error {
 		return err
 	}
 	keyWhere(r, ent, keys)
+	revision, err := c.revisionGuard(r, ent, false, false)
+	if err != nil {
+		return err
+	}
 	r.ir.NParams = len(r.params)
-	_, _, err = write(ex, r)
-	return err
+	_, affected, err := write(ex, r)
+	if err != nil {
+		return err
+	}
+	return c.revisionChecked(revision, affected)
+}
+
+// revisionGuard checks the expected revision before any statement and adds its
+// condition to the key predicate of r, and on an update the bound increment of
+// the column; it returns "" when no revision is expected.
+func (c *Core) revisionGuard(r *request, ent *runtimemodel.Entity, update, optimistic bool) (string, error) {
+	if c.expected == nil {
+		return "", nil
+	}
+	column := c.expected.column
+	f := ent.Field(column)
+	if f == nil || (f.Type != "i16" && f.Type != "i32" && f.Type != "i64") || len(f.Codec) > 0 || slices.Contains(ent.PK, column) {
+		return "", configErr("expectRevision: %s is not an integer column of %s outside its primary key", column, ent.Name)
+	}
+	for _, s := range c.sets {
+		if s.column == column {
+			return "", configErr("expectRevision: %s is also set in the write", column)
+		}
+	}
+	if optimistic {
+		return "", configErr("expectRevision does not combine with update(true)")
+	}
+	p := r.param(c.expected.revision)
+	r.ir.Where.Items = append(r.ir.Where.Items, ir.Item{Pred: &ir.Pred{Conn: "and", Column: column, Op: "eq", P: &p}})
+	if update {
+		one := r.param(int64(1))
+		r.ir.Set = append(r.ir.Set, ir.Assign{Column: column, PlusP: &one})
+	}
+	return column, nil
+}
+
+// revisionChecked fails with REVISION_CHANGED when a write with an expected
+// revision matched no row, and clears the expectation.
+func (c *Core) revisionChecked(column string, affected int64) error {
+	if column != "" && affected == 0 {
+		return &ir.Error{Code: CodeRevisionChanged, Msg: fmt.Sprintf("the row's %s is not %d", column, c.expected.revision)}
+	}
+	c.expected = nil
+	return nil
 }
 
 func (c *Collection[T]) deleteAll(recursive []bool) error {

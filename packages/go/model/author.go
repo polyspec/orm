@@ -680,6 +680,13 @@ func (x *AuthorModel) GroupLimit(n int) *AuthorModel { x.m.GroupLimit(n); return
 // DeleteLock excludes the relation from recursive delete.
 func (x *AuthorModel) DeleteLock() *AuthorModel { x.m.DeleteLock(); return x }
 
+// ExpectRevision makes the next Update or Delete write only while column holds
+// revision; a mismatch returns CodeRevisionChanged and changes nothing.
+func (x *AuthorModel) ExpectRevision(column string, revision int64) *AuthorModel {
+	x.m.ExpectRevision(column, revision)
+	return x
+}
+
 // FetchKey computes the collection key of each row.
 func (x *AuthorModel) FetchKey(fn func(*AuthorModel) any) *AuthorModel {
 	x.m.FetchKey(func(m orm.Model) any { return fn(m.(*AuthorModel)) })

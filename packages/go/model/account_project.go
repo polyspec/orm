@@ -266,6 +266,13 @@ func (x *AccountProjectModel) GroupLimit(n int) *AccountProjectModel { x.m.Group
 // DeleteLock excludes the relation from recursive delete.
 func (x *AccountProjectModel) DeleteLock() *AccountProjectModel { x.m.DeleteLock(); return x }
 
+// ExpectRevision makes the next Update or Delete write only while column holds
+// revision; a mismatch returns CodeRevisionChanged and changes nothing.
+func (x *AccountProjectModel) ExpectRevision(column string, revision int64) *AccountProjectModel {
+	x.m.ExpectRevision(column, revision)
+	return x
+}
+
 // FetchKey computes the collection key of each row.
 func (x *AccountProjectModel) FetchKey(fn func(*AccountProjectModel) any) *AccountProjectModel {
 	x.m.FetchKey(func(m orm.Model) any { return fn(m.(*AccountProjectModel)) })

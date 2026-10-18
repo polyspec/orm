@@ -1229,10 +1229,11 @@ pub async fn update<M: Model>(m: &mut M, optimistic: bool) -> Result<()> {
         let a = assign(&mut req, &ent, &s)?;
         req.ir.set.push(a);
     }
-    if req.ir.set.is_empty() {
+    if req.ir.set.is_empty() && c.expected_revision.is_none() {
         return Ok(());
     }
     key_where(&mut req, &ent, &keys);
+    let revision = revision_guard(c, &ent, &mut req, true, optimistic)?;
     let column = ent.updated.clone().unwrap_or_default();
     if optimistic {
         let version = c.row.as_ref().filter(|_| loaded && !column.is_empty()).and_then(|r| r.original.get(&column)).cloned();
@@ -1256,8 +1257,10 @@ pub async fn update<M: Model>(m: &mut M, optimistic: bool) -> Result<()> {
         req.ir.optimistic = Some(ir::Optimist { column: column.clone(), p });
     }
     req.ir.n_params = req.params.len();
-    write(&ex, &c.conn, &mut req).await?;
+    let (_, affected) = write(&ex, &c.conn, &mut req).await?;
+    revision_checked(c, revision.as_deref(), affected)?;
     let c = m.core_mut();
+    c.expected_revision = None;
     if loaded {
         let changes: Vec<(String, Param)> = c
             .sets
@@ -1447,9 +1450,46 @@ pub(crate) async fn delete_row(m: &dyn AnyModel, recursive: bool) -> Result<()> 
     let mut req = write_req(c, "delete");
     let keys = key_values(c, &ent)?;
     key_where(&mut req, &ent, &keys);
+    let revision = revision_guard(c, &ent, &mut req, false, false)?;
     req.ir.n_params = req.params.len();
-    write(&ex, &c.conn, &mut req).await?;
-    Ok(())
+    let (_, affected) = write(&ex, &c.conn, &mut req).await?;
+    revision_checked(c, revision.as_deref(), affected)
+}
+
+/// Checks the expected revision before any statement and adds its condition to the key predicate of `req`, and on
+/// an update the bound increment of the column; `None` when no revision is expected.
+fn revision_guard(c: &Core, ent: &dbspec::Entity, req: &mut Req, update: bool, optimistic: bool) -> Result<Option<String>> {
+    let Some((column, revision)) = c.expected_revision.clone() else {
+        return Ok(None);
+    };
+    let integer = ent.field(&column).is_some_and(|f| matches!(f.ty.name(), "i16" | "i32" | "i64") && f.codec.is_empty());
+    if !integer || ent.primary_key.contains(&column) {
+        return Err(config(format!("expectRevision: {column} is not an integer column of {} outside its primary key", ent.name)));
+    }
+    if c.sets.iter().any(|s| s.column == column) {
+        return Err(config(format!("expectRevision: {column} is also set in the write")));
+    }
+    if optimistic {
+        return Err(config("expectRevision does not combine with update(true)"));
+    }
+    let p = req.p(Param::I64(revision));
+    let pred = ir::Pred { conn: "and".into(), column: column.clone(), op: "eq".into(), p: Some(p), ..Default::default() };
+    req.ir.query.where_.get_or_insert_with(ir::Group::default).items.push(ir::Item::Pred { pred: Box::new(pred) });
+    if update {
+        let one = req.p(Param::I64(1));
+        req.ir.set.push(ir::Assign { column: column.clone(), plus_p: Some(one), ..Default::default() });
+    }
+    Ok(Some(column))
+}
+
+/// Fails with REVISION_CHANGED when a write with an expected revision matched no row.
+fn revision_checked(c: &Core, column: Option<&str>, affected: u64) -> Result<()> {
+    match (column, &c.expected_revision) {
+        (Some(column), Some((_, revision))) if affected == 0 => {
+            Err(Error::Engine { code: codes::REVISION_CHANGED.into(), msg: format!("the row's {column} is not {revision}") })
+        }
+        _ => Ok(()),
+    }
 }
 
 // ---- array and JSON output ----
