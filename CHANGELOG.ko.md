@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 80c21bc6bc66c2f038a5ebb977dd3b9f205b59acedf7cede208eb88dc4d38ba7 -->
+<!-- source-sha256: 1fbedcd9d16e898558526792beae1dc1a106f3c66b0240a08b003d6740539065 -->
 # 변경 이력
 
 ## Unreleased
+- audited transaction이 audit 기록을 첫 audited 쓰기 바로 전에 넣어, audited 행을 쓰지 않는 작업 단위는 audit 기록을 쓰지 않는다. 다섯 client에서(T220).
 - test server의 MySQL migration case가 단계의 TAP 줄을 읽는다(T221).
 - Python scan은 생성된 models module에서만 model을 묶고 모든 매개변수를 자기 binding으로 시작한다. TypeScript의 type이 붙은 callback 매개변수는 자기 class를 받는다 (T222).
 - test server의 PostgreSQL replica가 물리 replication slot으로 WAL을 보존해, 뒤처진 뒤에도 다시 streaming한다(T218).
