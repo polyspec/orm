@@ -1,6 +1,6 @@
 .PHONY: check check-run databases-create ci-group-needs feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check runner-check version-check repo-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check scripts-typecheck typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-verify-idempotent docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check install-cli-check feature-unit-check feature-check feature-coverage feature-verify-rust feature-verify-other feature-docs package-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
 # 실패에서 멈추지 않는 target의 독립된 부분이다(scripts/check/run.mts가 make -k로 실행한다).
-.PHONY: version-check/unit version-check/run repo-check/unit repo-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select testcase-check/go testcase-check/node testcase-check/runners testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/hostcodec client-unit-check/codec-aes client-unit-check/insert-parts client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/model-methods client-unit-check/orm-gen-scan client-unit-check/orm-gen-scan-parity client-unit-check/client-generics client-unit-check/perf-extensions
+.PHONY: version-check/unit version-check/run comment-language-check/unit comment-language-check/run repo-check/unit repo-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select testcase-check/go testcase-check/node testcase-check/runners testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/hostcodec client-unit-check/codec-aes client-unit-check/insert-parts client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/model-methods client-unit-check/orm-gen-scan client-unit-check/orm-gen-scan-parity client-unit-check/client-generics client-unit-check/perf-extensions
 .NOTPARALLEL: check check-run docs-check docs-verify-idempotent
 
 # git runs the tracked hooks (.githooks/commit-msg, .githooks/pre-push) only when core.hooksPath is .githooks, a setting of
@@ -751,6 +751,14 @@ version-check/unit:
 	$(RUN_TESTS) node -- scripts/version/check.test.mts
 version-check/run:
 	$(NODE) scripts/version/check.mts
+
+# comment-language-check fails on a Hangul character in a comment of a tracked code file, naming the file and
+# line. Each language's comments come from its own lexer (scripts/comments/check.mts), and strings are not comments.
+comment-language-check: comment-language-check/unit comment-language-check/run
+comment-language-check/unit:
+	$(RUN_TESTS) node -- scripts/comments/check.test.mts
+comment-language-check/run:
+	$(NODE) scripts/comments/check.mts
 
 repo-check: repo-check/unit repo-check/run
 repo-check/unit:
