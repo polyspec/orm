@@ -111,6 +111,10 @@ function writeSymbols(path: string, symbols: Symbols): void {
   writeFileSync(path, `${goJson(symbols, '  ')}\n`, { mode: 0o644 });
 }
 
+// The symbol hashes that a record run computed, by manifest path (symbol_hashes.<language> or extensions.<name>). The
+// record run writes them into contracts/interfaces.json, so the manifest follows the snapshots it records.
+const recordedHashes = new Map<string, string>();
+
 type Options = { root: string; lang: string; tools: Tools; manifest: Manifest; order: string[] | undefined; record: boolean; selfTest: boolean };
 
 /**
@@ -136,7 +140,8 @@ async function checkLanguage({ root, lang, tools, manifest: m, order, record, se
   if (record) writeSymbols(path, actual);
   else for (const d of differences(readJsonFile<Symbols>(path, symbolsSchema), actual)) problems.push(`${lang}: ${d}`);
   const gotHash = fileSHA256(path), wantHash = m.symbol_hashes?.[lang] ?? '';
-  if (wantHash !== gotHash) problems.push(`${lang}: symbol snapshot hash differs from contracts/interfaces.json\n  want ${wantHash}\n  got  ${gotHash}`);
+  if (record) recordedHashes.set(`symbol_hashes.${lang}`, gotHash);
+  else if (wantHash !== gotHash) problems.push(`${lang}: symbol snapshot hash differs from contracts/interfaces.json\n  want ${wantHash}\n  got  ${gotHash}`);
   if (problems.length > 0) throw new Error(problems.join('\n'));
   if (selfTest) {
     step('source mutations');
@@ -177,7 +182,8 @@ export async function checkExtension(root: string, name: string, e: Extension, m
   if (record) writeSymbols(path, actual);
   else for (const d of differences(readJsonFile<Symbols>(path, symbolsSchema), actual)) problems.push(`${name}: ${d}`);
   const gotHash = fileSHA256(path), wantHash = e.symbol_hash ?? '';
-  if (wantHash !== gotHash) problems.push(`${name}: symbol snapshot hash differs from contracts/interfaces.json\n  want ${wantHash}\n  got  ${gotHash}`);
+  if (record) recordedHashes.set(`extensions.${name}`, gotHash);
+  else if (wantHash !== gotHash) problems.push(`${name}: symbol snapshot hash differs from contracts/interfaces.json\n  want ${wantHash}\n  got  ${gotHash}`);
   if (problems.length > 0) throw new Error(problems.join('\n'));
   console.log(`${name}: ${Object.keys(actual).length} native symbols inspected; ${rules.length} rules and ${owners.length} owners checked`);
 }
@@ -265,6 +271,7 @@ async function main(argv: string[]): Promise<number> {
       }
       if (!(await runCase(`interfaces/${name}`, LANGUAGE, ({ signal, step }) => checkExtension(root, name, e, m, order, record, signal, step)))) failed = true;
     }
+    if (record && recordedHashes.size > 0) writeManifestHashes(join(root, 'contracts/interfaces.json'), recordedHashes);
     if (results.length > 0) {
       const passed = await runCase('interfaces/results', RESULTS, () => {
         const problems = results.flatMap(dir => checkResults(dir, languages, m.sequences ?? []));
@@ -276,6 +283,27 @@ async function main(argv: string[]): Promise<number> {
   } finally {
     if (directory !== undefined) rmSync(directory, { recursive: true, force: true });
   }
+}
+
+/**
+ * writeManifestHashes sets the recorded symbol hashes in the manifest text, changing only the hash value of each entry: the
+ * symbol_hashes of a language and the symbol_hash of an extension. An entry that the text lacks is an error, not a new key.
+ */
+function writeManifestHashes(path: string, hashes: Map<string, string>): void {
+  let text = readFileSync(path, 'utf8');
+  for (const [key, hash] of hashes) {
+    const [section, name] = key.split('.');
+    const field = section === 'symbol_hashes' ? 'symbol_hashes' : 'extensions';
+    const at = text.indexOf(`"${field}": {`);
+    if (at < 0) throw new Error(`${path} has no ${field} object for ${key}`);
+    const body = text.slice(at);
+    const pattern = section === 'symbol_hashes'
+      ? new RegExp(`("${name}": ")sha256:[0-9a-f]+(")`)
+      : new RegExp(`("${name}": \\{[\\s\\S]*?"symbol_hash": ")sha256:[0-9a-f]+(")`);
+    if (!pattern.test(body)) throw new Error(`${path} has no hash for ${key}`);
+    text = text.slice(0, at) + body.replace(pattern, `$1${hash}$2`);
+  }
+  writeFileSync(path, text, { mode: 0o644 });
 }
 
 if (import.meta.main) process.exitCode = await main(process.argv.slice(2));

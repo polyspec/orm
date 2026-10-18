@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The interface record run writes the symbol hashes of contracts/interfaces.json, so the manifest is not edited by hand (T77-51).
 - The goexit test binds its date text as the setters do, so its transaction test passes again (T77-50).
 - The PHP extension's dbspec test copies match the PHP client's and read the shared plan vectors and cases; the shared DSN helper moves to packages/php/testing (T77-49).
 - The Go feature wrapper validates its test name as a Go identifier and escapes it for go test -run (T77-48-1).
