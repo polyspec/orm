@@ -1145,6 +1145,9 @@ parity-check: export FLOWMARK := $(FLOWMARK)
 parity-check: export ORM_PARITY_PHP_EXTENSION = $(PARITY_RUN_DIR)/orm_dbspec.so
 parity-check: export ORM_DBSPEC_EXTENSION = $(PARITY_RUN_DIR)/orm_dbspec.so
 parity-check: export ORM_SEND_SQLITE_DSN = $(SEND_SQLITE_DSN)
+# ORM_SEND_SQLITE_DSN names a file in the run directory of this step: parity-prepare creates it, while the RUN_DIR of
+# parity-check (which SEND_SQLITE_DSN names) is never created, so sqlite could not open the file.
+parity-check: export ORM_SEND_SQLITE_DSN = sqlite://$(PARITY_RUN_DIR)/send-savepoint.sqlite
 # ORM_CHECKOUT is the checkout root: a binding command names it with ${ORM_CHECKOUT}, since kit forbids .. in a command word.
 parity-check: export ORM_CHECKOUT = $(CURDIR)
 parity-check: export ORM_PROGRAM_CONFORMANCE = $(PARITY_RUN_DIR)/target/debug/conformance
