@@ -8,6 +8,7 @@
 - The Python conformance bindings run every vector by name through the unchanged runner, so the Python suite holds without code change (T77-9-4-6).
 - The Go coverage suites run every case through one binding per implementation, which the parity rules already held, so no code changed (T77-9-4-1).
 - The NULL collection key conformance vector runs in the five runners on SQLite, MySQL and PostgreSQL with identical output; the PHP extension leg stays held (T77-6-1).
+- The integration coverage tests run on PostgreSQL and SQLite in parity, as the Go units do, not on MySQL only (T148-3-14-1).
 - The value types test binds the date as its canonical text, as every client does (T148-3-13).
 - The zone tests bind datetime parameters as their canonical text, as every client does (T148-3-12).
 - The Rust dbspec runtime test expects day_cell, which the bench schema declares and every other client models (T148-3-11).
