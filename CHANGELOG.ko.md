@@ -1,10 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4d2855a798f64a8d9621df4c58192393fb55906ff2a3455379821502861fe4a7 -->
+<!-- source-sha256: 3debaa643df746858c4c660db9b584a4061732b946df9a4a62a7a101ed9ba316 -->
 # 변경 이력
 
 ## Unreleased
 - parity-check 단계가 바인딩이 읽는 bench와 decimal DSN, ORM_DBSPEC_EXTENSION을 내보낸다 (T148-5).
 - 모든 push가 parity 검사를 실행한다: parity-check와 parity-declarations-check가 CHECK_TARGETS와 CI 그룹에 있다 (T77-12).
+- T77-9-4가 닫힌다: 모든 하위 항목이 완료이고 parity 규칙은 cf01f139에서 이미 충족되었다 (T77-9-4).
 - Python conformance binding이 변경되지 않은 runner로 모든 vector를 이름으로 실행한다. 코드 변경 없이 Python suite가 충족된다 (T77-9-4-6).
 - Go coverage suite는 implementation마다 binding 하나로 모든 case를 실행한다. parity 규칙이 이미 충족되어 코드는 바뀌지 않았다 (T77-9-4-1).
 - parity-check 단계가 자기 실행 디렉터리(STEP_RUN_DIR, 단계가 끝나면 삭제)를 가지므로 남은 디렉터리가 보고되지 않는다 (T77-58).
