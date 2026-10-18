@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- Every go-orm unit runs only its own test, and the 45 units hold in every implementation (T77-35).
 - The Python connection UTC test binds the instant as offset text, as the protocol takes datetime parameters (T77-57).
 - The physical Go units read their cases from the go test -json stream of their make targets: GO_TEST_FLAGS selects it (T77-56).
 - The zero-case rule uses kit's run-tests, and the orm counter scripts/check/count-cases.mts is removed (T77-55).

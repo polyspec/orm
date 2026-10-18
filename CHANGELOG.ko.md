@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 95367da0c2bba3699fe36e4b479497139c6826e788059d35cef0dce911bb7ec0 -->
+<!-- source-sha256: a5a53df13a9216f153da9d51ff7b5786f0304e577ce6112641c4f2d4436b79cf -->
 # 변경 이력
 
 ## Unreleased
+- 모든 go-orm unit은 자기 test만 실행하고, 45개 unit은 모든 구현에서 성립한다 (T77-35).
 - Python connection UTC 시험은 instant를 프로토콜이 받는 offset 텍스트로 bind한다 (T77-57).
 - physical Go unit들은 자기 make 대상의 go test -json 스트림에서 케이스를 읽는다. GO_TEST_FLAGS가 그 스트림을 고른다 (T77-56).
 - 0개 케이스 규칙은 kit의 run-tests를 쓰고, orm의 카운터 scripts/check/count-cases.mts는 제거한다 (T77-55).
