@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- Code comments are English: the 10,469 Korean comment lines of the tracked code files are translated, and `make comment-language-check` fails on Hangul in any code comment (T131).
 - The parity-check step owns its run directory (STEP_RUN_DIR, removed when the step ends), so no leftover is reported (T77-58).
 - The MySQL days_ago bind uses the bound instant, so the physical fixture is deterministic on every database (T77-33-1).
 - The physical fixture of TestPhysicalQueryForms passes on mysql, postgres and sqlite (T77-33).

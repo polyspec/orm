@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 09e940039f355d70feb52ce7f8236096454ca995ce5fd6cd9580c2db88900a7f -->
+<!-- source-sha256: 7d3429c3cd1910bce46ccb1c741614028c1f5cfbdd089b89c91bad2128bb9830 -->
 # 변경 이력
 
 ## Unreleased
+- 코드 주석은 영어다: tracked code 파일의 한글 주석 10,469줄을 번역했고, `make comment-language-check`는 code 주석의 한글을 실패시킨다 (T131).
 - parity-check 단계가 자기 실행 디렉터리(STEP_RUN_DIR, 단계가 끝나면 삭제)를 가지므로 남은 디렉터리가 보고되지 않는다 (T77-58).
 - MySQL days_ago bind가 바인드된 시각을 써서, physical fixture가 모든 database에서 결정적이다 (T77-33-1).
 - TestPhysicalQueryForms의 physical fixture가 mysql, postgres, sqlite에서 통과한다 (T77-33).
