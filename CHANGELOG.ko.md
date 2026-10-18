@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 53deccece0769dd86ab750ccf520ced51e5a88af686705f0f74c65251dd125d0 -->
+<!-- source-sha256: 94e4a500ab0aa209e6558d9626917b94389e7a7b92f6286a56ac3e0e0d7d619b -->
 # 변경 이력
 
 ## Unreleased
+- CHECK_TARGETS의 input은 추적 파일을 가리키고, Python 인터페이스 unit 검사는 빈 디렉터리 대신 자기 두 test 파일을 실행한다 (T77-44).
 - 모든 런타임의 restore는 hook이 남긴 요청에서 키를 canonicalize 전에 읽고, 공유 케이스 restore_rewritten_key_set_scope가 이를 확인한다 (T77-43).
 - Python request-hook coverage 모듈은 항목별로 case를 실행해, 모든 case가 통과하면 exit 0이다 (T77-42).
 - PHP restore는 request hook이 남긴 요청에서 키를 읽는다. planner가 파라미터 번호를 다시 매기기 전이며 Go와 같다 (T77-41).

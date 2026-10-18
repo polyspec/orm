@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The CHECK_TARGETS inputs name tracked paths, and the Python interface unit check runs its two test files instead of an empty directory (T77-44).
 - Every runtime reads a restore key from the request the hook left, before canonicalize renumbers the parameters, and the shared case restore_rewritten_key_set_scope covers it (T77-43).
 - The Python request-hook coverage module runs its cases per item, so it exits 0 when every case passes (T77-42).
 - A PHP restore reads its key from the request the request hook left, before the planner renumbers parameters, as Go does (T77-41).

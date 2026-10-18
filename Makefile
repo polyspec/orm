@@ -523,7 +523,7 @@ python-check: python-unit-check python-interface-unit-check python-model-check c
 python-unit-check: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p 'test_*.py'
 python-interface-unit-check: python-venv-check
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s tests/interfaces -t tests/interfaces -p 'test_*.py'
+	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p 'test_python_[en]*.py'
 # python-coverage-case-check is the check of the helper coverage-runner-python (contracts/features.json): the unit test of
 # the case runner that the Python coverage tests share.
 .PHONY: python-coverage-case-check
