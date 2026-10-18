@@ -8749,7 +8749,7 @@
   },
   "packages/ts/src/model.ts::Model.creates": {
     "exported": true,
-    "signature": "public async creates(rows: readonly this[]): Promise\u003cnumber\u003e"
+    "signature": "public async creates(rows: readonly this[], batch: number): Promise\u003cnumber\u003e"
   },
   "packages/ts/src/model.ts::Model.delete": {
     "exported": true,
@@ -8975,6 +8975,10 @@
     "exported": false,
     "signature": "async function attachExternal(parents: Core[], rel: { many: boolean; child: Core; }): Promise\u003cvoid\u003e"
   },
+  "packages/ts/src/model.ts::batchFits": {
+    "exported": false,
+    "signature": "function batchFits(driver: string, parts: readonly number[], columns: number): void"
+  },
   "packages/ts/src/model.ts::cellText": {
     "exported": false,
     "signature": "function cellText(value: unknown): string"
@@ -9001,7 +9005,7 @@
   },
   "packages/ts/src/model.ts::creates": {
     "exported": false,
-    "signature": "async function creates(c: Core, models: readonly Model[]): Promise\u003cnumber\u003e"
+    "signature": "async function creates(c: Core, models: readonly Model[], batch: number): Promise\u003cnumber\u003e"
   },
   "packages/ts/src/model.ts::deleteOne": {
     "exported": false,
@@ -9037,7 +9041,7 @@
   },
   "packages/ts/src/model.ts::insertParts": {
     "exported": true,
-    "signature": "export function insertParts(rows: number, columns: number, driver: string): number[]"
+    "signature": "export function insertParts(rows: number, batch: number): number[]"
   },
   "packages/ts/src/model.ts::isCollectionOf": {
     "exported": false,

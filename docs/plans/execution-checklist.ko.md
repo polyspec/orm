@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 1bb348c0d45f31b0c14890d3de8930c82adae7f8c62b67609337253b88b290b4 -->
+<!-- source-sha256: 526d691688f75537c3d8046734a3043866c3241599171e10b48c9d355cf680ae -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1538,12 +1538,13 @@
   - `local(key)`는 없는 key에 `NO_ROWS`를 유지한다: select가 아니라 transaction 로컬 값이며, 없는 key는 호출자 오류이고, null은 저장된 빈 값과 구분되지 않는다.
   - docs/dsl.md, docs/interfaces.md, docs/usage.md, README와 ko 쌍, contracts/interfaces.json, contracts/fixtures/ir_answers.json, 생성된 `Get` 주석, select에서 `NO_ROWS`를 기대한 모든 test.
   근거: 구현을 뺀 red: Go와 Rust는 nullable `get`/`getAvg`에서 build가 실패하고, Python, PHP, TypeScript는 `NO_ROWS: query matched no rows`로 실패한다. green: vector `empty_reads`와 옛 `get()` `NO_ROWS`를 기대값에 가진 vector(terminal_by, write_cycle, delete_recursive)를 MySQL, PostgreSQL, SQLite에서 다섯 client가 합의한 출력으로 기록했다. `restore`는 `NO_ROWS`를 유지한다. 기록 도구가 client 사이에 다른 필드를 말한다. 담당 검사: interface-check, Rust workspace clippy, 다섯 client의 ir-answers, 각 client의 바뀐 unit test.
-- [ ] T205 `creates(rows, batch)`: 호출자가 multi-row INSERT 하나의 행 수를 정한다(consumer S-286-19 상품 import, 사용자 요청). 원인: `creates(rows)`가 행을 자기 규칙으로 statement에 나누므로 호출자가 statement 크기를 고를 수 없다. 완료 기준, Go, PHP, Python, Rust, TypeScript에서 red 뒤 green으로 실행하는 conformance vector로:
+- [o] T205 `creates(rows, batch)`: 호출자가 multi-row INSERT 하나의 행 수를 정한다(consumer S-286-19 상품 import, 사용자 요청). 원인: `creates(rows)`가 행을 자기 규칙으로 statement에 나누므로 호출자가 statement 크기를 고를 수 없다. 완료 기준, Go, PHP, Python, Rust, TypeScript에서 red 뒤 green으로 실행하는 conformance vector로:
   - `creates(rows, batch)`가 유일한 형태다: `batch`는 필수이며 양수이고, `batch` 없는 `creates(rows)`는 기본값도 fallback 분할도 없이 지운다. 양의 정수만 받으며, 다른 값은 어떤 statement보다 먼저 `CONFIG`로 실패한다.
   - `batch` 행씩의 각 묶음(마지막은 더 작을 수 있다)이 multi-row INSERT 하나이고, 모든 묶음이 한 transaction(활성 transaction 안에서는 savepoint) 안에서 실행되며, 실패하면 모든 묶음을 rollback한다.
   - bind 수가 dialect의 bind 한도를 넘는 묶음은 어떤 statement보다 먼저 새 오류 code `BATCH_TOO_LARGE`(docs/errors.yaml, 모든 catalog, parity unit)로 실패하며, message가 묶음, 그 bind 수, dialect 한도를 말한다. 나누지 않는다.
   - 결과는 삽입된 행 수다.
   - docs/dsl.md, docs/interfaces.md, docs/usage.md와 ko 쌍, contracts/interfaces.json, 생성된 wrapper, parity unit.
+  근거: merge base의 model source로 red(vector, runner, model은 유지): Go conformance runner와 Rust runner가 `creates(rows, batch)`에서 build에 실패한다. green: vector creates_batch와 creates_batch_too_large, 그리고 creates로 행을 넣는 contains_ascii_fold와 contains_binary_code_point를 MySQL, PostgreSQL, SQLite에서 다섯 client가 합의한 출력으로 기록했고, 모든 vector를 실행하는 Python case가 셋 모두에서 통과한다. green 실행이 Python이 연 transaction 밖에서 batch를 실행함을 찾았다(`transaction null`). executor를 이제 그 안에서 얻는다. SQLite에서 creates_batch만의 실행은 연결의 첫 `orm__row_lock` statement도 보내며, 기대값은 그것을 뺀다(tests/conformance/README.md). statement 차이가 이제 statement의 tables와 transaction을 말한다. interface-check와 parity-declarations-check가 통과한다.
 - [o] T202 upsert의 conflict key를 request hook 뒤에 검증한다(consumer hyper ScopeHook). 원인: request hook이 insert의 scope column을 할당하지만 `duplication()->create()`의 conflict key 검증이 hook 전의 request를 읽으므로, hook이 완성하는 key가 거부된다. 완료 기준: 검증 위치(Go ir.go, PHP Validator.php, Python validate.py, Rust validate.rs, TS validate.ts)가 hook이 돌려준 request를 읽는다. 언어마다 unit case, 전 red, 후 green.
   증거 (2026-10-19): client마다 case `upsert_scope` (contracts/fixtures/request_hook.dbs의 hook_upsert table, unique (scope_col, name); hook이 insert에 scope_col을 넣고, `name`만 준 `duplication(hits=7)->create()`를 두 번 실행해 a/k/7 한 행이 남는다). RED (hook의 할당을 뺀 상태): Go, PHP (Validator.php:180), Python, Rust, TypeScript가 `IR_INVALID: on_duplicate needs exactly one conflict key; unique (scope_col, name) can meet the row but the insert does not assign scope_col`로 실패 (var/t202-red-{go,php,python,rust,ts}.log). GREEN (실제 hook): 다섯 모두 통과 (var/t202-green-*.log). 모든 validator가 hook이 돌려준 request를 읽으며, 이 case가 그것을 지킨다. consumer는 더 이상 이 upsert를 쓰지 않는다 (canister는 read와 save()로 쓴다).
 - [ ] T203 `relation()`과 `relations()`가 service scope 아래에서 실행된다(consumer). 원인: service scope 아래에서 둘 다 `CONFIG`로 실패한다. 완료 기준: 원인을 찾아 여기에 적고, 언어마다 case, 전 red, 후 green.

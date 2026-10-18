@@ -3157,7 +3157,7 @@
   },
   "packages/python/src/polyspec/orm/model.py::Model.creates": {
     "exported": true,
-    "signature": "def creates(self, rows: list[Self]) -\u003e int"
+    "signature": "def creates(self, rows: list[Self], batch: int) -\u003e int"
   },
   "packages/python/src/polyspec/orm/model.py::Model.delete": {
     "exported": true,
@@ -3333,7 +3333,7 @@
   },
   "packages/python/src/polyspec/orm/model_exec.py::creates": {
     "exported": true,
-    "signature": "def creates(c: Core, models) -\u003e int"
+    "signature": "def creates(c: Core, models, batch: int) -\u003e int"
   },
   "packages/python/src/polyspec/orm/model_exec.py::delete_row": {
     "exported": true,

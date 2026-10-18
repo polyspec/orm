@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- Breaking: `creates(rows, batch)` is the only form; each batch of `batch` rows is one multi-row INSERT, every batch runs in one transaction, and a batch over the bind limit fails with the new code `BATCH_TOO_LARGE`, in the five clients (T205).
 - The Mermaid round-trip vector of the bench document lists the soft_link objects (T214).
 - Each generator takes its base Model methods from Model itself, so a T200 `restore_or_create` call generates and a `json_text` column is refused (T213).
 - The external text keeps the foreign keys between used tables and their leading indexes, so a runtime accepts the audit `tables` clause of an external document (T201-1).

@@ -6237,7 +6237,7 @@
   },
   "packages/go/model/account.go::AccountModel.Creates": {
     "exported": true,
-    "signature": "receiver=*AccountModel func(rows []*AccountModel) (int64, error)"
+    "signature": "receiver=*AccountModel func(rows []*AccountModel, batch int) (int64, error)"
   },
   "packages/go/model/account.go::AccountModel.Delete": {
     "exported": true,
@@ -6545,7 +6545,7 @@
   },
   "packages/go/model/account_project.go::AccountProjectModel.Creates": {
     "exported": true,
-    "signature": "receiver=*AccountProjectModel func(rows []*AccountProjectModel) (int64, error)"
+    "signature": "receiver=*AccountProjectModel func(rows []*AccountProjectModel, batch int) (int64, error)"
   },
   "packages/go/model/account_project.go::AccountProjectModel.Delete": {
     "exported": true,
@@ -7277,7 +7277,7 @@
   },
   "packages/go/model/author.go::AuthorModel.Creates": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func(rows []*AuthorModel) (int64, error)"
+    "signature": "receiver=*AuthorModel func(rows []*AuthorModel, batch int) (int64, error)"
   },
   "packages/go/model/author.go::AuthorModel.Delete": {
     "exported": true,
@@ -8913,7 +8913,7 @@
   },
   "packages/go/model/bind_cell.go::BindCellModel.Creates": {
     "exported": true,
-    "signature": "receiver=*BindCellModel func(rows []*BindCellModel) (int64, error)"
+    "signature": "receiver=*BindCellModel func(rows []*BindCellModel, batch int) (int64, error)"
   },
   "packages/go/model/bind_cell.go::BindCellModel.Delete": {
     "exported": true,
@@ -9289,7 +9289,7 @@
   },
   "packages/go/model/clock_cell.go::ClockCellModel.Creates": {
     "exported": true,
-    "signature": "receiver=*ClockCellModel func(rows []*ClockCellModel) (int64, error)"
+    "signature": "receiver=*ClockCellModel func(rows []*ClockCellModel, batch int) (int64, error)"
   },
   "packages/go/model/clock_cell.go::ClockCellModel.Delete": {
     "exported": true,
@@ -9689,7 +9689,7 @@
   },
   "packages/go/model/composite_account.go::CompositeAccountModel.Creates": {
     "exported": true,
-    "signature": "receiver=*CompositeAccountModel func(rows []*CompositeAccountModel) (int64, error)"
+    "signature": "receiver=*CompositeAccountModel func(rows []*CompositeAccountModel, batch int) (int64, error)"
   },
   "packages/go/model/composite_account.go::CompositeAccountModel.Delete": {
     "exported": true,
@@ -10045,7 +10045,7 @@
   },
   "packages/go/model/composite_membership.go::CompositeMembershipModel.Creates": {
     "exported": true,
-    "signature": "receiver=*CompositeMembershipModel func(rows []*CompositeMembershipModel) (int64, error)"
+    "signature": "receiver=*CompositeMembershipModel func(rows []*CompositeMembershipModel, batch int) (int64, error)"
   },
   "packages/go/model/composite_membership.go::CompositeMembershipModel.Delete": {
     "exported": true,
@@ -10401,7 +10401,7 @@
   },
   "packages/go/model/day_cell.go::DayCellModel.Creates": {
     "exported": true,
-    "signature": "receiver=*DayCellModel func(rows []*DayCellModel) (int64, error)"
+    "signature": "receiver=*DayCellModel func(rows []*DayCellModel, batch int) (int64, error)"
   },
   "packages/go/model/day_cell.go::DayCellModel.Delete": {
     "exported": true,
@@ -10757,7 +10757,7 @@
   },
   "packages/go/model/hex_cell.go::HexCellModel.Creates": {
     "exported": true,
-    "signature": "receiver=*HexCellModel func(rows []*HexCellModel) (int64, error)"
+    "signature": "receiver=*HexCellModel func(rows []*HexCellModel, batch int) (int64, error)"
   },
   "packages/go/model/hex_cell.go::HexCellModel.Delete": {
     "exported": true,
@@ -11169,7 +11169,7 @@
   },
   "packages/go/model/project.go::ProjectModel.Creates": {
     "exported": true,
-    "signature": "receiver=*ProjectModel func(rows []*ProjectModel) (int64, error)"
+    "signature": "receiver=*ProjectModel func(rows []*ProjectModel, batch int) (int64, error)"
   },
   "packages/go/model/project.go::ProjectModel.Delete": {
     "exported": true,
@@ -11461,7 +11461,7 @@
   },
   "packages/go/model/service.go::ServiceModel.Creates": {
     "exported": true,
-    "signature": "receiver=*ServiceModel func(rows []*ServiceModel) (int64, error)"
+    "signature": "receiver=*ServiceModel func(rows []*ServiceModel, batch int) (int64, error)"
   },
   "packages/go/model/service.go::ServiceModel.Delete": {
     "exported": true,
@@ -11809,7 +11809,7 @@
   },
   "packages/go/model/service_member.go::ServiceMemberModel.Creates": {
     "exported": true,
-    "signature": "receiver=*ServiceMemberModel func(rows []*ServiceMemberModel) (int64, error)"
+    "signature": "receiver=*ServiceMemberModel func(rows []*ServiceMemberModel, batch int) (int64, error)"
   },
   "packages/go/model/service_member.go::ServiceMemberModel.Delete": {
     "exported": true,
@@ -12197,7 +12197,7 @@
   },
   "packages/go/model/service_region.go::ServiceRegionModel.Creates": {
     "exported": true,
-    "signature": "receiver=*ServiceRegionModel func(rows []*ServiceRegionModel) (int64, error)"
+    "signature": "receiver=*ServiceRegionModel func(rows []*ServiceRegionModel, batch int) (int64, error)"
   },
   "packages/go/model/service_region.go::ServiceRegionModel.Delete": {
     "exported": true,
@@ -12565,7 +12565,7 @@
   },
   "packages/go/model/soft_link.go::SoftLinkModel.Creates": {
     "exported": true,
-    "signature": "receiver=*SoftLinkModel func(rows []*SoftLinkModel) (int64, error)"
+    "signature": "receiver=*SoftLinkModel func(rows []*SoftLinkModel, batch int) (int64, error)"
   },
   "packages/go/model/soft_link.go::SoftLinkModel.Delete": {
     "exported": true,
@@ -12921,7 +12921,7 @@
   },
   "packages/go/model/soft_record.go::SoftRecordModel.Creates": {
     "exported": true,
-    "signature": "receiver=*SoftRecordModel func(rows []*SoftRecordModel) (int64, error)"
+    "signature": "receiver=*SoftRecordModel func(rows []*SoftRecordModel, batch int) (int64, error)"
   },
   "packages/go/model/soft_record.go::SoftRecordModel.Delete": {
     "exported": true,
@@ -13253,7 +13253,7 @@
   },
   "packages/go/model/task.go::TaskModel.Creates": {
     "exported": true,
-    "signature": "receiver=*TaskModel func(rows []*TaskModel) (int64, error)"
+    "signature": "receiver=*TaskModel func(rows []*TaskModel, batch int) (int64, error)"
   },
   "packages/go/model/task.go::TaskModel.Delete": {
     "exported": true,
@@ -13585,7 +13585,7 @@
   },
   "packages/go/model/time_cell.go::TimeCellModel.Creates": {
     "exported": true,
-    "signature": "receiver=*TimeCellModel func(rows []*TimeCellModel) (int64, error)"
+    "signature": "receiver=*TimeCellModel func(rows []*TimeCellModel, batch int) (int64, error)"
   },
   "packages/go/model/time_cell.go::TimeCellModel.Delete": {
     "exported": true,
@@ -13913,7 +13913,7 @@
   },
   "packages/go/model/upsert_cell.go::UpsertCellModel.Creates": {
     "exported": true,
-    "signature": "receiver=*UpsertCellModel func(rows []*UpsertCellModel) (int64, error)"
+    "signature": "receiver=*UpsertCellModel func(rows []*UpsertCellModel, batch int) (int64, error)"
   },
   "packages/go/model/upsert_cell.go::UpsertCellModel.Delete": {
     "exported": true,
@@ -14245,7 +14245,7 @@
   },
   "packages/go/model/user.go::UserModel.Creates": {
     "exported": true,
-    "signature": "receiver=*UserModel func(rows []*UserModel) (int64, error)"
+    "signature": "receiver=*UserModel func(rows []*UserModel, batch int) (int64, error)"
   },
   "packages/go/model/user.go::UserModel.Delete": {
     "exported": true,
@@ -14553,7 +14553,7 @@
   },
   "packages/go/model/uuid_cell.go::UuidCellModel.Creates": {
     "exported": true,
-    "signature": "receiver=*UuidCellModel func(rows []*UuidCellModel) (int64, error)"
+    "signature": "receiver=*UuidCellModel func(rows []*UuidCellModel, batch int) (int64, error)"
   },
   "packages/go/model/uuid_cell.go::UuidCellModel.Delete": {
     "exported": true,
@@ -17437,7 +17437,7 @@
   },
   "packages/go/orm/model.go::Creates": {
     "exported": true,
-    "signature": "func[T Model](c *Core, models []T) (int64, error)"
+    "signature": "func[T Model](c *Core, models []T, batch int) (int64, error)"
   },
   "packages/go/orm/model.go::Entity.collection": {
     "exported": false,
@@ -17523,6 +17523,10 @@
     "exported": false,
     "signature": "func(parents []*Core, rel relSpec) error"
   },
+  "packages/go/orm/model.go::batchFits": {
+    "exported": false,
+    "signature": "func(driver string, parts []int, columns int) error"
+  },
   "packages/go/orm/model.go::collection": {
     "exported": false,
     "signature": "type collection struct { keys []Key items map[Key]*Core fetched map[Key]any }"
@@ -17551,13 +17555,9 @@
     "exported": false,
     "signature": "func(conn *DB, fn func() error) error"
   },
-  "packages/go/orm/model.go::insertChunk": {
-    "exported": false,
-    "signature": "func(driver string, columns int) int"
-  },
   "packages/go/orm/model.go::insertParts": {
     "exported": false,
-    "signature": "func(n, chunk int) []int"
+    "signature": "func(n, batch int) []int"
   },
   "packages/go/orm/model.go::isZero": {
     "exported": false,

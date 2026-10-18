@@ -4885,7 +4885,7 @@
   },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::insertParts": {
     "exported": true,
-    "signature": "public static function insertParts(int $rows, int $columns, string $driver): array"
+    "signature": "public static function insertParts(int $rows, int $batch): array"
   },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::invalidTimeText": {
     "exported": false,
@@ -9481,7 +9481,7 @@
   },
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::creates": {
     "exported": true,
-    "signature": "public function creates(array $rows): int"
+    "signature": "public function creates(array $rows, int $batch): int"
   },
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::delete": {
     "exported": true,

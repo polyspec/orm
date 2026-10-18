@@ -533,7 +533,7 @@
   },
   "packages/rust/build/src/fixed.rs.txt::T::creates": {
     "exported": false,
-    "signature": "pub async fn creates (\u0026 self , rows : Vec \u003c Self \u003e) -\u003e polyspec_orm :: Result \u003c u64 \u003e"
+    "signature": "pub async fn creates (\u0026 self , rows : Vec \u003c Self \u003e , batch : usize) -\u003e polyspec_orm :: Result \u003c u64 \u003e"
   },
   "packages/rust/build/src/fixed.rs.txt::T::delete": {
     "exported": false,
@@ -6575,6 +6575,10 @@
     "exported": false,
     "signature": " async fn attach_external (parents : \u0026 mut [Box \u003c dyn AnyModel \u003e] , rel : \u0026 RelSpec) -\u003e Result \u003c () \u003e"
   },
+  "packages/rust/orm/src/model.rs::batch_fits": {
+    "exported": false,
+    "signature": " fn batch_fits (driver : \u0026 str , parts : \u0026 [usize] , columns : usize) -\u003e Result \u003c () \u003e"
+  },
   "packages/rust/orm/src/model.rs::bind_limit": {
     "exported": false,
     "signature": " fn bind_limit (driver : \u0026 str) -\u003e usize"
@@ -6601,7 +6605,7 @@
   },
   "packages/rust/orm/src/model.rs::creates": {
     "exported": true,
-    "signature": "pub async fn creates \u003c M : Model \u003e (m : \u0026 M , rows : Vec \u003c M \u003e) -\u003e Result \u003c u64 \u003e"
+    "signature": "pub async fn creates \u003c M : Model \u003e (m : \u0026 M , rows : Vec \u003c M \u003e , batch : usize) -\u003e Result \u003c u64 \u003e"
   },
   "packages/rust/orm/src/model.rs::delete": {
     "exported": true,
@@ -6673,7 +6677,7 @@
   },
   "packages/rust/orm/src/model.rs::insert_parts": {
     "exported": false,
-    "signature": " fn insert_parts (driver : \u0026 str , columns : usize , rows : usize) -\u003e Vec \u003c usize \u003e"
+    "signature": " fn insert_parts (rows : usize , batch : usize) -\u003e Vec \u003c usize \u003e"
   },
   "packages/rust/orm/src/model.rs::json_members": {
     "exported": false,
