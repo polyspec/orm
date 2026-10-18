@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: aaa1fb9f0c5ce8beb10de782694d87e314d77c968fca525517b79c86257f967c -->
+<!-- source-sha256: f8e3a6be076911cff80059b23d6ad4beb625159f73bca26431770c65d6959d51 -->
 # 변경 이력
 
 ## Unreleased
+- PHP symbol snapshot이 요소 type 검사 Graph를 기록하고, 그 공개 symbol을 PHP 전용으로 선언한다(T182-0-1-3).
 - interface contract test가 PHP extension의 모든 stub을 복사해, 기록된 Code class를 다시 검사한다(T182-1-1).
 - 요소 type 검사, behaviour case, show-create introspection의 PHP test를 parity 선언에 bind했다(T182-0-1-2).
 - Names::column이 문자열이 아닌 column에 대해 extension처럼 자기 TypeError를 밝힌다(T182-0-2-2).

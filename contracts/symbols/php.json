@@ -6047,6 +6047,50 @@
     "exported": true,
     "signature": "public function __construct(?string $text, array $diagnostics): "
   },
+  "packages/php/src/Dbspec/Graph.php::Polyspec\\Orm\\Dbspec\\Graph": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Dbspec\\Graph extends  implements  uses "
+  },
+  "packages/php/src/Dbspec/Graph.php::Polyspec\\Orm\\Dbspec\\Graph::document": {
+    "exported": true,
+    "signature": "public static function document(Polyspec\\Orm\\Dbspec\\Document $document): void"
+  },
+  "packages/php/src/Dbspec/Graph.php::Polyspec\\Orm\\Dbspec\\Graph::documents": {
+    "exported": true,
+    "signature": "public static function documents(array $documents, string $what): void"
+  },
+  "packages/php/src/Dbspec/Graph.php::Polyspec\\Orm\\Dbspec\\Graph::fail": {
+    "exported": false,
+    "signature": "private static function fail(string $what, mixed $value, string $want): never"
+  },
+  "packages/php/src/Dbspec/Graph.php::Polyspec\\Orm\\Dbspec\\Graph::name": {
+    "exported": false,
+    "signature": "private static function name(mixed $value): string"
+  },
+  "packages/php/src/Dbspec/Graph.php::Polyspec\\Orm\\Dbspec\\Graph::object": {
+    "exported": false,
+    "signature": "private static function object(mixed $value, string $class, string $what): void"
+  },
+  "packages/php/src/Dbspec/Graph.php::Polyspec\\Orm\\Dbspec\\Graph::plan": {
+    "exported": true,
+    "signature": "public static function plan(Polyspec\\Orm\\Dbspec\\Plan $plan): void"
+  },
+  "packages/php/src/Dbspec/Graph.php::Polyspec\\Orm\\Dbspec\\Graph::plans": {
+    "exported": true,
+    "signature": "public static function plans(array $plans, string $what): void"
+  },
+  "packages/php/src/Dbspec/Graph.php::Polyspec\\Orm\\Dbspec\\Graph::strings": {
+    "exported": false,
+    "signature": "private static function strings(array $values, string $what): void"
+  },
+  "packages/php/src/Dbspec/Graph.php::Polyspec\\Orm\\Dbspec\\Graph::table": {
+    "exported": false,
+    "signature": "private static function table(Polyspec\\Orm\\Dbspec\\Table $table): void"
+  },
+  "packages/php/src/Dbspec/Graph.php::Polyspec\\Orm\\Dbspec\\Graph::unsupported": {
+    "exported": true,
+    "signature": "public static function unsupported(array $unsupported, string $what): void"
+  },
   "packages/php/src/Dbspec/Index.php::Polyspec\\Orm\\Dbspec\\Index": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Dbspec\\Index extends  implements  uses "
