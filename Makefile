@@ -825,6 +825,13 @@ feature-unit-check/owners:
 feature-unit-check/select:
 	$(RUN_TESTS) node -- scripts/features/select.test.mts
 
+# feature-go-unit runs one native Go test of a feature for one database, as a parity binding names it: the make variables
+# FEATURE_DATABASE, FEATURE_DSN_ENV, FEATURE_TEST and FEATURE_PACKAGE are passed by config/parity.json. The binding runs from
+# the package that holds the test and names this target through the checkout root, so the path does not depend on that directory.
+.PHONY: feature-go-unit
+feature-go-unit:
+	$(NODE) packages/go/testing/feature-json.mts --database $(FEATURE_DATABASE) --dsn-env $(FEATURE_DSN_ENV) --test $(FEATURE_TEST) $(FEATURE_PACKAGE)
+
 # feature-check는 기능의 coverage와 모든 검증 명령이고, make check는 그것을 세 target으로 실행한다: feature-coverage는
 # coverage, feature-verify-rust는 shard rust(cargo로 Rust를 build하고 실행하는 명령)의 검증 명령, feature-verify-other는
 # shard other의 검증 명령이다(contracts/features.json의 `shard`). CI는 셋을 서로 다른 group에서 동시에 실행한다. 같은
