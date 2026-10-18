@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 39715928816be1ebe984ba0f4d831ad831763ebf8b5cbeb7c2cfed131eccf3cf -->
+<!-- source-sha256: 4ac852c01193f3ebd988fd84afc11618604e5f31d02ee3b48f5fc5291b2a5850 -->
 # 변경 이력
 
 ## Unreleased
+- physical Go unit들은 자기 make 대상의 go test -json 스트림에서 케이스를 읽는다. GO_TEST_FLAGS가 그 스트림을 고른다 (T77-56).
 - 0개 케이스 규칙은 kit의 run-tests를 쓰고, orm의 카운터 scripts/check/count-cases.mts는 제거한다 (T77-55).
 - 케이스를 하나도 보고하지 않은 시험 실행은 실패한다. scripts/check/count-cases.mts가 kit의 이벤트 리더로 케이스를 센다 (T77-54).
 - PHP CollectionKey 계약은 PHP가 구현하는 키 집합을 나열하고, 기록된 interface 해시가 그것을 따른다 (T77-52).

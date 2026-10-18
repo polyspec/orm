@@ -99,7 +99,10 @@ TEST_TZ = Asia/Seoul
 # tag의 build를 기한 없는 장기 작업 `go-build/<packages>`로 실행하고 그 뒤 go test를 실행한다. -v는 각
 # case가 packages/go/testcase로 내는 RUN, STEP, PASS, FAIL 줄을 실행 중에 보이고, 각 case가 자기 기한을
 # 가지므로 -timeout 0이 test binary 전체의 기한(기본 10분)을 끈다.
-GO_TEST = node tests/go-test.mts -v -timeout 0
+# GO_TEST_FLAGS adds flags to every Go test of the repo (empty by default). A parity binding names GO_TEST_FLAGS=-json to read the
+# go test -json stream of a make target that runs Go tests.
+GO_TEST_FLAGS ?=
+GO_TEST = node tests/go-test.mts -v -timeout 0 $(GO_TEST_FLAGS)
 
 # RUN_LONG은 자기 case를 보고하지 않는 장기 작업(build, 설치, format, lint, package 검사 같은 도구 실행)
 # 하나를 기한 없이 실행한다(tests/run-long.mts): `RUN <name> no-deadline`, 명령의 출력 줄을 STEP으로,

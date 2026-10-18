@@ -57,7 +57,8 @@ function go(args: string[], step?: Step): Promise<GoResult> {
   return new Promise<GoResult>((resolve, reject) => {
     const child = spawn('go', ['test', ...(step ? [] : ['-json']), ...args], { stdio: step ? ['ignore', 'pipe', 'pipe'] : ['inherit', 'pipe', 'inherit'] });
     const lines = step ? stepLines(step) : null;
-    const events = step ? null : testEvents();
+    // -json in the test arguments asks for the raw test2json stream on standard output (the parity reader of kit reads it).
+    const events = step ? null : testEvents(undefined, args.includes('-json'));
     child.stdout?.on('data', (chunk: Buffer) => (lines ?? events)?.write(String(chunk)));
     child.stderr?.on('data', (chunk: Buffer) => lines?.write(String(chunk)));
     child.on('error', reject);
@@ -71,7 +72,7 @@ function go(args: string[], step?: Step): Promise<GoResult> {
 
 // testEvents는 test2json 출력을 줄마다 읽는다. event의 Output(test 출력과 build 출력)은 standard output으로 잇고, JSON이 아닌 줄은 그대로
 // 이으며, Test가 있는 `run` event를 센다.
-export function testEvents(write: (text: string) => unknown = (text: string) => process.stdout.write(text)): { write(chunk: string): void; flush(): void; runs: () => number } {
+export function testEvents(write: (text: string) => unknown = (text: string) => process.stdout.write(text), raw = false): { write(chunk: string): void; flush(): void; runs: () => number } {
   let partial = '';
   let runs = 0;
   const line = (text: string): void => {
@@ -81,7 +82,12 @@ export function testEvents(write: (text: string) => unknown = (text: string) => 
       return;
     }
     const event = parseGoTestEvent(text, 'go test -json');
-    if (event.Action === 'run' && event.Test) runs++;
+    // A case is a test event with a result: pass or fail (run is only the start of a case, and go test omits it without -v).
+    if ((event.Action === 'pass' || event.Action === 'fail') && event.Test) runs++;
+    if (raw) {
+      write(`${text}\n`);
+      return;
+    }
     // output event와 build event(build-output, Go 1.24부터 -json이 build 출력도 event로 낸다)의 Output을 잇는다.
     if (event.Output !== undefined) write(event.Output);
   };
