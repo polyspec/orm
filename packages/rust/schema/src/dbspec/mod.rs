@@ -164,8 +164,8 @@ pub fn emit(document: &Document) -> String {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Manifest {
     pub manifest_text: String,
-    /// 외부 문서마다 소유한 문서가 쓰는 table의 column, primary key, unique key만 담은 canonical text다.
-    /// 외부 문서가 없으면 비어 있다.
+    /// Canonical text containing only the columns, primary key, and unique keys of tables that the owning document uses, for each external document.
+    /// Empty if there are no external documents.
     pub external_text: String,
     pub schema_text: String,
     pub manifest_hash: String,
@@ -217,7 +217,7 @@ pub(crate) fn check_set<'d>(documents: &[&'d Document]) -> Result<Vec<&'d Docume
             });
         }
     }
-    // 외부 문서는 소유한 문서에서 use를 따라 닿는 문서다.
+    // An external document is one reached by following use from the owning document.
     let mut reached: BTreeSet<&str> = BTreeSet::new();
     let mut pending: Vec<&Document> = ordered.iter().copied().filter(|d| !d.external).collect();
     while let Some(document) = pending.pop() {
@@ -249,7 +249,7 @@ pub(crate) fn check_set<'d>(documents: &[&'d Document]) -> Result<Vec<&'d Docume
 /// repeated document names and used documents missing from the set.
 pub fn manifest(documents: &[&Document]) -> Result<Manifest, Vec<Diagnostic>> {
     let ordered = check_set(documents)?;
-    // 외부 문서마다 소유한 문서가 use로 쓰는 table이다. 처음 나온 순서를 지킨다.
+    // The tables that the owning document uses for each external document. The order of first appearance is kept.
     let mut used: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
     for document in ordered.iter().filter(|d| !d.external) {
         for line in &document.uses {
@@ -281,8 +281,8 @@ pub fn manifest(documents: &[&Document]) -> Result<Manifest, Vec<Diagnostic>> {
         }
         manifest_text.push_str(&emit::emit(document, emit::View::Manifest));
     }
-    // schema text는 집합이 소유한 모든 table을 이름 순으로 담은 문서 `schema` 하나이므로 문서를 나누는 방식과
-    // 무관하다. 외부 문서에서 쓰는 table은 그 문서의 use 줄로 남는다.
+    // The schema text is one document `schema` holding all tables the set owns in name order, so it is unrelated to how documents are split;
+    // tables used from external documents remain as use lines of that document.
     let mut tables: Vec<model::Table> = ordered.iter().filter(|d| !d.external).flat_map(|d| d.tables.iter().cloned()).collect();
     tables.sort_by(|a, b| a.name.text.cmp(&b.name.text));
     let schema = Document {
@@ -299,8 +299,8 @@ pub fn manifest(documents: &[&Document]) -> Result<Manifest, Vec<Diagnostic>> {
     Ok(Manifest { manifest_text, external_text, schema_text, manifest_hash, schema_hash })
 }
 
-/// 외부 문서에서 `tables`의 column, primary key, unique key만 문서 순서로 담은 문서다. 그 table이 없으면
-/// None이다. foreign key, index, check, setting과 주석은 외부 문서가 소유하므로 담지 않는다.
+/// A document holding only the columns, primary key, and unique keys of `tables` from an external document, in document order. If the table does not exist,
+/// it is None. Foreign keys, indexes, checks, settings, and comments are owned by the external document, so they are not included.
 fn external_document(document: &Document, tables: &[&str]) -> Option<Document> {
     let kept: Vec<model::Table> = document
         .tables
@@ -325,10 +325,10 @@ fn external_document(document: &Document, tables: &[&str]) -> Option<Document> {
     Some(Document { name: document.name.clone(), uses: Vec::new(), tables: kept, diagrams: Vec::new(), trailing: Vec::new(), external: true })
 }
 
-/// set이 외부 문서에서 쓰는 table이 database에 있는지 확인한다(docs/dbspec.md "External documents").
-/// `live`는 database를 introspect한 문서다. 쓰는 table마다 table이 없거나, 외부 문서의 column이 없거나 type이나
-/// null이 다르거나, primary key가 다르거나, unique key의 column 목록이 없으면 그 차이를 table, column 순으로
-/// 돌려준다. 외부 문서가 없으면 빈 목록이다.
+/// Checks that the tables the set uses from external documents exist in the database (docs/dbspec.md "External documents").
+/// `live` is the document introspected from the database. For each table used, if the table is missing, or an external column is missing, or its type or
+/// nullability differs, the primary key differs, or a unique key's column list is missing, that difference is
+/// returned in table, column order. With no external documents, the list is empty.
 pub fn external_differences(live: &Document, documents: &[&Document]) -> Vec<String> {
     let mut tables: Vec<&model::Table> = Vec::new();
     for document in documents.iter().filter(|d| !d.external) {

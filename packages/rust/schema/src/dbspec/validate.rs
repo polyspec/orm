@@ -27,10 +27,10 @@ enum Lookup<'d> {
 struct TableScope<'s, 'd> {
     table: &'d Table,
     unresolved: Option<&'s HashSet<&'d str>>,
-    /// 열 줄의 type이 잘못된 열의 이름이다. Go는 이 열을 있는 열로 보고 type만 검사하지 않는다.
+    /// The name of a column whose column line has a wrong type. Go treats this column as existing and does not check only its type.
     typeless: Option<&'s HashMap<&'d str, bool>>,
     failed_keys: FailedKeys,
-    /// 표 줄이 실패했다. Go의 failed table로서 이 표를 가리키는 참조와 이름 중복을 보고하지 않는다.
+    /// The table line failed. As Go's failed table, references to this table and duplicate names are not reported.
     header_failed: bool,
 }
 
@@ -136,7 +136,7 @@ pub(crate) fn validate(parsed: &Syntax, used: &[Option<&Document>], diags: &mut 
             continue;
         }
         if scope.tables.contains_key(table.name.text.as_str()) || scope.used.contains_key(table.name.text.as_str()) {
-            // Go는 표 줄이 실패한 표의 이름 중복을 보고하지 않는다(validate.go의 failed table).
+            // Go does not report duplicate names of tables whose table line failed (failed table in validate.go).
             if !header_failed.get(index).copied().unwrap_or(false) {
                 diags.push(err(table.name.pos, "name.duplicate", format!("table '{}' is defined twice", table.name.text)));
             }
@@ -381,12 +381,12 @@ impl<'s, 'd> TableRules<'s, 'd> {
     }
 
     fn foreign_key(&mut self, key: &ForeignKey) {
-        // Go는 자식 열이 모두 알려지고 겹치지 않을 때만 색인 검사를 한다(validate.go의 foreignKey, known).
-        // 짝과 type 검사는 자식 열과 관계없이 하므로, 알려지지 않은 자식은 None으로 자리를 지켜 참조 열과 짝을 맞춘다.
+        // Go runs the index check only when all child columns are known and do not overlap (foreignKey, known in validate.go).
+        // Pair and type checks are done regardless of child columns, so an unknown child keeps its place as None to pair with the referenced column.
         let mut children_known = true;
         let mut seen = HashSet::new();
         let mut children: Vec<Option<&Column>> = Vec::new();
-        // 열마다 null 여부다. Go의 set_null 검사는 type이 잘못된 자식도 읽으므로 이 값은 children과 따로 둔다.
+        // Nullability per column. Go's set_null check also reads children with a wrong type, so this value is kept separately from children.
         let mut nullable: Vec<Option<bool>> = Vec::new();
         for name in &key.columns {
             let repeated = !seen.insert(name.text.as_str());
@@ -400,7 +400,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
                     children.push(Some(column));
                     nullable.push(Some(column.nullable));
                 }
-                // Go의 columnRef는 type이 잘못된 열을 찾는다. 색인 검사는 이 열을 알려진 것으로 보고 type 검사는 건너뛴다.
+                // Go's columnRef finds columns with a wrong type. The index check treats this column as known and skips the type check.
                 Lookup::Unresolved if typeless.is_some() => {
                     if repeated {
                         self.report(name.pos, "foreign_key", format!("column '{}' is repeated", name.text));
@@ -423,9 +423,9 @@ impl<'s, 'd> TableRules<'s, 'd> {
             }
         }
         let target = self.scope.table(&key.table.text);
-        // Go는 표 줄이 실패한 target의 열, 개수, key와 type을 검사하지 않는다.
+        // Go does not check the columns, count, key, or type of a target whose table line failed.
         let failed_target = target.is_some_and(|t| t.header_failed);
-        // 참조 열이 모두 알려졌는지만 짝과 type 검사를 정한다(Go의 referencesKnown).
+        // Only whether all referenced columns are known decides the pair and type checks (Go's referencesKnown).
         let mut references_known = true;
         let mut parents: Vec<Option<&Column>> = Vec::new();
         match &target {
@@ -454,12 +454,12 @@ impl<'s, 'd> TableRules<'s, 'd> {
             }
         }
         let same_length = key.columns.len() == key.references.len();
-        // Go는 target이 정의되어 있고 실패하지 않았을 때만 개수를 검사한다(`target != nil && !target.failed`).
+        // Go checks the count only when the target is defined and did not fail (`target != nil && !target.failed`).
         let target_checked = target.is_some() && !failed_target;
         if target_checked && !same_length {
             self.report(key.name.pos, "foreign_key", "the foreign key lists a different number of columns and referenced columns");
         }
-        // Go의 foreignKey와 같다: 개수가 같고 참조 열이 모두 알려졌을 때만 짝과 type 검사를 한다.
+        // Same as Go's foreignKey: pair and type checks are done only when the counts match and all referenced columns are known.
         if let (true, true, Some(target), false) = (same_length, references_known, &target, failed_target) {
             let references: Vec<&str> = key.references.iter().map(|n| n.text.as_str()).collect();
             let same = |names: &[Name]| names.iter().map(|n| n.text.as_str()).eq(references.iter().copied());
@@ -467,7 +467,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
             if !keyed && !target.failed_keys.any && !target.failed_keys.primary {
                 self.report(key.name.pos, "foreign_key", format!("the referenced columns are not the primary key or a unique key of '{}'", key.table.text));
             }
-            // 알려진 자식 열만 type을 본다. 참조 열은 위에서 모두 알려졌음을 확인했다.
+            // Only known child columns have their type checked. The referenced columns were confirmed above to be all known.
             if children.iter().zip(&parents).any(|(c, p)| matches!((c, p), (Some(c), Some(p)) if c.ty != p.ty)) {
                 self.report(key.name.pos, "foreign_key", "a column type differs from its referenced column type");
             }
@@ -1013,9 +1013,9 @@ impl<'s, 'd> TableRules<'s, 'd> {
         }
     }
 
-    /// audit setting, audit 기록 table과 그 foreign key, history table의 모양을 검사한다(docs/dbspec.md
-    /// "Audit"). history table은 i64 identity primary key, action과 previous column, 기록하는 column과
-    /// 같은 이름과 type의 column만 가지며, 어긋난 곳마다 하나씩 보고한다.
+    /// Checks the shape of the audit setting, the audit record table and its foreign key, and the history table (docs/dbspec.md
+    /// "Audit"). The history table has only an i64 identity primary key, action and previous columns, and columns
+    /// with the same names and types as the recorded columns, and reports one diagnostic for each mismatch.
     #[expect(clippy::too_many_arguments, reason = "each argument is one field of the audit setting, as docs/dbspec.md \"Audit\" names them")]
     fn audit(&mut self, setting: &Setting, into: &Name, column: &Name, references: &Name, action: &Name, previous: &Name, lists: &[AuditList]) {
         let table = self.own.table;
@@ -1034,7 +1034,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
             }
             return;
         };
-        // Go는 표 줄이 실패한 history table의 열을 검사하지 않는다.
+        // Go does not check the columns of a history table whose table line failed.
         if history.header_failed {
             return;
         }
@@ -1085,7 +1085,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
             }
             reserved.insert(&previous.text);
         }
-        // 두 목록을 다 쓴 setting은 기록하는 column이 정해지지 않으므로 history table의 column을 맞추어 보지 않는다.
+        // A setting that uses both lists does not determine the recorded columns, so the history table's columns are not checked against them.
         if !listed {
             return;
         }
@@ -1119,10 +1119,10 @@ impl<'s, 'd> TableRules<'s, 'd> {
         }
     }
 
-    /// audit 기록 table을 검사한다. 그 table은 이 문서나 사용한 문서의 다른 table이며 history table이
-    /// 아니고, 자신은 audit 대상이 아니며, column 하나의 primary key를 가지고 그 type이 audit column의
-    /// type이다. audit column은 그 primary key를 restrict로 가리키는 선언한 foreign key의 유일한
-    /// column이다. 그래서 audit 기록 행이 없는 audit column 값은 database가 거부한다.
+    /// Checks the audit record table. That table is another table of this document or of a used document, is not a history table,
+    /// is not audited, and has a one-column primary key whose type matches the audit column's
+    /// type. The audit column is the only column of a declared foreign key that refers to that primary key with restrict,
+    /// so the database rejects an audit column value that has no audit record row.
     fn audit_record(&mut self, audit_column: Option<&Column>, column: &Name, references: &Name, into: &Name) {
         if !well_formed(&references.text) {
             return;
@@ -1134,7 +1134,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
             }
             return;
         };
-        // Go는 표 줄이 실패한 audit 기록 table의 key를 검사하지 않는다.
+        // Go does not check the key of an audit record table whose table line failed.
         if record.header_failed {
             return;
         }
@@ -1186,10 +1186,10 @@ impl<'s, 'd> TableRules<'s, 'd> {
         }
     }
 
-    /// audit의 exclude나 include 목록을 검사하고, 기록하는 column이 정해지는지 알린다. 두 목록을
-    /// 다 쓰면 둘째 목록의 keyword에서 거부하고 false다. 목록의 column은 table의 column이고, 한
-    /// 번만 나오며, audit column이 아니다. audit column은 언제나 기록하므로 어느 목록에도 쓰지
-    /// 않는다.
+    /// Checks the exclude or include list of audit, and tells whether the recorded columns are determined. Using both lists
+    /// is rejected at the keyword of the second list, and returns false. The columns of a list are columns of the table, each
+    /// appears only once and is not an audit column, since an audit column is always recorded and
+    /// so no list may name it.
     fn audit_lists(&mut self, audited: &Name, lists: &[AuditList]) -> bool {
         if let [_, second, ..] = lists {
             self.report(second.keyword.pos, "setting", "audit names its recorded columns by exclude or by include, not both");

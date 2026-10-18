@@ -1,4 +1,4 @@
-//! SQL text를 statement로 나누는 helper. orm-build의 tool connection이 한 statement만 받는지 확인할 때 쓴다.
+//! A helper that splits SQL text into statements. Used to check that the tool connection of orm-build accepts only one statement.
 
 /// Splits SQL text into statements, skipping comments and respecting quotes
 /// and PostgreSQL dollar-quoted bodies. A CREATE TRIGGER statement keeps its

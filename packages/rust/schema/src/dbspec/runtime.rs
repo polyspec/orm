@@ -1,23 +1,23 @@
-//! ORM runtime과 model generator가 함께 쓰는 document set의 runtime model
-//! (docs/dbspec.md, "Runtime model")과, manifest text에서 다시 읽은 document.
+//! The runtime model of a document set, shared by the ORM runtime and the model generator
+//! (docs/dbspec.md, "Runtime model") and documents read again from manifest text.
 
 use super::model::{DefaultValue, Document, Setting, Table, Type};
 use super::Diagnostic;
 use std::collections::BTreeMap;
 
-/// document set의 entity: document는 이름 순서, table은 document 안의 순서다.
+/// Entities of the document set: documents are in name order, and tables are in document order.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RuntimeModel {
     pub entities: Vec<Entity>,
 }
 
-/// ORM이 보는 table 하나.
+/// One table as seen by the ORM.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Entity {
-    /// `entity` setting, 없으면 table 이름.
+    /// The `entity` setting, or the table name if there is none.
     pub name: String,
     pub table: String,
-    /// column마다 field 하나, column 순서.
+    /// One field per column, in column order.
     pub fields: Vec<Field>,
     pub primary_key: Vec<String>,
     /// identity column.
@@ -35,7 +35,7 @@ pub struct Entity {
     pub immutable: bool,
 }
 
-/// ORM이 보는 column 하나.
+/// One column as seen by the ORM.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Field {
     pub name: String,
@@ -43,27 +43,27 @@ pub struct Field {
     pub nullable: bool,
     pub identity: bool,
     pub primary_key: bool,
-    /// foreign key에 속한 column이다.
+    /// A column that belongs to a foreign key.
     pub foreign_key: bool,
     pub default: Option<FieldDefault>,
-    /// `select explicit`이 이름을 적은 column이라 default select set에서 빠진다.
+    /// A column named by `select explicit`, so it is left out of the default select set.
     pub select_explicit: bool,
-    /// 쓰기 순서의 codec stage.
+    /// The codec stage in write order.
     pub codec: Vec<String>,
-    /// 이 AES column의 `blind_index` setting이 정한 index column.
+    /// The index column determined by the `blind_index` setting of this AES column.
     pub blind_index: Option<String>,
 }
 
-/// column의 default.
+/// The column's default.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FieldDefault {
     /// `default now`.
     Now,
-    /// canonical text의 literal.
+    /// The literal of the canonical text.
     Literal(String),
 }
 
-/// 이름이 있는 unique key 또는 index와 그 column.
+/// A named unique key or index, and its columns.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Key {
     pub name: String,
@@ -82,43 +82,43 @@ pub struct ForeignKey {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Audit {
     pub history: String,
-    /// transaction의 audit 기록 key를 담는 column.
+    /// The column holding the audit record key of the transaction.
     pub column: String,
-    /// audit 기록 table의 이름.
+    /// The name of the audit record table.
     pub record: String,
     pub action: String,
     pub previous: String,
 }
 
 impl RuntimeModel {
-    /// 이름이 `name`인 entity.
+    /// The entity named `name`.
     pub fn entity(&self, name: &str) -> Option<&Entity> {
         self.entities.iter().find(|e| e.name == name)
     }
 }
 
 impl Entity {
-    /// 이름이 `name`인 field.
+    /// The field named `name`.
     pub fn field(&self, name: &str) -> Option<&Field> {
         self.fields.iter().find(|f| f.name == name)
     }
 }
 
 impl Field {
-    /// field가 common value model의 styled value를 담는다: codec stage 중 하나가
-    /// `ordered_json`, `serialize`, `yaml`, `gz`, `base64`다 (docs/dbspec.md, "Runtime model").
+    /// The field holds a styled value of the common value model: one of its codec stages
+    /// is `ordered_json`, `serialize`, `yaml`, `gz`, or `base64` (docs/dbspec.md, "Runtime model").
     pub fn styled_value(&self) -> bool {
         self.codec.iter().any(|s| matches!(s.as_str(), "ordered_json" | "serialize" | "yaml" | "gz" | "base64"))
     }
 
-    /// field가 `aes` stage로 암호화된다.
+    /// The field is encrypted by the `aes` stage.
     pub fn aes(&self) -> bool {
         self.codec.iter().any(|s| s == "aes")
     }
 }
 
-/// document를 이름 순서로 놓은 document set의 runtime model을 돌려준다. entity는 소유한 문서의 table이며
-/// 외부 문서의 table은 entity가 아니다. 잘못된 document set이면 `manifest`와 같은 diagnostic을 돌려준다.
+/// Returns the runtime model of the document set with documents in name order. An entity is a table of an owned document, and
+/// a table of an external document is not an entity. For an invalid document set, returns the same diagnostic as `manifest`.
 pub fn runtime_model(documents: &[&Document]) -> Result<RuntimeModel, Vec<Diagnostic>> {
     let ordered = super::check_set(documents)?;
     let entities = ordered.iter().filter(|d| !d.external).flat_map(|d| d.tables.iter()).map(entity).collect();
@@ -194,17 +194,17 @@ fn entity(table: &Table) -> Entity {
     }
 }
 
-/// manifest text의 document를 읽는다 (docs/dbspec.md, "Manifest and hashes").
-/// document는 header line에서 시작하고, 각 document는 나머지 document를 declared
-/// document set으로 삼아 parse한다. diagnostic은 manifest text의 line을 갖고
-/// message에 document 이름을 적는다. 첫 header 앞의 text는 `header` error다.
+/// Reads the documents of the manifest text (docs/dbspec.md, "Manifest and hashes").
+/// A document starts at its header line, and each document treats the remaining documents as declared
+/// document set when parsed. A diagnostic has the manifest text's line
+/// and names the document in its message. Text before the first header is a `header` error.
 pub fn parse_manifest(text: &str) -> Result<Vec<Document>, Vec<Diagnostic>> {
     parse_manifest_set(text, "")
 }
 
-/// manifest text와 external text(외부 문서에서 set이 쓰는 table, `Manifest::external_text`)의 document를
-/// parse한다. 각 document는 두 text의 다른 모든 document를 set으로 삼아 parse하고, external text의 document는
-/// `external`로 표시한다.
+/// Parses the documents of the manifest text and of the external text (the tables the set uses from external documents, `Manifest::external_text`)
+/// . Each document is parsed with all other documents of both texts as its set, and documents of the external text are
+/// marked `external`.
 pub fn parse_manifest_set(text: &str, external: &str) -> Result<Vec<Document>, Vec<Diagnostic>> {
     let owned = manifest_chunks(text)?;
     let externals = if external.is_empty() { Vec::new() } else { manifest_chunks(external)? };
@@ -233,7 +233,7 @@ pub fn parse_manifest_set(text: &str, external: &str) -> Result<Vec<Document>, V
     }
 }
 
-/// manifest text를 document마다 (시작 줄, 이름, text)로 나눈다.
+/// Splits the manifest text per document into (start line, name, text).
 fn manifest_chunks(text: &str) -> Result<Vec<(usize, String, String)>, Vec<Diagnostic>> {
     let mut chunks: Vec<(usize, String, String)> = Vec::new();
     for (i, line) in text.split_inclusive('\n').enumerate() {

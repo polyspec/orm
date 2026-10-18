@@ -1,6 +1,6 @@
-//! check predicate를 읽는다 (docs/dbspec.md, "Checks"): column과 literal의
-//! comparison, `in`, `is null`, 괄호를 포함한 `and`/`or`. type은 `check_type`이
-//! 검사한다.
+//! Reads check predicates (docs/dbspec.md, "Checks"): a column and literal
+//! comparison, `in`, `is null`, and `and`/`or` with parentheses. `check_type`
+//! checks the type.
 
 use super::lexer::{Kind, Token};
 use super::literal::Value;
@@ -72,8 +72,8 @@ impl<'t, 'a> CheckParser<'t, 'a> {
         Ok(left)
     }
 
-    /// 괄호로 묶인 predicate 또는 operand로 시작하는 predicate form. 괄호는 node를
-    /// 남기지 않으며, emission이 precedence에 필요한 괄호만 쓴다.
+    /// A predicate form that starts with a parenthesized predicate or operand. Parentheses leave no node
+    /// and emission writes only the parentheses that precedence requires.
     fn predicate(&mut self) -> Result<Expr, CheckError> {
         if self.peek_is("(") {
             self.at += 1;
@@ -123,8 +123,8 @@ impl<'t, 'a> CheckParser<'t, 'a> {
         self.alone(column.pos, format!("column '{}' alone is not a predicate", column.text))
     }
 
-    /// comparison이 뒤따르지 않는 literal의 error: `in` 또는 `is`의 subject인
-    /// literal은 literal 자신에서 보고하고, 그 밖에는 operand 단독으로 처리한다.
+    /// Error for a literal not followed by a comparison: a literal that is the subject of `in` or `is`
+    /// is reported at the literal itself; otherwise it is handled as a standalone operand.
     fn after_literal<T>(&self, literal: &Literal) -> Result<T, CheckError> {
         let subject = self.peek_is("in") || self.peek_is("is") || (self.peek_is("not") && self.tokens.get(self.at + 1).is_some_and(|t| t.is("in")));
         if subject {
@@ -133,8 +133,8 @@ impl<'t, 'a> CheckParser<'t, 'a> {
         self.alone(literal.pos, "a literal alone is not a predicate".into())
     }
 
-    /// comparison, `in`, `is`가 뒤따르지 않는 operand의 error: 뒤에 `and`, `or`,
-    /// `)` 또는 끝이 오면 operand에서, 그 밖에는 다음 token에서 보고한다.
+    /// Error for an operand not followed by a comparison, `in`, or `is`: when `and`, `or`,
+    /// `)`, or the end follows, it is reported at the operand; otherwise at the next token.
     fn alone<T>(&self, operand: Pos, message: String) -> Result<T, CheckError> {
         match self.peek() {
             Some(t) if !(t.is("and") || t.is("or") || t.is(")")) => self.unexpected(),

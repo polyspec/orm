@@ -12,7 +12,7 @@ use polyspec_orm_schema::dbspec::{self, chain, compare_schemas, diff, emit_plan,
 use polyspec_orm_testcase::Trial;
 use serde_json::Value;
 
-/// step의 plans.json object다(docs/plans.md "Steps").
+/// The plans.json object of a step (docs/plans.md "Steps").
 fn step_fields(s: &PlanStep) -> Value {
     let mut out = serde_json::Map::new();
     out.insert("statement".into(), Value::from(s.statement.clone()));
@@ -47,7 +47,7 @@ fn step_fields(s: &PlanStep) -> Value {
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-/// case 하나의 기한.
+/// The deadline of one case.
 const DEADLINE: Duration = Duration::from_secs(5);
 
 const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)];
@@ -67,7 +67,7 @@ fn strings(value: &Value) -> Vec<String> {
     value.as_array().expect("strings").iter().map(|s| s.as_str().expect("string").to_owned()).collect()
 }
 
-/// case의 source schema이며 null이면 빈 schema다.
+/// The source schema of the case; null means an empty schema.
 fn source(id: &str, value: &Value) -> Option<Document> {
     if value.is_null() {
         return None;
@@ -75,7 +75,7 @@ fn source(id: &str, value: &Value) -> Option<Document> {
     Some(dbspec::parse(&lines(value), &BTreeMap::new()).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{id}: source: {e:?}")))
 }
 
-/// case 하나를 실행하고 그 결과와 CPU 시간을 쓴다. 실패한 case는 이유와 함께 panic한다.
+/// Runs one case and writes its result and CPU time. A failed case panics with its reason.
 fn run(id: &str, body: impl FnOnce() -> Result<(), String>) {
     let clock = CaseClock::start();
     let result = body();
@@ -221,7 +221,7 @@ fn plan_parse_errors_parse(case: &Value) {
     let id = format!("parse/{}", case["id"].as_str().expect("id"));
     run(&id, || {
         let diagnostics = parse_plan(&lines(&case["plan"])).err().unwrap_or_default();
-        // plan diagnostic은 message까지, target diagnostic은 rule, 줄, 칸까지 비교한다.
+        // Plan diagnostics are compared down to the message; target diagnostics are compared down to the rule, line, and column.
         let got = Value::from(
             diagnostics
                 .into_iter()

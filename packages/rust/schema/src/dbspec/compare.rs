@@ -1,5 +1,5 @@
-//! plan 없이 두 schema의 모든 차이를 나열한다(docs/plans.md, "Comparison"). rename이
-//! 없으므로 table과 column은 이름으로만 맞춘다.
+//! Lists every difference between two schemas without a plan (docs/plans.md, "Comparison"). Since no rename
+//! is involved, tables and columns are matched by name only.
 
 use super::model::{Setting, Table};
 use super::plan_diff::{column_of, primary_key, same_default, widens};
@@ -7,10 +7,10 @@ use super::plan_objects::{expr_text, foreign_key_def, index_def, names_def, same
 use super::{emit, Diagnostic, Document};
 use std::collections::BTreeMap;
 
-/// 비교 대상이 schema text가 아닐 때의 diagnostic rule.
+/// Diagnostic rule for when a compared item is not schema text.
 pub const RULE_COMPARE: &str = "compare";
 
-/// 두 schema의 차이 하나. `name`은 column이나 객체의 이름이고, table 단위 차이에서는 비어 있다.
+/// One difference between two schemas. `name` is the name of a column or object; it is empty for a table-level difference.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Difference {
     pub kind: String,
@@ -18,7 +18,7 @@ pub struct Difference {
     pub name: String,
 }
 
-/// 한 table 안에서 차이가 오는 순서.
+/// The order in which differences appear within one table.
 const KINDS: [&str; 21] = [
     "create_table",
     "drop_table",
@@ -43,8 +43,8 @@ const KINDS: [&str; 21] = [
     "add_audit",
 ];
 
-/// plan 없이 `source`에서 `target`까지의 모든 차이를 돌려준다. 두 문서는 schema
-/// text여야 하며, 아닌 쪽마다 `compare` diagnostic을 source, target 순으로 돌려준다.
+/// Returns every difference from `source` to `target` without a plan. Both documents must be schema
+/// text; for each side that is not, returns a `compare` diagnostic, in source, target order.
 pub fn compare_schemas(source: &Document, target: &Document) -> Result<Vec<Difference>, Vec<Diagnostic>> {
     let diagnostics: Vec<Diagnostic> = [("source", source), ("target", target)]
         .into_iter()
@@ -61,7 +61,7 @@ pub fn compare_schemas(source: &Document, target: &Document) -> Result<Vec<Diffe
     if !diagnostics.is_empty() {
         return Err(diagnostics);
     }
-    // 이름: (source table, target table)
+    // Name: (source table, target table)
     let mut tables: BTreeMap<&str, (Option<&Table>, Option<&Table>)> = BTreeMap::new();
     for t in &source.tables {
         tables.entry(t.name.text.as_str()).or_default().0 = Some(t);
@@ -88,8 +88,8 @@ fn rank(kind: &str) -> usize {
     KINDS.iter().position(|k| *k == kind).expect("every difference kind is listed")
 }
 
-/// 문서의 canonical emission이 그 문서 하나의 schema text인지 알려 준다. 외부 문서의 use 줄은 문서 이름 순,
-/// 그 table은 이름 순이어야 한다. 외부 문서 자체는 필요 없다.
+/// Tells whether a document's canonical emission is the schema text of that one document. External document use lines are in document name order,
+/// and that table must be in name order. The external document itself is not needed.
 pub(crate) fn is_schema_text(document: &Document) -> bool {
     if document.name.text != "schema" {
         return false;
@@ -103,7 +103,7 @@ pub(crate) fn is_schema_text(document: &Document) -> bool {
     emit(document) == super::emit::emit(&schema, super::emit::View::Schema)
 }
 
-/// 두 쪽에 다 있는 table의 column, primary key, 객체, setting 차이를 더한다.
+/// Adds the differences in columns, primary key, objects, and settings of a table present on both sides.
 fn compare_tables(s: &Table, t: &Table, found: &mut Vec<(&'static str, String)>) {
     let mut add = |kind: &'static str, name: &str| found.push((kind, name.to_owned()));
     for c in &s.columns {
@@ -170,8 +170,8 @@ fn compare_tables(s: &Table, t: &Table, found: &mut Vec<(&'static str, String)>)
         object_defs(&t.checks, |k| (&k.name.text, expr_text(&k.expr, same))),
     );
     let immutable = |setting: &Setting| matches!(setting, Setting::Immutable).then(String::new);
-    // audit은 두 쪽에 다 있는 column 가운데 기록하지 않는 column까지 비교한다. 한쪽에만 있는
-    // column은 add_column이나 drop_column이 차이로 남긴다.
+    // audit compares even the columns on both sides that are not recorded. A column that exists on only one side
+    // is left as a difference by add_column or drop_column.
     let audit = |setting: &Setting| match setting {
         Setting::Audit { into, column, references, action, previous, .. } => {
             let mut def = format!("{} {} {} {} {}", into.text, column.text, references.text, action.text, previous.text);
@@ -187,12 +187,12 @@ fn compare_tables(s: &Table, t: &Table, found: &mut Vec<(&'static str, String)>)
     compare_setting(&mut add, ("drop_audit", "add_audit"), setting_of(s, audit), setting_of(t, audit));
 }
 
-/// 객체의 이름과 정의를 문서 순서대로 모은다.
+/// Collects the names and definitions of objects in document order.
 fn object_defs<'t, T>(items: &'t [T], def: impl Fn(&'t T) -> (&'t String, String)) -> Vec<(&'t str, String)> {
     items.iter().map(def).map(|(n, d)| (n.as_str(), d)).collect()
 }
 
-/// 이름으로 맞춘 객체가 한쪽에만 있으면 drop이나 add를, 정의가 다르면 둘 다 더한다.
+/// If an object matched by name exists on only one side, adds a drop or an add; if the definitions differ, adds both.
 fn compare_objects(
     add: &mut impl FnMut(&'static str, &str),
     (drop, add_kind): (&'static str, &'static str),
@@ -212,7 +212,7 @@ fn compare_objects(
     }
 }
 
-/// table에 하나뿐인 setting이 한쪽에만 있으면 drop이나 add를, 정의가 다르면 둘 다 더한다.
+/// If a setting that is the only one of its kind in a table exists on only one side, adds a drop or an add; if the definitions differ, adds both.
 fn compare_setting(add: &mut impl FnMut(&'static str, &str), (drop, add_kind): (&'static str, &'static str), source: Option<String>, target: Option<String>) {
     if source != target {
         if source.is_some() {
@@ -224,7 +224,7 @@ fn compare_setting(add: &mut impl FnMut(&'static str, &str), (drop, add_kind): (
     }
 }
 
-/// `definition`이 고르는 setting의 정의이며, table에 없으면 `None`이다.
+/// The definition of the setting that `definition` selects; `None` if the table has none.
 fn setting_of(t: &Table, definition: impl Fn(&Setting) -> Option<String>) -> Option<String> {
     t.settings.iter().flat_map(|s| &s.lines).find_map(|line| definition(&line.setting))
 }

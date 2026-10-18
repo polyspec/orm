@@ -11,21 +11,21 @@ use std::collections::{BTreeMap, BTreeSet};
 type Renames<'d> = BTreeMap<&'d str, BTreeMap<&'d str, &'d str>>;
 
 impl<'d> PlanDiff<'d> {
-    /// unique, index, foreign key, check를 이름과 정의로 비교한다. source 정의는
-    /// rename을 적용해 target 이름으로 읽는다.
+    /// Compares unique, index, foreign key, and check objects by name and definition. The source definition
+    /// is read under the target name with the rename applied.
     pub(crate) fn objects(&mut self, renamed_from: &BTreeMap<&'d str, &'d str>, renamed_column: &Renames<'d>) {
         let target_table = |s: &'d str| renamed_or(Some(renamed_from), s);
-        // column rename을 적용한 source column 이름
+        // Source column name with the column rename applied
         let column = |target: &str, c: &'d str| renamed_or(renamed_column.get(target), c);
-        // "table.column" target 이름
+        // Target name "table.column"
         let altered_column: BTreeSet<String> = self.altered.iter().flat_map(|(t, cols)| cols.iter().map(move |c| format!("{t}.{c}"))).collect();
         let renamed_col: BTreeSet<String> = renamed_column.iter().flat_map(|(t, m)| m.values().map(move |c| format!("{t}.{c}"))).collect();
         for name in self.matched.clone() {
             let (src, tgt) = (self.source[self.table_of[name]], self.target[name]);
             let source_name: &'d str = &src.name.text;
             let renamed = |c: &'d str| column(name, c);
-            // 지우는 index나 unique 위의 foreign key는 MySQL이 그 index를 지우지 못하게
-            // 하므로 함께 다시 만든다.
+            // A foreign key on an index or unique key being dropped makes MySQL refuse to drop that index,
+            // so it is rebuilt together.
             let mut dropped_keys: BTreeSet<String> = BTreeSet::new();
             // unique
             for u in &src.uniques {
@@ -58,7 +58,7 @@ impl<'d> PlanDiff<'d> {
                     || refs.iter().any(|c| altered_column.contains(&format!("{parent}.{c}")))
                     || dropped_keys.iter().any(|k| format!("{k},").starts_with(&format!("{},", cols.join(","))))
             };
-            // rename을 적용한 source foreign key의 column, parent, reference
+            // Columns, parent, and reference of the source foreign key with the rename applied
             let source_fk = |f: &'d ForeignKey| {
                 let parent = target_table(&f.table.text);
                 let cols: Vec<&str> = f.columns.iter().map(|c| renamed(&c.text)).collect();
@@ -85,7 +85,7 @@ impl<'d> PlanDiff<'d> {
                     self.add_objects.entry(name).or_default().push(ObjectRef { kind: "foreign_key", name: &f.name.text });
                 }
             }
-            // check: 이름 바뀐 column이나 바뀐 column을 쓰는 check는 다시 만든다.
+            // check: a check on a renamed column, or one that uses a changed column, is rebuilt.
             let forced_check = |e: &Expr| {
                 let mut columns = Vec::new();
                 e.columns(&mut columns);
@@ -115,8 +115,8 @@ impl<'d> PlanDiff<'d> {
                 }
             }
         }
-        // 지우는 table을 참조하는 남은 table의 foreign key는 target이 이미 뺐으므로
-        // 위에서 지운다. 지우는 table 자신의 foreign key는 table과 함께 지운다.
+        // Foreign keys of remaining tables that reference a dropped table are already removed by target,
+        // so they are dropped above. A dropped table's own foreign keys are dropped with the table.
         for name in self.dropped.clone() {
             for f in &self.source[name].foreign_keys {
                 self.drop_objects.entry(name).or_default().push(ObjectRef { kind: "foreign_key", name: &f.name.text });
@@ -127,8 +127,8 @@ impl<'d> PlanDiff<'d> {
         }
     }
 
-    /// 세 dialect 중 하나에서라도 렌더링한 trigger statement가 다른 table을
-    /// 표시한다. source는 rename을 적용하기 전 이름 그대로 렌더링한다.
+    /// A trigger statement rendered in any of the three dialects that refers to another table
+    /// is marked. The source is rendered under its name before the rename is applied.
     pub(crate) fn trigger_changes(&mut self) {
         for name in self.matched.clone() {
             let (src, tgt) = (self.source[self.table_of[name]], self.target[name]);
@@ -170,7 +170,7 @@ pub(crate) fn foreign_key_def(cols: &[&str], parent: &str, refs: &[&str], f: &Fo
     format!("{}>{parent}({}){}/{}", cols.join(","), refs.join(","), f.on_delete.as_str(), f.on_update.as_str())
 }
 
-/// column 이름을 f로 바꾼 식의 canonical text.
+/// The canonical text of the expression with the column name replaced by f.
 pub(crate) fn expr_text<'e>(e: &'e Expr, f: impl Fn(&'e str) -> &'e str + Copy) -> String {
     let mut out = String::new();
     emit_expr(&mut out, &renamed_expr(e, f));

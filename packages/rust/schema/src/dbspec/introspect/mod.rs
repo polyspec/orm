@@ -15,8 +15,8 @@ use super::render::Dialect;
 use std::collections::BTreeMap;
 use std::fmt;
 
-/// catalog query 결과의 값 하나. driver가 돌려준 type 그대로이며, reader가
-/// 기대한 type이 아니면 error다.
+/// One value of a catalog query result, with the type the driver returned unchanged; the reader
+/// is an error if it is not the expected type.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CatalogValue {
     Null,
@@ -96,24 +96,24 @@ pub fn read_catalog(dialect: Dialect, results: &[Vec<Vec<CatalogValue>>], name: 
     catalog.document(name)
 }
 
-/// query 순서대로 받은 catalog 결과.
+/// Catalog results received in query order.
 struct Results<'r> {
     results: &'r [Vec<Vec<CatalogValue>>],
 }
 
 impl<'r> Results<'r> {
-    /// query index의 row들.
+    /// The rows of a query index.
     fn rows(&self, query: usize) -> impl Iterator<Item = Row<'r>> {
         self.results[query].iter().map(move |values| Row { query, values })
     }
 
-    /// 받은 결과의 수다(catalog query와 follow-up query).
+    /// The number of results received (the catalog query and follow-up queries).
     fn count(&self) -> usize {
         self.results.len()
     }
 }
 
-/// catalog row 하나. accessor는 기대한 type이 아닌 값을 error로 보고한다.
+/// One catalog row. An accessor reports a value of an unexpected type as an error.
 struct Row<'r> {
     query: usize,
     values: &'r [CatalogValue],
@@ -150,7 +150,7 @@ impl Row<'_> {
         }
     }
 
-    /// boolean 값. MySQL은 `IS NOT NULL` 결과를 정수 0과 1로 돌려준다.
+    /// A boolean value. MySQL returns the result of `IS NOT NULL` as integer 0 and 1.
     fn flag(&self, i: usize) -> Result<bool, String> {
         match self.value(i)? {
             CatalogValue::Bool(b) => Ok(*b),
@@ -161,8 +161,8 @@ impl Row<'_> {
     }
 }
 
-/// dialect reader가 채우는 중립 중간 model. type은 dbspec Type이고, default
-/// literal과 predicate는 이미 dbspec 표기다.
+/// A neutral intermediate model that the dialect reader fills. type is a dbspec Type, and default
+/// literals and predicates are already in dbspec notation.
 #[derive(Default)]
 pub(super) struct Catalog {
     pub(super) tables: Vec<ITable>,
@@ -186,7 +186,7 @@ impl ITable {
         ITable { name: name.to_owned(), ..ITable::default() }
     }
 
-    /// column 이름과 type. check는 literal을 그것이 만나는 column의 값으로 읽는다.
+    /// Column name and type. check reads a literal as a value of the column it meets.
     fn types(&self) -> BTreeMap<String, Type> {
         self.columns.iter().map(|c| (c.name.clone(), c.typ)).collect()
     }
@@ -224,7 +224,7 @@ struct ICheck {
     predicate: String,
 }
 
-/// dbspec text 한 줄이 나타내는 객체. kind는 Unsupported의 kind다.
+/// The object that one line of dbspec text represents. kind is the kind of Unsupported.
 #[derive(Clone, PartialEq, Eq)]
 struct LineObject {
     kind: &'static str,
@@ -245,17 +245,17 @@ impl Catalog {
         self.tables.iter().any(|t| t.name == name)
     }
 
-    /// type이 정해지지 않은 column을 뺀다.
+    /// Drops columns whose type is not determined.
     fn drop_column(&mut self, table: &str, column: &str) {
         if let Some(t) = self.table(table) {
             t.columns.retain(|c| c.name != column);
         }
     }
 
-    /// 중간 model을 dbspec text로 쓰고 parse한다. parse가 어떤 줄을 거부하면 그
-    /// 줄의 객체를 미지원으로 보고하고 빼서 다시 만든다. 빠진 객체를 참조하던
-    /// 객체는 다음 parse에서 거부되므로 같은 방식으로 빠진다. 객체에 속하지 않는
-    /// 줄의 diagnostic은 reader의 결함이므로 error다.
+    /// Writes the intermediate model as dbspec text and parses it. If parse rejects a line,
+    /// the object of that line is reported as unsupported, removed, and rebuilt. Objects that referenced the missing object
+    /// are rejected by the next parse, so they are removed the same way. A diagnostic on a line that belongs to no object
+    /// is a reader defect, so it is an error.
     pub(super) fn document(mut self, name: &str) -> Result<Introspection, String> {
         self.drop_tables_without_key();
         loop {
@@ -267,7 +267,7 @@ impl Catalog {
                 }
                 Err(diagnostics) => diagnostics,
             };
-            // 거부된 table의 객체는 table과 함께 빠지므로 따로 보고하지 않는다.
+            // Objects of a rejected table are removed with the table, so they are not reported separately.
             let mut rejected: Vec<String> = Vec::new();
             for d in &diagnostics {
                 let Some(o) = objects.get(&d.line) else {
@@ -293,7 +293,7 @@ impl Catalog {
         }
     }
 
-    /// 객체 하나를 뺀다. table이나 primary key를 빼면 table 전체가 빠진다.
+    /// Removes one object. Removing a table or its primary key removes the whole table.
     fn remove(&mut self, o: &LineObject) {
         if o.kind == "table" {
             self.tables.retain(|t| t.name != o.table);
@@ -311,8 +311,8 @@ impl Catalog {
         }
     }
 
-    /// primary key가 없는 table을 뺀다. 그 table을 참조하던 foreign key는 parse가
-    /// 거부해 빠진다.
+    /// Removes a table without a primary key. A foreign key that referenced that table is rejected by parse
+    /// and removed.
     fn drop_tables_without_key(&mut self) {
         let tables = std::mem::take(&mut self.tables);
         for t in tables {
@@ -324,8 +324,8 @@ impl Catalog {
         }
     }
 
-    /// table을 이름 순으로 쓴 dbspec text와, 줄 번호마다 그 줄의 객체를 돌려준다.
-    /// 닫는 괄호와 primary key 줄은 table에 속한다.
+    /// Returns the dbspec text of the tables in name order, and for each line number, the object on that line.
+    /// The closing brace and primary key line belong to the table.
     fn text(&self, name: &str) -> (String, BTreeMap<usize, LineObject>) {
         let mut tables: Vec<&ITable> = self.tables.iter().collect();
         tables.sort_by(|a, b| a.name.cmp(&b.name));
@@ -393,7 +393,7 @@ fn first_word(s: &str) -> &str {
     s.split_whitespace().next().unwrap_or("")
 }
 
-/// catalog의 참조 action을 dbspec action으로 바꾼다.
+/// Converts a catalog reference action to a dbspec action.
 fn action_name(rule: &str) -> Option<&'static str> {
     match rule.to_uppercase().as_str() {
         "RESTRICT" => Some("restrict"),
@@ -403,7 +403,7 @@ fn action_name(rule: &str) -> Option<&'static str> {
     }
 }
 
-/// 정규식 capture group의 text. 참여하지 않은 group은 빈 문자열이다.
+/// The text of a regex capture group. A group that did not participate is an empty string.
 fn group<'t>(captures: &regex::Captures<'t>, i: usize) -> &'t str {
     captures.get(i).map_or("", |m| m.as_str())
 }

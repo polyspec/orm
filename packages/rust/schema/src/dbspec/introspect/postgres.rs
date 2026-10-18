@@ -1,4 +1,4 @@
-//! PostgreSQL catalog를 읽는다. 모든 query는 현재 schema 전체를 한 번에 읽는다.
+//! Reads the PostgreSQL catalog. Every query reads the whole current schema at once.
 
 use super::super::literal::quote;
 use super::super::model::Type;
@@ -81,9 +81,9 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
         let name = row.text(0)?;
         c.report("sequence", "", &name, "a sequence outside identity has no dbspec definition");
     }
-    // table: column: quote_ident가 쓴 column 이름.
+    // table: column: the column name written by quote_ident.
     let mut quoted: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
-    // table: renderer CHECK이 있어야 하는 time column.
+    // table: a time column that needs a renderer CHECK.
     let mut pending: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     for row in results.rows(COLUMNS) {
         let (table, name, quoted_name, formatted, not_null) = (row.text(0)?, row.text(1)?, row.text(2)?, row.text(3)?, row.flag(4)?);
@@ -144,7 +144,7 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
                 c.table(&table).expect("table read above").uniques.push(IKey { name, columns: list, desc });
             }
             "f" if ref_table.is_empty() => {
-                // 다른 schema의 table을 가리키는 foreign key는 이 문서 밖의 table을 가리킨다.
+                // A foreign key pointing to a table in another schema points to a table outside this document.
                 c.report("foreign_key", &table, &name, "the referenced table is outside the current schema");
             }
             "f" => {
@@ -226,7 +226,7 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
     Ok(c)
 }
 
-/// format_type과 collation을 dbspec type으로 읽는다.
+/// Reads format_type and collation as a dbspec type.
 fn postgres_type(formatted: &str, collation: &str) -> Option<Type> {
     let m = TYPE_PATTERN.captures(formatted)?;
     if !group(&m, 2).is_empty() {
@@ -253,7 +253,7 @@ fn postgres_type(formatted: &str, collation: &str) -> Option<Type> {
     }
 }
 
-/// pg_get_expr의 default를 dbspec literal이나 now로 읽는다.
+/// Reads the default from pg_get_expr as a dbspec literal or now.
 fn postgres_default(text: &str, typ: Type) -> Option<String> {
     if text == "statement_timestamp()" {
         return matches!(typ, Type::DateTime(_)).then(|| "now".to_owned());

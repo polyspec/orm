@@ -12,7 +12,7 @@ use std::time::Duration;
 #[path = "common/dbspec_cases.rs"]
 mod dbspec_cases;
 
-// DEADLINE는 test의 CPU 시간 한도이고, 멈춘 test를 끝내는 wall-clock 기한은 그 열 배다
+// DEADLINE is the CPU time limit of the test; the wall-clock deadline that ends a hung test is ten times that.
 // (polyspec_orm_testcase::wall_for_cpu).
 const DEADLINE: Duration = Duration::from_secs(10);
 
@@ -22,12 +22,12 @@ fn text(lines: &Value) -> String {
     lines.as_array().unwrap().iter().map(|l| format!("{}\n", l.as_str().unwrap())).collect()
 }
 
-/// 줄을 LF로 잇는다. 줄이 없으면 빈 text다.
+/// Joins the lines with LF. With no lines, the text is empty.
 fn lines_text(lines: &Value) -> String {
     text(lines)
 }
 
-/// statement 가운데 CREATE TABLE이 만드는 table 이름이다.
+/// The name of the table that CREATE TABLE makes, among the statements.
 fn created_tables(statements: &[String]) -> Vec<&str> {
     statements
         .iter()
@@ -124,7 +124,7 @@ fn set_vectors() -> Vec<Trial> {
 
 fn set_vectors_case(case: &Value) {
     let id = case["id"].as_str().unwrap();
-    // 각 문서는 다른 소유 문서, 외부 문서, parsing 문서를 집합으로 parse한다.
+    // Each document is parsed with the other owned documents, external documents, and the parsing document as its set.
     let owned = case["documents"].as_array().unwrap().len();
     let texts: Vec<String> =
         case["documents"].as_array().unwrap().iter().chain(case.get("external").and_then(Value::as_array).into_iter().flatten()).map(text).collect();

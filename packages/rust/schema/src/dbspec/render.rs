@@ -32,7 +32,7 @@ pub struct RenderedStatement {
 pub fn render_statements(documents: &[&Document], dialect: Dialect) -> Result<Vec<RenderedStatement>, Vec<Diagnostic>> {
     check_set(documents)?;
     let r = Renderer { d: dialect };
-    // 외부 문서의 table은 그 문서를 소유한 set이 만든다.
+    // A table of an external document is made by the set that owns that document.
     let ordered: Vec<_> = use_order(documents).into_iter().filter(|d| !d.external).collect();
     let mut out = Vec::new();
     let mut add = |table: &str, statements: Vec<String>| out.extend(statements.into_iter().map(|sql| RenderedStatement { sql, table: table.to_owned() }));
@@ -421,7 +421,7 @@ impl Renderer {
     }
 }
 
-/// The history table and columns of an `audit` setting. `setting`은 기록하는 column을 정한다.
+/// The history table and columns of an `audit` setting. `setting` determines the recorded columns.
 struct Audit<'a> {
     history: &'a str,
     action: &'a str,

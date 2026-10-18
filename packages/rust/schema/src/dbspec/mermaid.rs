@@ -142,7 +142,7 @@ pub fn export_mermaid(document: &Document) -> (String, Vec<Unsupported>) {
     (out, dropped)
 }
 
-/// Mermaid type에는 쉼표가 없으므로 `decimal(p,s)`를 `decimal(p-s)`로 쓴다.
+/// A Mermaid type has no comma, so `decimal(p,s)` is written as `decimal(p-s)`.
 fn mermaid_type(ty: Type) -> String {
     match ty {
         Type::Decimal(p, s) => format!("decimal({p}-{s})"),
@@ -150,7 +150,7 @@ fn mermaid_type(ty: Type) -> String {
     }
 }
 
-/// Go RE2의 `\s`와 같은 ASCII 공백. Rust의 `\s`는 Unicode 공백이므로 쓰지 않는다.
+/// ASCII whitespace, the same as Go RE2's `\s`. Rust's `\s` is Unicode whitespace, so it is not used.
 const WS: &str = r"[\t\n\f\r ]";
 const ENTITY_NAME: &str = r#"([A-Za-z0-9_-]+|"[^"]*")"#;
 
@@ -168,8 +168,8 @@ static RELATION: LazyLock<Regex> = LazyLock::new(|| {
     pattern(&format!(r#"^{ENTITY_NAME}{WS}+(\|o|\|\||\}}o|\}}\|)(--|\.\.)(o\||\|\||o\{{|\|\{{){WS}+{ENTITY_NAME}{WS}*:{WS}*("[^"]*"|[^\t\n\f\r "]+)$"#))
 });
 static LABEL: LazyLock<Regex> = LazyLock::new(|| pattern(r"^([a-z][a-z0-9_]*) \(([a-z0-9_, ]+)\) references \(([a-z0-9_, ]+)\)$"));
-// comment 뒤에 공백 하나를 붙인 text에 맞춘다. 각 부분이 공백 하나로 끝나야 하므로
-// 부분 사이에 공백이 정확히 하나 있다.
+// Matches text with one space appended after the comment. Each part must end with one space, so
+// there is exactly one space between parts.
 static SUFFIX: LazyLock<Regex> = LazyLock::new(|| pattern(r"^(?:(null) )?(?:(identity) )?(?:default (.+) )?$"));
 static KNOWN_TYPE: LazyLock<Regex> = LazyLock::new(|| {
     pattern(r"^(i16|i32|i64|bool|f64|text|bytes|uuid|date)$|^varchar\(([0-9]+)\)$|^(time|datetime)\(([0-9])\)$|^decimal\(([0-9]+)-([0-9]+)\)$")
@@ -205,7 +205,7 @@ fn failure(line: usize, message: impl Into<String>) -> Vec<Diagnostic> {
     vec![Diagnostic { rule: RULE_MERMAID.to_owned(), line, column: 1, message: message.into() }]
 }
 
-/// 정규식 capture group의 text. 참여하지 않은 group은 빈 문자열이다.
+/// The text of a regex capture group. A group that did not participate is an empty string.
 fn group<'t>(captures: &regex::Captures<'t>, i: usize) -> &'t str {
     captures.get(i).map_or("", |m| m.as_str())
 }
@@ -218,7 +218,7 @@ struct Entities {
 }
 
 impl Entities {
-    /// 이름의 entity 위치. 처음 나오면 만든다. 따옴표는 이름에 들지 않는다.
+    /// The entity position of the name. Created on first occurrence. Quotes are not part of the name.
     fn entity(&mut self, name: &str) -> usize {
         let name = name.trim_matches('"');
         if let Some(&i) = self.index.get(name) {
@@ -374,7 +374,7 @@ pub fn import_mermaid(text: &str, name: &str) -> Result<(Document, Vec<Unsupport
         let cardinality_differs = parent_card != want_parent || (child_card != "o{" && child_card != "}o");
         let primary_begins = child_table.primary.len() >= cols.len() && child_table.primary[..cols.len()] == cols[..];
         let ix = format!("ix_{child}_{}", cols.join("_"));
-        // 같은 column의 foreign key가 이미 더한 index는 다시 더하지 않는다.
+        // An index that the foreign key of the same column already added is not added again.
         let indexed = child_table.indexes.iter().any(|x| x.name == ix);
         let index = (!primary_begins && !indexed).then_some(ix);
         child_table.fks.push(IForeignKey {
@@ -413,7 +413,7 @@ fn split_names(s: &str) -> Vec<String> {
     s.split(',').map(|p| p.trim().to_owned()).collect()
 }
 
-/// 숫자 text가 lo 이상 hi 이하인 값이면 그 값. 9자리를 넘는 수는 범위 밖이다.
+/// The value if the numeric text is between lo and hi inclusive. A number over 9 digits is out of range.
 fn within(digits: &str, lo: u32, hi: u32) -> Option<u32> {
     let significant = digits.trim_start_matches('0');
     if significant.len() > 9 {
@@ -423,10 +423,10 @@ fn within(digits: &str, lo: u32, hi: u32) -> Option<u32> {
     (lo..=hi).contains(&n).then_some(n)
 }
 
-/// Mermaid type이 dbspec type이면 그 Type. `decimal(p-s)`는 `decimal(p,s)`다.
-/// 수가 dbspec 범위(varchar 1-16383, time과 datetime 0-6, decimal p 1-18과 s
-/// 0-p)를 벗어나면 dbspec type이 아니다. 범위를 여기서 정하므로 key column도
-/// 모든 client에서 같은 지점에서 빠진다.
+/// If the Mermaid type is a dbspec type, that Type. `decimal(p-s)` is `decimal(p,s)`.
+/// The numbers are within the dbspec ranges (varchar 1-16383, time and datetime 0-6, decimal p 1-18 and s
+/// 0-p); if outside, it is not a dbspec type. Since the range is set here, key columns also
+/// drop out at the same point in every client.
 fn import_type(s: &str) -> Option<Type> {
     let m = KNOWN_TYPE.captures(s)?;
     if let Some(kind) = m.get(1) {

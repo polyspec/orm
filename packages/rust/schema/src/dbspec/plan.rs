@@ -109,12 +109,12 @@ static PLAN_RENAME_COLUMN: LazyLock<Regex> = LazyLock::new(|| pattern(r"^rename 
 static PLAN_DROP_TABLE: LazyLock<Regex> = LazyLock::new(|| pattern(r"^allow drop table ([a-z][a-z0-9_]*)$"));
 static PLAN_DROP_COLUMN: LazyLock<Regex> = LazyLock::new(|| pattern(r"^allow drop column ([a-z][a-z0-9_]*)\.([a-z][a-z0-9_]*)$"));
 
-/// 줄 `line`의 `plan` diagnostic 하나.
+/// One `plan` diagnostic at line `line`.
 fn plan_failure(line: usize, message: String) -> Vec<Diagnostic> {
     vec![Diagnostic { rule: RULE_PLAN.to_owned(), line, column: 1, message }]
 }
 
-/// 정규식이 잡은 이름 가운데 예약어이거나 63 byte보다 긴 첫 이름의 message.
+/// The message for the first name matched by the regex that is a reserved word or longer than 63 bytes.
 fn plan_names(names: &[&str]) -> Option<String> {
     names.iter().find(|n| reserved(n) || n.len() > 63).map(|n| format!("name \"{n}\" is reserved or longer than 63 bytes"))
 }
@@ -186,8 +186,8 @@ pub fn parse_plan(text: &str) -> Result<Plan, Vec<Diagnostic>> {
         return Err(plan_failure(i + 1, "a blank line and the target schema text follow the header".to_owned()));
     }
     let offset = i + 1;
-    // plan은 database 전체를 하나의 schema로 옮긴다. 외부 문서를 쓰는 set의 table은 install과
-    // addTablesAndColumns가 만든다.
+    // A plan moves the whole database into one schema. A set's tables that use external documents are made by install and
+    // addTablesAndColumns make them.
     for (k, line) in lines.iter().enumerate().skip(offset) {
         if let Some(rest) = line.strip_prefix("use ") {
             let document = rest.split_whitespace().next().unwrap_or("");
@@ -218,7 +218,7 @@ pub fn parse_plan(text: &str) -> Result<Plan, Vec<Diagnostic>> {
     plan_to(Plan { name, from, rename_tables, rename_columns, drop_tables, drop_columns, schema, schema_text, to: String::new() })
 }
 
-/// plan의 target을 그 schema text 문서로 정한다. target이 from과 같으면 diagnostic이다.
+/// Sets the plan's target to that schema text document. If the target equals from, it is a diagnostic.
 pub(crate) fn plan_to(mut plan: Plan) -> Result<Plan, Vec<Diagnostic>> {
     plan.to = text_hash(&plan.schema_text);
     if plan.from.as_deref() == Some(plan.to.as_str()) {
@@ -227,7 +227,7 @@ pub(crate) fn plan_to(mut plan: Plan) -> Result<Plan, Vec<Diagnostic>> {
     Ok(plan)
 }
 
-/// `key` 순으로 정렬한 참조. 같은 key는 원래 순서를 지킨다.
+/// References sorted by `key`. Equal keys keep their original order.
 pub(crate) fn sorted_by<T, K: Ord>(items: &[T], key: impl Fn(&T) -> K) -> Vec<&T> {
     let mut sorted: Vec<&T> = items.iter().collect();
     sorted.sort_by_key(|item| key(item));
@@ -268,7 +268,7 @@ fn chain_failure(message: String) -> Vec<Diagnostic> {
 /// returns the `chain` diagnostics that name the plans: plans that start from
 /// the same schema, a missing `from empty` plan, a cycle and unreached plans.
 pub fn chain(plans: &[Plan]) -> Result<Vec<&Plan>, Vec<Diagnostic>> {
-    // None(from empty)이 가장 앞에 오는 from 순서
+    // From order in which None (from empty) comes first.
     let mut by_from: BTreeMap<Option<&str>, Vec<usize>> = BTreeMap::new();
     for (index, plan) in plans.iter().enumerate() {
         by_from.entry(plan.from()).or_default().push(index);
@@ -280,7 +280,7 @@ pub fn chain(plans: &[Plan]) -> Result<Vec<&Plan>, Vec<Diagnostic>> {
         out.extend(chain_failure(format!("plans {} start from the same schema", names.join(", "))));
     }
     if plans.is_empty() {
-        // plan이 없으면 table이 없는 database의 빈 chain이다.
+        // Without a plan, it is the empty chain of a database with no tables.
         return Ok(Vec::new());
     }
     let Some(first) = by_from.get(&None).map(|indexes| indexes[0]) else {

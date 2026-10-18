@@ -1,4 +1,4 @@
-//! MySQL catalog를 읽는다. 모든 query는 현재 database 전체를 한 번에 읽는다.
+//! Reads the MySQL catalog. Every query reads the whole current database at once.
 
 use super::super::literal::quote;
 use super::super::model::Type;
@@ -21,8 +21,8 @@ const TRIGGERS: usize = 6;
 const ROUTINES: usize = 7;
 const EVENTS: usize = 8;
 
-// CHECK_CONSTRAINTS와 TABLE_CONSTRAINTS의 join은 table 수에 비례해 느려지므로(2000 table에서
-// 60초 이상) 두 query로 읽고 이름으로 잇는다. MySQL의 CHECK 이름은 database 안에서 유일하다.
+// Joining CHECK_CONSTRAINTS and TABLE_CONSTRAINTS slows down in proportion to the table count (at 2000 tables
+// it takes over 60 seconds), so the two are read by two queries and joined by name. A MySQL CHECK name is unique within the database.
 pub(super) const QUERIES: [&str; 9] = [
     "SELECT TABLE_NAME, TABLE_TYPE, IFNULL(CREATE_OPTIONS, '') FROM information_schema.TABLES
 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME NOT LIKE 'dbspec$%' ORDER BY TABLE_NAME",
@@ -66,9 +66,9 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
         }
         c.tables.push(ITable::new(&name));
     }
-    // table: column: type. renderer CHECK을 비교할 때 쓴다.
+    // table: column: type. Used when comparing renderer CHECKs.
     let mut columns: BTreeMap<String, BTreeMap<String, Type>> = BTreeMap::new();
-    // table: column: renderer CHECK이 있어야 정해지는 type의 catalog type.
+    // table: column: the catalog type of a type that is determined only when a renderer CHECK exists.
     let mut pending: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
     for row in results.rows(COLUMNS) {
         let (table, name, column_type, nullable) = (row.text(0)?, row.text(1)?, row.text(2)?, row.text(3)?);
@@ -153,7 +153,7 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
             Err(e) => c.report("check", &table, &name, e),
         }
     }
-    // renderer CHECK이 있어야 하는 type은 그 CHECK이 없으면 dbspec type이 아니다.
+    // A type that needs a renderer CHECK is not a dbspec type without that CHECK.
     for (table, cols) in &pending {
         for (column, need) in cols {
             if !checked.get(table).is_some_and(|c| c.contains_key(column)) {
@@ -172,9 +172,9 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
     Ok(c)
 }
 
-/// COLUMN_TYPE과 character set, collation을 dbspec type으로 읽는다. 둘째 값은
-/// renderer CHECK이 있어야 그 type이 되는 경우의 catalog type이고, 아니면 빈
-/// 문자열이다.
+/// Reads COLUMN_TYPE, character set, and collation as a dbspec type. The second value
+/// is the catalog type for the case where the type exists only with a renderer CHECK; otherwise it is an empty
+/// string.
 fn mysql_type(column_type: &str, charset: &str, collation: &str) -> Option<(Type, String)> {
     let m = TYPE_PATTERN.captures(column_type)?;
     let text = charset == "utf8mb4" && collation == "utf8mb4_0900_bin";
@@ -273,19 +273,19 @@ fn check_body(text: &str) -> Option<&str> {
     None
 }
 
-/// character set introducer를 뺀 CHECK_CLAUSE다. ALTER TABLE은 CHECK_CLAUSE를 다시
-/// 쓰며 introducer를 바꾸거나 빼므로(probe mysql.check.alter_rewrites_introducers)
-/// renderer CHECK은 introducer 없이 비교한다. 이 template의 literal은 ASCII이므로
-/// 의미가 같다.
+/// CHECK_CLAUSE without the character set introducer. ALTER TABLE rewrites CHECK_CLAUSE
+/// and changes or removes introducers (probe mysql.check.alter_rewrites_introducers),
+/// so renderer CHECKs are compared without introducers. The literals of this template are ASCII, so
+/// the meaning is the same.
 fn without_introducers(clause: &str) -> String {
-    // ALTER TABLE은 time(p) column과 만나는 time literal에 0으로 된 p 자리 소수도 붙이므로
-    // (probe mysql.check.alter_writes_time_precision) 그 소수도 뺀다.
+    // ALTER TABLE also attaches a fractional part of p zeros to a time literal that meets a time(p) column,
+    // (probe mysql.check.alter_writes_time_precision), so that fraction is removed too.
     let clause = INTRODUCER.replace_all(clause, r"\'");
     TIME_FRACTION.replace_all(&clause, r"\'${1}\'").into_owned()
 }
 
-/// renderer CHECK이 CHECK_CLAUSE에 남는 형식 (docs/dialects.md "Introspection",
-/// "Checks"). renderer CHECK이 없는 type은 빈 문자열이다.
+/// The form in which a renderer CHECK remains in CHECK_CLAUSE (docs/dialects.md "Introspection",
+/// "Checks"). A type without a renderer CHECK is an empty string.
 fn renderer_check(column: &str, typ: Type) -> String {
     let c = format!("`{column}`");
     match typ {
@@ -296,7 +296,7 @@ fn renderer_check(column: &str, typ: Type) -> String {
     }
 }
 
-/// DEFAULT_GENERATED default가 그 column의 renderer 시각 default인지 알려 준다.
+/// Tells whether a DEFAULT_GENERATED default is the renderer's time default of that column.
 fn mysql_now(text: &str, typ: Type) -> bool {
     match typ {
         Type::DateTime(0) => text == "CURRENT_TIMESTAMP",
@@ -305,8 +305,8 @@ fn mysql_now(text: &str, typ: Type) -> bool {
     }
 }
 
-/// escape를 푼 COLUMN_DEFAULT 값을 dbspec literal로 쓴다. parse가 canonical form과
-/// 유효성을 정한다.
+/// Writes the COLUMN_DEFAULT value with its escapes undone as a dbspec literal. parse decides its canonical form and
+/// validity.
 fn mysql_default(value: &str, typ: Type) -> String {
     match typ {
         Type::Bool if value == "1" => "true".to_owned(),
@@ -379,9 +379,9 @@ fn read_indexes(results: &Results, c: &mut Catalog) -> Result<(), String> {
 }
 
 fn read_foreign_keys(results: &Results, c: &mut Catalog) -> Result<(), String> {
-    // 읽는 중인 foreign key와 그 table. 다른 key의 row가 오면 table에 더한다.
+    // The foreign key being read and its table. When a row of another key comes, it is added to the table.
     let mut current: Option<(String, IForeignKey)> = None;
-    // 보고한 key의 나머지 column row는 건너뛴다.
+    // Skips the remaining column rows of a key already reported.
     let mut skipped: Option<(String, String)> = None;
     for row in results.rows(FOREIGN_KEYS) {
         let (table, name, ref_table, on_delete, on_update) = (row.text(0)?, row.text(1)?, row.text(2)?, row.text(3)?, row.text(4)?);
@@ -419,7 +419,7 @@ fn flush(c: &mut Catalog, current: Option<(String, IForeignKey)>) {
     }
 }
 
-/// trigger를 renderer statement 형식으로 다시 쓰고 알아본다.
+/// Rewrites a trigger in the renderer statement form and recognizes it.
 fn read_triggers(results: &Results, c: &mut Catalog) -> Result<(), String> {
     let mut triggers: BTreeMap<String, Vec<ITrigger>> = BTreeMap::new();
     for row in results.rows(TRIGGERS) {
