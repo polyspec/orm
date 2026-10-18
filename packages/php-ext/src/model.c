@@ -1,4 +1,4 @@
-/* dbspec 문서 model의 생성과 그 값 메서드(PHP client의 ColumnType, Setting, ForeignKey)다. */
+/* Creation of the dbspec document model and its value methods (PHP client's ColumnType, Setting, ForeignKey). */
 #include "dbspec.h"
 
 const char *const dbs_reserved[] = {
@@ -16,7 +16,7 @@ static bool reserved(str name)
     return false;
 }
 
-/* [a-z][a-z0-9_]* 이고 예약어가 아니며 63 byte 이하다. */
+/* Matches [a-z][a-z0-9_]*, is not a reserved word, and is at most 63 bytes. */
 bool dbs_valid_name(str name)
 {
     if (name.n == 0 || name.n > 63 || name.s[0] < 'a' || name.s[0] > 'z') {
@@ -36,7 +36,7 @@ ctype *ctype_new(str name, const zend_long *p, size_t np)
     ctype *t = dbs_alloc(sizeof *t);
     t->name = name;
     t->np = np;
-    /* 사용자가 만든 type은 parameter가 모자랄 수 있으므로 두 칸은 언제나 있다(값 0). */
+    /* A user-defined type may lack parameters, so the two slots always exist (value 0). */
     t->p = dbs_alloc((np + 2) * sizeof(zend_long));
     for (size_t i = 0; i < np; i++) {
         t->p[i] = p[i];
@@ -118,8 +118,8 @@ table *table_new(str name)
     return t;
 }
 
-/* audit trigger가 column을 복사하는지: audit column은 언제나, exclude 목록의 column은 언제나 아니며,
- * include 목록이 있으면 그 column만 복사한다. */
+/* Whether the audit trigger copies a column: the audit column always, a column in the exclude list never,
+ * and if there is an include list, only the columns in it. */
 bool setting_records(const setting *s, str column)
 {
     if (s->args.n > 1 && str_eq(column, s->args.v[1])) {
@@ -157,6 +157,6 @@ str setting_audit_line(const setting *s, const char *list, const strs *columns)
 
 bool fkey_changes_child_rows(const fkey *f)
 {
-    /* Go의 propagates: cascade와 set_null만 자식 행을 바꾼다. */
+    /* Go's propagates: only cascade and set_null change child rows. */
     return str_eqc(f->on_delete, "cascade") || str_eqc(f->on_delete, "set_null") || str_eqc(f->on_update, "cascade") || str_eqc(f->on_update, "set_null");
 }

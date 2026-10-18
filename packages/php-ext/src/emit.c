@@ -1,10 +1,10 @@
 /*
- * 문서를 canonical text로, 또는 manifest text와 schema text로 쓴다(PHP client Emitter, docs/dbspec.md
- * "Canonical form", "Manifest and hashes"). 문서 집합의 검사(DocumentSet)와 manifest도 여기 있다.
+ * Writes a document as canonical text, or as manifest text and schema text (PHP client Emitter, docs/dbspec.md
+ * "Canonical form", "Manifest and hashes"). The document set check (DocumentSet) and the manifest are also here.
  */
 #include "dbspec.h"
 
-/* canonical 순서다: 매핑 설정(markdown부터 state_machine까지)은 immutable과 audit 앞에 온다. */
+/* Canonical order: mapping settings (markdown through state_machine) come before immutable and audit. */
 static const char *const setting_kinds[] = {
     "entity", "updated", "soft_delete", "select_explicit", "codec", "aes_version", "blind_index", "navigation", "markdown", "store",
     "key_prefix", "title", "body", "order", "checkbox", "state_machine", "immutable", "audit", NULL,
@@ -17,7 +17,7 @@ static int kind_rank(str kind)
             return i;
         }
     }
-    /* PHP의 $rank[$kind]는 알 수 없는 kind에 null이고, null은 모든 순위보다 작다. */
+    /* In PHP, $rank[$kind] is null for an unknown kind, and null is less than every rank. */
     return -1;
 }
 
@@ -46,7 +46,7 @@ BYNAME(xindex, name)
 BYNAME(fkey, name)
 BYNAME(check, name)
 
-/* 이름의 byte 순서로 안정 정렬한 사본이다. */
+/* A copy stably sorted by name byte order. */
 static void *sorted_copy(void *items, size_t n, size_t size, int (*cmp)(const void *, const void *, void *))
 {
     void *copy = dbs_alloc(n * size + 1);
@@ -57,7 +57,7 @@ static void *sorted_copy(void *items, size_t n, size_t size, int (*cmp)(const vo
     return copy;
 }
 
-/* state_machine 줄의 순서다: 전환, initial과 terminal 줄, history, limit 순이고 같은 종류 안은 선언 순서다. */
+/* Order of state_machine lines: transitions, initial and terminal lines, history, limit; within the same kind, declaration order. */
 static int state_form_rank(const setting *s)
 {
     if (s->form.s != NULL && str_eqc(s->form, "history")) {
@@ -88,7 +88,7 @@ static int cmp_setting(const void *a, const void *b, void *ctx)
     return 0;
 }
 
-/* 행 수의 canonical text다: 앞의 0을 뺀다(Go strconv.FormatInt). 검사를 통과한 수는 양의 정수다. */
+/* Canonical text of a row count: leading zeros removed (Go strconv.FormatInt). A number that passes the check is a positive integer. */
 static str count_text(str s)
 {
     size_t i = 0;
@@ -98,7 +98,7 @@ static str count_text(str s)
     return str_sub(s, i, s.n - i);
 }
 
-/* state_machine 줄 하나의 text다. args는 column과 형식의 인자이고, transition과 terminal 줄의 require 목록은 requires다. */
+/* Text of one state_machine line. args are the column and the format's arguments, and requires is the require list of transition and terminal lines. */
 static str state_machine_text(const setting *s)
 {
     const strs *a = &s->args;
@@ -126,7 +126,7 @@ static str setting_text(const setting *s, const table *t, dbs_view view)
         return fmt("select explicit %S", strs_join(&s->args, " "));
     }
     if (str_eqc(s->kind, "audit")) {
-        /* schema text는 database 상태로 정해지므로 기록하지 않는 column을 column 순서의 exclude 목록으로 쓴다. */
+        /* Schema text is determined by the database state, so the columns not recorded are used as an exclude list in column order. */
         if (view == VIEW_SCHEMA) {
             strs excluded = setting_excluded(s, t);
             return setting_audit_line(s, "exclude", &excluded);
@@ -145,7 +145,7 @@ static str setting_text(const setting *s, const table *t, dbs_view view)
     if (str_eqc(s->kind, "checkbox")) {
         return fmt("checkbox %S %S %S", s->args.v[0], s->args.v[1], literal_quote(s->args.v[2]));
     }
-    /* store는 kind의 인자 뒤에 shard 절의 column과 period가 있으면 그 앞에 `shard`를 쓴다(Setting::STORE_ARGUMENTS). */
+    /* For store, if the shard clause's column and period follow the kind's arguments, `shard` is written before them (Setting::STORE_ARGUMENTS). */
     size_t shard = s->args.n;
     if (str_eqc(s->kind, "store")) {
         shard = str_eqc(s->args.v[0], "files") ? 1 : str_eqc(s->args.v[0], "document") ? 2 : 3;
@@ -226,7 +226,7 @@ static void emit_table(sbuf *b, const table *t, dbs_view view)
         }
     }
     if (t->settings != NULL && written.n == 0) {
-        /* 빈 settings block은 뜻이 없으므로 쓰지 않고 그 comment는 table의 `}` 앞에 남긴다. */
+        /* An empty settings block has no meaning, so it is not written, and its comment is kept before the table's `}`. */
         strs merged = strs_copy(&t->settings->comments);
         for (size_t i = 0; i < t->settings->closing.n; i++) PUSH(merged, t->settings->closing.v[i]);
         for (size_t i = 0; i < closing.n; i++) PUSH(merged, closing.v[i]);
@@ -332,7 +332,7 @@ void dbs_set_check(const documentv *in, documentv *ordered, diags *out)
             }
         }
     }
-    /* 외부 문서는 소유한 문서에서 use를 따라 닿는 문서다. */
+    /* An external document is one reached by following use from the owning document. */
     smap by_name = {0};
     for (size_t i = 0; i < docs.n; i++) {
         if (!smap_has(&by_name, docs.v[i]->name)) {
@@ -353,7 +353,7 @@ void dbs_set_check(const documentv *in, documentv *ordered, diags *out)
     *ordered = docs;
 }
 
-/* 외부 문서에서 tables의 column, primary key, unique key만 문서 순서로 담은 문서다. 그 table이 없으면 NULL이다. */
+/* A document holding only the columns, primary key, and unique keys of tables from the external document, in document order. NULL if the table does not exist. */
 static document *external_document(const document *d, const strs *tables)
 {
     document *out = document_new(d->name);
@@ -393,7 +393,7 @@ bool dbs_manifest(const documentv *documents, manifest *m, diags *out)
     if (out->n != before) {
         return false;
     }
-    smap used = {0}; /* 문서 이름 => strs* */
+    smap used = {0}; /* document name => strs* */
     for (size_t i = 0; i < ordered.n; i++) {
         document *d = ordered.v[i];
         if (d->external) {
@@ -438,7 +438,7 @@ bool dbs_manifest(const documentv *documents, manifest *m, diags *out)
             PUSH(tables, d->tables.v[k]);
         }
     }
-    /* schema text는 집합이 소유한 모든 table을 이름 순으로 담은 문서 `schema` 하나이므로 문서를 나누는 방식과 무관하다. */
+    /* Schema text is one document `schema` holding all tables the set owns, in name order, so it does not depend on how documents are split. */
     dbs_sort(tables.v, tables.n, sizeof(table *), cmp_table, NULL);
     schema->tables = tables;
     m->manifest_text = sb_str(&manifest_text);

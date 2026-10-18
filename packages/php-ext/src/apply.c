@@ -1,7 +1,7 @@
 /*
- * plan chain을 connection 하나에 step 하나씩 적용하고, 중단된 plan을 이어 가거나 되돌리고, 적용한 plan을 finalize한다
- * (PHP client PlanApply, docs/plans.md "Apply"). PDO와 그 statement는 객체의 메서드를 Zend API로 불러 쓰므로 하위 class가
- * 고친 메서드와 예외가 PHP client에서와 같다. 실패는 모두 PHP 예외이고, 함수는 예외가 남으면 false다.
+ * Applies the plan chain one step per connection, resumes or rolls back an interrupted plan, and finalizes an applied plan
+ * (PHP client PlanApply, docs/plans.md "Apply"). PDO and its statement call the object's methods through the Zend API, so subclasses
+ * that override methods and exceptions behave as in the PHP client. All failures are PHP exceptions, and the function returns false if one is left.
  */
 #include "dbspec.h"
 #include "ext/pdo/php_pdo_driver.h"
@@ -20,7 +20,7 @@ static const char *const SESSION_QUERY_MYSQL = "SELECT CONNECTION_ID(), COALESCE
 static const char *const SESSION_QUERY_POSTGRES = "SELECT pg_backend_pid(), EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid() AND objsubid = 2"
     " AND classid = (hashtext('dbspec$plans')::bigint & 4294967295)::oid AND objid = (hashtext(current_schema())::bigint & 4294967295)::oid)";
 
-/* PlanApply::EFFECT_QUERIES: dialect마다 효과 종류와 그 개수 query */
+/* PlanApply::EFFECT_QUERIES: per dialect, the effect kinds and their count queries */
 const dbs_effect_query dbs_effect_queries[] = {
     {"mysql", "table", "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?"},
     {"mysql", "column", "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?"},
@@ -51,13 +51,13 @@ typedef struct applier {
     renderer r;
     planv chain;
     zval *now, *events;
-    smap history;   /* plan 이름 => hrow* */
+    smap history;   /* plan name => hrow* */
     zend_long server_session;
 } applier;
 
 /* ------------------------------------------------------------ PHP calls */
 
-/* obj->name(args...). obj가 객체가 아니면 PHP처럼 Error다. */
+/* obj->name(args...). If obj is not an object, it is an Error, as in PHP. */
 static bool call(zval *obj, const char *name, zval *ret, uint32_t argc, zval *a1, zval *a2)
 {
     ZVAL_UNDEF(ret);
@@ -68,7 +68,7 @@ static bool call(zval *obj, const char *name, zval *ret, uint32_t argc, zval *a1
     return pdo_call(obj, name, ret, argc, a1, a2);
 }
 
-/* 결과를 버리는 obj->name(text) */
+/* obj->name(text), discarding the result */
 static bool call_text(zval *obj, const char *name, str text)
 {
     zval arg, ret;
@@ -89,7 +89,7 @@ static bool pending(zend_class_entry *ce)
     return EG(exception) != NULL && instanceof_function(EG(exception)->ce, ce);
 }
 
-/* new ce(args...)의 객체. 생성자의 예외가 남으면 false다. */
+/* Object of new ce(args...). Returns false if the constructor leaves an exception. */
 static bool construct(zend_class_entry *ce, zval *out, uint32_t argc, zval *args)
 {
     object_init_ex(out, ce);
@@ -102,7 +102,7 @@ static bool construct(zend_class_entry *ce, zval *out, uint32_t argc, zval *args
     return true;
 }
 
-/* throw new ApplyError(code, plan, step, detail, previous). previous의 소유권을 가져간다. */
+/* throw new ApplyError(code, plan, step, detail, previous). Takes ownership of previous. */
 static bool apply_error(const char *code, str plan_name, zend_long step, str detail, zend_object *previous)
 {
     zval args[5], ex;
@@ -185,7 +185,7 @@ typedef struct {
 
 typedef VEC(zend_object *) errorv;
 
-/* 지금 던져진 예외를 errors에 옮긴다. ApplyCleanupError는 그 앞 error와 정리 error로 편다. */
+/* Moves the exception thrown now into errors. ApplyCleanupError unfolds into the error before it and the cleanup error. */
 static void collect(errorv *errors)
 {
     zend_object *e = take_exception();
@@ -214,8 +214,8 @@ static void collect(errorv *errors)
 }
 
 /*
- * f를 실행한 뒤 ends를 앞의 실패와 상관없이 차례로 모두 실행한다. error가 하나면 그것을 그대로 던지고, 여럿이면 첫
- * error와 그 뒤의 정리 error를 함께 담은 ApplyCleanupError를 던진다.
+ * Runs f, then runs all of ends in order regardless of an earlier failure. If there is one error, it is thrown as is; if there are several, the first
+ * error and the cleanup errors after it are thrown together in an ApplyCleanupError.
  */
 static bool finish(applier *a, part f, const part *ends, size_t n)
 {
@@ -258,7 +258,7 @@ static bool finish(applier *a, part f, const part *ends, size_t n)
 
 typedef struct {
     str query;
-    zval *args;      /* execute의 인자 배열 */
+    zval *args;      /* Argument array of execute */
     zval statement;
     zval row;
 } rowq;
@@ -294,7 +294,7 @@ static bool row_close(applier *a, void *ctx)
     return closed || runtime_error(fmt("closing the result of %S failed", q->query));
 }
 
-/* query가 돌려준 첫 row(row는 호출한 쪽이 해제한다). row가 없거나 result를 닫지 못하면 error다. */
+/* First row returned by query (the caller frees the row). It is an error if there is no row or the result cannot be closed. */
 static bool query_row(applier *a, str query, zval *args, zval *row)
 {
     ZVAL_UNDEF(row);
@@ -326,7 +326,7 @@ static bool query_row(applier *a, str query, zval *args, zval *row)
     return true;
 }
 
-/* row의 i번째 값의 사본, 없으면 null */
+/* Copy of the i-th value of row, or null if none */
 static void row_at(zval *row, zend_long i, zval *out)
 {
     zval *v = Z_TYPE_P(row) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(row), (zend_ulong)i) : NULL;
@@ -337,7 +337,7 @@ static void row_at(zval *row, zend_long i, zval *out)
     ZVAL_COPY_DEREF(out, v);
 }
 
-/* query가 돌려준 첫 row의 첫 값 */
+/* First value of the first row returned by query */
 static bool query_value(applier *a, str query, zval *args, zval *value)
 {
     zval row;
@@ -382,7 +382,7 @@ const char *dbs_effect_query_for(dialect d, str kind)
     return NULL;
 }
 
-/* 효과가 지금 database에 있는지 알린다. */
+/* Reports whether the effect is now in the database. */
 static bool effect_holds(applier *a, const effect *e, bool *out)
 {
     str query;
@@ -414,7 +414,7 @@ static bool effect_holds(applier *a, const effect *e, bool *out)
     return ok;
 }
 
-/* 효과를 읽는다. 읽지 못하면 step의 failed error다. */
+/* Reads the effect. If it cannot be read, it is the step's failed error. */
 static bool effect_at(applier *a, const plan *p, zend_long step, const effect *e, bool *out)
 {
     if (e == NULL) {
@@ -496,7 +496,7 @@ static bool is_state(str s, const char *a, const char *b)
     return str_eqc(s, a) || (b != NULL && str_eqc(s, b));
 }
 
-/* history를 읽어 기록된 plan 수를 돌려준다. 기록은 chain의 앞부분이어야 하고, 마지막 앞의 row는 applied나 done이어야 한다. */
+/* Reads history and returns the number of recorded plans. The records must be a prefix of the chain, and the rows before the last must be applied or done. */
 static bool position(applier *a, size_t *out)
 {
     if (!read_history(a)) {
@@ -551,7 +551,7 @@ static str json(zval *value)
     return out;
 }
 
-/* database의 introspection이 want schemaHash(''이면 빈 database)이고 미지원 객체가 없는지 확인한다. 아니면 RuntimeException이다. */
+/* Checks that the introspection of the database has want schemaHash (empty means an empty database) and that there are no unsupported objects. Otherwise it is a RuntimeException. */
 static bool verify(applier *a, str want)
 {
     unsupportedv skipped = {0};
@@ -596,7 +596,7 @@ static bool verify(applier *a, str want)
     return true;
 }
 
-/* 중단된 plan이 없고 catalog가 기록한 schema와 같을 때 기록된 plan 수를 돌려준다. */
+/* When there is no interrupted plan and the catalog's recorded schema matches, returns the number of recorded plans. */
 static bool settled(applier *a, size_t *out)
 {
     size_t pos;
@@ -625,7 +625,7 @@ static bool settled(applier *a, size_t *out)
     return true;
 }
 
-/* chain에서 plan의 앞 plan target을 source로 쓴 step */
+/* Step that uses the target of the plan before this one in the chain as its source */
 static bool steps_of(applier *a, const plan *p, planstepv *out)
 {
     const document *source = NULL;
@@ -644,7 +644,7 @@ static bool steps_of(applier *a, const plan *p, planstepv *out)
     return apply_error("chain", p->name, 0, d.v[0].message, NULL);
 }
 
-/* 중단된 row의 step을 catalog의 효과로 정한다. forward이면 앞으로, 아니면 뒤로 이어 갈 위치다. */
+/* Sets the step of the interrupted row from the catalog's effect. It is the position to continue from: forward if forward, otherwise backward. */
 static bool resolve(applier *a, const plan *p, const hrow *row, const planstepv *steps, bool forward, zend_long *out)
 {
     zend_long k = row->step, n = (zend_long)steps->n;
@@ -662,7 +662,7 @@ static bool resolve(applier *a, const plan *p, const hrow *row, const planstepv 
     if (!str_eqc(e->kind, "repeat") && !effect_at(a, p, uncertain, e, &held)) {
         return false;
     }
-    /* 앞으로 갈 때 repeat step은 다시 실행하고, 뒤로 갈 때는 그 rollback을 다시 실행한다. */
+    /* When going forward, a repeat step is run again; when going backward, its rollback is run again. */
     bool took = held || (!forward && str_eqc(e->kind, "repeat"));
     if (rolling) {
         *out = took ? k : k - 1;
@@ -672,7 +672,7 @@ static bool resolve(applier *a, const plan *p, const hrow *row, const planstepv 
     return true;
 }
 
-/* applied_at: tool clock의 UTC 시각을 소수 여섯 자리로 버림한 text */
+/* applied_at: text of the tool clock's UTC time truncated to six fractional digits */
 static bool applied_at(applier *a, str *out)
 {
     zval now, fn, at, utc, zone_fn, zone_name, moved, format, text;
@@ -733,7 +733,7 @@ static bool prepared(applier *a, str sql, zval *args)
     return ok;
 }
 
-/* plan의 row를 state와 step으로 쓴다. row가 없으면 만든다. */
+/* Writes the plan's row with its state and step. Creates the row if it does not exist. */
 static bool record(applier *a, const plan *p, const char *state, zend_long step)
 {
     if (smap_get(&a->history, p->name) == NULL) {
@@ -814,7 +814,7 @@ static bool open_session(applier *a, const char *query)
     return ok;
 }
 
-/* step i의 statement 하나를 event와 함께 실행한다. statement 앞에서 server session을 확인한다. */
+/* Runs one statement of step i together with its event. Checks the server session before the statement. */
 static bool run(applier *a, const plan *p, const planstepv *steps, zend_long i, str statement)
 {
     if (!emit(a, "statement", p->name, i, (zend_long)steps->n, statement)) {
@@ -844,7 +844,7 @@ static bool run(applier *a, const plan *p, const planstepv *steps, zend_long i, 
     return emit(a, "applied", p->name, i, (zend_long)steps->n, statement);
 }
 
-/* SQLite에서 foreign key를 어기는 row가 없는지 확인한다. */
+/* Checks in SQLite that no row violates a foreign key. */
 static bool foreign_key_check(applier *a, const plan *p)
 {
     if (a->r.d != D_SQLITE) {
@@ -861,7 +861,7 @@ static bool foreign_key_check(applier *a, const plan *p)
     return true;
 }
 
-/* 적용한 plan의 rollback이 non-null로 되돌릴 column의 NULL row를 default로 채우거나, default가 없으면 nulls error다. */
+/* Fills the NULL rows of a column that the applied plan's rollback would restore as non-null with its default; if there is no default, it is a nulls error. */
 static bool null_checks(applier *a, const plan *p, const planstepv *steps, zend_long upto)
 {
     for (zend_long i = 0; i < upto; i++) {
@@ -902,7 +902,7 @@ static bool irreversible(const plan *p, const planstepv *steps, zend_long i)
     return apply_error("irreversible", p->name, i, steps->v[i].finalize ? SL("a finalize step has no rollback") : steps->v[i].irreversible, NULL);
 }
 
-/* verify의 RuntimeException을 code의 ApplyError로 바꾼다: verify는 이전 예외로, drift는 message로 담는다. */
+/* Converts verify's RuntimeException into an ApplyError with code: verify is kept as the previous exception, and drift is kept as the message. */
 static bool verify_as(applier *a, const plan *p, str want, const char *code)
 {
     if (verify(a, want)) {
@@ -920,7 +920,7 @@ static bool verify_as(applier *a, const plan *p, str want, const char *code)
     return apply_error(code, p->name, 0, message, NULL);
 }
 
-/* step start부터 finalize step 앞까지 실행하고 검증한 뒤 row를 applied로 바꾼다. */
+/* Runs from step start up to the finalize step, verifies, then sets the row to applied. */
 static bool forward(applier *a, const plan *p, const planstepv *steps, zend_long start)
 {
     zend_long end = finalize_start(steps), n = (zend_long)steps->n;
@@ -944,7 +944,7 @@ static bool forward(applier *a, const plan *p, const planstepv *steps, zend_long
         && record(a, p, "applied", end) && emit(a, "done", p->name, 0, n, SL(""));
 }
 
-/* finalize step을 start부터 실행하고 row를 done으로 바꾼다. */
+/* Runs the finalize step from start and sets the row to done. */
 static bool finalize_from(applier *a, const plan *p, const planstepv *steps, zend_long start)
 {
     zend_long n = (zend_long)steps->n;
@@ -956,7 +956,7 @@ static bool finalize_from(applier *a, const plan *p, const planstepv *steps, zen
     return record(a, p, "done", n) && emit(a, "done", p->name, 0, n, SL(""));
 }
 
-/* plan 하나를 finalize step 앞까지 적용하고 검증한다. */
+/* Applies one plan up to the finalize step and verifies it. */
 static bool apply_plan(applier *a, const plan *p)
 {
     planstepv steps;
@@ -1247,7 +1247,7 @@ static bool sqlite_mode(applier *a, void *ctx)
     return exec_sql(a, fmt("PRAGMA locking_mode = %S", ((sqlite_state *)ctx)->mode));
 }
 
-/* locking mode를 되돌린 뒤 한 번 읽어야 exclusive lock이 풀린다. */
+/* The exclusive lock is released only after the locking mode is reverted and then read once. */
 static bool sqlite_read_once(applier *a, void *ctx)
 {
     zval v;
@@ -1301,7 +1301,7 @@ static bool sqlite_session(applier *a, operation op)
     return finish(a, (part){sqlite_body, &s}, ends, 5);
 }
 
-/* dialect의 lock을 잡고 session 설정을 바꾼 뒤 op를 실행하고, 끝에 설정을 되돌리고 lock을 놓는다. */
+/* Takes the dialect's lock, changes the session settings, runs op, then restores the settings and releases the lock at the end. */
 static bool session(applier *a, operation op)
 {
     if (a->r.d == D_SQLITE) {
@@ -1345,7 +1345,7 @@ static bool session(applier *a, operation op)
 
 /* ------------------------------------------------------------------ API */
 
-/* PlanApply의 생성자: dialect, error mode, chain 순서로 확인한다. */
+/* PlanApply's constructor: checks the dialect, the error mode, and the chain order. */
 static bool applier_init(applier *a, zval *c, str dialect_name, zval *plans, zval *now, zval *events)
 {
     *a = (applier){0};

@@ -1,6 +1,6 @@
 /*
- * introspection과 Mermaid import가 채우는 중립 중간 model이다(PHP client Catalog, CatalogTable). catalog_document가
- * 그것을 dbspec text로 쓰고 parse하며, parse가 거부한 줄의 객체를 미지원으로 보고하고 빼서 다시 만든다.
+ * The neutral intermediate model that introspection and the Mermaid import fill (PHP client Catalog, CatalogTable). catalog_document
+ * writes it as dbspec text and parses it; objects on lines that parse rejects are reported as unsupported, removed, and rebuilt.
  */
 #include "dbspec.h"
 #include "ext/spl/spl_exceptions.h"
@@ -58,7 +58,7 @@ str catalog_action_name(str rule, bool *ok)
     return SL("");
 }
 
-/* 10^scale을 곱한 정수 text를 scale 자리 소수로 쓴다. */
+/* Writes the integer text multiplied by 10^scale as a decimal with scale digits. */
 str catalog_unscaled_decimal(str text, zend_long scale)
 {
     bool negative = str_starts(text, "-");
@@ -78,14 +78,14 @@ static str first_word(str line)
     return space < 0 ? line : str_sub(line, 0, (size_t)space);
 }
 
-/* 줄의 객체: kind, table, name */
+/* Object of the line: kind, table, name */
 typedef struct {
     str kind, table, name;
 } object;
 
 typedef struct {
     strs lines;
-    VEC(object) objects; /* objects.v[k]는 줄 번호 k의 객체, kind가 비면 객체가 없는 줄 */
+    VEC(object) objects; /* objects.v[k] is the object at line number k; an empty kind means the line has no object */
 } written;
 
 static void add_line(written *w, str line, const char *kind, str table, str name)
@@ -103,7 +103,7 @@ static int cmp_itable(const void *a, const void *b, void *ctx)
     return str_cmp((*(itable *const *)a)->name, (*(itable *const *)b)->name);
 }
 
-/* table을 이름 순으로 쓴 dbspec text와 줄마다 그 객체다. 닫는 괄호와 primary key 줄은 table에 속한다. */
+/* Dbspec text of the tables written in name order, and per line its object. The closing brace and primary key line belong to the table. */
 static written catalog_text(catalog *c, str name)
 {
     VEC(itable *) tables = {0};
@@ -113,8 +113,8 @@ static written catalog_text(catalog *c, str name)
     dbs_sort(tables.v, tables.n, sizeof(itable *), cmp_itable, NULL);
     written w = {0};
     PUSH(w.lines, fmt("dbspec 1 %S", name));
-    PUSH(w.objects, ((object){SNULL, SNULL, SNULL})); /* 줄 번호 0 */
-    PUSH(w.objects, ((object){SNULL, SNULL, SNULL})); /* header 줄 1 */
+    PUSH(w.objects, ((object){SNULL, SNULL, SNULL})); /* Line number 0 */
+    PUSH(w.objects, ((object){SNULL, SNULL, SNULL})); /* Header line 1 */
     for (size_t i = 0; i < tables.n; i++) {
         itable *t = tables.v[i];
         PUSH(w.lines, SL(""));
@@ -166,7 +166,7 @@ static written catalog_text(catalog *c, str name)
     return w;
 }
 
-/* primary key가 없는 table을 뺀다. 그 table을 참조하던 foreign key는 parse가 거부해 빠진다. */
+/* Removes tables without a primary key. Foreign keys that referenced that table are dropped because parse rejects them. */
 static void drop_tables_without_key(catalog *c)
 {
     size_t k = 0;
@@ -189,7 +189,7 @@ static void drop_tables_without_key(catalog *c)
         (list).n = k_; \
     } while (0)
 
-/* 객체 하나를 뺀다. table이나 primary key를 빼면 table 전체가 빠진다. */
+/* Removes one object. Removing a table or its primary key removes the whole table. */
 static void remove_object(catalog *c, object o)
 {
     itable *t = catalog_table(c, o.table);
@@ -270,7 +270,7 @@ document *catalog_document(catalog *c, str name, unsupportedv *out)
             *out = sorted;
             return d;
         }
-        /* 거부된 table의 객체는 table과 함께 빠지므로 따로 보고하지 않는다. */
+        /* Objects of a rejected table are removed together with the table, so they are not reported separately. */
         smap rejected = {0};
         for (size_t i = 0; i < found.n; i++) {
             zend_long line = found.v[i].line;

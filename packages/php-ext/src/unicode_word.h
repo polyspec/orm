@@ -1,7 +1,7 @@
 /*
- * 생성 파일이다. Unicode 17.0.0의 word rune 표다.
- * unicode.IsLetter 또는 unicode.IsDigit이 참인 code point의 닫힌 구간이며 오름차순이고 서로 겹치지 않는다.
- * `go run ./tests/dbspec/unicode -write`가 쓴다. 직접 고치지 않는다.
+ * Generated file. The word rune table of Unicode 17.0.0.
+ * Closed ranges of code points for which unicode.IsLetter or unicode.IsDigit is true, in ascending order and non-overlapping.
+ * Written by `go run ./tests/dbspec/unicode -write`. Do not edit by hand.
  */
 #ifndef POLYSPEC_UNICODE_WORD_H
 #define POLYSPEC_UNICODE_WORD_H
@@ -749,7 +749,7 @@ static const uint32_t unicode_word_ranges[][2] = {
     {0x31350, 0x33479},
 };
 
-/* unicode_word_rune은 cp가 word rune이면 참이다. 표를 이진 탐색한다. */
+/* unicode_word_rune is true if cp is a word rune. Binary-searches the table. */
 static inline bool unicode_word_rune(uint32_t cp)
 {
     size_t lo = 0;

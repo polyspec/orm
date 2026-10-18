@@ -1,7 +1,7 @@
 /*
- * 연결의 database를 중간 model로 읽는다(PHP client CatalogRows, CheckDecoder, CatalogTriggers, MysqlCatalog,
- * PostgresCatalog, SqliteCatalog, docs/dialects.md "Introspection"). PDO는 그 객체의 메서드를 Zend API로 불러 쓰므로
- * 하위 class가 고친 메서드와 PDOException의 뜻이 PHP client와 같다.
+ * Reads the connection's database into the intermediate model (PHP client CatalogRows, CheckDecoder, CatalogTriggers, MysqlCatalog,
+ * PostgresCatalog, SqliteCatalog, docs/dialects.md "Introspection"). PDO calls the methods of its object through the Zend API, so
+ * subclasses' overridden methods and the meaning of PDOException are the same as in the PHP client.
  */
 #include "dbspec.h"
 #include "ext/pdo/php_pdo_driver.h"
@@ -28,7 +28,7 @@ bool pending_pdo_exception(void)
     return EG(exception) != NULL && instanceof_function(EG(exception)->ce, php_pdo_get_exception());
 }
 
-/* 지금 던져진 예외를 꺼내 그 소유권을 돌려준다. */
+/* Takes the exception thrown now and returns its ownership. */
 zend_object *take_exception(void)
 {
     zend_object *e = EG(exception);
@@ -102,8 +102,8 @@ static str failure_message(str query, zval *info)
 }
 
 /*
- * query의 모든 row를 위치 순 값으로 rows에 둔다. connection의 error mode와 무관하게 실패는 RuntimeException이다.
- * PDOException 밖의 예외(PDO 하위 class가 던진 것)는 그대로 지나간다.
+ * Puts all rows of query into rows as position-ordered values. Regardless of the connection's error mode, a failure is a RuntimeException.
+ * Exceptions outside PDOException (thrown by PDO subclasses) pass through unchanged.
  */
 bool catalog_read(zval *pdo, str query, zval *rows)
 {
@@ -259,7 +259,7 @@ bool value_integer(zval *v, zend_long i, str query, zend_long *out)
         return true;
     }
     if (v != NULL && Z_TYPE_P(v) == IS_STRING && integer_text(str_z(Z_STR_P(v)))) {
-        /* (int) "...": 범위를 넘는 수는 PHP처럼 끝에서 멈춘다. */
+        /* (int) "...": numbers out of range stop at the end, as in PHP. */
         *out = ZEND_STRTOL(Z_STRVAL_P(v), NULL, 10);
         return true;
     }
@@ -351,7 +351,7 @@ static bool number_default(str s)
     return i > start && i == s.n;
 }
 
-/* PHP strcasecmp(...) === 0: ASCII 대소문자만 무시한다. */
+/* PHP strcasecmp(...) === 0: only ASCII letter case is ignored. */
 static bool ascii_ieq(const char *a, const char *b, size_t n)
 {
     for (size_t i = 0; i < n; i++) {
@@ -377,9 +377,9 @@ typedef VEC(ctoken) ctokens;
 /* operand: kind column|number|string|bool. predicate: op and|or|compare|in|null */
 typedef struct cnode {
     bool predicate;
-    str kind;          /* operand의 kind */
-    str text;          /* operand의 text */
-    str op;            /* predicate의 op */
+    str kind;          /* kind of the operand */
+    str text;          /* text of the operand */
+    str op;            /* op of the predicate */
     struct cnode *left, *right;
     str operator_;
     VEC(struct cnode *) list;
@@ -420,7 +420,7 @@ static str unescape_mysql_clause(str text)
 static bool cdigit(char c) { return c >= '0' && c <= '9'; }
 static bool calpha(char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); }
 
-/* text 앞의 문자열 literal을 읽어 값과 길이를 돌려준다. PostgreSQL과 SQLite는 ''만 escape이고 MySQL은 backslash도 쓴다. */
+/* Reads the string literal before text and returns its value and length. PostgreSQL and SQLite escape only '', and MySQL also uses backslash. */
 static bool sql_string(cdecoder *c, str text, str *value, size_t *length)
 {
     sbuf out = {0};
@@ -495,7 +495,7 @@ static bool ctokenize(cdecoder *c, str text)
                 j++;
             }
             str word = str_sub(text, i, j - i);
-            /* MySQL 문자열 앞의 character set introducer는 값이 아니다. */
+            /* A character set introducer before a MySQL string is not a value. */
             if (c->d == D_MYSQL && str_starts(word, "_") && j < n && text.s[j] == '\'') {
                 i = j;
                 continue;
@@ -607,7 +607,7 @@ static cnode *coperand(cdecoder *c)
     return operand_node("column", SL(""));
 }
 
-/* `::` 뒤의 type 이름을 읽는다: 단어들과 (n), []. */
+/* Reads the type name after `::`: words and (n), []. */
 static str cast_type(cdecoder *c)
 {
     strs words = {0};
@@ -676,7 +676,7 @@ static cnode *literal_list(cdecoder *c, bool array)
     }
 }
 
-/* PostgreSQL의 ANY나 ALL 뒤의 (ARRAY[...]) 또는 ((ARRAY[...])::type[])를 읽는다. */
+/* Reads (ARRAY[...]) or ((ARRAY[...])::type[]) after PostgreSQL's ANY or ALL. */
 static cnode *array_literals(cdecoder *c)
 {
     cexpect(c, "(");
@@ -823,7 +823,7 @@ static ctype *type_of(cdecoder *c, const cnode *a, const cnode *b)
     return NULL;
 }
 
-/* operand를 dbspec 표기로 쓴다. bool column의 1과 0은 true와 false, SQLite decimal의 정수는 scale을 나눈 값이다. */
+/* Writes the operand in dbspec notation. 1 and 0 of a bool column are true and false; an integer of a SQLite decimal is divided by the scale. */
 static str operand_text(cdecoder *c, const cnode *o, const ctype *type)
 {
     if (str_eqc(o->kind, "column")) {
@@ -861,7 +861,7 @@ static str cside(cdecoder *c, const cnode *n)
     return cwrite(c, n);
 }
 
-/* predicate를 dbspec text로 쓴다. 괄호는 필요한 곳보다 많아도 되며 canonical form은 parse가 정한다. */
+/* Writes the predicate as dbspec text. Parentheses may be more than needed; the canonical form is determined by parse. */
 static str cwrite(cdecoder *c, const cnode *p)
 {
     if (str_eqc(p->op, "and") || str_eqc(p->op, "or")) {
@@ -890,7 +890,7 @@ static str cwrite(cdecoder *c, const cnode *p)
     return SL("");
 }
 
-/* check 식을 dbspec predicate text로 읽는다. 읽을 수 없으면 false와 이유다. */
+/* Reads a check expression as dbspec predicate text. If it cannot be read, returns false and the reason. */
 bool check_decode(dialect d, str text, const smap *columns, str *out, str *failure)
 {
     cdecoder *c = dbs_alloc(sizeof *c);
@@ -937,7 +937,7 @@ typedef struct {
 
 typedef VEC(itrigger) itriggerv;
 
-/* renderer statement 목록에서 trigger 이름을 순서대로 꺼낸다. */
+/* Takes the trigger names in order from the renderer statement list. */
 static strs trigger_order(const strs *statements)
 {
     strs names = {0};
@@ -954,13 +954,13 @@ static strs trigger_order(const strs *statements)
                 break;
             }
         }
-        /* substr($rest, 1, $end - 1): 닫는 따옴표가 없으면 끝의 한 byte를 뺀다. */
+        /* substr($rest, 1, $end - 1): if there is no closing quote, one byte at the end is removed. */
         PUSH(names, end < 0 ? str_sub(rest, 1, rest.n >= 2 ? rest.n - 2 : 0) : str_sub(rest, 1, (size_t)end - 1));
     }
     return names;
 }
 
-/* trigger statement에서 본문을 꺼낸다: MySQL은 FOR EACH ROW 뒤, PostgreSQL은 function의 BEGIN 뒤, SQLite는 BEGIN 뒤다. */
+/* Takes the body from a trigger statement: in MySQL after FOR EACH ROW, in PostgreSQL after the function's BEGIN, in SQLite after BEGIN. */
 static str trigger_body(const strs *statements)
 {
     const char *markers[] = {"$$BEGIN ", "FOR EACH ROW BEGIN ", "FOR EACH ROW "};
@@ -986,7 +986,7 @@ static bool audit_name_char(char c)
     return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_';
 }
 
-/* `[`"]([a-z0-9_]+)[`"]` 를 i에서 읽는다. */
+/* Reads `[`"]([a-z0-9_]+)[`"]` at i. */
 static bool quoted_name(str s, size_t *i, str *out)
 {
     size_t p = *i;
@@ -1033,7 +1033,7 @@ static bool audit_insert(str body, str *history, str *columns)
     return slit(body, &i, ") VALUES ");
 }
 
-/* AUDIT_UPDATE: `VALUES \('update', OLD\.[`"]([a-z0-9_]+)[`"],` 의 첫 자리 */
+/* AUDIT_UPDATE: the first position of `VALUES \('update', OLD\.[`"]([a-z0-9_]+)[`"],` */
 static bool audit_update(str body, str *column)
 {
     const char *prefix = "VALUES ('update', OLD.";
@@ -1046,7 +1046,7 @@ static bool audit_update(str body, str *column)
     return false;
 }
 
-/* audit insert trigger의 column 목록과 update trigger의 audit column으로 audit setting을 만든다. */
+/* Builds the audit setting from the column list of the audit insert trigger and the audit column of the update trigger. */
 static setting *audit_setting(const itable *t, str history, const strs *quoted, str column)
 {
     strs names = {0};
@@ -1095,10 +1095,10 @@ static setting *audit_setting(const itable *t, str history, const strs *quoted, 
     return s;
 }
 
-/* trigger 집합이 같은 renderer 출력을 주는 setting의 줄, 없으면 NULL이다. */
-/* 각 setting을 자기 trigger 이름(재계산한 renderer 이름)으로 알아보고, trigger 집합이 알아본 setting들의 renderer
- * 출력과 이름과 내용이 모두 같을 때만 그 setting 줄들을 돌려준다. 아니면 NULL이다(docs/dialects.md "Triggers").
- * 두 setting을 함께 쓴 table은 두 출력의 합이며 개수로 판단하지 않는다. */
+/* The setting line whose trigger set gives the same renderer output; NULL if none. */
+/* Recognizes each setting by its own trigger name (the recomputed renderer name); the renderer
+ * output of the settings the trigger set recognized. Returns those setting lines only when output, name, and content all match; otherwise NULL (docs/dialects.md "Triggers").
+ * A table that writes two settings together is the sum of both outputs, and is not judged by count. */
 static strs *trigger_setting(dialect d, const itable *t, itriggerv *list)
 {
     smap names = {0};
@@ -1173,7 +1173,7 @@ static strs *trigger_setting(dialect d, const itable *t, itriggerv *list)
     return out;
 }
 
-/* table마다 trigger 집합이 immutable이나 audit의 renderer 출력과 같으면 그 setting을 더하고, 아니면 모든 trigger를 보고한다. */
+/* For each table, if its trigger set matches the renderer output of immutable or audit, adds that setting; otherwise reports all triggers. */
 static void recognize_triggers(catalog *c, dialect d, smap *triggers)
 {
     strs tables = {0};
@@ -1236,7 +1236,7 @@ static const char MYSQL_EVENTS[] = "SELECT EVENT_NAME FROM information_schema.EV
 
 #define Q(name) ((str){name, sizeof(name) - 1})
 
-/* COLUMN_TYPE과 character set, collation을 dbspec type으로 읽는다. needs는 renderer CHECK이 있어야 그 type이 되는 catalog type이다. */
+/* Reads COLUMN_TYPE, character set, and collation as a dbspec type. needs is the catalog type that becomes that type only if the renderer CHECK exists. */
 static ctype *mysql_type(str column_type, str charset, str collation, str *needs)
 {
     *needs = SL("");
@@ -1316,7 +1316,7 @@ static ctype *mysql_type(str column_type, str charset, str collation, str *needs
     return one_param("datetime", precision);
 }
 
-/* CHECK_CLAUSE가 0x80 이상의 byte를 가지면 true다. MySQL 8.4는 non-ASCII literal을 두 번 인코딩해 보여 준다. */
+/* True if CHECK_CLAUSE has a byte of 0x80 or above. MySQL 8.4 shows non-ASCII literals encoded twice. */
 static bool has_non_ascii(str clause)
 {
     for (size_t i = 0; i < clause.n; i++) {
@@ -1327,7 +1327,7 @@ static bool has_non_ascii(str clause)
     return false;
 }
 
-/* 식 text의 `\` 와 `'` 를 escape한다. unescape_mysql_clause의 역이다. */
+/* Escapes `\` and `'` in the expression text. This is the inverse of unescape_mysql_clause. */
 static str escape_mysql_clause(str text)
 {
     char *out = dbs_alloc(text.n * 2 + 1);
@@ -1342,8 +1342,8 @@ static str escape_mysql_clause(str text)
     return (str){out, n};
 }
 
-/* SHOW CREATE TABLE 문장에서 name인 CHECK의 본문을 CHECK_CLAUSE 형식으로 out에 쓴다.
- * 문자열 literal은 `\` 와 `'` 를 한 번 escape하므로 literal을 건너뛰고, 본문 끝은 CHECK (의 짝인 )다. */
+/* From the SHOW CREATE TABLE statement, writes the body of the CHECK named name into out in CHECK_CLAUSE form.
+ * String literals escape `\` and `'` once, so the literal is skipped; the end of the body is the `)` matching `CHECK (`. */
 static bool shown_check(str create, str name, str *out)
 {
     ssize_t at = str_find(create, "CONSTRAINT `", 0);
@@ -1378,7 +1378,7 @@ static bool shown_check(str create, str name, str *out)
     return false;
 }
 
-/* table의 SHOW CREATE TABLE 문장을 out에 읽는다. */
+/* Reads the table's SHOW CREATE TABLE statement into out. */
 static bool show_create_table(zval *pdo, str table, str *out)
 {
     zval rows, *row;
@@ -1399,8 +1399,8 @@ static bool show_create_table(zval *pdo, str table, str *out)
     return ok;
 }
 
-/* CHECK_CLAUSE가 non-ASCII를 깨뜨린 check의 본문을 SHOW CREATE TABLE에서 out에 읽는다. table별로
- * SHOW CREATE TABLE을 한 번만 읽으며 creates에 모은다. */
+/* Reads into out, from SHOW CREATE TABLE, the body of a check whose CHECK_CLAUSE broke non-ASCII. Per table,
+ * SHOW CREATE TABLE is read only once and collected into creates. */
 static bool shown_clause(zval *pdo, str table, str name, smap *creates, str *out)
 {
     str *create = smap_get(creates, table);
@@ -1417,7 +1417,7 @@ static bool shown_clause(zval *pdo, str table, str name, smap *creates, str *out
     return true;
 }
 
-/* character set introducer와 time literal의 0 소수를 뺀 CHECK_CLAUSE다. */
+/* CHECK_CLAUSE with the character set introducer and the zero fractional digits of time literals removed. */
 static str without_introducers(str clause)
 {
     sbuf b = {0};
@@ -1465,7 +1465,7 @@ static str without_introducers(str clause)
     return sb_str(&c);
 }
 
-/* renderer CHECK이 CHECK_CLAUSE에 남는 형식 */
+/* Format in which the renderer CHECK remains in CHECK_CLAUSE */
 static str mysql_renderer_check(const icolumn *column)
 {
     str c = fmt("`%S`", column->name);
@@ -1554,7 +1554,7 @@ static bool mysql_indexes(zval *pdo, catalog *c)
     return true;
 }
 
-/* foreign key마다 column row를 모은다. 지원하지 않는 key는 column row마다 보고된다. */
+/* Collects column rows for each foreign key. An unsupported key is reported for each column row. */
 static bool mysql_foreign_keys(zval *pdo, catalog *c)
 {
     str q = Q(MYSQL_FOREIGN_KEYS);
@@ -1795,7 +1795,7 @@ static catalog *mysql_read(zval *pdo)
     }
     zval_ptr_dtor(&rows);
     TRY(ok);
-    /* renderer CHECK이 있어야 하는 type은 그 CHECK이 없으면 dbspec type이 아니다. */
+    /* A type that requires a renderer CHECK is not a dbspec type if that CHECK is missing. */
     SMAP_EACH(&pending, i) {
         smap *cols = pending.e[i].val;
         smap *cm = smap_get(&checked, pending.e[i].key);
@@ -1934,7 +1934,7 @@ static ctype *pg_type(str formatted, str collation)
     return NULL;
 }
 
-/* pg_get_expr의 default를 dbspec literal이나 now로 읽는다. 아니면 false다. */
+/* Reads the default of pg_get_expr as a dbspec literal or now. Otherwise false. */
 static bool pg_default_literal(str text, const ctype *type, str *out)
 {
     if (str_eqc(text, "statement_timestamp()")) {
@@ -2036,7 +2036,7 @@ static bool pg_trigger_def(str d, str *name, str *timing, str *event, str *table
     while (i < d.n && non_space(d.s[i])) i++;
     str token = str_sub(d, s, i - s);
     if (token.n == 0) return false;
-    /* (?:\S+\.)?(\S+): 남는 부분이 비지 않는 가장 긴 '.'로 끝나는 앞부분을 뺀다. */
+    /* (?:\S+\.)?(\S+): removes the longest prefix ending in '.' such that the remaining part is not empty. */
     *table = token;
     for (size_t k = token.n - 1; k >= 2; k--) {
         if (token.s[k - 1] == '.') {
@@ -2196,7 +2196,7 @@ static catalog *pg_read(zval *pdo)
                 }
                 PUSH(t->uniques, key);
             } else if (str_eqc(kind, "f") && ref_table.n == 0) {
-                /* 다른 schema의 table을 가리키는 foreign key는 이 문서 밖의 table을 가리킨다. */
+                /* A foreign key pointing to a table in another schema points to a table outside this document. */
                 catalog_report(c, SL("foreign_key"), table, name, SL("the referenced table is outside the current schema"));
             } else if (str_eqc(kind, "f")) {
                 str del, upd;
@@ -2341,12 +2341,12 @@ static const char SQLITE_INDEXES[] = "SELECT m.name, l.name, l.\"unique\", l.ori
     "FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' ORDER BY m.name, l.name";
 
 typedef struct {
-    smap checks;          /* 이름 => str* 식 */
+    smap checks;          /* name => str* expression */
     strs order;
     VEC(ifkey) fks;
     strs primary;
     str identity;
-    smap columns;         /* 이름 => str* 항목 */
+    smap columns;         /* name => str* entry */
     str unsupported;
 } sqlite_table;
 
@@ -2361,7 +2361,7 @@ static str trim_space6(str s)
     return str_trim_set(s, " \t\n\r\v\f");
 }
 
-/* 괄호와 따옴표 밖의 쉼표로 나눈다. */
+/* Splits on commas outside parentheses and quotes. */
 static strs split_top_level(str text)
 {
     strs out = {0};
@@ -2489,7 +2489,7 @@ static sqlite_table *sqlite_parse_table(str text, sqlite_unsupportedv *unsupport
             continue;
         }
         i = 0;
-        /* CHECK_ITEM: `^CONSTRAINT "([^"]+)" CHECK \((.*)\)$` (.은 줄 바꿈이 아니다) */
+        /* CHECK_ITEM: `^CONSTRAINT "([^"]+)" CHECK \((.*)\)$` (. does not match a newline) */
         if (slit(item, &i, "CONSTRAINT ") && dq_name(item, &i, &name) && slit(item, &i, " CHECK (") && str_ends(item, ")") && i <= item.n - 1) {
             str body = str_sub(item, i, item.n - 1 - i);
             if (!str_hasch(body, '\n')) {
@@ -2535,7 +2535,7 @@ static sqlite_table *sqlite_parse_table(str text, sqlite_unsupportedv *unsupport
         }
         i = 0;
         if (dq_name(item, &i, &name) && slit(item, &i, " ")) {
-            /* 정의는 pragma_table_xinfo가 읽고, 그 text는 renderer 형식인지 확인한다. */
+            /* The definition is read by pragma_table_xinfo, and its text is checked to be in renderer form. */
             str *v = dbs_alloc(sizeof *v);
             *v = item;
             smap_set(&st->columns, name, v);
@@ -2547,7 +2547,7 @@ static sqlite_table *sqlite_parse_table(str text, sqlite_unsupportedv *unsupport
     return st;
 }
 
-/* column 정의 text가 renderer의 column 형식(이름, 선언 type, NULL이나 NOT NULL, 있으면 DEFAULT)뿐인지 알린다. */
+/* Reports whether the column definition text is only the renderer's column form (name, declared type, NULL or NOT NULL, and DEFAULT if present). */
 static bool sqlite_column_text(str item, str name, str declared, bool not_null, bool def_null, str def)
 {
     str prefix = fmt("\"%S\" ", name);
@@ -2566,7 +2566,7 @@ static bool sqlite_column_text(str item, str name, str declared, bool not_null, 
     return str_eq(rest, fmt("%s DEFAULT %S", tail, def)) || str_eq(rest, fmt("%s DEFAULT (%S)", tail, def));
 }
 
-/* 선언 type과 그 column의 renderer CHECK로 dbspec type을 정한다. CHECK은 그 type의 renderer 출력과 정확히 같아야 한다. */
+/* Determines the dbspec type from the declared type and the column's renderer CHECK. The CHECK must match that type's renderer output exactly. */
 static ctype *sqlite_type(str declared, str column_name, str check, bool has_check)
 {
     VEC(ctype *) candidates = {0};
@@ -2638,7 +2638,7 @@ static ctype *sqlite_type(str declared, str column_name, str check, bool has_che
     return NULL;
 }
 
-/* dflt_value를 dbspec literal이나 now로 읽는다. decimal은 scale을 곱한 정수이고 bool은 1과 0이다. */
+/* Reads dflt_value as a dbspec literal or now. A decimal is an integer multiplied by scale, and a bool is 1 or 0. */
 static bool sqlite_default_literal(str text, const ctype *type, str *out)
 {
     if (str_eqc(type->name, "datetime")) {
@@ -2802,7 +2802,7 @@ static catalog *sqlite_read(zval *pdo)
                 break;
             }
             itable *t = catalog_table(c, table);
-            /* pk와 u origin index는 primary key와 unique 정의에서 나오며 그 정의를 읽거나 보고한다. */
+            /* The pk and u origin indexes come from the primary key and unique definitions, and those definitions are read or reported. */
             if (t == NULL || str_eqc(origin, "pk") || str_eqc(origin, "u")) {
                 continue;
             }
@@ -2831,7 +2831,7 @@ static catalog *sqlite_read(zval *pdo)
 
 /* ------------------------------------------------------------------ API */
 
-/* 연결의 database를 문서 하나와 빠진 객체로 읽는다. 실패는 PHP 예외이고 NULL이다. */
+/* Reads the connection's database as one document and missing objects. A failure is a PHP exception and NULL. */
 document *dbs_introspect(zval *pdo, dialect d, str name, unsupportedv *out)
 {
     catalog *c = d == D_MYSQL ? mysql_read(pdo) : d == D_POSTGRES ? pg_read(pdo) : sqlite_read(pdo);
