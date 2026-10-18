@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c6fc924d57d11d85458f06e49204b5bc4c4f2cc69a7748e64b0ef404f43c8f98 -->
+<!-- source-sha256: 34fe2239b979f5f32049f2ea87402f9a98fafb405822c151d7f1ba815e8da8f2 -->
 # 변경 이력
 
 ## Unreleased
+- test의 모든 language adapter가 자기 package에 있고, parity root 어느 것도 tests/를 가리키지 않는다(T77-9).
 - TestApplyStressPlan은 table 100개로 apply 문장마다 따로 commit됨을 증명한다. apply 중인 PostgreSQL session은 어떤 step 뒤에도 relation lock을 갖지 않고, 200 step마다 진행과 경과 시간을 출력한다(T148-4-5).
 - Unicode word 표는 영어로 생성된다. 생성기 header가 커밋된 표와 같아져 TestCommittedTablesAreGenerated가 통과한다(T131-8-1).
 - Rust interface snapshot가 번역된 doc comment를 다시 기록한다 (T131-8).
