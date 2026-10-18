@@ -109,12 +109,10 @@ caseTest('a MySQL setting other than the declared one migrates the data with equ
     assert.equal(servers.sql(39301, 'SELECT @@lower_case_table_names').trim(), String(platformDefault));
     const first = servers.migrate();
     assert.equal(first.status, 0, first.stdout + first.stderr);
-    // The migration steps are a long task, so they have no deadline.
-    for (const step of ['preflight', 'dump', 'stop', 'keep', 'start', 'restore', 'verify', 'record']) {
-      assert.match(first.stdout, new RegExp(`^RUN mysql-migration/${step} no-deadline$`, 'm'));
-      assert.match(first.stdout, new RegExp(`^PASS mysql-migration/${step} elapsed=`, 'm'));
-    }
-    assert.doesNotMatch(first.stdout, /^RUN mysql-migration\/\S+ deadline=/m);
+    // Each migration step is a long task (runLong in tests/testcase.mts): it writes its TAP result line, in order, and no deadline ends it.
+    const results = first.stdout.split('\n').filter(line => /^(not )?ok - /.test(line));
+    assert.deepEqual(results, ['preflight', 'dump', 'stop', 'keep', 'start', 'restore', 'verify', 'record'].map(step => `ok - mysql-migration/${step}`));
+    assert.doesNotMatch(first.stdout, /^# deadline \S+ exceeded$|^Bail out!/m);
     for (const port of [39301, 39302]) {
       assert.equal(servers.sql(port, 'SELECT @@lower_case_table_names').trim(), '1');
       assert.equal(servers.sql(port, 'SELECT COUNT(*) FROM shopdb.item').trim(), '3');
@@ -147,7 +145,7 @@ caseTest('names that one lower case name would merge refuse the migration before
     assert.equal(second.status, 0, second.stderr);
     const refused = servers.migrate();
     assert.equal(refused.status, 1);
-    assert.match(refused.stdout, /^FAIL mysql-migration\/preflight elapsed=[^:]+: names that lower_case_table_names=1 would merge, nothing changed: tables of pair: Foo, foo$/m);
+    assert.match(refused.stdout, /^not ok - mysql-migration\/preflight\n# names that lower_case_table_names=1 would merge, nothing changed: tables of pair: Foo, foo$/m);
     assert.equal(servers.sql(39311, 'SELECT @@lower_case_table_names').trim(), '0');
     assert.equal(readdirSync(join(servers.root, '.runtime')).filter(name => name.startsWith('mysql-before-')).length, 0);
   } finally {

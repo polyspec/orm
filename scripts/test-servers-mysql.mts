@@ -12,8 +12,8 @@
 //   verify     checks that the primary and replica counts match the record, and if not, fails with that difference
 //   record     writes the settings marker into the new data directory and keeps the migration record
 //
-// Each step is a long task, so via runLong in tests/testcase.mts it prints RUN (no-deadline), STEP, PASS or FAIL, and the elapsed time,
-// and has no deadline. Success and failure are decided by each command's exit code and the counts checked. Waiting for the replica to reach the primary's binary log
+// Each step is a long task, so via runLong in tests/testcase.mts it prints its output lines and the TAP result line `ok - <step>`
+// or `not ok - <step>` with the reason, and has no deadline. Success and failure are decided by each command's exit code and the counts checked. Waiting for the replica to reach the primary's binary log
 // position with SOURCE_POS_WAIT also has no timeout. Progress
 // is recorded per step in .runtime/mysql-migration, so after a failed run, running again skips the finished steps and
 // continues from the next step. The new data directory is removed and recreated only after the existing one has been moved.
