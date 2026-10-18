@@ -13,8 +13,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// statementFaultFixture는 contracts/fixtures/statement_fault.json이다. code와
-// message는 실패할 statement의 오류이고 cases는 이 파일이 실행해야 하는 case 이름이다.
+// statementFaultFixture is contracts/fixtures/statement_fault.json. code and
+// message are the error of the statement that fails, and cases are the case names this file must run.
 type statementFaultFixture struct {
 	Schema  int      `json:"schema"`
 	Code    string   `json:"code"`
@@ -22,8 +22,8 @@ type statementFaultFixture struct {
 	Cases   []string `json:"cases"`
 }
 
-// statementFaultCases는 fixture의 case 이름마다 test 함수 하나다. 이름이 없으면
-// TestStatementFaultCases가 실패하고, fixture에 없는 이름이 있어도 실패한다.
+// statementFaultCases has one test function per case name of the fixture. If a name is missing,
+// TestStatementFaultCases fails, and it also fails if there is a name that is not in the fixture.
 var statementFaultCases = map[string]func(t *testing.T, db *orm.DB, model func() *orm.Core, f statementFaultFixture){
 	"refused_insert":            statementRefusedInsert,
 	"consumed_by_one_statement": statementConsumedByOneStatement,
@@ -31,7 +31,7 @@ var statementFaultCases = map[string]func(t *testing.T, db *orm.DB, model func()
 	"empty_argument_refused":    statementEmptyArgumentRefused,
 }
 
-// loadStatementFault는 contracts/fixtures/statement_fault.json을 읽는다.
+// loadStatementFault reads contracts/fixtures/statement_fault.json.
 func loadStatementFault(t *testing.T) statementFaultFixture {
 	t.Helper()
 	data, err := os.ReadFile("../../../contracts/fixtures/statement_fault.json")
@@ -48,8 +48,8 @@ func loadStatementFault(t *testing.T) statementFaultFixture {
 	return f
 }
 
-// statementFault는 fixture의 case마다 새 database를 만들고 그 case를 실행한다.
-// rollbackFixture는 rollback_probe table을 설치한다. 모든 case는 같은 table을 쓴다.
+// statementFault makes a new database for each case of the fixture and runs that case.
+// rollbackFixture installs the rollback_probe table. All cases use the same table.
 func statementFault(t *testing.T, driver string) {
 	f := loadStatementFault(t)
 	for _, name := range f.Cases {
@@ -64,7 +64,7 @@ func statementFault(t *testing.T, driver string) {
 	}
 }
 
-// requireStatementFault는 err가 fixture의 code와 message를 가진 OrmException인지 확인한다.
+// requireStatementFault checks that err is an OrmException with the fixture's code and message.
 func requireStatementFault(t *testing.T, err error, f statementFaultFixture) {
 	t.Helper()
 	var coded *orm.Error
@@ -73,8 +73,8 @@ func requireStatementFault(t *testing.T, err error, f statementFaultFixture) {
 	}
 }
 
-// requireStatementEvent는 연결의 statement event 중 fixture의 오류를 가진 event가
-// 있는지 확인한다. 오류는 statement가 끝날 때 event에 실려야 한다.
+// requireStatementEvent checks that among the connection's statement events there is one
+// carrying the fixture's error. The error must be attached to the event when the statement ends.
 func requireStatementEvent(t *testing.T, db *orm.DB, f statementFaultFixture, run func()) {
 	t.Helper()
 	var events []orm.StatementEvent
@@ -96,7 +96,7 @@ func requireStatementEvent(t *testing.T, db *orm.DB, f statementFaultFixture, ru
 	t.Fatalf("no statement event carries %s %q; %d events", f.Code, f.Message, len(events))
 }
 
-// requireRows는 model의 row 수가 want인지 확인한다.
+// requireRows checks that the model's row count is want.
 func requireRows(t *testing.T, model func() *orm.Core, want int64, subject string) {
 	t.Helper()
 	n, err := model().GetCount()
@@ -105,7 +105,7 @@ func requireRows(t *testing.T, model func() *orm.Core, want int64, subject strin
 	}
 }
 
-// refuseUsage는 call이 panic으로 거부되는지 확인한다.
+// refuseUsage checks that the call is refused with a panic.
 func refuseUsage(t *testing.T, subject string, call func()) {
 	t.Helper()
 	defer func() {
@@ -116,8 +116,8 @@ func refuseUsage(t *testing.T, subject string, call func()) {
 	call()
 }
 
-// statementRefusedInsert는 다음 insert가 보내지지 않고 fixture의 오류로 실패하며
-// 데이터베이스가 바뀌지 않는지 확인한다.
+// statementRefusedInsert makes the next insert fail with the fixture's error without sending it,
+// and checks that the database is not changed.
 func statementRefusedInsert(t *testing.T, db *orm.DB, model func() *orm.Core, f statementFaultFixture) {
 	orm.FailNextStatement(db, f.Code, f.Message)
 	requireStatementEvent(t, db, f, func() {
@@ -126,8 +126,8 @@ func statementRefusedInsert(t *testing.T, db *orm.DB, model func() *orm.Core, f 
 	requireRows(t, model, 0, "after the refused insert")
 }
 
-// statementConsumedByOneStatement는 fault가 한 statement만 소비해서 다음 insert가
-// 성공하는지 확인한다.
+// statementConsumedByOneStatement checks that the fault consumes only one statement, so the next insert
+// succeeds.
 func statementConsumedByOneStatement(t *testing.T, db *orm.DB, model func() *orm.Core, f statementFaultFixture) {
 	orm.FailNextStatement(db, f.Code, f.Message)
 	requireStatementFault(t, probeCreate(model, "refused"), f)
@@ -137,8 +137,8 @@ func statementConsumedByOneStatement(t *testing.T, db *orm.DB, model func() *orm
 	requireRows(t, model, 1, "after the consumed fault")
 }
 
-// statementRefusedInTransaction은 BEGIN과 COMMIT이 fault를 소비하지 않고, transaction
-// 안의 다음 insert가 fixture의 오류로 실패해 transaction이 그 오류를 반환하는지 확인한다.
+// statementRefusedInTransaction checks that BEGIN and COMMIT do not consume the fault, and that the next insert
+// inside the transaction fails with the fixture's error, so the transaction returns that error.
 func statementRefusedInTransaction(t *testing.T, db *orm.DB, model func() *orm.Core, f statementFaultFixture) {
 	orm.FailNextStatement(db, f.Code, f.Message)
 	if err := db.Transaction(func() error { return nil }, orm.Retry(0)); err != nil {
@@ -151,8 +151,8 @@ func statementRefusedInTransaction(t *testing.T, db *orm.DB, model func() *orm.C
 	requireRows(t, model, 0, "after the refused insert in a transaction")
 }
 
-// statementEmptyArgumentRefused는 빈 code나 빈 message가 거부되고 아무것도 armed하지
-// 않아서 다음 insert가 성공하는지 확인한다.
+// statementEmptyArgumentRefused checks that an empty code or empty message is refused and arms nothing,
+// so that the next insert succeeds.
 func statementEmptyArgumentRefused(t *testing.T, db *orm.DB, model func() *orm.Core, f statementFaultFixture) {
 	refuseUsage(t, "an empty code", func() { orm.FailNextStatement(db, "", f.Message) })
 	refuseUsage(t, "an empty message", func() { orm.FailNextStatement(db, f.Code, "") })
@@ -162,9 +162,9 @@ func statementEmptyArgumentRefused(t *testing.T, db *orm.DB, model func() *orm.C
 	requireRows(t, model, 1, "after the refused arming")
 }
 
-// TestStatementFaultCases는 fixture의 case 이름과 statementFaultCases의 이름이
-// 같은지 확인한다. 두 목록이 다르면 fixture의 case가 실행되지 않거나 실행되지 않는
-// test가 남는다.
+// TestStatementFaultCases checks that the case names of the fixture are the same as the names in statementFaultCases.
+// If the two lists differ, a fixture case does not run, or a test that runs
+// no fixture case remains.
 func TestStatementFaultCases(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	f := loadStatementFault(t)

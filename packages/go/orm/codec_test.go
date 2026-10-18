@@ -47,8 +47,8 @@ func canonStyled(t *testing.T, v StyledValue) string {
 	return canon(t, data)
 }
 
-// decodeVector는 tests/codec/decode-vectors.json의 case 하나다: 쓰기 순서의 stage, text나 byte의 hex인
-// 저장 cell, decode한 값이나 오류 code.
+// decodeVector is one case of tests/codec/decode-vectors.json: the stages in write order, the hex of the text or bytes,
+// the stored cell, the decoded value, or the error code.
 type decodeVector struct {
 	Name      string   `json:"name"`
 	Styles    []string `json:"styles"`
@@ -58,9 +58,9 @@ type decodeVector struct {
 	Error     string   `json:"error"`
 }
 
-// TestCodecDecodeVectors는 공유 decode vector를 읽는다. 저장 cell은 encoder가 쓰는 형태로만 decode되고
-// 둘레의 공백이나 다른 형태는 CODEC_DECODE다. aes가 없는 host stage 목록은 key 없는 HostDecode로,
-// 나머지는 Decode로 읽는다.
+// TestCodecDecodeVectors reads the shared decode vectors. A stored cell is decoded only in the form the encoder writes,
+// and surrounding whitespace or other forms are CODEC_DECODE. A host stage list without aes is read with HostDecode and no key,
+// and the rest are read with Decode.
 func TestCodecDecodeVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	src, err := os.ReadFile("../../../tests/codec/decode-vectors.json")
@@ -501,9 +501,9 @@ type customJSONValue struct{ body []byte }
 
 func (v customJSONValue) MarshalJSON() ([]byte, error) { return v.body, nil }
 
-// codecStages는 tests/codec와 contracts/fixtures의 공유 vector가 쓰는 stage
-// 이름을 dbspec codec stage 이름으로 바꾼다. 공유 vector는 json과 jsons를
-// 아직 쓰며, dbspec에서는 둘 다 ordered_json이다.
+// codecStages maps the stage names that the shared vectors of tests/codec and contracts/fixtures use
+// to dbspec codec stage names. The shared vectors still use json and jsons,
+// and in dbspec both are ordered_json.
 func codecStages(styles []string) []string {
 	out := make([]string, len(styles))
 	for i, style := range styles {

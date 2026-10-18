@@ -4,16 +4,16 @@ import (
 	"github.com/polyspec/orm/packages/go/engine/ir"
 )
 
-// stmtFault는 FailNextStatement이 설정한 code와 message다.
+// stmtFault is the code and message that FailNextStatement set.
 type stmtFault struct {
 	code string
 	msg  string
 }
 
-// fault는 kind의 statement를 보내기 전에 설정된 statement fault를 확인한다. transaction
-// machinery와 transaction control statement는 fault를 소비하지 않는다
-// (docs/protocol.md 3.2). 그 밖의 statement는 설정된 fault가 있으면 fault를 소비하고
-// 그 오류를 돌려주며, 이때 database에는 보내지 않는다.
+// fault checks the statement fault set before sending a statement of the kind. Transaction
+// machinery and transaction control statements do not consume the fault
+// (docs/protocol.md 3.2). For other statements, if a fault is set, it is consumed
+// and its error is returned, and in that case nothing is sent to the database.
 func (r runner) fault(kind string) error {
 	if r.machinery || isTransactionControl(kind) {
 		return nil
@@ -21,8 +21,8 @@ func (r runner) fault(kind string) error {
 	return r.d.takeStatementFault()
 }
 
-// takeStatementFault는 설정된 statement fault를 소비하고 그 오류를 돌려준다. fault가
-// 없으면 nil이다. model statement의 경로도 이 함수로 fault를 소비한다.
+// takeStatementFault consumes the set statement fault and returns its error. If there is no
+// fault, it is nil. The model statement path also consumes the fault through this function.
 func (d *DB) takeStatementFault() error {
 	f := d.m.statementFault.Swap(nil)
 	if f == nil {
@@ -31,7 +31,7 @@ func (d *DB) takeStatementFault() error {
 	return &ir.Error{Code: f.code, Msg: f.msg}
 }
 
-// isTransactionControl은 transaction을 시작, 끝, 중첩하는 statement의 kind인지 확인한다.
+// isTransactionControl checks whether the kind is a statement that starts, ends, or nests a transaction.
 func isTransactionControl(kind string) bool {
 	switch kind {
 	case KindBegin, KindCommit, KindRollback, KindSavepoint, KindRelease, KindRollbackTo:

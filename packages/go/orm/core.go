@@ -52,7 +52,7 @@ type condNode struct {
 type condGroup struct {
 	items   []condNode
 	pending string
-	// not은 group 전체를 부정한다(not(fn), andNot(fn), orNot(fn)).
+	// not negates the whole group (not(fn), andNot(fn), orNot(fn)).
 	not bool
 }
 

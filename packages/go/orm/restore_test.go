@@ -11,10 +11,10 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// restoreTables는 contracts/fixtures/restore.dbs가 만드는 table이다.
+// restoreTables is the table that contracts/fixtures/restore.dbs creates.
 var restoreTables = []string{"audit", "label", "membership", "membership_history"}
 
-// restoreNative는 dsn의 database를 native driver로 연다.
+// restoreNative opens the database at dsn with the native driver.
 func restoreNative(t *testing.T, driver, dsn string) *sql.DB {
 	t.Helper()
 	if driver != "sqlite" {
@@ -28,7 +28,7 @@ func restoreNative(t *testing.T, driver, dsn string) *sql.DB {
 	return raw
 }
 
-// restoreTextRows는 query의 모든 row를 문자열로 읽는다. NULL은 "NULL"이다.
+// restoreTextRows reads all rows of the query as strings. NULL is "NULL".
 func restoreTextRows(t *testing.T, raw *sql.DB, query string) [][]string {
 	t.Helper()
 	rows, err := raw.Query(query)
@@ -65,21 +65,21 @@ func restoreTextRows(t *testing.T, raw *sql.DB, query string) [][]string {
 	return out
 }
 
-// restoreCase는 dsn의 database에 contracts/fixtures/restore.dbs를 설치하고
-// soft delete한 행을 restore로 되돌린다. membership은 unique key
-// (team_id, member_id)와 exclude (note)를 가진 audit table이고 label은
-// unique key (name)를 가진 audit 없는 table이다. 확인하는 것:
-//   - soft delete한 행의 unique key 값은 남으므로 같은 key의 insert는
-//     DUPLICATE_KEY다.
-//   - 기본 read는 지운 행을 읽지 않는다.
-//   - restore는 set 값만 보내고, planner가 고른 primary key나 unique key 하나의
-//     set 값으로 지운 행을 찾아 soft delete column을 NULL로 쓰는 update를 하고,
-//     되돌린 행을 돌려준다. key 밖의 set 값은 그 update가 함께 쓰는 새 값이다.
-//     audit table이면 transaction의 audit 기록 key를 쓰고 trigger가 그
-//     update를 기록하며, audit이 없으면 CONFIG다.
-//   - 지워지지 않은 행의 restore는 새 값도 쓰지 않고 그 행을 돌려주며, 없는
-//     행의 restore는 NO_ROWS다.
-//   - key의 값이 없는 restore는 statement 없이 IR_INVALID다.
+// restoreCase installs contracts/fixtures/restore.dbs in the database at dsn
+// and restores the soft-deleted row. membership is an audit table with a unique key
+// (team_id, member_id) and an exclude (note), and label is
+// a table without audit that has the unique key (name). It checks:
+//   - the unique key values of a soft-deleted row remain, so an insert of the same key
+//     gives DUPLICATE_KEY.
+//   - a default read does not read deleted rows.
+//   - restore sends only the set values, finds the deleted row by the set values of one primary key or unique key the planner chose,
+//     runs an update that writes the soft delete column as NULL, and
+//     returns the restored row. Set values outside the key are the new values that the update writes along with it.
+//     For an audit table, it writes the transaction's audit record key, and the trigger
+//     records the update; without an audit it is CONFIG.
+//   - restoring a row that was not deleted writes no new values and returns that row; restoring a row
+//     that does not exist is NO_ROWS.
+//   - a restore without key values is IR_INVALID, with no statement.
 func restoreCase(t *testing.T, driver, dsn string) {
 	t.Helper()
 	s := fixtureSchema(t, "restore")
@@ -101,8 +101,8 @@ func restoreCase(t *testing.T, driver, dsn string) {
 			t.Error(err)
 		}
 	}()
-	// audit 기록의 key는 실패한 transaction이 쓴 번호를 database마다 다르게
-	// 건너뛸 수 있으므로 actor로 찾는다.
+	// The audit record key differs per database, since a failed transaction may skip numbers
+	// it wrote, so it is found by actor.
 	auditSeq := func(actor string) string {
 		rows := restoreTextRows(t, raw, "SELECT seq FROM audit WHERE actor = '"+actor+"'")
 		if len(rows) != 1 {
@@ -167,7 +167,7 @@ func restoreCase(t *testing.T, driver, dsn string) {
 	var restored, again orm.Model
 	if err := adb.Transaction(func() error {
 		var err error
-		// key 밖의 set 값은 되돌리는 행에 함께 쓰는 새 값이다.
+		// Set values outside the key are the new values written together to the row being restored.
 		restored, err = core(memberships, map[string]any{"team_id": int64(1), "member_id": int64(2), "note": "n2"}).Restore()
 		return err
 	}, orm.Audit(map[string]any{"actor": "restore"}), orm.Retry(0)); err != nil {
@@ -222,7 +222,7 @@ func restoreCase(t *testing.T, driver, dsn string) {
 	}
 }
 
-// mustSeq는 정수 text를 int64로 읽는다.
+// mustSeq reads an integer text as int64.
 func mustSeq(t *testing.T, text string) int64 {
 	t.Helper()
 	var n int64
@@ -232,8 +232,8 @@ func mustSeq(t *testing.T, text string) int64 {
 	return n
 }
 
-// TestRestoreSoftDeletedRow는 restoreCase를 세 database에서 case마다 새
-// database로 실행한다.
+// TestRestoreSoftDeletedRow runs restoreCase on three databases, each case
+// on a new database.
 func TestRestoreSoftDeletedRow(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	for _, driver := range []string{"sqlite", "mysql", "postgres"} {

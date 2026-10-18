@@ -13,14 +13,14 @@ import (
 	sqlite "modernc.org/sqlite"
 )
 
-// errStatementRejected는 failingDriver가 고른 statement에 돌려주는 오류다.
+// errStatementRejected is the error that failingDriver returns for the statement it chose.
 var errStatementRejected = errors.New("statement rejected by the test driver")
 
-// errRollbackRejected는 failingDriver가 rollback을 끝낸 뒤 돌려주는 오류다.
+// errRollbackRejected is the error that failingDriver returns after it finishes the rollback.
 var errRollbackRejected = errors.New("rollback rejected by the test driver")
 
-// injectedFailure는 failingDriver가 실패시킬 statement와 rollback이다. 실제
-// server는 이 statement와 rollback을 거부하지 않으므로 실패를 이렇게 만든다.
+// injectedFailure is the statement and rollback that failingDriver makes fail. The real
+// server does not reject this statement and rollback, so the failure is produced this way.
 type injectedFailure struct {
 	statement func(query string) bool
 	rollback  bool
@@ -28,7 +28,7 @@ type injectedFailure struct {
 
 var injected atomic.Pointer[injectedFailure]
 
-// inject는 test가 끝날 때까지 failingDriver의 실패를 정한다.
+// inject sets which failures failingDriver produces until the test ends.
 func inject(t *testing.T, f injectedFailure) {
 	t.Helper()
 	injected.Store(&f)
@@ -40,8 +40,8 @@ func statementRejected(query string) bool {
 	return f != nil && f.statement != nil && f.statement(query)
 }
 
-// failingDriver는 실제 driver를 감싸고 inject가 고른 statement와 rollback을
-// 실패시킨다.
+// failingDriver wraps a real driver, and the statement and rollback that inject chose
+// are made to fail.
 type failingDriver struct{ base driver.Driver }
 
 func (d failingDriver) Open(name string) (driver.Conn, error) {
@@ -62,7 +62,7 @@ func (c failingConn) ExecContext(ctx context.Context, query string, args []drive
 	if !ok {
 		return nil, driver.ErrSkip
 	}
-	// client가 실행하는 ROLLBACK은 실제로 끝낸 뒤 inject된 rollback 실패를 돌려준다.
+	// The ROLLBACK the client runs actually completes, and then returns the injected rollback failure.
 	res, err := e.ExecContext(ctx, query, args)
 	if err == nil && query == "ROLLBACK" {
 		if f := injected.Load(); f != nil && f.rollback {
@@ -102,8 +102,8 @@ func (c failingConn) CheckNamedValue(v *driver.NamedValue) error {
 
 var registerFailingDrivers sync.Once
 
-// useFailingDriver는 test가 끝날 때까지 client driver name을 failingDriver로
-// 연다.
+// useFailingDriver makes the client driver name failingDriver until the test ends
+// and opens it.
 func useFailingDriver(t *testing.T, name string) {
 	t.Helper()
 	registerFailingDrivers.Do(func() {

@@ -13,14 +13,14 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// AddTablesAndColumns를 SQLite, MySQL, PostgreSQL에서 확인한다. case database는 다른
-// set addcol_log의 table과 addcol set version 1의 table을 row와 함께 가진다. version 2로
-// AddTablesAndColumns를 부르면 있는 table에 빠진 null이거나 default가 있는 column을
-// 더하고, row를 지키며, 바뀐 audit table의 trigger가 새 column을 기록하고, 없는 table을
-// index, foreign key, check, audit trigger와 함께 만들며, 다른 set의 table은 그대로
-// 둔다. 다시 부르면 아무것도 더하지 않는다. 있는 table에 빠진 index는 더하고, 빠진
-// unique key는 그 이유를 적은 SCHEMA_DIFFERS다. 다른 차이가 있는 set은 아무것도 바꾸기
-// 전에 SCHEMA_DIFFERS다. fixture는 contracts/fixtures/add_tables_and_columns/*.dbs다.
+// Checks AddTablesAndColumns on SQLite, MySQL, and PostgreSQL. The case database starts from a different
+// set: the table of set addcol_log and the table of addcol set version 1, each with rows. Moving to version 2
+// Calling AddTablesAndColumns adds the columns that are missing from existing tables and are nullable or have a default
+// keeping rows; the audit table's trigger records the new column when the audit table changes, and a missing table
+// is created with its index, foreign key, check, and audit trigger, and tables of other sets
+// are left as they are. Calling it again adds nothing. A missing index on an existing table is added, and a missing
+// unique key is SCHEMA_DIFFERS with the reason stated. A set with other differences changes nothing
+// before SCHEMA_DIFFERS. The fixtures are contracts/fixtures/add_tables_and_columns/*.dbs.
 
 var (
 	addTablesAndColumnsAdded = []string{
@@ -30,7 +30,7 @@ var (
 		"addcol_tag.color",
 	}
 	addTablesAndColumnsDiffers = []string{"required", "removed", "changed", "nullable", "default", "unique", "reorder"}
-	// index.dbs가 version 1에 더하는 column과 index다. column 뒤에 index가 온다.
+	// The columns and index that index.dbs adds in version 1. The index comes after the columns.
 	addTablesAndColumnsIndexAdded    = []string{"addcol_item.note", "addcol_item.ix_addcol_item_label", "addcol_item_history.note"}
 	addTablesAndColumnsMissingUnique = "add_unique addcol_item.uq_addcol_item_label: a missing unique key can fail on the existing rows; add it with a plan"
 )
@@ -40,9 +40,9 @@ func addTablesAndColumnsSchema(t *testing.T, name string) *orm.Schema {
 	return fixtureSchema(t, "add_tables_and_columns/"+name)
 }
 
-// addTablesAndColumnsInstalled는 case database에 addcol_log와 version 1을 설치하고, log row
-// 하나, audit 기록 1로 item 하나, 그 item의 tag와 그 tag의 자식 tag를 쓴 연결을
-// 돌려준다. 연결의 pool은 연결 하나라 AddTablesAndColumns가 쓴 연결을 다음 요청이 다시 쓴다.
+// addTablesAndColumnsInstalled installs addcol_log and version 1 in the case database, and the log row
+// one, the item with audit record 1, and the link that writes that item's tag and that tag's child tag
+// are returned. The connection pool holds one connection, so the next request reuses the connection AddTablesAndColumns used.
 func addTablesAndColumnsInstalled(t *testing.T, driver string) (*orm.DB, string) {
 	t.Helper()
 	dsn := newDatabase(t, driver)
@@ -85,7 +85,7 @@ func addTablesAndColumnsInstalled(t *testing.T, driver string) (*orm.DB, string)
 	return db, dsn
 }
 
-// addTablesAndColumnsNative는 case database의 native 연결이다.
+// addTablesAndColumnsNative is the native connection to the case database.
 func addTablesAndColumnsNative(t *testing.T, driver, dsn string) *sql.DB {
 	t.Helper()
 	if driver != "sqlite" {
@@ -98,7 +98,7 @@ func addTablesAndColumnsNative(t *testing.T, driver, dsn string) *sql.DB {
 	return raw
 }
 
-// addTablesAndColumnsExec는 case database에서 statement를 native 연결로 실행한다.
+// addTablesAndColumnsExec runs a statement on the case database over the native connection.
 func addTablesAndColumnsExec(t *testing.T, driver, dsn, statement string) error {
 	t.Helper()
 	raw := addTablesAndColumnsNative(t, driver, dsn)
@@ -107,7 +107,7 @@ func addTablesAndColumnsExec(t *testing.T, driver, dsn, statement string) error 
 	return err
 }
 
-// addTablesAndColumnsCount는 case database에서 query가 돌려주는 수를 native 연결로 읽는다.
+// addTablesAndColumnsCount reads, over the native connection, the number the query returns on the case database.
 func addTablesAndColumnsCount(t *testing.T, driver, dsn, query string) (int64, error) {
 	t.Helper()
 	raw := addTablesAndColumnsNative(t, driver, dsn)
@@ -135,7 +135,7 @@ func addTablesAndColumnsCase(t *testing.T, driver string) {
 	if err != nil || !slices.Equal(added, addTablesAndColumnsAdded) {
 		t.Fatalf("AddTablesAndColumns = %v, %v; want %v", added, err, addTablesAndColumnsAdded)
 	}
-	// row는 그대로이고 새 column은 NULL이거나 default다.
+	// Rows are unchanged, and the new column is NULL or the default.
 	if n := count("SELECT COUNT(*) FROM addcol_item WHERE ref = 'item-1' AND label = 'first' AND note IS NULL AND priority = 3 AND archived = false AND status = 'new'"); n != 1 {
 		t.Fatalf("items with their values and the new defaults = %d", n)
 	}
@@ -145,7 +145,7 @@ func addTablesAndColumnsCase(t *testing.T, driver string) {
 	if n := count("SELECT COUNT(*) FROM addcol_log_entry WHERE message = 'kept'"); n != 1 {
 		t.Fatalf("log entries = %d", n)
 	}
-	// SQLite는 foreign key를 끄고 table을 다시 만들었다. 같은 연결이 다시 켰는지 본다.
+	// SQLite turned off foreign keys and rebuilt the table. Checks whether the same connection turned them back on.
 	tags := rowEntity("addcol_tag", addTablesAndColumnsSchema(t, "v1"), "id", "item_id", "name")
 	orphan := orm.NewCore(tags)
 	orphan.Connect(db)
@@ -154,7 +154,7 @@ func addTablesAndColumnsCase(t *testing.T, driver string) {
 	if _, err := orphan.Create(); orm.ErrorCode(err) != orm.CodeForeignKey {
 		t.Fatalf("a tag of a missing item = %v, want FOREIGN_KEY", err)
 	}
-	// version 2의 model은 새 column을 쓰고, audit trigger는 새 column을 기록한다.
+	// The version 2 model writes the new column, and the audit trigger records the new column.
 	next, err := orm.ConnectSchema(dsn, v2, auditConfig("next"))
 	if err != nil {
 		t.Fatal(err)
@@ -174,7 +174,7 @@ func addTablesAndColumnsCase(t *testing.T, driver string) {
 	if n := count("SELECT COUNT(*) FROM addcol_item_history WHERE history_action = 'update' AND previous_audit_seq = 1 AND audit_seq = 2 AND note = 'later' AND priority = 4 AND status = 'new'"); n != 1 {
 		t.Fatalf("history rows of the update with the new columns = %d", n)
 	}
-	// 새 table은 index, foreign key, check, audit trigger와 함께 만들어졌다.
+	// The new table was created with its index, foreign key, check, and audit trigger.
 	err = next.Transaction(func() error {
 		c := orm.NewCore(rowEntity("addcol_extra", v2, "id", "item_id", "label", "audit_seq"))
 		c.Connect(next)
@@ -204,7 +204,7 @@ func addTablesAndColumnsCase(t *testing.T, driver string) {
 	if again, err := db.Utils().Schema().AddTablesAndColumns(v2); err != nil || len(again) != 0 {
 		t.Fatalf("repeated AddTablesAndColumns = %v, %v", again, err)
 	}
-	// 모든 table이 있으므로 install은 아무것도 바꾸지 않는다(docs/schema.md "Schema installation").
+	// All tables exist, so install changes nothing (docs/schema.md "Schema installation").
 	if err := db.Utils().Schema().Install(v2); err != nil {
 		t.Fatalf("install of version 2 over its tables = %v", err)
 	}
@@ -224,8 +224,8 @@ func addTablesAndColumnsDiffersCase(t *testing.T, driver string) {
 	}
 }
 
-// addTablesAndColumnsIndexCase는 있는 table에 빠진 index를 더하고 다시 부르면 아무것도 하지
-// 않는지, 빠진 unique key는 있는 행에서 실패할 수 있다는 이유를 적은 SCHEMA_DIFFERS인지 본다.
+// addTablesAndColumnsIndexCase adds a missing index to an existing table and checks that calling it again does nothing
+// and that a missing unique key is SCHEMA_DIFFERS with the reason that it can fail on existing rows.
 func addTablesAndColumnsIndexCase(t *testing.T, driver string) {
 	db, _ := addTablesAndColumnsInstalled(t, driver)
 	if _, err := db.Utils().Schema().AddTablesAndColumns(addTablesAndColumnsSchema(t, "unique")); orm.ErrorCode(err) != orm.CodeSchemaDiffers || !strings.Contains(err.Error(), addTablesAndColumnsMissingUnique) {
@@ -238,7 +238,7 @@ func addTablesAndColumnsIndexCase(t *testing.T, driver string) {
 	if again, err := db.Utils().Schema().AddTablesAndColumns(index); err != nil || len(again) != 0 {
 		t.Fatalf("repeated AddTablesAndColumns with the index = %v, %v", again, err)
 	}
-	// install은 database가 set과 같을 때만 아무것도 바꾸지 않는다: index가 선언대로 있다.
+	// install changes nothing only when the database matches the set: the index exists as declared.
 	if err := db.Utils().Schema().Install(index); err != nil {
 		t.Fatalf("install of the set with the index = %v", err)
 	}

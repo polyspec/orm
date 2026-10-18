@@ -4,21 +4,21 @@ package orm
 
 import "time"
 
-// FailNextRollback는 db의 connection과 그 connection의 모든 handle에 test fault를
-// 설정한다. callback이 실패한 다음 transaction의 rollback은 실행된 뒤 rollback
-// 오류로 FAULT 오류를 보고하므로, transaction은 callback 오류와 fault를 가진
-// ROLLBACK 오류를 반환한다. fault는 그런 rollback이 소비할 때까지 남는다.
-// 이 함수는 build tag ormtest가 있는 build에만 있다.
+// FailNextRollback sets a test fault on the connection of db and on all of its handles.
+// After a transaction whose callback failed, the rollback runs first, and then the rollback
+// reports a FAULT error, so the transaction returns both the callback error and the fault as
+// a ROLLBACK error. The fault remains until such a rollback consumes it.
+// This function exists only in builds with the ormtest build tag.
 func FailNextRollback(db *DB) {
 	db.m.rollbackFault.Store(true)
 }
 
-// FailNextStatement는 db의 connection과 그 connection의 모든 handle에 test fault를
-// 설정한다. 다음 statement는 database에 보내지 않고 code와 message를 가진 오류로
-// 실패하며, 그 오류는 statement가 끝날 때 statement event에 실린다. transaction
-// control statement는 fault를 소비하지 않는다. 설정된 fault는 새 fault로 바뀐다.
-// code나 message가 비어 있으면 panic하고 아무것도 설정하지 않는다.
-// 이 함수는 build tag ormtest가 있는 build에만 있다.
+// FailNextStatement sets a test fault on the connection of db and on all of its handles.
+// The next statement fails without being sent to the database, with an error that has the code and message,
+// and that error is attached to the statement event when the statement ends. A transaction
+// control statement does not consume the fault. A set fault is replaced by the new fault.
+// If code or message is empty, it panics and sets nothing.
+// This function exists only in builds with the ormtest build tag.
 func FailNextStatement(db *DB, code, message string) {
 	if code == "" || message == "" {
 		panic("orm: FailNextStatement needs a nonempty code and message")
@@ -26,10 +26,10 @@ func FailNextStatement(db *DB, code, message string) {
 	db.m.statementFault.Store(&stmtFault{code: code, msg: message})
 }
 
-// FixClock는 db의 connection과 그 connection의 모든 handle의 executor clock을
-// clock 시각으로 고정한다. clock은 UTC의 `YYYY-MM-DD HH:MM:SS.ffffff` text다.
-// 형식이 다르면 panic하고 아무것도 설정하지 않는다(docs/protocol.md "Test clock").
-// 이 함수는 build tag ormtest가 있는 build에만 있다.
+// FixClock fixes the executor clock of the connection of db and of all of its handles
+// to the clock time. The clock is UTC text in the form `YYYY-MM-DD HH:MM:SS.ffffff`.
+// If the format differs, it panics and sets nothing (docs/protocol.md "Test clock").
+// This function exists only in builds with the ormtest build tag.
 func FixClock(db *DB, clock string) {
 	t, err := time.ParseInLocation("2006-01-02 15:04:05.000000", clock, time.UTC)
 	if err != nil {
@@ -38,9 +38,9 @@ func FixClock(db *DB, clock string) {
 	db.m.fixedClock.Store(&t)
 }
 
-// LastAffected는 db의 connection과 그 모든 handle에서 마지막으로 성공한 write 결과의
-// affected와 true를 돌려준다. 성공한 write가 없었으면 0과 false다(docs/protocol.md
-// "Test write result"). 이 함수는 build tag ormtest가 있는 build에만 있다.
+// LastAffected returns the affected count of the last successful write result on the connection of db and on all of its handles,
+// along with true. If there was no successful write, it returns 0 and false (docs/protocol.md
+// "Test write result"). This function exists only in builds with the ormtest build tag.
 func LastAffected(db *DB) (int64, bool) {
 	n := db.m.lastAffected.Load()
 	return n - 1, n > 0

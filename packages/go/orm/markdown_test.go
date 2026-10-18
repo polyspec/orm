@@ -41,7 +41,7 @@ func TestParseMarkdownDSN(t *testing.T) {
 	}
 }
 
-// fakeServer는 flowmark server 대신 한 연결의 message를 받아 적고 script의 답을 차례로 쓴다.
+// fakeServer receives one connection's messages in place of the flowmark server, records them, and writes the script's replies in order.
 type fakeServer struct {
 	ln       net.Listener
 	received chan []string
@@ -85,8 +85,8 @@ func (s *fakeServer) dsn() string {
 
 const connectLine = `{"op":"connect","corpus":"tracker","token":"0123456789abcdef0123456789abcdef"}`
 
-// TestMarkdownSessionMessages는 client가 보내는 connect와 control message, 그리고 error 줄의 해석을
-// 확인한다(docs/protocol.md §5).
+// TestMarkdownSessionMessages checks the connect and control messages the client sends, and the interpretation of error lines
+// (docs/protocol.md §5).
 func TestMarkdownSessionMessages(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	s := startFakeServer(t,
@@ -124,7 +124,7 @@ func TestMarkdownSessionMessages(t *testing.T) {
 	}
 }
 
-// TestMarkdownConnectRefused는 server가 connect에 답한 CONFIG가 Connect의 오류임을 확인한다.
+// TestMarkdownConnectRefused checks that the CONFIG the server answered to connect is an error of Connect.
 func TestMarkdownConnectRefused(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	s := startFakeServer(t, `{"error":{"code":"CONFIG","message":"connect: the token is not the corpus's token"}}`)
@@ -141,8 +141,8 @@ func TestMarkdownConnectRefused(t *testing.T) {
 	}
 }
 
-// TestMarkdownRejectedSurfaces는 markdown 연결이 SQL 전용 surface를 CAPABILITY_UNSUPPORTED로 거절함을
-// 확인한다(docs/dialects.md "Markdown IR executor").
+// TestMarkdownRejectedSurfaces checks that a markdown connection refuses SQL-only surfaces with CAPABILITY_UNSUPPORTED
+// (docs/dialects.md "Markdown IR executor").
 func TestMarkdownRejectedSurfaces(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	s := startFakeServer(t, `{"ok":true}`)

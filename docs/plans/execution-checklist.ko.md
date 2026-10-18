@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 69da6c6aa6bc405260af07884c14626df78afe82240646d9f47e8223a1e50fdb -->
+<!-- source-sha256: 5d227ddbd3e08cee5f4d4ff233012dbb696c069b90136567305b49db284ad10d -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1166,7 +1166,7 @@
 - [o] T130-2 TypeScript finder를 scan으로 만들지 모든 column에 만들지 정하고, 그다음 client를 같게 한다(T130 후속). 원인: S-284 보고는 node 생성 모델이 finder를 unique key에만 만들고 php는 다른 column에도 만든다고 한다. 이 저장소에서 확인하면, TypeScript generator는 scan된 코드가 호출하는 체인마다 finder를 선언하며 unique가 아닌 column도 scan되면 `getByStatus`, `getsByStatus`, `getCountByStatus`를 얻는다. PHP는 finder를 생성하지 않고 `Model::__call`에서 모든 체인을 호출 시점에 해석한다. docs/interfaces.md는 두 설계를 모두 밝히고, docs/usage.md는 모든 언어에서 finder가 "모든 컬럼 체인을 받는다"고 밝히는데, scan이 보지 못한 TypeScript 체인은 그렇지 않다. 결정: TypeScript는 scan을 따른다(scan된 코드가 호출하는 체인마다 finder). PHP는 호출 시점에 해석한다. generator는 바꾸지 않는다. 근거: docs/usage.md와 docs/usage.ko.md가 그 내용을 적는다.
 - [~] T131 code 주석을 영어로 번역한다. 원인: AGENTS가 code 주석은 한국어라고 적어, 주석은 영어라는 owner 규칙(kit PRINCIPLES, K84)과 어긋났다. 2026-10-13 기준 728개 파일에 한국어 주석 10,059줄이 남아 있다. 인수 조건: code 파일의 주석에 한글이 없으며, 이를 어기면 실패하는 검사가 check target에 들어 있다; AGENTS가 영어 규칙을 적는다. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Resumed: link-owner 판정(2026-10-18): 지금 로컬 전용 개발로 시작한다. 주석 번역은 protocol 항목과 충돌하지 않는다. Evidence(T131-1): scripts/comments/check.mts의 검사가 단위 case 23개를 통과하고, `make comment-language-check`는 tree에서 한글 주석 10,469줄을 파일과 줄을 대며 실패한다.
   - [o] T131-1 주석 언어 검사: 각 생태계 자신의 tokenizer(Go `go/scanner`, TypeScript scanner, Python `tokenize`, PHP `token_get_all`; tokenizer가 없는 언어는 먼저 S1의 rebuild 기록)로 모든 code 파일의 주석 token을 꺼내 한글이 있으면 파일과 줄을 대며 실패하는 얇은 도구; 현재 tree에서 red다. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Resumed: link-owner 판정(2026-10-18): 지금 로컬 전용 개발로 시작한다. 주석 번역은 protocol 항목과 충돌하지 않는다. Evidence(T131-1): scripts/comments/check.mts의 검사가 단위 case 23개를 통과하고, `make comment-language-check`는 tree에서 한글 주석 10,469줄을 파일과 줄을 대며 실패한다.
-  - [!] T131-2 Go 주석을 영어로. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Retry: 그 orm release가 공개되면 시작한다.
+  - [o] T131-2 Go 주석을 영어로. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Resumed: link-owner 판정(2026-10-18), 로컬 전용 개발. Evidence(T131-2): packages/go, examples의 Go 주석은 영어이며, T131의 Go unit commit마다 해당 파일이 주석 검사를 통과한다.
   - [o] T131-3 TypeScript와 JavaScript 주석을 영어로. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Resumed: link-owner 판정(2026-10-18), 로컬 전용 개발. Evidence(T131-3): packages/ts/src, packages/ts/tests, packages/ts/testing의 TypeScript 주석은 영어이며, `node scripts/comments/check.mts packages/ts`가 통과한다.
   - [!] T131-4 PHP와 PHP extension 주석을 영어로. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Retry: 그 orm release가 공개되면 시작한다.
   - [!] T131-5 Python 주석을 영어로. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Retry: 그 orm release가 공개되면 시작한다.

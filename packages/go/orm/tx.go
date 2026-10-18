@@ -27,7 +27,7 @@ type executor interface {
 	context() context.Context
 	stmt(ctx context.Context, sqlText string) (*sql.Stmt, error)
 	transaction() *txConn
-	// requestHook은 statement가 지나는 handle의 request hook이며 없으면 nil이다.
+	// requestHook is the request hook of the handle that the statement passes through, or nil if there is none.
 	requestHook() RequestHook
 	// enter marks the start of a statement and returns its end; a
 	// transaction rejects concurrent use.
@@ -48,13 +48,13 @@ func (d *DB) enter() (func(), error) {
 // txConn is one active transaction.
 type txConn struct {
 	db *DB
-	// conn은 transaction이 끝날 때까지 잡아 두는 pool connection이다. rollback이
-	// 실패하면 driver가 그 connection을 닫았는지 확인한다.
+	// conn is the pool connection held until the transaction ends. It checks whether the driver closed the connection when rollback
+	// fails.
 	conn *sql.Conn
-	// md는 markdown 연결의 transaction이 끝날 때까지 잡아 두는 flowmark session이다.
-	// SQL 연결에서는 nil이고 conn이 그 자리다.
+	// md is the flowmark session held until the markdown connection's transaction ends.
+	// On SQL connections it is nil, and conn takes its place.
 	md *mdSession
-	// number는 연결에서 이 transaction의 번호다. statement event가 싣는다.
+	// number is this transaction's number on the connection. A statement event carries it.
 	number     int64
 	ctx        context.Context
 	cancel     context.CancelFunc
@@ -65,15 +65,15 @@ type txConn struct {
 	stmts      map[string]*sql.Stmt
 	locals     map[string]string
 	locks      []string
-	// unclean은 transaction 끝의 정리(SQLite mode, named lock, local 값) 가운데 하나가 실패했는지다. 실패한
-	// 정리 뒤의 session 상태는 알 수 없으므로 그 connection은 pool에 돌려주지 않고 버린다.
+	// unclean is whether one of the cleanups at the end of the transaction (SQLite mode, named lock, local values) failed. A failed
+	// cleanup leaves the session state unknown, so that connection is discarded rather than returned to the pool.
 	unclean    bool
 	readOnly   bool
 	isolation  IsolationLevel
 	sqliteMode bool
-	// audit은 이 transaction(unit of work)이 시작할 때 삽입한 audit 기록이다.
-	// audit table의 insert와 update가 그 key를 audit column에 쓴다. 없으면
-	// nil이다.
+	// audit is the audit record inserted when this transaction (unit of work) started.
+	// The audit table's insert and update write that key to the audit column. If there is none,
+	// it is nil.
 	audit *auditRecord
 	// inserted records generated ORM inserts that succeeded in this
 	// transaction. It is an adapter-neutral transaction fact used by callers
@@ -116,11 +116,11 @@ func (t *txConn) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 	return st, nil
 }
 
-// run은 transaction 연결에서 statement를 보내고 그 event를 publish한다.
+// run sends a statement on the transaction connection and publishes its event.
 func (t *txConn) run() runner { return runner{d: t.db, q: t.conn, tx: t.number} }
 
-// machinery는 transaction을 여는 설정, SQLite mode 설정, transaction 끝의 정리
-// statement의 runner다. 이 statement는 statement fault를 소비하지 않는다.
+// machinery is the runner for statements of transaction-opening settings, the SQLite mode setting, and end-of-transaction cleanup.
+// These statements do not consume the statement fault.
 func (t *txConn) machinery() runner {
 	r := t.run()
 	r.machinery = true
@@ -218,7 +218,7 @@ func innermost() *txConn {
 // txContext runs on an active transaction with the context of the connection
 // handle the model was connected to, so a handle from WithContext cancels
 // statements that run inside the transaction as well.
-// 같은 이유로 그 handle의 request hook도 싣는다.
+// It also carries that handle's request hook, for the same reason.
 type txContext struct {
 	*txConn
 	ctx  context.Context
@@ -235,7 +235,7 @@ func resolve(conn *DB) (executor, error) {
 			if conn.ctx != t.ctx && conn.ctx != nil {
 				ctx = conn.ctx
 			}
-			// model이 연결된 handle의 hook을 쓴다. transaction을 시작한 handle과 hook이 모두 없으면 그대로다.
+			// It uses the hook of the handle the model is connected to. If neither the handle that started the transaction nor the hook has one, it passes through as is.
 			if ctx != t.ctx || conn.hook != nil || t.db.hook != nil {
 				return txContext{txConn: t, ctx: ctx, hook: conn.hook}, nil
 			}
@@ -272,7 +272,7 @@ type txOptions struct {
 	set       bool
 }
 
-// auditRecord는 transaction이 삽입한 audit 기록의 table과 primary key 값이다.
+// auditRecord is the table and primary key value of the audit record the transaction inserted.
 type auditRecord struct {
 	table string
 	key   any
@@ -312,20 +312,20 @@ func Audit(values map[string]any) TransactionOption {
 	return func(o *txOptions) { o.audit, o.auditSet, o.set = maps.Clone(values), true, true }
 }
 
-// auditInsert는 transaction이 삽입할 audit 기록이다: 기록 table의 entity와 그
-// entity가 속한 schema, column 값이다.
+// auditInsert is the audit record the transaction will insert: the entity of the record table and
+// the schema and column values of the entity.
 type auditInsert struct {
 	schema *Schema
 	ent    *runtimemodel.Entity
 	values map[string]any
 }
 
-// auditRecord는 audit source의 값에 transaction의 값을 더한 audit 기록이다.
-// 같은 column이면 transaction의 값이 이긴다. 기록 table은 연결에 등록한 set의
-// audit setting이 references로 이름한 table 하나이며, 그 table을 entity로 가진
-// set이 연결에 등록되어 있어야 한다. audit source가 없거나, 기록 table이 없거나
-// 여럿이거나, 값의 key가 그 table의 column이 아니거나, primary key가 column
-// 하나가 아니면 CONFIG이고, source의 오류는 그대로 돌려준다.
+// auditRecord is the audit record that adds the transaction's values to the audit source's values.
+// For the same column, the transaction's value wins. The record table is the one table named by the references
+// audit setting of the set registered on the connection, and the set that has that table as an entity
+// must be registered on the connection. If there is no audit source, no record table, or
+// more than one, or a value key is not a column of that table, or the primary key is not
+// a single column, it is CONFIG; an error from the source is returned as is.
 func (d *DB) auditRecord(values map[string]any) (*auditInsert, error) {
 	if d.cfg.AuditSource == nil {
 		return nil, configErr("the transaction has audit values but the connection has no audit source: set Config.AuditSource")
@@ -380,9 +380,9 @@ func (d *DB) auditRecord(values map[string]any) (*auditInsert, error) {
 	return target, nil
 }
 
-// insertAudit은 transaction의 audit 기록을 삽입하고 그 table과 primary key
-// 값을 돌려준다. primary key가 identity이면 생성된 key, 아니면 기록의 값이다.
-// 시도마다 다시 삽입한다.
+// insertAudit inserts the transaction's audit record and returns its table and primary key
+// value. If the primary key is an identity, it is the generated key; otherwise it is the record's value.
+// It inserts again on every attempt.
 func (d *DB) insertAudit(ex executor, a *auditInsert) (*auditRecord, error) {
 	r := &request{schema: a.schema}
 	r.ir.IRVersion = ir.Version
@@ -480,8 +480,8 @@ func (d *DB) runTransaction(fn func() error, o txOptions) (err error) {
 	returned := false
 	defer func() {
 		popFrame()
-		// callback이 반환하지 않고 떠나면 오류를 받을 호출자가 없으므로 실패한
-		// rollback은 panic으로 보고한다.
+		// If a callback leaves without returning, no caller receives an error, so the failed
+		// rollback is reported as a panic.
 		if r := recover(); r != nil {
 			if rollbackErr := t.rollback(); rollbackErr != nil {
 				panic(rollbackFailed(r, rollbackErr))
@@ -508,10 +508,10 @@ func (d *DB) runTransaction(fn func() error, o txOptions) (err error) {
 	return t.commit()
 }
 
-// rollbackFailed는 transaction이나 savepoint를 끝낸 원인과 실패한 rollback을
-// 하나의 ROLLBACK 오류로 보고한다 (docs/errors.yaml, docs/interfaces.md). 오류의
-// Cause는 원인과 rollback 오류의 errors.Join이므로 errors.Is와 errors.As가 둘을
-// 모두 찾는다. panic 값처럼 error가 아닌 원인은 그 text의 error가 된다.
+// rollbackFailed reports the cause that ended the transaction or savepoint and the failed rollback
+// as one ROLLBACK error (docs/errors.yaml, docs/interfaces.md). The error's
+// Cause is the errors.Join of the cause and the rollback error, so errors.Is and errors.As find both
+// of them. A cause that is not an error, such as a panic value, becomes an error with that text.
 func rollbackFailed(cause any, rollbackErr error) error {
 	causeErr, ok := cause.(error)
 	if !ok {
@@ -520,8 +520,8 @@ func rollbackFailed(cause any, rollbackErr error) error {
 	return &ir.Error{Code: CodeRollback, Msg: fmt.Sprintf("transaction failed (%v) and rollback failed (%v)", causeErr, rollbackErr), Cause: errors.Join(causeErr, rollbackErr)}
 }
 
-// rollbackAfter는 cause로 끝나는 transaction을 rollback하고 cause를 돌려준다.
-// rollback도 실패하면 두 오류를 함께 돌려준다.
+// rollbackAfter rolls back a transaction that ends with cause, and returns the cause.
+// If the rollback also fails, it returns both errors together.
 func (t *txConn) rollbackAfter(cause error) error {
 	if rollbackErr := t.rollback(); rollbackErr != nil {
 		return rollbackFailed(cause, rollbackErr)
@@ -529,8 +529,8 @@ func (t *txConn) rollbackAfter(cause error) error {
 	return cause
 }
 
-// rollbackFaultErr는 설정된 test fault가 rollback이 실행된 뒤 보고하는 rollback
-// 오류다 (FailNextRollback, build tag ormtest).
+// rollbackFaultErr is the rollback error that a set test fault reports after the rollback runs
+// (FailNextRollback, build tag ormtest).
 func rollbackFaultErr() error {
 	return &ir.Error{Code: CodeFault, Msg: "test fault: the rollback of the transaction ran and is reported as failed"}
 }
@@ -560,7 +560,7 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 		return nil, configErr("unsupported transaction isolation %q", o.isolation)
 	}
 	if d.driver == "sqlite" {
-		// SQLite의 row lock table은 연결의 첫 transaction 전에 한 번 만든다.
+		// SQLite's row lock table is created once, before the connection's first transaction.
 		if err := ensureSQLiteRowLock(d.ctx, d); err != nil {
 			return nil, err
 		}
@@ -572,8 +572,8 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 		return nil, mapDriverErr(err)
 	}
 	t := &txConn{db: d, conn: conn, ctx: ctx, cancel: cancel, readOnly: o.readOnly, isolation: o.isolation, number: d.nextTransaction()}
-	// transaction을 여는 statement다(docs/usage.md "Statement events"). 하나라도
-	// 실패하면 session에 남은 설정이 다음 사용자에게 가지 않도록 연결을 닫는다.
+	// Statements that open a transaction (docs/usage.md "Statement events"). If any one of them
+	// fails, the connection is closed so that settings left in the session do not reach the next user.
 	type opening struct{ kind, sql string }
 	var steps []opening
 	switch d.driver {
@@ -599,7 +599,7 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 			steps = append(steps, opening{KindUtility, fmt.Sprintf("SET LOCAL statement_timeout = %d", o.timeoutMs)})
 		}
 	default:
-		// 읽기 전용 transaction은 deferred BEGIN이고, 나머지는 시작할 때 쓰기 lock을 잡는다.
+		// A read-only transaction is a deferred BEGIN; the others take the write lock when they start.
 		begin := "BEGIN IMMEDIATE"
 		if o.readOnly {
 			begin = "BEGIN"
@@ -628,12 +628,12 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 	return t, nil
 }
 
-// rollback은 SQLite mode 복원, named lock 해제, local 값 reset, native
-// rollback을 모두 시도하고 실패한 것을 모두 돌려준다. transaction의 context가
-// 취소되었으면 그 context로 statement를 실행할 수 없으므로 connection을 닫는다.
-// pool에 돌아가는 connection은 깨끗하거나 버려진다: 정리나 rollback이 하나라도
-// 실패했으면(commit이 실패한 정리 뒤에 부른 rollback 포함) session의 상태를 알 수
-// 없으므로 connection을 pool에 돌려주지 않고 닫는다(closeSession).
+// rollback restores the SQLite mode, releases named locks, resets local values, and native
+// rolls back, attempting all of them and returning every failure. If the transaction's context
+// was canceled, a statement cannot run with that context, so the connection is closed.
+// A connection returned to the pool is either clean or discarded: if any cleanup or rollback
+// failed (including a rollback after a failed cleanup that preceded a failed commit), the session state
+// is unknown, so the connection is closed rather than returned to the pool (closeSession).
 func (t *txConn) rollback() error {
 	if t.finished.Load() {
 		return nil
@@ -649,8 +649,8 @@ func (t *txConn) rollback() error {
 			t.cancel()
 			return err
 		}
-		// SQLite 연결은 취소된 statement 뒤에도 쓸 수 있으므로 취소되지 않는
-		// context로 mode를 되돌리고 ROLLBACK한다.
+		// SQLite connections can still be used after a canceled statement, so for a canceled context the connection
+		// restores the mode with a context that is not canceled, and then runs ROLLBACK.
 		t.ctx = context.WithoutCancel(t.ctx)
 	}
 	errs := []error{t.finishSQLiteMode(), t.releaseLocks(), t.clearLocals()}
@@ -665,12 +665,12 @@ func (t *txConn) rollback() error {
 	return errors.Join(errs...)
 }
 
-// closeSession은 transaction connection을 pool에 돌려주지 않고 닫는다. 취소된
-// transaction은 database/sql이 rollback하지만, driver.SessionResetter와
-// driver.Validator를 구현한 driver(go-sql-driver)의 connection은 pool에 남아 named
-// lock, user variable, SQLite mode를 다음 사용자에게 넘긴다. 닫힌 connection의
-// session은 server가 transaction과 그 상태와 함께 끝낸다. database/sql이 이미 닫은
-// connection은 sql.ErrConnDone이다.
+// closeSession closes the transaction connection without returning it to the pool. For a canceled
+// transaction, database/sql rolls back, but for a driver that implements driver.SessionResetter and
+// driver.Validator (go-sql-driver), the connection stays in the pool and passes its named
+// lock, user variables, and SQLite mode on to the next user. The session of a closed connection
+// is ended by the server together with the transaction and its state. A connection that database/sql
+// already closed is sql.ErrConnDone.
 func (t *txConn) closeSession() error {
 	err := t.conn.Raw(func(any) error { return driver.ErrBadConn })
 	if errors.Is(err, driver.ErrBadConn) || errors.Is(err, sql.ErrConnDone) {
@@ -679,11 +679,11 @@ func (t *txConn) closeSession() error {
 	return err
 }
 
-// rollbackNative는 native transaction을 rollback한다. transaction의 context가
-// 취소되면 database/sql이 이미 rollback했으므로 sql.ErrTxDone은 실패가 아니다.
-// 그 밖의 실패는, driver나 server가 connection을 닫아 실패한 rollback도, 실패로
-// 보고한다 (docs/interfaces.md).
-// commitNative는 transaction을 commit한다.
+// rollbackNative rolls back the native transaction. If the transaction's context
+// was canceled, database/sql has already rolled back, so sql.ErrTxDone is not a failure.
+// Other failures, including a failed rollback after the driver or server closed the connection, are reported
+// as failures (docs/interfaces.md).
+// commitNative commits the transaction.
 func (t *txConn) commitNative() error {
 	_, err := t.run().exec(t.ctx, KindCommit, nil, "COMMIT")
 	return err
@@ -721,7 +721,7 @@ func (t *txConn) commit() error {
 	t.closeStatements()
 	err := t.commitNative()
 	if err != nil {
-		// 실패한 COMMIT 뒤의 session 상태는 알 수 없으므로 연결을 버린다.
+		// After a failed COMMIT the session state is unknown, so the connection is discarded.
 		err = errors.Join(err, t.closeSession())
 	}
 	if closeErr := t.conn.Close(); closeErr != nil {
@@ -749,8 +749,8 @@ func (t *txConn) savepoint(fn func() error) (err error) {
 	returned := false
 	defer func() {
 		popFrame()
-		// callback이 반환하지 않고 떠나면 오류를 받을 호출자가 없으므로 실패한
-		// savepoint rollback은 panic으로 보고한다.
+		// If a callback leaves without returning, no caller receives an error, so the failed
+		// savepoint rollback is reported as a panic.
 		if r := recover(); r != nil {
 			t.inserted = insertedBefore
 			if rollbackErr := t.rollbackSavepoint(name); rollbackErr != nil {
@@ -777,17 +777,17 @@ func (t *txConn) savepoint(fn func() error) (err error) {
 	return t.endSavepoint(KindRelease, name)
 }
 
-// rollbackSavepoint는 savepoint 뒤의 작업을 되돌리고 savepoint를 푼다. 두
-// statement를 모두 시도하고 실패를 모두 돌려준다.
+// rollbackSavepoint undoes the work after the savepoint and releases the savepoint. It
+// attempts both statements and returns every failure.
 func (t *txConn) rollbackSavepoint(name string) error {
 	return errors.Join(t.endSavepoint(KindRollbackTo, name), t.endSavepoint(KindRelease, name))
 }
 
-// endSavepoint는 savepoint name을 끝낸다: kind가 KindRelease이면 풀고 KindRollbackTo이면
-// 그 뒤의 작업을 되돌린다. SQL 연결은 그 statement를, markdown 연결은 같은 이름의 control
-// message를 보낸다. transaction의 context가 취소되면 database/sql이(markdown은 끊긴 연결의
-// server가) transaction 전체를 rollback했으므로 savepoint도 함께 끝났고 실패가 아니다. 그 밖의
-// 실패는 보고한다.
+// endSavepoint ends the savepoint name: it releases it if kind is KindRelease, and if kind is KindRollbackTo,
+// it undoes the work after it. A SQL connection sends that statement; a markdown connection sends a control
+// message of the same name. If the transaction's context is canceled, database/sql (for markdown,
+// the server of the closed connection) rolled back the whole transaction, so the savepoint also ended and this is not a failure. Other
+// failures are reported.
 func (t *txConn) endSavepoint(kind, name string) error {
 	var err error
 	if t.md != nil {
@@ -833,8 +833,8 @@ func (t *txConn) recordInserted(entity string, key int64) {
 	t.inserted[entity][key] = struct{}{}
 }
 
-// beginSQLiteMode는 첫 PRAGMA 전에 mode를 표시하므로 일부만 적용된 mode도
-// finishSQLiteMode가 되돌린다.
+// beginSQLiteMode marks the mode before the first PRAGMA, so that even a partly applied mode is
+// reverted by finishSQLiteMode.
 func (t *txConn) beginSQLiteMode() error {
 	t.sqliteMode = t.isolation == ReadUncommitted || t.readOnly
 	if t.isolation == ReadUncommitted {
@@ -850,9 +850,9 @@ func (t *txConn) beginSQLiteMode() error {
 	return nil
 }
 
-// finishSQLiteMode는 transaction 안에서 바꾼 SQLite mode를 되돌린다. PRAGMA
-// 값은 transaction 뒤에도 connection에 남으므로 실패를 모두 돌려준다. 한 번
-// 시도한 mode는 다시 되돌리지 않는다.
+// finishSQLiteMode reverts the SQLite mode changed inside the transaction. The PRAGMA
+// value remains on the connection after the transaction, so it returns every failure. It
+// does not revert again a mode it attempted once.
 func (t *txConn) finishSQLiteMode() error {
 	if !t.sqliteMode {
 		return nil

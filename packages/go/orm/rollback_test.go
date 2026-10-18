@@ -13,17 +13,17 @@ import (
 
 var rollbackColumns = []string{"seq", "label"}
 
-// rollbackFixture는 rollback_probe를 새 database에 설치하고 연결된 model 생성
-// 함수와 client 뒤에서 transaction을 끝내는 함수를 돌려준다. SQLite에서는
-// test가 만든 trigger가 `end` label의 row insert에서 ROLLBACK을 raise하므로
-// transaction이 callback 중에 끝나고 끝내는 함수는 아무것도 하지 않는다.
-// MySQL과 PostgreSQL에서는 끝내는 함수가 test connection에서 rollback_probe의
-// lock을 가진 server session을 끝낸다. 그 connection은 pooler가 아니라
-// ORM_TEST_MYSQL_SERVER_DSN이나 ORM_TEST_POSTGRES_SERVER_DSN(make test-servers가 TEST_ENV에
-// 적는 server DSN)의 server에서 case database를 연다. pooler가 statement를 스스로
-// 처리할 수 있기 때문이다: ProxySQL은 text protocol의 KILL을 자기 client session의
-// 명령으로 받는다. case database table의 lock이 pooler 뒤에서 transaction을 가진
-// session을 가리키는 표지다.
+// rollbackFixture installs rollback_probe in a new database and returns the connected model constructor
+// and a function that ends the transaction behind the client. On SQLite,
+// the trigger the test creates raises ROLLBACK on the insert of the row with the `end` label, so
+// the transaction ends during the callback, and the ending function does nothing.
+// On MySQL and PostgreSQL, the ending function ends the server session that holds the rollback_probe
+// lock. That connection is not a pooler, but
+// the server behind the server DSN of ORM_TEST_MYSQL_SERVER_DSN or ORM_TEST_POSTGRES_SERVER_DSN (set in TEST_ENV by make test-servers)
+// and opens the case database there, since a pooler handles statements on its own:
+// ProxySQL receives KILL in text protocol as a command for its own client session
+// command. The lock on the case database table marks the transaction held behind the pooler
+// as pointing to its session.
 func rollbackFixture(t *testing.T, driver string) (*orm.DB, func() *orm.Core, func()) {
 	t.Helper()
 	s := fixtureSchema(t, "rollback")
@@ -87,8 +87,8 @@ func rollbackFixture(t *testing.T, driver string) (*orm.DB, func() *orm.Core, fu
 	return db, model, end
 }
 
-// serverSession은 case database dsn을 pooler가 아닌 server에서 여는 DSN이다:
-// ORM_TEST_<DRIVER>_SERVER_DSN의 path를 case database 이름으로 바꾼다.
+// serverSession is the DSN that opens the case database dsn on the server, not on the pooler:
+// it replaces the path of ORM_TEST_<DRIVER>_SERVER_DSN with the case database name.
 func serverSession(t *testing.T, driver, dsn string) string {
 	t.Helper()
 	server := requireDSN(t, "ORM_TEST_"+strings.ToUpper(driver)+"_SERVER_DSN")
@@ -102,8 +102,8 @@ func probeCreate(model func() *orm.Core, label string) error {
 	return err
 }
 
-// checkRollback은 ROLLBACK 오류가 callback 오류와 rollback 오류로 unwrap되고
-// message가 둘을 모두 담는지 확인하고 callback 오류를 돌려준다.
+// checkRollback checks that the ROLLBACK error unwraps into the callback error and the rollback error,
+// that its message holds both, and returns the callback error.
 func checkRollback(t *testing.T, err error, subject string) error {
 	t.Helper()
 	var coded *orm.Error
@@ -121,7 +121,7 @@ func checkRollback(t *testing.T, err error, subject string) error {
 	return callback
 }
 
-// rollbackFailed는 rollback도 실패하는 transaction의 callback을 실패시킨다.
+// rollbackFailed makes the callback of a transaction whose rollback also fails fail.
 func rollbackFailed(t *testing.T, driver string) {
 	db, model, end := rollbackFixture(t, driver)
 	err := db.Transaction(func() error {
@@ -133,7 +133,7 @@ func rollbackFailed(t *testing.T, driver string) {
 	}, orm.Retry(0))
 	callback := checkRollback(t, err, "transaction")
 	if driver != "sqlite" {
-		// server가 끝낸 session의 다음 statement와 rollback은 연결을 잃은 오류다.
+		// The next statement and rollback on a session the server ended is a lost-connection error.
 		var coded *orm.Error
 		errors.As(err, &coded)
 		rollback := coded.Cause.(interface{ Unwrap() []error }).Unwrap()[1]
@@ -154,8 +154,8 @@ func rollbackFailed(t *testing.T, driver string) {
 	}
 }
 
-// savepointRollbackFailed는 rollback이 실패하는 savepoint의 callback을
-// 실패시키고, 이어 transaction의 rollback도 실패한다.
+// savepointRollbackFailed makes the callback of a savepoint whose rollback fails
+// fail, and then the transaction's rollback also fails.
 func savepointRollbackFailed(t *testing.T, driver string) {
 	db, model, end := rollbackFixture(t, driver)
 	err := db.Transaction(func() error {

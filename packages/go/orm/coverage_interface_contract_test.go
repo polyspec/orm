@@ -10,8 +10,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestCoverageInterfaceSymbols는 repository root에서 Go client의 interface
-// check를 실행하고 성공하는지 확인한다.
+// TestCoverageInterfaceSymbols runs the Go client's interface
+// check from the repository root and checks that it succeeds.
 func TestCoverageInterfaceSymbols(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	cmd := exec.Command("node", "tests/interfaces/check/main.mts", "-language", "go")

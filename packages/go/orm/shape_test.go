@@ -110,8 +110,8 @@ func TestShapeIgnoresParamValues(t *testing.T) {
 	}
 }
 
-// TestInsertPartsFixture는 공유 case contracts/fixtures/insert_parts.json의 각 행 수를 그 driver와 column
-// 수에서 같은 부분으로 나누는지 확인한다(docs/protocol.md 여러 행 insert).
+// TestInsertPartsFixture checks that the row count of each shared case in contracts/fixtures/insert_parts.json
+// divides into the same parts as the driver and the column count (docs/protocol.md multi-row insert).
 func TestInsertPartsFixture(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	text, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", "insert_parts.json"))

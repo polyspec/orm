@@ -15,7 +15,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// connectBench는 contracts/fixtures/bench/bench.dbs의 manifest로 dsn에 연결한다.
+// connectBench connects to dsn with the manifest of contracts/fixtures/bench/bench.dbs.
 func connectBench(t *testing.T, dsn string) *DB {
 	t.Helper()
 	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "contracts", "fixtures", "bench", "bench.dbs"))
@@ -30,8 +30,8 @@ func connectBench(t *testing.T, dsn string) *DB {
 	return db
 }
 
-// wantBoth는 err가 callback 오류와 transaction 끝의 오류를 함께 담은 ROLLBACK인지
-// 확인한다.
+// wantBoth checks that err is a ROLLBACK carrying both the callback error and the transaction end error
+// together.
 func wantBoth(t *testing.T, what string, err error, cause, end string) {
 	t.Helper()
 	want := fmt.Sprintf("transaction failed (%s) and rollback failed (", cause)
@@ -40,7 +40,7 @@ func wantBoth(t *testing.T, what string, err error, cause, end string) {
 	}
 }
 
-// recovered는 fn이 panic하거나 goroutine을 끝내면 panic 값을 돌려준다.
+// recovered returns the panic value if fn panics or ends the goroutine.
 func recovered(fn func()) (value any) {
 	done := make(chan any, 1)
 	go func() {
@@ -50,9 +50,9 @@ func recovered(fn func()) (value any) {
 	return <-done
 }
 
-// TestTransactionReportsFailedLockRelease는 transaction 끝의 MySQL
-// RELEASE_LOCK이 실패하거나 lock을 풀지 못하면 commit과 rollback이 그 오류를
-// 돌려주는지 확인한다. 그 connection은 pool에 돌아가지 않는다(TestFailedTransactionEndDiscardsConnection).
+// TestTransactionReportsFailedLockRelease checks that when MySQL RELEASE_LOCK at the end of a transaction
+// fails or cannot release the lock, commit and rollback return that error.
+// That connection is not returned to the pool (TestFailedTransactionEndDiscardsConnection).
 func TestTransactionReportsFailedLockRelease(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	dsn := os.Getenv("ORM_TEST_MYSQL_DSN")
@@ -86,7 +86,7 @@ func TestTransactionReportsFailedLockRelease(t *testing.T) {
 			if err := db.Utils().Lock(key("released")); err != nil {
 				return err
 			}
-			// lock을 미리 풀면 transaction 끝의 RELEASE_LOCK은 0을 돌려준다.
+			// If the lock was released beforehand, RELEASE_LOCK at the end of the transaction returns 0.
 			_, err := activeFor(db).conn.ExecContext(context.Background(), "DO RELEASE_LOCK(?)", key("released"))
 			return err
 		}, Retry(0))
@@ -96,10 +96,10 @@ func TestTransactionReportsFailedLockRelease(t *testing.T) {
 	})
 }
 
-// TestFailedTransactionEndDiscardsConnection은 transaction 끝의 정리(named lock 해제, native rollback)가
-// 실패하면 그 connection을 pool에 돌려주지 않고 버리는지 확인한다. 실패한 정리 뒤 session의 상태는 알 수
-// 없으므로, pool에 돌아가는 connection은 깨끗하거나 버려진다. connection이 하나인 pool에서 다음 사용이
-// 같은 session(CONNECTION_ID)을 받으면 연결이 돌아간 것이고, 풀리지 않은 named lock은 그 session에 남는다.
+// TestFailedTransactionEndDiscardsConnection checks that when the cleanup at the end of a transaction (releasing the named lock, native rollback)
+// fails, the connection is discarded rather than returned to the pool. The session's state after a failed cleanup cannot be known,
+// so a connection returned to the pool is either clean or discarded. In a pool with one connection, the next use
+// receives the same session (CONNECTION_ID) if the connection came back, and a named lock not released remains on that session.
 func TestFailedTransactionEndDiscardsConnection(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	dsn := os.Getenv("ORM_TEST_MYSQL_DSN")
@@ -126,7 +126,7 @@ func TestFailedTransactionEndDiscardsConnection(t *testing.T) {
 		return id
 	}
 	key := func(name string) string { return fmt.Sprintf("orm_test.discard.%s.%d", name, os.Getpid()) }
-	// free는 다른 connection이 lock을 5초 안에 얻을 수 있는지다. 끝난 session의 lock은 server가 곧 푼다.
+	// free checks whether another connection can get the lock within 5 seconds. The server soon releases the lock of a finished session.
 	free := func(t *testing.T, key string) bool {
 		t.Helper()
 		var got sql.NullInt64
@@ -190,9 +190,9 @@ func TestFailedTransactionEndDiscardsConnection(t *testing.T) {
 	}
 }
 
-// TestTransactionReportsFailedRollback는 native rollback이 실패하면 callback
-// 오류, panic, 끝나 버린 callback, 실패한 begin이 그 오류를 함께 보고하는지
-// 확인한다.
+// TestTransactionReportsFailedRollback checks that when the native rollback fails, the callback
+// error, a panic, a callback that has already ended, and a failed begin report that error together
+// (checked).
 func TestTransactionReportsFailedRollback(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	useFailingDriver(t, "sqlite")
@@ -235,9 +235,9 @@ func TestTransactionReportsFailedRollback(t *testing.T) {
 	})
 }
 
-// TestTransactionReportsFailedSQLiteModeReset는 SQLite read-only mode를 되돌리는
-// PRAGMA가 실패하면 commit과 rollback이 그 오류를 돌려주는지 확인한다. 되돌리지
-// 못한 query_only는 connection에 남는다.
+// TestTransactionReportsFailedSQLiteModeReset checks that when the PRAGMA restoring the SQLite read-only mode
+// fails, commit and rollback return that error. A query_only that could not be
+// restored remains on the connection.
 func TestTransactionReportsFailedSQLiteModeReset(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	useFailingDriver(t, "sqlite")
@@ -257,10 +257,10 @@ func TestTransactionReportsFailedSQLiteModeReset(t *testing.T) {
 	})
 }
 
-// TestSavepointReportsFailedEnd는 중첩 transaction의 savepoint를 끝내는
-// ROLLBACK TO SAVEPOINT나 RELEASE SAVEPOINT가 실패하면 callback 오류, panic,
-// 끝나 버린 callback이 그 오류를 함께 보고하고 성공한 callback은 실패한
-// RELEASE SAVEPOINT를 돌려주는지 확인한다.
+// TestSavepointReportsFailedEnd checks the savepoint end of a nested transaction:
+// when ROLLBACK TO SAVEPOINT or RELEASE SAVEPOINT fails, the callback error, a panic,
+// and an already ended callback report that error together, and that a successful callback returns
+// the failed RELEASE SAVEPOINT.
 func TestSavepointReportsFailedEnd(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	useFailingDriver(t, "sqlite")

@@ -10,16 +10,16 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// externalCase는 외부 문서를 쓰는 set을 dsn의 database에서 확인한다
-// (contracts/fixtures/external). member set은 ext_core의 ext_account와 ext_audit을
-// use로 쓰고 ext_post와 ext_post_history만 소유한다.
-//   - 외부 table이 없으면 install과 addTablesAndColumns가 어떤 statement보다 먼저
-//     CONFIG이고 member의 table을 만들지 않는다. 등록은 database를 읽지 않으므로
-//     ConnectSchema는 외부 table이 없거나 달라도 연결한다.
-//   - core를 설치한 뒤 member install은 소유한 table만 만들고, 다시 하면 아무것도
-//     바꾸지 않는다. addTablesAndColumns는 소유한 table에만 column을 더한다.
-//   - member의 audit transaction은 core가 소유한 ext_audit에 기록을 삽입한다.
-//   - 외부 문서의 쓰는 table이 database와 다르면(없는 column) CONFIG다.
+// externalCase checks, on the database at dsn, a set that writes external documents
+// (contracts/fixtures/external). The member set uses ext_account and ext_audit of ext_core through
+// use, and owns only ext_post and ext_post_history.
+//   - If an external table is missing, install and addTablesAndColumns fail with CONFIG before any statement,
+//     and do not create the member's tables. Registration does not read the database, so
+//     ConnectSchema connects even when the external tables are missing or differ.
+//   - After core is installed, member install creates only the tables it owns, and running it again changes nothing.
+//     addTablesAndColumns adds columns only to the tables it owns.
+//   - The member's audit transaction inserts the record into ext_audit, which core owns.
+//   - If a table that an external document writes differs from the database (a missing column), it is CONFIG.
 func externalCase(t *testing.T, driver, dsn string) {
 	t.Helper()
 	core := fixtureSchema(t, "external/core")
@@ -54,8 +54,8 @@ func externalCase(t *testing.T, driver, dsn string) {
 	schema := db.Utils().Schema()
 	raw := restoreNative(t, driver, dsn)
 	defer raw.Close()
-	// exists는 table이 있는지 raw 연결의 catalog로 확인한다. 없는 table을 읽는 실패는
-	// transaction pooler(PgBouncer)에서 이름 붙은 prepared statement를 남기므로 쓰지 않는다.
+	// exists checks with the raw connection's catalog whether a table exists. A failure that reads a missing table
+	// is not used with a transaction pooler (PgBouncer), since it leaves named prepared statements behind.
 	exists := func(table string) bool {
 		query := map[string]string{
 			"mysql":    "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '" + table + "'",
@@ -99,8 +99,8 @@ func externalCase(t *testing.T, driver, dsn string) {
 		t.Fatal(err)
 	}
 
-	// board는 같은 core를 쓰는 다른 module set이다. schema 값으로만 등록된 set이 있어도
-	// audit 기록 table은 그것을 소유한 core에서 찾는다.
+	// board is another module set that uses the same core. Even when a set is registered only as a schema value,
+	// its audit record table is found in the core that owns it.
 	board := externalSchema(t, []string{"external/board"}, []string{"external/core"})
 	if err := schema.Install(board); err != nil {
 		t.Fatalf("install of board: %v", err)

@@ -9,8 +9,8 @@ import (
 	"github.com/polyspec/orm/packages/go/orm"
 )
 
-// documentSchema은 dbspec document set의 orm.Schema다. generated code가 품는
-// manifest text와 manifestHash를 test에서 같은 방식으로 만든다.
+// documentSchema is the orm.Schema of a dbspec document set. It builds the manifest text and
+// manifestHash that generated code holds, in the same way for tests.
 func documentSchema(t *testing.T, documents ...string) *orm.Schema {
 	t.Helper()
 	m, diagnostics := runtimemodel.LoadDocuments(documents)
@@ -20,7 +20,7 @@ func documentSchema(t *testing.T, documents ...string) *orm.Schema {
 	return &orm.Schema{Hash: m.ManifestHash, Text: m.ManifestText}
 }
 
-// fixtureSchema은 contracts/fixtures의 dbspec document로 만든 orm.Schema다.
+// fixtureSchema is an orm.Schema built from the dbspec documents of contracts/fixtures.
 func fixtureSchema(t *testing.T, names ...string) *orm.Schema {
 	t.Helper()
 	return documentSchema(t, fixtureTexts(t, names)...)
@@ -43,8 +43,8 @@ func fixtureTexts(t *testing.T, names []string) []string {
 	return documents
 }
 
-// externalSchema은 contracts/fixtures의 소유 문서와 외부 문서(use로 쓰는 다른 set의
-// 문서)로 만든 orm.Schema다. generated code처럼 external text를 싣는다.
+// externalSchema is an orm.Schema built from the owned document of contracts/fixtures and the external
+// document (another set's document used through use). It carries the external text, as generated code does.
 func externalSchema(t *testing.T, owned, external []string) *orm.Schema {
 	t.Helper()
 	m, diagnostics := runtimemodel.LoadDocumentSet(fixtureTexts(t, owned), fixtureTexts(t, external))
@@ -54,7 +54,7 @@ func externalSchema(t *testing.T, owned, external []string) *orm.Schema {
 	return &orm.Schema{Hash: m.ManifestHash, Text: m.ManifestText, External: m.ExternalText}
 }
 
-// rowEntity는 이름으로 column 값을 담는 손으로 쓴 model의 entity다.
+// rowEntity is the entity of a hand-written model that holds column values by name.
 func rowEntity(name string, s *orm.Schema, columns ...string) *orm.Entity {
 	return &orm.Entity{
 		Name:   name,

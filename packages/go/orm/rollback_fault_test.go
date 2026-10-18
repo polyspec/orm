@@ -12,11 +12,11 @@ import (
 
 var errRollbackFaultCallback = errors.New("rollback fault callback failed")
 
-// rollbackFault는 test entry point의 rollback fault를 설정한다. commit된
-// transaction은 fault를 남기고, callback이 실패한 다음 transaction은 rollback되며
-// 그 rollback은 FAULT를 보고하고 transaction은 callback 오류와 fault를 가진
-// ROLLBACK을 반환한다. fault는 소비된다: 그 뒤 transaction은 callback 오류만
-// 반환하고 connection은 이후 요청을 처리한다.
+// rollbackFault sets the test entry point's rollback fault. A transaction that committed
+// keeps the fault, and the next transaction whose callback failed is rolled back, and that
+// rollback reports FAULT, so the transaction returns the ROLLBACK with both the callback error and the fault.
+// The fault is consumed: after that, the transaction returns only the callback error
+// and the connection serves later requests.
 func rollbackFault(t *testing.T, driver string) {
 	db, model, _ := rollbackFixture(t, driver)
 	orm.FailNextRollback(db)

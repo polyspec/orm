@@ -10,10 +10,10 @@ import (
 // request is one statement under construction: the value-free IR plus values.
 type request struct {
 	ir ir.Request
-	// schema은 request를 plan할 manifest다.
+	// schema is the manifest that plans the request.
 	schema *Schema
 	params []any
-	// audit은 write가 실행되는 transaction의 audit 기록이며 없으면 nil이다.
+	// audit is the audit record of the transaction in which the write runs, and nil if there is none.
 	audit *auditRecord
 	err   error
 	// canonical marks ir and params as canonicalize left them, so plan does not

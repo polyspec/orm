@@ -14,8 +14,8 @@ var clockColumns = []string{"seq", "label", "created_ts"}
 
 var clockMarkColumns = []string{"seq", "label", "created_ts", "deleted_at"}
 
-// openClock은 contracts/fixtures의 document를 새 SQLite file이나 driver의 새
-// test database에 설치하고 DSN과 connection을 돌려준다.
+// openClock installs the contracts/fixtures document in a new SQLite file or a new
+// test database of the driver, and returns the DSN and the connection.
 func openClock(t *testing.T, driver, document string) (*orm.Schema, string, *orm.DB) {
 	t.Helper()
 	s := fixtureSchema(t, document)
@@ -31,9 +31,9 @@ func openClock(t *testing.T, driver, document string) (*orm.Schema, string, *orm
 	return s, dsn, db
 }
 
-// clockMicroseconds는 clock_event row 열여섯 개를 따로 insert하고 clock이 채운
-// created_ts를 읽는다. 모든 값은 wall clock 근처의 microsecond 해상도이고, 적어도
-// 하나는 millisecond clock이 줄 수 없는 microsecond를 가진다.
+// clockMicroseconds inserts sixteen clock_event rows one at a time and reads the
+// created_ts the clock filled in. Every value has microsecond resolution near the wall clock, and at least
+// one has a microsecond that a millisecond clock cannot give.
 func clockMicroseconds(t *testing.T, driver string) {
 	s, _, db := openClock(t, driver, "clock")
 	ent := rowEntity("clock_event", s, clockColumns...)
@@ -96,7 +96,7 @@ func TestClockMicrosecondsPostgres(t *testing.T) {
 	clockMicroseconds(t, "postgres")
 }
 
-// openClockMark은 clock_mark document를 설치하고 DSN과 model 생성 함수를 돌려준다.
+// openClockMark installs the clock_mark document and returns the DSN and the model constructor.
 func openClockMark(t *testing.T, driver string) (string, *orm.DB, func() *orm.Core) {
 	s, dsn, db := openClock(t, driver, "clock_mark")
 	ent := rowEntity("clock_mark", s, clockMarkColumns...)
@@ -108,10 +108,10 @@ func openClockMark(t *testing.T, driver string) (string, *orm.DB, func() *orm.Co
 	}
 }
 
-// clockSoftDeleteMicroseconds는 clock_mark row 열여섯 개를 따로 soft delete하고,
-// model read는 soft delete된 row를 빼므로 deleted_at을 native driver로 읽는다.
-// 모든 값은 소수 여섯 자리이고, 적어도 하나는 초 단위 clock이 줄 수 없는
-// microsecond를 가진다.
+// clockSoftDeleteMicroseconds soft-deletes sixteen clock_mark rows one at a time,
+// and since a model read omits soft-deleted rows, it reads deleted_at with the native driver.
+// Every value has six fractional digits, and at least one has a
+// microsecond that a second-resolution clock cannot give.
 func clockSoftDeleteMicroseconds(t *testing.T, driver string) {
 	base, _, model := openClockMark(t, driver)
 	for i := range 16 {
@@ -126,8 +126,8 @@ func clockSoftDeleteMicroseconds(t *testing.T, driver string) {
 		}
 	}
 	var raw *sql.DB
-	// modernc driver는 DATETIME으로 선언된 column을 time.Time으로 읽으므로 저장된
-	// text를 CAST로 읽는다.
+	// The modernc driver reads a column declared DATETIME as time.Time, so it reads the stored
+	// text with CAST.
 	query := "SELECT CAST(deleted_at AS TEXT) FROM clock_mark ORDER BY seq"
 	switch driver {
 	case "sqlite":
@@ -180,9 +180,9 @@ func clockSoftDeleteMicroseconds(t *testing.T, driver string) {
 	}
 }
 
-// clockNowCondition은 clock_mark row 열여섯 개를 만들고 각 insert 직후
-// created_ts <= now()와 created_ts <= secondsLater(0)으로 다시 읽는다. 조건의
-// database clock은 저장된 생성 시각보다 늦으므로 두 조건 모두 row에 맞는다.
+// clockNowCondition creates sixteen clock_mark rows and, right after each insert,
+// reads them again with created_ts <= now() and created_ts <= secondsLater(0). The condition's
+// database clock is later than the stored creation time, so both conditions match the row.
 func clockNowCondition(t *testing.T, driver string) {
 	_, _, model := openClockMark(t, driver)
 	for i := range 16 {

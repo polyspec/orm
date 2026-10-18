@@ -12,12 +12,12 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestCancelledTransactionClearsSessionState는 callback 중에 context가 취소된
-// transaction이 named lock, user variable, SQLite mode를 connection에 남기지 않고
-// 취소만 보고하는지 확인한다. context가 취소되면 database/sql이 transaction을
-// rollback하고, driver.SessionResetter와 driver.Validator를 구현한 driver의
-// connection은 pool로 돌아간다. connection이 하나인 pool의 다음 transaction은
-// 같은 session을 다시 쓰면 그 상태를 읽는다.
+// TestCancelledTransactionClearsSessionState checks that a transaction whose context is canceled during its callback
+// leaves no named lock, user variable, or SQLite mode on the connection,
+// and reports only the cancellation. When the context is canceled, database/sql rolls back the transaction,
+// and a driver that implements driver.SessionResetter and driver.Validator
+// returns its connection to the pool. The next transaction in a pool with one connection
+// reuses the same session and reads its state.
 func TestCancelledTransactionClearsSessionState(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "contracts", "fixtures", "bench", "bench.dbs"))
@@ -34,7 +34,7 @@ func TestCancelledTransactionClearsSessionState(t *testing.T) {
 		return db
 	}
 	key := fmt.Sprintf("orm_test.cancelled.%d", os.Getpid())
-	// cancelled는 fn을 실행한 뒤 context를 취소하는 transaction이 CANCELED만 돌려주는지 확인한다.
+	// cancelled checks that a transaction which cancels the context after running fn returns only CANCELED.
 	cancelled := func(t *testing.T, db *DB, fn func(handle *DB) error, options ...TransactionOption) {
 		t.Helper()
 		ctx, cancel := context.WithCancel(context.Background())
@@ -65,7 +65,7 @@ func TestCancelledTransactionClearsSessionState(t *testing.T) {
 		}
 		db, other := connectOne(t, dsn), connectBench(t, dsn)
 		cancelled(t, db, lockAndSet)
-		// 끝난 session의 lock이 풀릴 때까지 server가 5초까지 기다린다.
+		// The server waits up to 5 seconds for the lock of the finished session to be released.
 		var got sql.NullInt64
 		if err := other.sql.QueryRow("SELECT GET_LOCK(?, 5)", key).Scan(&got); err != nil {
 			t.Fatal(err)
@@ -92,7 +92,7 @@ func TestCancelledTransactionClearsSessionState(t *testing.T) {
 		}
 		db, other := connectOne(t, dsn), connectBench(t, dsn)
 		cancelled(t, db, lockAndSet)
-		// 다른 connection이 lock_timeout 안에 같은 advisory lock을 잡는다.
+		// Another connection takes the same advisory lock within lock_timeout.
 		if err := other.Transaction(func() error {
 			tx := activeFor(other).conn
 			if _, err := tx.ExecContext(context.Background(), "SET LOCAL lock_timeout = '5s'"); err != nil {

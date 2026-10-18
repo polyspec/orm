@@ -7,8 +7,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestRelatedAsReportsMismatch는 relation result를 T로 읽을 때 저장된 값,
-// related row가 없는 nil, 다른 type의 INTERNAL error를 구별하는지 확인한다.
+// TestRelatedAsReportsMismatch checks that when reading a relation result as T, it tells apart the stored value,
+// nil for an absent related row, and an INTERNAL error of another type.
 func TestRelatedAsReportsMismatch(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	c := &Core{row: &rowState{}}

@@ -99,9 +99,9 @@ func TestWithContextCancels(t *testing.T) {
 	}
 }
 
-// holdRows는 다른 연결의 열린 transaction에서 table의 모든 행을 갱신해 그 행의 lock(SQLite는
-// database write lock)을 잡는다. 돌려준 함수는 그 transaction을 rollback하고 두 번째 호출은
-// 아무것도 하지 않는다. test가 끝날 때도 부른다.
+// holdRows updates every row of the table in an open transaction on another connection to hold the lock on those rows (SQLite
+// takes the database write lock). The returned function rolls back that transaction, and a second call
+// does nothing. It is also called when the test ends.
 func holdRows(t *testing.T, driver, dsn, table string) func() {
 	t.Helper()
 	native := openNative(t, driver, dsn)
@@ -178,9 +178,9 @@ func TestWithContextCancelsTransaction(t *testing.T) {
 
 // TestWithContextCancelsInsideTransaction waits inside a transaction for a row
 // another connection holds, and cancels the handle's context: the statement
-// returns CANCELED instead of waiting for the lock. MySQL과 PostgreSQL에서는
-// driver가 취소된 statement의 connection을 닫으므로 transaction은 취소를
-// 유지한 ROLLBACK을 보고한다.
+// returns CANCELED instead of waiting for the lock. On MySQL and PostgreSQL,
+// the driver closes the connection of a canceled statement, so the transaction
+// reports a ROLLBACK that keeps the cancellation.
 func TestWithContextCancelsInsideTransaction(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
@@ -230,7 +230,7 @@ func TestWithContextCancelsInsideTransaction(t *testing.T) {
 							return nil
 						})
 					}()
-					// holder가 row를 잡기 전에 끝나면 held는 닫히지 않으므로 그 결과를 보고한다.
+					// If the holder finishes before it takes the row, held is not closed, so that result is reported.
 					select {
 					case <-held:
 					case holderErr := <-done:
@@ -263,7 +263,7 @@ func TestWithContextCancelsInsideTransaction(t *testing.T) {
 						_, err := blocked.Get()
 						return err
 					}
-					// 중첩 transaction에서는 취소된 statement가 savepoint 안에서 실행된다.
+					// In a nested transaction, the canceled statement runs inside a savepoint.
 					err := waiter.Transaction(func() error {
 						if nested {
 							return waiter.Transaction(read)
@@ -278,8 +278,8 @@ func TestWithContextCancelsInsideTransaction(t *testing.T) {
 					if holderErr := <-done; holderErr != nil {
 						t.Fatal(holderErr)
 					}
-					// MySQL과 PostgreSQL driver는 취소된 statement의 connection을 닫으므로
-					// transaction의 rollback이 실패하고 client는 두 오류를 함께 보고한다.
+					// The MySQL and PostgreSQL drivers close the connection of a canceled statement,
+					// so the transaction's rollback fails and the client reports both errors together.
 					want := orm.CodeCanceled
 					if driver != "sqlite" {
 						want = orm.CodeRollback

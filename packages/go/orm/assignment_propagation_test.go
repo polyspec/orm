@@ -35,9 +35,9 @@ func TestAssemblerReturnsAssignmentError(t *testing.T) {
 	}
 }
 
-// TestIdentityAssignmentValidationBeforeWrite는 identity field를 쓰기 전에
-// generated model에 넣고, 넣기가 실패하거나 field가 없으면 error를 반환한다.
-// identity column의 type 규칙은 dbspec parser가 지킨다.
+// TestIdentityAssignmentValidationBeforeWrite checks an identity field before writing it
+// into the generated model, and returns an error if the assignment fails or the field is missing.
+// The dbspec parser enforces the type rules of identity columns.
 func TestIdentityAssignmentValidationBeforeWrite(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	ent := &Entity{New: func(c *Core) Model { m := &rejectingModel{core: c}; c.Bind(m); return m }}

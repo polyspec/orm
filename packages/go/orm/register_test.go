@@ -20,11 +20,11 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// sentStatements는 countingDriver가 database에 보낸 statement와 transaction 시작 수다.
+// sentStatements is the number of statements and transaction starts that countingDriver sent to the database.
 var sentStatements atomic.Int64
 
-// countingDriver는 실제 driver를 감싸고 연결이 database에 보내는 statement, prepare,
-// transaction 시작을 모두 센다.
+// countingDriver wraps a real driver and counts all statements, prepares,
+// and transaction starts that a connection sends to the database.
 type countingDriver struct{ base driver.Driver }
 
 func (d countingDriver) Open(name string) (driver.Conn, error) {
@@ -81,7 +81,7 @@ func (c countingConn) CheckNamedValue(v *driver.NamedValue) error {
 
 var registerCountingDrivers sync.Once
 
-// useCountingDriver는 test가 끝날 때까지 client driver name을 countingDriver로 연다.
+// useCountingDriver makes the client driver name countingDriver until the test ends.
 func useCountingDriver(t *testing.T, name string) {
 	t.Helper()
 	registerCountingDrivers.Do(func() {
@@ -95,8 +95,8 @@ func useCountingDriver(t *testing.T, name string) {
 	driverMu.Unlock()
 	mapper := previousMapper
 	if mapper == nil {
-		// 이 package의 test는 PostgreSQL driver package를 import하지 않는다. 이 test는
-		// driver 오류를 검사하지 않으므로 오류를 그대로 둔다.
+		// This package's tests do not import the PostgreSQL driver package. This test
+		// does not check driver errors, so it leaves them as they are.
 		mapper = func(err error) error { return err }
 	}
 	RegisterDriver(name, "orm-counting-"+name, mapper)
@@ -116,8 +116,8 @@ func useCountingDriver(t *testing.T, name string) {
 	})
 }
 
-// registerFixture는 contracts/fixtures의 external/member 문서가 external/core 문서의
-// table을 쓰는 set이다. 외부 문서를 쓰므로 database를 읽는 등록이라면 introspection을 한다.
+// registerFixture is a set in which the external/member document of contracts/fixtures uses the tables of the external/core document.
+// Since it uses an external document, a registration that reads the database performs introspection.
 func registerFixture(t *testing.T) *Schema {
 	t.Helper()
 	m, diagnostics := runtimemodel.LoadDocumentSet(registerTexts(t, "external/member"), registerTexts(t, "external/core"))
@@ -141,10 +141,10 @@ func registerTexts(t *testing.T, names ...string) []string {
 	return texts
 }
 
-// TestRegisterSendsNoStatement는 등록이 database에 아무 statement도 보내지 않는지
-// driver를 감싸 센다(docs/schema.md "Schema registration"). Register와 ConnectSchema의
-// 등록은 외부 문서를 쓰는 set도 database를 읽지 않고, 등록한 set의 요청은 plan된다.
-// 선언한 hash로 hash되지 않는 manifest text는 statement 없이 CONFIG다.
+// TestRegisterSendsNoStatement checks that registration sends no statement to the database,
+// by wrapping the driver and counting (docs/schema.md "Schema registration"). Register and ConnectSchema
+// registration does not read the database even for a set that uses external documents, and a request for a registered set is planned.
+// Manifest text that does not hash to the declared hash is CONFIG with no statement.
 func TestRegisterSendsNoStatement(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	schema := registerFixture(t)
@@ -169,7 +169,7 @@ func TestRegisterSendsNoStatement(t *testing.T) {
 			if err := db.Utils().Schema().Register(schema); err != nil {
 				t.Fatalf("second register: %v", err)
 			}
-			// 다른 set의 manifest text는 선언한 hash로 hash되지 않는다.
+			// The manifest text of another set does not hash to the declared hash.
 			edited := &Schema{Hash: schema.Hash, Text: other.Text}
 			if err := db.Utils().Schema().Register(edited); ErrorCode(err) != CodeConfig {
 				t.Fatalf("register of an edited manifest text = %v, want CONFIG", err)
@@ -180,7 +180,7 @@ func TestRegisterSendsNoStatement(t *testing.T) {
 			if _, err := db.engineFor(schema); err != nil {
 				t.Fatalf("the registered set is not planned: %v", err)
 			}
-			// ConnectSchema는 Connect가 보내는 statement만 보낸다.
+			// ConnectSchema sends only the statements that Connect sends.
 			before = sentStatements.Load()
 			plain, err := Connect(dsn, Config{})
 			if err != nil {

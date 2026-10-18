@@ -8,7 +8,7 @@ import (
 	"github.com/polyspec/orm/packages/go/engine/ir"
 )
 
-// rowLockTables는 row lock statement가 가리키는 table이다.
+// rowLockTables is the table that the row lock statement refers to.
 var rowLockTables = []string{"orm__row_lock"}
 
 const sqliteRowLockDDL = `CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))`

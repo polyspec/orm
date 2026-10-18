@@ -19,11 +19,11 @@ type parsedDSN struct {
 	driver   string
 	native   string
 	location *time.Location
-	// sslCA는 ssl-mode=VERIFY_IDENTITY의 ssl-ca 경로이고 sslHost는 server
-	// 인증서가 이름으로 가져야 하는 host 이름이다. TLS가 없으면 둘 다 비어 있다.
+	// sslCA is the ssl-ca path for ssl-mode=VERIFY_IDENTITY, and sslHost is the host name
+	// that the server certificate must carry as its name. Both are empty if there is no TLS.
 	sslCA   string
 	sslHost string
-	// markdown은 markdown:// DSN의 server 주소, corpus, token이다. 다른 scheme에서는 비어 있다.
+	// markdown is the server address, corpus, and token of a markdown:// DSN. It is empty for other schemes.
 	markdown markdownDSN
 }
 
@@ -97,7 +97,7 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 		u.RawQuery = strings.ReplaceAll(q.Encode(), "+", "%20")
 		out.native = u.String()
 	case "sqlite":
-		// url.Parse는 path를 percent-decode하고 잘못된 escape를 거부한다.
+		// url.Parse percent-decodes the path and rejects an invalid escape.
 		path := u.Path
 		if !strings.HasPrefix(path, "/") {
 			return parsedDSN{}, configErr("sqlite DSN must include an absolute database path")
@@ -122,8 +122,8 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 		if !strings.Contains(pragmas, "foreign_keys") {
 			q.Add("_pragma", "foreign_keys(1)")
 		}
-		// SQLite는 file: URI의 path를 다시 percent-decode하므로, decode한 path를
-		// escape해 %, #, ? 같은 글자가 그대로 file 이름에 남게 한다.
+		// SQLite percent-decodes the path of a file: URI again, so the decoded path
+		// is escaped so that characters such as %, #, and ? stay in the file name as they are.
 		out.native = "file:" + (&url.URL{Path: path}).EscapedPath() + "?" + q.Encode()
 	case "markdown":
 		if out.markdown, err = parseMarkdownDSN(u, q); err != nil {
@@ -135,10 +135,10 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 	return out, nil
 }
 
-// mysqlTLS는 MySQL DSN의 ssl-mode와 ssl-ca를 읽는다(docs/config.md):
-// ssl-ca에 CA file의 절대 경로를 둔 ssl-mode=VERIFY_IDENTITY로 host 이름에
-// TCP 연결하거나, 둘 다 없다. driver가 session variable로 읽지 않도록 두
-// parameter를 query에서 지운다.
+// mysqlTLS reads ssl-mode and ssl-ca of a MySQL DSN (docs/config.md):
+// with ssl-mode=VERIFY_IDENTITY and the absolute path of the CA file in ssl-ca, TCP connects by host name,
+// or neither is present. The driver must not read these as session variables, so
+// the parameters are removed from the query.
 func mysqlTLS(u *url.URL, q url.Values, out *parsedDSN) error {
 	mode, hasMode := q["ssl-mode"]
 	ca, hasCA := q["ssl-ca"]
@@ -159,7 +159,7 @@ func mysqlTLS(u *url.URL, q url.Values, out *parsedDSN) error {
 	if q.Has("socket") {
 		return configErr("mysql DSN ssl-mode connects over TCP and does not accept socket")
 	}
-	// identity 검사는 host 이름을 인증서와 비교한다.
+	// The identity check compares the host name with the certificate.
 	if net.ParseIP(u.Hostname()) != nil {
 		return configErr("mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address %s", u.Hostname())
 	}

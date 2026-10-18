@@ -14,10 +14,10 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestParseDSNMySQLTLS는 docs/config.md의 MySQL TLS parameter를 검사한다:
-// 절대 경로 ssl-ca와 host 이름을 둔 ssl-mode=VERIFY_IDENTITY가 유일한 TLS
-// mode이고, 다른 ssl-mode, 없거나 상대 경로인 ssl-ca, socket, 주소 host는
-// CONFIG다.
+// TestParseDSNMySQLTLS checks the MySQL TLS parameters of docs/config.md:
+// ssl-mode=VERIFY_IDENTITY with an absolute ssl-ca path and a host name is the only TLS
+// mode; other ssl-mode values, an ssl-ca that is missing or relative, sockets, and an address host
+// are CONFIG.
 func TestParseDSNMySQLTLS(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	parsed, err := parseDSN("mysql://root@db.local:3306/orm_example?timezone=UTC&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem", 0)
@@ -46,9 +46,9 @@ func TestParseDSNMySQLTLS(t *testing.T) {
 	}
 }
 
-// TestMySQLTLSConnection은 make test-servers의 TLS server에
-// ssl-mode=VERIFY_IDENTITY로 연결해 TLS를 요구하고, 다른 CA가 서명했거나 다른
-// host를 이름으로 가진 인증서의 server를 거부한다.
+// TestMySQLTLSConnection connects to the TLS server of make test-servers
+// with ssl-mode=VERIFY_IDENTITY to require TLS, and rejects a server whose certificate is signed by another CA or
+// has a different host as its name.
 func TestMySQLTLSConnection(t *testing.T) {
 	ctx := testcase.Start(t, testcase.Database).Context()
 	version := func(ctx context.Context, dsn string) (string, error) {
@@ -84,9 +84,9 @@ func TestMySQLTLSConnection(t *testing.T) {
 	}
 }
 
-// TestMySQLSessionSQLMode는 client가 연결마다 정하는 session sql_mode를
-// tests/dsn/mysql-session.json의 값과 비교한다: 연결은 server 기본값이 아니라
-// 선언한 mode를 읽는다(docs/config.md "Runtime connection").
+// TestMySQLSessionSQLMode checks the session sql_mode that the client sets per connection
+// against the value in tests/dsn/mysql-session.json: the connection reads the mode it declares,
+// not the server default (docs/config.md "Runtime connection").
 func TestMySQLSessionSQLMode(t *testing.T) {
 	ctx := testcase.Start(t, testcase.Database).Context()
 	dsn := os.Getenv("ORM_TEST_MYSQL_DSN")
