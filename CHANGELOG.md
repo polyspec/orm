@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The generator scans type a name by the classes it may hold, refuse a call only when none declares it, and accept getters of used-document entities (T219).
 - The Rust integration case `conditions` passes its time compare as text (T217).
 - The PHP generics case types the nullable result of `get()` (T215).
 - A table of an external document is read through a read-only entity of the using set: select, joins, subqueries and relations work, and every write fails with `CONFIG`, in the five clients (T209).

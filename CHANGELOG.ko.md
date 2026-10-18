@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b2ac755e31495179550f8d8da41d5407e20be174e6cc94d3fad9dac21144938b -->
+<!-- source-sha256: e67b092e3add851235a359c031096b2f281dcd7dc255dafcb5131ceb12343f49 -->
 # 변경 이력
 
 ## Unreleased
+- generator scan은 이름을 가질 수 있는 class로 판정해 어떤 class도 선언하지 않을 때만 호출을 거부하고, use한 문서 entity의 getter를 받아들인다 (T219).
 - Rust integration case `conditions`가 시간 비교를 text로 넘긴다(T217).
 - PHP generics case가 `get()`의 nullable 결과를 type한다(T215).
 - external document의 table을 쓰는 set의 읽기 전용 entity로 읽는다: select, join, subquery, relation이 되고, 모든 쓰기는 `CONFIG`로 실패한다. 다섯 client에서(T209).
