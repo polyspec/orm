@@ -6819,6 +6819,1138 @@
     "exported": false,
     "signature": "func(c *orm.Core) (*AccountProjectModel, error)"
   },
+  "packages/go/model/audit_record.go::AuditRecord": {
+    "exported": true,
+    "signature": "func() *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel": {
+    "exported": true,
+    "signature": "type AuditRecordModel struct { m *orm.Core fSeq int64 fRequestId string }"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel#field.fRequestId": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel#field.fSeq": {
+    "exported": false,
+    "signature": "int64"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel#field.m": {
+    "exported": false,
+    "signature": "*orm.Core"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.AddAllColumns": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.AddColumnRequestId": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.AddColumnSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.And": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(args ...any) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.AndNot": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(fn func(*AuditRecordModel)) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.AvgSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.Connect": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(db *orm.DB) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.Create": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() (*AuditRecordModel, error)"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.Creates": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(rows []*AuditRecordModel, batch int) (int64, error)"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.Delete": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(recursive ...bool) error"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.DeleteLock": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.Duplication": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(m *AuditRecordModel) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(column string, revision int64) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.FetchKey": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(fn func(*AuditRecordModel) any) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.FetchValue": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(fn func(*AuditRecordModel) any) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.ForShare": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.ForShareNoWait": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.ForUpdate": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.ForUpdateNoWait": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.Get": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() (*AuditRecordModel, error)"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.GetAvg": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() (*float64, error)"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.GetCount": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() (int64, error)"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.GetQuery": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() (*orm.Statement, error)"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.GetRequestId": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() string"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.GetSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() int64"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.GetSum": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() (float64, error)"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.Gets": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() (*orm.Collection[*AuditRecordModel], error)"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.GetsCount": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() (*orm.GroupRows, error)"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.GetsPage": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(page, perPage int) (*orm.Page[*AuditRecordModel], error)"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.GroupByRequestId": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.GroupBySeq": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.GroupLimit": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(n int) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.KeyNameRequestId": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.KeyNameSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.Limit": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(offset, count int) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.MarshalJSON": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() ([]byte, error)"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.MinusSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(n int64) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.Not": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(fn func(*AuditRecordModel)) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.On": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(fn func(*AuditRecordModel)) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.Or": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(args ...any) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.OrNot": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(fn func(*AuditRecordModel)) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.OrderByRandom": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.OrderByRequestIdAsc": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(fn ...orm.Func) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.OrderByRequestIdDesc": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(fn ...orm.Func) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.OrderBySeqAsc": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(fn ...orm.Func) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.OrderBySeqDesc": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(fn ...orm.Func) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.Orm_": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() *orm.Core"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.ParentNode": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.PlusSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(n int64) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.Relation": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(child orm.Model) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.Relations": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(child orm.Model) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.RemoveAllColumns": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.RemoveColumnRequestId": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.RemoveColumnSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.Restore": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() (*AuditRecordModel, error)"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.RestoreOrCreate": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() (*AuditRecordModel, error)"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.Save": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() (*AuditRecordModel, error)"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.Seq": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func[T0 argIntEq](v0 T0) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.SetRequestId": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(v string) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.SetSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(v int64) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.SumSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.ToArray": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func() map[string]any"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.Update": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(optimistic ...bool) (*AuditRecordModel, error)"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.assign": {
+    "exported": false,
+    "signature": "receiver=*AuditRecordModel func(name string, v any) (bool, error)"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.connector": {
+    "exported": false,
+    "signature": "receiver=*AuditRecordModel func(conn string, args []any) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.negated": {
+    "exported": false,
+    "signature": "receiver=*AuditRecordModel func(conn string, fn func(*AuditRecordModel)) *AuditRecordModel"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.value": {
+    "exported": false,
+    "signature": "receiver=*AuditRecordModel func(name string) (any, bool)"
+  },
+  "packages/go/model/audit_record.go::oneAuditRecord": {
+    "exported": false,
+    "signature": "func(c *orm.Core) (*AuditRecordModel, error)"
+  },
+  "packages/go/model/audited_note.go::AuditedNote": {
+    "exported": true,
+    "signature": "func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel": {
+    "exported": true,
+    "signature": "type AuditedNoteModel struct { m *orm.Core fSeq int64 fLabel string fAuditSeq int64 }"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel#field.fAuditSeq": {
+    "exported": false,
+    "signature": "int64"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel#field.fLabel": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel#field.fSeq": {
+    "exported": false,
+    "signature": "int64"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel#field.m": {
+    "exported": false,
+    "signature": "*orm.Core"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.AddAllColumns": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.AddColumnAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.AddColumnLabel": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.AddColumnSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.And": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(args ...any) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.AndNot": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(fn func(*AuditedNoteModel)) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.AuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func[T0 argIntEq](v0 T0) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.AvgAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.AvgSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.Connect": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(db *orm.DB) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.Create": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() (*AuditedNoteModel, error)"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.Creates": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(rows []*AuditedNoteModel, batch int) (int64, error)"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.Delete": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(recursive ...bool) error"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.DeleteLock": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.Duplication": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(m *AuditedNoteModel) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(column string, revision int64) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.FetchKey": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(fn func(*AuditedNoteModel) any) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.FetchValue": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(fn func(*AuditedNoteModel) any) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.ForShare": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.ForShareNoWait": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.ForUpdate": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.ForUpdateNoWait": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.ForceIndexIxAuditedNoteAudit": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.Get": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() (*AuditedNoteModel, error)"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.GetAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() int64"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.GetAvg": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() (*float64, error)"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.GetCount": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() (int64, error)"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.GetLabel": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() string"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.GetQuery": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() (*orm.Statement, error)"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.GetSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() int64"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.GetSum": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() (float64, error)"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.Gets": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() (*orm.Collection[*AuditedNoteModel], error)"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.GetsCount": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() (*orm.GroupRows, error)"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.GetsPage": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(page, perPage int) (*orm.Page[*AuditedNoteModel], error)"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.GroupByAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.GroupByLabel": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.GroupBySeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.GroupLimit": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(n int) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.KeyNameAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.KeyNameLabel": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.KeyNameSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.Label": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func[T0 argStringEq](v0 T0) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.Limit": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(offset, count int) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.MarshalJSON": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() ([]byte, error)"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.MinusAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(n int64) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.MinusSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(n int64) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.Not": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(fn func(*AuditedNoteModel)) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.On": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(fn func(*AuditedNoteModel)) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.Or": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(args ...any) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.OrNot": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(fn func(*AuditedNoteModel)) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.OrderByAuditSeqAsc": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(fn ...orm.Func) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.OrderByAuditSeqDesc": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(fn ...orm.Func) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.OrderByLabelAsc": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(fn ...orm.Func) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.OrderByLabelDesc": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(fn ...orm.Func) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.OrderByRandom": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.OrderBySeqAsc": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(fn ...orm.Func) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.OrderBySeqDesc": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(fn ...orm.Func) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.Orm_": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *orm.Core"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.ParentNode": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.PlusAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(n int64) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.PlusSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(n int64) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.Relation": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(child orm.Model) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.Relations": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(child orm.Model) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.RemoveAllColumns": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.RemoveColumnAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.RemoveColumnLabel": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.RemoveColumnSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.Restore": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() (*AuditedNoteModel, error)"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.RestoreOrCreate": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() (*AuditedNoteModel, error)"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.Save": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() (*AuditedNoteModel, error)"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.Seq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func[T0 argIntEq](v0 T0) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.SetAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(v int64) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.SetLabel": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(v string) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.SetSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(v int64) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.SumAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.SumSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.ToArray": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func() map[string]any"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.Update": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(optimistic ...bool) (*AuditedNoteModel, error)"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.assign": {
+    "exported": false,
+    "signature": "receiver=*AuditedNoteModel func(name string, v any) (bool, error)"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.connector": {
+    "exported": false,
+    "signature": "receiver=*AuditedNoteModel func(conn string, args []any) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.negated": {
+    "exported": false,
+    "signature": "receiver=*AuditedNoteModel func(conn string, fn func(*AuditedNoteModel)) *AuditedNoteModel"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.value": {
+    "exported": false,
+    "signature": "receiver=*AuditedNoteModel func(name string) (any, bool)"
+  },
+  "packages/go/model/audited_note.go::oneAuditedNote": {
+    "exported": false,
+    "signature": "func(c *orm.Core) (*AuditedNoteModel, error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistory": {
+    "exported": true,
+    "signature": "func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel": {
+    "exported": true,
+    "signature": "type AuditedNoteHistoryModel struct { m *orm.Core fHistoryId int64 fChange string fPreviousAuditSeq *int64 fSeq int64 fLabel string fAuditSeq int64 }"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel#field.fAuditSeq": {
+    "exported": false,
+    "signature": "int64"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel#field.fChange": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel#field.fHistoryId": {
+    "exported": false,
+    "signature": "int64"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel#field.fLabel": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel#field.fPreviousAuditSeq": {
+    "exported": false,
+    "signature": "*int64"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel#field.fSeq": {
+    "exported": false,
+    "signature": "int64"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel#field.m": {
+    "exported": false,
+    "signature": "*orm.Core"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.AddAllColumns": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.AddColumnAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.AddColumnChange": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.AddColumnHistoryId": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.AddColumnLabel": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.AddColumnPreviousAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.AddColumnSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.And": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(args ...any) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.AndNot": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(fn func(*AuditedNoteHistoryModel)) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.AvgAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.AvgHistoryId": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.AvgPreviousAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.AvgSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Connect": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(db *orm.DB) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Create": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() (*AuditedNoteHistoryModel, error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Creates": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(rows []*AuditedNoteHistoryModel, batch int) (int64, error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Delete": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(recursive ...bool) error"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.DeleteLock": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Duplication": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(m *AuditedNoteHistoryModel) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(column string, revision int64) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.FetchKey": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(fn func(*AuditedNoteHistoryModel) any) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.FetchValue": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(fn func(*AuditedNoteHistoryModel) any) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.ForShare": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.ForShareNoWait": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.ForUpdate": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.ForUpdateNoWait": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Get": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() (*AuditedNoteHistoryModel, error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() int64"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetAvg": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() (*float64, error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetChange": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() string"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetCount": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() (int64, error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetHistoryId": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() int64"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetLabel": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() string"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetPreviousAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *int64"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetQuery": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() (*orm.Statement, error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() int64"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetSum": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() (float64, error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Gets": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() (*orm.Collection[*AuditedNoteHistoryModel], error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetsCount": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() (*orm.GroupRows, error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetsPage": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(page, perPage int) (*orm.Page[*AuditedNoteHistoryModel], error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GroupByAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GroupByChange": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GroupByHistoryId": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GroupByLabel": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GroupByPreviousAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GroupBySeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GroupLimit": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(n int) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.HistoryId": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func[T0 argIntEq](v0 T0) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.KeyNameAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.KeyNameChange": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.KeyNameHistoryId": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.KeyNameLabel": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.KeyNamePreviousAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.KeyNameSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Limit": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(offset, count int) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.MarshalJSON": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() ([]byte, error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.MinusAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(n int64) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.MinusHistoryId": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(n int64) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.MinusPreviousAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(n int64) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.MinusSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(n int64) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Not": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(fn func(*AuditedNoteHistoryModel)) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.On": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(fn func(*AuditedNoteHistoryModel)) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Or": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(args ...any) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.OrNot": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(fn func(*AuditedNoteHistoryModel)) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.OrderByAuditSeqAsc": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(fn ...orm.Func) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.OrderByAuditSeqDesc": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(fn ...orm.Func) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.OrderByChangeAsc": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(fn ...orm.Func) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.OrderByChangeDesc": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(fn ...orm.Func) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.OrderByHistoryIdAsc": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(fn ...orm.Func) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.OrderByHistoryIdDesc": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(fn ...orm.Func) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.OrderByLabelAsc": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(fn ...orm.Func) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.OrderByLabelDesc": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(fn ...orm.Func) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.OrderByPreviousAuditSeqAsc": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(fn ...orm.Func) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.OrderByPreviousAuditSeqDesc": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(fn ...orm.Func) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.OrderByRandom": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.OrderBySeqAsc": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(fn ...orm.Func) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.OrderBySeqDesc": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(fn ...orm.Func) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Orm_": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *orm.Core"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.ParentNode": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.PlusAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(n int64) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.PlusHistoryId": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(n int64) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.PlusPreviousAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(n int64) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.PlusSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(n int64) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Relation": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(child orm.Model) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Relations": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(child orm.Model) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.RemoveAllColumns": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.RemoveColumnAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.RemoveColumnChange": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.RemoveColumnHistoryId": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.RemoveColumnLabel": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.RemoveColumnPreviousAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.RemoveColumnSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Restore": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() (*AuditedNoteHistoryModel, error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.RestoreOrCreate": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() (*AuditedNoteHistoryModel, error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Save": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() (*AuditedNoteHistoryModel, error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.SetAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(v int64) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.SetChange": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(v string) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.SetHistoryId": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(v int64) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.SetLabel": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(v string) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.SetPreviousAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(v *int64) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.SetSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(v int64) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.SumAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.SumHistoryId": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.SumPreviousAuditSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.SumSeq": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.ToArray": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func() map[string]any"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.Update": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(optimistic ...bool) (*AuditedNoteHistoryModel, error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.assign": {
+    "exported": false,
+    "signature": "receiver=*AuditedNoteHistoryModel func(name string, v any) (bool, error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.connector": {
+    "exported": false,
+    "signature": "receiver=*AuditedNoteHistoryModel func(conn string, args []any) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.negated": {
+    "exported": false,
+    "signature": "receiver=*AuditedNoteHistoryModel func(conn string, fn func(*AuditedNoteHistoryModel)) *AuditedNoteHistoryModel"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.value": {
+    "exported": false,
+    "signature": "receiver=*AuditedNoteHistoryModel func(name string) (any, bool)"
+  },
+  "packages/go/model/audited_note_history.go::oneAuditedNoteHistory": {
+    "exported": false,
+    "signature": "func(c *orm.Core) (*AuditedNoteHistoryModel, error)"
+  },
   "packages/go/model/author.go::Author": {
     "exported": true,
     "signature": "func() *AuthorModel"
@@ -11477,11 +12609,11 @@
   },
   "packages/go/model/orm.go::hasSeq": {
     "exported": false,
-    "signature": "type hasSeq interface { *AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel | *NoteReaderModel | *SharedNoteModel Orm_() *orm.Core }"
+    "signature": "type hasSeq interface { *AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel | *AuditRecordModel | *AuditedNoteModel | *AuditedNoteHistoryModel | *NoteReaderModel | *SharedNoteModel Orm_() *orm.Core }"
   },
   "packages/go/model/orm.go::ormModel": {
     "exported": false,
-    "signature": "type ormModel interface { *AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *CompositeAccountModel | *CompositeMembershipModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *AccountProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel | *NoteReaderModel | *SharedNoteModel }"
+    "signature": "type ormModel interface { *AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *CompositeAccountModel | *CompositeMembershipModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *AccountProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel | *AuditRecordModel | *AuditedNoteModel | *AuditedNoteHistoryModel | *NoteReaderModel | *SharedNoteModel }"
   },
   "packages/go/model/project.go::Project": {
     "exported": true,
@@ -17307,6 +18439,10 @@
     "exported": false,
     "signature": "func(a *auditRecord, record string) (any, error)"
   },
+  "packages/go/orm/exec.go::bindsAudit": {
+    "exported": false,
+    "signature": "func(st *plan.Step) bool"
+  },
   "packages/go/orm/exec.go::cached": {
     "exported": false,
     "signature": "type cached struct { key uint64 id string plan *plan.Plan scans map[*plan.Step]*scanInfo shapes sync.Map }"
@@ -18905,7 +20041,7 @@
   },
   "packages/go/orm/tx.go::txConn": {
     "exported": false,
-    "signature": "type txConn struct { db *DB conn *sql.Conn md *mdSession number int64 ctx context.Context cancel context.CancelFunc busy atomic.Bool finished atomic.Bool savepoints int stmMu sync.Mutex stmts map[string]*sql.Stmt locals map[string]string locks []string unclean bool readOnly bool isolation IsolationLevel sqliteMode bool audit *auditRecord inserted map[string]map[int64]struct{} }"
+    "signature": "type txConn struct { db *DB conn *sql.Conn md *mdSession number int64 ctx context.Context cancel context.CancelFunc busy atomic.Bool finished atomic.Bool savepoints int stmMu sync.Mutex stmts map[string]*sql.Stmt locals map[string]string locks []string unclean bool readOnly bool isolation IsolationLevel sqliteMode bool audit *auditRecord pendingAudit *auditInsert inserted map[string]map[int64]struct{} }"
   },
   "packages/go/orm/tx.go::txConn#field.audit": {
     "exported": false,
@@ -18959,6 +20095,10 @@
     "exported": false,
     "signature": "int64"
   },
+  "packages/go/orm/tx.go::txConn#field.pendingAudit": {
+    "exported": false,
+    "signature": "*auditInsert"
+  },
   "packages/go/orm/tx.go::txConn#field.readOnly": {
     "exported": false,
     "signature": "bool"
@@ -18982,6 +20122,10 @@
   "packages/go/orm/tx.go::txConn#field.unclean": {
     "exported": false,
     "signature": "bool"
+  },
+  "packages/go/orm/tx.go::txConn.auditFor": {
+    "exported": false,
+    "signature": "receiver=*txConn func(guard bool) (func(affected int64, err error) error, error)"
   },
   "packages/go/orm/tx.go::txConn.base": {
     "exported": false,
@@ -19020,6 +20164,10 @@
     "signature": "receiver=*txConn func() (func(), error)"
   },
   "packages/go/orm/tx.go::txConn.finishSQLiteMode": {
+    "exported": false,
+    "signature": "receiver=*txConn func() error"
+  },
+  "packages/go/orm/tx.go::txConn.insertPendingAudit": {
     "exported": false,
     "signature": "receiver=*txConn func() error"
   },

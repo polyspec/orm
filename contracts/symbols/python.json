@@ -3603,6 +3603,542 @@
     "exported": true,
     "signature": "def tuple_account_seq_with_project_seq(self, values) -\u003e Self"
   },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord": {
+    "exported": true,
+    "signature": "class AuditRecord(Model)"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.add_column_request_id": {
+    "exported": true,
+    "signature": "def add_column_request_id(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.add_column_seq": {
+    "exported": true,
+    "signature": "def add_column_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.avg_seq": {
+    "exported": true,
+    "signature": "def avg_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.entity_def": {
+    "exported": true,
+    "signature": "@property def entity_def(self)"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.get_request_id": {
+    "exported": true,
+    "signature": "def get_request_id(self) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.get_seq": {
+    "exported": true,
+    "signature": "def get_seq(self) -\u003e int"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.group_by_request_id": {
+    "exported": true,
+    "signature": "def group_by_request_id(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.group_by_seq": {
+    "exported": true,
+    "signature": "def group_by_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.key_name_request_id": {
+    "exported": true,
+    "signature": "def key_name_request_id(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.key_name_seq": {
+    "exported": true,
+    "signature": "def key_name_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.minus_seq": {
+    "exported": true,
+    "signature": "def minus_seq(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.order_by_request_id_asc": {
+    "exported": true,
+    "signature": "def order_by_request_id_asc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.order_by_request_id_desc": {
+    "exported": true,
+    "signature": "def order_by_request_id_desc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.order_by_seq_asc": {
+    "exported": true,
+    "signature": "def order_by_seq_asc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.order_by_seq_desc": {
+    "exported": true,
+    "signature": "def order_by_seq_desc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.plus_seq": {
+    "exported": true,
+    "signature": "def plus_seq(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.remove_column_request_id": {
+    "exported": true,
+    "signature": "def remove_column_request_id(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.remove_column_seq": {
+    "exported": true,
+    "signature": "def remove_column_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.request_id": {
+    "exported": true,
+    "signature": "def request_id(self, value, *compared) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.seq": {
+    "exported": true,
+    "signature": "def seq(self, value, *compared) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.set_request_id": {
+    "exported": true,
+    "signature": "def set_request_id(self, value: str) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.set_seq": {
+    "exported": true,
+    "signature": "def set_seq(self, value: int) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditRecord.sum_seq": {
+    "exported": true,
+    "signature": "def sum_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote": {
+    "exported": true,
+    "signature": "class AuditedNote(Model)"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.add_column_audit_seq": {
+    "exported": true,
+    "signature": "def add_column_audit_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.add_column_label": {
+    "exported": true,
+    "signature": "def add_column_label(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.add_column_seq": {
+    "exported": true,
+    "signature": "def add_column_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.audit_seq": {
+    "exported": true,
+    "signature": "def audit_seq(self, value, *compared) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.avg_audit_seq": {
+    "exported": true,
+    "signature": "def avg_audit_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.avg_seq": {
+    "exported": true,
+    "signature": "def avg_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.entity_def": {
+    "exported": true,
+    "signature": "@property def entity_def(self)"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.force_index_ix_audited_note_audit": {
+    "exported": true,
+    "signature": "def force_index_ix_audited_note_audit(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.get_audit_seq": {
+    "exported": true,
+    "signature": "def get_audit_seq(self) -\u003e int"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.get_label": {
+    "exported": true,
+    "signature": "def get_label(self) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.get_seq": {
+    "exported": true,
+    "signature": "def get_seq(self) -\u003e int"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.group_by_audit_seq": {
+    "exported": true,
+    "signature": "def group_by_audit_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.group_by_label": {
+    "exported": true,
+    "signature": "def group_by_label(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.group_by_seq": {
+    "exported": true,
+    "signature": "def group_by_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.key_name_audit_seq": {
+    "exported": true,
+    "signature": "def key_name_audit_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.key_name_label": {
+    "exported": true,
+    "signature": "def key_name_label(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.key_name_seq": {
+    "exported": true,
+    "signature": "def key_name_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.label": {
+    "exported": true,
+    "signature": "def label(self, value, *compared) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.minus_audit_seq": {
+    "exported": true,
+    "signature": "def minus_audit_seq(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.minus_seq": {
+    "exported": true,
+    "signature": "def minus_seq(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.order_by_audit_seq_asc": {
+    "exported": true,
+    "signature": "def order_by_audit_seq_asc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.order_by_audit_seq_desc": {
+    "exported": true,
+    "signature": "def order_by_audit_seq_desc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.order_by_label_asc": {
+    "exported": true,
+    "signature": "def order_by_label_asc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.order_by_label_desc": {
+    "exported": true,
+    "signature": "def order_by_label_desc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.order_by_seq_asc": {
+    "exported": true,
+    "signature": "def order_by_seq_asc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.order_by_seq_desc": {
+    "exported": true,
+    "signature": "def order_by_seq_desc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.plus_audit_seq": {
+    "exported": true,
+    "signature": "def plus_audit_seq(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.plus_seq": {
+    "exported": true,
+    "signature": "def plus_seq(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.remove_column_audit_seq": {
+    "exported": true,
+    "signature": "def remove_column_audit_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.remove_column_label": {
+    "exported": true,
+    "signature": "def remove_column_label(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.remove_column_seq": {
+    "exported": true,
+    "signature": "def remove_column_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.seq": {
+    "exported": true,
+    "signature": "def seq(self, value, *compared) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.set_audit_seq": {
+    "exported": true,
+    "signature": "def set_audit_seq(self, value: int) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.set_label": {
+    "exported": true,
+    "signature": "def set_label(self, value: str) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.set_seq": {
+    "exported": true,
+    "signature": "def set_seq(self, value: int) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.sum_audit_seq": {
+    "exported": true,
+    "signature": "def sum_audit_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNote.sum_seq": {
+    "exported": true,
+    "signature": "def sum_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory": {
+    "exported": true,
+    "signature": "class AuditedNoteHistory(Model)"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.add_column_audit_seq": {
+    "exported": true,
+    "signature": "def add_column_audit_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.add_column_change": {
+    "exported": true,
+    "signature": "def add_column_change(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.add_column_history_id": {
+    "exported": true,
+    "signature": "def add_column_history_id(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.add_column_label": {
+    "exported": true,
+    "signature": "def add_column_label(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.add_column_previous_audit_seq": {
+    "exported": true,
+    "signature": "def add_column_previous_audit_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.add_column_seq": {
+    "exported": true,
+    "signature": "def add_column_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.audit_seq": {
+    "exported": true,
+    "signature": "def audit_seq(self, value, *compared) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.avg_audit_seq": {
+    "exported": true,
+    "signature": "def avg_audit_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.avg_history_id": {
+    "exported": true,
+    "signature": "def avg_history_id(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.avg_previous_audit_seq": {
+    "exported": true,
+    "signature": "def avg_previous_audit_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.avg_seq": {
+    "exported": true,
+    "signature": "def avg_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.change": {
+    "exported": true,
+    "signature": "def change(self, value, *compared) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.entity_def": {
+    "exported": true,
+    "signature": "@property def entity_def(self)"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.get_audit_seq": {
+    "exported": true,
+    "signature": "def get_audit_seq(self) -\u003e int"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.get_change": {
+    "exported": true,
+    "signature": "def get_change(self) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.get_history_id": {
+    "exported": true,
+    "signature": "def get_history_id(self) -\u003e int"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.get_label": {
+    "exported": true,
+    "signature": "def get_label(self) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.get_previous_audit_seq": {
+    "exported": true,
+    "signature": "def get_previous_audit_seq(self) -\u003e int | None"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.get_seq": {
+    "exported": true,
+    "signature": "def get_seq(self) -\u003e int"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.group_by_audit_seq": {
+    "exported": true,
+    "signature": "def group_by_audit_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.group_by_change": {
+    "exported": true,
+    "signature": "def group_by_change(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.group_by_history_id": {
+    "exported": true,
+    "signature": "def group_by_history_id(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.group_by_label": {
+    "exported": true,
+    "signature": "def group_by_label(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.group_by_previous_audit_seq": {
+    "exported": true,
+    "signature": "def group_by_previous_audit_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.group_by_seq": {
+    "exported": true,
+    "signature": "def group_by_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.history_id": {
+    "exported": true,
+    "signature": "def history_id(self, value, *compared) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.key_name_audit_seq": {
+    "exported": true,
+    "signature": "def key_name_audit_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.key_name_change": {
+    "exported": true,
+    "signature": "def key_name_change(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.key_name_history_id": {
+    "exported": true,
+    "signature": "def key_name_history_id(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.key_name_label": {
+    "exported": true,
+    "signature": "def key_name_label(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.key_name_previous_audit_seq": {
+    "exported": true,
+    "signature": "def key_name_previous_audit_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.key_name_seq": {
+    "exported": true,
+    "signature": "def key_name_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.label": {
+    "exported": true,
+    "signature": "def label(self, value, *compared) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.minus_audit_seq": {
+    "exported": true,
+    "signature": "def minus_audit_seq(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.minus_history_id": {
+    "exported": true,
+    "signature": "def minus_history_id(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.minus_previous_audit_seq": {
+    "exported": true,
+    "signature": "def minus_previous_audit_seq(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.minus_seq": {
+    "exported": true,
+    "signature": "def minus_seq(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.order_by_audit_seq_asc": {
+    "exported": true,
+    "signature": "def order_by_audit_seq_asc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.order_by_audit_seq_desc": {
+    "exported": true,
+    "signature": "def order_by_audit_seq_desc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.order_by_change_asc": {
+    "exported": true,
+    "signature": "def order_by_change_asc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.order_by_change_desc": {
+    "exported": true,
+    "signature": "def order_by_change_desc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.order_by_history_id_asc": {
+    "exported": true,
+    "signature": "def order_by_history_id_asc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.order_by_history_id_desc": {
+    "exported": true,
+    "signature": "def order_by_history_id_desc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.order_by_label_asc": {
+    "exported": true,
+    "signature": "def order_by_label_asc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.order_by_label_desc": {
+    "exported": true,
+    "signature": "def order_by_label_desc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.order_by_previous_audit_seq_asc": {
+    "exported": true,
+    "signature": "def order_by_previous_audit_seq_asc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.order_by_previous_audit_seq_desc": {
+    "exported": true,
+    "signature": "def order_by_previous_audit_seq_desc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.order_by_seq_asc": {
+    "exported": true,
+    "signature": "def order_by_seq_asc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.order_by_seq_desc": {
+    "exported": true,
+    "signature": "def order_by_seq_desc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.plus_audit_seq": {
+    "exported": true,
+    "signature": "def plus_audit_seq(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.plus_history_id": {
+    "exported": true,
+    "signature": "def plus_history_id(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.plus_previous_audit_seq": {
+    "exported": true,
+    "signature": "def plus_previous_audit_seq(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.plus_seq": {
+    "exported": true,
+    "signature": "def plus_seq(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.previous_audit_seq": {
+    "exported": true,
+    "signature": "def previous_audit_seq(self, value, *compared) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.remove_column_audit_seq": {
+    "exported": true,
+    "signature": "def remove_column_audit_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.remove_column_change": {
+    "exported": true,
+    "signature": "def remove_column_change(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.remove_column_history_id": {
+    "exported": true,
+    "signature": "def remove_column_history_id(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.remove_column_label": {
+    "exported": true,
+    "signature": "def remove_column_label(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.remove_column_previous_audit_seq": {
+    "exported": true,
+    "signature": "def remove_column_previous_audit_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.remove_column_seq": {
+    "exported": true,
+    "signature": "def remove_column_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.seq": {
+    "exported": true,
+    "signature": "def seq(self, value, *compared) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.set_audit_seq": {
+    "exported": true,
+    "signature": "def set_audit_seq(self, value: int) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.set_change": {
+    "exported": true,
+    "signature": "def set_change(self, value: str) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.set_history_id": {
+    "exported": true,
+    "signature": "def set_history_id(self, value: int) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.set_label": {
+    "exported": true,
+    "signature": "def set_label(self, value: str) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.set_previous_audit_seq": {
+    "exported": true,
+    "signature": "def set_previous_audit_seq(self, value: int | None) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.set_seq": {
+    "exported": true,
+    "signature": "def set_seq(self, value: int) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.sum_audit_seq": {
+    "exported": true,
+    "signature": "def sum_audit_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.sum_history_id": {
+    "exported": true,
+    "signature": "def sum_history_id(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.sum_previous_audit_seq": {
+    "exported": true,
+    "signature": "def sum_previous_audit_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::AuditedNoteHistory.sum_seq": {
+    "exported": true,
+    "signature": "def sum_seq(self) -\u003e Self"
+  },
   "packages/python/src/polyspec/orm/models/models.py::Author": {
     "exported": true,
     "signature": "class Author(Model)"

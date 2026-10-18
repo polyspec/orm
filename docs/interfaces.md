@@ -169,7 +169,7 @@ A terminal without a connection outside a transaction returns `CONFIG`. A connec
 | `readOnly` | boolean |
 | `timeoutMs` | positive integer; PostgreSQL applies `statement_timeout`, MySQL and SQLite return `CAPABILITY_UNSUPPORTED` |
 | `retry` | deadlock retry count, default `3`; each retry runs the complete callback again, and `0` disables retry |
-| `audit` | column name to value of the unit of work's audit record; the transaction inserts the values of the connection's audit source with these values (a value wins) into the audit record table before the callback, in every attempt, and every audited write in the transaction writes the record's key ([usage](usage.md#audited-writes)) |
+| `audit` | column name to value of the unit of work's audit record; the transaction inserts the values of the connection's audit source with these values (a value wins) into the audit record table right before its first write of an audited table, in every attempt, so a transaction that writes no audited row inserts none, and every audited write in the transaction writes the record's key ([usage](usage.md#audited-writes)) |
 
 The connection configuration takes `auditSource`, a function that returns the audit values of the current request ([configuration](config.md)). A transaction with `audit` on a connection without a source, a value that is not a column of the audit record table, and an audited write without `audit` fail with `CONFIG`; an error of the source fails the transaction; a nested transaction keeps the outer audit and does not take `audit`.
 

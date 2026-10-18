@@ -489,8 +489,10 @@ final class Db
      * savepoint and accepts only retry, which it ignores.
      *
      * $audit is the audit record value (column => value) for this unit of work. If there is a value, the transaction starts
-     * before it, calls the connection setting's auditSource once, and before each attempt's callback adds $audit to that value (for the same
-     * column, $audit wins) and inserts one row into the audit record table of the set registered on the connection.
+     * before it, calls the connection setting's auditSource once, and in each attempt, right before the first write of an audited table, adds
+     * $audit to that value (for the same column, $audit wins) and inserts one row into the audit record table of the set registered on
+     * the connection. A transaction that writes no audited row inserts no record: a first update, delete, or restore that matches no
+     * row undoes the record with a savepoint, and a rolled back savepoint undoes the record with the write that inserted it.
      * Every audited insert, update, soft delete, and restore in the transaction writes its primary key to the audit
      * column (docs/dbspec.md "Audit"). If there is no source, or the record table is not one table, or a value's
      * key is not a column of that table, it is CONFIG before the transaction starts.
@@ -520,8 +522,7 @@ final class Db
             $record = $this->auditRecord($audit);
             $inner = $fn;
             $fn = function () use ($record, $inner): mixed {
-                $frame = self::activeFor($this);
-                $frame->audit = $this->insertAudit($frame, $record);
+                self::activeFor($this)->pendingAudit = $record;
                 return $inner();
             };
         }
@@ -845,6 +846,9 @@ final class Db
     private function savepoint(TxFrame $frame, \Closure $fn): mixed
     {
         $name = 'orm_sp_' . (++$frame->savepoints);
+        // A savepoint that does not release undoes an audit record inserted inside it.
+        $auditBefore = $frame->audit;
+        $kept = false;
         try {
             $this->savepointControl($frame, StatementEvent::SAVEPOINT, $name);
             self::$frames[] = $frame;
@@ -865,8 +869,12 @@ final class Db
             if ($released !== null) {
                 throw $released;
             }
+            $kept = true;
             return $v;
         } finally {
+            if (!$kept) {
+                $frame->audit = $auditBefore;
+            }
             $frame->savepoints--;
         }
     }
@@ -1028,9 +1036,32 @@ final class Db
             return [$keys[0] ?? null, $affected];
         }
         $step = $this->plan($r)['steps'][0];
-        $args = $this->args($step, $r->params, [], $frame);
+        $settle = $frame !== null && self::bindsAudit($step) ? $this->auditFor($frame, $r->ir['kind'] !== 'insert') : null;
+        try {
+            $args = $this->args($step, $r->params, [], $frame);
+            [$id, $affected] = $this->sendWrite($step, $args, $r);
+        } catch (\Throwable $e) {
+            // The write's error wins over an error of undoing the audit record.
+            if ($settle !== null) {
+                $settle(0);
+            }
+            throw $e;
+        }
+        if ($settle !== null && ($settled = $settle($affected)) !== null) {
+            throw $settled;
+        }
+        if (isset($r->ir['optimistic']) && $affected === 0) {
+            throw new OrmException(Code::OPTIMISTIC_LOCK, 'the row changed after it was read');
+        }
+        $this->state->lastAffected = $affected;
+        return [$id, $affected];
+    }
+
+    /** @return array{0: int|float|string|null, 1: int} */
+    private function sendWrite(array $step, array $args, Request $r): array
+    {
         $insert = $r->ir['kind'] === 'insert';
-        [$id, $affected] = $this->send(function () use ($step, $args, $insert, $r): array {
+        return $this->send(function () use ($step, $args, $insert, $r): array {
             $st = $this->stmt($step['sql']);
             try {
                 $this->exec($st, $args);
@@ -1047,11 +1078,58 @@ final class Db
                 throw self::failed($st, $e);
             }
         }, fn(int $start, ?OrmException $error) => $this->modelDone($step, $step['sql'], $args, $start, $error));
-        if (isset($r->ir['optimistic']) && $affected === 0) {
-            throw new OrmException(Code::OPTIMISTIC_LOCK, 'the row changed after it was read');
+    }
+
+    /** Whether the statement binds the audit record's key: it writes an audited table. */
+    private static function bindsAudit(array $step): bool
+    {
+        foreach ($step['bind_slots'] ?? [] as $b) {
+            if ($b['from'] === 'audit') {
+                return true;
+            }
         }
-        $this->state->lastAffected = $affected;
-        return [$id, $affected];
+        return false;
+    }
+
+    /**
+     * Makes sure the audit record precedes a write of an audited table: when the transaction has a pending record and has not
+     * inserted it, it inserts it now. $guard is true for an update, delete, or restore, which can match no row: the record is then
+     * inserted inside the savepoint orm_audit, and the returned closure, called with the affected count (0 for a failed write),
+     * releases the savepoint when the write changed a row and otherwise rolls the record back; it returns the error of that
+     * statement, or null. Without a guard, or with nothing to insert, it returns null.
+     *
+     * @return (\Closure(int): ?\Throwable)|null
+     */
+    private function auditFor(TxFrame $frame, bool $guard): ?\Closure
+    {
+        if ($frame->audit !== null || $frame->pendingAudit === null) {
+            return null;
+        }
+        if (!$guard) {
+            $frame->audit = $this->insertAudit($frame, $frame->pendingAudit);
+            return null;
+        }
+        $name = 'orm_audit';
+        $this->savepointControl($frame, StatementEvent::SAVEPOINT, $name);
+        try {
+            $frame->audit = $this->insertAudit($frame, $frame->pendingAudit);
+        } catch (\Throwable $e) {
+            $ended = self::joined(array_values(array_filter([
+                $this->endSavepoint($frame, StatementEvent::ROLLBACK_TO, $name),
+                $this->endSavepoint($frame, StatementEvent::RELEASE, $name),
+            ])));
+            throw $ended === null ? $e : OrmException::rollback($e, $ended);
+        }
+        return function (int $affected) use ($frame, $name): ?\Throwable {
+            if ($affected > 0) {
+                return $this->endSavepoint($frame, StatementEvent::RELEASE, $name);
+            }
+            $frame->audit = null;
+            return self::joined(array_values(array_filter([
+                $this->endSavepoint($frame, StatementEvent::ROLLBACK_TO, $name),
+                $this->endSavepoint($frame, StatementEvent::RELEASE, $name),
+            ])));
+        };
     }
 
     /**
@@ -1076,6 +1154,9 @@ final class Db
             if ($b['from'] === 'param' && ($b['param'] < 0 || $b['param'] >= count($params))) {
                 throw new OrmException(Code::IR_INVALID, sprintf('bind slot %d reads parameter %d, but execute has %d parameters', $i, $b['param'], count($params)));
             }
+        }
+        if ($frame !== null && self::bindsAudit($step)) {
+            $this->auditFor($frame, false);
         }
         $args = $this->args($step, $params, [], $frame);
         $this->send(function () use ($step, $args): void {

@@ -1127,6 +1127,10 @@
     "exported": true,
     "signature": "public args(step: PlanStep, params: readonly unknown[], parents: readonly unknown[] = [], audit?: AuditRecord): { values: unknown[]; masked: unknown[]; }"
   },
+  "packages/ts/src/database.ts::Db.auditFor": {
+    "exported": true,
+    "signature": "public async auditFor(ex: Executor, step: PlanStep, guard: boolean): Promise\u003c(affected: number, failed: boolean, error?: unknown) =\u003e Promise\u003cvoid\u003e\u003e"
+  },
   "packages/ts/src/database.ts::Db.auditRecord": {
     "exported": false,
     "signature": "private auditRecord(values: Readonly\u003cRecord\u003cstring, unknown\u003e\u003e): AuditInsert"
@@ -1411,6 +1415,10 @@
     "exported": true,
     "signature": "BeginOptions"
   },
+  "packages/ts/src/database.ts::TxFrame#field.pendingAudit": {
+    "exported": true,
+    "signature": "AuditInsert | undefined"
+  },
   "packages/ts/src/database.ts::TxFrame#field.savepoints": {
     "exported": true,
     "signature": "unknown"
@@ -1462,6 +1470,10 @@
   "packages/ts/src/database.ts::auditValue": {
     "exported": false,
     "signature": "function auditValue(slot: BindSlot, audit: AuditRecord | undefined): unknown"
+  },
+  "packages/ts/src/database.ts::bindsAudit": {
+    "exported": false,
+    "signature": "function bindsAudit(step: PlanStep): boolean"
   },
   "packages/ts/src/database.ts::canonical": {
     "exported": false,
@@ -1634,6 +1646,10 @@
   "packages/ts/src/database.ts::write": {
     "exported": true,
     "signature": "export async function write(ex: Executor, given: Request, givenParams: readonly unknown[], afterHook?: (hooked: Hooked) =\u003e void): Promise\u003cWritten\u003e"
+  },
+  "packages/ts/src/database.ts::writeStep": {
+    "exported": false,
+    "signature": "async function writeStep(ex: Executor, request: Request, params: readonly unknown[], planned: PlanStep | undefined): Promise\u003c{ key: number | string | null; affected: number; }\u003e"
   },
   "packages/ts/src/dbspec/add_tables_and_columns.ts::DbspecAddTablesAndColumnsSteps": {
     "exported": true,
@@ -10491,6 +10507,686 @@
     "exported": true,
     "signature": "public sumProjectSeq(): this"
   },
+  "packages/ts/src/models/models.ts::AuditRecord": {
+    "exported": true,
+    "signature": "class AuditRecord"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord#field.entity": {
+    "exported": true,
+    "signature": "EntityDef"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord#field.getAesHexEmail": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord#field.getAuthorModels": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord#field.getMembers": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord#field.getModule": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord#field.getName": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord#field.getReadTotal": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord#field.getRecord": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord#field.getServiceMemberModels": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord#field.getServiceRegionModel": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord#field.getSharedNoteModel": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord#field.getStartMonth": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord#field.getUserModel": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord#field.getWriter": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord#field.seq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord.addColumnRequestId": {
+    "exported": true,
+    "signature": "public addColumnRequestId(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord.addColumnSeq": {
+    "exported": true,
+    "signature": "public addColumnSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord.avgSeq": {
+    "exported": true,
+    "signature": "public avgSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord.getRequestId": {
+    "exported": true,
+    "signature": "public getRequestId(): string"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord.getSeq": {
+    "exported": true,
+    "signature": "public getSeq(): number"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord.groupByRequestId": {
+    "exported": true,
+    "signature": "public groupByRequestId(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord.groupBySeq": {
+    "exported": true,
+    "signature": "public groupBySeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord.keyNameRequestId": {
+    "exported": true,
+    "signature": "public keyNameRequestId(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord.keyNameSeq": {
+    "exported": true,
+    "signature": "public keyNameSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord.minusSeq": {
+    "exported": true,
+    "signature": "public minusSeq(n: number): this"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord.orderByRequestIdAsc": {
+    "exported": true,
+    "signature": "public orderByRequestIdAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord.orderByRequestIdDesc": {
+    "exported": true,
+    "signature": "public orderByRequestIdDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord.orderBySeqAsc": {
+    "exported": true,
+    "signature": "public orderBySeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord.orderBySeqDesc": {
+    "exported": true,
+    "signature": "public orderBySeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord.plusSeq": {
+    "exported": true,
+    "signature": "public plusSeq(n: number): this"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord.removeColumnRequestId": {
+    "exported": true,
+    "signature": "public removeColumnRequestId(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord.removeColumnSeq": {
+    "exported": true,
+    "signature": "public removeColumnSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord.setRequestId": {
+    "exported": true,
+    "signature": "public setRequestId(value: string): this"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord.setSeq": {
+    "exported": true,
+    "signature": "public setSeq(value: number): this"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord.sumSeq": {
+    "exported": true,
+    "signature": "public sumSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote": {
+    "exported": true,
+    "signature": "class AuditedNote"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote#field.auditSeq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote#field.entity": {
+    "exported": true,
+    "signature": "EntityDef"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote#field.getAesHexEmail": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote#field.getAuthorModels": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote#field.getMembers": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote#field.getModule": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote#field.getName": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote#field.getReadTotal": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote#field.getRecord": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote#field.getServiceMemberModels": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote#field.getServiceRegionModel": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote#field.getSharedNoteModel": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote#field.getStartMonth": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote#field.getUserModel": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote#field.getWriter": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote#field.label": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote#field.seq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.addColumnAuditSeq": {
+    "exported": true,
+    "signature": "public addColumnAuditSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.addColumnLabel": {
+    "exported": true,
+    "signature": "public addColumnLabel(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.addColumnSeq": {
+    "exported": true,
+    "signature": "public addColumnSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.avgAuditSeq": {
+    "exported": true,
+    "signature": "public avgAuditSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.avgSeq": {
+    "exported": true,
+    "signature": "public avgSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.forceIndexIxAuditedNoteAudit": {
+    "exported": true,
+    "signature": "public forceIndexIxAuditedNoteAudit(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.getAuditSeq": {
+    "exported": true,
+    "signature": "public getAuditSeq(): number"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.getLabel": {
+    "exported": true,
+    "signature": "public getLabel(): string"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.getSeq": {
+    "exported": true,
+    "signature": "public getSeq(): number"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.groupByAuditSeq": {
+    "exported": true,
+    "signature": "public groupByAuditSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.groupByLabel": {
+    "exported": true,
+    "signature": "public groupByLabel(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.groupBySeq": {
+    "exported": true,
+    "signature": "public groupBySeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.keyNameAuditSeq": {
+    "exported": true,
+    "signature": "public keyNameAuditSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.keyNameLabel": {
+    "exported": true,
+    "signature": "public keyNameLabel(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.keyNameSeq": {
+    "exported": true,
+    "signature": "public keyNameSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.minusAuditSeq": {
+    "exported": true,
+    "signature": "public minusAuditSeq(n: number): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.minusSeq": {
+    "exported": true,
+    "signature": "public minusSeq(n: number): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.orderByAuditSeqAsc": {
+    "exported": true,
+    "signature": "public orderByAuditSeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.orderByAuditSeqDesc": {
+    "exported": true,
+    "signature": "public orderByAuditSeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.orderByLabelAsc": {
+    "exported": true,
+    "signature": "public orderByLabelAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.orderByLabelDesc": {
+    "exported": true,
+    "signature": "public orderByLabelDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.orderBySeqAsc": {
+    "exported": true,
+    "signature": "public orderBySeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.orderBySeqDesc": {
+    "exported": true,
+    "signature": "public orderBySeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.plusAuditSeq": {
+    "exported": true,
+    "signature": "public plusAuditSeq(n: number): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.plusSeq": {
+    "exported": true,
+    "signature": "public plusSeq(n: number): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.removeColumnAuditSeq": {
+    "exported": true,
+    "signature": "public removeColumnAuditSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.removeColumnLabel": {
+    "exported": true,
+    "signature": "public removeColumnLabel(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.removeColumnSeq": {
+    "exported": true,
+    "signature": "public removeColumnSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.setAuditSeq": {
+    "exported": true,
+    "signature": "public setAuditSeq(value: number): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.setLabel": {
+    "exported": true,
+    "signature": "public setLabel(value: string): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.setSeq": {
+    "exported": true,
+    "signature": "public setSeq(value: number): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.sumAuditSeq": {
+    "exported": true,
+    "signature": "public sumAuditSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote.sumSeq": {
+    "exported": true,
+    "signature": "public sumSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory": {
+    "exported": true,
+    "signature": "class AuditedNoteHistory"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.entity": {
+    "exported": true,
+    "signature": "EntityDef"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getAesHexEmail": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getAuthorModels": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getMembers": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getModule": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getName": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getReadTotal": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getRecord": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getServiceMemberModels": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getServiceRegionModel": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getSharedNoteModel": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getStartMonth": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getUserModel": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getWriter": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.historyId": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.addColumnAuditSeq": {
+    "exported": true,
+    "signature": "public addColumnAuditSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.addColumnChange": {
+    "exported": true,
+    "signature": "public addColumnChange(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.addColumnHistoryId": {
+    "exported": true,
+    "signature": "public addColumnHistoryId(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.addColumnLabel": {
+    "exported": true,
+    "signature": "public addColumnLabel(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.addColumnPreviousAuditSeq": {
+    "exported": true,
+    "signature": "public addColumnPreviousAuditSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.addColumnSeq": {
+    "exported": true,
+    "signature": "public addColumnSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.avgAuditSeq": {
+    "exported": true,
+    "signature": "public avgAuditSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.avgHistoryId": {
+    "exported": true,
+    "signature": "public avgHistoryId(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.avgPreviousAuditSeq": {
+    "exported": true,
+    "signature": "public avgPreviousAuditSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.avgSeq": {
+    "exported": true,
+    "signature": "public avgSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.getAuditSeq": {
+    "exported": true,
+    "signature": "public getAuditSeq(): number"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.getChange": {
+    "exported": true,
+    "signature": "public getChange(): string"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.getHistoryId": {
+    "exported": true,
+    "signature": "public getHistoryId(): number"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.getLabel": {
+    "exported": true,
+    "signature": "public getLabel(): string"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.getPreviousAuditSeq": {
+    "exported": true,
+    "signature": "public getPreviousAuditSeq(): number | null"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.getSeq": {
+    "exported": true,
+    "signature": "public getSeq(): number"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.groupByAuditSeq": {
+    "exported": true,
+    "signature": "public groupByAuditSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.groupByChange": {
+    "exported": true,
+    "signature": "public groupByChange(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.groupByHistoryId": {
+    "exported": true,
+    "signature": "public groupByHistoryId(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.groupByLabel": {
+    "exported": true,
+    "signature": "public groupByLabel(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.groupByPreviousAuditSeq": {
+    "exported": true,
+    "signature": "public groupByPreviousAuditSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.groupBySeq": {
+    "exported": true,
+    "signature": "public groupBySeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.keyNameAuditSeq": {
+    "exported": true,
+    "signature": "public keyNameAuditSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.keyNameChange": {
+    "exported": true,
+    "signature": "public keyNameChange(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.keyNameHistoryId": {
+    "exported": true,
+    "signature": "public keyNameHistoryId(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.keyNameLabel": {
+    "exported": true,
+    "signature": "public keyNameLabel(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.keyNamePreviousAuditSeq": {
+    "exported": true,
+    "signature": "public keyNamePreviousAuditSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.keyNameSeq": {
+    "exported": true,
+    "signature": "public keyNameSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.minusAuditSeq": {
+    "exported": true,
+    "signature": "public minusAuditSeq(n: number): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.minusHistoryId": {
+    "exported": true,
+    "signature": "public minusHistoryId(n: number): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.minusPreviousAuditSeq": {
+    "exported": true,
+    "signature": "public minusPreviousAuditSeq(n: number): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.minusSeq": {
+    "exported": true,
+    "signature": "public minusSeq(n: number): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.orderByAuditSeqAsc": {
+    "exported": true,
+    "signature": "public orderByAuditSeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.orderByAuditSeqDesc": {
+    "exported": true,
+    "signature": "public orderByAuditSeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.orderByChangeAsc": {
+    "exported": true,
+    "signature": "public orderByChangeAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.orderByChangeDesc": {
+    "exported": true,
+    "signature": "public orderByChangeDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.orderByHistoryIdAsc": {
+    "exported": true,
+    "signature": "public orderByHistoryIdAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.orderByHistoryIdDesc": {
+    "exported": true,
+    "signature": "public orderByHistoryIdDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.orderByLabelAsc": {
+    "exported": true,
+    "signature": "public orderByLabelAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.orderByLabelDesc": {
+    "exported": true,
+    "signature": "public orderByLabelDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.orderByPreviousAuditSeqAsc": {
+    "exported": true,
+    "signature": "public orderByPreviousAuditSeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.orderByPreviousAuditSeqDesc": {
+    "exported": true,
+    "signature": "public orderByPreviousAuditSeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.orderBySeqAsc": {
+    "exported": true,
+    "signature": "public orderBySeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.orderBySeqDesc": {
+    "exported": true,
+    "signature": "public orderBySeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.plusAuditSeq": {
+    "exported": true,
+    "signature": "public plusAuditSeq(n: number): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.plusHistoryId": {
+    "exported": true,
+    "signature": "public plusHistoryId(n: number): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.plusPreviousAuditSeq": {
+    "exported": true,
+    "signature": "public plusPreviousAuditSeq(n: number): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.plusSeq": {
+    "exported": true,
+    "signature": "public plusSeq(n: number): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.removeColumnAuditSeq": {
+    "exported": true,
+    "signature": "public removeColumnAuditSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.removeColumnChange": {
+    "exported": true,
+    "signature": "public removeColumnChange(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.removeColumnHistoryId": {
+    "exported": true,
+    "signature": "public removeColumnHistoryId(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.removeColumnLabel": {
+    "exported": true,
+    "signature": "public removeColumnLabel(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.removeColumnPreviousAuditSeq": {
+    "exported": true,
+    "signature": "public removeColumnPreviousAuditSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.removeColumnSeq": {
+    "exported": true,
+    "signature": "public removeColumnSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.setAuditSeq": {
+    "exported": true,
+    "signature": "public setAuditSeq(value: number): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.setChange": {
+    "exported": true,
+    "signature": "public setChange(value: string): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.setHistoryId": {
+    "exported": true,
+    "signature": "public setHistoryId(value: number): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.setLabel": {
+    "exported": true,
+    "signature": "public setLabel(value: string): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.setPreviousAuditSeq": {
+    "exported": true,
+    "signature": "public setPreviousAuditSeq(value: number | null): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.setSeq": {
+    "exported": true,
+    "signature": "public setSeq(value: number): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.sumAuditSeq": {
+    "exported": true,
+    "signature": "public sumAuditSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.sumHistoryId": {
+    "exported": true,
+    "signature": "public sumHistoryId(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.sumPreviousAuditSeq": {
+    "exported": true,
+    "signature": "public sumPreviousAuditSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory.sumSeq": {
+    "exported": true,
+    "signature": "public sumSeq(): this"
+  },
   "packages/ts/src/models/models.ts::Author": {
     "exported": true,
     "signature": "class Author"
@@ -10597,7 +11293,7 @@
   },
   "packages/ts/src/models/models.ts::Author#field.andSuccessCountLtSeq": {
     "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) =\u003e this"
+    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.andUuid": {
     "exported": true,
@@ -10717,31 +11413,31 @@
   },
   "packages/ts/src/models/models.ts::Author#field.joinNameWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.joinReadCountWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.joinServiceMemberSeqWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.joinServiceSeqWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.joinUserSeqWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.leftJoinServiceRegionSeqWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.leftJoinUserSeqWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.likeCount": {
     "exported": true,
@@ -10761,7 +11457,7 @@
   },
   "packages/ts/src/models/models.ts::Author#field.nameEqSeq": {
     "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) =\u003e this"
+    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.nePhotoUrl": {
     "exported": true,
@@ -10797,7 +11493,7 @@
   },
   "packages/ts/src/models/models.ts::Author#field.priceEqSeq": {
     "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) =\u003e this"
+    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.readCount": {
     "exported": true,
@@ -10805,11 +11501,11 @@
   },
   "packages/ts/src/models/models.ts::Author#field.readCountGtSeq": {
     "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) =\u003e this"
+    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.readCountLtSeq": {
     "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) =\u003e this"
+    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.seq": {
     "exported": true,
@@ -10837,7 +11533,7 @@
   },
   "packages/ts/src/models/models.ts::Author#field.userSeqEqSeq": {
     "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) =\u003e this"
+    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.uuid": {
     "exported": true,

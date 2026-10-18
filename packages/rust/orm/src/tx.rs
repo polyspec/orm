@@ -28,13 +28,15 @@ pub(crate) struct TxShared {
     savepoints: AtomicU32,
     pub(crate) locals: Mutex<HashMap<String, String>>,
     pub(crate) locks: Mutex<Vec<String>>,
-    /// The audit record inserted when the transaction starts. Inserts and updates of audit-target tables write its key to the audit
-    /// column. None for a transaction with no audit values.
+    /// The audit record the transaction inserted right before its first write of an audited table. Inserts and updates of
+    /// audit-target tables write its key to the audit column. None until that write and for a transaction with no audit values.
     pub(crate) audit: Mutex<Option<AuditKey>>,
+    /// The audit record the transaction inserts before its first write of an audited table; None without audit values.
+    pub(crate) pending_audit: Mutex<Option<Arc<AuditInsert>>>,
     sqlite_mode: Mutex<Option<(bool, bool)>>,
 }
 
-/// The table and primary key value of the audit record inserted when the transaction starts.
+/// The table and primary key value of the audit record the transaction inserted.
 #[derive(Clone, Debug)]
 pub(crate) struct AuditKey {
     pub(crate) table: String,
@@ -83,7 +85,9 @@ fn audit_record(db: &Db, values: &AuditValues) -> Result<AuditInsert> {
     tables.sort();
     let target = match tables.as_slice() {
         [] => return Err(Error::Config("the transaction has audit values but no set of the connection has an audited table".into())),
-        [table] => models.iter().find_map(|(schema, manifest)| manifest.model.entities.iter().find(|e| &e.table == table && !e.external).map(|e| (*schema, e.clone()))),
+        [table] => {
+            models.iter().find_map(|(schema, manifest)| manifest.model.entities.iter().find(|e| &e.table == table && !e.external).map(|e| (*schema, e.clone())))
+        }
         _ => {
             return Err(Error::Config(format!(
                 "the audited tables of the connection record their audits in {}; one audit record table is required",
@@ -119,15 +123,56 @@ fn audit_record(db: &Db, values: &AuditValues) -> Result<AuditInsert> {
     Ok(AuditInsert { schema, entity, values: merged })
 }
 
-/// Inserts the transaction's audit record inside the transaction and keeps its key in the transaction; on each attempt
-/// it is inserted again.
-async fn record_audit(tx: &Arc<TxShared>, record: &AuditInsert) -> Result<()> {
-    let key = crate::model::insert_audit(&Executor::Tx(tx.clone()), record).await?;
-    *tx.audit.lock().unwrap() = Some(key);
-    Ok(())
+/// Inserts the audit record on `ex`. The insert is a write, and a write inserts the pending audit record first, so the
+/// future is boxed to end the recursion of their types.
+fn insert_audit_boxed<'a>(ex: &'a Executor, record: &'a AuditInsert) -> Pin<Box<dyn Future<Output = Result<AuditKey>> + Send + 'a>> {
+    Box::pin(crate::model::insert_audit(ex, record))
 }
 
+/// The name of the savepoint that guards the audit record inserted before an update, delete or restore.
+const AUDIT_SAVEPOINT: &str = "orm_audit";
+
 impl TxShared {
+    /// Makes sure the audit record precedes a write of an audited table: when the transaction has a pending record and
+    /// has not inserted it, it inserts it now. `guard` is true for an update, delete or restore, which can match no row:
+    /// the record is then inserted inside the savepoint orm_audit, and the result is true; the caller then calls
+    /// `settle_audit` with the write's outcome.
+    pub(crate) async fn audit_for(self: &Arc<Self>, guard: bool) -> Result<bool> {
+        if self.audit.lock().unwrap().is_some() {
+            return Ok(false);
+        }
+        let Some(record) = self.pending_audit.lock().unwrap().clone() else {
+            return Ok(false);
+        };
+        let ex = Executor::Tx(self.clone());
+        if !guard {
+            let key = insert_audit_boxed(&ex, &record).await?;
+            *self.audit.lock().unwrap() = Some(key);
+            return Ok(false);
+        }
+        self.savepoint_step(KIND_SAVEPOINT, AUDIT_SAVEPOINT).await?;
+        match insert_audit_boxed(&ex, &record).await {
+            Ok(key) => {
+                *self.audit.lock().unwrap() = Some(key);
+                Ok(true)
+            }
+            Err(error) => Err(match rollback_savepoint(self, AUDIT_SAVEPOINT).await {
+                Ok(()) => error,
+                Err(rollback) => Error::rollback(error, rollback),
+            }),
+        }
+    }
+
+    /// Ends the savepoint orm_audit that `audit_for` opened: a write that changed a row keeps the record and releases
+    /// the savepoint; a write that changed no row or failed undoes the record and releases the savepoint.
+    pub(crate) async fn settle_audit(&self, changed: bool) -> Result<()> {
+        if changed {
+            return self.savepoint_step(KIND_RELEASE, AUDIT_SAVEPOINT).await;
+        }
+        *self.audit.lock().unwrap() = None;
+        rollback_savepoint(self, AUDIT_SAVEPOINT).await
+    }
+
     /// The transaction's audit record. It is taken out and used before waiting for a statement.
     pub(crate) fn audit(&self) -> Option<AuditKey> {
         self.audit.lock().unwrap().clone()
@@ -321,8 +366,8 @@ pub struct TransactionOnce<'a, F> {
 }
 
 impl<F> TransactionOnce<'_, F> {
-    /// Records the audit of the transaction: before the callback the transaction
-    /// inserts one audit record with the defaults of the handle (`Db::audit`)
+    /// Records the audit of the transaction: right before its first write of an
+    /// audited table the transaction inserts one audit record with the defaults of the handle (`Db::audit`)
     /// and `values`, and every audited write of the transaction writes its
     /// primary key. A nested call takes no audit.
     pub fn audit<K: Into<String>, V: Into<Param>>(mut self, values: impl IntoIterator<Item = (K, V)>) -> Self {
@@ -353,8 +398,16 @@ type OnceCallback<Fut> = futures_util::future::CatchUnwind<std::panic::AssertUnw
 
 /// Where the callback runs: a new transaction, or a savepoint of the outer transaction.
 enum OnceScope<'a> {
-    Transaction { db: &'a Db, tx: Arc<TxShared> },
-    Savepoint { tx: Arc<TxShared>, name: String },
+    Transaction {
+        db: &'a Db,
+        tx: Arc<TxShared>,
+    },
+    /// `audit` is the transaction's audit before the savepoint, restored when the savepoint does not release.
+    Savepoint {
+        tx: Arc<TxShared>,
+        name: String,
+        audit: Option<AuditKey>,
+    },
 }
 
 impl<'a> OnceScope<'a> {
@@ -368,8 +421,11 @@ impl<'a> OnceScope<'a> {
     fn close(self) -> OnceStep<'a, Result<()>> {
         match self {
             OnceScope::Transaction { tx, .. } => Box::pin(async move { commit(&tx).await }),
-            OnceScope::Savepoint { tx, name, .. } => Box::pin(async move {
+            OnceScope::Savepoint { tx, name, audit } => Box::pin(async move {
                 let released = tx.savepoint_step(KIND_RELEASE, &name).await;
+                if released.is_err() {
+                    *tx.audit.lock().unwrap() = audit;
+                }
                 tx.savepoints.fetch_sub(1, Ordering::AcqRel);
                 released
             }),
@@ -388,7 +444,8 @@ impl<'a> OnceScope<'a> {
                     rolled_back
                 }
             }),
-            OnceScope::Savepoint { tx, name } => Box::pin(async move {
+            OnceScope::Savepoint { tx, name, audit } => Box::pin(async move {
+                *tx.audit.lock().unwrap() = audit;
                 let undone = rollback_savepoint(&tx, &name).await;
                 tx.savepoints.fetch_sub(1, Ordering::AcqRel);
                 undone
@@ -443,7 +500,10 @@ where
                             let n = tx.savepoints.fetch_add(1, Ordering::AcqRel) + 1;
                             let name = format!("orm_sp_{n}");
                             match tx.savepoint_step(KIND_SAVEPOINT, &name).await {
-                                Ok(()) => Ok(OnceScope::Savepoint { tx, name }),
+                                Ok(()) => {
+                                    let audit = tx.audit();
+                                    Ok(OnceScope::Savepoint { tx, name, audit })
+                                }
                                 Err(error) => {
                                     tx.savepoints.fetch_sub(1, Ordering::AcqRel);
                                     Err(error)
@@ -457,18 +517,8 @@ where
                             };
                             Box::pin(async move {
                                 let tx = Arc::new(begin(db, None, false, 0).await?);
-                                if let Some(record) = record {
-                                    // The audit record is inserted inside the transaction frame before the callback. If that fails,
-                                    // the transaction is reverted and its error is returned.
-                                    let mut stack = frames();
-                                    stack.push(tx.clone());
-                                    if let Err(error) = FLOW.scope(stack, record_audit(&tx, &record)).await {
-                                        return Err(match rollback(&tx).await.and_then(|()| rollback_fault(db)) {
-                                            Ok(()) => error,
-                                            Err(rollback) => Error::rollback(error, rollback),
-                                        });
-                                    }
-                                }
+                                // The audit record is inserted right before the first write of an audited table.
+                                *tx.pending_audit.lock().unwrap() = record.map(Arc::new);
                                 Ok(OnceScope::Transaction { db, tx })
                             })
                         }
@@ -576,18 +626,15 @@ where
             }
             return savepoint_send(outer, self.f.as_ref()).await;
         }
-        let record = self.audit.as_ref().map(|values| audit_record(self.db, values)).transpose()?;
+        let record = self.audit.as_ref().map(|values| audit_record(self.db, values)).transpose()?.map(Arc::new);
         let mut attempt = 0u32;
         loop {
             let tx = Arc::new(begin(self.db, self.isolation, self.read_only, self.timeout_ms).await?);
             let mut stack = frames();
             stack.push(tx.clone());
-            let body = async {
-                if let Some(record) = &record {
-                    record_audit(&tx, record).await?;
-                }
-                (self.f)().await
-            };
+            // Each attempt starts with the pending record and no inserted audit.
+            *tx.pending_audit.lock().unwrap() = record.clone();
+            let body = (self.f)();
             let callback = std::panic::AssertUnwindSafe(FLOW.scope(stack, body)).catch_unwind();
             let result = match callback.await {
                 Ok(result) => result,
@@ -653,15 +700,18 @@ impl<'a, F> Transaction<'a, F> {
         self
     }
 
-    /// Makes the transaction one unit of work with an audit record. Before the
-    /// callback, in every attempt, the transaction inserts one row into the
-    /// audit record table: the defaults of the handle (`Db::audit`) with
+    /// Makes the transaction one unit of work with an audit record. Right before
+    /// the first write of an audited table, in every attempt, the transaction
+    /// inserts one row into the audit record table: the defaults of the handle (`Db::audit`) with
     /// `values`, of which a value wins over the default of the same column.
     /// Every insert, update, soft delete and restore of an audited table in the
     /// transaction writes the record's primary key into the table's audit
     /// column. The handle must have defaults, and every key must be a column of
     /// the audit record table; otherwise the transaction fails with CONFIG
-    /// before it begins. A nested transaction uses the audit of the outer one
+    /// before it begins. A transaction that writes no audited row inserts no
+    /// record: a first update, delete or restore that matches no row undoes the
+    /// record with a savepoint, and a rolled back savepoint undoes the record
+    /// with the write that inserted it. A nested transaction uses the audit of the outer one
     /// and takes none.
     pub fn audit<K: Into<String>, V: Into<Param>>(mut self, values: impl IntoIterator<Item = (K, V)>) -> Self {
         self.audit = Some(audit_values(values));
@@ -694,18 +744,15 @@ impl<'a, F> Transaction<'a, F> {
             }
             return savepoint(outer, &self.f).await;
         }
-        let record = self.audit.as_ref().map(|values| audit_record(self.db, values)).transpose()?;
+        let record = self.audit.as_ref().map(|values| audit_record(self.db, values)).transpose()?.map(Arc::new);
         let mut attempt = 0u32;
         loop {
             let tx = Arc::new(begin(self.db, self.isolation, self.read_only, self.timeout_ms).await?);
             let mut stack = frames();
             stack.push(tx.clone());
-            let body = async {
-                if let Some(record) = &record {
-                    record_audit(&tx, record).await?;
-                }
-                (self.f)().await
-            };
+            // Each attempt starts with the pending record and no inserted audit.
+            *tx.pending_audit.lock().unwrap() = record.clone();
+            let body = (self.f)();
             let callback = std::panic::AssertUnwindSafe(FLOW.scope(stack, body)).catch_unwind();
             let result = match callback.await {
                 Ok(result) => result,
@@ -777,6 +824,9 @@ where
 {
     let n = tx.savepoints.fetch_add(1, Ordering::AcqRel) + 1;
     let name = format!("orm_sp_{n}");
+    // A savepoint that does not release undoes an audit record inserted inside it.
+    let audit_before = tx.audit();
+    let mut kept = false;
     let ended = async {
         tx.savepoint_step(KIND_SAVEPOINT, &name).await?;
         let mut stack = frames();
@@ -784,6 +834,7 @@ where
         Ok::<_, Error>(match std::panic::AssertUnwindSafe(FLOW.scope(stack, callback)).catch_unwind().await {
             Ok(Ok(value)) => {
                 tx.savepoint_step(KIND_RELEASE, &name).await?;
+                kept = true;
                 SavepointEnd::Returned(Ok(value))
             }
             Ok(Err(error)) => SavepointEnd::Returned(Err((error, rollback_savepoint(&tx, &name).await.err()))),
@@ -792,6 +843,9 @@ where
     }
     .await;
     tx.savepoints.fetch_sub(1, Ordering::AcqRel);
+    if !kept {
+        *tx.audit.lock().unwrap() = audit_before;
+    }
     match ended? {
         SavepointEnd::Returned(result) => Ok(result),
         SavepointEnd::Panicked(payload, rollback) => resume_panic(payload, rollback),
@@ -877,6 +931,7 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_m
         locals: Mutex::new(HashMap::new()),
         locks: Mutex::new(Vec::new()),
         audit: Mutex::new(None),
+        pending_audit: Mutex::new(None),
         sqlite_mode: Mutex::new(sqlite_mode),
     };
     let mut began = false;
@@ -915,6 +970,7 @@ async fn begin_markdown(db: &Db, pool: &Arc<MdPool>, isolation: Option<Isolation
         locals: Mutex::new(HashMap::new()),
         locks: Mutex::new(Vec::new()),
         audit: Mutex::new(None),
+        pending_audit: Mutex::new(None),
         sqlite_mode: Mutex::new(None),
     })
 }

@@ -28,7 +28,7 @@ final class ServiceRegion extends Model
             ],
             'unique' => [],
             'indexes' => ['ix_service_region_service' => ['service_seq']],
-            'manifest_hash' => 'sha256:e82672f09b5852725e8b4d17ad0500b3d8ef5fbeeeee1c04c7e2b1ec0b9bb785',
+            'manifest_hash' => 'sha256:fc2ebdd35e5070cdba0955d280f0faafb3300afc268e449f01b5f482071dd030',
         ];
     }
 

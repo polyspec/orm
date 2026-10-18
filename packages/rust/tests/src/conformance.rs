@@ -10,8 +10,8 @@ use std::sync::{Arc, Mutex};
 polyspec_orm::models!();
 
 use model::{
-    Author, BindCell, ClockCell, CompositeAccount, DayCell, HexCell, NoteReader, Service, ServiceMember, ServiceRegion, SharedNote, SoftLink, SoftRecord, Task,
-    TimeCell, UpsertCell, User, UuidCell,
+    AuditRecord, AuditedNote, Author, BindCell, ClockCell, CompositeAccount, DayCell, HexCell, NoteReader, Service, ServiceMember, ServiceRegion, SharedNote,
+    SoftLink, SoftRecord, Task, TimeCell, UpsertCell, User, UuidCell,
 };
 use polyspec_orm::{AesKeyring, Collection, Db, Model, Null, Param};
 use serde_json::{json, Map, Value};
@@ -288,7 +288,12 @@ async fn main() {
     });
     let shared: Shared = Arc::new(Mutex::new(Log::default()));
     let hook = shared.clone();
-    let config = polyspec_orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
+    let config = polyspec_orm::Config {
+        aes_key: "bench-salt".into(),
+        blind_index_key: "bench-blind-index".into(),
+        audit_source: Some(Arc::new(|| Ok(Vec::new()))),
+        ..Default::default()
+    };
     let db = model::connect(&args.dsn, 4, config).await.expect("connect");
     // Records each statement as that event (docs/usage.md "Statement events"). A transaction's
     // number is counted from 1 in order of first appearance within the vector, and is null outside a transaction. error is the statement's error
@@ -555,6 +560,36 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             "null_sum": author().price(Null).sum_price().get_sum().await?,
             "null_avg": author().price(Null).avg_price().get_avg().await?,
         }))
+    });
+    run!("audit_lazy", async {
+        // An audited transaction inserts its audit record right before its first write of an audited
+        // table: reads and an update that matches no row leave no record, and the create inserts one.
+        // The transaction is rolled back at the end, so the database is the same as at the start.
+        let result = Mutex::new(Map::new());
+        let ended: polyspec_orm::Result<()> = db
+            .transaction(async || {
+                let before = AuditRecord::new().get_count().await?;
+                result.lock().unwrap().insert("before".into(), json!(before));
+                let read = AuditedNote::new().label("audit-lazy").get_count().await?;
+                result.lock().unwrap().insert("read".into(), json!(read));
+                AuditedNote::new().set_seq(-1).set_label("audit-none").update(false).await?;
+                let unchanged = AuditRecord::new().get_count().await?;
+                result.lock().unwrap().insert("unchanged".into(), json!(unchanged));
+                let created = AuditedNote::new().set_label("audit-lazy").create().await?;
+                mask(shared, &[created.get_seq().unwrap()], &[]);
+                let written = AuditRecord::new().get_count().await?;
+                result.lock().unwrap().insert("written".into(), json!(written));
+                Err(polyspec_orm::Error::Config("boom".into()))
+            })
+            .audit([("request_id", "audit-lazy")])
+            .retry(0)
+            .await;
+        let rolled_back = matches!(&ended, Err(polyspec_orm::Error::Config(m)) if m == "boom");
+        let mut result = result.into_inner().unwrap();
+        result.insert("rolled_back".into(), json!(rolled_back));
+        let after = AuditRecord::new().connect(db).get_count().await?;
+        result.insert("after".into(), json!(after));
+        Ok::<Value, polyspec_orm::Error>(Value::Object(result))
     });
     run!("functions", async {
         let mut counts = Vec::new();

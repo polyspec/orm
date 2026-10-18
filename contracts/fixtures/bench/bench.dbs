@@ -225,3 +225,31 @@ table bind_cell {
   token uuid null
   primary key (seq)
 }
+
+table audit_record {
+  seq i64 identity
+  request_id varchar(64)
+  primary key (seq)
+}
+
+table audited_note {
+  seq i64 identity
+  label varchar(16)
+  audit_seq i64
+  primary key (seq)
+  index ix_audited_note_audit (audit_seq)
+  foreign key fk_audited_note_audit (audit_seq) references audit_record (seq) on delete restrict on update restrict
+  settings {
+    audit into audited_note_history column audit_seq references audit_record action change previous previous_audit_seq
+  }
+}
+
+table audited_note_history {
+  history_id i64 identity
+  change varchar(8)
+  previous_audit_seq i64 null
+  seq i64
+  label varchar(16)
+  audit_seq i64
+  primary key (history_id)
+}

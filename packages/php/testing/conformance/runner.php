@@ -8,6 +8,8 @@ require dirname(__DIR__, 2) . '/tests/autoload.php';
 require __DIR__ . '/result_php_helpers.php';
 require dirname(__DIR__, 2) . '/testing/Faults.php';
 
+use Polyspec\Orm\Tests\Model\AuditRecord;
+use Polyspec\Orm\Tests\Model\AuditedNote;
 use Polyspec\Orm\Tests\Model\Author;
 use Polyspec\Orm\Tests\Model\BindCell;
 use Polyspec\Orm\Tests\Model\ClockCell;
@@ -160,6 +162,7 @@ function picks(Collection $c, string ...$names): array
 $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(
     aesKey: 'bench-salt',
     blindIndexKey: 'bench-blind-index',
+    auditSource: static fn(): array => [],
 ));
 $db->subscribe(static function (StatementEvent $e): void {
     global $log, $transactions;
@@ -359,6 +362,32 @@ vector('empty_reads', function () use ($author): array {
         'null_sum' => $author()->price(null)->sumPrice()->getSum(),
         'null_avg' => $author()->price(null)->avgPrice()->getAvg(),
     ];
+});
+
+vector('audit_lazy', function () use ($db): array {
+    // An audited transaction inserts its audit record right before its first write of an audited table:
+    // reads and an update that matches no row leave no record, and the create inserts one. The transaction
+    // is rolled back at the end, so the database is the same as at the start.
+    $boom = new RuntimeException('boom');
+    $result = [];
+    $caught = null;
+    try {
+        $db->transaction(function () use ($boom, &$result): void {
+            $result['before'] = (new AuditRecord)->getCount();
+            $result['read'] = (new AuditedNote)->label('audit-lazy')->getCount();
+            (new AuditedNote)->setSeq(-1)->setLabel('audit-none')->update();
+            $result['unchanged'] = (new AuditRecord)->getCount();
+            $created = (new AuditedNote)->setLabel('audit-lazy')->create();
+            mask([$created->getSeq()]);
+            $result['written'] = (new AuditRecord)->getCount();
+            throw $boom;
+        }, retry: 0, audit: ['request_id' => 'audit-lazy']);
+    } catch (\Throwable $e) {
+        $caught = $e;
+    }
+    $result['rolled_back'] = $caught === $boom;
+    $result['after'] = (new AuditRecord)($db)->getCount();
+    return $result;
 });
 
 vector('functions', function () use ($author): array {

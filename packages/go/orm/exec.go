@@ -256,6 +256,11 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 
 // auditValue is the value of the audit slot: the primary
 // key of the audit record the transaction inserted. Without an audit, or if the audit table records into another table, it is CONFIG.
+// bindsAudit is whether the statement binds the audit record's key: it writes an audited table.
+func bindsAudit(st *plan.Step) bool {
+	return slices.ContainsFunc(st.BindSlots, func(b plan.BindSlot) bool { return b.From == "audit" })
+}
+
 func auditValue(a *auditRecord, record string) (any, error) {
 	if a == nil {
 		return nil, configErr("a write of an audited table needs an audit: run it in a transaction with orm.Audit(record)")
@@ -353,6 +358,11 @@ func (d *DB) Execute(st *plan.Step, params []any) error {
 	}
 	r := &request{params: params}
 	if t := ex.transaction(); t != nil {
+		if bindsAudit(st) {
+			if _, err := t.auditFor(false); err != nil {
+				return err
+			}
+		}
 		r.audit = t.audit
 	}
 	args, masks, err := d.args(st, r, nil)
@@ -1106,10 +1116,21 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 	if err != nil {
 		return nil, 0, err
 	}
+	st := &c.plan.Steps[0]
+	settle := func(int64, error) error { return nil }
 	if t := ex.transaction(); t != nil {
+		if bindsAudit(st) {
+			if settle, err = t.auditFor(r.ir.Kind != "insert"); err != nil {
+				return nil, 0, err
+			}
+		}
 		r.audit = t.audit
 	}
-	st := &c.plan.Steps[0]
+	defer func() {
+		if settleErr := settle(affected, err); settleErr != nil && err == nil {
+			key, affected, err = nil, 0, settleErr
+		}
+	}()
 	args, masks, err := d.args(st, r, nil)
 	if err != nil {
 		return nil, 0, err

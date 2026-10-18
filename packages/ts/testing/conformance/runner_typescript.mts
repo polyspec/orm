@@ -9,7 +9,7 @@
 // Each --vector selects one vector by name; without one every vector runs.
 // The models embed the manifest of contracts/fixtures/bench/bench.dbs.
 import {
-  AesKeyring, Author, BindCell, CORE, ClockCell, type Collection, type Model, CompositeAccount, HexCell, NoteReader, Service, SharedNote, TimeCell, DayCell, ServiceMember, ServiceRegion, SoftLink, SoftRecord, StyledValue, Task, UpsertCell, User, UuidCell, connect, orm,
+  AesKeyring, AuditRecord, AuditedNote, Author, BindCell, CORE, ClockCell, type Collection, type Model, CompositeAccount, HexCell, NoteReader, Service, SharedNote, TimeCell, DayCell, ServiceMember, ServiceRegion, SoftLink, SoftRecord, StyledValue, Task, UpsertCell, User, UuidCell, connect, orm,
 } from '../../dist/index.js';
 import { fixClock, lastAffected } from '../../dist/testing.js';
 import { parseArgs } from 'node:util';
@@ -123,6 +123,7 @@ async function main() {
   const db = await connect(dsn, {
     aesKey: 'bench-salt',
     blindIndexKey: 'bench-blind-index',
+    auditSource: () => ({}),
   });
   db.subscribe(e => {
     let transaction = null;
@@ -264,6 +265,29 @@ async function main() {
       null_sum: await author().price(null).sumPrice().getSum(),
       null_avg: await author().price(null).avgPrice().getAvg(),
     };
+  });
+  await run('audit_lazy', async () => {
+    // An audited transaction inserts its audit record right before its first write of an audited
+    // table: reads and an update that matches no row leave no record, and the create inserts one.
+    // The transaction is rolled back at the end, so the database is the same as at the start.
+    const boom = new Error('boom');
+    const result: Record<string, unknown> = {};
+    let failed: unknown;
+    try {
+      await db.transaction(async () => {
+        result.before = await new AuditRecord().getCount();
+        result.read = await new AuditedNote().label('audit-lazy').getCount();
+        await new AuditedNote().setSeq(-1).setLabel('audit-none').update();
+        result.unchanged = await new AuditRecord().getCount();
+        const created = await new AuditedNote().setLabel('audit-lazy').create();
+        mask([created.getSeq()]);
+        result.written = await new AuditRecord().getCount();
+        throw boom;
+      }, { audit: { request_id: 'audit-lazy' }, retry: 0 });
+    } catch (error) { failed = error; }
+    result.rolled_back = failed === boom;
+    result.after = await new AuditRecord().connect(db).getCount();
+    return result;
   });
   await run('relation_null_key', async () => {
     try {

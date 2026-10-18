@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -277,6 +278,7 @@ func run() (status int) {
 	db, err := model.Connect(dsn, orm.Config{
 		AESKey:        "bench-salt",
 		BlindIndexKey: "bench-blind-index",
+		AuditSource:   func(context.Context) (map[string]any, error) { return map[string]any{}, nil },
 	})
 	check(err)
 	defer db.Close()
@@ -659,6 +661,48 @@ func run() (status int) {
 			"null_sum":   nullSum,
 			"null_avg":   nullAvg,
 		}, nil
+	})
+	run("audit_lazy", func() (any, error) {
+		// An audited transaction inserts its audit record right before its first write of an audited
+		// table: reads and an update that matches no row leave no record, and the create inserts one.
+		// The transaction is rolled back at the end, so the database is the same as at the start.
+		boom := errors.New("boom")
+		result := map[string]any{}
+		err := db.Transaction(func() error {
+			before, err := model.AuditRecord().GetCount()
+			if err != nil {
+				return err
+			}
+			result["before"] = before
+			read, err := model.AuditedNote().Label("audit-lazy").GetCount()
+			if err != nil {
+				return err
+			}
+			result["read"] = read
+			if _, err := model.AuditedNote().SetSeq(-1).SetLabel("audit-none").Update(); err != nil {
+				return err
+			}
+			unchanged, err := model.AuditRecord().GetCount()
+			if err != nil {
+				return err
+			}
+			result["unchanged"] = unchanged
+			created, err := model.AuditedNote().SetLabel("audit-lazy").Create()
+			if err != nil {
+				return err
+			}
+			mask([]int64{created.GetSeq()})
+			written, err := model.AuditRecord().GetCount()
+			if err != nil {
+				return err
+			}
+			result["written"] = written
+			return boom
+		}, orm.Audit(map[string]any{"request_id": "audit-lazy"}), orm.Retry(0))
+		result["rolled_back"] = errors.Is(err, boom)
+		after, err := model.AuditRecord().Connect(db).GetCount()
+		result["after"] = after
+		return result, err
 	})
 	run("functions", func() (any, error) {
 		counts := []any{}

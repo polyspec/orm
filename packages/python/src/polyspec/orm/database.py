@@ -922,7 +922,11 @@ class TxFrame:
         self.busy = False
         self.finished = False
         self.savepoints = 0
+        # audit is the audit record this transaction inserted before its first write of an audited
+        # table; until that write, and without audit values, it is None. pending_audit is the record
+        # the transaction inserts then, and None without audit values.
         self.audit = None
+        self.pending_audit = None
         self.locks: list = []
         self.locals: dict = {}
         self.connection = None
@@ -1513,6 +1517,8 @@ class Db:
                         f"bind slot {i} reads parameter {slot['param']}, "
                         f"but execute has {len(params)} parameters",
                     )
+            if _binds_audit(step):
+                self._audit_for(ex.frame, False)
             self._send_step(ex, step["sql"], step, params)
 
         _guarded(ex, work)
@@ -1565,8 +1571,8 @@ class Db:
         if "audit" in options:
             unsupported_on_markdown(self, "a transaction with audit values")
         outer = _active_for(self)
-        # The audit record is checked before the transaction starts and, on every attempt,
-        # is inserted before the callback.
+        # The audit record is checked before the transaction starts and, on every attempt, is
+        # inserted right before the first write of an audited table.
         record = (
             self._audit_record(options["audit"])
             if "audit" in options and outer is None
@@ -1611,8 +1617,7 @@ class Db:
         previous = _ACTIVE.get(key)
         _ACTIVE[key] = frame
         try:
-            if record is not None:
-                frame.audit = self._insert_audit(record)
+            frame.pending_audit = record
             result = callback()
         except BaseException as error:
             del _ACTIVE[key]
@@ -1639,6 +1644,69 @@ class Db:
             _ACTIVE[key] = previous
         self._finish(frame, True)
         return result
+
+    def _audit_for(self, frame, guard: bool):
+        """Makes sure the audit record precedes a write of an audited table: when the transaction
+        has a pending record and has not inserted it, it inserts it now. guard is True for an update,
+        delete or restore, which can match no row: the record is then inserted inside the savepoint
+        orm_audit, and the returned function, called with the affected count and the write's error,
+        rolls the record back when the write changed no row and releases the savepoint otherwise."""
+
+        def none(affected, error):
+            return None
+
+        if frame is None or frame.audit is not None or frame.pending_audit is None:
+            return none
+        def insert():
+            # The audit insert is a statement of the write that needs it: it runs while that write
+            # holds the transaction connection.
+            busy, frame.busy = frame.busy, False
+            try:
+                frame.audit = self._insert_audit(frame.pending_audit)
+            finally:
+                frame.busy = busy
+
+        if not guard:
+            insert()
+            return none
+        name = "orm_audit"
+
+        def control(kind: str, sql: str) -> None:
+            if self.driver == "markdown":
+                savepoint_markdown(frame, kind, name)
+            else:
+                frame.run(sql, [], kind, faultable=False)
+
+        def rollback(error):
+            frame.audit = None
+            failures = []
+            for kind, sql in (
+                ("rollback_to", f"ROLLBACK TO SAVEPOINT {name}"),
+                ("release", f"RELEASE SAVEPOINT {name}"),
+            ):
+                try:
+                    control(kind, sql)
+                except Exception as failure:  # noqa: BLE001
+                    failures.append(failure)
+            if failures:
+                if error is not None:
+                    raise rollback_failed(error, failures[0]) from None
+                raise failures[0]
+
+        control("savepoint", f"SAVEPOINT {name}")
+        try:
+            insert()
+        except BaseException as error:
+            rollback(error)
+            raise
+
+        def settle(affected, error):
+            if error is None and affected > 0:
+                control("release", f"RELEASE SAVEPOINT {name}")
+                return
+            rollback(error)
+
+        return settle
 
     def _audit_record(self, values) -> dict:
         """The audit record that adds the audit source's values and the transaction's values. For the same
@@ -1929,6 +1997,8 @@ class Db:
             raise errors[0]
 
     def _savepoint(self, frame: TxFrame, callback):
+        # A savepoint that does not release undoes an audit record inserted inside it.
+        audit_before, kept = frame.audit, False
         frame.savepoints += 1
         name = f"orm_sp_{frame.savepoints}"
 
@@ -1957,13 +2027,21 @@ class Db:
                     raise rollback_failed(error, rollback_errors[0]) from None
                 raise
             control("release", f"RELEASE SAVEPOINT {name}")
+            kept = True
             return result
         finally:
             frame.savepoints -= 1
+            if not kept:
+                frame.audit = audit_before
 
     def active_frame(self):
         """The transaction frame open on this connection (None if there is none)."""
         return _active_for(self)
+
+
+def _binds_audit(step: dict) -> bool:
+    """Whether the statement binds the audit record's key: it writes an audited table."""
+    return any(slot.get("from") == "audit" for slot in step.get("bind_slots", ()))
 
 
 def _audit_value(slot: dict, audit):
@@ -2409,7 +2487,17 @@ def write(ex: Executor, request: dict, params, after_hook=None):
             return {"id": keys[0] if keys else None, "affected": affected}
         cached = db.plan(request)
         step = cached["plan"]["steps"][0]
-        result = db._send_step(ex, step["sql"], step, params)
+        settle = None
+        if _binds_audit(step):
+            settle = db._audit_for(ex.frame, request["kind"] != "insert")
+        try:
+            result = db._send_step(ex, step["sql"], step, params)
+        except BaseException as error:
+            if settle is not None:
+                settle(0, error)
+            raise
+        if settle is not None:
+            settle(result["affected"], None)
         if request["kind"] == "insert" and " RETURNING " in step["sql"]:
             return {"id": int(result["rows"][0][0]), "affected": 1}
         if (

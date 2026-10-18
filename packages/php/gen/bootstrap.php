@@ -11,7 +11,7 @@ use Polyspec\Orm\Registry;
 use Polyspec\Orm\Schema;
 
 /** The manifestHash of the document set the models were generated from. */
-const MANIFEST_HASH = 'sha256:e82672f09b5852725e8b4d17ad0500b3d8ef5fbeeeee1c04c7e2b1ec0b9bb785';
+const MANIFEST_HASH = 'sha256:fc2ebdd35e5070cdba0955d280f0faafb3300afc268e449f01b5f482071dd030';
 
 /** The manifest text of the document set the models were generated from. */
 const MANIFEST_TEXT = 'dbspec 1 bench
@@ -239,6 +239,34 @@ table bind_cell {
   token uuid null
   primary key (seq)
 }
+
+table audit_record {
+  seq i64 identity
+  request_id varchar(64)
+  primary key (seq)
+}
+
+table audited_note {
+  seq i64 identity
+  label varchar(16)
+  audit_seq i64
+  primary key (seq)
+  index ix_audited_note_audit (audit_seq)
+  foreign key fk_audited_note_audit (audit_seq) references audit_record (seq) on delete restrict on update restrict
+  settings {
+    audit into audited_note_history column audit_seq references audit_record action change previous previous_audit_seq
+  }
+}
+
+table audited_note_history {
+  history_id i64 identity
+  change varchar(8)
+  previous_audit_seq i64 null
+  seq i64
+  label varchar(16)
+  audit_seq i64
+  primary key (history_id)
+}
 dbspec 1 bench_reader
 
 use bench_shared { shared_note }
@@ -295,5 +323,8 @@ Registry::register(DayCell::class);
 Registry::register(UpsertCell::class);
 Registry::register(UuidCell::class);
 Registry::register(BindCell::class);
+Registry::register(AuditRecord::class);
+Registry::register(AuditedNote::class);
+Registry::register(AuditedNoteHistory::class);
 Registry::register(NoteReader::class);
 Registry::register(SharedNote::class);

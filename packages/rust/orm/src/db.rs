@@ -912,6 +912,12 @@ impl Db {
                 });
             }
         }
+        // The audit record precedes a write of an audited table; this entry point inserts it without a savepoint.
+        if let Executor::Tx(t) = &ex {
+            if crate::model::binds_audit(step) {
+                t.audit_for(false).await?;
+            }
+        }
         // This is the same path as model writes: it runs on the connection or the active transaction, and uses the transaction's audit,
         // statement fault, statement event, and driver error conversion as they are.
         ex.execute(step, params).await.map(drop)

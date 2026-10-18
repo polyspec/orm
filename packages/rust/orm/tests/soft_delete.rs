@@ -16,7 +16,7 @@ static MANIFEST_TEXT: LazyLock<String> = LazyLock::new(|| {
     polyspec_orm::dbspec::manifest(&[&document]).expect("the manifest of bench.dbs").manifest_text
 });
 
-static SCHEMA: LazyLock<Schema> = LazyLock::new(|| Schema::new(&MANIFEST_TEXT, "sha256:18b7c53c3dd768b76732c743c89659ec5dd7a1cdc2a818b7792d389740e50a88"));
+static SCHEMA: LazyLock<Schema> = LazyLock::new(|| Schema::new(&MANIFEST_TEXT, "sha256:349a7152d1ad701b2baf8e7e67e14660ec6a75cdd78d5ec61c430f9f6498a1ed"));
 
 static ENTITY: LazyLock<Entity> = LazyLock::new(|| Entity {
     name: "soft_record",

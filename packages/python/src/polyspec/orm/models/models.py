@@ -4,10 +4,10 @@ from typing import Self
 from polyspec.orm import Model, Schema, StyledValue, register_model
 
 # The manifest text of the dbspec document set the models were generated from.
-MANIFEST_TEXT = "dbspec 1 bench\n\ntable author {\n  seq i64 identity\n  name varchar(191)\n  description text null\n  created_ts datetime(6) default now\n  updated_ts datetime(6) default now\n  is_close bool default false\n  is_display bool default false\n  display_start_dt datetime(6) null\n  display_end_dt datetime(6) null\n  is_allday bool default false\n  target_club_reader_count i32 default 0\n  success_count i32 default 0\n  reader_count i32 default 0\n  read_count i32 default 0\n  photo_url varchar(191) null\n  user_seq i64\n  service_seq i64\n  service_region_seq i64\n  service_member_seq i64\n  start_dt datetime(6)\n  end_dt datetime(6)\n  uuid varchar(36) null\n  is_single_work bool default false\n  like_count i32 default 0\n  aes_key_version i32 default 1\n  aes_hex_email varchar(255) null\n  email_blind_index varchar(64) null\n  aes_hex_phone varchar(255) null\n  phone_blind_index varchar(64) null\n  price decimal(13,3) null\n  ip bytes null\n  gz_extend bytes null\n  json_setting text null\n  jsons_tags text null\n  base64_extra text null\n  serialize_data text null\n  primary key (seq)\n  unique uq_author_uuid (uuid)\n  index ik (service_region_seq, is_close, is_display, is_allday)\n  index ix_author_service_member (service_member_seq)\n  index ix_email_blind_index (email_blind_index)\n  index ix_phone_blind_index (phone_blind_index)\n  index ix_service (service_seq, is_close)\n  index ix_user (user_seq, is_close)\n  foreign key fk_author_service (service_seq) references service (seq) on delete restrict on update restrict\n  foreign key fk_author_service_member (service_member_seq) references service_member (seq) on delete restrict on update restrict\n  foreign key fk_author_service_region (service_region_seq) references service_region (seq) on delete restrict on update restrict\n  foreign key fk_author_user (user_seq) references user (seq) on delete restrict on update restrict\n  check ck_author_counts (target_club_reader_count >= 0 and success_count >= 0 and reader_count >= 0 and read_count >= 0 and like_count >= 0)\n  settings {\n    updated updated_ts\n    select explicit description email_blind_index phone_blind_index ip gz_extend json_setting jsons_tags base64_extra serialize_data aes_key_version\n    codec aes_hex_email aes hex\n    codec aes_hex_phone aes hex\n    codec base64_extra base64\n    codec gz_extend gz\n    codec ip ip\n    codec json_setting ordered_json\n    codec jsons_tags ordered_json\n    codec serialize_data serialize\n    aes_version aes_key_version\n    blind_index aes_hex_email email_blind_index\n    blind_index aes_hex_phone phone_blind_index\n  }\n}\n\ntable user {\n  seq i64 identity\n  name varchar(191)\n  primary key (seq)\n}\n\ntable service {\n  seq i64 identity\n  name varchar(191)\n  primary key (seq)\n}\n\ntable service_region {\n  seq i64 identity\n  service_seq i64\n  name varchar(191)\n  primary key (seq)\n  index ix_service_region_service (service_seq)\n  foreign key fk_service_region_service (service_seq) references service (seq) on delete restrict on update restrict\n}\n\ntable service_member {\n  seq i64 identity\n  service_seq i64\n  user_seq i64\n  primary key (seq)\n  index ix_service_member_service (service_seq)\n  index ix_service_member_user (user_seq)\n  foreign key fk_service_member_service (service_seq) references service (seq) on delete restrict on update restrict\n  foreign key fk_service_member_user (user_seq) references user (seq) on delete restrict on update restrict\n}\n\ntable composite_account {\n  tenant_id i64\n  account_id i64\n  name varchar(191)\n  primary key (tenant_id, account_id)\n}\n\ntable composite_membership {\n  tenant_id i64\n  account_id i64\n  role varchar(191)\n  primary key (tenant_id, account_id)\n  foreign key fk_composite_membership_account (tenant_id, account_id) references composite_account (tenant_id, account_id) on delete cascade on update restrict\n  settings {\n    navigation fk_composite_membership_account account memberships\n  }\n}\n\ntable soft_record {\n  seq i64 identity\n  name varchar(191)\n  deleted_at datetime(6) null\n  primary key (seq)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable soft_link {\n  seq i64 identity\n  code varchar(32)\n  label varchar(64)\n  deleted_at datetime(6) null\n  primary key (seq)\n  unique uq_soft_link_code (code)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable account {\n  seq i64 identity\n  name varchar(191)\n  primary key (seq)\n}\n\ntable project {\n  seq i64 identity\n  name varchar(191)\n  primary key (seq)\n}\n\ntable account_project {\n  account_seq i64\n  project_seq i64\n  primary key (account_seq, project_seq)\n  index ix_account_project_project (project_seq)\n  foreign key fk_account_project_account (account_seq) references account (seq) on delete restrict on update restrict\n  foreign key fk_account_project_project (project_seq) references project (seq) on delete restrict on update restrict\n}\n\ntable task {\n  seq i64 identity\n  title varchar(191)\n  state varchar(8)\n  primary key (seq)\n  check ck_task_state (state in ('open', 'done'))\n}\n\ntable hex_cell {\n  seq i64 identity\n  label varchar(32)\n  value varchar(64) null\n  primary key (seq)\n  settings {\n    codec value hex\n  }\n}\n\ntable time_cell {\n  seq i64 identity\n  at datetime(0)\n  clock time(3)\n  primary key (seq)\n}\n\ntable clock_cell {\n  seq i64 identity\n  label varchar(8)\n  at0 datetime(0) default now\n  at3 datetime(3) default now\n  at6 datetime(6) default now\n  primary key (seq)\n}\n\ntable day_cell {\n  seq i64 identity\n  label varchar(8)\n  day date null\n  at_time time(0) null\n  primary key (seq)\n}\n\ntable upsert_cell {\n  seq i64 identity\n  code varchar(16)\n  label varchar(16)\n  primary key (seq)\n  unique uq_upsert_cell_code (code)\n}\n\ntable uuid_cell {\n  seq i64 identity\n  id uuid\n  primary key (seq)\n}\n\ntable bind_cell {\n  seq i64 identity\n  label varchar(8)\n  body text null\n  token uuid null\n  primary key (seq)\n}\ndbspec 1 bench_reader\n\nuse bench_shared { shared_note }\n\ntable note_reader {\n  seq i64\n  shared_note_seq i64\n  primary key (seq)\n  index ix_note_reader_shared_note (shared_note_seq)\n  foreign key fk_note_reader_shared_note (shared_note_seq) references shared_note (seq) on delete restrict on update restrict\n}\n"
+MANIFEST_TEXT = "dbspec 1 bench\n\ntable author {\n  seq i64 identity\n  name varchar(191)\n  description text null\n  created_ts datetime(6) default now\n  updated_ts datetime(6) default now\n  is_close bool default false\n  is_display bool default false\n  display_start_dt datetime(6) null\n  display_end_dt datetime(6) null\n  is_allday bool default false\n  target_club_reader_count i32 default 0\n  success_count i32 default 0\n  reader_count i32 default 0\n  read_count i32 default 0\n  photo_url varchar(191) null\n  user_seq i64\n  service_seq i64\n  service_region_seq i64\n  service_member_seq i64\n  start_dt datetime(6)\n  end_dt datetime(6)\n  uuid varchar(36) null\n  is_single_work bool default false\n  like_count i32 default 0\n  aes_key_version i32 default 1\n  aes_hex_email varchar(255) null\n  email_blind_index varchar(64) null\n  aes_hex_phone varchar(255) null\n  phone_blind_index varchar(64) null\n  price decimal(13,3) null\n  ip bytes null\n  gz_extend bytes null\n  json_setting text null\n  jsons_tags text null\n  base64_extra text null\n  serialize_data text null\n  primary key (seq)\n  unique uq_author_uuid (uuid)\n  index ik (service_region_seq, is_close, is_display, is_allday)\n  index ix_author_service_member (service_member_seq)\n  index ix_email_blind_index (email_blind_index)\n  index ix_phone_blind_index (phone_blind_index)\n  index ix_service (service_seq, is_close)\n  index ix_user (user_seq, is_close)\n  foreign key fk_author_service (service_seq) references service (seq) on delete restrict on update restrict\n  foreign key fk_author_service_member (service_member_seq) references service_member (seq) on delete restrict on update restrict\n  foreign key fk_author_service_region (service_region_seq) references service_region (seq) on delete restrict on update restrict\n  foreign key fk_author_user (user_seq) references user (seq) on delete restrict on update restrict\n  check ck_author_counts (target_club_reader_count >= 0 and success_count >= 0 and reader_count >= 0 and read_count >= 0 and like_count >= 0)\n  settings {\n    updated updated_ts\n    select explicit description email_blind_index phone_blind_index ip gz_extend json_setting jsons_tags base64_extra serialize_data aes_key_version\n    codec aes_hex_email aes hex\n    codec aes_hex_phone aes hex\n    codec base64_extra base64\n    codec gz_extend gz\n    codec ip ip\n    codec json_setting ordered_json\n    codec jsons_tags ordered_json\n    codec serialize_data serialize\n    aes_version aes_key_version\n    blind_index aes_hex_email email_blind_index\n    blind_index aes_hex_phone phone_blind_index\n  }\n}\n\ntable user {\n  seq i64 identity\n  name varchar(191)\n  primary key (seq)\n}\n\ntable service {\n  seq i64 identity\n  name varchar(191)\n  primary key (seq)\n}\n\ntable service_region {\n  seq i64 identity\n  service_seq i64\n  name varchar(191)\n  primary key (seq)\n  index ix_service_region_service (service_seq)\n  foreign key fk_service_region_service (service_seq) references service (seq) on delete restrict on update restrict\n}\n\ntable service_member {\n  seq i64 identity\n  service_seq i64\n  user_seq i64\n  primary key (seq)\n  index ix_service_member_service (service_seq)\n  index ix_service_member_user (user_seq)\n  foreign key fk_service_member_service (service_seq) references service (seq) on delete restrict on update restrict\n  foreign key fk_service_member_user (user_seq) references user (seq) on delete restrict on update restrict\n}\n\ntable composite_account {\n  tenant_id i64\n  account_id i64\n  name varchar(191)\n  primary key (tenant_id, account_id)\n}\n\ntable composite_membership {\n  tenant_id i64\n  account_id i64\n  role varchar(191)\n  primary key (tenant_id, account_id)\n  foreign key fk_composite_membership_account (tenant_id, account_id) references composite_account (tenant_id, account_id) on delete cascade on update restrict\n  settings {\n    navigation fk_composite_membership_account account memberships\n  }\n}\n\ntable soft_record {\n  seq i64 identity\n  name varchar(191)\n  deleted_at datetime(6) null\n  primary key (seq)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable soft_link {\n  seq i64 identity\n  code varchar(32)\n  label varchar(64)\n  deleted_at datetime(6) null\n  primary key (seq)\n  unique uq_soft_link_code (code)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable account {\n  seq i64 identity\n  name varchar(191)\n  primary key (seq)\n}\n\ntable project {\n  seq i64 identity\n  name varchar(191)\n  primary key (seq)\n}\n\ntable account_project {\n  account_seq i64\n  project_seq i64\n  primary key (account_seq, project_seq)\n  index ix_account_project_project (project_seq)\n  foreign key fk_account_project_account (account_seq) references account (seq) on delete restrict on update restrict\n  foreign key fk_account_project_project (project_seq) references project (seq) on delete restrict on update restrict\n}\n\ntable task {\n  seq i64 identity\n  title varchar(191)\n  state varchar(8)\n  primary key (seq)\n  check ck_task_state (state in ('open', 'done'))\n}\n\ntable hex_cell {\n  seq i64 identity\n  label varchar(32)\n  value varchar(64) null\n  primary key (seq)\n  settings {\n    codec value hex\n  }\n}\n\ntable time_cell {\n  seq i64 identity\n  at datetime(0)\n  clock time(3)\n  primary key (seq)\n}\n\ntable clock_cell {\n  seq i64 identity\n  label varchar(8)\n  at0 datetime(0) default now\n  at3 datetime(3) default now\n  at6 datetime(6) default now\n  primary key (seq)\n}\n\ntable day_cell {\n  seq i64 identity\n  label varchar(8)\n  day date null\n  at_time time(0) null\n  primary key (seq)\n}\n\ntable upsert_cell {\n  seq i64 identity\n  code varchar(16)\n  label varchar(16)\n  primary key (seq)\n  unique uq_upsert_cell_code (code)\n}\n\ntable uuid_cell {\n  seq i64 identity\n  id uuid\n  primary key (seq)\n}\n\ntable bind_cell {\n  seq i64 identity\n  label varchar(8)\n  body text null\n  token uuid null\n  primary key (seq)\n}\n\ntable audit_record {\n  seq i64 identity\n  request_id varchar(64)\n  primary key (seq)\n}\n\ntable audited_note {\n  seq i64 identity\n  label varchar(16)\n  audit_seq i64\n  primary key (seq)\n  index ix_audited_note_audit (audit_seq)\n  foreign key fk_audited_note_audit (audit_seq) references audit_record (seq) on delete restrict on update restrict\n  settings {\n    audit into audited_note_history column audit_seq references audit_record action change previous previous_audit_seq\n  }\n}\n\ntable audited_note_history {\n  history_id i64 identity\n  change varchar(8)\n  previous_audit_seq i64 null\n  seq i64\n  label varchar(16)\n  audit_seq i64\n  primary key (history_id)\n}\ndbspec 1 bench_reader\n\nuse bench_shared { shared_note }\n\ntable note_reader {\n  seq i64\n  shared_note_seq i64\n  primary key (seq)\n  index ix_note_reader_shared_note (shared_note_seq)\n  foreign key fk_note_reader_shared_note (shared_note_seq) references shared_note (seq) on delete restrict on update restrict\n}\n"
 
 MANIFEST_HASH = (
-    "sha256:e82672f09b5852725e8b4d17ad0500b3d8ef5fbeeeee1c04c7e2b1ec0b9bb785"
+    "sha256:fc2ebdd35e5070cdba0955d280f0faafb3300afc268e449f01b5f482071dd030"
 )
 
 # The text of the tables that the document set uses from external documents.
@@ -4081,6 +4081,531 @@ class BindCell(Model):
 
     def token(self, value, *compared) -> Self:
         return Model.__getattr__(self, "token")(value, *compared)
+
+
+class AuditRecord(Model):
+    """A audit_record model or row."""
+
+    @property
+    def entity_def(self):
+        return model.entity_of("audit_record", AuditRecord)
+
+    def get_seq(self) -> int:
+        """seq: int."""
+        return self.core.typed_column("seq", "int")
+
+    def set_seq(self, value: int) -> Self:
+        self.core.set_value("seq", value)
+        return self
+
+    def add_column_seq(self) -> Self:
+        self.core.add_column("seq")
+        return self
+
+    def remove_column_seq(self) -> Self:
+        self.core.remove_column("seq")
+        return self
+
+    def group_by_seq(self) -> Self:
+        self.core.group_by.append("seq")
+        return self
+
+    def key_name_seq(self) -> Self:
+        self.core.key_name = "seq"
+        return self
+
+    def order_by_seq_asc(self, *fn) -> Self:
+        self.core.order_by("seq", False, fn)
+        return self
+
+    def order_by_seq_desc(self, *fn) -> Self:
+        self.core.order_by("seq", True, fn)
+        return self
+
+    def plus_seq(self, n) -> Self:
+        self.core.put_plus("seq", n)
+        return self
+
+    def minus_seq(self, n) -> Self:
+        self.core.put_minus("seq", n)
+        return self
+
+    def sum_seq(self) -> Self:
+        self.core.aggregate("sum", "seq")
+        return self
+
+    def avg_seq(self) -> Self:
+        self.core.aggregate("avg", "seq")
+        return self
+
+    def get_request_id(self) -> str:
+        """request_id: str."""
+        return self.core.typed_column("request_id", "string")
+
+    def set_request_id(self, value: str) -> Self:
+        self.core.set_value("request_id", value)
+        return self
+
+    def add_column_request_id(self) -> Self:
+        self.core.add_column("request_id")
+        return self
+
+    def remove_column_request_id(self) -> Self:
+        self.core.remove_column("request_id")
+        return self
+
+    def group_by_request_id(self) -> Self:
+        self.core.group_by.append("request_id")
+        return self
+
+    def key_name_request_id(self) -> Self:
+        self.core.key_name = "request_id"
+        return self
+
+    def order_by_request_id_asc(self, *fn) -> Self:
+        self.core.order_by("request_id", False, fn)
+        return self
+
+    def order_by_request_id_desc(self, *fn) -> Self:
+        self.core.order_by("request_id", True, fn)
+        return self
+
+    def seq(self, value, *compared) -> Self:
+        return Model.__getattr__(self, "seq")(value, *compared)
+
+    def request_id(self, value, *compared) -> Self:
+        return Model.__getattr__(self, "request_id")(value, *compared)
+
+
+class AuditedNote(Model):
+    """A audited_note model or row."""
+
+    @property
+    def entity_def(self):
+        return model.entity_of("audited_note", AuditedNote)
+
+    def get_seq(self) -> int:
+        """seq: int."""
+        return self.core.typed_column("seq", "int")
+
+    def set_seq(self, value: int) -> Self:
+        self.core.set_value("seq", value)
+        return self
+
+    def add_column_seq(self) -> Self:
+        self.core.add_column("seq")
+        return self
+
+    def remove_column_seq(self) -> Self:
+        self.core.remove_column("seq")
+        return self
+
+    def group_by_seq(self) -> Self:
+        self.core.group_by.append("seq")
+        return self
+
+    def key_name_seq(self) -> Self:
+        self.core.key_name = "seq"
+        return self
+
+    def order_by_seq_asc(self, *fn) -> Self:
+        self.core.order_by("seq", False, fn)
+        return self
+
+    def order_by_seq_desc(self, *fn) -> Self:
+        self.core.order_by("seq", True, fn)
+        return self
+
+    def plus_seq(self, n) -> Self:
+        self.core.put_plus("seq", n)
+        return self
+
+    def minus_seq(self, n) -> Self:
+        self.core.put_minus("seq", n)
+        return self
+
+    def sum_seq(self) -> Self:
+        self.core.aggregate("sum", "seq")
+        return self
+
+    def avg_seq(self) -> Self:
+        self.core.aggregate("avg", "seq")
+        return self
+
+    def get_label(self) -> str:
+        """label: str."""
+        return self.core.typed_column("label", "string")
+
+    def set_label(self, value: str) -> Self:
+        self.core.set_value("label", value)
+        return self
+
+    def add_column_label(self) -> Self:
+        self.core.add_column("label")
+        return self
+
+    def remove_column_label(self) -> Self:
+        self.core.remove_column("label")
+        return self
+
+    def group_by_label(self) -> Self:
+        self.core.group_by.append("label")
+        return self
+
+    def key_name_label(self) -> Self:
+        self.core.key_name = "label"
+        return self
+
+    def order_by_label_asc(self, *fn) -> Self:
+        self.core.order_by("label", False, fn)
+        return self
+
+    def order_by_label_desc(self, *fn) -> Self:
+        self.core.order_by("label", True, fn)
+        return self
+
+    def get_audit_seq(self) -> int:
+        """audit_seq: int."""
+        return self.core.typed_column("audit_seq", "int")
+
+    def set_audit_seq(self, value: int) -> Self:
+        self.core.set_value("audit_seq", value)
+        return self
+
+    def add_column_audit_seq(self) -> Self:
+        self.core.add_column("audit_seq")
+        return self
+
+    def remove_column_audit_seq(self) -> Self:
+        self.core.remove_column("audit_seq")
+        return self
+
+    def group_by_audit_seq(self) -> Self:
+        self.core.group_by.append("audit_seq")
+        return self
+
+    def key_name_audit_seq(self) -> Self:
+        self.core.key_name = "audit_seq"
+        return self
+
+    def order_by_audit_seq_asc(self, *fn) -> Self:
+        self.core.order_by("audit_seq", False, fn)
+        return self
+
+    def order_by_audit_seq_desc(self, *fn) -> Self:
+        self.core.order_by("audit_seq", True, fn)
+        return self
+
+    def plus_audit_seq(self, n) -> Self:
+        self.core.put_plus("audit_seq", n)
+        return self
+
+    def minus_audit_seq(self, n) -> Self:
+        self.core.put_minus("audit_seq", n)
+        return self
+
+    def sum_audit_seq(self) -> Self:
+        self.core.aggregate("sum", "audit_seq")
+        return self
+
+    def avg_audit_seq(self) -> Self:
+        self.core.aggregate("avg", "audit_seq")
+        return self
+
+    def force_index_ix_audited_note_audit(self) -> Self:
+        self.core.index = "ix_audited_note_audit"
+        return self
+
+    def seq(self, value, *compared) -> Self:
+        return Model.__getattr__(self, "seq")(value, *compared)
+
+    def label(self, value, *compared) -> Self:
+        return Model.__getattr__(self, "label")(value, *compared)
+
+    def audit_seq(self, value, *compared) -> Self:
+        return Model.__getattr__(self, "audit_seq")(value, *compared)
+
+
+class AuditedNoteHistory(Model):
+    """A audited_note_history model or row."""
+
+    @property
+    def entity_def(self):
+        return model.entity_of("audited_note_history", AuditedNoteHistory)
+
+    def get_history_id(self) -> int:
+        """history_id: int."""
+        return self.core.typed_column("history_id", "int")
+
+    def set_history_id(self, value: int) -> Self:
+        self.core.set_value("history_id", value)
+        return self
+
+    def add_column_history_id(self) -> Self:
+        self.core.add_column("history_id")
+        return self
+
+    def remove_column_history_id(self) -> Self:
+        self.core.remove_column("history_id")
+        return self
+
+    def group_by_history_id(self) -> Self:
+        self.core.group_by.append("history_id")
+        return self
+
+    def key_name_history_id(self) -> Self:
+        self.core.key_name = "history_id"
+        return self
+
+    def order_by_history_id_asc(self, *fn) -> Self:
+        self.core.order_by("history_id", False, fn)
+        return self
+
+    def order_by_history_id_desc(self, *fn) -> Self:
+        self.core.order_by("history_id", True, fn)
+        return self
+
+    def plus_history_id(self, n) -> Self:
+        self.core.put_plus("history_id", n)
+        return self
+
+    def minus_history_id(self, n) -> Self:
+        self.core.put_minus("history_id", n)
+        return self
+
+    def sum_history_id(self) -> Self:
+        self.core.aggregate("sum", "history_id")
+        return self
+
+    def avg_history_id(self) -> Self:
+        self.core.aggregate("avg", "history_id")
+        return self
+
+    def get_change(self) -> str:
+        """change: str."""
+        return self.core.typed_column("change", "string")
+
+    def set_change(self, value: str) -> Self:
+        self.core.set_value("change", value)
+        return self
+
+    def add_column_change(self) -> Self:
+        self.core.add_column("change")
+        return self
+
+    def remove_column_change(self) -> Self:
+        self.core.remove_column("change")
+        return self
+
+    def group_by_change(self) -> Self:
+        self.core.group_by.append("change")
+        return self
+
+    def key_name_change(self) -> Self:
+        self.core.key_name = "change"
+        return self
+
+    def order_by_change_asc(self, *fn) -> Self:
+        self.core.order_by("change", False, fn)
+        return self
+
+    def order_by_change_desc(self, *fn) -> Self:
+        self.core.order_by("change", True, fn)
+        return self
+
+    def get_previous_audit_seq(self) -> int | None:
+        """previous_audit_seq: int."""
+        return self.core.typed_column("previous_audit_seq", "int")
+
+    def set_previous_audit_seq(self, value: int | None) -> Self:
+        self.core.set_value("previous_audit_seq", value)
+        return self
+
+    def add_column_previous_audit_seq(self) -> Self:
+        self.core.add_column("previous_audit_seq")
+        return self
+
+    def remove_column_previous_audit_seq(self) -> Self:
+        self.core.remove_column("previous_audit_seq")
+        return self
+
+    def group_by_previous_audit_seq(self) -> Self:
+        self.core.group_by.append("previous_audit_seq")
+        return self
+
+    def key_name_previous_audit_seq(self) -> Self:
+        self.core.key_name = "previous_audit_seq"
+        return self
+
+    def order_by_previous_audit_seq_asc(self, *fn) -> Self:
+        self.core.order_by("previous_audit_seq", False, fn)
+        return self
+
+    def order_by_previous_audit_seq_desc(self, *fn) -> Self:
+        self.core.order_by("previous_audit_seq", True, fn)
+        return self
+
+    def plus_previous_audit_seq(self, n) -> Self:
+        self.core.put_plus("previous_audit_seq", n)
+        return self
+
+    def minus_previous_audit_seq(self, n) -> Self:
+        self.core.put_minus("previous_audit_seq", n)
+        return self
+
+    def sum_previous_audit_seq(self) -> Self:
+        self.core.aggregate("sum", "previous_audit_seq")
+        return self
+
+    def avg_previous_audit_seq(self) -> Self:
+        self.core.aggregate("avg", "previous_audit_seq")
+        return self
+
+    def get_seq(self) -> int:
+        """seq: int."""
+        return self.core.typed_column("seq", "int")
+
+    def set_seq(self, value: int) -> Self:
+        self.core.set_value("seq", value)
+        return self
+
+    def add_column_seq(self) -> Self:
+        self.core.add_column("seq")
+        return self
+
+    def remove_column_seq(self) -> Self:
+        self.core.remove_column("seq")
+        return self
+
+    def group_by_seq(self) -> Self:
+        self.core.group_by.append("seq")
+        return self
+
+    def key_name_seq(self) -> Self:
+        self.core.key_name = "seq"
+        return self
+
+    def order_by_seq_asc(self, *fn) -> Self:
+        self.core.order_by("seq", False, fn)
+        return self
+
+    def order_by_seq_desc(self, *fn) -> Self:
+        self.core.order_by("seq", True, fn)
+        return self
+
+    def plus_seq(self, n) -> Self:
+        self.core.put_plus("seq", n)
+        return self
+
+    def minus_seq(self, n) -> Self:
+        self.core.put_minus("seq", n)
+        return self
+
+    def sum_seq(self) -> Self:
+        self.core.aggregate("sum", "seq")
+        return self
+
+    def avg_seq(self) -> Self:
+        self.core.aggregate("avg", "seq")
+        return self
+
+    def get_label(self) -> str:
+        """label: str."""
+        return self.core.typed_column("label", "string")
+
+    def set_label(self, value: str) -> Self:
+        self.core.set_value("label", value)
+        return self
+
+    def add_column_label(self) -> Self:
+        self.core.add_column("label")
+        return self
+
+    def remove_column_label(self) -> Self:
+        self.core.remove_column("label")
+        return self
+
+    def group_by_label(self) -> Self:
+        self.core.group_by.append("label")
+        return self
+
+    def key_name_label(self) -> Self:
+        self.core.key_name = "label"
+        return self
+
+    def order_by_label_asc(self, *fn) -> Self:
+        self.core.order_by("label", False, fn)
+        return self
+
+    def order_by_label_desc(self, *fn) -> Self:
+        self.core.order_by("label", True, fn)
+        return self
+
+    def get_audit_seq(self) -> int:
+        """audit_seq: int."""
+        return self.core.typed_column("audit_seq", "int")
+
+    def set_audit_seq(self, value: int) -> Self:
+        self.core.set_value("audit_seq", value)
+        return self
+
+    def add_column_audit_seq(self) -> Self:
+        self.core.add_column("audit_seq")
+        return self
+
+    def remove_column_audit_seq(self) -> Self:
+        self.core.remove_column("audit_seq")
+        return self
+
+    def group_by_audit_seq(self) -> Self:
+        self.core.group_by.append("audit_seq")
+        return self
+
+    def key_name_audit_seq(self) -> Self:
+        self.core.key_name = "audit_seq"
+        return self
+
+    def order_by_audit_seq_asc(self, *fn) -> Self:
+        self.core.order_by("audit_seq", False, fn)
+        return self
+
+    def order_by_audit_seq_desc(self, *fn) -> Self:
+        self.core.order_by("audit_seq", True, fn)
+        return self
+
+    def plus_audit_seq(self, n) -> Self:
+        self.core.put_plus("audit_seq", n)
+        return self
+
+    def minus_audit_seq(self, n) -> Self:
+        self.core.put_minus("audit_seq", n)
+        return self
+
+    def sum_audit_seq(self) -> Self:
+        self.core.aggregate("sum", "audit_seq")
+        return self
+
+    def avg_audit_seq(self) -> Self:
+        self.core.aggregate("avg", "audit_seq")
+        return self
+
+    def history_id(self, value, *compared) -> Self:
+        return Model.__getattr__(self, "history_id")(value, *compared)
+
+    def change(self, value, *compared) -> Self:
+        return Model.__getattr__(self, "change")(value, *compared)
+
+    def previous_audit_seq(self, value, *compared) -> Self:
+        return Model.__getattr__(self, "previous_audit_seq")(value, *compared)
+
+    def seq(self, value, *compared) -> Self:
+        return Model.__getattr__(self, "seq")(value, *compared)
+
+    def label(self, value, *compared) -> Self:
+        return Model.__getattr__(self, "label")(value, *compared)
+
+    def audit_seq(self, value, *compared) -> Self:
+        return Model.__getattr__(self, "audit_seq")(value, *compared)
 
 
 class NoteReader(Model):

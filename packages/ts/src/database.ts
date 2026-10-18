@@ -52,16 +52,19 @@ export interface TransactionOptions {
   /** Deadlock retries; the default is 3 and 0 disables retry. */
   retry?: number;
   /**
-   * Makes the transaction one unit of work with an audit record. Before the
-   * callback, in every attempt, the transaction inserts one row into the
-   * audit record table, the table that the audit settings of the sets
+   * Makes the transaction one unit of work with an audit record. Right before
+   * the first write of an audited table, in every attempt, the transaction
+   * inserts one row into the audit record table, the table that the audit settings of the sets
    * registered on the connection name with references: the values of the
    * auditSource connect option, called once for the transaction, with these
    * values, a value winning over the source's value of the same column.
    * Every insert, update, soft delete and restore of an audited table in the
    * transaction writes the record's primary key into the table's audit
-   * column. A nested transaction uses the audit of the outer one and does not
-   * take this option.
+   * column. A transaction that writes no audited row inserts no record: a
+   * first update, delete or restore that matches no row undoes the record
+   * with a savepoint, and a rolled back savepoint undoes the record with the
+   * write that inserted it. A nested transaction uses the audit of the outer
+   * one and does not take this option.
    */
   audit?: Readonly<Record<string, unknown>>;
 }
@@ -168,8 +171,13 @@ export class TxFrame {
   public savepoints = 0;
   public readonly locals = new Map<string, string>();
   public readonly locks: string[] = [];
-  /** The audit record of the unit of work; audited writes of the transaction write its key. */
+  /**
+   * The audit record the unit of work inserted right before its first write of an audited table; audited writes of the
+   * transaction write its key. Until that write, and in a transaction without audit values, it is undefined.
+   */
   public audit: AuditRecord | undefined = undefined;
+  /** The audit record the transaction inserts before its first write of an audited table; undefined without audit values. */
+  public pendingAudit: AuditInsert | undefined = undefined;
   /**
    * The number is this transaction's number on the connection; the event of that statement carries it. The connection is held
    * until the transaction ends: it is the driver session of an SQL connection or the flowmark session of a markdown connection.
@@ -705,7 +713,7 @@ export class Db {
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 0) throw new OrmError(codes.CONFIG, 'transaction timeoutMs must not be negative');
     const outer = activeFor(this);
     if (options.audit !== undefined) this.unsupportedOnMarkdown('a transaction with audit values');
-    // The audit record is checked before the transaction starts, and is inserted before the callback on each attempt.
+    // The audit record is checked before the transaction starts, and is inserted right before the first write of an audited table on each attempt.
     const record = options.audit !== undefined && outer === undefined ? this.auditRecord(options.audit) : undefined;
     if (outer) {
       if (options.isolation !== undefined || options.readOnly !== undefined || options.timeoutMs !== undefined || options.audit !== undefined) {
@@ -766,6 +774,55 @@ export class Db {
    * Inserts the transaction's audit record and returns that table and the primary key value. If the primary key is an identity, the generated
    * key; otherwise it is the value of the record. It is inserted again on each attempt.
    */
+  /**
+   * Makes sure the audit record precedes a write of an audited table: when the transaction of ex has a pending record and has not
+   * inserted it, it inserts it now. guard is true for an update, delete or restore, which can match no row: the record is then
+   * inserted inside the savepoint orm_audit, and the returned function, called with the affected count and the write's error,
+   * releases the savepoint when the write changed a row and otherwise rolls the record back. It must be called outside guarded.
+   *
+   * @internal
+   */
+  public async auditFor(ex: Executor, step: PlanStep, guard: boolean): Promise<(affected: number, failed: boolean, error?: unknown) => Promise<void>> {
+    const none = async (): Promise<void> => {};
+    const frame = ex.frame;
+    if (frame === undefined || frame.audit !== undefined || frame.pendingAudit === undefined || !bindsAudit(step)) return none;
+    const record = frame.pendingAudit;
+    if (!guard) {
+      frame.audit = await this.insertAudit(record);
+      return none;
+    }
+    const name = 'orm_audit';
+    // Undoes the work after the savepoint and releases it; failed is whether the write failed with error.
+    const rollback = async (failed: boolean, error: unknown): Promise<void> => {
+      const errors: unknown[] = [];
+      for (const kind of ['rollback_to', 'release'] as const) {
+        try { await this.savepointStep(frame, kind, name); } catch (failure) { errors.push(failure); }
+      }
+      if (!failed) {
+        if (errors.length > 0) throw joinedErrors(errors);
+        return;
+      }
+      if (errors.length > 0) throw rollbackFailed(error, joinedErrors(errors));
+      throw error;
+    };
+    await this.savepointStep(frame, 'savepoint', name);
+    try {
+      frame.audit = await this.insertAudit(record);
+    } catch (error) {
+      frame.audit = undefined;
+      await rollback(true, error);
+      throw error;
+    }
+    return async (affected: number, failed: boolean, error?: unknown): Promise<void> => {
+      if (!failed && affected > 0) {
+        await this.savepointStep(frame, 'release', name);
+        return;
+      }
+      frame.audit = undefined;
+      await rollback(failed, error);
+    };
+  }
+
   private async insertAudit(record: AuditInsert): Promise<AuditRecord> {
     const { model, entity } = record;
     const cls = class extends Model {};
@@ -784,7 +841,7 @@ export class Db {
     let result: T;
     try {
       result = await flow.run([...frames(), frame], async () => {
-        if (record !== undefined) frame.audit = await this.insertAudit(record);
+        frame.pendingAudit = record;
         return callback();
       });
     } catch (error) {
@@ -984,6 +1041,9 @@ export class Db {
   private async savepoint<T>(frame: TxFrame, callback: () => Promise<T> | T): Promise<T> {
     frame.savepoints++;
     const name = `orm_sp_${frame.savepoints}`;
+    // A savepoint that does not release undoes an audit record inserted inside it.
+    const auditBefore = frame.audit;
+    let kept = false;
     try {
       await this.savepointStep(frame, 'savepoint', name);
       let result: T;
@@ -999,8 +1059,10 @@ export class Db {
         throw error;
       }
       await this.savepointStep(frame, 'release', name);
+      kept = true;
       return result;
     } finally {
+      if (!kept) frame.audit = auditBefore;
       frame.savepoints--;
     }
   }
@@ -1132,6 +1194,9 @@ export class Db {
           throw new OrmError(codes.IR_INVALID, `bind slot ${i} reads parameter ${slot.param}, but execute has ${params.length} parameters`);
         }
       });
+    });
+    await this.auditFor(ex, step, false);
+    await guarded(ex, async () => {
       await this.runStep(ex, step.sql, step, params);
     });
   }
@@ -1172,6 +1237,11 @@ async function guarded<T>(ex: Executor, work: () => Promise<T>): Promise<T> {
  * audited table; a write without an audit, or whose table records its audits
  * in another table than the transaction's audit record, is CONFIG.
  */
+/** Whether the statement binds the audit record's key: it writes an audited table. */
+function bindsAudit(step: PlanStep): boolean {
+  return step.bind_slots.some(slot => slot.from === 'audit');
+}
+
 function auditValue(slot: BindSlot, audit: AuditRecord | undefined): unknown {
   if (audit === undefined) throw new OrmError(codes.CONFIG, 'a write of an audited table needs an audit: run it in a transaction with audit values');
   if (audit.table !== slot.name) {
@@ -1344,14 +1414,35 @@ export interface Written extends Hooked { key: number | string | null; affected:
  */
 export async function write(ex: Executor, given: Request, givenParams: readonly unknown[], afterHook?: (hooked: Hooked) => void): Promise<Written> {
   const { request, params } = hooked(ex, given, givenParams, afterHook);
-  const { key, affected } = await guarded(ex, async (): Promise<{ key: number | string | null; affected: number }> => {
+  const db = ex.db;
+  let step: PlanStep | undefined;
+  let settle = async (_affected: number, _failed: boolean, _error?: unknown): Promise<void> => {};
+  if (db.md === undefined) {
+    step = mainStep((await db.plan(request)).plan);
+    settle = await db.auditFor(ex, step, request.kind !== 'insert');
+  }
+  let written: { key: number | string | null; affected: number };
+  try {
+    written = await writeStep(ex, request, params, step);
+  } catch (error) {
+    await settle(0, true, error);
+    throw error;
+  }
+  await settle(written.affected, false);
+  const { key, affected } = written;
+  ex.db['shared'].lastAffected = affected;
+  return { key, affected, request, params };
+}
+
+/** Runs the write of request in ex: step is its main plan step on a SQL database, undefined on markdown. */
+async function writeStep(ex: Executor, request: Request, params: readonly unknown[], planned: PlanStep | undefined): Promise<{ key: number | string | null; affected: number }> {
+  return guarded(ex, async (): Promise<{ key: number | string | null; affected: number }> => {
     const db = ex.db;
-    if (db.md !== undefined) {
+    if (db.md !== undefined || planned === undefined) {
       const { keys, affected } = await markdownWrite(ex, request, params);
       return { key: keys[0] ?? null, affected };
     }
-    const cached = await db.plan(request);
-    const step = mainStep(cached.plan);
+    const step = planned;
     const result = await db.runStep(ex, step.sql, step, params);
     if (request.kind === 'insert' && / RETURNING /.test(step.sql)) return { key: Number(result.rows[0]?.[0]), affected: 1 };
     if (request.kind === 'update' && request.optimistic && result.affected === 0) throw new OrmError(codes.OPTIMISTIC_LOCK, 'the row changed after it was read');
@@ -1360,8 +1451,6 @@ export async function write(ex: Executor, given: Request, givenParams: readonly 
     const upsert = request.kind === 'insert' && (request.on_duplicate?.length ?? 0) > 0;
     return { key, affected: upsert ? 1 : result.affected };
   });
-  ex.db['shared'].lastAffected = affected;
-  return { key, affected, request, params };
 }
 
 /** Returns the statement of a select request without executing it. */

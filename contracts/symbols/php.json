@@ -215,6 +215,542 @@
     "exported": true,
     "signature": "public function tupleAccountSeqWithProjectSeq(array $values): static"
   },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Tests\\Model\\AuditRecord extends Polyspec\\Orm\\Model implements JsonSerializable uses "
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::addColumnRequestId": {
+    "exported": true,
+    "signature": "public function addColumnRequestId(): static"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::addColumnSeq": {
+    "exported": true,
+    "signature": "public function addColumnSeq(): static"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::avgSeq": {
+    "exported": true,
+    "signature": "public function avgSeq(): static"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::getRequestId": {
+    "exported": true,
+    "signature": "public function getRequestId(): string"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::getSeq": {
+    "exported": true,
+    "signature": "public function getSeq(): int"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::groupByRequestId": {
+    "exported": true,
+    "signature": "public function groupByRequestId(): static"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::groupBySeq": {
+    "exported": true,
+    "signature": "public function groupBySeq(): static"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::keyNameRequestId": {
+    "exported": true,
+    "signature": "public function keyNameRequestId(): static"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::keyNameSeq": {
+    "exported": true,
+    "signature": "public function keyNameSeq(): static"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::meta": {
+    "exported": true,
+    "signature": "public static function meta(): array"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::minusSeq": {
+    "exported": true,
+    "signature": "public function minusSeq(int|float $n): static"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::orderByRequestIdAsc": {
+    "exported": true,
+    "signature": "public function orderByRequestIdAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::orderByRequestIdDesc": {
+    "exported": true,
+    "signature": "public function orderByRequestIdDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::orderBySeqAsc": {
+    "exported": true,
+    "signature": "public function orderBySeqAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::orderBySeqDesc": {
+    "exported": true,
+    "signature": "public function orderBySeqDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::plusSeq": {
+    "exported": true,
+    "signature": "public function plusSeq(int|float $n): static"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::removeColumnRequestId": {
+    "exported": true,
+    "signature": "public function removeColumnRequestId(): static"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::removeColumnSeq": {
+    "exported": true,
+    "signature": "public function removeColumnSeq(): static"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::requestId": {
+    "exported": true,
+    "signature": "public function requestId(mixed $value, mixed ...$compared): static"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::seq": {
+    "exported": true,
+    "signature": "public function seq(mixed $value, mixed ...$compared): static"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::setRequestId": {
+    "exported": true,
+    "signature": "public function setRequestId(string $v): static"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::setSeq": {
+    "exported": true,
+    "signature": "public function setSeq(int $v): static"
+  },
+  "packages/php/gen/AuditRecord.php::Polyspec\\Orm\\Tests\\Model\\AuditRecord::sumSeq": {
+    "exported": true,
+    "signature": "public function sumSeq(): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Tests\\Model\\AuditedNote extends Polyspec\\Orm\\Model implements JsonSerializable uses "
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::addColumnAuditSeq": {
+    "exported": true,
+    "signature": "public function addColumnAuditSeq(): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::addColumnLabel": {
+    "exported": true,
+    "signature": "public function addColumnLabel(): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::addColumnSeq": {
+    "exported": true,
+    "signature": "public function addColumnSeq(): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::auditSeq": {
+    "exported": true,
+    "signature": "public function auditSeq(mixed $value, mixed ...$compared): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::avgAuditSeq": {
+    "exported": true,
+    "signature": "public function avgAuditSeq(): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::avgSeq": {
+    "exported": true,
+    "signature": "public function avgSeq(): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::forceIndexIxAuditedNoteAudit": {
+    "exported": true,
+    "signature": "public function forceIndexIxAuditedNoteAudit(): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::getAuditSeq": {
+    "exported": true,
+    "signature": "public function getAuditSeq(): int"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::getLabel": {
+    "exported": true,
+    "signature": "public function getLabel(): string"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::getSeq": {
+    "exported": true,
+    "signature": "public function getSeq(): int"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::groupByAuditSeq": {
+    "exported": true,
+    "signature": "public function groupByAuditSeq(): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::groupByLabel": {
+    "exported": true,
+    "signature": "public function groupByLabel(): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::groupBySeq": {
+    "exported": true,
+    "signature": "public function groupBySeq(): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::keyNameAuditSeq": {
+    "exported": true,
+    "signature": "public function keyNameAuditSeq(): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::keyNameLabel": {
+    "exported": true,
+    "signature": "public function keyNameLabel(): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::keyNameSeq": {
+    "exported": true,
+    "signature": "public function keyNameSeq(): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::label": {
+    "exported": true,
+    "signature": "public function label(mixed $value, mixed ...$compared): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::meta": {
+    "exported": true,
+    "signature": "public static function meta(): array"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::minusAuditSeq": {
+    "exported": true,
+    "signature": "public function minusAuditSeq(int|float $n): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::minusSeq": {
+    "exported": true,
+    "signature": "public function minusSeq(int|float $n): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::orderByAuditSeqAsc": {
+    "exported": true,
+    "signature": "public function orderByAuditSeqAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::orderByAuditSeqDesc": {
+    "exported": true,
+    "signature": "public function orderByAuditSeqDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::orderByLabelAsc": {
+    "exported": true,
+    "signature": "public function orderByLabelAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::orderByLabelDesc": {
+    "exported": true,
+    "signature": "public function orderByLabelDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::orderBySeqAsc": {
+    "exported": true,
+    "signature": "public function orderBySeqAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::orderBySeqDesc": {
+    "exported": true,
+    "signature": "public function orderBySeqDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::plusAuditSeq": {
+    "exported": true,
+    "signature": "public function plusAuditSeq(int|float $n): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::plusSeq": {
+    "exported": true,
+    "signature": "public function plusSeq(int|float $n): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::removeColumnAuditSeq": {
+    "exported": true,
+    "signature": "public function removeColumnAuditSeq(): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::removeColumnLabel": {
+    "exported": true,
+    "signature": "public function removeColumnLabel(): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::removeColumnSeq": {
+    "exported": true,
+    "signature": "public function removeColumnSeq(): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::seq": {
+    "exported": true,
+    "signature": "public function seq(mixed $value, mixed ...$compared): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::setAuditSeq": {
+    "exported": true,
+    "signature": "public function setAuditSeq(int $v): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::setLabel": {
+    "exported": true,
+    "signature": "public function setLabel(string $v): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::setSeq": {
+    "exported": true,
+    "signature": "public function setSeq(int $v): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::sumAuditSeq": {
+    "exported": true,
+    "signature": "public function sumAuditSeq(): static"
+  },
+  "packages/php/gen/AuditedNote.php::Polyspec\\Orm\\Tests\\Model\\AuditedNote::sumSeq": {
+    "exported": true,
+    "signature": "public function sumSeq(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory extends Polyspec\\Orm\\Model implements JsonSerializable uses "
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::addColumnAuditSeq": {
+    "exported": true,
+    "signature": "public function addColumnAuditSeq(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::addColumnChange": {
+    "exported": true,
+    "signature": "public function addColumnChange(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::addColumnHistoryId": {
+    "exported": true,
+    "signature": "public function addColumnHistoryId(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::addColumnLabel": {
+    "exported": true,
+    "signature": "public function addColumnLabel(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::addColumnPreviousAuditSeq": {
+    "exported": true,
+    "signature": "public function addColumnPreviousAuditSeq(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::addColumnSeq": {
+    "exported": true,
+    "signature": "public function addColumnSeq(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::auditSeq": {
+    "exported": true,
+    "signature": "public function auditSeq(mixed $value, mixed ...$compared): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::avgAuditSeq": {
+    "exported": true,
+    "signature": "public function avgAuditSeq(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::avgHistoryId": {
+    "exported": true,
+    "signature": "public function avgHistoryId(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::avgPreviousAuditSeq": {
+    "exported": true,
+    "signature": "public function avgPreviousAuditSeq(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::avgSeq": {
+    "exported": true,
+    "signature": "public function avgSeq(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::change": {
+    "exported": true,
+    "signature": "public function change(mixed $value, mixed ...$compared): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::getAuditSeq": {
+    "exported": true,
+    "signature": "public function getAuditSeq(): int"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::getChange": {
+    "exported": true,
+    "signature": "public function getChange(): string"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::getHistoryId": {
+    "exported": true,
+    "signature": "public function getHistoryId(): int"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::getLabel": {
+    "exported": true,
+    "signature": "public function getLabel(): string"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::getPreviousAuditSeq": {
+    "exported": true,
+    "signature": "public function getPreviousAuditSeq(): ?int"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::getSeq": {
+    "exported": true,
+    "signature": "public function getSeq(): int"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::groupByAuditSeq": {
+    "exported": true,
+    "signature": "public function groupByAuditSeq(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::groupByChange": {
+    "exported": true,
+    "signature": "public function groupByChange(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::groupByHistoryId": {
+    "exported": true,
+    "signature": "public function groupByHistoryId(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::groupByLabel": {
+    "exported": true,
+    "signature": "public function groupByLabel(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::groupByPreviousAuditSeq": {
+    "exported": true,
+    "signature": "public function groupByPreviousAuditSeq(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::groupBySeq": {
+    "exported": true,
+    "signature": "public function groupBySeq(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::historyId": {
+    "exported": true,
+    "signature": "public function historyId(mixed $value, mixed ...$compared): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::keyNameAuditSeq": {
+    "exported": true,
+    "signature": "public function keyNameAuditSeq(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::keyNameChange": {
+    "exported": true,
+    "signature": "public function keyNameChange(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::keyNameHistoryId": {
+    "exported": true,
+    "signature": "public function keyNameHistoryId(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::keyNameLabel": {
+    "exported": true,
+    "signature": "public function keyNameLabel(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::keyNamePreviousAuditSeq": {
+    "exported": true,
+    "signature": "public function keyNamePreviousAuditSeq(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::keyNameSeq": {
+    "exported": true,
+    "signature": "public function keyNameSeq(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::label": {
+    "exported": true,
+    "signature": "public function label(mixed $value, mixed ...$compared): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::meta": {
+    "exported": true,
+    "signature": "public static function meta(): array"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::minusAuditSeq": {
+    "exported": true,
+    "signature": "public function minusAuditSeq(int|float $n): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::minusHistoryId": {
+    "exported": true,
+    "signature": "public function minusHistoryId(int|float $n): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::minusPreviousAuditSeq": {
+    "exported": true,
+    "signature": "public function minusPreviousAuditSeq(int|float $n): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::minusSeq": {
+    "exported": true,
+    "signature": "public function minusSeq(int|float $n): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::orderByAuditSeqAsc": {
+    "exported": true,
+    "signature": "public function orderByAuditSeqAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::orderByAuditSeqDesc": {
+    "exported": true,
+    "signature": "public function orderByAuditSeqDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::orderByChangeAsc": {
+    "exported": true,
+    "signature": "public function orderByChangeAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::orderByChangeDesc": {
+    "exported": true,
+    "signature": "public function orderByChangeDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::orderByHistoryIdAsc": {
+    "exported": true,
+    "signature": "public function orderByHistoryIdAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::orderByHistoryIdDesc": {
+    "exported": true,
+    "signature": "public function orderByHistoryIdDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::orderByLabelAsc": {
+    "exported": true,
+    "signature": "public function orderByLabelAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::orderByLabelDesc": {
+    "exported": true,
+    "signature": "public function orderByLabelDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::orderByPreviousAuditSeqAsc": {
+    "exported": true,
+    "signature": "public function orderByPreviousAuditSeqAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::orderByPreviousAuditSeqDesc": {
+    "exported": true,
+    "signature": "public function orderByPreviousAuditSeqDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::orderBySeqAsc": {
+    "exported": true,
+    "signature": "public function orderBySeqAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::orderBySeqDesc": {
+    "exported": true,
+    "signature": "public function orderBySeqDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::plusAuditSeq": {
+    "exported": true,
+    "signature": "public function plusAuditSeq(int|float $n): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::plusHistoryId": {
+    "exported": true,
+    "signature": "public function plusHistoryId(int|float $n): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::plusPreviousAuditSeq": {
+    "exported": true,
+    "signature": "public function plusPreviousAuditSeq(int|float $n): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::plusSeq": {
+    "exported": true,
+    "signature": "public function plusSeq(int|float $n): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::previousAuditSeq": {
+    "exported": true,
+    "signature": "public function previousAuditSeq(mixed $value, mixed ...$compared): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::removeColumnAuditSeq": {
+    "exported": true,
+    "signature": "public function removeColumnAuditSeq(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::removeColumnChange": {
+    "exported": true,
+    "signature": "public function removeColumnChange(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::removeColumnHistoryId": {
+    "exported": true,
+    "signature": "public function removeColumnHistoryId(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::removeColumnLabel": {
+    "exported": true,
+    "signature": "public function removeColumnLabel(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::removeColumnPreviousAuditSeq": {
+    "exported": true,
+    "signature": "public function removeColumnPreviousAuditSeq(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::removeColumnSeq": {
+    "exported": true,
+    "signature": "public function removeColumnSeq(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::seq": {
+    "exported": true,
+    "signature": "public function seq(mixed $value, mixed ...$compared): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::setAuditSeq": {
+    "exported": true,
+    "signature": "public function setAuditSeq(int $v): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::setChange": {
+    "exported": true,
+    "signature": "public function setChange(string $v): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::setHistoryId": {
+    "exported": true,
+    "signature": "public function setHistoryId(int $v): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::setLabel": {
+    "exported": true,
+    "signature": "public function setLabel(string $v): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::setPreviousAuditSeq": {
+    "exported": true,
+    "signature": "public function setPreviousAuditSeq(?int $v): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::setSeq": {
+    "exported": true,
+    "signature": "public function setSeq(int $v): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::sumAuditSeq": {
+    "exported": true,
+    "signature": "public function sumAuditSeq(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::sumHistoryId": {
+    "exported": true,
+    "signature": "public function sumHistoryId(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::sumPreviousAuditSeq": {
+    "exported": true,
+    "signature": "public function sumPreviousAuditSeq(): static"
+  },
+  "packages/php/gen/AuditedNoteHistory.php::Polyspec\\Orm\\Tests\\Model\\AuditedNoteHistory::sumSeq": {
+    "exported": true,
+    "signature": "public function sumSeq(): static"
+  },
   "packages/php/gen/Author.php::Polyspec\\Orm\\Tests\\Model\\Author": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Tests\\Model\\Author extends Polyspec\\Orm\\Model implements JsonSerializable uses "
@@ -4987,6 +5523,10 @@
     "exported": false,
     "signature": "private function args(array $step, array $params, array $parentVals=[], ?Polyspec\\Orm\\TxFrame $frame=null): array"
   },
+  "packages/php/src/Db.php::Polyspec\\Orm\\Db::auditFor": {
+    "exported": false,
+    "signature": "private function auditFor(Polyspec\\Orm\\TxFrame $frame, bool $guard): ?Closure"
+  },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::auditRecord": {
     "exported": false,
     "signature": "private function auditRecord(array $values): array"
@@ -5006,6 +5546,10 @@
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::bindTimeValue": {
     "exported": false,
     "signature": "private function bindTimeValue(mixed $v, string $colType, int $precision): mixed"
+  },
+  "packages/php/src/Db.php::Polyspec\\Orm\\Db::bindsAudit": {
+    "exported": false,
+    "signature": "private static function bindsAudit(array $step): bool"
   },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::boundTimeText": {
     "exported": false,
@@ -5222,6 +5766,10 @@
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::send": {
     "exported": false,
     "signature": "private function send(Closure $send, Closure $done, bool $control=false): mixed"
+  },
+  "packages/php/src/Db.php::Polyspec\\Orm\\Db::sendWrite": {
+    "exported": false,
+    "signature": "private function sendWrite(array $step, array $args, Polyspec\\Orm\\Request $r): array"
   },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::statement": {
     "exported": true,
@@ -11366,6 +11914,10 @@
   "packages/php/src/TxFrame.php::Polyspec\\Orm\\TxFrame::$number": {
     "exported": true,
     "signature": "public readonly int"
+  },
+  "packages/php/src/TxFrame.php::Polyspec\\Orm\\TxFrame::$pendingAudit": {
+    "exported": true,
+    "signature": "public ?array"
   },
   "packages/php/src/TxFrame.php::Polyspec\\Orm\\TxFrame::$readOnly": {
     "exported": true,

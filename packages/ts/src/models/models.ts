@@ -227,6 +227,34 @@ table bind_cell {
   token uuid null
   primary key (seq)
 }
+
+table audit_record {
+  seq i64 identity
+  request_id varchar(64)
+  primary key (seq)
+}
+
+table audited_note {
+  seq i64 identity
+  label varchar(16)
+  audit_seq i64
+  primary key (seq)
+  index ix_audited_note_audit (audit_seq)
+  foreign key fk_audited_note_audit (audit_seq) references audit_record (seq) on delete restrict on update restrict
+  settings {
+    audit into audited_note_history column audit_seq references audit_record action change previous previous_audit_seq
+  }
+}
+
+table audited_note_history {
+  history_id i64 identity
+  change varchar(8)
+  previous_audit_seq i64 null
+  seq i64
+  label varchar(16)
+  audit_seq i64
+  primary key (history_id)
+}
 dbspec 1 bench_reader
 
 use bench_shared { shared_note }
@@ -240,7 +268,7 @@ table note_reader {
 }
 `;
 
-export const MANIFEST_HASH = 'sha256:e82672f09b5852725e8b4d17ad0500b3d8ef5fbeeeee1c04c7e2b1ec0b9bb785';
+export const MANIFEST_HASH = 'sha256:fc2ebdd35e5070cdba0955d280f0faafb3300afc268e449f01b5f482071dd030';
 
 /** The text of the tables that the document set uses from external documents. */
 export const EXTERNAL_TEXT = `dbspec 1 bench_shared
@@ -641,7 +669,7 @@ export class Author extends Model {
   declare andSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare andServiceSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare andStartDt: (...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) => this;
-  declare andSuccessCountLtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
+  declare andSuccessCountLtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) => this;
   declare andUuid: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare betweenReadCount: (v0: readonly [number, number]) => this;
   declare betweenStartDt: (v0: readonly [string | Date, string | Date]) => this;
@@ -658,18 +686,18 @@ export class Author extends Model {
   declare gtStartDt: (...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) => this;
   declare isClose: (v0: boolean | readonly (boolean)[] | ValueFunction | Model) => this;
   declare isDisplay: (v0: boolean | readonly (boolean)[] | ValueFunction | Model) => this;
-  declare joinNameWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
-  declare joinReadCountWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
-  declare joinServiceMemberSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
-  declare joinServiceSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
-  declare joinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
-  declare leftJoinServiceRegionSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
-  declare leftJoinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
+  declare joinNameWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) => this;
+  declare joinReadCountWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) => this;
+  declare joinServiceMemberSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) => this;
+  declare joinServiceSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) => this;
+  declare joinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) => this;
+  declare leftJoinServiceRegionSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) => this;
+  declare leftJoinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) => this;
   declare likeCount: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare ltReadCount: (v0: number | ValueFunction) => this;
   declare matchSeqWithUserSeq: () => this;
   declare name: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
-  declare nameEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
+  declare nameEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) => this;
   declare nePhotoUrl: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare newLabel: (value: unknown) => this;
   declare orGtReadCount: (v0: number | ValueFunction) => this;
@@ -678,17 +706,17 @@ export class Author extends Model {
   declare phoneBlindIndex: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare photoUrl: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare price: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
-  declare priceEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
+  declare priceEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) => this;
   declare readCount: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
-  declare readCountGtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
-  declare readCountLtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
+  declare readCountGtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) => this;
+  declare readCountLtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) => this;
   declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare serviceMemberSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare serviceRegionSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare serviceSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare startDt: (...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) => this;
   declare userSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
-  declare userSeqEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
+  declare userSeqEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | AuditRecord | AuditedNote | AuditedNoteHistory | NoteReader | SharedNote) => this;
   declare uuid: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   /** Returns the author relation result; T is its model type. */
   declare getAuthorModels: <T = unknown>() => T;
@@ -1951,6 +1979,230 @@ export class BindCell extends Model {
   public orderByTokenDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('token', true, fn); return this; }
 
   declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  /** Returns the value or relation result named AesHexEmail. */
+  declare getAesHexEmail: <T = unknown>() => T;
+  /** Returns the author relation result; T is its model type. */
+  declare getAuthorModels: <T = unknown>() => T;
+  /** Returns the value or relation result named Members. */
+  declare getMembers: <T = unknown>() => T;
+  /** Returns the value or relation result named Module. */
+  declare getModule: <T = unknown>() => T;
+  /** Returns the value or relation result named Name. */
+  declare getName: <T = unknown>() => T;
+  /** Returns the value or relation result named Owner. */
+  declare getOwner: <T = unknown>() => T;
+  /** Returns the value or relation result named ReadTotal. */
+  declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
+  /** Returns the service_member relation result; T is its model type. */
+  declare getServiceMemberModels: <T = unknown>() => T;
+  /** Returns the service_region relation result; T is its model type. */
+  declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
+  /** Returns the value or relation result named StartMonth. */
+  declare getStartMonth: <T = unknown>() => T;
+  /** Returns the user relation result; T is its model type. */
+  declare getUserModel: <T = unknown>() => T;
+  /** Returns the value or relation result named Writer. */
+  declare getWriter: <T = unknown>() => T;
+}
+
+/** A audit_record model or row. */
+export class AuditRecord extends Model {
+  public static readonly entity: EntityDef = { model, entity: modelEntity('audit_record'), create: core => new AuditRecord(core) };
+  public getSeq(): number { const value = this[CORE].column('seq'); if (typeof value === 'number') return value; throw new TypeError('audit_record.seq holds a value of type ' + typeof value + ', not number'); }
+  public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
+  public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
+  public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
+  public groupBySeq(): this { this[CORE].groupBy.push('seq'); return this; }
+  public keyNameSeq(): this { this[CORE].keyName = 'seq'; return this; }
+  public orderBySeqAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('seq', false, fn); return this; }
+  public orderBySeqDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('seq', true, fn); return this; }
+  public plusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, plus: true }); return this; }
+  public minusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, minus: true }); return this; }
+  public sumSeq(): this { this[CORE].aggregate('sum', 'seq'); return this; }
+  public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
+  public getRequestId(): string { const value = this[CORE].column('request_id'); if (typeof value === 'string') return value; throw new TypeError('audit_record.request_id holds a value of type ' + typeof value + ', not string'); }
+  public setRequestId(value: string): this { this[CORE].setValue('request_id', value); return this; }
+  public addColumnRequestId(): this { this[CORE].addColumn('request_id'); return this; }
+  public removeColumnRequestId(): this { this[CORE].removeColumn('request_id'); return this; }
+  public groupByRequestId(): this { this[CORE].groupBy.push('request_id'); return this; }
+  public keyNameRequestId(): this { this[CORE].keyName = 'request_id'; return this; }
+  public orderByRequestIdAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('request_id', false, fn); return this; }
+  public orderByRequestIdDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('request_id', true, fn); return this; }
+
+  declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  /** Returns the value or relation result named AesHexEmail. */
+  declare getAesHexEmail: <T = unknown>() => T;
+  /** Returns the author relation result; T is its model type. */
+  declare getAuthorModels: <T = unknown>() => T;
+  /** Returns the value or relation result named Members. */
+  declare getMembers: <T = unknown>() => T;
+  /** Returns the value or relation result named Module. */
+  declare getModule: <T = unknown>() => T;
+  /** Returns the value or relation result named Name. */
+  declare getName: <T = unknown>() => T;
+  /** Returns the value or relation result named Owner. */
+  declare getOwner: <T = unknown>() => T;
+  /** Returns the value or relation result named ReadTotal. */
+  declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
+  /** Returns the service_member relation result; T is its model type. */
+  declare getServiceMemberModels: <T = unknown>() => T;
+  /** Returns the service_region relation result; T is its model type. */
+  declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
+  /** Returns the value or relation result named StartMonth. */
+  declare getStartMonth: <T = unknown>() => T;
+  /** Returns the user relation result; T is its model type. */
+  declare getUserModel: <T = unknown>() => T;
+  /** Returns the value or relation result named Writer. */
+  declare getWriter: <T = unknown>() => T;
+}
+
+/** A audited_note model or row. */
+export class AuditedNote extends Model {
+  public static readonly entity: EntityDef = { model, entity: modelEntity('audited_note'), create: core => new AuditedNote(core) };
+  public getSeq(): number { const value = this[CORE].column('seq'); if (typeof value === 'number') return value; throw new TypeError('audited_note.seq holds a value of type ' + typeof value + ', not number'); }
+  public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
+  public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
+  public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
+  public groupBySeq(): this { this[CORE].groupBy.push('seq'); return this; }
+  public keyNameSeq(): this { this[CORE].keyName = 'seq'; return this; }
+  public orderBySeqAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('seq', false, fn); return this; }
+  public orderBySeqDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('seq', true, fn); return this; }
+  public plusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, plus: true }); return this; }
+  public minusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, minus: true }); return this; }
+  public sumSeq(): this { this[CORE].aggregate('sum', 'seq'); return this; }
+  public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
+  public getLabel(): string { const value = this[CORE].column('label'); if (typeof value === 'string') return value; throw new TypeError('audited_note.label holds a value of type ' + typeof value + ', not string'); }
+  public setLabel(value: string): this { this[CORE].setValue('label', value); return this; }
+  public addColumnLabel(): this { this[CORE].addColumn('label'); return this; }
+  public removeColumnLabel(): this { this[CORE].removeColumn('label'); return this; }
+  public groupByLabel(): this { this[CORE].groupBy.push('label'); return this; }
+  public keyNameLabel(): this { this[CORE].keyName = 'label'; return this; }
+  public orderByLabelAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('label', false, fn); return this; }
+  public orderByLabelDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('label', true, fn); return this; }
+  public getAuditSeq(): number { const value = this[CORE].column('audit_seq'); if (typeof value === 'number') return value; throw new TypeError('audited_note.audit_seq holds a value of type ' + typeof value + ', not number'); }
+  public setAuditSeq(value: number): this { this[CORE].setValue('audit_seq', value); return this; }
+  public addColumnAuditSeq(): this { this[CORE].addColumn('audit_seq'); return this; }
+  public removeColumnAuditSeq(): this { this[CORE].removeColumn('audit_seq'); return this; }
+  public groupByAuditSeq(): this { this[CORE].groupBy.push('audit_seq'); return this; }
+  public keyNameAuditSeq(): this { this[CORE].keyName = 'audit_seq'; return this; }
+  public orderByAuditSeqAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('audit_seq', false, fn); return this; }
+  public orderByAuditSeqDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('audit_seq', true, fn); return this; }
+  public plusAuditSeq(n: number): this { this[CORE].putSet({ column: 'audit_seq', value: n, plus: true }); return this; }
+  public minusAuditSeq(n: number): this { this[CORE].putSet({ column: 'audit_seq', value: n, minus: true }); return this; }
+  public sumAuditSeq(): this { this[CORE].aggregate('sum', 'audit_seq'); return this; }
+  public avgAuditSeq(): this { this[CORE].aggregate('avg', 'audit_seq'); return this; }
+  public forceIndexIxAuditedNoteAudit(): this { this[CORE].index = 'ix_audited_note_audit'; return this; }
+
+  declare auditSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  declare label: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
+  declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  /** Returns the value or relation result named AesHexEmail. */
+  declare getAesHexEmail: <T = unknown>() => T;
+  /** Returns the author relation result; T is its model type. */
+  declare getAuthorModels: <T = unknown>() => T;
+  /** Returns the value or relation result named Members. */
+  declare getMembers: <T = unknown>() => T;
+  /** Returns the value or relation result named Module. */
+  declare getModule: <T = unknown>() => T;
+  /** Returns the value or relation result named Name. */
+  declare getName: <T = unknown>() => T;
+  /** Returns the value or relation result named Owner. */
+  declare getOwner: <T = unknown>() => T;
+  /** Returns the value or relation result named ReadTotal. */
+  declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
+  /** Returns the service_member relation result; T is its model type. */
+  declare getServiceMemberModels: <T = unknown>() => T;
+  /** Returns the service_region relation result; T is its model type. */
+  declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
+  /** Returns the value or relation result named StartMonth. */
+  declare getStartMonth: <T = unknown>() => T;
+  /** Returns the user relation result; T is its model type. */
+  declare getUserModel: <T = unknown>() => T;
+  /** Returns the value or relation result named Writer. */
+  declare getWriter: <T = unknown>() => T;
+}
+
+/** A audited_note_history model or row. */
+export class AuditedNoteHistory extends Model {
+  public static readonly entity: EntityDef = { model, entity: modelEntity('audited_note_history'), create: core => new AuditedNoteHistory(core) };
+  public getHistoryId(): number { const value = this[CORE].column('history_id'); if (typeof value === 'number') return value; throw new TypeError('audited_note_history.history_id holds a value of type ' + typeof value + ', not number'); }
+  public setHistoryId(value: number): this { this[CORE].setValue('history_id', value); return this; }
+  public addColumnHistoryId(): this { this[CORE].addColumn('history_id'); return this; }
+  public removeColumnHistoryId(): this { this[CORE].removeColumn('history_id'); return this; }
+  public groupByHistoryId(): this { this[CORE].groupBy.push('history_id'); return this; }
+  public keyNameHistoryId(): this { this[CORE].keyName = 'history_id'; return this; }
+  public orderByHistoryIdAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('history_id', false, fn); return this; }
+  public orderByHistoryIdDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('history_id', true, fn); return this; }
+  public plusHistoryId(n: number): this { this[CORE].putSet({ column: 'history_id', value: n, plus: true }); return this; }
+  public minusHistoryId(n: number): this { this[CORE].putSet({ column: 'history_id', value: n, minus: true }); return this; }
+  public sumHistoryId(): this { this[CORE].aggregate('sum', 'history_id'); return this; }
+  public avgHistoryId(): this { this[CORE].aggregate('avg', 'history_id'); return this; }
+  public getChange(): string { const value = this[CORE].column('change'); if (typeof value === 'string') return value; throw new TypeError('audited_note_history.change holds a value of type ' + typeof value + ', not string'); }
+  public setChange(value: string): this { this[CORE].setValue('change', value); return this; }
+  public addColumnChange(): this { this[CORE].addColumn('change'); return this; }
+  public removeColumnChange(): this { this[CORE].removeColumn('change'); return this; }
+  public groupByChange(): this { this[CORE].groupBy.push('change'); return this; }
+  public keyNameChange(): this { this[CORE].keyName = 'change'; return this; }
+  public orderByChangeAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('change', false, fn); return this; }
+  public orderByChangeDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('change', true, fn); return this; }
+  public getPreviousAuditSeq(): number | null { const value = this[CORE].column('previous_audit_seq'); if (value === null || typeof value === 'number') return value; throw new TypeError('audited_note_history.previous_audit_seq holds a value of type ' + typeof value + ', not number | null'); }
+  public setPreviousAuditSeq(value: number | null): this { this[CORE].setValue('previous_audit_seq', value); return this; }
+  public addColumnPreviousAuditSeq(): this { this[CORE].addColumn('previous_audit_seq'); return this; }
+  public removeColumnPreviousAuditSeq(): this { this[CORE].removeColumn('previous_audit_seq'); return this; }
+  public groupByPreviousAuditSeq(): this { this[CORE].groupBy.push('previous_audit_seq'); return this; }
+  public keyNamePreviousAuditSeq(): this { this[CORE].keyName = 'previous_audit_seq'; return this; }
+  public orderByPreviousAuditSeqAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('previous_audit_seq', false, fn); return this; }
+  public orderByPreviousAuditSeqDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('previous_audit_seq', true, fn); return this; }
+  public plusPreviousAuditSeq(n: number): this { this[CORE].putSet({ column: 'previous_audit_seq', value: n, plus: true }); return this; }
+  public minusPreviousAuditSeq(n: number): this { this[CORE].putSet({ column: 'previous_audit_seq', value: n, minus: true }); return this; }
+  public sumPreviousAuditSeq(): this { this[CORE].aggregate('sum', 'previous_audit_seq'); return this; }
+  public avgPreviousAuditSeq(): this { this[CORE].aggregate('avg', 'previous_audit_seq'); return this; }
+  public getSeq(): number { const value = this[CORE].column('seq'); if (typeof value === 'number') return value; throw new TypeError('audited_note_history.seq holds a value of type ' + typeof value + ', not number'); }
+  public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
+  public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
+  public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
+  public groupBySeq(): this { this[CORE].groupBy.push('seq'); return this; }
+  public keyNameSeq(): this { this[CORE].keyName = 'seq'; return this; }
+  public orderBySeqAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('seq', false, fn); return this; }
+  public orderBySeqDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('seq', true, fn); return this; }
+  public plusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, plus: true }); return this; }
+  public minusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, minus: true }); return this; }
+  public sumSeq(): this { this[CORE].aggregate('sum', 'seq'); return this; }
+  public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
+  public getLabel(): string { const value = this[CORE].column('label'); if (typeof value === 'string') return value; throw new TypeError('audited_note_history.label holds a value of type ' + typeof value + ', not string'); }
+  public setLabel(value: string): this { this[CORE].setValue('label', value); return this; }
+  public addColumnLabel(): this { this[CORE].addColumn('label'); return this; }
+  public removeColumnLabel(): this { this[CORE].removeColumn('label'); return this; }
+  public groupByLabel(): this { this[CORE].groupBy.push('label'); return this; }
+  public keyNameLabel(): this { this[CORE].keyName = 'label'; return this; }
+  public orderByLabelAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('label', false, fn); return this; }
+  public orderByLabelDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('label', true, fn); return this; }
+  public getAuditSeq(): number { const value = this[CORE].column('audit_seq'); if (typeof value === 'number') return value; throw new TypeError('audited_note_history.audit_seq holds a value of type ' + typeof value + ', not number'); }
+  public setAuditSeq(value: number): this { this[CORE].setValue('audit_seq', value); return this; }
+  public addColumnAuditSeq(): this { this[CORE].addColumn('audit_seq'); return this; }
+  public removeColumnAuditSeq(): this { this[CORE].removeColumn('audit_seq'); return this; }
+  public groupByAuditSeq(): this { this[CORE].groupBy.push('audit_seq'); return this; }
+  public keyNameAuditSeq(): this { this[CORE].keyName = 'audit_seq'; return this; }
+  public orderByAuditSeqAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('audit_seq', false, fn); return this; }
+  public orderByAuditSeqDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('audit_seq', true, fn); return this; }
+  public plusAuditSeq(n: number): this { this[CORE].putSet({ column: 'audit_seq', value: n, plus: true }); return this; }
+  public minusAuditSeq(n: number): this { this[CORE].putSet({ column: 'audit_seq', value: n, minus: true }); return this; }
+  public sumAuditSeq(): this { this[CORE].aggregate('sum', 'audit_seq'); return this; }
+  public avgAuditSeq(): this { this[CORE].aggregate('avg', 'audit_seq'); return this; }
+
+  declare historyId: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   /** Returns the value or relation result named AesHexEmail. */
   declare getAesHexEmail: <T = unknown>() => T;
   /** Returns the author relation result; T is its model type. */

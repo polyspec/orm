@@ -5452,6 +5452,173 @@
           }
         ]
       }
+    },
+    {
+      "name": "audit_lazy",
+      "chain": "transaction(audit request_id 'audit-lazy'): AuditRecord count, AuditedNote label('audit-lazy') count, AuditedNote setSeq(-1)-\u003esetLabel('audit-none')-\u003eupdate() (matches no row), AuditRecord count, AuditedNote setLabel('audit-lazy')-\u003ecreate(), AuditRecord count, rollback; AuditRecord count",
+      "calls": [
+        "transaction",
+        "getCount",
+        "setSeq",
+        "setLabel",
+        "update",
+        "create"
+      ],
+      "expect": {
+        "result": {
+          "after": 0,
+          "before": 0,
+          "read": 0,
+          "rolled_back": true,
+          "unchanged": 0,
+          "written": 1
+        },
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "START TRANSACTION",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `audit_record` AS `a`",
+            "tables": [
+              "audit_record"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "audit-lazy"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `audited_note` AS `a` WHERE `a`.`label` = ?",
+            "tables": [
+              "audited_note"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "savepoint",
+            "sql": "SAVEPOINT orm_audit",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "audit-lazy"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `audit_record` (`request_id`) VALUES (?)",
+            "tables": [
+              "audit_record"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "audit-none",
+              "$SEQ",
+              -1
+            ],
+            "error": null,
+            "kind": "update",
+            "sql": "UPDATE `audited_note` SET `label` = ?, `audit_seq` = ? WHERE `audited_note`.`seq` = ?",
+            "tables": [
+              "audited_note"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "rollback_to",
+            "sql": "ROLLBACK TO SAVEPOINT orm_audit",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "release",
+            "sql": "RELEASE SAVEPOINT orm_audit",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `audit_record` AS `a`",
+            "tables": [
+              "audit_record"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "audit-lazy"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `audit_record` (`request_id`) VALUES (?)",
+            "tables": [
+              "audit_record"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "audit-lazy",
+              2
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `audited_note` (`label`, `audit_seq`) VALUES (?, ?)",
+            "tables": [
+              "audited_note"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `audit_record` AS `a`",
+            "tables": [
+              "audit_record"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "rollback",
+            "sql": "ROLLBACK",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `audit_record` AS `a`",
+            "tables": [
+              "audit_record"
+            ],
+            "transaction": null
+          }
+        ]
+      }
     }
   ]
 }

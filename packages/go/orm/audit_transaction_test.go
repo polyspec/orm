@@ -42,7 +42,7 @@ func auditConfig(actor string) orm.Config { return orm.Config{AuditSource: audit
 // auditCase installs contracts/fixtures/audit.dbs in the database at dsn, and checks the audit
 // records for the writes of the transaction that receives them.
 //   - a record combining the value the connection setting's audit source gives with the transaction's audit value
-//     one, which the transaction inserts into the audit setting's references table before the callback
+//     one, which the transaction inserts into the audit setting's references table right before its first audited write
 //     (for the same column the transaction's value wins), and the audit table's insert,
 //     update, and soft delete write that primary key to the audit column; the trigger records each
 //     version in the history table, and previous is the audit key of the prior version.
@@ -53,6 +53,8 @@ func auditConfig(actor string) orm.Config { return orm.Config{AuditSource: audit
 //   - a write to an audit table without an audit is CONFIG. A raw
 //     write that points to a missing audit record is refused by the foreign key.
 //   - if the callback fails, the audit record is rolled back too.
+//   - a transaction that writes no audited row (reads, an update that matches no row) inserts no
+//     record, and a savepoint that rolls back the first audited write undoes its record.
 func auditCase(t *testing.T, driver, dsn string) {
 	t.Helper()
 	s := fixtureSchema(t, "audit")
@@ -172,6 +174,47 @@ func auditCase(t *testing.T, driver, dsn string) {
 	}
 	if fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("history = %+v\nwant      %+v", got, want)
+	}
+
+	// The record is inserted right before the first audited write: a transaction of reads, or of an
+	// update that matches no row, inserts none, and a rolled back savepoint undoes the record
+	// with its write, so the next audited write inserts it again.
+	actors := func() string {
+		return fmt.Sprint(restoreTextRows(t, raw, "SELECT actor FROM audit ORDER BY seq"))
+	}
+	before := actors()
+	if err := adb.Transaction(func() error {
+		read := orm.NewCore(items)
+		read.Connect(db)
+		if _, err := read.GetCount(); err != nil {
+			return err
+		}
+		missing := byKey(-1)
+		missing.Set("title", "none")
+		return missing.Update(nil)
+	}, orm.Audit(map[string]any{"actor": "nothing"}), orm.Retry(0)); err != nil {
+		t.Fatal(err)
+	}
+	if got := actors(); got != before {
+		t.Fatalf("a transaction that writes no audited row left audit records %s, want %s", got, before)
+	}
+	undone := errors.New("savepoint undone")
+	if err := adb.Transaction(func() error {
+		if err := adb.Transaction(func() error {
+			if _, err := create("undone"); err != nil {
+				return err
+			}
+			return undone
+		}, orm.Retry(0)); !errors.Is(err, undone) {
+			return fmt.Errorf("savepoint = %v, want the callback error", err)
+		}
+		_, err := create("kept")
+		return err
+	}, orm.Audit(map[string]any{"actor": "kept"}), orm.Retry(0)); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := actors(), strings.TrimSuffix(before, "]")+" [kept]]"; got != want {
+		t.Fatalf("audit records after a rolled back savepoint = %s, want %s", got, want)
 	}
 }
 

@@ -975,23 +975,48 @@ async fn write(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<(Val, 
 async fn write_request(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<(Val, u64)> {
     hook_request(conn, ex, req)?;
     let db = ex.db().clone();
-    let (key, affected) = if db.is_markdown() {
+    if db.is_markdown() {
         let (keys, affected) = markdown_write(ex, req).await?;
-        (keys.into_iter().next().unwrap_or(Val::Null), affected)
-    } else {
-        let plan = db.plan(req).await?;
-        let st = &plan.steps[0];
-        if req.ir.kind == "insert" && st.sql.contains(" RETURNING ") {
-            let rows = ex.query(st, &req.params, Vec::new()).await?;
-            return Ok((Val::I64(first_cell(&rows, ex.db().inner.zone)?.as_i64()?), 1));
+        return finish_write(req, keys.into_iter().next().unwrap_or(Val::Null), affected);
+    }
+    let plan = db.plan(req).await?;
+    let st = &plan.steps[0];
+    // The audit record precedes the first write of an audited table; an update, delete or restore guards it
+    // with a savepoint that keeps it only when the write changed a row.
+    if let Executor::Tx(t) = ex {
+        if binds_audit(st) && t.audit_for(req.ir.kind != "insert").await? {
+            let written = sql_write(ex, st, req).await;
+            let changed = matches!(&written, Ok((_, affected)) if *affected > 0);
+            let settled = t.settle_audit(changed).await;
+            let (key, affected) = written?;
+            settled?;
+            return finish_write(req, key, affected);
         }
-        let (id, affected) = ex.execute(st, &req.params).await?;
-        // An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
-        let affected = if req.ir.kind == "insert" && !req.ir.on_duplicate.is_empty() { 1 } else { affected };
-        let key =
-            if req.ir.kind == "insert" { Val::I64(i64::try_from(id).map_err(|_| Error::internal("generated id is outside i64 range"))?) } else { Val::Null };
-        (key, affected)
-    };
+    }
+    let (key, affected) = sql_write(ex, st, req).await?;
+    finish_write(req, key, affected)
+}
+
+/// Whether the statement binds the audit record's key: it writes an audited table.
+pub(crate) fn binds_audit(st: &crate::plan::Step) -> bool {
+    st.bind_slots.iter().any(|b| b.from == "audit")
+}
+
+/// Runs the write statement of a SQL connection and returns the key of an insert and the changed rows.
+async fn sql_write(ex: &Executor, st: &crate::plan::Step, req: &Req) -> Result<(Val, u64)> {
+    if req.ir.kind == "insert" && st.sql.contains(" RETURNING ") {
+        let rows = ex.query(st, &req.params, Vec::new()).await?;
+        return Ok((Val::I64(first_cell(&rows, ex.db().inner.zone)?.as_i64()?), 1));
+    }
+    let (id, affected) = ex.execute(st, &req.params).await?;
+    // An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
+    let affected = if req.ir.kind == "insert" && !req.ir.on_duplicate.is_empty() { 1 } else { affected };
+    let key = if req.ir.kind == "insert" { Val::I64(i64::try_from(id).map_err(|_| Error::internal("generated id is outside i64 range"))?) } else { Val::Null };
+    Ok((key, affected))
+}
+
+/// Fails an optimistic update that changed no row.
+fn finish_write(req: &Req, key: Val, affected: u64) -> Result<(Val, u64)> {
     if req.ir.kind == "update" && req.ir.optimistic.is_some() && affected == 0 {
         return Err(Error::OptimisticLock);
     }
@@ -1660,8 +1685,7 @@ mod insert_parts_cases {
     const FIXTURE: &str = include_str!("../../../../contracts/fixtures/insert_parts.json");
 
     /// The ids of the cases that this module has a test for, in file order.
-    pub(super) const IDS: &[&str] =
-        &["empty", "one_row", "exact_batches", "last_batch_smaller", "batch_over_rows", "batch_of_one"];
+    pub(super) const IDS: &[&str] = &["empty", "one_row", "exact_batches", "last_batch_smaller", "batch_over_rows", "batch_of_one"];
 
     pub(super) fn cases() -> Vec<serde_json::Value> {
         let doc: serde_json::Value = serde_json::from_str(FIXTURE).expect("insert_parts.json");

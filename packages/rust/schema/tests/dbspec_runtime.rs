@@ -84,7 +84,10 @@ fn runtime_model_of_bench() {
             "day_cell",
             "upsert_cell",
             "uuid_cell",
-            "bind_cell"
+            "bind_cell",
+            "audit_record",
+            "audited_note",
+            "audited_note_history"
         ]
     );
     let author = model.entity("author").unwrap();

@@ -64,7 +64,7 @@ DSN, MODELS_DIR, SELECTED = None, None, []
 bench = Author = CompositeAccount = Service = ServiceMember = ServiceRegion = None
 User = SoftRecord = Task = HexCell = TimeCell = DayCell = ClockCell = UpsertCell = (
     UuidCell
-) = BindCell = SoftLink = NoteReader = SharedNote = None
+) = BindCell = SoftLink = NoteReader = SharedNote = AuditRecord = AuditedNote = None
 
 log = []
 transactions = {}
@@ -290,7 +290,9 @@ def load_models():
         BindCell, \
         SoftLink, \
         NoteReader, \
-        SharedNote
+        SharedNote, \
+        AuditRecord, \
+        AuditedNote
     # The models generated from contracts/fixtures/bench/bench.dbs are compiled from their source and
     # registered as models; the client itself is the one installed into the interpreter.
     source = os.path.join(MODELS_DIR, "models.py")
@@ -323,6 +325,8 @@ def load_models():
     NoteReader = bench.NoteReader
     SharedNote = bench.SharedNote
     SoftLink = bench.SoftLink
+    AuditRecord = bench.AuditRecord
+    AuditedNote = bench.AuditedNote
 
 
 def main():
@@ -332,7 +336,12 @@ def main():
     from polyspec.orm.aes import AesKeyring  # noqa: E402
     from polyspec.orm.values import orm  # noqa: E402
 
-    db = bench.connect(DSN, aesKey="bench-salt", blindIndexKey="bench-blind-index")
+    db = bench.connect(
+        DSN,
+        aesKey="bench-salt",
+        blindIndexKey="bench-blind-index",
+        auditSource=lambda: {},
+    )
     db.subscribe(on_event)
     global log, transactions, mask_seqs, mask_ts
     out = {}
@@ -751,6 +760,36 @@ def main():
         }
 
     run("empty_reads", empty_reads)
+
+    def audit_lazy():
+        # An audited transaction inserts its audit record right before its first write of an audited
+        # table: reads and an update that matches no row leave no record, and the create inserts one.
+        # The transaction is rolled back at the end, so the database is the same as at the start.
+        class Boom(Exception):
+            pass
+
+        result = {}
+        failed = None
+        try:
+
+            def body():
+                result["before"] = AuditRecord().get_count()
+                result["read"] = AuditedNote().label("audit-lazy").get_count()
+                AuditedNote().set_seq(-1).set_label("audit-none").update()
+                result["unchanged"] = AuditRecord().get_count()
+                created = AuditedNote().set_label("audit-lazy").create()
+                mask([created.get_seq()])
+                result["written"] = AuditRecord().get_count()
+                raise Boom()
+
+            db.transaction(body, {"audit": {"request_id": "audit-lazy"}, "retry": 0})
+        except Boom as error:
+            failed = error
+        result["rolled_back"] = failed is not None
+        result["after"] = AuditRecord().connect(db).get_count()
+        return result
+
+    run("audit_lazy", audit_lazy)
 
     def functions():
         queries = [

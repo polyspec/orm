@@ -29,7 +29,7 @@ await run.run('engine', COMPUTE, async () => {
   check(MANIFEST_TEXT === manifest.manifestText && MANIFEST_HASH === manifest.manifestHash && EXTERNAL_TEXT === manifest.externalText, 'the generated models embed the manifest of the bench set');
   const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH, EXTERNAL_TEXT);
   check(registerModel(MANIFEST_TEXT, MANIFEST_HASH, EXTERNAL_TEXT) === model, 'registering the same manifest returns the registered model');
-  check([...model.entities.keys()].join(',') === 'author,user,service,service_region,service_member,composite_account,composite_membership,soft_record,soft_link,account,project,account_project,task,hex_cell,time_cell,clock_cell,day_cell,upsert_cell,uuid_cell,bind_cell,note_reader,shared_note', 'entities in document order');
+  check([...model.entities.keys()].join(',') === 'author,user,service,service_region,service_member,composite_account,composite_membership,soft_record,soft_link,account,project,account_project,task,hex_cell,time_cell,clock_cell,day_cell,upsert_cell,uuid_cell,bind_cell,audit_record,audited_note,audited_note_history,note_reader,shared_note', 'entities in document order');
   // Text that does not hash to the declared hash is SCHEMA_HASH_MISMATCH, even if that hash is already registered.
   const edited = MANIFEST_TEXT.replace('table author', 'table authors');
   check(edited !== MANIFEST_TEXT, 'the edited manifest text differs');

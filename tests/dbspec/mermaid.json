@@ -746,6 +746,16 @@
           "ix_account_project_project"
         ],
         [
+          "index",
+          "audited_note",
+          "ix_audited_note_audit"
+        ],
+        [
+          "settings",
+          "audited_note",
+          "audited_note"
+        ],
+        [
           "check",
           "author",
           "ck_author_counts"
@@ -857,6 +867,11 @@
           "index",
           "account_project",
           "ix_account_project_project_seq"
+        ],
+        [
+          "index",
+          "audited_note",
+          "ix_audited_note_audit_seq"
         ],
         [
           "index",

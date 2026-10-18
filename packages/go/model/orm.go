@@ -11,7 +11,7 @@ import (
 var _ time.Time
 
 // ManifestHash is the manifestHash of the document set the models were generated from.
-const ManifestHash = "sha256:e82672f09b5852725e8b4d17ad0500b3d8ef5fbeeeee1c04c7e2b1ec0b9bb785"
+const ManifestHash = "sha256:fc2ebdd35e5070cdba0955d280f0faafb3300afc268e449f01b5f482071dd030"
 
 // ManifestText is the manifest text of the document set the models were generated from.
 const ManifestText = "dbspec 1 bench\n" +
@@ -239,6 +239,34 @@ const ManifestText = "dbspec 1 bench\n" +
 	"  token uuid null\n" +
 	"  primary key (seq)\n" +
 	"}\n" +
+	"\n" +
+	"table audit_record {\n" +
+	"  seq i64 identity\n" +
+	"  request_id varchar(64)\n" +
+	"  primary key (seq)\n" +
+	"}\n" +
+	"\n" +
+	"table audited_note {\n" +
+	"  seq i64 identity\n" +
+	"  label varchar(16)\n" +
+	"  audit_seq i64\n" +
+	"  primary key (seq)\n" +
+	"  index ix_audited_note_audit (audit_seq)\n" +
+	"  foreign key fk_audited_note_audit (audit_seq) references audit_record (seq) on delete restrict on update restrict\n" +
+	"  settings {\n" +
+	"    audit into audited_note_history column audit_seq references audit_record action change previous previous_audit_seq\n" +
+	"  }\n" +
+	"}\n" +
+	"\n" +
+	"table audited_note_history {\n" +
+	"  history_id i64 identity\n" +
+	"  change varchar(8)\n" +
+	"  previous_audit_seq i64 null\n" +
+	"  seq i64\n" +
+	"  label varchar(16)\n" +
+	"  audit_seq i64\n" +
+	"  primary key (history_id)\n" +
+	"}\n" +
 	"dbspec 1 bench_reader\n" +
 	"\n" +
 	"use bench_shared { shared_note }\n" +
@@ -272,7 +300,7 @@ func Connect(dsn string, cfg orm.Config) (*orm.DB, error) { return orm.ConnectSc
 
 // ormModel is any generated model; a model value is a subquery.
 type ormModel interface {
-	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *CompositeAccountModel | *CompositeMembershipModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *AccountProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel | *NoteReaderModel | *SharedNoteModel
+	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *CompositeAccountModel | *CompositeMembershipModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *AccountProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel | *AuditRecordModel | *AuditedNoteModel | *AuditedNoteHistoryModel | *NoteReaderModel | *SharedNoteModel
 }
 
 type argBoolEq interface {
@@ -323,7 +351,7 @@ type hasName interface {
 
 // hasSeq is a model with the column seq.
 type hasSeq interface {
-	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel | *NoteReaderModel | *SharedNoteModel
+	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel | *AuditRecordModel | *AuditedNoteModel | *AuditedNoteHistoryModel | *NoteReaderModel | *SharedNoteModel
 	Orm_() *orm.Core
 }
 

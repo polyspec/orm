@@ -245,7 +245,7 @@ Codec stages run in the written order on write. The storage type follows the las
 
 ### Audit
 
-An audited table keeps the key of its audit record in its own audit column, and a history table keeps every version of its rows. An audit record is a row of a declared table, written once for each unit of work (a transaction) before its changes; every audited row that the unit of work inserts or updates refers to it. The trigger reads everything it records from the row it receives, `OLD` and `NEW`, so the three databases need no other channel between the executor and the trigger.
+An audited table keeps the key of its audit record in its own audit column, and a history table keeps every version of its rows. An audit record is a row of a declared table, written once for each unit of work (a transaction) before its changes; every audited row that the unit of work inserts or updates refers to it. The executor inserts the record in the same transaction right before the unit of work's first write of an audited table, so a unit of work that writes no audited row writes no audit record. A first update, delete or restore that matches no row writes no audited row, and its record is undone with it; a savepoint or a transaction that rolls back undoes the record together with the write that inserted it, and the next audited write inserts it again. The trigger reads everything it records from the row it receives, `OLD` and `NEW`, so the three databases need no other channel between the executor and the trigger.
 
 ```text
 table service {

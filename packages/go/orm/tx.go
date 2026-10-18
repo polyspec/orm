@@ -71,10 +71,13 @@ type txConn struct {
 	readOnly   bool
 	isolation  IsolationLevel
 	sqliteMode bool
-	// audit is the audit record inserted when this transaction (unit of work) started.
-	// The audit table's insert and update write that key to the audit column. If there is none,
-	// it is nil.
+	// audit is the audit record this transaction (unit of work) inserted before its first
+	// write of an audited table. The audit table's insert and update write that key to the audit
+	// column. Until that write, and in a transaction without audit values, it is nil.
 	audit *auditRecord
+	// pendingAudit is the audit record the transaction inserts before its first write of an
+	// audited table, and nil without audit values.
+	pendingAudit *auditInsert
 	// inserted records generated ORM inserts that succeeded in this
 	// transaction. It is an adapter-neutral transaction fact used by callers
 	// that must distinguish a row created in this transaction from a matching
@@ -296,9 +299,9 @@ func TimeoutMs(ms int) TransactionOption {
 	return func(o *txOptions) { o.timeoutMs, o.set = ms, true }
 }
 
-// Audit makes the transaction one unit of work with an audit record. Before
-// the callback, in every attempt, the transaction inserts one row into the
-// audit record table, the table that the audit settings of the registered sets
+// Audit makes the transaction one unit of work with an audit record. Right
+// before the first write of an audited table, in every attempt, the transaction
+// inserts one row into the audit record table, the table that the audit settings of the registered sets
 // name with references: the values of Config.AuditSource, called once for the
 // transaction, with values, a map from column name to value, of which a value
 // wins over the source's value of the same column. Every insert, update, soft
@@ -306,7 +309,10 @@ func TimeoutMs(ms int) TransactionOption {
 // primary key into the table's audit column. The connection must have an audit
 // source, and every key must be a column of the audit record table; otherwise
 // the transaction fails with CodeConfig before it begins, and an error of the
-// source fails it as well. A nested transaction uses the audit of the outer one
+// source fails it as well. A transaction that writes no audited row inserts no
+// record: a first update, delete or restore that matches no row undoes the
+// record with a savepoint, and a rolled back savepoint undoes the record with
+// the write that inserted it. A nested transaction uses the audit of the outer one
 // and accepts only orm.Retry.
 func Audit(values map[string]any) TransactionOption {
 	return func(o *txOptions) { o.audit, o.auditSet, o.set = maps.Clone(values), true, true }
@@ -443,12 +449,7 @@ func (d *DB) Transaction(fn func() error, options ...TransactionOption) error {
 		}
 		inner := fn
 		fn = func() error {
-			t := activeFor(d)
-			a, err := d.insertAudit(t, record)
-			if err != nil {
-				return err
-			}
-			t.audit = a
+			activeFor(d).pendingAudit = record
 			return inner()
 		}
 	}
@@ -735,6 +736,13 @@ func (t *txConn) commit() error {
 // savepoint runs fn inside a savepoint of the active transaction.
 func (t *txConn) savepoint(fn func() error) (err error) {
 	insertedBefore := cloneInserted(t.inserted)
+	// A savepoint that does not release undoes an audit record inserted inside it.
+	auditBefore, kept := t.audit, false
+	defer func() {
+		if !kept {
+			t.audit = auditBefore
+		}
+	}()
 	t.savepoints++
 	name := fmt.Sprintf("orm_sp_%d", t.savepoints)
 	defer func() { t.savepoints-- }()
@@ -774,7 +782,65 @@ func (t *txConn) savepoint(fn func() error) (err error) {
 		}
 		return err
 	}
-	return t.endSavepoint(KindRelease, name)
+	if err := t.endSavepoint(KindRelease, name); err != nil {
+		return err
+	}
+	kept = true
+	return nil
+}
+
+// insertPendingAudit inserts the pending audit record from inside a write that holds the
+// transaction connection: the insert is a write of its own, so the connection is handed to it and
+// taken back.
+func (t *txConn) insertPendingAudit() error {
+	t.busy.Store(false)
+	a, err := t.db.insertAudit(t, t.pendingAudit)
+	t.busy.Store(true)
+	if err != nil {
+		return err
+	}
+	t.audit = a
+	return nil
+}
+
+// auditFor makes sure the audit record precedes a write of an audited table: when the transaction
+// has a pending record and has not inserted it, it inserts it now. The caller holds the
+// transaction connection (enter). guard is true for an update,
+// delete or restore, which can match no row: the record is then inserted inside the savepoint
+// orm_audit, and the returned function, called with the affected count and the write's error,
+// rolls the record back when the write changed no row and releases the savepoint otherwise.
+func (t *txConn) auditFor(guard bool) (func(affected int64, err error) error, error) {
+	none := func(int64, error) error { return nil }
+	if t == nil || t.audit != nil || t.pendingAudit == nil {
+		return none, nil
+	}
+	if !guard {
+		if err := t.insertPendingAudit(); err != nil {
+			return nil, err
+		}
+		return none, nil
+	}
+	const name = "orm_audit"
+	if t.md != nil {
+		if err := t.savepointMarkdown("savepoint", name); err != nil {
+			return nil, err
+		}
+	} else if _, err := t.run().exec(t.ctx, KindSavepoint, nil, "SAVEPOINT "+name); err != nil {
+		return nil, err
+	}
+	if err := t.insertPendingAudit(); err != nil {
+		if rollbackErr := t.rollbackSavepoint(name); rollbackErr != nil {
+			return nil, rollbackFailed(err, rollbackErr)
+		}
+		return nil, err
+	}
+	return func(affected int64, err error) error {
+		if err == nil && affected > 0 {
+			return t.endSavepoint(KindRelease, name)
+		}
+		t.audit = nil
+		return t.rollbackSavepoint(name)
+	}, nil
 }
 
 // rollbackSavepoint undoes the work after the savepoint and releases the savepoint. It

@@ -50,7 +50,7 @@ function auditConfig(string $actor): Config
  * Checks the writes of the transaction that receives audit records. $db is the connection opened with auditConfig('default'), and $dsn is
  * that database.
  *   - The transaction inserts one record that combines the value the connection setting's audit source gives with the transaction's audit value
- *     into the audit setting's references table before the callback (for the same column, the transaction value
+ *     into the audit setting's references table right before its first audited write (for the same column, the transaction value
  *     wins), and the insert, update, and soft delete of the audit table write its primary key to the audit column.
  *     The trigger keeps each version in the history table, and previous is the audit key of the previous version.
  *   - An audit transaction on a connection with no audit source, and a value that is not a column of the audit record table (a value of the transaction or
