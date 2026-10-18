@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- `expectRevision(column, revision)` makes update() and delete() write only a row at that revision, update() incrementing it, and fails otherwise with the new code `REVISION_CHANGED`, in the five clients (T212).
 - Breaking: `creates(rows, batch)` is the only form; each batch of `batch` rows is one multi-row INSERT, every batch runs in one transaction, and a batch over the bind limit fails with the new code `BATCH_TOO_LARGE`, in the five clients (T205).
 - The Mermaid round-trip vector of the bench document lists the soft_link objects (T214).
 - Each generator takes its base Model methods from Model itself, so a T200 `restore_or_create` call generates and a `json_text` column is refused (T213).

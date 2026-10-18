@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 95948b328016c591000c984be549a277dae028fd421fd9683784881f3fc7e760 -->
+<!-- source-sha256: a99f934bcfa9dc37af7fa7159ab9d7a19f58b2903854fe8cc04d2e7342c1816d -->
 # 변경 이력
 
 ## Unreleased
+- `expectRevision(column, revision)`이 update()와 delete()가 그 revision의 행만 쓰게 하고 update()는 그것을 1 늘리며, 아니면 새 code `REVISION_CHANGED`로 실패한다. 다섯 client에서(T212).
 - 호환 깨짐: `creates(rows, batch)`가 유일한 형태다. `batch` 행씩의 각 묶음은 multi-row INSERT 하나이고, 모든 묶음이 한 transaction에서 실행되며, bind 한도를 넘는 묶음은 새 code `BATCH_TOO_LARGE`로 실패한다. 다섯 client에서(T205).
 - bench 문서의 Mermaid round-trip vector가 soft_link object를 나열한다 (T214).
 - 각 generator는 base Model method를 Model에서 직접 읽는다. T200 `restore_or_create` 호출이 생성되고 `json_text` column은 거부된다 (T213).
