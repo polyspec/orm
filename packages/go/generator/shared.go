@@ -24,8 +24,8 @@ func pascal(s string) string {
 	return b.String()
 }
 
-// clientStyles는 field codec 중 styled value를 만드는 stage다. aes, hex, ip는
-// string 값을 그대로 두므로 빠진다.
+// clientStyles is the stage among field codecs that creates styled values. aes, hex, and ip
+// are omitted because they keep the string value as is.
 func clientStyles(c *runtimemodel.Field) []string {
 	var out []string
 	for _, s := range c.Codec {

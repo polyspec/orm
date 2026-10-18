@@ -13,7 +13,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// namesManifest는 dbspec document 하나의 runtime model이다.
+// namesManifest is the runtime model of one dbspec document.
 func namesManifest(t *testing.T, document string) *runtimemodel.Model {
 	t.Helper()
 	m, diagnostics := runtimemodel.LoadDocuments([]string{document})
@@ -42,7 +42,7 @@ table brand {
 }
 `
 
-// thingDocument는 identity column과 column 하나인 table thing의 document다.
+// thingDocument is the document of table thing, which has an identity column and one column.
 func thingDocument(columns ...string) string {
 	text := "dbspec 1 thing\n\ntable thing {\n  seq i64 identity\n"
 	for _, column := range columns {
@@ -225,8 +225,8 @@ func Bad() *model.ProductModel { return model.Product().LkPrice("x") }
 	}
 }
 
-// TestGeneratedFieldTypes는 dbspec type과 codec마다 generated field의 Go
-// type이 docs/dbspec.md "Runtime model" 표를 따르는지 확인한다.
+// TestGeneratedFieldTypes checks that the Go type of a generated field for each dbspec type and codec
+// follows the "Runtime model" table of docs/dbspec.md.
 func TestGeneratedFieldTypes(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	m := namesManifest(t, `dbspec 1 typed
@@ -268,7 +268,7 @@ table typed {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// gofmt 정렬과 무관하게 비교하려고 공백 연속을 하나로 줄인다.
+	// Collapses runs of spaces into one, to compare regardless of gofmt alignment.
 	text := strings.Join(strings.Fields(string(body)), " ")
 	for _, want := range []string{
 		"fSmall int16", "fSmallNull *int16", "fRef string", "fClock string",

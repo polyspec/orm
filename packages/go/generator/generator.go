@@ -10,7 +10,7 @@ import (
 
 // Options describes one deterministic Go generation request.
 type Options struct {
-	// Model은 dbspec document set의 runtime model이다.
+	// Model is the runtime model of a dbspec document set.
 	Model     *runtimemodel.Model
 	OutputDir string
 	// PackageName selects the Go package name; the directory name by default.

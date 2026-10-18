@@ -45,7 +45,7 @@ func TestGenerateUsesRequestedGoPackageName(t *testing.T) {
 	}
 }
 
-// sampleModel은 identity column 하나인 table의 runtime model이다.
+// sampleModel is the runtime model of a table with one identity column.
 func sampleModel(t *testing.T) *runtimemodel.Model {
 	t.Helper()
 	m, diagnostics := runtimemodel.LoadDocuments([]string{"dbspec 1 sample\n\ntable sample {\n  seq i64 identity\n  primary key (seq)\n}\n"})
@@ -55,8 +55,8 @@ func sampleModel(t *testing.T) *runtimemodel.Model {
 	return m
 }
 
-// TestGenerateLeavesExternalTablesOut는 외부 문서(external)를 쓰는 set이 소유한 table의
-// model만 만들고, 외부 문서에서 쓰는 table의 text를 schema 값에 싣는 것을 확인한다.
+// TestGenerateLeavesExternalTablesOut checks that a set using external documents (external)
+// generates only the model of the tables it owns, and that the text of tables used from external documents is carried in the schema value.
 func TestGenerateLeavesExternalTablesOut(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	fixtures := filepath.Join("..", "..", "..", "contracts", "fixtures", "external")
