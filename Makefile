@@ -599,7 +599,7 @@ dbspec-rust-check/set: dbspec-rust-check/set/vectors dbspec-rust-check/set/unit
 dbspec-rust-check/set/vectors: cargo-downloads-check
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --test dbspec_set --test dbspec_set_parse -- --nocapture
 dbspec-rust-check/set/unit: cargo-downloads-check
-	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --lib dbspec::set -- --nocapture
+	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-schema --lib dbspec::set
 # dbspec-rust-check/unicode는 Go가 쓴 Unicode word rune 표(unicode_word.rs)가 모든 code point에서 구간과 같은지 본다.
 dbspec-rust-check/unicode: cargo-downloads-check
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --lib dbspec::unicode_word -- --nocapture
@@ -611,7 +611,7 @@ dbspec-rust-check/apply-cleanup: cargo-downloads-check
 dbspec-rust-check/show-create: dbspec-rust-check/show-create/unit dbspec-rust-check/show-create/vectors
 .PHONY: dbspec-rust-check/show-create/unit dbspec-rust-check/show-create/vectors
 dbspec-rust-check/show-create/unit: cargo-downloads-check
-	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --lib show_create_tests -- --nocapture
+	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-schema --lib show_create_tests
 dbspec-rust-check/show-create/vectors: cargo-downloads-check
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --test dbspec_show_create -- --nocapture
 
