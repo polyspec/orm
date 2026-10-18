@@ -3843,7 +3843,7 @@ def parse_dbspec(
     text: str, documents: Mapping[str, str]
 ) -> tuple[DbspecDocument | None, list[DbspecPosition] | None, list[DbspecDiagnostic]]:
     """Parses and checks a dbspec document. `documents` is the document set for use lines:
-    the other document names and their text."""
+    the other document names and their text.
     On success it returns (document, positions, []); on failure (None, None, diagnostics)."""
     _check_arguments(text, documents)
     return parse_document(text, documents)

@@ -85,7 +85,7 @@ def _audit_line(setting, kind: str, columns) -> str:
 
 
 def quote(value: str) -> str:
-    """A single-quoted string literal: a single quote inside it is written as two.
+    """A single-quoted string literal: a single quote inside it is written as two."""
     return "'" + value.replace("'", "''") + "'"
 
 

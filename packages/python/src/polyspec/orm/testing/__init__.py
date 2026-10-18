@@ -52,6 +52,6 @@ def fix_clock(db: Db, clock: str) -> None:
 
 
 def last_affected(db: Db) -> int | None:
-    """The affected count of the last successful write on db's connection. If there was no successful write, it is None."""
+    """The affected count of the last successful write on db's connection. If there was no successful write, it is None.
     (docs/protocol.md "Test write result")."""
     return _read_last_affected(db)
