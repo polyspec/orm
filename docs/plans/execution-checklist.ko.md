@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: a4db08b5fb7fbb98f97112401a106d6bff0d1963b6accbfe81f51088f464f377 -->
+<!-- source-sha256: 45037c16d16e91a940d0dd3209951ff5fda6aaedbd03e452d98a0b3457f167f5 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1174,6 +1174,7 @@
   - [o] T131-5-1 Python docstring 세 개를 복구한다(T131-5 follows). Cause: 한 줄 docstring 번역이 닫는 triple quote를 잃어 packages/python/src/polyspec/orm/dbspec/emit.py, dbspec/parse.py, testing/__init__.py 세 module이 compile되지 않았다(T131-1-1의 tokenizer 검사가 찾았다). Evidence: 각 파일이 `python3 -c "compile(...)"`로 compile되며, 번역된 모든 Python 파일의 code는 docstring을 뺀 AST 비교에서 cf01f139와 같다.
   - [o] T131-6 Rust 주석을 영어로. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Resumed: link-owner 판정(2026-10-18), 로컬 전용 개발. Evidence(T131-6): packages/rust, benchmarks/rust, Rust 예제의 주석은 영어이며, 각 unit commit이 해당 파일의 주석 검사를 통과한다.
   - [o] T131-7 Makefile, script, 나머지 파일을 영어로; T131-1의 검사가 통과하고 check target에 들어간다. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Resumed: link-owner 판정(2026-10-18), 로컬 전용 개발. Evidence(T131-7): Makefile, scripts, tests, 예제의 주석은 영어이며, comment-language-check는 CHECK_TARGETS와 CI static group의 target이고 전체 tree에서 검사가 통과한다.
+  - [o] T131-8 Rust interface snapshot가 번역된 doc comment와 일치한다 (T131에 이어). 원인: T131 번역이 contracts/symbols/rust.json에 기록된 Rust signature 40개의 doc text를 바꿔서, cebf00eb에서 통과하던 interfaces/rust가 833af162에서 실패했다. 증거: 재기록 뒤 make interface-check/self-test가 exit 0이고 interfaces/rust가 ok이다(var/ic-after.log); 재기록은 그 40개 symbol의 기록된 signature text만 바꿨다(41행).
 - [o] T133 모든 runtime에서 공유 dbspec vector의 모든 절을 엄격하게 읽는다. 원인: tests/dbspec/cases.json의 TypeScript, Python, Rust reader는 새 `positions` 절만 엄격하게 읽고, 다른 절은 모르는 field를 무시하고 위치로 읽으므로, 철자가 틀린 field가 조용히 버려진다(T128-3p agent들이 찾음). 인수 조건: 각 runtime의 reader가 모든 절에서 모르는 field와 없는 field를 이름을 대며 거부하고, runtime마다 거부 test가 있다; Go의 reader도 마찬가지다(정정: item은 Go reader를 기준이라 했지만 그것도 모르는 field를 받아들였다). 증거: 변경 전 `go test ./engine/dbspec -run TestVectorLoadersRejectMalformedVectors`가 새 mutation 11개에서 실패했고 `make dbspec-compare-check/runners`가 319 case 중 120개(mutation 20개 × runner 6개)에서 실패했으며, 각 runner는 잘못된 field를 지나쳐 읽었다; 변경 후 runtime마다 엄격한 reader 하나(`tests/dbspec/cases.mjs`, `tests/dbspec/cases.php`, `dbspec_cases_reader.py`, `common/dbspec_cases.rs`, Go `fields` helper와 `compare/go/cases.go`)가 `<file>: <location> <problem>`으로 이를 거부하고, runner가 319개 모두 통과하며, runtime별 거부 test가 통과한다.
 - [o] T134 Python test를 설치된 package에 대해 실행한다. 원인: test 파일 54개가 `src`를 `sys.path`에 넣는데, S3는 이를 금지한다(test는 설치된 package를 대상으로 하며 경로를 바꾸지 않는다). 인수 조건: test는 venv에 설치된 package를 import하고, `sys.path` 변경이 남지 않으며, 검사가 그것을 거부한다.
   - [o] T134-1 packages/orm-python/bin/orm-gen의 `sys.path` 삽입을 없앤다 (T134에 이어). 원인: venv가 `orm-gen` console script를 설치하는데도 이 script가 여전히 `src`를 삽입한다. 완료 조건: wrapper를 없애거나 설치된 package를 import하고, 모든 호출자가 console script를 쓴다.

@@ -969,7 +969,7 @@
   },
   "packages/rust/build/src/manifest.rs::DocumentSet": {
     "exported": true,
-    "signature": "pub struct DocumentSet  { pub manifest_text : String , # [doc = \" 외부 문서에서 set이 쓰는 table의 text. 외부 문서가 없으면 비어 있다.\"] pub external_text : String , pub manifest_hash : String , pub model : RuntimeModel , }"
+    "signature": "pub struct DocumentSet  { pub manifest_text : String , # [doc = \" The text of the tables the set uses from external documents. Empty if there are no external documents.\"] pub external_text : String , pub manifest_hash : String , pub model : RuntimeModel , }"
   },
   "packages/rust/build/src/manifest.rs::DocumentSet#field.external_text": {
     "exported": true,
@@ -1461,7 +1461,7 @@
   },
   "packages/rust/build/src/tool_db/grid.rs::GridCell": {
     "exported": true,
-    "signature": "pub enum GridCell  { Null , Integer (i64) , Unsigned (u64) , Float32 (u32) , Float64 (u64) , Decimal (String) , Text (String) , Boolean (bool) , Binary (Vec \u003c u8 \u003e) , # [doc = \" MySQL `DATE`와 PostgreSQL `date`: `YYYY-MM-DD`.\"] Date (String) , # [doc = \" MySQL `TIME`과 PostgreSQL `time`: 하루 안의 `HH:MM:SS`와 소수 자릿수.\"] Time (String) , # [doc = \" MySQL `DATETIME`과 PostgreSQL time zone 없는 `timestamp`: UTC의 `YYYY-MM-DD HH:MM:SS`와 소수 자릿수.\"] DateTime (String) , }"
+    "signature": "pub enum GridCell  { Null , Integer (i64) , Unsigned (u64) , Float32 (u32) , Float64 (u64) , Decimal (String) , Text (String) , Boolean (bool) , Binary (Vec \u003c u8 \u003e) , # [doc = \" MySQL `DATE` and PostgreSQL `date`: `YYYY-MM-DD`.\"] Date (String) , # [doc = \" MySQL `TIME` and PostgreSQL `time`: `HH:MM:SS` within a day, and fractional digits.\"] Time (String) , # [doc = \" MySQL `DATETIME` and PostgreSQL `timestamp` without time zone: `YYYY-MM-DD HH:MM:SS` in UTC, and fractional digits.\"] DateTime (String) , }"
   },
   "packages/rust/build/src/tool_db/grid.rs::GridCell as From \u003c Val \u003e::from": {
     "exported": true,
@@ -1601,7 +1601,7 @@
   },
   "packages/rust/build/src/tool_db/params.rs::P": {
     "exported": true,
-    "signature": "pub enum P  { S (String) , I (i64) , Unsigned (u64) , Float32 (u32) , Float64 (u64) , Decimal (String) , Boolean (bool) , Binary (Vec \u003c u8 \u003e) , # [doc = \" dbspec text 형식의 date, time, datetime 값(GridCell과 같은 형식).\"] Date (String) , Time (String) , DateTime (String) , Null (ParamType) , }"
+    "signature": "pub enum P  { S (String) , I (i64) , Unsigned (u64) , Float32 (u32) , Float64 (u64) , Decimal (String) , Boolean (bool) , Binary (Vec \u003c u8 \u003e) , # [doc = \" A date, time, or datetime value in dbspec text form (same form as GridCell).\"] Date (String) , Time (String) , DateTime (String) , Null (ParamType) , }"
   },
   "packages/rust/build/src/tool_db/params.rs::ParamType": {
     "exported": true,
@@ -2541,7 +2541,7 @@
   },
   "packages/rust/orm/src/core.rs::Core": {
     "exported": true,
-    "signature": "pub struct Core  { pub (crate) id : u64 , pub (crate) ent : \u0026 'static Entity , pub (crate) conn : Option \u003c Db \u003e , pub (crate) err : Option \u003c (String , String) \u003e , pub (crate) group : bool , pub (crate) subject : Option \u003c u64 \u003e , pub (crate) where_ : CondGroup , pub (crate) on : Option \u003c Vec \u003c CondNode \u003e \u003e , pub (crate) joins : Vec \u003c JoinSpec \u003e , pub (crate) relations : Vec \u003c RelSpec \u003e , pub (crate) columns : Columns , pub (crate) order : Vec \u003c OrderSpec \u003e , pub (crate) group_by : Vec \u003c String \u003e , pub (crate) limit : Option \u003c (u32 , u32) \u003e , pub (crate) index : String , pub (crate) lock : \u0026 'static str , pub (crate) agg : String , pub (crate) agg_fn : \u0026 'static str , # [doc = \" relation key 성분 (부모 column, 자식 column): `add_match`마다 한 쌍을 호출 순서로 더한다.\"] pub (crate) matches : Vec \u003c (\u0026 'static str , \u0026 'static str) \u003e , pub (crate) alias : String , pub (crate) parent_node : bool , pub (crate) possible : Option \u003c (String , Param) \u003e , pub (crate) group_limit : u32 , pub (crate) delete_lock : bool , pub (crate) key_name : String , pub (crate) fetch_key : Option \u003c KeyFn \u003e , pub (crate) fetch_value : Option \u003c ValueFn \u003e , pub (crate) sets : Vec \u003c SetSpec \u003e , pub (crate) news : IndexMap \u003c String , serde_json :: Value \u003e , pub (crate) duplication : Option \u003c Box \u003c Core \u003e \u003e , pub (crate) row : Option \u003c RowState \u003e , ready_fields : std :: collections :: HashSet \u003c String \u003e , invalidated_fields : std :: collections :: HashSet \u003c String \u003e , }"
+    "signature": "pub struct Core  { pub (crate) id : u64 , pub (crate) ent : \u0026 'static Entity , pub (crate) conn : Option \u003c Db \u003e , pub (crate) err : Option \u003c (String , String) \u003e , pub (crate) group : bool , pub (crate) subject : Option \u003c u64 \u003e , pub (crate) where_ : CondGroup , pub (crate) on : Option \u003c Vec \u003c CondNode \u003e \u003e , pub (crate) joins : Vec \u003c JoinSpec \u003e , pub (crate) relations : Vec \u003c RelSpec \u003e , pub (crate) columns : Columns , pub (crate) order : Vec \u003c OrderSpec \u003e , pub (crate) group_by : Vec \u003c String \u003e , pub (crate) limit : Option \u003c (u32 , u32) \u003e , pub (crate) index : String , pub (crate) lock : \u0026 'static str , pub (crate) agg : String , pub (crate) agg_fn : \u0026 'static str , # [doc = \" relation key component (parent column, child column): adds one pair per `add_match`, in call order.\"] pub (crate) matches : Vec \u003c (\u0026 'static str , \u0026 'static str) \u003e , pub (crate) alias : String , pub (crate) parent_node : bool , pub (crate) possible : Option \u003c (String , Param) \u003e , pub (crate) group_limit : u32 , pub (crate) delete_lock : bool , pub (crate) key_name : String , pub (crate) fetch_key : Option \u003c KeyFn \u003e , pub (crate) fetch_value : Option \u003c ValueFn \u003e , pub (crate) sets : Vec \u003c SetSpec \u003e , pub (crate) news : IndexMap \u003c String , serde_json :: Value \u003e , pub (crate) duplication : Option \u003c Box \u003c Core \u003e \u003e , pub (crate) row : Option \u003c RowState \u003e , ready_fields : std :: collections :: HashSet \u003c String \u003e , invalidated_fields : std :: collections :: HashSet \u003c String \u003e , }"
   },
   "packages/rust/orm/src/core.rs::Core#field.agg": {
     "exported": false,
@@ -3109,7 +3109,7 @@
   },
   "packages/rust/orm/src/db.rs::Db": {
     "exported": true,
-    "signature": "pub struct Db  { pub (crate) inner : Arc \u003c DbInner \u003e , # [doc = \" 이 handle의 request hook이다. 연결의 다른 handle과 공유하지 않는다.\"] pub (crate) hook : Option \u003c RequestHook \u003e , }"
+    "signature": "pub struct Db  { pub (crate) inner : Arc \u003c DbInner \u003e , # [doc = \" This handle's request hook. Not shared with other handles of the connection.\"] pub (crate) hook : Option \u003c RequestHook \u003e , }"
   },
   "packages/rust/orm/src/db.rs::Db#field.hook": {
     "exported": false,
@@ -3205,7 +3205,7 @@
   },
   "packages/rust/orm/src/db.rs::DbInner": {
     "exported": false,
-    "signature": "pub (crate) struct DbInner  { pub (crate) id : u64 , pub (crate) pool : Pool , # [doc = \" SQL 연결이 plan하는 dialect다. plan하지 않는 markdown 연결에는 없다.\"] pub (crate) dialect : Option \u003c Dialect \u003e , pub (crate) cfg : Config , pub (crate) zone : Zone , plans : Mutex \u003c HashMap \u003c u64 , Arc \u003c Plan \u003e \u003e \u003e , plan_order : Mutex \u003c VecDeque \u003c u64 \u003e \u003e , # [doc = \" 이 연결에 등록된 set의 manifest hash.\"] pub (crate) sets : std :: sync :: RwLock \u003c std :: collections :: HashSet \u003c String \u003e \u003e , # [doc = \" 등록한 set의 schema. audit 기록은 그 table을 가진 set으로 삽입한다.\"] pub (crate) schemas : std :: sync :: RwLock \u003c Vec \u003c \u0026 'static Schema \u003e \u003e , pub (crate) closed : AtomicBool , pub (crate) sqlite_lock_ready : AtomicBool , # [doc = \" 연결의 statement event subscriber와 transaction 번호다. 연결의 모든 clone이 공유한다.\"] pub (crate) subscribers : Subscribers , # [doc = \" `polyspec_orm::testing::fail_next_rollback`이 설정하는 test fault다. feature\"] # [doc = \" `test-faults`가 있는 build만 설정할 수 있다.\"] pub (crate) rollback_fault : AtomicBool , # [doc = \" `polyspec_orm::testing::fail_next_statement`이 설정하는 test fault다. feature\"] # [doc = \" `test-faults`가 있는 build만 가진다.\"] # [cfg (feature = \"test-faults\")] pub (crate) statement_fault : Mutex \u003c Option \u003c crate :: testing :: StatementFault \u003e \u003e , # [doc = \" `polyspec_orm::testing::fix_clock`이 고정하는 executor clock이다(`YYYY-MM-DD HH:MM:SS.ffffff`).\"] # [doc = \" feature `test-faults`가 있는 build만 가진다.\"] # [cfg (feature = \"test-faults\")] pub (crate) fixed_clock : Mutex \u003c Option \u003c String \u003e \u003e , # [doc = \" 연결의 마지막 성공한 write 결과의 affected다. `polyspec_orm::testing::last_affected`가 읽는다.\"] # [doc = \" feature `test-faults`가 있는 build만 가진다.\"] # [cfg (feature = \"test-faults\")] pub (crate) last_affected : Mutex \u003c Option \u003c u64 \u003e \u003e , }"
+    "signature": "pub (crate) struct DbInner  { pub (crate) id : u64 , pub (crate) pool : Pool , # [doc = \" The dialect a SQL connection plans for. Markdown connections, which do not plan, have none.\"] pub (crate) dialect : Option \u003c Dialect \u003e , pub (crate) cfg : Config , pub (crate) zone : Zone , plans : Mutex \u003c HashMap \u003c u64 , Arc \u003c Plan \u003e \u003e \u003e , plan_order : Mutex \u003c VecDeque \u003c u64 \u003e \u003e , # [doc = \" The manifest hash of the set registered on this connection.\"] pub (crate) sets : std :: sync :: RwLock \u003c std :: collections :: HashSet \u003c String \u003e \u003e , # [doc = \" The schema of the registered set. Audit records are inserted with the set that has that table.\"] pub (crate) schemas : std :: sync :: RwLock \u003c Vec \u003c \u0026 'static Schema \u003e \u003e , pub (crate) closed : AtomicBool , pub (crate) sqlite_lock_ready : AtomicBool , # [doc = \" The connection's statement event subscribers and transaction number. All clones of the connection share them.\"] pub (crate) subscribers : Subscribers , # [doc = \" The test fault set by `polyspec_orm::testing::fail_next_rollback`. The feature\"] # [doc = \" Can be set only in builds with `test-faults`.\"] pub (crate) rollback_fault : AtomicBool , # [doc = \" The test fault set by `polyspec_orm::testing::fail_next_statement`. The feature\"] # [doc = \" Present only in builds with `test-faults`.\"] # [cfg (feature = \"test-faults\")] pub (crate) statement_fault : Mutex \u003c Option \u003c crate :: testing :: StatementFault \u003e \u003e , # [doc = \" The executor clock pinned by `polyspec_orm::testing::fix_clock` (`YYYY-MM-DD HH:MM:SS.ffffff`).\"] # [doc = \" Present only in builds with feature `test-faults`.\"] # [cfg (feature = \"test-faults\")] pub (crate) fixed_clock : Mutex \u003c Option \u003c String \u003e \u003e , # [doc = \" The affected count of the connection's last successful write result. Read by `polyspec_orm::testing::last_affected`.\"] # [doc = \" Present only in builds with feature `test-faults`.\"] # [cfg (feature = \"test-faults\")] pub (crate) last_affected : Mutex \u003c Option \u003c u64 \u003e \u003e , }"
   },
   "packages/rust/orm/src/db.rs::DbInner#field.cfg": {
     "exported": false,
@@ -3597,7 +3597,7 @@
   },
   "packages/rust/orm/src/dbspec/apply.rs::Applier": {
     "exported": false,
-    "signature": " struct Applier \u003c 'a , C : ? Sized \u003e { c : \u0026 'a mut C , d : Dialect , now : \u0026 'a ApplyClock \u003c 'a \u003e , events : \u0026 'a mut ApplyEvents \u003c 'a \u003e , chain : Vec \u003c \u0026 'a Plan \u003e , history : Vec \u003c HistoryRow \u003e , # [doc = \" lock을 잡은 server session의 id(MySQL CONNECTION_ID, PostgreSQL pg_backend_pid).\"] server_session : i64 , }"
+    "signature": " struct Applier \u003c 'a , C : ? Sized \u003e { c : \u0026 'a mut C , d : Dialect , now : \u0026 'a ApplyClock \u003c 'a \u003e , events : \u0026 'a mut ApplyEvents \u003c 'a \u003e , chain : Vec \u003c \u0026 'a Plan \u003e , history : Vec \u003c HistoryRow \u003e , # [doc = \" The id of the server session holding the lock (MySQL CONNECTION_ID, PostgreSQL pg_backend_pid).\"] server_session : i64 , }"
   },
   "packages/rust/orm/src/dbspec/apply.rs::Applier \u003c 'a , C \u003e::apply_chain": {
     "exported": false,
@@ -4105,7 +4105,7 @@
   },
   "packages/rust/orm/src/driver.rs::TxInner": {
     "exported": false,
-    "signature": "pub (crate) enum TxInner  { MySql (MySqlOwnedTx) , Postgres (CancellableConnection \u003c Postgres \u003e) , Sqlite (CancellableConnection \u003c Sqlite \u003e) , # [doc = \" transaction이 끝날 때까지 잡아 두는 flowmark session이다.\"] Markdown (crate :: markdown :: MdLease) , }"
+    "signature": "pub (crate) enum TxInner  { MySql (MySqlOwnedTx) , Postgres (CancellableConnection \u003c Postgres \u003e) , Sqlite (CancellableConnection \u003c Sqlite \u003e) , # [doc = \" The flowmark session held until the transaction ends.\"] Markdown (crate :: markdown :: MdLease) , }"
   },
   "packages/rust/orm/src/driver.rs::arg_types": {
     "exported": false,
@@ -4373,7 +4373,7 @@
   },
   "packages/rust/orm/src/engine/params.rs::ParamUse": {
     "exported": false,
-    "signature": "pub (crate) struct ParamUse \u003c 'm \u003e { pub (crate) ty : String , pub (crate) column : Option \u003c \u0026 'm Field \u003e , # [doc = \" column의 할당(set, rows, on_duplicate)이다: non-null column은 NULL을 거부한다.\"] pub (crate) assign : bool , }"
+    "signature": "pub (crate) struct ParamUse \u003c 'm \u003e { pub (crate) ty : String , pub (crate) column : Option \u003c \u0026 'm Field \u003e , # [doc = \" A column assignment (set, rows, on_duplicate): a non-null column rejects NULL.\"] pub (crate) assign : bool , }"
   },
   "packages/rust/orm/src/engine/params.rs::ParamUse#field.assign": {
     "exported": false,
@@ -4493,7 +4493,7 @@
   },
   "packages/rust/orm/src/engine/planner.rs::Builder": {
     "exported": false,
-    "signature": " struct Builder  { d : Dialect , binds : Vec \u003c BindSlot \u003e , subs : usize , # [doc = \" statement가 이름으로 쓴 table이다.\"] tables : std :: collections :: BTreeSet \u003c String \u003e , # [doc = \" type 없는 slot처럼 placeholder를 만들며 생긴 첫 planner 오류다. step을 만드는 곳이 확인한다.\"] error : Option \u003c crate :: Error \u003e , }"
+    "signature": " struct Builder  { d : Dialect , binds : Vec \u003c BindSlot \u003e , subs : usize , # [doc = \" The table the statement uses by name.\"] tables : std :: collections :: BTreeSet \u003c String \u003e , # [doc = \" The first planner error raised while making a placeholder, such as a slot without a type. The place that makes the step checks it.\"] error : Option \u003c crate :: Error \u003e , }"
   },
   "packages/rust/orm/src/engine/planner.rs::Builder#field.binds": {
     "exported": false,
@@ -4585,7 +4585,7 @@
   },
   "packages/rust/orm/src/engine/planner.rs::Managed": {
     "exported": false,
-    "signature": " enum Managed \u003c 'e \u003e { AesVersion (\u0026 'e Field) , # [doc = \" audit column과 그 audit 기록 entity.\"] Audit (\u0026 'e Field , \u0026 'e str) , Now (\u0026 'e Field) , }"
+    "signature": " enum Managed \u003c 'e \u003e { AesVersion (\u0026 'e Field) , # [doc = \" The audit column and its audit record entity.\"] Audit (\u0026 'e Field , \u0026 'e str) , Now (\u0026 'e Field) , }"
   },
   "packages/rust/orm/src/engine/planner.rs::Managed \u003c '_ \u003e::column": {
     "exported": false,
@@ -5181,7 +5181,7 @@
   },
   "packages/rust/orm/src/events.rs::Subscribers": {
     "exported": false,
-    "signature": "pub (crate) struct Subscribers  { # [doc = \" subscriber가 하나라도 있는지다. subscriber가 없으면 publish는 이것만 읽는다.\"] active : AtomicBool , list : RwLock \u003c Arc \u003c Vec \u003c (u64 , Subscriber) \u003e \u003e \u003e , # [doc = \" 다음 subscription의 id다.\"] next_id : AtomicU64 , # [doc = \" 연결의 마지막 바깥 transaction 번호다.\"] transactions : AtomicU64 , # [doc = \" 목록을 바꾸는 일을 차례로 한다.\"] change : Mutex \u003c () \u003e , }"
+    "signature": "pub (crate) struct Subscribers  { # [doc = \" Whether there is at least one subscriber. If there are none, publish reads only this.\"] active : AtomicBool , list : RwLock \u003c Arc \u003c Vec \u003c (u64 , Subscriber) \u003e \u003e \u003e , # [doc = \" The id of the next subscription.\"] next_id : AtomicU64 , # [doc = \" The number of the connection's last outer transaction.\"] transactions : AtomicU64 , # [doc = \" Changes to the list are made in order.\"] change : Mutex \u003c () \u003e , }"
   },
   "packages/rust/orm/src/events.rs::Subscribers#field.active": {
     "exported": false,
@@ -5893,7 +5893,7 @@
   },
   "packages/rust/orm/src/markdown.rs::MdNode": {
     "exported": false,
-    "signature": " struct MdNode \u003c 'm \u003e { q : \u0026 'm ir :: Query , ent : \u0026 'm Entity , m : \u0026 'm Manifest , groups : bool , # [doc = \" node 자신의 column만 가진 배치다. styled column의 decode가 읽는다. 첫 행 전에는 None이다.\"] flat : Option \u003c Assemble \u003e , joins : Vec \u003c (String , MdNode \u003c 'm \u003e) \u003e , rels : Vec \u003c MdRel \u003c 'm \u003e \u003e , }"
+    "signature": " struct MdNode \u003c 'm \u003e { q : \u0026 'm ir :: Query , ent : \u0026 'm Entity , m : \u0026 'm Manifest , groups : bool , # [doc = \" A batch with only the node's own columns. The decode of styled columns reads it. None before the first row.\"] flat : Option \u003c Assemble \u003e , joins : Vec \u003c (String , MdNode \u003c 'm \u003e) \u003e , rels : Vec \u003c MdRel \u003c 'm \u003e \u003e , }"
   },
   "packages/rust/orm/src/markdown.rs::MdNode \u003c 'm \u003e::assemble": {
     "exported": false,
@@ -6105,7 +6105,7 @@
   },
   "packages/rust/orm/src/markdown.rs::MdRow": {
     "exported": false,
-    "signature": "pub (crate) struct MdRow  { pub (crate) vals : Vec \u003c Val \u003e , # [doc = \" join 이름마다 그 행, left join에 맞는 행이 없으면 None이다.\"] pub (crate) joins : HashMap \u003c String , Option \u003c MdRow \u003e \u003e , # [doc = \" relation 이름마다 그 행들이다.\"] pub (crate) rels : HashMap \u003c String , Vec \u003c MdRow \u003e \u003e , }"
+    "signature": "pub (crate) struct MdRow  { pub (crate) vals : Vec \u003c Val \u003e , # [doc = \" The row for each join name; None if there is no matching row for a left join.\"] pub (crate) joins : HashMap \u003c String , Option \u003c MdRow \u003e \u003e , # [doc = \" The rows for each relation name.\"] pub (crate) rels : HashMap \u003c String , Vec \u003c MdRow \u003e \u003e , }"
   },
   "packages/rust/orm/src/markdown.rs::MdRow#field.joins": {
     "exported": false,
@@ -6125,7 +6125,7 @@
   },
   "packages/rust/orm/src/markdown.rs::MdSession": {
     "exported": false,
-    "signature": "pub (crate) struct MdSession  { read : BufReader \u003c OwnedReadHalf \u003e , write : OwnedWriteHalf , created : Instant , # [doc = \" 연결을 더 쓸 수 없음을 뜻한다: 읽기나 쓰기가 실패했거나, 답을 읽기 전에 call의 future가\"] # [doc = \" drop되었거나, server가 연결을 끝낸다고 답했다.\"] broken : bool , }"
+    "signature": "pub (crate) struct MdSession  { read : BufReader \u003c OwnedReadHalf \u003e , write : OwnedWriteHalf , created : Instant , # [doc = \" Means the connection can no longer be used: a read or write failed, or the call's future was dropped before the reply was read,\"] # [doc = \" or the server replied that it is ending the connection.\"] broken : bool , }"
   },
   "packages/rust/orm/src/markdown.rs::MdSession#field.broken": {
     "exported": false,
@@ -6425,7 +6425,7 @@
   },
   "packages/rust/orm/src/model.rs::QueryResult": {
     "exported": false,
-    "signature": " struct QueryResult  { plan : Arc \u003c Plan \u003e , main : Vec \u003c Vec \u003c Val \u003e \u003e , steps : HashMap \u003c u32 , StepRows \u003e , params : Vec \u003c Param \u003e , # [doc = \" markdown 답의 행이다: 행마다 그 join과 relation의 행을 가진다. SQL 결과에서는 None이고 `main`과\"] # [doc = \" `steps`가 그 자리다.\"] markdown : Option \u003c Vec \u003c MdRow \u003e \u003e , # [doc = \" markdown paginate 답의 전체 행 수다.\"] count : Option \u003c i64 \u003e , }"
+    "signature": " struct QueryResult  { plan : Arc \u003c Plan \u003e , main : Vec \u003c Vec \u003c Val \u003e \u003e , steps : HashMap \u003c u32 , StepRows \u003e , params : Vec \u003c Param \u003e , # [doc = \" A row of a markdown reply: each row has the rows of its joins and relations. In SQL results it is None, and `main` and\"] # [doc = \" `steps` take its place.\"] markdown : Option \u003c Vec \u003c MdRow \u003e \u003e , # [doc = \" The total row count of a markdown paginate reply.\"] count : Option \u003c i64 \u003e , }"
   },
   "packages/rust/orm/src/model.rs::QueryResult#field.count": {
     "exported": false,
@@ -6793,7 +6793,7 @@
   },
   "packages/rust/orm/src/plan.rs::Assemble": {
     "exported": true,
-    "signature": "pub struct Assemble  { pub entity : String , pub alias : String , pub columns : Vec \u003c OutCol \u003e , pub key : Vec \u003c KeyRef \u003e , pub children : Vec \u003c Child \u003e , # [doc = \" AES column을 읽는 node에서 key version을 담은 `columns`의 위치다.\"] pub aes_version : Option \u003c usize \u003e , }"
+    "signature": "pub struct Assemble  { pub entity : String , pub alias : String , pub columns : Vec \u003c OutCol \u003e , pub key : Vec \u003c KeyRef \u003e , pub children : Vec \u003c Child \u003e , # [doc = \" The position in `columns` holding the key version, for a node that reads an AES column.\"] pub aes_version : Option \u003c usize \u003e , }"
   },
   "packages/rust/orm/src/plan.rs::Assemble#field.aes_version": {
     "exported": true,
@@ -6841,7 +6841,7 @@
   },
   "packages/rust/orm/src/plan.rs::BindSlot": {
     "exported": true,
-    "signature": "pub struct BindSlot  { pub from : String , pub param : usize , pub transform : String , pub name : String , pub step : u32 , pub column : String , # [doc = \" Style stages the dialect leaves to the executor for this value (aes/hex/ip on\"] # [doc = \" PostgreSQL/SQLite), applied to the bound value in write order. Empty on MySQL.\"] pub host_styles : Vec \u003c String \u003e , # [doc = \" placeholder가 받는 값의 dbspec type이다(engine/plan/plan.go의 BindSlot.ColType). parent\"] # [doc = \" slot은 대신 `key_types`를 싣는다. type이 없는 slot은 없다.\"] pub col_type : String , # [doc = \" parent slot이 펼치는 key 값의 dbspec type이며 key column 순서다.\"] pub key_types : Vec \u003c String \u003e , pub precision : i64 , pub scale : i64 , # [doc = \" varchar(n) slot의 n이다: 값은 n 글자 이하다.\"] pub length : i64 , # [doc = \" assignment slot이 non-null column `column`에 쓰는 값이다: NULL 값은 어떤 statement보다 먼저 CODEC_ENCODE다.\"] pub not_null : bool , }"
+    "signature": "pub struct BindSlot  { pub from : String , pub param : usize , pub transform : String , pub name : String , pub step : u32 , pub column : String , # [doc = \" Style stages the dialect leaves to the executor for this value (aes/hex/ip on\"] # [doc = \" PostgreSQL/SQLite), applied to the bound value in write order. Empty on MySQL.\"] pub host_styles : Vec \u003c String \u003e , # [doc = \" The dbspec type of the value the placeholder takes (BindSlot.ColType in engine/plan/plan.go). The parent\"] # [doc = \" slot carries `key_types` instead. A slot with no type does not exist.\"] pub col_type : String , # [doc = \" The dbspec type of the key values that the parent slot expands, in key column order.\"] pub key_types : Vec \u003c String \u003e , pub precision : i64 , pub scale : i64 , # [doc = \" The n of a varchar(n) slot: the value is at most n characters.\"] pub length : i64 , # [doc = \" The value an assignment slot writes to the non-null column `column`: a NULL value is CODEC_ENCODE before any statement.\"] pub not_null : bool , }"
   },
   "packages/rust/orm/src/plan.rs::BindSlot#field.col_type": {
     "exported": true,
@@ -7053,7 +7053,7 @@
   },
   "packages/rust/orm/src/plan.rs::Step": {
     "exported": true,
-    "signature": "pub struct Step  { # [doc = \" The plan-cache key of the plan this step belongs to (FNV-1a 64 of the IR shape bytes).\"] pub plan_id : u64 , pub id : u32 , pub role : String , pub sql : String , # [doc = \" statement가 이름으로 쓰는 table이다: 정렬하고 중복을 뺀 물리 table 이름.\"] pub tables : Vec \u003c String \u003e , pub lock : String , pub bind_slots : Vec \u003c BindSlot \u003e , pub assemble : Option \u003c std :: sync :: Arc \u003c Assemble \u003e \u003e , # [doc = \" Relation steps: where the IN values come from.\"] pub parent : Option \u003c ParentRef \u003e , }"
+    "signature": "pub struct Step  { # [doc = \" The plan-cache key of the plan this step belongs to (FNV-1a 64 of the IR shape bytes).\"] pub plan_id : u64 , pub id : u32 , pub role : String , pub sql : String , # [doc = \" A table the statement uses by name: the physical table name, sorted and deduplicated.\"] pub tables : Vec \u003c String \u003e , pub lock : String , pub bind_slots : Vec \u003c BindSlot \u003e , pub assemble : Option \u003c std :: sync :: Arc \u003c Assemble \u003e \u003e , # [doc = \" Relation steps: where the IN values come from.\"] pub parent : Option \u003c ParentRef \u003e , }"
   },
   "packages/rust/orm/src/plan.rs::Step#field.assemble": {
     "exported": true,
@@ -7445,7 +7445,7 @@
   },
   "packages/rust/orm/src/schema.rs::Schema": {
     "exported": true,
-    "signature": "pub struct Schema  { text : \u0026 'static str , # [doc = \" 외부 문서에서 set이 쓰는 table의 text(`dbspec::Manifest::external_text`). 외부 문서를 쓰지 않는 set은\"] # [doc = \" 비어 있다.\"] external : \u0026 'static str , hash : \u0026 'static str , # [doc = \" 처음 만든 runtime model, 또는 그때 난 오류의 code와 message.\"] manifest : OnceLock \u003c std :: result :: Result \u003c Arc \u003c Manifest \u003e , (String , String) \u003e \u003e , }"
+    "signature": "pub struct Schema  { text : \u0026 'static str , # [doc = \" The text of the tables the set uses from external documents (`dbspec::Manifest::external_text`). A set that uses no external documents\"] # [doc = \" is empty.\"] external : \u0026 'static str , hash : \u0026 'static str , # [doc = \" The runtime model built the first time, or the code and message of the error raised then.\"] manifest : OnceLock \u003c std :: result :: Result \u003c Arc \u003c Manifest \u003e , (String , String) \u003e \u003e , }"
   },
   "packages/rust/orm/src/schema.rs::Schema#field.external": {
     "exported": false,
@@ -7589,7 +7589,7 @@
   },
   "packages/rust/orm/src/tx.rs::AuditValues": {
     "exported": false,
-    "signature": "# [doc = \" transaction의 audit 값: audit 기록 table의 column 이름과 값.\"] type AuditValues = Vec \u003c (String , Param) \u003e ;"
+    "signature": "# [doc = \" The transaction's audit values: column names and values of the audit record table.\"] type AuditValues = Vec \u003c (String , Param) \u003e ;"
   },
   "packages/rust/orm/src/tx.rs::Db::transaction": {
     "exported": true,
@@ -7613,7 +7613,7 @@
   },
   "packages/rust/orm/src/tx.rs::OnceCallback": {
     "exported": false,
-    "signature": "# [doc = \" transaction의 task-local frame 안에서 panic을 잡으며 실행하는 callback future.\"] type OnceCallback \u003c Fut \u003e = futures_util :: future :: CatchUnwind \u003c std :: panic :: AssertUnwindSafe \u003c tokio :: task :: futures :: TaskLocalFuture \u003c Vec \u003c Arc \u003c TxShared \u003e \u003e , Fut \u003e \u003e \u003e ;"
+    "signature": "# [doc = \" The callback future, which runs inside the transaction's task-local frame and catches panics.\"] type OnceCallback \u003c Fut \u003e = futures_util :: future :: CatchUnwind \u003c std :: panic :: AssertUnwindSafe \u003c tokio :: task :: futures :: TaskLocalFuture \u003c Vec \u003c Arc \u003c TxShared \u003e \u003e , Fut \u003e \u003e \u003e ;"
   },
   "packages/rust/orm/src/tx.rs::OnceOutcome": {
     "exported": false,
@@ -7649,7 +7649,7 @@
   },
   "packages/rust/orm/src/tx.rs::OnceStep": {
     "exported": false,
-    "signature": "# [doc = \" ORM이 내부에서 기다리는 단계(begin, savepoint, commit, rollback)의 future. 이 단계들은 Send이므로\"] # [doc = \" `TransactionOnceFuture`는 callback, 그 future, 결과와 오류 type이 Send일 때 Send다.\"] type OnceStep \u003c 'a , R \u003e = Pin \u003c Box \u003c dyn Future \u003c Output = R \u003e + Send + 'a \u003e \u003e ;"
+    "signature": "# [doc = \" The future of the steps the ORM awaits internally (begin, savepoint, commit, rollback). These steps are Send, so\"] # [doc = \" `TransactionOnceFuture` is Send when the callback, its future, and the result and error types are Send.\"] type OnceStep \u003c 'a , R \u003e = Pin \u003c Box \u003c dyn Future \u003c Output = R \u003e + Send + 'a \u003e \u003e ;"
   },
   "packages/rust/orm/src/tx.rs::SavepointEnd": {
     "exported": false,
@@ -7885,7 +7885,7 @@
   },
   "packages/rust/orm/src/tx.rs::TxShared": {
     "exported": false,
-    "signature": "pub (crate) struct TxShared  { pub (crate) db : Db , # [doc = \" 연결에서 이 transaction의 번호다. statement event가 싣는다.\"] pub (crate) number : u64 , pub (crate) inner : tokio :: sync :: Mutex \u003c Option \u003c TxInner \u003e \u003e , pub (crate) finished : AtomicBool , savepoints : AtomicU32 , pub (crate) locals : Mutex \u003c HashMap \u003c String , String \u003e \u003e , pub (crate) locks : Mutex \u003c Vec \u003c String \u003e \u003e , # [doc = \" transaction이 시작할 때 삽입한 audit 기록이다. audit 대상 table의 insert와 update가 그 key를 audit\"] # [doc = \" column에 쓴다. audit 값이 없는 transaction이면 None이다.\"] pub (crate) audit : Mutex \u003c Option \u003c AuditKey \u003e \u003e , sqlite_mode : Mutex \u003c Option \u003c (bool , bool) \u003e \u003e , }"
+    "signature": "pub (crate) struct TxShared  { pub (crate) db : Db , # [doc = \" The number of this transaction on the connection. Statement events carry it.\"] pub (crate) number : u64 , pub (crate) inner : tokio :: sync :: Mutex \u003c Option \u003c TxInner \u003e \u003e , pub (crate) finished : AtomicBool , savepoints : AtomicU32 , pub (crate) locals : Mutex \u003c HashMap \u003c String , String \u003e \u003e , pub (crate) locks : Mutex \u003c Vec \u003c String \u003e \u003e , # [doc = \" The audit record inserted when the transaction starts. Inserts and updates of audit-target tables write its key to the audit\"] # [doc = \" column. None for a transaction with no audit values.\"] pub (crate) audit : Mutex \u003c Option \u003c AuditKey \u003e \u003e , sqlite_mode : Mutex \u003c Option \u003c (bool , bool) \u003e \u003e , }"
   },
   "packages/rust/orm/src/tx.rs::TxShared#field.audit": {
     "exported": false,
@@ -8129,7 +8129,7 @@
   },
   "packages/rust/orm/src/utils.rs::AesSpec": {
     "exported": false,
-    "signature": " struct AesSpec  { table : String , keys : Vec \u003c String \u003e , version : String , columns : Vec \u003c (String , Vec \u003c String \u003e) \u003e , # [doc = \" key column의 dbspec type이며 `keys` 순서다.\"] key_types : Vec \u003c \u0026 'static str \u003e , # [doc = \" AES key version column의 dbspec type이다.\"] version_type : \u0026 'static str , # [doc = \" AES column의 dbspec type이며 `columns` 순서다. 암호문은 이 type으로 저장된다.\"] column_types : Vec \u003c \u0026 'static str \u003e , }"
+    "signature": " struct AesSpec  { table : String , keys : Vec \u003c String \u003e , version : String , columns : Vec \u003c (String , Vec \u003c String \u003e) \u003e , # [doc = \" The dbspec type of the key column, in `keys` order.\"] key_types : Vec \u003c \u0026 'static str \u003e , # [doc = \" The dbspec type of the AES key version column.\"] version_type : \u0026 'static str , # [doc = \" The dbspec type of the AES column, in `columns` order. Ciphertext is stored as this type.\"] column_types : Vec \u003c \u0026 'static str \u003e , }"
   },
   "packages/rust/orm/src/utils.rs::AesSpec#field.column_types": {
     "exported": false,
@@ -8549,7 +8549,7 @@
   },
   "packages/rust/schema/src/dbspec/add_tables_and_columns.rs::AddTablesAndColumnsSteps": {
     "exported": true,
-    "signature": "pub struct AddTablesAndColumnsSteps  { # [doc = \" table 이름 순으로 만드는 table은 \\\"table\\\", 더하는 column은 column 순서로 \\\"table.column\\\".\"] pub added : Vec \u003c String \u003e , pub steps : Vec \u003c PlanStep \u003e , # [doc = \" create_table이나 add_column이 아닌 차이, \\\"\u003ckind\u003e \u003ctable\u003e[.\u003cname\u003e]\\\".\"] pub differences : Vec \u003c String \u003e , }"
+    "signature": "pub struct AddTablesAndColumnsSteps  { # [doc = \" Tables to create come first in table name order as \\\"table\\\", then columns to add in column order as \\\"table.column\\\".\"] pub added : Vec \u003c String \u003e , pub steps : Vec \u003c PlanStep \u003e , # [doc = \" A difference that is neither create_table nor add_column, as \\\"\u003ckind\u003e \u003ctable\u003e[.\u003cname\u003e]\\\".\"] pub differences : Vec \u003c String \u003e , }"
   },
   "packages/rust/schema/src/dbspec/add_tables_and_columns.rs::AddTablesAndColumnsSteps#field.added": {
     "exported": true,
@@ -9513,7 +9513,7 @@
   },
   "packages/rust/schema/src/dbspec/introspect/sqlite.rs::SqliteTable": {
     "exported": false,
-    "signature": " struct SqliteTable  { # [doc = \" check 이름: 식.\"] checks : BTreeMap \u003c String , String \u003e , # [doc = \" check 이름의 선언 순서.\"] order : Vec \u003c String \u003e , fks : Vec \u003c IForeignKey \u003e , primary : Vec \u003c String \u003e , identity : String , # [doc = \" column 이름: 정의 text.\"] columns : BTreeMap \u003c String , String \u003e , # [doc = \" 비어 있지 않으면 table 전체를 읽지 못한 이유다.\"] unsupported : String , }"
+    "signature": " struct SqliteTable  { # [doc = \" Check name: expression.\"] checks : BTreeMap \u003c String , String \u003e , # [doc = \" The declaration order of the check name.\"] order : Vec \u003c String \u003e , fks : Vec \u003c IForeignKey \u003e , primary : Vec \u003c String \u003e , identity : String , # [doc = \" Column name: definition text.\"] columns : BTreeMap \u003c String , String \u003e , # [doc = \" If not empty, the reason the whole table could not be read.\"] unsupported : String , }"
   },
   "packages/rust/schema/src/dbspec/introspect/sqlite.rs::SqliteTable#field.checks": {
     "exported": false,
@@ -9893,7 +9893,7 @@
   },
   "packages/rust/schema/src/dbspec/mod.rs::Manifest": {
     "exported": true,
-    "signature": "pub struct Manifest  { pub manifest_text : String , # [doc = \" 외부 문서마다 소유한 문서가 쓰는 table의 column, primary key, unique key만 담은 canonical text다.\"] # [doc = \" 외부 문서가 없으면 비어 있다.\"] pub external_text : String , pub schema_text : String , pub manifest_hash : String , pub schema_hash : String , }"
+    "signature": "pub struct Manifest  { pub manifest_text : String , # [doc = \" Canonical text containing only the columns, primary key, and unique keys of tables that the owning document uses, for each external document.\"] # [doc = \" Empty if there are no external documents.\"] pub external_text : String , pub schema_text : String , pub manifest_hash : String , pub schema_hash : String , }"
   },
   "packages/rust/schema/src/dbspec/mod.rs::Manifest#field.external_text": {
     "exported": true,
@@ -10185,7 +10185,7 @@
   },
   "packages/rust/schema/src/dbspec/model.rs::Document": {
     "exported": true,
-    "signature": "pub struct Document  { pub name : Name , pub uses : Vec \u003c Use \u003e , pub tables : Vec \u003c Table \u003e , pub diagrams : Vec \u003c Diagram \u003e , # [doc = \" Comment lines after the last line of the document.\"] pub trailing : Vec \u003c String \u003e , # [doc = \" 문서가 set의 소유가 아니라 소유한 문서가 use로 쓰는 외부 문서임을 뜻한다. 외부 문서는 parse하고\"] # [doc = \" 검사하지만 렌더링, 설치, 비교, 생성하지 않는다(docs/dbspec.md \\\"Documents and use\\\"). 문서 text에는\"] # [doc = \" 나오지 않는다.\"] pub external : bool , }"
+    "signature": "pub struct Document  { pub name : Name , pub uses : Vec \u003c Use \u003e , pub tables : Vec \u003c Table \u003e , pub diagrams : Vec \u003c Diagram \u003e , # [doc = \" Comment lines after the last line of the document.\"] pub trailing : Vec \u003c String \u003e , # [doc = \" Means the document is not owned by the set but is an external document that an owning document uses. An external document is parsed\"] # [doc = \" and checked, but not rendered, installed, compared, or generated (docs/dbspec.md \\\"Documents and use\\\"). It\"] # [doc = \" does not appear in the document text.\"] pub external : bool , }"
   },
   "packages/rust/schema/src/dbspec/model.rs::Document#field.diagrams": {
     "exported": true,
@@ -10421,7 +10421,7 @@
   },
   "packages/rust/schema/src/dbspec/model.rs::Setting": {
     "exported": true,
-    "signature": "pub enum Setting  { Entity (Name) , Updated (Name) , SoftDelete (Name) , SelectExplicit (Vec \u003c Name \u003e) , Codec (Name , Vec \u003c Name \u003e) , AesVersion (Name) , BlindIndex (Name , Name) , Navigation (Name , Name , Name) , # [doc = \" `markdown \u003ccolumn\u003e`: the prose column of the manifest.\"] Markdown (Name) , # [doc = \" `store files`, `store document \u003cshape\u003e` or `store block \u003cforeign key\u003e \u003cshape\u003e`. `kind` is\"] # [doc = \" `files`, `document` or `block`; `foreign` is set for `block` and `shape` for `document` and `block`;\"] # [doc = \" `shard` is the optional `shard \u003ccolumn\u003e \u003cperiod\u003e` clause.\"] Store { kind : Name , foreign : Option \u003c Name \u003e , shape : Option \u003c Name \u003e , shard : Option \u003c StoreShard \u003e , } , # [doc = \" `key_prefix '\u003cprefix\u003e'`. The name holds the prefix without its quotes.\"] KeyPrefix (Name) , Title (Name) , Body (Name) , Order (Name) , # [doc = \" `checkbox \u003ccolumn\u003e \u003cstate\u003e '\u003cglyph\u003e'`. The glyph name holds the glyph without its quotes.\"] Checkbox { column : Name , state : Name , glyph : Name , } , # [doc = \" One line of `state_machine \u003ccolumn\u003e ...`.\"] StateMachine { column : Name , line : StateLine , } , Immutable , # [doc = \" `lists`는 exclude와 include 목록이다. 유효한 문서는 많아야 하나를 가진다(docs/dbspec.md \\\"Audit\\\").\"] # [doc = \" `column`은 audit 기록 table `references`의 primary key를 담는 column이다.\"] Audit { into : Name , column : Name , references : Name , action : Name , previous : Name , lists : Vec \u003c AuditList \u003e , } , }"
+    "signature": "pub enum Setting  { Entity (Name) , Updated (Name) , SoftDelete (Name) , SelectExplicit (Vec \u003c Name \u003e) , Codec (Name , Vec \u003c Name \u003e) , AesVersion (Name) , BlindIndex (Name , Name) , Navigation (Name , Name , Name) , # [doc = \" `markdown \u003ccolumn\u003e`: the prose column of the manifest.\"] Markdown (Name) , # [doc = \" `store files`, `store document \u003cshape\u003e` or `store block \u003cforeign key\u003e \u003cshape\u003e`. `kind` is\"] # [doc = \" `files`, `document` or `block`; `foreign` is set for `block` and `shape` for `document` and `block`;\"] # [doc = \" `shard` is the optional `shard \u003ccolumn\u003e \u003cperiod\u003e` clause.\"] Store { kind : Name , foreign : Option \u003c Name \u003e , shape : Option \u003c Name \u003e , shard : Option \u003c StoreShard \u003e , } , # [doc = \" `key_prefix '\u003cprefix\u003e'`. The name holds the prefix without its quotes.\"] KeyPrefix (Name) , Title (Name) , Body (Name) , Order (Name) , # [doc = \" `checkbox \u003ccolumn\u003e \u003cstate\u003e '\u003cglyph\u003e'`. The glyph name holds the glyph without its quotes.\"] Checkbox { column : Name , state : Name , glyph : Name , } , # [doc = \" One line of `state_machine \u003ccolumn\u003e ...`.\"] StateMachine { column : Name , line : StateLine , } , Immutable , # [doc = \" `lists` are the exclude and include lists. A valid document has at most one (docs/dbspec.md \\\"Audit\\\").\"] # [doc = \" `column` is the column holding the primary key of the audit record table `references`.\"] Audit { into : Name , column : Name , references : Name , action : Name , previous : Name , lists : Vec \u003c AuditList \u003e , } , }"
   },
   "packages/rust/schema/src/dbspec/model.rs::Setting#wire": {
     "exported": true,
@@ -10805,7 +10805,7 @@
   },
   "packages/rust/schema/src/dbspec/parser.rs::Parser": {
     "exported": false,
-    "signature": " struct Parser  { diags : Vec \u003c Diag \u003e , declarations : Vec \u003c Declaration \u003e , pending : Vec \u003c String \u003e , document : Document , unresolved : Vec \u003c Vec \u003c String \u003e \u003e , typeless : Vec \u003c Vec \u003c (String , bool) \u003e \u003e , table_typeless : Vec \u003c (String , bool) \u003e , failed_keys : Vec \u003c FailedKeys \u003e , header_failed : Vec \u003c bool \u003e , table_header_failed : bool , defaults : Vec \u003c Vec \u003c DefaultToken \u003e \u003e , table_defaults : Vec \u003c DefaultToken \u003e , context : Context , # [doc = \" Depth of an unreadable block whose lines are skipped.\"] skip : usize , # [doc = \" Top-level phase: 0 `use`, 1 `table`, 2 `diagram`.\"] phase : u8 , table : Option \u003c Table \u003e , table_unresolved : Vec \u003c String \u003e , table_failed_keys : FailedKeys , # [doc = \" Table line phase: 0 columns, 1 key, index, foreign key and check lines, 2 settings.\"] table_phase : u8 , # [doc = \" The `{` of the open table, settings block and diagram.\"] table_brace : Option \u003c Pos \u003e , settings_brace : Option \u003c Pos \u003e , # [doc = \" 반복된 settings block: 줄은 구문만 읽고 `detached_settings`에 쌓으며, Go의 detached block이다.\"] settings_detached : bool , detached_settings : Option \u003c Settings \u003e , diagram_brace : Option \u003c Pos \u003e , diagram : Option \u003c Diagram \u003e , columns : usize , foreign_keys : usize , stopped : bool , # [doc = \" The classes of the words read so far.\"] marks : Vec \u003c (Pos , Class) \u003e , # [doc = \" How many blocks were opened; a line that opens one is not inside the block it opens.\"] opened : usize , # [doc = \" Whether the opening line of the open diagram failed (R20).\"] diagram_header_failed : bool , # [doc = \" Whether the opening line of the open settings block failed (R20); cleared at its close.\"] settings_header_failed : bool , }"
+    "signature": " struct Parser  { diags : Vec \u003c Diag \u003e , declarations : Vec \u003c Declaration \u003e , pending : Vec \u003c String \u003e , document : Document , unresolved : Vec \u003c Vec \u003c String \u003e \u003e , typeless : Vec \u003c Vec \u003c (String , bool) \u003e \u003e , table_typeless : Vec \u003c (String , bool) \u003e , failed_keys : Vec \u003c FailedKeys \u003e , header_failed : Vec \u003c bool \u003e , table_header_failed : bool , defaults : Vec \u003c Vec \u003c DefaultToken \u003e \u003e , table_defaults : Vec \u003c DefaultToken \u003e , context : Context , # [doc = \" Depth of an unreadable block whose lines are skipped.\"] skip : usize , # [doc = \" Top-level phase: 0 `use`, 1 `table`, 2 `diagram`.\"] phase : u8 , table : Option \u003c Table \u003e , table_unresolved : Vec \u003c String \u003e , table_failed_keys : FailedKeys , # [doc = \" Table line phase: 0 columns, 1 key, index, foreign key and check lines, 2 settings.\"] table_phase : u8 , # [doc = \" The `{` of the open table, settings block and diagram.\"] table_brace : Option \u003c Pos \u003e , settings_brace : Option \u003c Pos \u003e , # [doc = \" A repeated settings block: its lines are read only for syntax and collected in `detached_settings`; this is Go's detached block.\"] settings_detached : bool , detached_settings : Option \u003c Settings \u003e , diagram_brace : Option \u003c Pos \u003e , diagram : Option \u003c Diagram \u003e , columns : usize , foreign_keys : usize , stopped : bool , # [doc = \" The classes of the words read so far.\"] marks : Vec \u003c (Pos , Class) \u003e , # [doc = \" How many blocks were opened; a line that opens one is not inside the block it opens.\"] opened : usize , # [doc = \" Whether the opening line of the open diagram failed (R20).\"] diagram_header_failed : bool , # [doc = \" Whether the opening line of the open settings block failed (R20); cleared at its close.\"] settings_header_failed : bool , }"
   },
   "packages/rust/schema/src/dbspec/parser.rs::Parser#field.columns": {
     "exported": false,
@@ -11209,7 +11209,7 @@
   },
   "packages/rust/schema/src/dbspec/parser.rs::Syntax": {
     "exported": false,
-    "signature": "pub (crate) struct Syntax  { pub document : Document , # [doc = \" The declarations of the document, in the order they were read; positions sorts them.\"] pub declarations : Vec \u003c Declaration \u003e , pub unresolved : Vec \u003c Vec \u003c String \u003e \u003e , # [doc = \" 표마다, type이 잘못된 column 줄의 이름이다. Go는 그런 열을 남기므로 그 열을 가리키는 외래 key의 자식은 알려진 것으로 본다.\"] pub typeless : Vec \u003c Vec \u003c (String , bool) \u003e \u003e , # [doc = \" For each table, the key and index lines that failed.\"] pub failed_keys : Vec \u003c FailedKeys \u003e , # [doc = \" 표마다, 표 줄이 실패했는지(이름이 없거나, `{`가 없거나, `{` 뒤에 말이 있다). Go의 failed table이다.\"] pub header_failed : Vec \u003c bool \u003e , # [doc = \" For each table, the `default` value tokens of its column lines that parsed.\"] pub defaults : Vec \u003c Vec \u003c DefaultToken \u003e \u003e , pub diags : Vec \u003c Diag \u003e , pub marks : Marks , }"
+    "signature": "pub (crate) struct Syntax  { pub document : Document , # [doc = \" The declarations of the document, in the order they were read; positions sorts them.\"] pub declarations : Vec \u003c Declaration \u003e , pub unresolved : Vec \u003c Vec \u003c String \u003e \u003e , # [doc = \" For each table, the name of a column line whose type is wrong. Go keeps such a column, so a child of a foreign key that points to that column is treated as known.\"] pub typeless : Vec \u003c Vec \u003c (String , bool) \u003e \u003e , # [doc = \" For each table, the key and index lines that failed.\"] pub failed_keys : Vec \u003c FailedKeys \u003e , # [doc = \" For each table, whether the table line failed (it has no name, no `{`, or text after `{`). This is Go's failed table.\"] pub header_failed : Vec \u003c bool \u003e , # [doc = \" For each table, the `default` value tokens of its column lines that parsed.\"] pub defaults : Vec \u003c Vec \u003c DefaultToken \u003e \u003e , pub diags : Vec \u003c Diag \u003e , pub marks : Marks , }"
   },
   "packages/rust/schema/src/dbspec/parser.rs::Syntax#field.declarations": {
     "exported": false,
@@ -11525,7 +11525,7 @@
   },
   "packages/rust/schema/src/dbspec/plan_diff.rs::PlanDiff": {
     "exported": false,
-    "signature": "pub (crate) struct PlanDiff \u003c 'd \u003e { # [doc = \" 이름: table\"] pub source : BTreeMap \u003c \u0026 'd str , \u0026 'd Table \u003e , pub target : BTreeMap \u003c \u0026 'd str , \u0026 'd Table \u003e , # [doc = \" target table: source table\"] pub table_of : BTreeMap \u003c \u0026 'd str , \u0026 'd str \u003e , # [doc = \" target table: target column: source column\"] pub column_of : BTreeMap \u003c \u0026 'd str , BTreeMap \u003c \u0026 'd str , \u0026 'd str \u003e \u003e , pub created : Vec \u003c \u0026 'd str \u003e , pub dropped : Vec \u003c \u0026 'd str \u003e , # [doc = \" target 이름 순\"] pub matched : Vec \u003c \u0026 'd str \u003e , pub added : BTreeMap \u003c \u0026 'd str , Vec \u003c \u0026 'd str \u003e \u003e , pub removed : BTreeMap \u003c \u0026 'd str , Vec \u003c \u0026 'd str \u003e \u003e , pub altered : BTreeMap \u003c \u0026 'd str , Vec \u003c \u0026 'd str \u003e \u003e , pub renamed_tables : Vec \u003c \u0026 'd TableRename \u003e , pub renamed_columns : Vec \u003c \u0026 'd ColumnRename \u003e , # [doc = \" source table: 지울 객체\"] pub drop_objects : BTreeMap \u003c \u0026 'd str , Vec \u003c ObjectRef \u003c 'd \u003e \u003e \u003e , # [doc = \" target table: 더할 객체\"] pub add_objects : BTreeMap \u003c \u0026 'd str , Vec \u003c ObjectRef \u003c 'd \u003e \u003e \u003e , # [doc = \" trigger가 바뀌는 target table\"] pub triggers : BTreeSet \u003c \u0026 'd str \u003e , pub changes : Vec \u003c Change \u003e , }"
+    "signature": "pub (crate) struct PlanDiff \u003c 'd \u003e { # [doc = \" Name: table\"] pub source : BTreeMap \u003c \u0026 'd str , \u0026 'd Table \u003e , pub target : BTreeMap \u003c \u0026 'd str , \u0026 'd Table \u003e , # [doc = \" target table: source table\"] pub table_of : BTreeMap \u003c \u0026 'd str , \u0026 'd str \u003e , # [doc = \" target table: target column: source column\"] pub column_of : BTreeMap \u003c \u0026 'd str , BTreeMap \u003c \u0026 'd str , \u0026 'd str \u003e \u003e , pub created : Vec \u003c \u0026 'd str \u003e , pub dropped : Vec \u003c \u0026 'd str \u003e , # [doc = \" In target name order\"] pub matched : Vec \u003c \u0026 'd str \u003e , pub added : BTreeMap \u003c \u0026 'd str , Vec \u003c \u0026 'd str \u003e \u003e , pub removed : BTreeMap \u003c \u0026 'd str , Vec \u003c \u0026 'd str \u003e \u003e , pub altered : BTreeMap \u003c \u0026 'd str , Vec \u003c \u0026 'd str \u003e \u003e , pub renamed_tables : Vec \u003c \u0026 'd TableRename \u003e , pub renamed_columns : Vec \u003c \u0026 'd ColumnRename \u003e , # [doc = \" Source table: objects to drop\"] pub drop_objects : BTreeMap \u003c \u0026 'd str , Vec \u003c ObjectRef \u003c 'd \u003e \u003e \u003e , # [doc = \" Target table: objects to add\"] pub add_objects : BTreeMap \u003c \u0026 'd str , Vec \u003c ObjectRef \u003c 'd \u003e \u003e \u003e , # [doc = \" Target table whose trigger changes\"] pub triggers : BTreeSet \u003c \u0026 'd str \u003e , pub changes : Vec \u003c Change \u003e , }"
   },
   "packages/rust/schema/src/dbspec/plan_diff.rs::PlanDiff \u003c 'd \u003e::collect_changes": {
     "exported": false,
@@ -11793,7 +11793,7 @@
   },
   "packages/rust/schema/src/dbspec/plan_steps.rs::PlanWriter": {
     "exported": false,
-    "signature": " struct PlanWriter \u003c 'w , 'd \u003e { d : \u0026 'w PlanDiff \u003c 'd \u003e , r : Renderer , out : Vec \u003c PlanStep \u003e , # [doc = \" SQLite에서 다시 만드는 target table\"] rebuilt : BTreeSet \u003c \u0026 'd str \u003e , hold_prefix : String , # [doc = \" 보관 이름: \\\"table.column\\\"(지우는 column, source 이름), table(지우는 table),\"] # [doc = \" \\\"+table.column\\\"(더하는 column, target 이름)\"] holds : BTreeMap \u003c String , String \u003e , hold_order : Vec \u003c String \u003e , }"
+    "signature": " struct PlanWriter \u003c 'w , 'd \u003e { d : \u0026 'w PlanDiff \u003c 'd \u003e , r : Renderer , out : Vec \u003c PlanStep \u003e , # [doc = \" The target table rebuilt in SQLite\"] rebuilt : BTreeSet \u003c \u0026 'd str \u003e , hold_prefix : String , # [doc = \" Hidden names: \\\"table.column\\\" (a dropped column, source name), table (a dropped table),\"] # [doc = \" \\\"+table.column\\\" (an added column, target name)\"] holds : BTreeMap \u003c String , String \u003e , hold_order : Vec \u003c String \u003e , }"
   },
   "packages/rust/schema/src/dbspec/plan_steps.rs::PlanWriter \u003c '_ , 'd \u003e::add": {
     "exported": false,
@@ -11937,7 +11937,7 @@
   },
   "packages/rust/schema/src/dbspec/plan_steps.rs::RendererChecks": {
     "exported": false,
-    "signature": "# [doc = \" renderer CHECK 이름: 식\"] type RendererChecks = BTreeMap \u003c String , String \u003e ;"
+    "signature": "# [doc = \" Renderer CHECK name: expression\"] type RendererChecks = BTreeMap \u003c String , String \u003e ;"
   },
   "packages/rust/schema/src/dbspec/plan_steps.rs::TriggerPart": {
     "exported": false,
@@ -12157,7 +12157,7 @@
   },
   "packages/rust/schema/src/dbspec/runtime.rs::Audit": {
     "exported": true,
-    "signature": "pub struct Audit  { pub history : String , # [doc = \" transaction의 audit 기록 key를 담는 column.\"] pub column : String , # [doc = \" audit 기록 table의 이름.\"] pub record : String , pub action : String , pub previous : String , }"
+    "signature": "pub struct Audit  { pub history : String , # [doc = \" The column holding the audit record key of the transaction.\"] pub column : String , # [doc = \" The name of the audit record table.\"] pub record : String , pub action : String , pub previous : String , }"
   },
   "packages/rust/schema/src/dbspec/runtime.rs::Audit#field.action": {
     "exported": true,
@@ -12185,7 +12185,7 @@
   },
   "packages/rust/schema/src/dbspec/runtime.rs::Entity": {
     "exported": true,
-    "signature": "pub struct Entity  { # [doc = \" `entity` setting, 없으면 table 이름.\"] pub name : String , pub table : String , # [doc = \" column마다 field 하나, column 순서.\"] pub fields : Vec \u003c Field \u003e , pub primary_key : Vec \u003c String \u003e , # [doc = \" identity column.\"] pub identity : Option \u003c String \u003e , pub uniques : Vec \u003c Key \u003e , pub indexes : Vec \u003c Key \u003e , pub foreign_keys : Vec \u003c ForeignKey \u003e , # [doc = \" `updated` column.\"] pub updated : Option \u003c String \u003e , # [doc = \" `soft_delete` column.\"] pub soft_delete : Option \u003c String \u003e , # [doc = \" `aes_version` column.\"] pub aes_version : Option \u003c String \u003e , pub audit : Option \u003c Audit \u003e , pub immutable : bool , }"
+    "signature": "pub struct Entity  { # [doc = \" The `entity` setting, or the table name if there is none.\"] pub name : String , pub table : String , # [doc = \" One field per column, in column order.\"] pub fields : Vec \u003c Field \u003e , pub primary_key : Vec \u003c String \u003e , # [doc = \" identity column.\"] pub identity : Option \u003c String \u003e , pub uniques : Vec \u003c Key \u003e , pub indexes : Vec \u003c Key \u003e , pub foreign_keys : Vec \u003c ForeignKey \u003e , # [doc = \" `updated` column.\"] pub updated : Option \u003c String \u003e , # [doc = \" `soft_delete` column.\"] pub soft_delete : Option \u003c String \u003e , # [doc = \" `aes_version` column.\"] pub aes_version : Option \u003c String \u003e , pub audit : Option \u003c Audit \u003e , pub immutable : bool , }"
   },
   "packages/rust/schema/src/dbspec/runtime.rs::Entity#field.aes_version": {
     "exported": true,
@@ -12249,7 +12249,7 @@
   },
   "packages/rust/schema/src/dbspec/runtime.rs::Field": {
     "exported": true,
-    "signature": "pub struct Field  { pub name : String , pub ty : Type , pub nullable : bool , pub identity : bool , pub primary_key : bool , # [doc = \" foreign key에 속한 column이다.\"] pub foreign_key : bool , pub default : Option \u003c FieldDefault \u003e , # [doc = \" `select explicit`이 이름을 적은 column이라 default select set에서 빠진다.\"] pub select_explicit : bool , # [doc = \" 쓰기 순서의 codec stage.\"] pub codec : Vec \u003c String \u003e , # [doc = \" 이 AES column의 `blind_index` setting이 정한 index column.\"] pub blind_index : Option \u003c String \u003e , }"
+    "signature": "pub struct Field  { pub name : String , pub ty : Type , pub nullable : bool , pub identity : bool , pub primary_key : bool , # [doc = \" A column that belongs to a foreign key.\"] pub foreign_key : bool , pub default : Option \u003c FieldDefault \u003e , # [doc = \" A column named by `select explicit`, so it is left out of the default select set.\"] pub select_explicit : bool , # [doc = \" The codec stage in write order.\"] pub codec : Vec \u003c String \u003e , # [doc = \" The index column determined by the `blind_index` setting of this AES column.\"] pub blind_index : Option \u003c String \u003e , }"
   },
   "packages/rust/schema/src/dbspec/runtime.rs::Field#field.blind_index": {
     "exported": true,
@@ -12305,7 +12305,7 @@
   },
   "packages/rust/schema/src/dbspec/runtime.rs::FieldDefault": {
     "exported": true,
-    "signature": "pub enum FieldDefault  { # [doc = \" `default now`.\"] Now , # [doc = \" canonical text의 literal.\"] Literal (String) , }"
+    "signature": "pub enum FieldDefault  { # [doc = \" `default now`.\"] Now , # [doc = \" The literal of the canonical text.\"] Literal (String) , }"
   },
   "packages/rust/schema/src/dbspec/runtime.rs::ForeignKey": {
     "exported": true,
@@ -12825,7 +12825,7 @@
   },
   "packages/rust/schema/src/dbspec/validate.rs::TableScope": {
     "exported": false,
-    "signature": " struct TableScope \u003c 's , 'd \u003e { table : \u0026 'd Table , unresolved : Option \u003c \u0026 's HashSet \u003c \u0026 'd str \u003e \u003e , # [doc = \" 열 줄의 type이 잘못된 열의 이름이다. Go는 이 열을 있는 열로 보고 type만 검사하지 않는다.\"] typeless : Option \u003c \u0026 's HashMap \u003c \u0026 'd str , bool \u003e \u003e , failed_keys : FailedKeys , # [doc = \" 표 줄이 실패했다. Go의 failed table로서 이 표를 가리키는 참조와 이름 중복을 보고하지 않는다.\"] header_failed : bool , }"
+    "signature": " struct TableScope \u003c 's , 'd \u003e { table : \u0026 'd Table , unresolved : Option \u003c \u0026 's HashSet \u003c \u0026 'd str \u003e \u003e , # [doc = \" The name of a column whose column line has a wrong type. Go treats this column as existing and does not check only its type.\"] typeless : Option \u003c \u0026 's HashMap \u003c \u0026 'd str , bool \u003e \u003e , failed_keys : FailedKeys , # [doc = \" The table line failed. As Go's failed table, references to this table and duplicate names are not reported.\"] header_failed : bool , }"
   },
   "packages/rust/schema/src/dbspec/validate.rs::TableScope \u003c 's , 'd \u003e::column": {
     "exported": false,

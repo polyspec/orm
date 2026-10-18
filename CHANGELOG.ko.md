@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: fbe48dd1f720bec7c0009dbd6c649ad013f23fe6c156050db484f205ff949df6 -->
+<!-- source-sha256: 524a5e99186b24d0beb99cac5a0c2bb36f3e34e03d4b0aa2c45090b623756597 -->
 # 변경 이력
 
 ## Unreleased
+- Rust interface snapshot가 번역된 doc comment를 다시 기록한다 (T131-8).
 - PHP extension 선언 unit 다섯이 parity 실행에서 통과한다. binding이 parity-check가 지정한 build된 extension을 불러온다 (T148-4-3).
 - Python decimal unit이 parity 실행에서 통과한다. round trip이 parity-check가 내보내는 DECIMAL_*_DSN 이름을 읽는다 (T148-4-1).
 - 두 PHP 성능 gate가 parity 실행에서 통과한다. parity-check가 가드가 읽는 ORM_BENCH_MYSQL_DSN을 내보낸다 (T148-4-2).
