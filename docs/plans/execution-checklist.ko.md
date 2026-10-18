@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 77ec5fdc33f9b81bc210d881d6c592747249e9a22b3cb9c501d3d9206f3746ae -->
+<!-- source-sha256: 59e1ac9041d6900f42fa3c832fb6503382c9f5b6bdc40a50f465b61f045e241c -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
