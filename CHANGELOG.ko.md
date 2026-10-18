@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3f7c8b8f745f3670f252c6e783a92ea70c7de17694905726be0327f4c62cb177 -->
+<!-- source-sha256: 2047e56ddfd3dfff2e61a9ed87b1b58bbf4ee7b59f01f27135fb5c0002e5207b -->
 # 변경 이력
 
 ## Unreleased
+- T203을 재현되지 않음으로 닫는다: request hook 아래 relation()/relations()가 CONFIG를 내는 client가 없다 (T203).
 - test server 시작이 같은 datadir에 이전 시작이 남긴 server를 멈추고, `make worktree-remove`가 worktree를 지우기 전에 그 server를 멈춘다(T207).
 - T202를 결함 없음으로 닫는다: 모든 client에서 request hook이 이미 conflict key 검증보다 먼저 실행된다 (T202).
 - Go statement-timeout test와 TypeScript model test는 datetime을 canonical text로 넘긴다 (T210).
