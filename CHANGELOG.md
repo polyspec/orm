@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The element type and behaviour tests read plans.json through the one PHP reader of it (T182-0-1-4).
 - The PHP symbol snapshot records the element type check Graph, whose public symbols are declared as PHP-only (T182-0-1-3).
 - The interface contract test copies every stub of the PHP extension, so the recorded Code class is checked again (T182-1-1).
 - The PHP tests of the element type check, the behaviour cases and the show-create introspection are bound in the parity declaration (T182-0-1-2).

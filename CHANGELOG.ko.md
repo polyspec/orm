@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f8e3a6be076911cff80059b23d6ad4beb625159f73bca26431770c65d6959d51 -->
+<!-- source-sha256: face88df139eebd25bd958f08cc18601ce3903e9bee71d0fb50417edfc14f17f -->
 # 변경 이력
 
 ## Unreleased
+- 요소 type test와 behaviour test가 plans.json을 PHP의 하나뿐인 reader로 읽는다(T182-0-1-4).
 - PHP symbol snapshot이 요소 type 검사 Graph를 기록하고, 그 공개 symbol을 PHP 전용으로 선언한다(T182-0-1-3).
 - interface contract test가 PHP extension의 모든 stub을 복사해, 기록된 Code class를 다시 검사한다(T182-1-1).
 - 요소 type 검사, behaviour case, show-create introspection의 PHP test를 parity 선언에 bind했다(T182-0-1-2).

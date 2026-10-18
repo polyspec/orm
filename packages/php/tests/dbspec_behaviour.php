@@ -11,6 +11,7 @@ declare(strict_types=1);
 use Polyspec\Orm\Dbspec\Dbspec;
 
 require_once __DIR__ . '/dbspec_cases.php';
+require_once __DIR__ . '/dbspec_plan_cases.php';
 
 /** The repository root, which outcomes write as <root> so that a recorded message names no machine's path. */
 function behaviour_root(): string
@@ -150,7 +151,7 @@ function behaviour_chains(): array
     if ($chains !== null) {
         return $chains;
     }
-    $vectors = json_decode(file_get_contents(behaviour_root() . '/tests/dbspec/plans.json'), true, 512, JSON_THROW_ON_ERROR);
+    $vectors = plan_vectors();
     $cases = array_column($vectors['cases'], null, 'id');
     $parse = static fn(string $text): object => Dbspec::parsePlan($text)->plan ?? throw new RuntimeException("plan does not parse:\n$text");
     $chains = ['main' => [$parse(implode("\n", $cases['create-from-empty']['plan']) . "\n"), $parse(implode("\n", $cases['rename-table-and-column']['plan']) . "\n")]];

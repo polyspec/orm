@@ -4,6 +4,7 @@ declare(strict_types=1);
 // "<what> holds <value>, not <type>" at the first such element (Polyspec\Orm\Dbspec\Graph), one case per checked array;
 // a document whose arrays hold their types is read as before.
 require_once __DIR__ . '/case_clock.php';
+require_once __DIR__ . '/dbspec_plan_cases.php';
 
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Document;
@@ -35,7 +36,7 @@ function graph_core(): Document
 /** The plan of the case rename-table-and-column of tests/dbspec/plans.json. */
 function graph_plan_text(): string
 {
-    $vectors = json_decode(file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/plans.json'), true, 512, JSON_THROW_ON_ERROR);
+    $vectors = plan_vectors();
     return implode("\n", array_column($vectors['cases'], 'plan', 'id')['rename-table-and-column']) . "\n";
 }
 
