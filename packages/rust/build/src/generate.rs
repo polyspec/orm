@@ -1066,3 +1066,32 @@ fn model_source(gm: &Model<'_>) -> String {
     b.push_str("}\n");
     b
 }
+
+#[cfg(test)]
+mod fixed_method_tests {
+    use super::*;
+
+    /// The public methods of the fixed impl that every generated model carries (fixed.rs.txt), read from its source.
+    fn impl_methods() -> BTreeSet<String> {
+        // The fragment opens the impl block that the generator closes after it.
+        let file = syn::parse_file(&format!("{FIXED_CODE}\n}}\n")).expect("fixed.rs.txt closes into Rust items");
+        file.items
+            .iter()
+            .filter_map(|item| match item {
+                syn::Item::Impl(imp) => Some(imp),
+                _ => None,
+            })
+            .flat_map(|imp| imp.items.iter())
+            .filter_map(|item| match item {
+                syn::ImplItem::Fn(f) if matches!(f.vis, syn::Visibility::Public(_)) => Some(f.sig.ident.to_string()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn fixed_list_names_the_public_methods_of_the_fixed_impl() {
+        let listed: BTreeSet<String> = FIXED.iter().map(|s| s.to_string()).collect();
+        assert_eq!(listed, impl_methods(), "FIXED differs from the public methods of the fixed impl in fixed.rs.txt");
+    }
+}

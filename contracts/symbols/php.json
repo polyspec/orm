@@ -8987,6 +8987,10 @@
     "exported": false,
     "signature": "private static function model(array $e, string $class, string $namespace, string $hash, array $tags=[]): string"
   },
+  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::modelMethods": {
+    "exported": false,
+    "signature": "private static function modelMethods(): array"
+  },
   "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::namedGetter": {
     "exported": false,
     "signature": "private static function namedGetter(string $name, string $key, array $metas, array $used): bool"

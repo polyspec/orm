@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6cdbbe9d2563762caa6392d4106d3659e2c56a2b4017767c0f6f8161cc34d292 -->
+<!-- source-sha256: ff0b4fceee91a0326f1646707da0b3607cc3d2cd82d91967e4d4fb993a91154f -->
 # 변경 이력
 
 ## Unreleased
+- 각 generator는 base Model method를 Model에서 직접 읽는다. T200 `restore_or_create` 호출이 생성되고 `json_text` column은 거부된다 (T213).
 - external text가 사용 table 사이의 foreign key와 그 선두 index를 유지해, runtime이 external document의 audit `tables` 절을 받아들인다(T201-1).
 - TypeScript AesKeyring symbol이 interface-check와 parity unit에서 red와 green을 거쳤다 (T148-4-4).
 - model.mjs는 connectionsUseUtc 시각을 canonical UTC text로 넘긴다 (T210).

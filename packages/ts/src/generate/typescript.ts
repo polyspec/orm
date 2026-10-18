@@ -6,6 +6,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { Entity, Field as Column, RuntimeModel as Manifest } from '../engine/model.js';
+import { Model } from '../model.js';
 import { category, checkColumnNames, columnName, functionColumn, numeric, parseChain, pascal, splitPair, validOrder, type ChainKey } from './names.js';
 import { scanModelCalls } from './scan.js';
 
@@ -89,10 +90,9 @@ function codecValue(value: unknown): value is CodecValue {
 `],
 ];
 
-const baseMethods = ['connect', 'and', 'or', 'not', 'andNot', 'orNot', 'on', 'relation', 'relations', 'limit', 'orderByRandom',
-  'removeAllColumns', 'addAllColumns', 'parentNode', 'groupLimit', 'deleteLock', 'fetchKey', 'fetchValue', 'forUpdate', 'forShare', 'forUpdateNoWait',
-  'forShareNoWait', 'duplication', 'get', 'gets', 'getsCount', 'getCount', 'getSum', 'getAvg', 'getsPage', 'getQuery', 'create', 'creates', 'update',
-  'save', 'delete', 'restore', 'toArray', 'toJSON', 'toJSONText', 'constructor'];
+// The methods of the runtime Model, which every generated model inherits: a generated method with the same name would replace one.
+// They are read from the class, so a method added to Model is a base method here without a second list.
+export const baseMethods: readonly string[] = Object.getOwnPropertyNames(Model.prototype).filter(name => !name.startsWith('_'));
 
 function staticNames(e: Entity): Set<string> {
   const out = new Set(baseMethods);

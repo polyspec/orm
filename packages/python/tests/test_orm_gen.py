@@ -142,6 +142,22 @@ class OrmGenTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Author.not_a_model_method", result.stderr)
 
+    def test_a_restore_or_create_call_is_a_model_method(self):
+        # restore_or_create is a public method of Model, so a scanned call to it is accepted.
+        result = self._scan(
+            "from models import Author\n"
+            "row = Author().restore_or_create()\n"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_an_alias_call_is_a_model_method(self):
+        # alias is a public method of Model, so a scanned call to it is accepted.
+        result = self._scan(
+            "from models import Author\n"
+            "author = Author().alias('author_alias')\n"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def _scan(self, text):
         """Runs orm-gen with --scan of one source into a new folder; returns the completed process."""
         with tempfile.TemporaryDirectory(prefix="orm-gen-scan-") as out:

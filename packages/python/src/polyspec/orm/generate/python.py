@@ -7,6 +7,7 @@ from polyspec.orm import codes
 from polyspec.orm.engine.model import Entity, Field, RuntimeModel
 from polyspec.orm.errors import OrmError
 from polyspec.orm.generate.scan import scan_model_calls
+from polyspec.orm.model import Model
 from polyspec.orm.names import (
     category,
     check_column_names,
@@ -136,49 +137,10 @@ def _annotation(c: Field, setter: bool) -> str:
     return f"{text} | None" if c.nullable and kind != "styled" else text
 
 
+# The public methods of the runtime Model, which every generated model inherits. They are read from the class, so
+# a method added to Model is a model method here without a second list.
 _BASE_METHODS = frozenset(
-    {
-        "connect",
-        "and_",
-        "or_",
-        "not_",
-        "and_not",
-        "or_not",
-        "on",
-        "relation",
-        "relations",
-        "limit",
-        "order_by_random",
-        "remove_all_columns",
-        "add_all_columns",
-        "parent_node",
-        "group_limit",
-        "delete_lock",
-        "fetch_key",
-        "fetch_value",
-        "for_update",
-        "for_share",
-        "for_update_no_wait",
-        "for_share_no_wait",
-        "duplication",
-        "get",
-        "gets",
-        "gets_count",
-        "get_count",
-        "get_sum",
-        "get_avg",
-        "gets_page",
-        "get_query",
-        "create",
-        "creates",
-        "update",
-        "save",
-        "delete",
-        "restore",
-        "to_array",
-        "to_json",
-        "to_json_text",
-    }
+    name for name in dir(Model) if not name.startswith("_") and callable(getattr(Model, name))
 )
 
 

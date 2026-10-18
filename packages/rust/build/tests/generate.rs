@@ -521,3 +521,11 @@ fn read(row: &Author) { let writer: Option<User> = row.get_writer().unwrap(); le
     .unwrap_err();
     assert!(err.contains("User has no method get_ghost: no call attaches \"ghost\""), "{err}");
 }
+
+#[test]
+fn a_restore_or_create_call_is_a_fixed_method() {
+    // restore_or_create is a method of every generated model (fixed.rs.txt), so a scanned call to it is accepted and the
+    // model keeps its own method, not a generated one.
+    let text = generate("async fn main() { let _ = ZoneEvent::new().restore_or_create().await; }").unwrap();
+    assert!(text.contains("pub async fn restore_or_create(&self) -> polyspec_orm::Result<Self>"), "the fixed method is missing");
+}

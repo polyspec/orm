@@ -139,6 +139,26 @@ final class RuntimeModelTest extends TestCase
         self::assertTrue(str_contains($engine->compile($ir)['steps'][0]['sql'], '"a"."level" BETWEEN $1 AND $2'), 'i16 condition');
     }
 
+    public function test_a_column_whose_condition_method_is_a_model_method_is_refused(): void
+    {
+        // jsonText is a public static method of Model. A column json_text would generate an instance method of that
+        // name, which PHP refuses when the model class loads, so generation refuses the column instead.
+        $doc = "dbspec 1 small\n\ntable small_value {\n  seq i64 identity\n  json_text i32\n  primary key (seq)\n}\n";
+        $model = RuntimeModel::build(RuntimeModel::parse(['small.dbs' => $doc]));
+        $out = sys_get_temp_dir() . '/orm-php-runtime-json-text-' . getmypid();
+        $message = '';
+        try {
+            Generator::generate($model, $out, 'Polyspec\\Orm\\Tests\\Small');
+        } catch (OrmException $e) {
+            $message = $e->getMessage();
+        }
+        if (is_dir($out)) {
+            array_map('unlink', glob("$out/*.php") ?: []);
+            rmdir($out);
+        }
+        self::assertTrue(str_contains($message, 'the condition method jsonText is also the model method jsonText'), "refused: $message");
+    }
+
     public function test_insert_binds_the_clock_of_an_omitted_default_now_column_except_on_MySQL(): void
     {
         $doc = "dbspec 1 clocked\n\ntable note {\n  id i64 identity\n  rank i16\n  body text\n  created_at datetime(6) default now\n  primary key (id)\n}\n";

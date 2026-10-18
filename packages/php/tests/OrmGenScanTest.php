@@ -215,6 +215,20 @@ PHP;
         self::assertFileDoesNotExist("$dir/model/User.php", 'a refused generation writes nothing');
     }
 
+    public function test_a_restore_or_create_call_is_a_model_method(): void
+    {
+        // restoreOrCreate is a public method of Model, so a scanned call to it is accepted.
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+use $ns\\Author;
+
+\$row = (new Author())->restoreOrCreate();
+PHP;
+        [$code, $err] = self::generate('restore-or-create', ['usage.php' => $source]);
+        self::assertSame(0, $code, $err);
+    }
+
     public function test_a_directory_is_scanned_and_a_file_that_does_not_parse_fails_the_scan(): void
     {
         $dir = self::$work . '/directory';

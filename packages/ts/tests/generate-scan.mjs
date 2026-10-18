@@ -201,7 +201,18 @@ export {};
   check(stderr.includes('User.getGhost()'), `the refusal does not name User.getGhost(): ${stderr}`);
 }
 
-const cases = { non_model_call: nonModelCall, model_calls: modelCalls, scan_path_spelling: scanPathSpelling, alias_match_getter: aliasMatchGetter, nested_alias_getter: nestedAliasGetter, unattached_getter: unattachedGetter };
+/** The base method names of the generator are the public methods of the runtime Model, which every generated model inherits. */
+async function baseMethodsMatchModel() {
+  const { baseMethods } = await import('../dist/generate/typescript.js');
+  const { Model } = await import('../dist/model.js');
+  const runtime = Object.getOwnPropertyNames(Model.prototype).filter(name => !name.startsWith('_')).sort();
+  const listed = [...baseMethods].sort();
+  const missing = runtime.filter(name => !listed.includes(name));
+  const extra = listed.filter(name => !runtime.includes(name));
+  check(missing.length === 0 && extra.length === 0, `baseMethods differs from the Model methods: missing ${JSON.stringify(missing)}, extra ${JSON.stringify(extra)}`);
+}
+
+const cases = { non_model_call: nonModelCall, base_methods_match_model: baseMethodsMatchModel, model_calls: modelCalls, scan_path_spelling: scanPathSpelling, alias_match_getter: aliasMatchGetter, nested_alias_getter: nestedAliasGetter, unattached_getter: unattachedGetter };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
 for (const name of selected) {
   const run = cases[name];
