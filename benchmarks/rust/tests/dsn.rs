@@ -1,7 +1,7 @@
 use std::process::Command;
 
-// native와 driver_compare는 ORM_BENCH_MYSQL_DSN이 없거나 비어 있으면 연결하지 않고 그 변수 이름을
-// 출력하며 실패한다. 고정 socket이나 database로 대신 연결하지 않는다.
+// native and driver_compare fail without connecting if ORM_BENCH_MYSQL_DSN is missing or empty, and
+// print that variable name and fail. They do not connect to a fixed socket or database instead.
 fn run_without_dsn(program: &str, value: Option<&str>) -> std::process::Output {
     let mut command = Command::new(program);
     command.arg("10");
@@ -47,8 +47,8 @@ fn benchmarks_fail_when_dsn_is_empty() {
     }
 }
 
-// native와 driver_compare는 iterations 인자가 없거나 최소값 이상의 정수가 아니면 연결하기 전에
-// status 1로 끝나고, 인자 이름과 받은 값을 출력한다. 기본 반복 횟수로 대신 실행하지 않는다.
+// native and driver_compare end with status 1 before connecting if the iterations argument is missing or not an integer at or above the minimum,
+// and print the argument name and the value received. They do not run with the default repeat count instead.
 fn run_with_args(program: &str, args: &[&str]) -> (Option<i32>, String) {
     let output = Command::new(program)
         .args(args)

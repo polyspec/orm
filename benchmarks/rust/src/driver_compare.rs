@@ -98,8 +98,8 @@ async fn async_list(pool: &AsyncPool, service_seq: i64) -> Vec<ResultRow> {
     .unwrap()
 }
 
-/// 시드된 bench database를 가리키는 `ORM_BENCH_MYSQL_DSN`이다. 없거나 비어 있으면 연결하지
-/// 않고 그 변수 이름을 출력하며 끝난다.
+/// `ORM_BENCH_MYSQL_DSN` points to the seeded bench database. If it is missing or empty, it prints that variable name
+/// without connecting, and ends.
 fn bench_dsn() -> String {
     match std::env::var("ORM_BENCH_MYSQL_DSN") {
         Ok(v) if !v.is_empty() => v,
@@ -114,8 +114,8 @@ fn bench_dsn() -> String {
     }
 }
 
-/// 첫 인자는 반복 횟수다. 없거나 `minimum` 이상의 정수가 아니면 인자 이름과 받은 값을
-/// 출력하며 끝난다. 기본 반복 횟수는 없다.
+/// The first argument is the repeat count. If it is missing or not an integer of at least `minimum`, it prints the argument name and the value received
+/// and ends. There is no default repeat count.
 fn iterations(minimum: usize) -> usize {
     let Some(arg) = std::env::args().nth(1) else {
         eprintln!("usage: driver_compare <iterations>; the iterations argument is required; give the number of iterations as the first argument");
@@ -132,7 +132,7 @@ fn iterations(minimum: usize) -> usize {
     }
 }
 
-/// `ORM_BENCH_MYSQL_DSN`을 해석하지 못하면 그 오류를 출력하며 끝난다.
+/// If `ORM_BENCH_MYSQL_DSN` cannot be resolved, it prints that error and ends.
 fn invalid_dsn(error: impl std::fmt::Display) -> ! {
     eprintln!("ORM_BENCH_MYSQL_DSN: {error}");
     std::process::exit(1)
