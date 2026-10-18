@@ -9389,7 +9389,7 @@
   },
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::aggregate": {
     "exported": false,
-    "signature": "private function aggregate(string $fn): float"
+    "signature": "private function aggregate(string $fn): ?float"
   },
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::aggregateNumber": {
     "exported": false,
@@ -9529,11 +9529,11 @@
   },
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::get": {
     "exported": true,
-    "signature": "public function get(): static"
+    "signature": "public function get(): ?static"
   },
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::getAvg": {
     "exported": true,
-    "signature": "public function getAvg(): float"
+    "signature": "public function getAvg(): ?float"
   },
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::getCount": {
     "exported": true,

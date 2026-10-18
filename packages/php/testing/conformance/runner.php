@@ -317,6 +317,28 @@ vector('aggregates', function () use ($author): array {
     ];
 });
 
+vector('empty_reads', function () use ($author): array {
+    // The reads run in the order of the other runners, so the statements agree.
+    $get = $author()->seq(-1)->get();
+    $getBy = $author()->getBySeq(-1);
+    $gets = count($author()->seq(-1)->gets());
+    $groups = $author()->seq(-1)->groupByIsClose()->getsCount()->toArray();
+    $page = $author()->seq(-1)->removeAllColumns()->orderBySeqAsc()->getsPage(1, 10);
+    return [
+        'get' => $get,
+        'get_by' => $getBy,
+        'gets' => $gets,
+        'gets_count' => $groups,
+        'page' => ['items' => count($page->items), 'total_count' => $page->totalCount, 'total_pages' => $page->totalPages, 'page' => $page->page, 'per_page' => $page->perPage],
+        'count' => $author()->seq(-1)->getCount(),
+        'sum' => $author()->seq(-1)->sumReadCount()->getSum(),
+        'avg' => $author()->seq(-1)->avgLikeCount()->getAvg(),
+        'null_rows' => $author()->price(null)->getCount(),
+        'null_sum' => $author()->price(null)->sumPrice()->getSum(),
+        'null_avg' => $author()->price(null)->avgPrice()->getAvg(),
+    ];
+});
+
 vector('functions', function () use ($author): array {
     $counts = array_map(static fn(Author $q): int => $q->getCount(), [
         $author()->serviceSeq(7)->andEqStartDt(Orm::dayOfWeek(), 2),

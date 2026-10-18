@@ -34,7 +34,7 @@ final class ChainDeclare
             }
             return $this->conditions($meta, $keys) + ['returns' => match ($kind) {
                 'gets' => '\\Polyspec\\Orm\\Collection<static>',
-                'get' => '$this',
+                'get' => '?static',
                 default => 'int',
             }];
         }

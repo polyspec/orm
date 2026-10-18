@@ -124,7 +124,7 @@ export async function auditCase(db, driver, dsn) {
  * - A default read does not read deleted rows.
  * - restore sends only the set values, finds the deleted row by the key chosen by the planner, runs an update that writes the soft delete column as NULL, and returns the restored row.
  *   If the table is audited, it writes the transaction's audit record key; without audit it is CONFIG.
- * - Restoring a row that was not deleted writes nothing and returns that row; a row that does not exist returns NO_ROWS.
+ * - Restoring a row that was not deleted writes nothing and returns that row; a row that does not exist fails with NO_ROWS; a default read of a soft-deleted row returns null.
  * - A set value outside the key is a new value written together into the restored row, and is not written to rows that were not deleted.
  * - A restore with no key value is IR_INVALID without a statement.
  * The key of an audit record can skip numbers written by a failed transaction differently in each database, so records are found by actor.
@@ -153,7 +153,7 @@ export async function restoreCase(db) {
 
   assert.equal(await codeOf(adb.transaction(async () => { await make(Membership, { team_id: 1, member_id: 2 }).create(); }, { audit: { actor: 'duplicate' }, retry: 0 })),
     'DUPLICATE_KEY', 'insert of the key of a soft-deleted row');
-  assert.equal(await codeOf(new Label().connect(db).name('red').get()), 'NO_ROWS', 'default read of a soft-deleted row');
+  assert.equal(await new Label().connect(db).name('red').get(), null, 'default read of a soft-deleted row');
   assert.equal(await codeOf(make(Membership, { team_id: 1, member_id: 2 }).restore()), 'CONFIG', 'restore of an audited row without an audit');
 
   // A set value outside the key is a new value written together into the restored row.

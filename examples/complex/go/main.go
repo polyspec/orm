@@ -82,13 +82,13 @@ func run() (code int) {
 
 // output declares the members of the output document in the same order as the PHP and Rust programs.
 type output struct {
-	Rows       any     `json:"rows"`
-	Groups     int     `json:"groups"`
-	ReadSum    float64 `json:"read_sum"`
-	LikeAvg    float64 `json:"like_avg"`
-	PageTotal  int64   `json:"page_total"`
-	PagePages  int64   `json:"page_pages"`
-	PageLength int     `json:"page_length"`
+	Rows       any      `json:"rows"`
+	Groups     int      `json:"groups"`
+	ReadSum    float64  `json:"read_sum"`
+	LikeAvg    *float64 `json:"like_avg"`
+	PageTotal  int64    `json:"page_total"`
+	PagePages  int64    `json:"page_pages"`
+	PageLength int      `json:"page_length"`
 }
 
 // dsn is ORM_BENCH_MYSQL_DSN, which points to the seeded bench database. If it is missing or empty,

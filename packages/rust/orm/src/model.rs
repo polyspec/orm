@@ -748,14 +748,14 @@ fn typed<M: Model>(m: Box<dyn AnyModel>) -> M {
     *m.into_any().downcast::<M>().expect("model type")
 }
 
-/// Runs the query and returns the first model; NO_ROWS when no row matches.
-pub async fn get<M: Model>(m: &M) -> Result<M> {
+/// Runs the query and returns the first model; None when no row matches.
+pub async fn get<M: Model>(m: &M) -> Result<Option<M>> {
     get_core(m.core()).await
 }
 
-pub async fn get_core<M: Model>(c: &Core) -> Result<M> {
+pub async fn get_core<M: Model>(c: &Core) -> Result<Option<M>> {
     let rows = load(c, "one").await?;
-    rows.items.into_iter().next().map(|(_, m)| typed(m)).ok_or(Error::NoRows)
+    Ok(rows.items.into_iter().next().map(|(_, m)| typed(m)))
 }
 
 /// Runs the query and returns the models.
@@ -864,20 +864,28 @@ pub async fn get_count(c: &Core) -> Result<i64> {
     Ok(count)
 }
 
-/// The sum of the column selected with sum_<col>().
+/// The sum of the column selected with sum_<col>(); 0 when SQL gives null
+/// (no row matches, or every value is null).
 pub async fn get_sum(c: &Core) -> Result<f64> {
     if c.agg_fn != "sum" {
         return Err(config("get_sum requires sum_<col>()"));
     }
-    scalar(c, "sum").await?.as_aggregate_f64()
+    match scalar(c, "sum").await? {
+        Val::Null => Ok(0.0),
+        v => v.as_aggregate_f64(),
+    }
 }
 
-/// The average of the column selected with avg_<col>().
-pub async fn get_avg(c: &Core) -> Result<f64> {
+/// The average of the column selected with avg_<col>(); None when SQL gives
+/// null (no row matches, or every value is null).
+pub async fn get_avg(c: &Core) -> Result<Option<f64>> {
     if c.agg_fn != "avg" {
         return Err(config("get_avg requires avg_<col>()"));
     }
-    scalar(c, "avg").await?.as_aggregate_f64()
+    match scalar(c, "avg").await? {
+        Val::Null => Ok(None),
+        v => v.as_aggregate_f64().map(Some),
+    }
 }
 
 /// The statement of gets() without executing it.
@@ -1300,7 +1308,7 @@ pub(crate) async fn insert_audit(ex: &Executor, a: &crate::tx::AuditInsert) -> R
 /// Reads never return a soft-deleted row: restore names it explicitly.
 pub async fn restore<M: Model>(m: &M) -> Result<M> {
     let (_, q) = restore_step(m).await?;
-    get_core(&q).await
+    get_core(&q).await?.ok_or(Error::NoRows)
 }
 
 /// Restores the soft-deleted row of the key that restore picks, or creates it
@@ -1313,7 +1321,7 @@ pub async fn restore_or_create<M: Model>(m: &M) -> Result<M> {
     in_transaction(&conn, async || {
         let (restored, q) = restore_step(m).await?;
         if restored > 0 {
-            return get_core(&q).await;
+            return get_core(&q).await?.ok_or(Error::NoRows);
         }
         if get_count(&q).await? > 0 {
             return Err(Error::Engine { code: codes::ROW_NOT_DELETED.into(), msg: "restoreOrCreate: a row that is not deleted holds the key".into() });

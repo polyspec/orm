@@ -1,5 +1,5 @@
 <!-- doc-id: readme -->
-<!-- source-sha256: 6e6014811af4ee4abb29975df628276482ce2cfb8ff2c37807f0797aee11084f -->
+<!-- source-sha256: 8fc69f752de9ce3c9b61a0ccc73a2400a03c8a6b2133fd79c434ccea769393f9 -->
 # orm
 
 **Go, PHP, Python, Rust, TypeScript**를 위한 스키마 기반 모델 query grammar다. 목표 문법은 [docs/dsl.ko.md](docs/dsl.ko.md), 작업 순서는 [docs/plan.ko.md](docs/plan.ko.md)에 명시되어 있다.
@@ -56,7 +56,7 @@ const authors = await new Author().connect(slave1).getsByServiceSeqAndIsClose(7,
 ```python
 authors = Author().connect(slave1).gets_by_service_seq_and_is_close(7, False)
 ```
-`get`은 행 하나를 반환하며 일치하는 행이 없으면 `NO_ROWS`를 반환한다. `gets`는 컬렉션, `getCount`는 개수를 반환한다. 모델은 `connect`로 데이터베이스 연결을 받는다. `connection.transaction(fn)` 안에서 `connect`를 호출하지 않은 모델은 활성 트랜잭션을 사용한다. 관계 자식은 `connect`를 호출하지 않으면 부모 연결을 사용한다. 트랜잭션 밖에서 연결 없는 모델은 `CONFIG`를 반환한다.
+`get`은 행 하나를 반환하며 일치하는 행이 없으면 null을 반환한다. `gets`는 컬렉션, `getCount`는 개수를 반환한다. 모델은 `connect`로 데이터베이스 연결을 받는다. `connection.transaction(fn)` 안에서 `connect`를 호출하지 않은 모델은 활성 트랜잭션을 사용한다. 관계 자식은 `connect`를 호출하지 않으면 부모 연결을 사용한다. 트랜잭션 밖에서 연결 없는 모델은 `CONFIG`를 반환한다.
 
 ## 동작 구조
 - **Schema**: 직접 작성한 dbspec document 집합(`contracts/fixtures/bench/*.dbs`, `docs/dbspec.md`)이다. 생성된 모델이 그 manifest text와 `manifestHash`를 담는다.

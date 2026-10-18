@@ -3197,11 +3197,11 @@
   },
   "packages/python/src/polyspec/orm/model.py::Model.get": {
     "exported": true,
-    "signature": "def get(self) -\u003e Self"
+    "signature": "def get(self) -\u003e Self | None"
   },
   "packages/python/src/polyspec/orm/model.py::Model.get_avg": {
     "exported": true,
-    "signature": "def get_avg(self) -\u003e float"
+    "signature": "def get_avg(self) -\u003e float | None"
   },
   "packages/python/src/polyspec/orm/model.py::Model.get_count": {
     "exported": true,

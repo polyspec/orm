@@ -163,7 +163,7 @@ func (x *CompositeMembershipModel) Relations(child orm.Model) *CompositeMembersh
 	return x
 }
 
-// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
+// Get returns the first matching row. It returns (nil, nil) when no row matches.
 func (x *CompositeMembershipModel) Get() (*CompositeMembershipModel, error) {
 	return oneCompositeMembership(x.m)
 }
@@ -187,11 +187,12 @@ func (x *CompositeMembershipModel) GetCount() (int64, error) { return x.m.GetCou
 // GetsCount returns grouped rows with row_count.
 func (x *CompositeMembershipModel) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
-// GetSum returns the sum of the column selected with Sum<Col>.
+// GetSum returns the sum of the column selected with Sum<Col>; a null scalar is 0.
 func (x *CompositeMembershipModel) GetSum() (float64, error) { return x.m.GetSum() }
 
-// GetAvg returns the average of the column selected with Avg<Col>.
-func (x *CompositeMembershipModel) GetAvg() (float64, error) { return x.m.GetAvg() }
+// GetAvg returns the average of the column selected with Avg<Col>; it is nil
+// when the scalar is null.
+func (x *CompositeMembershipModel) GetAvg() (*float64, error) { return x.m.GetAvg() }
 
 // GetsPage returns one page of matching rows.
 func (x *CompositeMembershipModel) GetsPage(page, perPage int) (*orm.Page[*CompositeMembershipModel], error) {

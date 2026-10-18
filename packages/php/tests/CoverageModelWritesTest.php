@@ -46,8 +46,8 @@ final class CoverageModelWritesTest extends TestCase
                     $count = (new CompositeAccount)($db)->tenantId(WRITE_TENANT)->getCount();
                     Assert::assertTrue($count === 4, "tenant row count is $count, want 4");
                     (new CompositeAccount)($db)->tenantId(WRITE_TENANT)->gets()->delete();
-                    $missing = coverageCode(fn() => (new CompositeAccount)($db)->getByTenantIdAndAccountId(WRITE_TENANT, 1));
-                    Assert::assertTrue($missing === Code::NO_ROWS, "get of a deleted row is $missing, want NO_ROWS");
+                    $missing = (new CompositeAccount)($db)->getByTenantIdAndAccountId(WRITE_TENANT, 1);
+                    Assert::assertNull($missing, 'get of a deleted row is not null');
                     $left = (new CompositeAccount)($db)->tenantId(WRITE_TENANT)->getCount();
                     Assert::assertTrue($left === 0, "$left rows left after delete");
                 }, fn() => (new CompositeAccount)($db)->tenantId(WRITE_TENANT)->gets()->delete());

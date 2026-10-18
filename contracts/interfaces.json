@@ -39,11 +39,11 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:f27eb73d2918241a25e3daab6497a49f84a2620ab7a47e999e6e72d38057d16f",
-    "php": "sha256:5d3fad99d329c28c88acf3138337a4308790a023a248f1facf6b7eb8fddd2652",
-    "rust": "sha256:57a655d6114d2f23ec66aaa38246ebcaddbcdcf52f216970ca20ea67ddada3a4",
-    "typescript": "sha256:c92c1daf0ee8ce023fbf8388be8c771501e83a10ddcc463dfa8ea017938af4bf",
-    "python": "sha256:84db7fb2552b8444902ff2bc6b89e44a4523953fad67e0c713aeda2310c9dac3"
+    "go": "sha256:3fe97edb760e0946177648ccdd552ef640b892cc7bad41c319aefcc90afa40ae",
+    "php": "sha256:7712fd7c9f456fdde6637e3b01c4e10bc5c0ec6502efd802456cbf3f0bb0e665",
+    "rust": "sha256:0aa46c3d4c35b0720bee1d2adda05a25f542f0e7dff805376bee35f15333a8cc",
+    "typescript": "sha256:86f5859c0c637d48d437a22f758f032a7785dccc087023d169435f9b70c97120",
+    "python": "sha256:8186863b28c9c348363bd09535cce1a2d3cdbe1b9e6181450031d22e0d071cd8"
   },
   "extensions": {
     "php-extension": {
@@ -706,10 +706,9 @@
       "errors": [
         "CONFIG",
         "IR_INVALID",
-        "NO_ROWS",
         "driver or codec error"
       ],
-      "state": "The model is not changed; the same model can run again",
+      "state": "Returns null when no row matches; the model is not changed, and the same model can run again",
       "native": {
         "go": {
           "symbol": "packages/go/model/{entity}.go::{Entity}Model.Get",
@@ -717,19 +716,19 @@
         },
         "php": {
           "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::get",
-          "signature": "public function get(): static"
+          "signature": "public function get(): ?static"
         },
         "rust": {
           "symbol": "packages/rust/build/src/fixed.rs.txt::T::get",
-          "signature": "pub async fn get(&self) -> polyspec_orm::Result<Self>"
+          "signature": "pub async fn get(&self) -> polyspec_orm::Result<Option<Self>>"
         },
         "typescript": {
           "symbol": "packages/ts/src/model.ts::Model.get",
-          "signature": "public async get(): Promise<this>"
+          "signature": "public async get(): Promise<this | null>"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.get",
-          "signature": "def get(self) -> Self"
+          "signature": "def get(self) -> Self | None"
         }
       }
     },
@@ -845,7 +844,7 @@
         "IR_INVALID",
         "driver or codec error"
       ],
-      "state": "The model is not changed; the same model can run again",
+      "state": "Returns 0 when no value is left (no row matches, or every value is null); the model is not changed, and the same model can run again",
       "native": {
         "go": {
           "symbol": "packages/go/model/{entity}.go::{Entity}Model.GetSum",
@@ -879,27 +878,27 @@
         "IR_INVALID",
         "driver or codec error"
       ],
-      "state": "The model is not changed; the same model can run again",
+      "state": "Returns null when no value is left (no row matches, or every value is null); the model is not changed, and the same model can run again",
       "native": {
         "go": {
           "symbol": "packages/go/model/{entity}.go::{Entity}Model.GetAvg",
-          "signature": "receiver=*{Entity}Model func() (float64, error)"
+          "signature": "receiver=*{Entity}Model func() (*float64, error)"
         },
         "php": {
           "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::getAvg",
-          "signature": "public function getAvg(): float"
+          "signature": "public function getAvg(): ?float"
         },
         "rust": {
           "symbol": "packages/rust/build/src/fixed.rs.txt::T::get_avg",
-          "signature": "pub async fn get_avg(&self) -> polyspec_orm::Result<f64>"
+          "signature": "pub async fn get_avg(&self) -> polyspec_orm::Result<Option<f64>>"
         },
         "typescript": {
           "symbol": "packages/ts/src/model.ts::Model.getAvg",
-          "signature": "public async getAvg(): Promise<number>"
+          "signature": "public async getAvg(): Promise<number | null>"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.get_avg",
-          "signature": "def get_avg(self) -> float"
+          "signature": "def get_avg(self) -> float | None"
         }
       }
     },

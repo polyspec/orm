@@ -408,7 +408,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         Ok::<Value, polyspec_orm::Error>(Value::Array(counts))
     });
     run!("terminal_by", async {
-        let one = author().get_by_seq(42).await?;
+        let one = author().get_by_seq(42).await?.ok_or(polyspec_orm::Error::NoRows)?;
         let missing = author().get_by_seq(-1).await;
         let rows = author().order_by_seq_asc().limit(0, 2).gets_by_service_seq_and_is_close(7, false).await?;
         let count = author().get_count_by_service_seq(7).await?;
@@ -428,9 +428,9 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         Ok::<Value, polyspec_orm::Error>(json!({"count": count, "rows": picks(&rows, &["seq", "is_display"]), "or_count": or_count}))
     });
     run!("columns", async {
-        let none = Service::new().connect(db).remove_all_columns().get_by_seq(7).await?;
-        let added = author().remove_all_columns().add_column_name().add_column_start_dt_alias_start_year(polyspec_orm::year()).get_by_seq(42).await?;
-        let removed = Service::new().connect(db).remove_column_name().get_by_seq(7).await?;
+        let none = Service::new().connect(db).remove_all_columns().get_by_seq(7).await?.ok_or(polyspec_orm::Error::NoRows)?;
+        let added = author().remove_all_columns().add_column_name().add_column_start_dt_alias_start_year(polyspec_orm::year()).get_by_seq(42).await?.ok_or(polyspec_orm::Error::NoRows)?;
+        let removed = Service::new().connect(db).remove_column_name().get_by_seq(7).await?.ok_or(polyspec_orm::Error::NoRows)?;
         Ok::<Value, polyspec_orm::Error>(json!([none.to_array()?, pick(Some(&added), &["seq", "name", "start_year"]), removed.to_array()?]))
     });
     run!("joins", async {
@@ -508,7 +508,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     });
     run!("aggregates", async {
         let sum = author().service_seq(7).sum_read_count().get_sum().await?;
-        let avg = author().service_seq(7).avg_like_count().get_avg().await?;
+        let avg = author().service_seq(7).avg_like_count().get_avg().await?.ok_or(polyspec_orm::Error::NoRows)?;
         assert_eq!(avg.to_bits(), 0x404805c28f5c28f6, "aggregate average has an unexpected binary64 value");
         let groups = author().service_seq(7).group_by_is_close().order_by_is_close_asc().gets_count().await?;
         let page = author().service_seq(7).remove_all_columns().order_by_seq_asc().gets_page(3, 4).await?;
@@ -517,6 +517,26 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             "avg": format!("{avg:.4}"),
             "groups": groups.to_array()?,
             "page": {"keys": keys_of(&page.items), "total": page.total_count, "pages": page.total_pages, "page": page.page, "per_page": page.per_page},
+        }))
+    });
+    run!("empty_reads", async {
+        let get = author().seq(-1).get().await?;
+        let get_by = author().get_by_seq(-1).await?;
+        let gets = author().seq(-1).gets().await?;
+        let groups = author().seq(-1).group_by_is_close().gets_count().await?;
+        let page = author().seq(-1).remove_all_columns().order_by_seq_asc().gets_page(1, 10).await?;
+        Ok::<Value, polyspec_orm::Error>(json!({
+            "get": get.map(|m| m.to_array()).transpose()?,
+            "get_by": get_by.map(|m| m.to_array()).transpose()?,
+            "gets": gets.len(),
+            "gets_count": groups.to_array()?,
+            "page": {"items": page.items.len(), "total_count": page.total_count, "total_pages": page.total_pages, "page": page.page, "per_page": page.per_page},
+            "count": author().seq(-1).get_count().await?,
+            "sum": author().seq(-1).sum_read_count().get_sum().await?,
+            "avg": author().seq(-1).avg_like_count().get_avg().await?,
+            "null_rows": author().price(Null).get_count().await?,
+            "null_sum": author().price(Null).sum_price().get_sum().await?,
+            "null_avg": author().price(Null).avg_price().get_avg().await?,
         }))
     });
     run!("functions", async {
@@ -560,7 +580,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         Ok::<Value, polyspec_orm::Error>(json!({"sql": st.sql, "binds": binds}))
     });
     run!("aes_values", async {
-        let row = author().remove_all_columns().add_column_aes_hex_email().add_column_aes_hex_phone().get_by_seq(42).await?;
+        let row = author().remove_all_columns().add_column_aes_hex_email().add_column_aes_hex_phone().get_by_seq(42).await?.ok_or(polyspec_orm::Error::NoRows)?;
         let found = author().aes_hex_email("user42@example.com").get_count().await?;
         Ok::<Value, polyspec_orm::Error>(json!({"row": row.to_array()?, "found": found}))
     });
@@ -596,13 +616,13 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             let loaded = author().add_all_columns().get_by_seq(seq).await.map_err(|error| {
                 eprintln!("write_cycle selected row: {error}");
                 error
-            })?;
+            })?.ok_or(polyspec_orm::Error::NoRows)?;
             mask(shared, &[], &[loaded.get_updated_ts().unwrap()]);
             let mut loaded = loaded.set_name("cycle-2").plus_read_count(3);
             loaded.update(true).await?;
             let mut loaded = loaded.set_name("stale");
             let stale = loaded.update(true).await;
-            let again = author().add_all_columns().get_by_seq(seq).await?;
+            let again = author().add_all_columns().get_by_seq(seq).await?.ok_or(polyspec_orm::Error::NoRows)?;
             let updated = pick(Some(&again), &["name", "read_count", "price", "ip", "aes_hex_email", "json_setting", "serialize_data", "start_dt"]);
             again.delete(false).await?;
             let gone = author().get_by_seq(seq).await;
@@ -627,7 +647,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
                 .await?;
             let seq = created.get_seq().unwrap();
             mask(shared, &[seq], &[]);
-            let loaded = author().get_by_seq(seq).await?;
+            let loaded = author().get_by_seq(seq).await?.ok_or(polyspec_orm::Error::NoRows)?;
             let (created_ts, updated_ts) = (loaded.get_created_ts().unwrap(), loaded.get_updated_ts().unwrap());
             // The runner connects in +00:00, so the wall-clock value is UTC.
             let near = (created_ts - before).num_seconds().abs() < 60;
@@ -686,7 +706,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
                 let member = ServiceMember::new().connect(db).set_service_seq(seq).set_user_seq(i + 1).create().await?;
                 seqs.push(member.get_seq().unwrap());
             }
-            let loaded = Service::new().connect(db).relations(ServiceMember::new().match_seq_with_service_seq()).get_by_seq(seq).await?;
+            let loaded = Service::new().connect(db).relations(ServiceMember::new().match_seq_with_service_seq()).get_by_seq(seq).await?.ok_or(polyspec_orm::Error::NoRows)?;
             let members = loaded.get_service_member_models()?.expect("selected service members").len();
             mask(shared, &seqs, &[]);
             loaded.delete(true).await?;
@@ -975,7 +995,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             let upsert_inserted = polyspec_orm::testing::last_affected(db);
             UpsertCell::new().connect(db).set_code("c1").set_label("x").duplication(UpsertCell::new().set_label("y")).create().await?;
             let upsert_updated = polyspec_orm::testing::last_affected(db);
-            let mut row = UpsertCell::new().connect(db).get_by_seq(seq).await?.set_label("y");
+            let mut row = UpsertCell::new().connect(db).get_by_seq(seq).await?.ok_or(polyspec_orm::Error::NoRows)?.set_label("y");
             row.update(false).await?;
             let update_unchanged = polyspec_orm::testing::last_affected(db);
             let mut row = row.set_label("z");
@@ -1049,7 +1069,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             let created = ClockCell::new().connect(db).set_label("write").create().await?;
             let seq = created.get_seq().unwrap();
             mask(shared, &[seq], &[]);
-            let row = ClockCell::new().connect(db).get_by_seq(seq).await?;
+            let row = ClockCell::new().connect(db).get_by_seq(seq).await?.ok_or(polyspec_orm::Error::NoRows)?;
             row.delete(false).await?;
             let at6 = row.get_at6()?;
             Ok::<Value, polyspec_orm::Error>(json!({

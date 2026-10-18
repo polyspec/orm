@@ -154,7 +154,7 @@ func (x *ServiceMemberModel) Relations(child orm.Model) *ServiceMemberModel {
 	return x
 }
 
-// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
+// Get returns the first matching row. It returns (nil, nil) when no row matches.
 func (x *ServiceMemberModel) Get() (*ServiceMemberModel, error) { return oneServiceMember(x.m) }
 
 func oneServiceMember(c *orm.Core) (*ServiceMemberModel, error) {
@@ -176,11 +176,12 @@ func (x *ServiceMemberModel) GetCount() (int64, error) { return x.m.GetCount() }
 // GetsCount returns grouped rows with row_count.
 func (x *ServiceMemberModel) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
-// GetSum returns the sum of the column selected with Sum<Col>.
+// GetSum returns the sum of the column selected with Sum<Col>; a null scalar is 0.
 func (x *ServiceMemberModel) GetSum() (float64, error) { return x.m.GetSum() }
 
-// GetAvg returns the average of the column selected with Avg<Col>.
-func (x *ServiceMemberModel) GetAvg() (float64, error) { return x.m.GetAvg() }
+// GetAvg returns the average of the column selected with Avg<Col>; it is nil
+// when the scalar is null.
+func (x *ServiceMemberModel) GetAvg() (*float64, error) { return x.m.GetAvg() }
 
 // GetsPage returns one page of matching rows.
 func (x *ServiceMemberModel) GetsPage(page, perPage int) (*orm.Page[*ServiceMemberModel], error) {

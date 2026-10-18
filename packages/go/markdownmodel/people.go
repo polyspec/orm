@@ -228,7 +228,7 @@ func (x *PeopleModel) Relation(child orm.Model) *PeopleModel { x.m.Relation(fals
 // Relations attaches related rows loaded by a separate query.
 func (x *PeopleModel) Relations(child orm.Model) *PeopleModel { x.m.Relation(true, child); return x }
 
-// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
+// Get returns the first matching row. It returns (nil, nil) when no row matches.
 func (x *PeopleModel) Get() (*PeopleModel, error) { return onePeople(x.m) }
 
 func onePeople(c *orm.Core) (*PeopleModel, error) {
@@ -250,11 +250,12 @@ func (x *PeopleModel) GetCount() (int64, error) { return x.m.GetCount() }
 // GetsCount returns grouped rows with row_count.
 func (x *PeopleModel) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
-// GetSum returns the sum of the column selected with Sum<Col>.
+// GetSum returns the sum of the column selected with Sum<Col>; a null scalar is 0.
 func (x *PeopleModel) GetSum() (float64, error) { return x.m.GetSum() }
 
-// GetAvg returns the average of the column selected with Avg<Col>.
-func (x *PeopleModel) GetAvg() (float64, error) { return x.m.GetAvg() }
+// GetAvg returns the average of the column selected with Avg<Col>; it is nil
+// when the scalar is null.
+func (x *PeopleModel) GetAvg() (*float64, error) { return x.m.GetAvg() }
 
 // GetsPage returns one page of matching rows.
 func (x *PeopleModel) GetsPage(page, perPage int) (*orm.Page[*PeopleModel], error) {
@@ -299,6 +300,16 @@ func (x *PeopleModel) Delete(recursive ...bool) error { return x.m.Delete(recurs
 // Restore restores the soft-deleted row that the set key values name and returns it.
 func (x *PeopleModel) Restore() (*PeopleModel, error) {
 	m, err := x.m.Restore()
+	if err != nil {
+		return nil, err
+	}
+	return m.(*PeopleModel), nil
+}
+
+// RestoreOrCreate restores the soft-deleted row of the set key values, or creates
+// it when no row holds the key; a live row returns CodeRowNotDeleted.
+func (x *PeopleModel) RestoreOrCreate() (*PeopleModel, error) {
+	m, err := x.m.RestoreOrCreate()
 	if err != nil {
 		return nil, err
 	}

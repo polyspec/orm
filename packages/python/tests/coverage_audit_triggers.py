@@ -450,8 +450,8 @@ def soft_delete_restore(item):
             "insert of the key of a soft-deleted row",
         )
         expect_equal(
-            code_of(lambda: m.Label().connect(db).name("red").get()),
-            "NO_ROWS",
+            m.Label().connect(db).name("red").get(),
+            None,
             "default read of a soft-deleted row",
         )
         expect_equal(

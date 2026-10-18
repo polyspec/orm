@@ -1,6 +1,6 @@
 //! transactions: a failed transaction is rolled back and its error reaches the caller, and a failed nested
 //! transaction rolls back only to its savepoint. It writes only to composite_account and deletes the rows it wrote.
-use super::coverage_env::{code, connect, run};
+use super::coverage_env::{connect, run};
 use super::model::CompositeAccount;
 
 const TENANT: i64 = 990003;
@@ -27,11 +27,7 @@ async fn coverage_transaction_rollback() {
             })
             .await;
         assert!(is_failure(&r, "coverage rollback"), "the callback error must reach the caller: {r:?}");
-        assert_eq!(
-            code(CompositeAccount::new().connect(&db).get_by_tenant_id_and_account_id(TENANT, 1).await),
-            polyspec_orm::codes::NO_ROWS,
-            "rolled back row"
-        );
+        assert!(CompositeAccount::new().connect(&db).get_by_tenant_id_and_account_id(TENANT, 1).await.unwrap().is_none(), "rolled back row");
         db.close().await;
     })
     .await;
@@ -62,9 +58,9 @@ async fn coverage_transaction_savepoint() {
         let inner = inner_result.take().expect("the nested transaction ran");
         assert!(is_failure(&inner, "coverage savepoint"), "the nested callback error must reach the outer callback: {inner:?}");
         let account = || CompositeAccount::new().connect(&db);
-        assert_eq!(account().get_by_tenant_id_and_account_id(TENANT, 2).await.unwrap().get_name().unwrap(), "outer", "committed outer row");
-        assert_eq!(code(account().get_by_tenant_id_and_account_id(TENANT, 3).await), polyspec_orm::codes::NO_ROWS, "rolled back nested row");
-        account().get_by_tenant_id_and_account_id(TENANT, 2).await.unwrap().delete(false).await.unwrap();
+        assert_eq!(account().get_by_tenant_id_and_account_id(TENANT, 2).await.unwrap().expect("a row").get_name().unwrap(), "outer", "committed outer row");
+        assert!(account().get_by_tenant_id_and_account_id(TENANT, 3).await.unwrap().is_none(), "rolled back nested row");
+        account().get_by_tenant_id_and_account_id(TENANT, 2).await.unwrap().expect("a row").delete(false).await.unwrap();
         assert_eq!(account().tenant_id(TENANT).get_count().await.unwrap(), 0, "rows left");
         db.close().await;
     })

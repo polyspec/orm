@@ -215,7 +215,7 @@ final class ModelTest extends TestCase
         self::check((new Author)($db)->gtStartDt(self::$start->modify('+90 minutes')->format('Y-m-d H:i:s'))->getCount() === 2, 'time compare');
         $one = (new Author)($db)->getByName('gamma');
         self::check($one !== null && $one->getReadCount() === 20, 'getBy');
-        self::check(self::code(static fn() => (new Author)($db)->getByName('missing')) === 'NO_ROWS', 'get without a row');
+        self::check((new Author)($db)->getByName('missing') === null, 'get without a row');
         $q = (new Author)($db)->serviceSeq($svc);
         self::check($q->getCountByIsClose(true) === 2 && $q->getCount() === 4, 'terminal changed the model');
         self::check((new Author)($db)->geReadCount(20)->getCount() === 2, 'ge');
@@ -276,6 +276,9 @@ final class ModelTest extends TestCase
         $svc = $f['service']->getSeq();
         self::check((new Author)($db)->serviceSeq($svc)->sumReadCount()->getSum() === 60.0, 'sum');
         self::check((new Author)($db)->serviceSeq($svc)->avgReadCount()->getAvg() === 15.0, 'avg');
+        self::check((new Author)($db)->seq(-1)->sumReadCount()->getSum() === 0.0, 'sum over no rows');
+        self::check((new Author)($db)->seq(-1)->avgReadCount()->getAvg() === null, 'avg over no rows');
+        self::check((new Author)($db)->seq(-1)->get() === null, 'get over no rows');
         self::check(count((new Author)($db)->groupByIsClose()->getsCount()) === 2, 'getsCount');
         $page = (new Author)($db)->orderBySeqAsc()->getsPage(2, 3);
         self::check($page->totalCount === 4 && $page->totalPages === 2 && count($page->items) === 1 && $page->items->first()->getName() === 'delta', 'page');
@@ -321,7 +324,7 @@ final class ModelTest extends TestCase
         (new ServiceMember)($db)->setServiceSeq($service->getSeq())->setUserSeq($f['users'][0]->getSeq())->create();
         $loaded = (new Service)($db)->relations((new ServiceMember)->matchSeqWithServiceSeq())->getBySeq($service->getSeq());
         $loaded->delete(true);
-        self::check((new ServiceMember)($db)->getCountByServiceSeq($service->getSeq()) === 0 && self::code(static fn() => (new Service)($db)->getBySeq($service->getSeq())) === 'NO_ROWS', 'delete(true)');
+        self::check((new ServiceMember)($db)->getCountByServiceSeq($service->getSeq()) === 0 && (new Service)($db)->getBySeq($service->getSeq()) === null, 'delete(true)');
     }
 
     private static function case_styled_value_states(Db $db, string $dsn): void {

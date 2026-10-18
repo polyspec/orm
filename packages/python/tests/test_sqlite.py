@@ -171,8 +171,7 @@ class SqliteEndToEndTest(unittest.TestCase):
         self.assertEqual(again.get_name(), "cycle-2")
         self.assertEqual(again.get_read_count(), 13)
         again.delete()
-        with self.assertRaisesRegex(Exception, "NO_ROWS"):
-            self.models.Author().connect(self.db).get_by_seq(seq)
+        self.assertIsNone(self.models.Author().connect(self.db).get_by_seq(seq))
 
     def test_conditions_and_order(self):
         for i in range(4):
@@ -358,8 +357,7 @@ class SqliteEndToEndTest(unittest.TestCase):
         created = self.models.SoftRecord().connect(self.db).set_name("restore").create()
         seq = created.get_seq()
         created.set_deleted_at("2026-01-02 03:04:05.000000").update()
-        with self.assertRaisesRegex(Exception, "NO_ROWS"):
-            self.models.SoftRecord().connect(self.db).get_by_seq(seq)
+        self.assertIsNone(self.models.SoftRecord().connect(self.db).get_by_seq(seq))
         restored = (
             self.models.SoftRecord()
             .connect(self.db)

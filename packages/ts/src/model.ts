@@ -141,20 +141,21 @@ export abstract class Model implements ModelLike {
   public forShareNoWait(): this { this[CORE].lock = 'share_nowait'; return this; }
   public duplication(model: this): this { this[CORE].setDuplication(model); return this; }
 
-  /** Returns the first matching row; NO_ROWS when no row matches. */
-  public async get(): Promise<this> {
+  /** Returns the first matching row; null when no row matches. */
+  public async get(): Promise<this | null> {
     const rows = await load(this[CORE], 'one');
     const row = rows.first();
-    if (row === undefined) throw new OrmError(codes.NO_ROWS, 'query matched no rows');
-    return modelOf(this, row);
+    return row === undefined ? null : modelOf(this, row);
   }
   /** Returns the matching rows. */
   public async gets(): Promise<Collection<this>> { return collectionOf(this, await load(this[CORE], 'all')); }
   /** Returns grouped values and checked row counts without partial models. */
   public async getsCount(): Promise<GroupRows> { return grouped(this[CORE]); }
   public async getCount(): Promise<number> { return Number(await scalarOf(this[CORE], 'count')); }
-  public async getSum(): Promise<number> { return aggregate(this[CORE], 'sum'); }
-  public async getAvg(): Promise<number> { return aggregate(this[CORE], 'avg'); }
+  /** Returns the sum; 0 when SQL gives null (no row, or every value null). */
+  public async getSum(): Promise<number> { return (await aggregate(this[CORE], 'sum')) ?? 0; }
+  /** Returns the average; null when SQL gives null (no row, or every value null). */
+  public async getAvg(): Promise<number | null> { return aggregate(this[CORE], 'avg'); }
   /** Returns one page of matching rows. */
   public async getsPage(page: number, perPage: number): Promise<Page<this>> {
     const found = await pageOf(this[CORE], page, perPage);
@@ -583,10 +584,10 @@ async function scalarOf(c: Core, kind: 'count' | 'sum' | 'avg', agg = ''): Promi
   return scalar(ex, r.finish(), r.params);
 }
 
-async function aggregate(c: Core, fn: 'sum' | 'avg'): Promise<number> {
+async function aggregate(c: Core, fn: 'sum' | 'avg'): Promise<number | null> {
   if (c.aggFn !== fn) throw configError(`get${upperFirst(fn)} requires ${fn}<Col>()`);
   const value = await scalarOf(c, fn, c.agg);
-  return aggregateNumber(value);
+  return value === null || value === undefined ? null : aggregateNumber(value);
 }
 
 export function aggregateNumber(value: unknown): number {
@@ -849,7 +850,9 @@ async function deleteOne(c: Core, recursive: boolean): Promise<void> {
  * does not read the deleted row.
  */
 async function restore(c: Core): Promise<Model> {
-  return (await restoreStep(c)).query.get();
+  const row = await (await restoreStep(c)).query.get();
+  if (row === null) throw new OrmError(codes.NO_ROWS, 'restore: no row holds the key');
+  return row;
 }
 
 /** restoreOrCreate of a model: the restore step, then the restored row, ROW_NOT_DELETED for a live row, or the created row. */
@@ -858,7 +861,7 @@ async function restoreOrCreate(c: Core): Promise<Model> {
   await inTransaction(c.conn, async () => {
     const { restored, query } = await restoreStep(c);
     if (restored > 0) {
-      row = await query.get();
+      row = (await query.get()) ?? undefined;
       return;
     }
     if (await query.getCount() > 0) throw new OrmError(codes.ROW_NOT_DELETED, 'restoreOrCreate: a row that is not deleted holds the key');

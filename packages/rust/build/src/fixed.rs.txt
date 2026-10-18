@@ -65,8 +65,8 @@ impl T {
         self
     }
 
-    /// Returns the first matching row; NO_ROWS when no row matches.
-    pub async fn get(&self) -> polyspec_orm::Result<Self> {
+    /// Returns the first matching row; None when no row matches.
+    pub async fn get(&self) -> polyspec_orm::Result<Option<Self>> {
         polyspec_orm::model::get(self).await
     }
 
@@ -85,13 +85,13 @@ impl T {
         polyspec_orm::model::gets_count(self).await
     }
 
-    /// Returns the sum of the column selected with sum_<col>.
+    /// Returns the sum of the column selected with sum_<col>; 0 when SQL gives null.
     pub async fn get_sum(&self) -> polyspec_orm::Result<f64> {
         polyspec_orm::model::get_sum(&self.__orm).await
     }
 
-    /// Returns the average of the column selected with avg_<col>.
-    pub async fn get_avg(&self) -> polyspec_orm::Result<f64> {
+    /// Returns the average of the column selected with avg_<col>; None when SQL gives null.
+    pub async fn get_avg(&self) -> polyspec_orm::Result<Option<f64>> {
         polyspec_orm::model::get_avg(&self.__orm).await
     }
 

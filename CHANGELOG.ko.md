@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 572d072e92360e7fdfaa011f48d9fbf19b749843fac7f1c013524bca648f897a -->
+<!-- source-sha256: 640de2d36ec74adf2e01a267ceaaecf9f95d601114432154342df9c019316254 -->
 # 변경 이력
 
 ## Unreleased
+- 호환 깨짐: 아무것도 일치하지 않는 select 읽기가 다섯 client에서 빈 값을 돌려준다. `get()`과 `getBy…()`는 `NO_ROWS` 대신 null을, `getSum()`은 남은 값이 없으면 0을, `getAvg()`는 null을 돌려주며, 컬렉션과 개수는 빈 값과 0으로 남는다. `restore()`와 `local()`은 `NO_ROWS`를 유지한다(T204).
 - bench set을 고정한 test가 새 table, entity 개수, manifest hash를 읽는다(T200-1).
 - `restoreOrCreate()`가 다섯 client에서 한 transaction 안에 key의 soft-delete된 행을 되돌리거나 만든다. 그 key의 살아 있는 행은 `ROW_NOT_DELETED`로 실패한다. conformance check의 `RECORD=1`은 `VECTOR`가 이름 붙인 vector만 기록하기도 한다(T200).
 - 요소 type test와 behaviour test가 plans.json을 PHP의 하나뿐인 reader로 읽는다(T182-0-1-4).

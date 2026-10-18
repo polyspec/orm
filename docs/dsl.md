@@ -136,18 +136,18 @@ Key   = [Operator] Column
 
 | Method | Result |
 |---|---|
-| `get()` | one row; returns `NO_ROWS` when no row matches |
+| `get()` | one row; null when no row matches |
 | `gets()` | collection of rows |
 | `getBy<Chain>(…)` | `get()` with the chain as condition |
 | `getsBy<Chain>(…)` | `gets()` with the chain as condition |
-| `getCount()`, `getCountBy<Chain>(…)` | row count |
+| `getCount()`, `getCountBy<Chain>(…)` | row count; 0 when no row matches |
 | `getsCount()` | grouped rows with `row_count` |
-| `sum<Col>()` with `getSum()` | sum of the column |
-| `avg<Col>()` with `getAvg()` | average of the column |
+| `sum<Col>()` with `getSum()` | sum of the column; 0 when there is no value |
+| `avg<Col>()` with `getAvg()` | average of the column; null when there is no value |
 | `getsPage(page, perPage)` | one page with `items`, `totalCount`, `totalPages`, `page`, and `perPage` |
 | `getQuery()` | statement text and binds of `gets()` without execution |
 
-- `getSum()` and `getAvg()` convert a numeric database scalar to the nearest finite IEEE 754 binary64 value, with ties rounded to even. A null, nonnumeric, nonfinite, or overflowing scalar returns `CODEC_DECODE`. Row column decoding retains its lossless conversion rules.
+- `getSum()` and `getAvg()` convert a numeric database scalar to the nearest finite IEEE 754 binary64 value, with ties rounded to even. SQL `SUM` and `AVG` skip null values and give a null scalar when no value is left, whether no row matches or every value is null: then `getSum()` returns 0, the sum of no values, and `getAvg()` returns null, since the average of no values is undefined and 0 would be an invented average. A nonnumeric, nonfinite or overflowing scalar returns `CODEC_DECODE`. Row column decoding retains its lossless conversion rules.
 - `getsPage` counts rows with the same conditions and joins; a grouped model counts distinct group keys. `page` and `perPage` must be positive, and a model with `limit` returns `CONFIG`. A page after the last page returns an empty collection. orm does no rendering, request reading or redirects.
 - `getQuery` requires a connected model or an active transaction because the dialect decides the statement text; otherwise it returns `CONFIG`. Secret values are shown as `$SECRET`.
 - Terminals take no arguments except chain values. A terminal does not change the model, so running a second terminal produces the same statement.

@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 06f3a47bbfa2abcab820a41ea1c82781764d6725aaf8bb4dbd959e36feea7edc -->
+<!-- source-sha256: 671d6122f98df62bcfd0c6affed9a8b22e50a41427643eaae020f6fc75fd3559 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -144,7 +144,7 @@ classDiagram
 
 | 메서드 | 결과 | 연결 |
 |---|---|---|
-| `get` | 행 하나; 일치하는 행이 없으면 `NO_ROWS` | 모델 연결 또는 활성 트랜잭션 |
+| `get` | 행 하나; 일치하는 행이 없으면 null | 모델 연결 또는 활성 트랜잭션 |
 | `gets` | 컬렉션 | 모델 연결 또는 활성 트랜잭션 |
 | `getsCount` | 선택한 그룹 값과 검증한 행 개수를 담은 `GroupRows` | 모델 연결 또는 활성 트랜잭션 |
 | `getsPage` | 페이지 | 모델 연결 또는 활성 트랜잭션 |

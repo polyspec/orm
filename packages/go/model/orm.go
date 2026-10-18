@@ -258,6 +258,10 @@ type argBoolEq interface {
 	~bool | ~[]bool | orm.Func | ormModel
 }
 
+type argDecimalEqNull interface {
+	~string | ~[]string | orm.Func | ormModel | orm.NullType
+}
+
 type argIntBetween interface {
 	~[2]int | ~[2]int8 | ~[2]int16 | ~[2]int32 | ~[2]int64 | ~[2]uint | ~[2]uint8 | ~[2]uint16 | ~[2]uint32 | ~[2]uint64
 }

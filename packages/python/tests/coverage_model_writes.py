@@ -78,10 +78,8 @@ def model_write_cycle(item):
             )
             account().tenant_id(TENANT).gets().delete()
             expect_equal(
-                error_code(
-                    lambda: account().get_by_tenant_id_and_account_id(TENANT, 1)
-                ),
-                "NO_ROWS",
+                account().get_by_tenant_id_and_account_id(TENANT, 1),
+                None,
                 "deleted row",
             )
             expect_equal(

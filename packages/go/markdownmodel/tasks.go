@@ -180,7 +180,7 @@ func (x *TasksModel) Relation(child orm.Model) *TasksModel { x.m.Relation(false,
 // Relations attaches related rows loaded by a separate query.
 func (x *TasksModel) Relations(child orm.Model) *TasksModel { x.m.Relation(true, child); return x }
 
-// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
+// Get returns the first matching row. It returns (nil, nil) when no row matches.
 func (x *TasksModel) Get() (*TasksModel, error) { return oneTasks(x.m) }
 
 func oneTasks(c *orm.Core) (*TasksModel, error) {
@@ -200,11 +200,12 @@ func (x *TasksModel) GetCount() (int64, error) { return x.m.GetCount() }
 // GetsCount returns grouped rows with row_count.
 func (x *TasksModel) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
-// GetSum returns the sum of the column selected with Sum<Col>.
+// GetSum returns the sum of the column selected with Sum<Col>; a null scalar is 0.
 func (x *TasksModel) GetSum() (float64, error) { return x.m.GetSum() }
 
-// GetAvg returns the average of the column selected with Avg<Col>.
-func (x *TasksModel) GetAvg() (float64, error) { return x.m.GetAvg() }
+// GetAvg returns the average of the column selected with Avg<Col>; it is nil
+// when the scalar is null.
+func (x *TasksModel) GetAvg() (*float64, error) { return x.m.GetAvg() }
 
 // GetsPage returns one page of matching rows.
 func (x *TasksModel) GetsPage(page, perPage int) (*orm.Page[*TasksModel], error) {
@@ -249,6 +250,16 @@ func (x *TasksModel) Delete(recursive ...bool) error { return x.m.Delete(recursi
 // Restore restores the soft-deleted row that the set key values name and returns it.
 func (x *TasksModel) Restore() (*TasksModel, error) {
 	m, err := x.m.Restore()
+	if err != nil {
+		return nil, err
+	}
+	return m.(*TasksModel), nil
+}
+
+// RestoreOrCreate restores the soft-deleted row of the set key values, or creates
+// it when no row holds the key; a live row returns CodeRowNotDeleted.
+func (x *TasksModel) RestoreOrCreate() (*TasksModel, error) {
+	m, err := x.m.RestoreOrCreate()
 	if err != nil {
 		return nil, err
 	}

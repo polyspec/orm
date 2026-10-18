@@ -172,7 +172,7 @@ pub async fn restore_case(driver: &str, dsn: &str) {
         &[polyspec_orm::core::ChainKey { column: "name", ..polyspec_orm::core::ChainKey::EMPTY }],
         vec![polyspec_orm::core::Arg::Value(polyspec_orm::args::Value::One(text("red")))],
     );
-    assert_eq!(code(polyspec_orm::model::get(&read).await), polyspec_orm::codes::NO_ROWS, "{driver}: default read of a soft-deleted row");
+    assert!(polyspec_orm::model::get(&read).await.unwrap_or_else(|e| panic!("{driver}: read: {e}")).is_none(), "{driver}: default read of a soft-deleted row");
     let without = polyspec_orm::model::restore(&with::<Membership>(&db, &[("team_id", i(1)), ("member_id", i(2))])).await;
     assert_eq!(code(without), polyspec_orm::codes::CONFIG, "{driver}: restore of an audited row without an audit");
 

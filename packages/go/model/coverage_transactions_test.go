@@ -27,14 +27,11 @@ func requireNoTransactionRows(t *testing.T, db *orm.DB) {
 // accountExists reads whether composite_account (tenant, account) exists.
 func accountExists(t *testing.T, db *orm.DB, tenant, account int64) bool {
 	t.Helper()
-	_, err := model.CompositeAccount().Connect(db).GetByTenantIdAndAccountId(tenant, account)
-	if err == nil {
-		return true
-	}
-	if orm.ErrorCode(err) != orm.CodeNoRows {
+	row, err := model.CompositeAccount().Connect(db).GetByTenantIdAndAccountId(tenant, account)
+	if err != nil {
 		t.Fatal(err)
 	}
-	return false
+	return row != nil
 }
 
 // TestCoverageTransactionRollback checks that a transaction whose callback returns an error

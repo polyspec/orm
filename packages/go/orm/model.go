@@ -600,8 +600,8 @@ func attachExternal(parents []*Core, rel relSpec) error {
 	return nil
 }
 
-// Get runs the query and returns the first model. It returns CodeNoRows when
-// the query matches no rows; callers must not treat a missing row as success.
+// Get runs the query and returns the first model. It returns (nil, nil) when
+// the query matches no rows: an empty result is not an error.
 func (c *Core) Get() (Model, error) {
 	c.ensureStatement()
 	rows, err := c.load("one")
@@ -609,7 +609,7 @@ func (c *Core) Get() (Model, error) {
 		return nil, err
 	}
 	if len(rows.keys) == 0 {
-		return nil, &ir.Error{Code: CodeNoRows, Msg: "query matched no rows"}
+		return nil, nil
 	}
 	return rows.items[rows.keys[0]].self, nil
 }
@@ -718,27 +718,43 @@ func (c *Core) GetCount() (int64, error) {
 	return AsInt64(v)
 }
 
-// GetSum returns the sum of the column selected with sum<Col>().
-func (c *Core) GetSum() (float64, error) { c.ensureStatement(); return c.aggregate("sum") }
-
-// GetAvg returns the average of the column selected with avg<Col>().
-func (c *Core) GetAvg() (float64, error) { c.ensureStatement(); return c.aggregate("avg") }
-
-func (c *Core) aggregate(fn string) (float64, error) {
-	if c.aggFn != fn {
-		return 0, configErr("get%s requires %s<Col>()", titled(fn), fn)
-	}
-	ex, err := c.terminal()
-	if err != nil {
-		return 0, err
-	}
-	r := c.build(fn)
-	r.ir.Agg = c.agg
-	v, err := scalar(ex, r)
-	if err != nil {
+// GetSum returns the sum of the column selected with sum<Col>(). A null scalar
+// (no row, or every value null) is 0.
+func (c *Core) GetSum() (float64, error) {
+	c.ensureStatement()
+	v, err := c.aggregate("sum")
+	if err != nil || v == nil {
 		return 0, err
 	}
 	return AsFloat64(v)
+}
+
+// GetAvg returns the average of the column selected with avg<Col>(). A null
+// scalar (no row, or every value null) is a nil result.
+func (c *Core) GetAvg() (*float64, error) {
+	c.ensureStatement()
+	v, err := c.aggregate("avg")
+	if err != nil || v == nil {
+		return nil, err
+	}
+	f, err := AsFloat64(v)
+	if err != nil {
+		return nil, err
+	}
+	return &f, nil
+}
+
+func (c *Core) aggregate(fn string) (any, error) {
+	if c.aggFn != fn {
+		return nil, configErr("get%s requires %s<Col>()", titled(fn), fn)
+	}
+	ex, err := c.terminal()
+	if err != nil {
+		return nil, err
+	}
+	r := c.build(fn)
+	r.ir.Agg = c.agg
+	return scalar(ex, r)
 }
 
 func titled(s string) string { return string(s[0]-'a'+'A') + s[1:] }
@@ -1238,7 +1254,11 @@ func (c *Core) Restore() (Model, error) {
 	if err != nil {
 		return nil, err
 	}
-	return q.Get()
+	row, err := q.Get()
+	if err == nil && row == nil {
+		return nil, &ir.Error{Code: CodeNoRows, Msg: "restore: no row holds the key"}
+	}
+	return row, err
 }
 
 // RestoreOrCreate restores the soft-deleted row of the key that Restore picks,

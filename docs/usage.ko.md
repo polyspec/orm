@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: a95a7cfcbf2afa3ce44db0c476d44bc8742ecfade4ebb98919190a24e02425eb -->
+<!-- source-sha256: 97883a9916482978ac63c77049af543a989fd1b89232e9f049d85412a5714b09 -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript·Python 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
@@ -212,7 +212,7 @@ const rows = await new Author().connect(slave1)
 - 컬럼: `addColumn<Col>()`, `removeColumn<Col>()`, `removeAllColumns()`, `addAllColumns()`. `text`·`blob`·스타일 컬럼은 기본 SELECT에서 빠지며 `addColumn<Col>()`로 추가한다.
 - Rust 생성 모델 필드는 비공개다. 조회하거나 대입하지 않은 컬럼을 읽으면 `COLUMN_UNSELECTED`를 반환하며, 빠진 값을 SQL NULL이나 기본값으로 보여주지 않는다.
 - PHP 생성 모델 getter도 스타일이 없는 컬럼을 조회하거나 대입하지 않고 읽으면 `COLUMN_UNSELECTED`를 반환하며, 선택한 SQL NULL과 명시적으로 대입한 값은 계속 읽을 수 있다.
-- 종단 작업: `get`은 행 하나를 반환하며 일치하는 행이 없으면 `NO_ROWS`를 반환한다. `gets`는 컬렉션을 반환하며 일치하는 행이 없으면 빈 컬렉션이다. `getCount`는 개수를 반환한다.
+- 종단 작업: `get`은 행 하나를 반환하며 일치하는 행이 없으면 null을 반환한다. 어떤 읽기도 빈 결과에 오류를 내지 않는다. `gets`는 컬렉션을 반환하며 일치하는 행이 없으면 빈 컬렉션이다. `getCount`는 개수를 반환한다.
 - 컬렉션은 PK 또는 `keyName<Col>()`을 키로 하는 순서 있는 맵이다. `first()`, `count()`, `toArray()`를 제공하며 순회하면 `key => row`가 나온다.
 - `toArray()`는 컬렉션 순서대로 행을 맵 목록으로 반환한다. Go는 `rows.ToArray()`, Rust는 `rows.to_array()`, PHP는 `$rows->toArray()`, TypeScript는 `rows.toArray()`, Python은 `rows.to_array()`를 사용한다. 순회는 키와 키 타입을 유지한다.
 

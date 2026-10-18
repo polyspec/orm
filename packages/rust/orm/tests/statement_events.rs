@@ -122,7 +122,7 @@ impl EventRun {
 
     async fn by_label(&self, label: &str) -> polyspec_orm::Result<EventProbe> {
         let filter = self.model().core().by(BY_LABEL, vec![Arg::Value(polyspec_orm::args::Value::One(Param::from(label)))]);
-        polyspec_orm::model::get_core::<EventProbe>(&filter).await
+        polyspec_orm::model::get_core::<EventProbe>(&filter).await?.ok_or(polyspec_orm::Error::NoRows)
     }
 
     /// Runs one step and returns its result.

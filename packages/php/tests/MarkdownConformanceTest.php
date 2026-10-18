@@ -235,7 +235,7 @@ final class MarkdownConformanceTest extends TestCase
                 return (new People())->connect($s->db)->removeAllColumns()->addColumnName()->addColumnEmail()->addColumnAge()->addColumnActive()->addColumnScore()->id('P1')->get()->toArray();
             },
             'one_no_rows' => static function (Served $s): mixed {
-                return (new People())->connect($s->db)->id('P9')->get()->toArray();
+                return (new People())->connect($s->db)->id('P9')->get()?->toArray();
             },
             'all' => static function (Served $s): mixed {
                 return (new People())->connect($s->db)->removeAllColumns()->addColumnName()->addColumnAge()->orderByNameDesc()->gets()->toArray();

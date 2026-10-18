@@ -686,6 +686,35 @@ def main():
 
     run("aggregates", aggregates)
 
+    def empty_reads():
+        # The reads run in the order of the other runners, so the statements agree.
+        get = author().seq(-1).get()
+        get_by = author().get_by_seq(-1)
+        gets = len(author().seq(-1).gets().values())
+        groups = author().seq(-1).group_by_is_close().gets_count().to_array()
+        page = author().seq(-1).remove_all_columns().order_by_seq_asc().gets_page(1, 10)
+        return {
+            "get": get,
+            "get_by": get_by,
+            "gets": gets,
+            "gets_count": groups,
+            "page": {
+                "items": len(page["items"]),
+                "total_count": page["totalCount"],
+                "total_pages": page["totalPages"],
+                "page": page["page"],
+                "per_page": page["perPage"],
+            },
+            "count": author().seq(-1).get_count(),
+            "sum": author().seq(-1).sum_read_count().get_sum(),
+            "avg": author().seq(-1).avg_like_count().get_avg(),
+            "null_rows": author().price(None).get_count(),
+            "null_sum": author().price(None).sum_price().get_sum(),
+            "null_avg": author().price(None).avg_price().get_avg(),
+        }
+
+    run("empty_reads", empty_reads)
+
     def functions():
         queries = [
             author().service_seq(7).and_eq_start_dt(orm.day_of_week(), 2),

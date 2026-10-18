@@ -140,7 +140,7 @@ func (x *LogsModel) Relation(child orm.Model) *LogsModel { x.m.Relation(false, c
 // Relations attaches related rows loaded by a separate query.
 func (x *LogsModel) Relations(child orm.Model) *LogsModel { x.m.Relation(true, child); return x }
 
-// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
+// Get returns the first matching row. It returns (nil, nil) when no row matches.
 func (x *LogsModel) Get() (*LogsModel, error) { return oneLogs(x.m) }
 
 func oneLogs(c *orm.Core) (*LogsModel, error) {
@@ -160,11 +160,12 @@ func (x *LogsModel) GetCount() (int64, error) { return x.m.GetCount() }
 // GetsCount returns grouped rows with row_count.
 func (x *LogsModel) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
-// GetSum returns the sum of the column selected with Sum<Col>.
+// GetSum returns the sum of the column selected with Sum<Col>; a null scalar is 0.
 func (x *LogsModel) GetSum() (float64, error) { return x.m.GetSum() }
 
-// GetAvg returns the average of the column selected with Avg<Col>.
-func (x *LogsModel) GetAvg() (float64, error) { return x.m.GetAvg() }
+// GetAvg returns the average of the column selected with Avg<Col>; it is nil
+// when the scalar is null.
+func (x *LogsModel) GetAvg() (*float64, error) { return x.m.GetAvg() }
 
 // GetsPage returns one page of matching rows.
 func (x *LogsModel) GetsPage(page, perPage int) (*orm.Page[*LogsModel], error) {
@@ -209,6 +210,16 @@ func (x *LogsModel) Delete(recursive ...bool) error { return x.m.Delete(recursiv
 // Restore restores the soft-deleted row that the set key values name and returns it.
 func (x *LogsModel) Restore() (*LogsModel, error) {
 	m, err := x.m.Restore()
+	if err != nil {
+		return nil, err
+	}
+	return m.(*LogsModel), nil
+}
+
+// RestoreOrCreate restores the soft-deleted row of the set key values, or creates
+// it when no row holds the key; a live row returns CodeRowNotDeleted.
+func (x *LogsModel) RestoreOrCreate() (*LogsModel, error) {
+	m, err := x.m.RestoreOrCreate()
 	if err != nil {
 		return nil, err
 	}

@@ -243,6 +243,28 @@ async function main() {
     const rows = await author().relations(new ServiceMember().matchUserSeqWithUserSeq()).getsBySeq(-1);
     return rows.length;
   });
+  await run('empty_reads', async () => {
+    const none = () => author().seq(-1);
+    // The reads run in the order of the other runners, so the statements agree.
+    const get = await none().get();
+    const getBy = await author().getBySeq(-1);
+    const gets = (await none().gets()).length;
+    const groups = (await none().groupByIsClose().getsCount()).toArray();
+    const page = await none().removeAllColumns().orderBySeqAsc().getsPage(1, 10);
+    return {
+      get,
+      get_by: getBy,
+      gets,
+      gets_count: groups,
+      page: { items: page.items.length, total_count: page.totalCount, total_pages: page.totalPages, page: page.page, per_page: page.perPage },
+      count: await none().getCount(),
+      sum: await none().sumReadCount().getSum(),
+      avg: await none().avgLikeCount().getAvg(),
+      null_rows: await author().price(null).getCount(),
+      null_sum: await author().price(null).sumPrice().getSum(),
+      null_avg: await author().price(null).avgPrice().getAvg(),
+    };
+  });
   await run('relation_null_key', async () => {
     try {
       const rows = await new User().connect(db).relations(new Author().matchSeqWithUserSeq().keyNamePrice()).seq(100).gets();
@@ -261,6 +283,7 @@ async function main() {
   await run('aggregates', async () => {
     const sum = await author().serviceSeq(7).sumReadCount().getSum();
     const avg = await author().serviceSeq(7).avgLikeCount().getAvg();
+    if (avg === null) throw new Error('aggregate average is null');
     const avgBytes = Buffer.alloc(8);
     avgBytes.writeDoubleBE(avg);
     if (avgBytes.toString('hex') !== '404805c28f5c28f6') {

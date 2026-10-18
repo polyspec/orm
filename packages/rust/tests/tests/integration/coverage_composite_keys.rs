@@ -26,7 +26,7 @@ async fn coverage_composite_key_rows() {
         membership().set_tenant_id(TENANT).set_account_id(1).set_role("member").create().await.unwrap();
         membership().set_tenant_id(TENANT).set_account_id(2).set_role("owner").create().await.unwrap();
         membership().set_tenant_id(OTHER_TENANT).set_account_id(2).set_role("guest").create().await.unwrap();
-        let by_key = account().get_by_tenant_id_and_account_id(TENANT, 2).await.unwrap().get_name().unwrap().to_owned();
+        let by_key = account().get_by_tenant_id_and_account_id(TENANT, 2).await.unwrap().expect("a row").get_name().unwrap().to_owned();
         // The relation joins the two foreign key components in key order. When a child has its own link, the parent row is read
         // separately after it is read. The results of both paths are collected, the rows are deleted, and then they are compared.
         let same = account()
@@ -58,7 +58,7 @@ async fn coverage_composite_key_rows() {
             }
             results.push((path, got));
         }
-        account().get_by_tenant_id_and_account_id(TENANT, 2).await.unwrap().delete(false).await.unwrap();
+        account().get_by_tenant_id_and_account_id(TENANT, 2).await.unwrap().expect("a row").delete(false).await.unwrap();
         let after_cascade = membership().tenant_id(TENANT).get_count().await.unwrap();
         for tenant in [TENANT, OTHER_TENANT] {
             account().tenant_id(tenant).gets().await.unwrap().delete(false).await.unwrap();

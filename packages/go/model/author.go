@@ -565,7 +565,7 @@ func (x *AuthorModel) Relation(child orm.Model) *AuthorModel { x.m.Relation(fals
 // Relations attaches related rows loaded by a separate query.
 func (x *AuthorModel) Relations(child orm.Model) *AuthorModel { x.m.Relation(true, child); return x }
 
-// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
+// Get returns the first matching row. It returns (nil, nil) when no row matches.
 func (x *AuthorModel) Get() (*AuthorModel, error) { return oneAuthor(x.m) }
 
 func oneAuthor(c *orm.Core) (*AuthorModel, error) {
@@ -587,11 +587,12 @@ func (x *AuthorModel) GetCount() (int64, error) { return x.m.GetCount() }
 // GetsCount returns grouped rows with row_count.
 func (x *AuthorModel) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
-// GetSum returns the sum of the column selected with Sum<Col>.
+// GetSum returns the sum of the column selected with Sum<Col>; a null scalar is 0.
 func (x *AuthorModel) GetSum() (float64, error) { return x.m.GetSum() }
 
-// GetAvg returns the average of the column selected with Avg<Col>.
-func (x *AuthorModel) GetAvg() (float64, error) { return x.m.GetAvg() }
+// GetAvg returns the average of the column selected with Avg<Col>; it is nil
+// when the scalar is null.
+func (x *AuthorModel) GetAvg() (*float64, error) { return x.m.GetAvg() }
 
 // GetsPage returns one page of matching rows.
 func (x *AuthorModel) GetsPage(page, perPage int) (*orm.Page[*AuthorModel], error) {
@@ -2128,6 +2129,11 @@ func (x *AuthorModel) PhotoUrl[T0 argStringEqNull](v0 T0) *AuthorModel {
 	return x
 }
 
+func (x *AuthorModel) Price[T0 argDecimalEqNull](v0 T0) *AuthorModel {
+	x.m.Where("", chainAuthorPrice, v0)
+	return x
+}
+
 func (x *AuthorModel) PriceEqSeq[T0 hasSeq](v0 T0) *AuthorModel {
 	x.m.Where("", chainAuthorPriceEqSeq, v0)
 	return x
@@ -2276,6 +2282,8 @@ var chainAuthorOrIsClose = []orm.ChainKey{{Column: "is_close"}}
 var chainAuthorPhoneBlindIndex = []orm.ChainKey{{Column: "phone_blind_index"}}
 
 var chainAuthorPhotoUrl = []orm.ChainKey{{Column: "photo_url"}}
+
+var chainAuthorPrice = []orm.ChainKey{{Column: "price"}}
 
 var chainAuthorPriceEqSeq = []orm.ChainKey{{Column: "price", Compare: "seq"}}
 

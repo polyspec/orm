@@ -12,7 +12,7 @@
       "id": "one_no_rows",
       "chain": "one_no_rows",
       "answer": { "rows": [] },
-      "expect": { "error": "NO_ROWS" }
+      "expect": null
     },
     {
       "id": "all",
@@ -43,6 +43,18 @@
       "chain": "avg",
       "answer": { "value": 27.5 },
       "expect": 27.5
+    },
+    {
+      "id": "sum_no_value",
+      "chain": "sum",
+      "answer": { "value": null },
+      "expect": 0
+    },
+    {
+      "id": "avg_no_value",
+      "chain": "avg",
+      "answer": { "value": null },
+      "expect": null
     },
     {
       "id": "paginate",

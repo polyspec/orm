@@ -144,7 +144,7 @@ func (x *HexCellModel) Relation(child orm.Model) *HexCellModel { x.m.Relation(fa
 // Relations attaches related rows loaded by a separate query.
 func (x *HexCellModel) Relations(child orm.Model) *HexCellModel { x.m.Relation(true, child); return x }
 
-// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
+// Get returns the first matching row. It returns (nil, nil) when no row matches.
 func (x *HexCellModel) Get() (*HexCellModel, error) { return oneHexCell(x.m) }
 
 func oneHexCell(c *orm.Core) (*HexCellModel, error) {
@@ -166,11 +166,12 @@ func (x *HexCellModel) GetCount() (int64, error) { return x.m.GetCount() }
 // GetsCount returns grouped rows with row_count.
 func (x *HexCellModel) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
-// GetSum returns the sum of the column selected with Sum<Col>.
+// GetSum returns the sum of the column selected with Sum<Col>; a null scalar is 0.
 func (x *HexCellModel) GetSum() (float64, error) { return x.m.GetSum() }
 
-// GetAvg returns the average of the column selected with Avg<Col>.
-func (x *HexCellModel) GetAvg() (float64, error) { return x.m.GetAvg() }
+// GetAvg returns the average of the column selected with Avg<Col>; it is nil
+// when the scalar is null.
+func (x *HexCellModel) GetAvg() (*float64, error) { return x.m.GetAvg() }
 
 // GetsPage returns one page of matching rows.
 func (x *HexCellModel) GetsPage(page, perPage int) (*orm.Page[*HexCellModel], error) {

@@ -542,8 +542,8 @@ func run() (status int) {
 		if err != nil {
 			return nil, err
 		}
-		if math.Float64bits(avg) != 0x404805c28f5c28f6 {
-			return nil, fmt.Errorf("aggregate average has unexpected binary64 value: %.17g", avg)
+		if avg == nil || math.Float64bits(*avg) != 0x404805c28f5c28f6 {
+			return nil, fmt.Errorf("aggregate average has unexpected binary64 value: %v", avg)
 		}
 		groups, err := author().ServiceSeq(7).GroupByIsClose().OrderByIsCloseAsc().GetsCount()
 		if err != nil {
@@ -559,9 +559,75 @@ func run() (status int) {
 		}
 		return map[string]any{
 			"sum":    sum,
-			"avg":    fmt.Sprintf("%.4f", avg),
+			"avg":    fmt.Sprintf("%.4f", *avg),
 			"groups": groups.ToArray(),
 			"page":   map[string]any{"keys": pageKeys, "total": page.TotalCount, "pages": page.TotalPages, "page": page.Page, "per_page": page.PerPage},
+		}, nil
+	})
+	run("empty_reads", func() (any, error) {
+		get, err := author().Seq(-1).Get()
+		if err != nil {
+			return nil, err
+		}
+		getBy, err := author().GetBySeq(-1)
+		if err != nil {
+			return nil, err
+		}
+		gets, err := author().Seq(-1).Gets()
+		if err != nil {
+			return nil, err
+		}
+		groups, err := author().Seq(-1).GroupByIsClose().GetsCount()
+		if err != nil {
+			return nil, err
+		}
+		page, err := author().Seq(-1).RemoveAllColumns().OrderBySeqAsc().GetsPage(1, 10)
+		if err != nil {
+			return nil, err
+		}
+		count, err := author().Seq(-1).GetCount()
+		if err != nil {
+			return nil, err
+		}
+		sum, err := author().Seq(-1).SumReadCount().GetSum()
+		if err != nil {
+			return nil, err
+		}
+		avg, err := author().Seq(-1).AvgLikeCount().GetAvg()
+		if err != nil {
+			return nil, err
+		}
+		nullRows, err := author().Price(orm.Null).GetCount()
+		if err != nil {
+			return nil, err
+		}
+		nullSum, err := author().Price(orm.Null).SumPrice().GetSum()
+		if err != nil {
+			return nil, err
+		}
+		nullAvg, err := author().Price(orm.Null).AvgPrice().GetAvg()
+		if err != nil {
+			return nil, err
+		}
+		var getOut, getByOut any
+		if get != nil {
+			getOut = get.ToArray()
+		}
+		if getBy != nil {
+			getByOut = getBy.ToArray()
+		}
+		return map[string]any{
+			"get":        getOut,
+			"get_by":     getByOut,
+			"gets":       gets.Len(),
+			"gets_count": groups.ToArray(),
+			"page":       map[string]any{"items": page.Items.Len(), "total_count": page.TotalCount, "total_pages": page.TotalPages, "page": page.Page, "per_page": page.PerPage},
+			"count":      count,
+			"sum":        sum,
+			"avg":        avg,
+			"null_rows":  nullRows,
+			"null_sum":   nullSum,
+			"null_avg":   nullAvg,
 		}, nil
 	})
 	run("functions", func() (any, error) {

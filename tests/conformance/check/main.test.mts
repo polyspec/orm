@@ -56,7 +56,7 @@ caseTest('TestRecordRequiresFourEqualOutputs', COMPUTE, () => withTemporaryDirec
     assertFileEquals(vectors, before);
   }
   writeFileSync(outputs[1] ?? '', '{"one":{"result":2}}');
-  assert.throws(() => quietly(() => recordVerified(root, outputs, 'mysql')), 'record accepted conflicting client results');
+  assert.throws(() => quietly(() => recordVerified(root, outputs, 'mysql')), /vector one differs between go and php outputs:\nresult: expected 1, got 2/, 'record accepted conflicting client results, or did not name the difference');
   assertFileEquals(vectors, before);
   for (const invalid of ['{}', '{"one":{"result":1},"extra":{"result":1}}']) {
     writeFileSync(outputs[1] ?? '', invalid);

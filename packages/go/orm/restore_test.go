@@ -157,8 +157,8 @@ func restoreCase(t *testing.T, driver, dsn string) {
 	}
 	read := core(labels, nil)
 	read.Where("", []orm.ChainKey{{Column: "name"}}, "red")
-	if _, err := read.Get(); orm.ErrorCode(err) != orm.CodeNoRows {
-		t.Fatalf("default read of a soft-deleted row = %v, want NO_ROWS", err)
+	if row, err := read.Get(); row != nil || err != nil {
+		t.Fatalf("default read of a soft-deleted row = %v, %v, want nil, nil", row, err)
 	}
 	if _, err := core(memberships, map[string]any{"team_id": int64(1), "member_id": int64(2)}).Restore(); orm.ErrorCode(err) != orm.CodeConfig {
 		t.Fatalf("restore of an audited row without an audit = %v, want CONFIG", err)

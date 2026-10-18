@@ -361,7 +361,7 @@
       "expect": {
         "result": {
           "count": 1000,
-          "missing": "NO_ROWS",
+          "missing": null,
           "one": {
             "is_close": true,
             "is_display": false,
@@ -1363,7 +1363,7 @@
             "start_dt": "2026-06-01 00:00:00.000000",
             "user_seq": 1
           },
-          "deleted": "NO_ROWS",
+          "deleted": null,
           "stale": "CONFIG",
           "updated": {
             "aes_hex_email": "cycle@example.com",
@@ -2385,7 +2385,7 @@
         "result": {
           "members": 2,
           "members_left": 0,
-          "service_left": "NO_ROWS"
+          "service_left": null
         },
         "statements": [
           {
@@ -2705,7 +2705,7 @@
             "name": "restore-2",
             "seq": "$SEQ"
           },
-          "hidden": "NO_ROWS",
+          "hidden": null,
           "left": 0,
           "missing": "NO_ROWS",
           "restored": {
@@ -4850,6 +4850,181 @@
           "message": "IR_INVALID: key_by price is nullable"
         },
         "statements": []
+      }
+    },
+    {
+      "name": "empty_reads",
+      "chain": "author seq(-1): get(), getBySeq(-1), gets() length, groupByIsClose()-\u003egetsCount(), removeAllColumns()-\u003eorderBySeqAsc()-\u003egetsPage(1, 10), getCount(), sumReadCount()-\u003egetSum(), avgLikeCount()-\u003egetAvg(); author price(null): getCount(), sumPrice()-\u003egetSum(), avgPrice()-\u003egetAvg() (docs/dsl.md Reads: no read raises an error for an empty result; getSum is 0 and getAvg null when no value is left)",
+      "calls": [
+        "get",
+        "getBySeq",
+        "gets",
+        "getsCount",
+        "getsPage",
+        "getCount",
+        "getSum",
+        "getAvg"
+      ],
+      "expect": {
+        "result": {
+          "avg": null,
+          "count": 0,
+          "get": null,
+          "get_by": null,
+          "gets": 0,
+          "gets_count": [],
+          "null_avg": null,
+          "null_rows": 99334,
+          "null_sum": 0,
+          "page": {
+            "items": 0,
+            "page": 1,
+            "per_page": 10,
+            "total_count": 0,
+            "total_pages": 0
+          },
+          "sum": 0
+        },
+        "statements": [
+          {
+            "binds": [
+              -1
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_club_reader_count\" AS \"a__target_club_reader_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"reader_count\" AS \"a__reader_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"photo_url\" AS \"a__photo_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_work\" AS \"a__is_single_work\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"aes_key_version\" AS \"a__aes_key_version\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              -1
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_club_reader_count\" AS \"a__target_club_reader_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"reader_count\" AS \"a__reader_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"photo_url\" AS \"a__photo_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_work\" AS \"a__is_single_work\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"aes_key_version\" AS \"a__aes_key_version\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              -1
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_club_reader_count\" AS \"a__target_club_reader_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"reader_count\" AS \"a__reader_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"photo_url\" AS \"a__photo_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_work\" AS \"a__is_single_work\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"aes_key_version\" AS \"a__aes_key_version\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              -1
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"is_close\" AS \"a__is_close\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ? GROUP BY \"a\".\"is_close\"",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              -1
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ? ORDER BY \"a\".\"seq\" ASC LIMIT 10 OFFSET 0",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              -1
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              -1
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              -1
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COALESCE(SUM(\"a\".\"read_count\"), 0) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              -1
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT AVG(\"a\".\"like_count\") FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"price\" IS NULL",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COALESCE(SUM(\"a\".\"price\"), 0) FROM \"author\" AS \"a\" WHERE \"a\".\"price\" IS NULL",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT AVG(\"a\".\"price\") FROM \"author\" AS \"a\" WHERE \"a\".\"price\" IS NULL",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          }
+        ]
       }
     }
   ]

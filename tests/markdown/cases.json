@@ -6,7 +6,7 @@
     { "id": "insert_rows_tasks", "expect": 3 },
     { "id": "insert_identity", "expect": { "id": 1 } },
     { "id": "one", "expect": { "id": "P1", "name": "Ann", "email": "ann@example.com", "age": 30, "active": true, "score": "1.50" } },
-    { "id": "one_no_rows", "expect": { "error": "NO_ROWS" } },
+    { "id": "one_no_rows", "expect": null },
     {
       "id": "all",
       "expect": [

@@ -8785,11 +8785,11 @@
   },
   "packages/ts/src/model.ts::Model.get": {
     "exported": true,
-    "signature": "public async get(): Promise\u003cthis\u003e"
+    "signature": "public async get(): Promise\u003cthis | null\u003e"
   },
   "packages/ts/src/model.ts::Model.getAvg": {
     "exported": true,
-    "signature": "public async getAvg(): Promise\u003cnumber\u003e"
+    "signature": "public async getAvg(): Promise\u003cnumber | null\u003e"
   },
   "packages/ts/src/model.ts::Model.getCount": {
     "exported": true,
@@ -8945,7 +8945,7 @@
   },
   "packages/ts/src/model.ts::aggregate": {
     "exported": false,
-    "signature": "async function aggregate(c: Core, fn: 'sum' | 'avg'): Promise\u003cnumber\u003e"
+    "signature": "async function aggregate(c: Core, fn: 'sum' | 'avg'): Promise\u003cnumber | null\u003e"
   },
   "packages/ts/src/model.ts::aggregateNumber": {
     "exported": true,
@@ -10081,7 +10081,7 @@
   },
   "packages/ts/src/models/models.ts::Account#field.getBySeq": {
     "exported": true,
-    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis\u003e"
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis | null\u003e"
   },
   "packages/ts/src/models/models.ts::Account#field.getMembers": {
     "exported": true,
@@ -10529,11 +10529,11 @@
   },
   "packages/ts/src/models/models.ts::Author#field.getByName": {
     "exported": true,
-    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e Promise\u003cthis\u003e"
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e Promise\u003cthis | null\u003e"
   },
   "packages/ts/src/models/models.ts::Author#field.getBySeq": {
     "exported": true,
-    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis\u003e"
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis | null\u003e"
   },
   "packages/ts/src/models/models.ts::Author#field.getCountByIsClose": {
     "exported": true,
@@ -10680,6 +10680,10 @@
     "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.photoUrl": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::Author#field.price": {
     "exported": true,
     "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
   },
@@ -12337,7 +12341,7 @@
   },
   "packages/ts/src/models/models.ts::ClockCell#field.getBySeq": {
     "exported": true,
-    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis\u003e"
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis | null\u003e"
   },
   "packages/ts/src/models/models.ts::ClockCell#field.getMembers": {
     "exported": true,
@@ -12597,7 +12601,7 @@
   },
   "packages/ts/src/models/models.ts::CompositeAccount#field.getByTenantIdAndAccountId": {
     "exported": true,
-    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model, v1: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis\u003e"
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model, v1: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis | null\u003e"
   },
   "packages/ts/src/models/models.ts::CompositeAccount#field.getMembers": {
     "exported": true,
@@ -13221,7 +13225,7 @@
   },
   "packages/ts/src/models/models.ts::HexCell#field.getBySeq": {
     "exported": true,
-    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis\u003e"
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis | null\u003e"
   },
   "packages/ts/src/models/models.ts::HexCell#field.getMembers": {
     "exported": true,
@@ -13541,7 +13545,7 @@
   },
   "packages/ts/src/models/models.ts::Service#field.getBySeq": {
     "exported": true,
-    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis\u003e"
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis | null\u003e"
   },
   "packages/ts/src/models/models.ts::Service#field.getMembers": {
     "exported": true,
@@ -14385,7 +14389,7 @@
   },
   "packages/ts/src/models/models.ts::SoftRecord#field.getBySeq": {
     "exported": true,
-    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis\u003e"
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis | null\u003e"
   },
   "packages/ts/src/models/models.ts::SoftRecord#field.getMembers": {
     "exported": true,
@@ -14929,7 +14933,7 @@
   },
   "packages/ts/src/models/models.ts::UpsertCell#field.getBySeq": {
     "exported": true,
-    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis\u003e"
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis | null\u003e"
   },
   "packages/ts/src/models/models.ts::UpsertCell#field.getMembers": {
     "exported": true,
@@ -15125,7 +15129,7 @@
   },
   "packages/ts/src/models/models.ts::User#field.getBySeq": {
     "exported": true,
-    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis\u003e"
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e Promise\u003cthis | null\u003e"
   },
   "packages/ts/src/models/models.ts::User#field.getMembers": {
     "exported": true,

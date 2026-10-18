@@ -573,11 +573,11 @@
   },
   "packages/rust/build/src/fixed.rs.txt::T::get": {
     "exported": false,
-    "signature": "pub async fn get (\u0026 self) -\u003e polyspec_orm :: Result \u003c Self \u003e"
+    "signature": "pub async fn get (\u0026 self) -\u003e polyspec_orm :: Result \u003c Option \u003c Self \u003e \u003e"
   },
   "packages/rust/build/src/fixed.rs.txt::T::get_avg": {
     "exported": false,
-    "signature": "pub async fn get_avg (\u0026 self) -\u003e polyspec_orm :: Result \u003c f64 \u003e"
+    "signature": "pub async fn get_avg (\u0026 self) -\u003e polyspec_orm :: Result \u003c Option \u003c f64 \u003e \u003e"
   },
   "packages/rust/build/src/fixed.rs.txt::T::get_count": {
     "exported": false,
@@ -6617,15 +6617,15 @@
   },
   "packages/rust/orm/src/model.rs::get": {
     "exported": true,
-    "signature": "pub async fn get \u003c M : Model \u003e (m : \u0026 M) -\u003e Result \u003c M \u003e"
+    "signature": "pub async fn get \u003c M : Model \u003e (m : \u0026 M) -\u003e Result \u003c Option \u003c M \u003e \u003e"
   },
   "packages/rust/orm/src/model.rs::get_avg": {
     "exported": true,
-    "signature": "pub async fn get_avg (c : \u0026 Core) -\u003e Result \u003c f64 \u003e"
+    "signature": "pub async fn get_avg (c : \u0026 Core) -\u003e Result \u003c Option \u003c f64 \u003e \u003e"
   },
   "packages/rust/orm/src/model.rs::get_core": {
     "exported": true,
-    "signature": "pub async fn get_core \u003c M : Model \u003e (c : \u0026 Core) -\u003e Result \u003c M \u003e"
+    "signature": "pub async fn get_core \u003c M : Model \u003e (c : \u0026 Core) -\u003e Result \u003c Option \u003c M \u003e \u003e"
   },
   "packages/rust/orm/src/model.rs::get_count": {
     "exported": true,

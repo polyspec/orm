@@ -592,7 +592,9 @@ export function recordVerified(root: string, outputs: string[], driver: string, 
     for (const language of requiredLanguages.slice(1)) {
       const other = results.get(language)?.get(vector.name);
       if (other === undefined) throw new Error(`vector ${vector.name} missing from ${language} output`);
-      if (!equalValues(agreed, other)) throw new Error(`vector ${vector.name} differs between go and ${language} outputs`);
+      if (!equalValues(agreed, other)) {
+        throw new Error(`vector ${vector.name} differs between go and ${language} outputs:\n${describeDifference(agreed, other).join('\n')}`);
+      }
     }
     // The expectation is recorded with sorted keys; the vectors not selected keep theirs as they are.
     vector.expect = decodeExact(compact(agreed));

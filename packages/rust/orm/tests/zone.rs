@@ -99,7 +99,7 @@ async fn connections_use_utc() {
             let mut row = event(&db);
             row.core_mut().set("start_dt", datetime_param(start));
             polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{label}: create: {e}"));
-            let got = polyspec_orm::model::get(&event(&db)).await.unwrap_or_else(|e| panic!("{label}: {e}"));
+            let got = polyspec_orm::model::get(&event(&db)).await.unwrap_or_else(|e| panic!("{label}: {e}")).expect("the created row");
             assert_eq!(got.start_dt, start, "{label}: start_dt");
             // `default now` is the UTC statement time.
             let skew = (got.created_ts - before).num_seconds().abs();

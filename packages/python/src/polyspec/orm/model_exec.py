@@ -342,11 +342,7 @@ def _attach_external(parents: list, rel: dict) -> None:
 def execute_query(runner_core: Core, kind: str):
     """Runs the query method (get_by, gets_by, get_count_by) that Model resolved."""
     if kind == "get_by":
-        rows = load(runner_core, "one")
-        first = rows.first()
-        if first is None:
-            raise OrmError(codes.NO_ROWS, "query matched no rows")
-        return first
+        return load(runner_core, "one").first()
     if kind == "gets_by":
         return load(runner_core, "all")
     if kind == "get_count_by":
@@ -702,7 +698,10 @@ def restore(c: Core):
     1.5): if those cover a primary key, it is used; otherwise, the first unique key in name order. The key column's set value is the condition, and other set
     values are written as new values into the restored row, as in an update. The row is then read by that key's value. A row that was not deleted
     is returned unchanged without writing anything, and a missing row is NO_ROWS."""
-    return _restore_step(c)[1].get()
+    row = _restore_step(c)[1].get()
+    if row is None:
+        raise OrmError(codes.NO_ROWS, "restore: no row holds the key")
+    return row
 
 
 def restore_or_create(c: Core):

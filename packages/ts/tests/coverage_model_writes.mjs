@@ -3,7 +3,7 @@
 // deletes all rows it wrote, so the database state is unchanged.
 import assert from 'node:assert/strict';
 import { CompositeAccount, connect } from '../dist/index.js';
-import { errorCode, runCases, withCleanup } from './coverage_case.mjs';
+import { runCases, withCleanup } from './coverage_case.mjs';
 
 const tenant = 990002;
 
@@ -29,7 +29,7 @@ await runCases('coverage_model_writes.mjs', {
         const names = (await account().tenantId(tenant).orderByAccountIdAsc().gets()).values().map(a => a.getName());
         assert.deepEqual(names, ['upserted', 'many-2', 'many-3', 'many-4'], 'names of the tenant rows');
         await (await account().tenantId(tenant).gets()).delete();
-        assert.equal(await errorCode(account().getByTenantIdAndAccountId(tenant, 1)), 'NO_ROWS', 'deleted row');
+        assert.equal(await account().getByTenantIdAndAccountId(tenant, 1), null, 'deleted row');
         assert.equal(await account().tenantId(tenant).getCount(), 0, 'every row of the tenant deleted');
       }, async () => {
         // Even a failed run leaves no rows written by this case.

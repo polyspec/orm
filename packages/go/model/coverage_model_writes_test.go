@@ -65,8 +65,8 @@ func TestCoverageModelWriteCycle(t *testing.T) {
 	if err := rows.Delete(); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := account().GetByTenantIdAndAccountId(writeTenant, 1); got != nil || orm.ErrorCode(err) != orm.CodeNoRows {
-		t.Fatalf("get after delete = %v, %v; want NO_ROWS", got, err)
+	if got, err := account().GetByTenantIdAndAccountId(writeTenant, 1); got != nil || err != nil {
+		t.Fatalf("get after delete = %v, %v; want nil, nil", got, err)
 	}
 	if n := must(account().TenantId(writeTenant).GetCount()); n != 0 {
 		t.Fatalf("tenant %d count after delete = %d, want 0", writeTenant, n)

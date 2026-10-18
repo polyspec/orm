@@ -158,7 +158,7 @@ func (x *DecimalCaseModel) Relations(child orm.Model) *DecimalCaseModel {
 	return x
 }
 
-// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
+// Get returns the first matching row. It returns (nil, nil) when no row matches.
 func (x *DecimalCaseModel) Get() (*DecimalCaseModel, error) { return oneDecimalCase(x.m) }
 
 func oneDecimalCase(c *orm.Core) (*DecimalCaseModel, error) {
@@ -180,11 +180,12 @@ func (x *DecimalCaseModel) GetCount() (int64, error) { return x.m.GetCount() }
 // GetsCount returns grouped rows with row_count.
 func (x *DecimalCaseModel) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
-// GetSum returns the sum of the column selected with Sum<Col>.
+// GetSum returns the sum of the column selected with Sum<Col>; a null scalar is 0.
 func (x *DecimalCaseModel) GetSum() (float64, error) { return x.m.GetSum() }
 
-// GetAvg returns the average of the column selected with Avg<Col>.
-func (x *DecimalCaseModel) GetAvg() (float64, error) { return x.m.GetAvg() }
+// GetAvg returns the average of the column selected with Avg<Col>; it is nil
+// when the scalar is null.
+func (x *DecimalCaseModel) GetAvg() (*float64, error) { return x.m.GetAvg() }
 
 // GetsPage returns one page of matching rows.
 func (x *DecimalCaseModel) GetsPage(page, perPage int) (*orm.Page[*DecimalCaseModel], error) {
@@ -231,6 +232,16 @@ func (x *DecimalCaseModel) Delete(recursive ...bool) error { return x.m.Delete(r
 // Restore restores the soft-deleted row that the set key values name and returns it.
 func (x *DecimalCaseModel) Restore() (*DecimalCaseModel, error) {
 	m, err := x.m.Restore()
+	if err != nil {
+		return nil, err
+	}
+	return m.(*DecimalCaseModel), nil
+}
+
+// RestoreOrCreate restores the soft-deleted row of the set key values, or creates
+// it when no row holds the key; a live row returns CodeRowNotDeleted.
+func (x *DecimalCaseModel) RestoreOrCreate() (*DecimalCaseModel, error) {
+	m, err := x.m.RestoreOrCreate()
 	if err != nil {
 		return nil, err
 	}

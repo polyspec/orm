@@ -518,7 +518,7 @@ impl<'m> Gen<'m> {
             };
             let Some((params, args)) = self.chain_params(gi, r, &keys) else { return };
             let (result, body) = match prefix {
-                "get_by_" => ("polyspec_orm::Result<Self>", format!("polyspec_orm::model::get_core(&self.__orm.by(KEYS, {args})).await")),
+                "get_by_" => ("polyspec_orm::Result<Option<Self>>", format!("polyspec_orm::model::get_core(&self.__orm.by(KEYS, {args})).await")),
                 "gets_by_" => (
                     "polyspec_orm::Result<polyspec_orm::Collection<Self>>",
                     format!("polyspec_orm::model::gets_core(&self.__orm.by(KEYS, {args}), \"all\").await"),

@@ -181,9 +181,9 @@ async fn conditions(t: &Target) {
     assert_eq!(Author::new().connect(db).ne_photo_url(Null).and_lk_name("lph").get_count().await.unwrap(), 1, "not null and like");
     assert_eq!(Author::new().connect(db).between_read_count([10, 20]).get_count().await.unwrap(), 2, "between");
     assert_eq!(Author::new().connect(db).gt_start_dt(start() + chrono::Duration::minutes(90)).get_count().await.unwrap(), 2, "time compare");
-    let one = Author::new().connect(db).get_by_name("gamma").await.unwrap();
+    let one = Author::new().connect(db).get_by_name("gamma").await.unwrap().expect("a row");
     assert_eq!(one.get_read_count().unwrap(), 20, "get_by");
-    assert_eq!(code(Author::new().connect(db).get_by_name("missing").await), "NO_ROWS", "get without a row");
+    assert!(Author::new().connect(db).get_by_name("missing").await.unwrap().is_none(), "get without a row");
     let q = Author::new().connect(db).service_seq(svc);
     let first = q.get_count_by_is_close(true).await.unwrap();
     let second = q.get_count().await.unwrap();
@@ -236,7 +236,7 @@ async fn joins_and_relations(t: &Target) {
     assert_eq!(names(got), "gamma", "group_limit");
 
     let other = model::connect(&t.dsn, 2, polyspec_orm::Config::default()).await.unwrap();
-    let external = Author::new().connect(db).relation(User::new().connect(&other).match_user_seq_with_seq().alias_owner()).get_by_name("beta").await.unwrap();
+    let external = Author::new().connect(db).relation(User::new().connect(&other).match_user_seq_with_seq().alias_owner()).get_by_name("beta").await.unwrap().expect("a row");
     assert_eq!(external.get_owner().unwrap().map(|u| u.get_name().unwrap()), Some("lee"), "relation on another connection");
     other.close().await;
     assert_eq!(code(Author::new().connect(db).join_user_seq_with_seq(User::new().connect(db)).gets().await), "CONFIG", "join child with connection");
@@ -280,8 +280,8 @@ async fn columns_and_subqueries(t: &Target) {
     assert_eq!(int(u.get_read_total().unwrap()).expect("subquery integer"), 20, "subquery column");
     let sum = Author::new().connect(db).service_seq(f.service.get_seq().unwrap()).sum_read_count().get_sum().await.unwrap();
     let avg = Author::new().connect(db).service_seq(f.service.get_seq().unwrap()).avg_read_count().get_avg().await.unwrap();
-    assert_eq!((sum, avg), (60.0, 15.0), "aggregates");
-    let projected = Author::new().connect(db).remove_all_columns().add_column_name().get_by_seq(f.authors[0].get_seq().unwrap()).await.unwrap();
+    assert_eq!((sum, avg), (60.0, Some(15.0)), "aggregates");
+    let projected = Author::new().connect(db).remove_all_columns().add_column_name().get_by_seq(f.authors[0].get_seq().unwrap()).await.unwrap().expect("a row");
     assert_eq!(projected.get_name().unwrap(), "alpha", "selected field");
     assert_eq!(projected.get_description().unwrap_err().code(), polyspec_orm::codes::COLUMN_UNSELECTED, "unselected field");
     let grouped = Author::new().connect(db).group_by_is_close().gets_count().await.unwrap();
@@ -322,10 +322,10 @@ async fn columns_and_subqueries(t: &Target) {
 async fn writes(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;
-    let b = Author::new().connect(db).get_by_seq(f.authors[0].get_seq().unwrap()).await.unwrap();
+    let b = Author::new().connect(db).get_by_seq(f.authors[0].get_seq().unwrap()).await.unwrap().expect("a row");
     let mut b = b.set_name("renamed").plus_read_count(5);
     b.update(true).await.unwrap();
-    let again = Author::new().connect(db).get_by_seq(b.get_seq().unwrap()).await.unwrap();
+    let again = Author::new().connect(db).get_by_seq(b.get_seq().unwrap()).await.unwrap().expect("a row");
     assert_eq!((again.get_name().unwrap(), again.get_read_count().unwrap()), ("renamed", 5), "update");
     let mut b = b.set_name("stale");
     assert_eq!(code(b.update(true).await), "CONFIG", "optimistic update without a fresh version");
@@ -338,9 +338,9 @@ async fn writes(t: &Target) {
     assert_eq!(item.to_array().unwrap()["label"], "shown", "new value output");
     let saved = Account::new().connect(db).set_seq(item.get_seq().unwrap()).set_name("saved").save().await.unwrap();
     assert_eq!(saved.get_name().unwrap(), "saved", "save result");
-    let stored = Account::new().connect(db).get_by_seq(item.get_seq().unwrap()).await.unwrap();
+    let stored = Account::new().connect(db).get_by_seq(item.get_seq().unwrap()).await.unwrap().expect("a row");
     assert_eq!(stored.get_name().unwrap(), "saved", "save as update");
-    Author::new().connect(db).get_by_seq(f.authors[3].get_seq().unwrap()).await.unwrap().delete(false).await.unwrap();
+    Author::new().connect(db).get_by_seq(f.authors[3].get_seq().unwrap()).await.unwrap().expect("a row").delete(false).await.unwrap();
     assert_eq!(Author::new().connect(db).get_count().await.unwrap(), 3, "delete");
     let rows = Author::new().connect(db).is_close(true).gets().await.unwrap();
     rows.delete(false).await.unwrap();
@@ -355,14 +355,14 @@ async fn writes(t: &Target) {
         .create()
         .await
         .unwrap();
-    let got = CompositeAccount::new().connect(db).get_by_tenant_id_and_account_id(9, 9).await.unwrap();
+    let got = CompositeAccount::new().connect(db).get_by_tenant_id_and_account_id(9, 9).await.unwrap().expect("a row");
     assert_eq!(got.get_name().unwrap(), "second", "duplication");
     let service = Service::new().connect(db).set_name("tree").create().await.unwrap();
     ServiceMember::new().connect(db).set_service_seq(service.get_seq().unwrap()).set_user_seq(f.users[1].get_seq().unwrap()).create().await.unwrap();
-    let tree = Service::new().connect(db).relations(ServiceMember::new().match_seq_with_service_seq()).get_by_seq(service.get_seq().unwrap()).await.unwrap();
+    let tree = Service::new().connect(db).relations(ServiceMember::new().match_seq_with_service_seq()).get_by_seq(service.get_seq().unwrap()).await.unwrap().expect("a row");
     tree.delete(true).await.unwrap();
     assert_eq!(ServiceMember::new().connect(db).get_count_by_service_seq(service.get_seq().unwrap()).await.unwrap(), 0, "recursive delete");
-    let copy = Service::new().connect(db).get_by_seq(f.service.get_seq().unwrap()).await.unwrap();
+    let copy = Service::new().connect(db).get_by_seq(f.service.get_seq().unwrap()).await.unwrap().expect("a row");
     let json = serde_json::to_value(&copy).unwrap();
     assert_eq!(json["name"], "service", "serialize");
 }
@@ -483,7 +483,7 @@ async fn primary_and_replica(t: &Target, replica_base: &str) {
         "a write through the replica connection does not reach the primary"
     );
     // A row read through the replica is written through the primary.
-    let mut row = User::new().connect(&slave1).name(name.as_str()).get().await.unwrap().connect(master).set_name(format!("{name}-renamed"));
+    let mut row = User::new().connect(&slave1).name(name.as_str()).get().await.unwrap().expect("a row").connect(master).set_name(format!("{name}-renamed"));
     row.update(false).await.unwrap();
     let tx_name = format!("{name}-tx");
     let r: polyspec_orm::Result<()> = master
@@ -560,7 +560,7 @@ async fn bind_limit_splitting(t: &Target) {
 async fn aes_rotation(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;
-    let b = Author::new().connect(db).get_by_seq(f.authors[0].get_seq().unwrap()).await.unwrap();
+    let b = Author::new().connect(db).get_by_seq(f.authors[0].get_seq().unwrap()).await.unwrap().expect("a row");
     let mut b = b.set_aes_hex_email("person@example.com");
     b.update(false).await.unwrap();
     let found = Author::new().connect(db).aes_hex_email("person@example.com").get_count().await.unwrap();
@@ -589,14 +589,14 @@ async fn json_values(t: &Target) {
     let text = r#"{"b":1,"a":[],"c":{},"n":1.50}"#;
     let tags = r#"["z",{"y":[]},-0.0]"#;
     let seq = f.authors[0].get_seq().unwrap();
-    let b = Author::new().connect(db).get_by_seq(seq).await.unwrap();
+    let b = Author::new().connect(db).get_by_seq(seq).await.unwrap().expect("a row");
     let mut b = b
         .set_json_setting(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::parse(text).unwrap()))
         .unwrap()
         .set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::parse(tags).unwrap()))
         .unwrap();
     b.update(false).await.unwrap();
-    let got = Author::new().connect(db).add_all_columns().get_by_seq(seq).await.unwrap();
+    let got = Author::new().connect(db).add_all_columns().get_by_seq(seq).await.unwrap().expect("a row");
     expect_ordered(got.get_json_setting().unwrap(), text);
     expect_ordered(got.get_jsons_tags().unwrap(), tags);
     assert_eq!(got.to_array().unwrap()["json_setting"], serde_json::json!({"kind":"value","value":{"a": [], "b": 1, "c": {}, "n": 1.5}}), "array form");
@@ -631,19 +631,19 @@ async fn json_values(t: &Target) {
     };
     let created = created.create().await.unwrap();
     expect_ordered(created.get_json_setting().unwrap(), "[]");
-    let got = Author::new().connect(db).add_all_columns().get_by_seq(created.get_seq().unwrap()).await.unwrap();
+    let got = Author::new().connect(db).add_all_columns().get_by_seq(created.get_seq().unwrap()).await.unwrap().expect("a row");
     expect_ordered(got.get_json_setting().unwrap(), "[]");
     expect_ordered(got.get_jsons_tags().unwrap(), "null");
     assert_eq!(got.to_array().unwrap()["jsons_tags"], serde_json::json!({"kind":"value","value":null}), "JSON literal null output");
     let mut got = got.set_jsons_tags(polyspec_orm::StyledValue::SqlNull).unwrap();
     got.update(false).await.unwrap();
-    let sql_null = Author::new().connect(db).add_all_columns().get_by_seq(created.get_seq().unwrap()).await.unwrap();
+    let sql_null = Author::new().connect(db).add_all_columns().get_by_seq(created.get_seq().unwrap()).await.unwrap().expect("a row");
     assert!(matches!(sql_null.get_jsons_tags().unwrap(), polyspec_orm::StyledValue::SqlNull), "SQL NULL remains explicit");
     assert_eq!(sql_null.to_array().unwrap()["jsons_tags"], serde_json::json!({"kind":"sql-null"}), "SQL NULL output");
     assert!(sql_null.to_json().unwrap().contains(r#""jsons_tags":{"kind":"sql-null"}"#), "SQL NULL model JSON output");
     let mut object = sql_null.set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::parse(r#"{"kind":"sql-null"}"#).unwrap())).unwrap();
     object.update(false).await.unwrap();
-    let object = Author::new().connect(db).add_all_columns().get_by_seq(created.get_seq().unwrap()).await.unwrap();
+    let object = Author::new().connect(db).add_all_columns().get_by_seq(created.get_seq().unwrap()).await.unwrap().expect("a row");
     assert_eq!(
         object.to_array().unwrap()["jsons_tags"],
         serde_json::json!({"kind":"value","value":{"kind":"sql-null"}}),

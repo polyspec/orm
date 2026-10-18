@@ -242,7 +242,7 @@ async function conditions(db) {
   check(await new Author().connect(db).gtStartDt(new Date(start.getTime() + 90 * 60_000)).getCount() === 2, 'time compare');
   const one = await new Author().connect(db).getByName('gamma');
   check(one !== null && one.getReadCount() === 20, 'getBy');
-  check(await code(new Author().connect(db).getByName('missing')) === 'NO_ROWS', 'get without a row returns NO_ROWS');
+  check(await new Author().connect(db).getByName('missing') === null, 'get without a row returns null');
   const q = new Author().connect(db).serviceSeq(svc);
   const first = await q.getCountByIsClose(true);
   const second = await q.getCount();

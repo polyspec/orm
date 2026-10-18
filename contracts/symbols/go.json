@@ -6261,7 +6261,7 @@
   },
   "packages/go/model/account.go::AccountModel.GetAvg": {
     "exported": true,
-    "signature": "receiver=*AccountModel func() (float64, error)"
+    "signature": "receiver=*AccountModel func() (*float64, error)"
   },
   "packages/go/model/account.go::AccountModel.GetBySeq": {
     "exported": true,
@@ -6577,7 +6577,7 @@
   },
   "packages/go/model/account_project.go::AccountProjectModel.GetAvg": {
     "exported": true,
-    "signature": "receiver=*AccountProjectModel func() (float64, error)"
+    "signature": "receiver=*AccountProjectModel func() (*float64, error)"
   },
   "packages/go/model/account_project.go::AccountProjectModel.GetCount": {
     "exported": true,
@@ -7349,7 +7349,7 @@
   },
   "packages/go/model/author.go::AuthorModel.GetAvg": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() (float64, error)"
+    "signature": "receiver=*AuthorModel func() (*float64, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetBase64Extra": {
     "exported": true,
@@ -8387,6 +8387,10 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func(n int64) *AuthorModel"
   },
+  "packages/go/model/author.go::AuthorModel.Price": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argDecimalEqNull](v0 T0) *AuthorModel"
+  },
   "packages/go/model/author.go::AuthorModel.PriceEqSeq": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 hasSeq](v0 T0) *AuthorModel"
@@ -8933,7 +8937,7 @@
   },
   "packages/go/model/bind_cell.go::BindCellModel.GetAvg": {
     "exported": true,
-    "signature": "receiver=*BindCellModel func() (float64, error)"
+    "signature": "receiver=*BindCellModel func() (*float64, error)"
   },
   "packages/go/model/bind_cell.go::BindCellModel.GetBody": {
     "exported": true,
@@ -9321,7 +9325,7 @@
   },
   "packages/go/model/clock_cell.go::ClockCellModel.GetAvg": {
     "exported": true,
-    "signature": "receiver=*ClockCellModel func() (float64, error)"
+    "signature": "receiver=*ClockCellModel func() (*float64, error)"
   },
   "packages/go/model/clock_cell.go::ClockCellModel.GetBySeq": {
     "exported": true,
@@ -9713,7 +9717,7 @@
   },
   "packages/go/model/composite_account.go::CompositeAccountModel.GetAvg": {
     "exported": true,
-    "signature": "receiver=*CompositeAccountModel func() (float64, error)"
+    "signature": "receiver=*CompositeAccountModel func() (*float64, error)"
   },
   "packages/go/model/composite_account.go::CompositeAccountModel.GetByTenantIdAndAccountId": {
     "exported": true,
@@ -10069,7 +10073,7 @@
   },
   "packages/go/model/composite_membership.go::CompositeMembershipModel.GetAvg": {
     "exported": true,
-    "signature": "receiver=*CompositeMembershipModel func() (float64, error)"
+    "signature": "receiver=*CompositeMembershipModel func() (*float64, error)"
   },
   "packages/go/model/composite_membership.go::CompositeMembershipModel.GetCount": {
     "exported": true,
@@ -10425,7 +10429,7 @@
   },
   "packages/go/model/day_cell.go::DayCellModel.GetAvg": {
     "exported": true,
-    "signature": "receiver=*DayCellModel func() (float64, error)"
+    "signature": "receiver=*DayCellModel func() (*float64, error)"
   },
   "packages/go/model/day_cell.go::DayCellModel.GetCount": {
     "exported": true,
@@ -10777,7 +10781,7 @@
   },
   "packages/go/model/hex_cell.go::HexCellModel.GetAvg": {
     "exported": true,
-    "signature": "receiver=*HexCellModel func() (float64, error)"
+    "signature": "receiver=*HexCellModel func() (*float64, error)"
   },
   "packages/go/model/hex_cell.go::HexCellModel.GetBySeq": {
     "exported": true,
@@ -11043,6 +11047,10 @@
     "exported": false,
     "signature": "type argBoolEq interface { ~bool | ~[]bool | orm.Func | ormModel }"
   },
+  "packages/go/model/orm.go::argDecimalEqNull": {
+    "exported": false,
+    "signature": "type argDecimalEqNull interface { ~string | ~[]string | orm.Func | ormModel | orm.NullType }"
+  },
   "packages/go/model/orm.go::argIntBetween": {
     "exported": false,
     "signature": "type argIntBetween interface { ~[2]int | ~[2]int8 | ~[2]int16 | ~[2]int32 | ~[2]int64 | ~[2]uint | ~[2]uint8 | ~[2]uint16 | ~[2]uint32 | ~[2]uint64 }"
@@ -11185,7 +11193,7 @@
   },
   "packages/go/model/project.go::ProjectModel.GetAvg": {
     "exported": true,
-    "signature": "receiver=*ProjectModel func() (float64, error)"
+    "signature": "receiver=*ProjectModel func() (*float64, error)"
   },
   "packages/go/model/project.go::ProjectModel.GetCount": {
     "exported": true,
@@ -11477,7 +11485,7 @@
   },
   "packages/go/model/service.go::ServiceModel.GetAvg": {
     "exported": true,
-    "signature": "receiver=*ServiceModel func() (float64, error)"
+    "signature": "receiver=*ServiceModel func() (*float64, error)"
   },
   "packages/go/model/service.go::ServiceModel.GetBySeq": {
     "exported": true,
@@ -11833,7 +11841,7 @@
   },
   "packages/go/model/service_member.go::ServiceMemberModel.GetAvg": {
     "exported": true,
-    "signature": "receiver=*ServiceMemberModel func() (float64, error)"
+    "signature": "receiver=*ServiceMemberModel func() (*float64, error)"
   },
   "packages/go/model/service_member.go::ServiceMemberModel.GetCount": {
     "exported": true,
@@ -12217,7 +12225,7 @@
   },
   "packages/go/model/service_region.go::ServiceRegionModel.GetAvg": {
     "exported": true,
-    "signature": "receiver=*ServiceRegionModel func() (float64, error)"
+    "signature": "receiver=*ServiceRegionModel func() (*float64, error)"
   },
   "packages/go/model/service_region.go::ServiceRegionModel.GetCount": {
     "exported": true,
@@ -12581,7 +12589,7 @@
   },
   "packages/go/model/soft_link.go::SoftLinkModel.GetAvg": {
     "exported": true,
-    "signature": "receiver=*SoftLinkModel func() (float64, error)"
+    "signature": "receiver=*SoftLinkModel func() (*float64, error)"
   },
   "packages/go/model/soft_link.go::SoftLinkModel.GetCode": {
     "exported": true,
@@ -12937,7 +12945,7 @@
   },
   "packages/go/model/soft_record.go::SoftRecordModel.GetAvg": {
     "exported": true,
-    "signature": "receiver=*SoftRecordModel func() (float64, error)"
+    "signature": "receiver=*SoftRecordModel func() (*float64, error)"
   },
   "packages/go/model/soft_record.go::SoftRecordModel.GetBySeq": {
     "exported": true,
@@ -13269,7 +13277,7 @@
   },
   "packages/go/model/task.go::TaskModel.GetAvg": {
     "exported": true,
-    "signature": "receiver=*TaskModel func() (float64, error)"
+    "signature": "receiver=*TaskModel func() (*float64, error)"
   },
   "packages/go/model/task.go::TaskModel.GetCount": {
     "exported": true,
@@ -13605,7 +13613,7 @@
   },
   "packages/go/model/time_cell.go::TimeCellModel.GetAvg": {
     "exported": true,
-    "signature": "receiver=*TimeCellModel func() (float64, error)"
+    "signature": "receiver=*TimeCellModel func() (*float64, error)"
   },
   "packages/go/model/time_cell.go::TimeCellModel.GetClock": {
     "exported": true,
@@ -13929,7 +13937,7 @@
   },
   "packages/go/model/upsert_cell.go::UpsertCellModel.GetAvg": {
     "exported": true,
-    "signature": "receiver=*UpsertCellModel func() (float64, error)"
+    "signature": "receiver=*UpsertCellModel func() (*float64, error)"
   },
   "packages/go/model/upsert_cell.go::UpsertCellModel.GetBySeq": {
     "exported": true,
@@ -14265,7 +14273,7 @@
   },
   "packages/go/model/user.go::UserModel.GetAvg": {
     "exported": true,
-    "signature": "receiver=*UserModel func() (float64, error)"
+    "signature": "receiver=*UserModel func() (*float64, error)"
   },
   "packages/go/model/user.go::UserModel.GetCount": {
     "exported": true,
@@ -14569,7 +14577,7 @@
   },
   "packages/go/model/uuid_cell.go::UuidCellModel.GetAvg": {
     "exported": true,
-    "signature": "receiver=*UuidCellModel func() (float64, error)"
+    "signature": "receiver=*UuidCellModel func() (*float64, error)"
   },
   "packages/go/model/uuid_cell.go::UuidCellModel.GetCount": {
     "exported": true,
@@ -17297,7 +17305,7 @@
   },
   "packages/go/orm/model.go::Core.GetAvg": {
     "exported": true,
-    "signature": "receiver=*Core func() (float64, error)"
+    "signature": "receiver=*Core func() (*float64, error)"
   },
   "packages/go/orm/model.go::Core.GetCount": {
     "exported": true,
@@ -17341,7 +17349,7 @@
   },
   "packages/go/orm/model.go::Core.aggregate": {
     "exported": false,
-    "signature": "receiver=*Core func(fn string) (float64, error)"
+    "signature": "receiver=*Core func(fn string) (any, error)"
   },
   "packages/go/orm/model.go::Core.assemble": {
     "exported": false,

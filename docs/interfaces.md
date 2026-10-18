@@ -143,7 +143,7 @@ The shared vector `terminal_by` in `tests/conformance/vectors.json` runs `getsBy
 
 | Method | Result | Connection |
 |---|---|---|
-| `get` | one row; `NO_ROWS` when no row matches | model connection or active transaction |
+| `get` | one row; null when no row matches | model connection or active transaction |
 | `gets` | collection | model connection or active transaction |
 | `getsCount` | `GroupRows` with selected grouping values and checked row counts | model connection or active transaction |
 | `getsPage` | page | model connection or active transaction |

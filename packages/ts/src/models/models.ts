@@ -627,8 +627,8 @@ export class Author extends Model {
   declare descriptionNeName: (v0: Author | User | Service | ServiceRegion | CompositeAccount | SoftRecord | Account | Project) => this;
   declare emailBlindIndex: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare geReadCount: (v0: number | ValueFunction) => this;
-  declare getByName: (v0: string | readonly (string)[] | ValueFunction | Model) => Promise<this>;
-  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
+  declare getByName: (v0: string | readonly (string)[] | ValueFunction | Model) => Promise<this | null>;
+  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this | null>;
   declare getCountByIsClose: (v0: boolean | readonly (boolean)[] | ValueFunction | Model) => Promise<number>;
   declare getCountByServiceSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<number>;
   declare getsBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<Collection<this>>;
@@ -656,6 +656,7 @@ export class Author extends Model {
   declare orderByReadCountDescAndSeqAsc: () => this;
   declare phoneBlindIndex: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare photoUrl: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
+  declare price: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare priceEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
   declare readCount: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare readCountGtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
@@ -719,7 +720,7 @@ export class User extends Model {
   declare addColumnReadTotal: (fn: (model: this) => Model) => this;
   declare aliasOwner: () => this;
   declare aliasWriter: () => this;
-  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
+  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this | null>;
   declare matchUserSeqWithSeq: () => this;
   declare name: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
   declare neName: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
@@ -774,7 +775,7 @@ export class Service extends Model {
   public orderByNameAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', false, fn); return this; }
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
 
-  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
+  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this | null>;
   declare gtSeq: (v0: number | ValueFunction) => this;
   declare joinNameWithName: (child: Author | User | Service | ServiceRegion | CompositeAccount | SoftRecord | Account | Project) => this;
   declare leftJoinNameWithName: (child: Author | User | Service | ServiceRegion | CompositeAccount | SoftRecord | Account | Project) => this;
@@ -994,7 +995,7 @@ export class CompositeAccount extends Model {
   declare andAccountId: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare andLbName: (v0: string) => this;
   declare andLkName: (v0: string) => this;
-  declare getByTenantIdAndAccountId: (v0: number | readonly (number)[] | ValueFunction | Model, v1: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
+  declare getByTenantIdAndAccountId: (v0: number | readonly (number)[] | ValueFunction | Model, v1: number | readonly (number)[] | ValueFunction | Model) => Promise<this | null>;
   declare tenantId: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare tupleTenantIdWithAccountId: (v0: ReadonlyArray<readonly [number, number]>) => this;
   /** Returns the value or relation result named AesHexEmail. */
@@ -1129,7 +1130,7 @@ export class SoftRecord extends Model {
   public orderByDeletedAtDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('deleted_at', true, fn); return this; }
 
   declare aliasRecord: () => this;
-  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
+  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this | null>;
   declare name: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
   declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   /** Returns the value or relation result named AesHexEmail. */
@@ -1253,7 +1254,7 @@ export class Account extends Model {
   public orderByNameAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', false, fn); return this; }
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
 
-  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
+  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this | null>;
   declare newLabel: (value: unknown) => this;
   declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   /** Returns the value or relation result named AesHexEmail. */
@@ -1488,7 +1489,7 @@ export class HexCell extends Model {
   public orderByValueAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('value', false, fn); return this; }
   public orderByValueDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('value', true, fn); return this; }
 
-  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
+  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this | null>;
   declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   /** Returns the value or relation result named AesHexEmail. */
   declare getAesHexEmail: <T = unknown>() => T;
@@ -1631,7 +1632,7 @@ export class ClockCell extends Model {
 
   declare andGeAt0: (...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) => this;
   declare andLtAt3: (...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) => this;
-  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
+  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this | null>;
   declare label: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
   declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   /** Returns the value or relation result named AesHexEmail. */
@@ -1766,7 +1767,7 @@ export class UpsertCell extends Model {
   public forceIndexUqUpsertCellCode(): this { this[CORE].index = 'uq_upsert_cell_code'; return this; }
 
   declare code: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
-  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this>;
+  declare getBySeq: (v0: number | readonly (number)[] | ValueFunction | Model) => Promise<this | null>;
   declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   /** Returns the value or relation result named AesHexEmail. */
   declare getAesHexEmail: <T = unknown>() => T;

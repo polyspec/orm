@@ -127,7 +127,9 @@ numeric conversion.
 
 `get_sum` and `get_avg` return approximate `f64` scalars. They convert a numeric database
 aggregate to the nearest finite binary64 value, using ties-to-even at an equal distance.
-Invalid numeric text, SQL NULL, NaN, infinity and values above the finite binary64 range
+When SQL gives NULL (no row matches, or every value is NULL), `get_sum` returns `0.0` and
+`get_avg` returns `None`; `get` and `get_by_…` return `None` when no row matches.
+Invalid numeric text, NaN, infinity and values above the finite binary64 range
 return `CODEC_DECODE`. This aggregate conversion does not change the exactness requirement
 of `Val::as_f64` for ordinary values.
 

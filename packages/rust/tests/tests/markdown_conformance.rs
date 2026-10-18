@@ -389,8 +389,9 @@ async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             .id("P1")
             .get()
             .await?
+            .ok_or(polyspec_orm::Error::NoRows)?
             .to_array()?,
-        "one_no_rows" => People::new().connect(db).id("P9").get().await?.to_array()?,
+        "one_no_rows" => People::new().connect(db).id("P9").get().await?.map(|m| m.to_array()).transpose()?.unwrap_or(Value::Null),
         "all" => People::new().connect(db).remove_all_columns().add_column_name().add_column_age().order_by_name_desc().gets().await?.to_array()?,
         "count" => json!(Tasks::new().connect(db).owner("P1").get_count().await?),
         "group_count" => Tasks::new().connect(db).group_by_owner().order_by_owner_asc().gets_count().await?.to_array()?,
@@ -418,6 +419,7 @@ async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             .id("P1")
             .get()
             .await?
+            .ok_or(polyspec_orm::Error::NoRows)?
             .to_array()?,
         "relation_one" => Tasks::new()
             .connect(db)
@@ -427,15 +429,16 @@ async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             .id("T3")
             .get()
             .await?
+            .ok_or(polyspec_orm::Error::NoRows)?
             .to_array()?,
         "update" => {
-            let mut m = People::new().connect(db).id("P2").get().await?.set_age(Some(26));
+            let mut m = People::new().connect(db).id("P2").get().await?.ok_or(polyspec_orm::Error::NoRows)?.set_age(Some(26));
             m.update(false).await?;
-            People::new().connect(db).remove_all_columns().add_column_age().id("P2").get().await?.to_array()?
+            People::new().connect(db).remove_all_columns().add_column_age().id("P2").get().await?.ok_or(polyspec_orm::Error::NoRows)?.to_array()?
         }
         "update_optimistic_conflict" => {
-            let stale = People::new().connect(db).id("P2").get().await?;
-            let mut fresh = People::new().connect(db).id("P2").get().await?.set_name("Bobby");
+            let stale = People::new().connect(db).id("P2").get().await?.ok_or(polyspec_orm::Error::NoRows)?;
+            let mut fresh = People::new().connect(db).id("P2").get().await?.ok_or(polyspec_orm::Error::NoRows)?.set_name("Bobby");
             fresh.update(false).await?;
             let mut stale = stale.set_age(Some(27));
             stale.update(true).await?;
@@ -449,19 +452,19 @@ async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
                 .duplication(People::new().set_name("Ann B"))
                 .create()
                 .await?;
-            let read = People::new().connect(db).id("P1").get().await?;
+            let read = People::new().connect(db).id("P1").get().await?.ok_or(polyspec_orm::Error::NoRows)?;
             json!({ "created": m.get_id()?, "name": read.get_name()? })
         }
         "delete" => {
-            Tasks::new().connect(db).id("T2").get().await?.delete(false).await?;
+            Tasks::new().connect(db).id("T2").get().await?.ok_or(polyspec_orm::Error::NoRows)?.delete(false).await?;
             json!(Tasks::new().connect(db).get_count().await?)
         }
         "delete_referenced" => {
-            Tasks::new().connect(db).id("T1").get().await?.delete(false).await?;
+            Tasks::new().connect(db).id("T1").get().await?.ok_or(polyspec_orm::Error::NoRows)?.delete(false).await?;
             Value::Null
         }
         "soft_delete" => {
-            People::new().connect(db).id("P3").get().await?.delete(false).await?;
+            People::new().connect(db).id("P3").get().await?.ok_or(polyspec_orm::Error::NoRows)?.delete(false).await?;
             json!(People::new().connect(db).get_count().await?)
         }
         "restore" => {
@@ -509,7 +512,7 @@ async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             db.transaction(async || Logs::new().set_task("T3").set_note("read only").create().await.map(drop)).read_only().await?;
             Value::Null
         }
-        "lock_update" => db.transaction(async || People::new().connect(db).remove_all_columns().id("P1").for_update().get().await?.to_array()).await?,
+        "lock_update" => db.transaction(async || People::new().connect(db).remove_all_columns().id("P1").for_update().get().await?.ok_or(polyspec_orm::Error::NoRows)?.to_array()).await?,
         "lock_nowait" => {
             db.transaction(async || People::new().connect(db).id("P1").for_update_no_wait().get().await.map(drop)).await?;
             Value::Null
@@ -525,7 +528,7 @@ async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
         "write_conflict" => {
             let committed = db
                 .transaction(async || {
-                    let mut m = People::new().id("P1").get().await?.set_name("Ann C");
+                    let mut m = People::new().id("P1").get().await?.ok_or(polyspec_orm::Error::NoRows)?.set_name("Ann C");
                     m.update(false).await?;
                     // An edit outside the engine: changes a file the transaction writes before commit.
                     let path = s.dir.join("people.flowmark.md");
@@ -536,7 +539,7 @@ async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
                     std::fs::write(&path, text.replacen("Cara", "Carol", 1)).map_err(|e| Error::Config(format!("{}: {e}", path.display())))
                 })
                 .await;
-            let read = People::new().connect(db).id("P1").get().await?;
+            let read = People::new().connect(db).id("P1").get().await?.ok_or(polyspec_orm::Error::NoRows)?;
             let code = committed.err().map(|error| error.code().to_owned()).unwrap_or_default();
             json!({ "error": code, "name": read.get_name()? })
         }
@@ -548,7 +551,7 @@ async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             let committed = db
                 .transaction(async || {
                     runs.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                    let m = People::new().id("P1").get().await?;
+                    let m = People::new().id("P1").get().await?.ok_or(polyspec_orm::Error::NoRows)?;
                     let name = m.get_name()?.to_owned();
                     m.set_name(&name).update(false).await.map(drop)
                 })

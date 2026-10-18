@@ -128,7 +128,7 @@ func (x *ProjectModel) Relation(child orm.Model) *ProjectModel { x.m.Relation(fa
 // Relations attaches related rows loaded by a separate query.
 func (x *ProjectModel) Relations(child orm.Model) *ProjectModel { x.m.Relation(true, child); return x }
 
-// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
+// Get returns the first matching row. It returns (nil, nil) when no row matches.
 func (x *ProjectModel) Get() (*ProjectModel, error) { return oneProject(x.m) }
 
 func oneProject(c *orm.Core) (*ProjectModel, error) {
@@ -150,11 +150,12 @@ func (x *ProjectModel) GetCount() (int64, error) { return x.m.GetCount() }
 // GetsCount returns grouped rows with row_count.
 func (x *ProjectModel) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
-// GetSum returns the sum of the column selected with Sum<Col>.
+// GetSum returns the sum of the column selected with Sum<Col>; a null scalar is 0.
 func (x *ProjectModel) GetSum() (float64, error) { return x.m.GetSum() }
 
-// GetAvg returns the average of the column selected with Avg<Col>.
-func (x *ProjectModel) GetAvg() (float64, error) { return x.m.GetAvg() }
+// GetAvg returns the average of the column selected with Avg<Col>; it is nil
+// when the scalar is null.
+func (x *ProjectModel) GetAvg() (*float64, error) { return x.m.GetAvg() }
 
 // GetsPage returns one page of matching rows.
 func (x *ProjectModel) GetsPage(page, perPage int) (*orm.Page[*ProjectModel], error) {

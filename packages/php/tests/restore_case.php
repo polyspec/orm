@@ -63,8 +63,8 @@ function restoreCase(Db $db, string $namespace): void
 
     $duplicate = restoreErrorCode(fn() => $adb->transaction(fn() => (new $membershipClass)->setTeamId(1)->setMemberId(2)->create(), audit: ['actor' => 'duplicate'], retry: 0));
     restoreWant($duplicate === Code::DUPLICATE_KEY, "insert of the key of a soft-deleted row = $duplicate, want DUPLICATE_KEY");
-    $hidden = restoreErrorCode(fn() => $label()->getByName('red'));
-    restoreWant($hidden === Code::NO_ROWS, "default read of a soft-deleted row = $hidden, want NO_ROWS");
+    $hidden = $label()->getByName('red');
+    restoreWant($hidden === null, 'default read of a soft-deleted row is not null, want null');
     $outside = restoreErrorCode(fn() => $membership()->setTeamId(1)->setMemberId(2)->restore());
     restoreWant($outside === Code::CONFIG, "restore of an audited row without an audit = $outside, want CONFIG");
 

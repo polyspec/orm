@@ -116,7 +116,7 @@ async fn runtime_value_types() {
         row.core_mut().set("note", Param::from("hidden"));
         polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
 
-        let got = polyspec_orm::model::get(&connected(&db)).await.unwrap_or_else(|e| panic!("{driver}: get: {e}"));
+        let got = polyspec_orm::model::get(&connected(&db)).await.unwrap_or_else(|e| panic!("{driver}: get: {e}")).expect("the created row");
         assert_eq!(got.values["small"].as_i16().unwrap(), i16::MIN, "{driver}: i16");
         assert_eq!(got.values["rank"].as_i16().unwrap(), 3, "{driver}: an omitted column takes the database default");
         assert_eq!(got.values["code"].as_string().unwrap(), uuid, "{driver}: uuid text");
@@ -125,7 +125,7 @@ async fn runtime_value_types() {
         assert!(!got.values.contains_key("note"), "{driver}: select explicit leaves the column out of the default select set");
         let mut all = connected(&db);
         all.core_mut().add_column("note");
-        let got = polyspec_orm::model::get(&all).await.unwrap_or_else(|e| panic!("{driver}: get note: {e}"));
+        let got = polyspec_orm::model::get(&all).await.unwrap_or_else(|e| panic!("{driver}: get note: {e}")).expect("the created row");
         assert_eq!(got.values["note"].as_string().unwrap(), "hidden", "{driver}: an added select explicit column");
 
         let mut short = connected(&db);

@@ -1,5 +1,5 @@
 <!-- doc-id: packages-orm-rust-readme -->
-<!-- source-sha256: 42b1ec3698b786ae8381c3c95b8f6e53c8a444ee58b1c6ad195de56dffdbb878 -->
+<!-- source-sha256: 02728be4355b753d508cc1198db5bd417ef35e5d189fbedc38ec617bdda62026 -->
 [English](README.md)
 
 # orm — Rust 클라이언트
@@ -94,7 +94,7 @@ MySQL/PostgreSQL 테스트 DSN과 이 URI를 명시해야 한다. 테스트 테�
 
 `Val`의 숫자·boolean·날짜·시간·텍스트·바이트·JSON 변환은 `Result`를 반환한다. 맞지 않는 종류, 잘못된 텍스트, 정수 범위 초과, 유한하지 않은 실수, 잘못된 UTF-8 또는 정밀도를 잃는 decimal 변환은 `CODEC_DECODE`를 반환한다. 유한하지 않은 실수는 JSON 출력에서도 실패한다. 생성 모델의 `assign`은 `Result<bool>`을 반환한다. `Ok(false)`는 알 수 없는 열 이름이고, 잘못된 값은 오류다. `i64` 범위를 넘는 unsigned 값은 읽을 때 실패하고 쓰기에서는 `Param::try_from(u64)`가 `CODEC_ENCODE`를 반환한다. SQL NULL은 빈 텍스트·바이트와 다르다. DB decimal 값은 호출자가 검증된 숫자 변환을 요청하기 전까지 정확한 텍스트로 유지한다.
 
-`get_sum`과 `get_avg`는 근사 `f64` scalar를 반환한다. 유효한 숫자 집계는 동률일 때 짝수 쪽을 택하는 가장 가까운 유한 binary64 값으로 변환한다. 잘못된 숫자 텍스트, SQL NULL, NaN, infinity 및 유한 binary64 범위 초과는 `CODEC_DECODE`를 반환한다. 이 집계 변환은 일반 값의 `Val::as_f64` 정확도 조건을 바꾸지 않는다.
+`get_sum`과 `get_avg`는 근사 `f64` scalar를 반환한다. 유효한 숫자 집계는 동률일 때 짝수 쪽을 택하는 가장 가까운 유한 binary64 값으로 변환한다. SQL이 NULL을 줄 때(일치하는 row가 없거나 모든 값이 NULL) `get_sum`은 `0.0`, `get_avg`는 `None`을 반환하고, `get`과 `get_by_…`는 일치하는 row가 없으면 `None`을 반환한다. 잘못된 숫자 텍스트, NaN, infinity 및 유한 binary64 범위 초과는 `CODEC_DECODE`를 반환한다. 이 집계 변환은 일반 값의 `Val::as_f64` 정확도 조건을 바꾸지 않는다.
 
 ## 오류
 

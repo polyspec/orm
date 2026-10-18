@@ -418,15 +418,11 @@ class Model:
         return run
 
     # Execution methods.
-    def get(self) -> Self:
-        """The first row matching the condition; NO_ROWS if there is none."""
+    def get(self) -> Self | None:
+        """The first row matching the condition; None if there is none."""
         from polyspec.orm.model_exec import load
 
-        rows = load(self.core, "one")
-        row = rows.first()
-        if row is None:
-            raise OrmError(codes.NO_ROWS, "query matched no rows")
-        return row
+        return load(self.core, "one").first()
 
     def gets(self) -> Collection[Self]:
         """The rows matching the condition."""
@@ -440,18 +436,22 @@ class Model:
         return int(scalar_of(self.core, "count"))
 
     def get_sum(self) -> float:
+        """The sum of the column; 0.0 when SQL gives null (no row, or every value null)."""
         from polyspec.orm.model_exec import _aggregate_number, scalar_of
 
         if self.core.agg_fn != "sum":
             raise OrmError(codes.CONFIG, "get_sum requires sum_<col>()")
-        return _aggregate_number(scalar_of(self.core, "sum", self.core.agg))
+        value = scalar_of(self.core, "sum", self.core.agg)
+        return 0.0 if value is None else _aggregate_number(value)
 
-    def get_avg(self) -> float:
+    def get_avg(self) -> float | None:
+        """The average of the column; None when SQL gives null (no row, or every value null)."""
         from polyspec.orm.model_exec import _aggregate_number, scalar_of
 
         if self.core.agg_fn != "avg":
             raise OrmError(codes.CONFIG, "get_avg requires avg_<col>()")
-        return _aggregate_number(scalar_of(self.core, "avg", self.core.agg))
+        value = scalar_of(self.core, "avg", self.core.agg)
+        return None if value is None else _aggregate_number(value)
 
     def gets_count(self) -> GroupRows:
         """Returns the group values and the checked row count, without incomplete model rows."""

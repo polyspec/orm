@@ -26,7 +26,7 @@ async fn decimal_physical(env: &str) {
         .transaction(async || {
             let row = DecimalCase::new().set_seq(1).set_amount("48.0450")?.set_large_value(Some("9007199254740993".to_owned()))?.create().await?;
             assert_eq!(row.get_amount()?, "48.0450");
-            let loaded = DecimalCase::new().get_by_seq(1).await?;
+            let loaded = DecimalCase::new().get_by_seq(1).await?.ok_or(polyspec_orm::Error::NoRows)?;
             assert_eq!(loaded.get_amount()?, "48.0450");
             assert_eq!(loaded.get_large_value()?, Some("9007199254740993"));
             Err(polyspec_orm::Error::Config("decimal fixture rollback".into()))
@@ -133,7 +133,7 @@ async fn schema_set(driver: &str) {
     .await
     .unwrap();
     assert_eq!(User::new().connect(&db).get_count().await.unwrap(), 2, "{driver}: core rows");
-    assert_eq!(DecimalCase::new().connect(&db).get_by_seq(1).await.unwrap().get_amount().unwrap(), "48.0450", "{driver}: decimal row");
+    assert_eq!(DecimalCase::new().connect(&db).get_by_seq(1).await.unwrap().expect("a row").get_amount().unwrap(), "48.0450", "{driver}: decimal row");
     assert_eq!(DecimalCase::new().connect(&db).get_count().await.unwrap(), 2, "{driver}: decimal rows");
     db.close().await;
     drop_schema_set_database(driver, &dsn, &name).await;

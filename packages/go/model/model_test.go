@@ -155,8 +155,8 @@ func TestConditions(t *testing.T) {
 		if one == nil || one.GetReadCount() != 20 {
 			t.Fatalf("getBy: %+v", one)
 		}
-		if none, err := model.Author().Connect(db).GetByName("missing"); none != nil || orm.ErrorCode(err) != orm.CodeNoRows {
-			t.Fatalf("get without a row: %v, %v; want NO_ROWS", none, err)
+		if none, err := model.Author().Connect(db).GetByName("missing"); none != nil || err != nil {
+			t.Fatalf("get without a row: %v, %v; want nil, nil", none, err)
 		}
 		q := model.Author().Connect(db).ServiceSeq(svc)
 		first := must(q.GetCountByIsClose(true))
@@ -190,7 +190,7 @@ func TestConditions(t *testing.T) {
 	})
 }
 
-func TestGetMissingReturnsNoRows(t *testing.T) {
+func TestGetMissingReturnsNil(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	path := filepath.Join(t.TempDir(), "model.sqlite")
 	db, err := model.Connect("sqlite://"+path, orm.Config{AESKey: "test-aes-key", BlindIndexKey: "test-blind-key"})
@@ -206,8 +206,8 @@ func TestGetMissingReturnsNoRows(t *testing.T) {
 	if row != nil {
 		t.Fatalf("missing row returned a model: %#v", row)
 	}
-	if orm.ErrorCode(err) != orm.CodeNoRows {
-		t.Fatalf("missing row error code = %q, error = %v", orm.ErrorCode(err), err)
+	if err != nil {
+		t.Fatalf("missing row error = %v, want nil", err)
 	}
 }
 
@@ -312,7 +312,7 @@ func TestColumnsAndSubqueries(t *testing.T) {
 		}
 		sum := must(model.Author().Connect(db).ServiceSeq(f.service.GetSeq()).SumReadCount().GetSum())
 		avg := must(model.Author().Connect(db).ServiceSeq(f.service.GetSeq()).AvgReadCount().GetAvg())
-		if sum != 60 || avg != 15 {
+		if sum != 60 || avg == nil || *avg != 15 {
 			t.Fatalf("aggregates: %v %v", sum, avg)
 		}
 		grouped := must(model.Author().Connect(db).GroupByIsClose().GetsCount())

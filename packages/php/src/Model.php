@@ -1441,10 +1441,10 @@ abstract class Model implements \JsonSerializable
         return $this->assemble($db, $r, $plan, $result);
     }
 
-    /** The first matching row; NO_ROWS when no row matches. */
-    public function get(): static
+    /** The first matching row; null when no row matches. */
+    public function get(): ?static
     {
-        return $this->load('one')->first() ?? throw new OrmException(Code::NO_ROWS, 'query matched no rows');
+        return $this->load('one')->first();
     }
 
     /**
@@ -1566,17 +1566,19 @@ abstract class Model implements \JsonSerializable
         return (int) $db->scalarOf($frame, $this->build('count', $db));
     }
 
+    /** The SQL SUM; 0.0 when SQL gives null (no row, or every value null). */
     public function getSum(): float
     {
-        return $this->aggregate('sum');
+        return $this->aggregate('sum') ?? 0.0;
     }
 
-    public function getAvg(): float
+    /** The SQL AVG; null when SQL gives null (no row, or every value null). */
+    public function getAvg(): ?float
     {
         return $this->aggregate('avg');
     }
 
-    private function aggregate(string $fn): float
+    private function aggregate(string $fn): ?float
     {
         if ($this->aggFn !== $fn) {
             throw new OrmException(Code::CONFIG, "get" . ucfirst($fn) . " requires $fn<Col>()");
@@ -1584,7 +1586,8 @@ abstract class Model implements \JsonSerializable
         [$db, $frame] = $this->executor();
         $r = $this->build($fn, $db);
         $r->ir['agg'] = $this->agg;
-        return self::aggregateNumber($db->scalarOf($frame, $r));
+        $value = $db->scalarOf($frame, $r);
+        return $value === null ? null : self::aggregateNumber($value);
     }
 
     private static function aggregateNumber(mixed $value): float
@@ -1964,7 +1967,7 @@ abstract class Model implements \JsonSerializable
      */
     public function restore(): static
     {
-        return $this->restoreStep()[1]->get();
+        return $this->restoreStep()[1]->get() ?? throw new OrmException(Code::NO_ROWS, 'restore: no row holds the key');
     }
 
     /**
