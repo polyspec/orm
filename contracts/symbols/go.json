@@ -6411,6 +6411,10 @@
     "exported": true,
     "signature": "receiver=*AccountModel func() (*AccountModel, error)"
   },
+  "packages/go/model/account.go::AccountModel.RestoreOrCreate": {
+    "exported": true,
+    "signature": "receiver=*AccountModel func() (*AccountModel, error)"
+  },
   "packages/go/model/account.go::AccountModel.Save": {
     "exported": true,
     "signature": "receiver=*AccountModel func() (*AccountModel, error)"
@@ -6716,6 +6720,10 @@
     "signature": "receiver=*AccountProjectModel func() *AccountProjectModel"
   },
   "packages/go/model/account_project.go::AccountProjectModel.Restore": {
+    "exported": true,
+    "signature": "receiver=*AccountProjectModel func() (*AccountProjectModel, error)"
+  },
+  "packages/go/model/account_project.go::AccountProjectModel.RestoreOrCreate": {
     "exported": true,
     "signature": "receiver=*AccountProjectModel func() (*AccountProjectModel, error)"
   },
@@ -8555,6 +8563,10 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func() (*AuthorModel, error)"
   },
+  "packages/go/model/author.go::AuthorModel.RestoreOrCreate": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func() (*AuthorModel, error)"
+  },
   "packages/go/model/author.go::AuthorModel.Save": {
     "exported": true,
     "signature": "receiver=*AuthorModel func() (*AuthorModel, error)"
@@ -9107,6 +9119,10 @@
     "exported": true,
     "signature": "receiver=*BindCellModel func() (*BindCellModel, error)"
   },
+  "packages/go/model/bind_cell.go::BindCellModel.RestoreOrCreate": {
+    "exported": true,
+    "signature": "receiver=*BindCellModel func() (*BindCellModel, error)"
+  },
   "packages/go/model/bind_cell.go::BindCellModel.Save": {
     "exported": true,
     "signature": "receiver=*BindCellModel func() (*BindCellModel, error)"
@@ -9511,6 +9527,10 @@
     "exported": true,
     "signature": "receiver=*ClockCellModel func() (*ClockCellModel, error)"
   },
+  "packages/go/model/clock_cell.go::ClockCellModel.RestoreOrCreate": {
+    "exported": true,
+    "signature": "receiver=*ClockCellModel func() (*ClockCellModel, error)"
+  },
   "packages/go/model/clock_cell.go::ClockCellModel.Save": {
     "exported": true,
     "signature": "receiver=*ClockCellModel func() (*ClockCellModel, error)"
@@ -9867,6 +9887,10 @@
     "exported": true,
     "signature": "receiver=*CompositeAccountModel func() (*CompositeAccountModel, error)"
   },
+  "packages/go/model/composite_account.go::CompositeAccountModel.RestoreOrCreate": {
+    "exported": true,
+    "signature": "receiver=*CompositeAccountModel func() (*CompositeAccountModel, error)"
+  },
   "packages/go/model/composite_account.go::CompositeAccountModel.Save": {
     "exported": true,
     "signature": "receiver=*CompositeAccountModel func() (*CompositeAccountModel, error)"
@@ -10216,6 +10240,10 @@
     "signature": "receiver=*CompositeMembershipModel func() *CompositeMembershipModel"
   },
   "packages/go/model/composite_membership.go::CompositeMembershipModel.Restore": {
+    "exported": true,
+    "signature": "receiver=*CompositeMembershipModel func() (*CompositeMembershipModel, error)"
+  },
+  "packages/go/model/composite_membership.go::CompositeMembershipModel.RestoreOrCreate": {
     "exported": true,
     "signature": "receiver=*CompositeMembershipModel func() (*CompositeMembershipModel, error)"
   },
@@ -10583,6 +10611,10 @@
     "exported": true,
     "signature": "receiver=*DayCellModel func() (*DayCellModel, error)"
   },
+  "packages/go/model/day_cell.go::DayCellModel.RestoreOrCreate": {
+    "exported": true,
+    "signature": "receiver=*DayCellModel func() (*DayCellModel, error)"
+  },
   "packages/go/model/day_cell.go::DayCellModel.Save": {
     "exported": true,
     "signature": "receiver=*DayCellModel func() (*DayCellModel, error)"
@@ -10911,6 +10943,10 @@
     "exported": true,
     "signature": "receiver=*HexCellModel func() (*HexCellModel, error)"
   },
+  "packages/go/model/hex_cell.go::HexCellModel.RestoreOrCreate": {
+    "exported": true,
+    "signature": "receiver=*HexCellModel func() (*HexCellModel, error)"
+  },
   "packages/go/model/hex_cell.go::HexCellModel.Save": {
     "exported": true,
     "signature": "receiver=*HexCellModel func() (*HexCellModel, error)"
@@ -11045,11 +11081,11 @@
   },
   "packages/go/model/orm.go::hasSeq": {
     "exported": false,
-    "signature": "type hasSeq interface { *AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *SoftRecordModel | *AccountModel | *ProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel Orm_() *orm.Core }"
+    "signature": "type hasSeq interface { *AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel Orm_() *orm.Core }"
   },
   "packages/go/model/orm.go::ormModel": {
     "exported": false,
-    "signature": "type ormModel interface { *AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *CompositeAccountModel | *CompositeMembershipModel | *SoftRecordModel | *AccountModel | *ProjectModel | *AccountProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel }"
+    "signature": "type ormModel interface { *AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *CompositeAccountModel | *CompositeMembershipModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *AccountProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel }"
   },
   "packages/go/model/project.go::Project": {
     "exported": true,
@@ -11284,6 +11320,10 @@
     "signature": "receiver=*ProjectModel func() *ProjectModel"
   },
   "packages/go/model/project.go::ProjectModel.Restore": {
+    "exported": true,
+    "signature": "receiver=*ProjectModel func() (*ProjectModel, error)"
+  },
+  "packages/go/model/project.go::ProjectModel.RestoreOrCreate": {
     "exported": true,
     "signature": "receiver=*ProjectModel func() (*ProjectModel, error)"
   },
@@ -11612,6 +11652,10 @@
     "signature": "receiver=*ServiceModel func() *ServiceModel"
   },
   "packages/go/model/service.go::ServiceModel.Restore": {
+    "exported": true,
+    "signature": "receiver=*ServiceModel func() (*ServiceModel, error)"
+  },
+  "packages/go/model/service.go::ServiceModel.RestoreOrCreate": {
     "exported": true,
     "signature": "receiver=*ServiceModel func() (*ServiceModel, error)"
   },
@@ -11983,6 +12027,10 @@
     "exported": true,
     "signature": "receiver=*ServiceMemberModel func() (*ServiceMemberModel, error)"
   },
+  "packages/go/model/service_member.go::ServiceMemberModel.RestoreOrCreate": {
+    "exported": true,
+    "signature": "receiver=*ServiceMemberModel func() (*ServiceMemberModel, error)"
+  },
   "packages/go/model/service_member.go::ServiceMemberModel.Save": {
     "exported": true,
     "signature": "receiver=*ServiceMemberModel func() (*ServiceMemberModel, error)"
@@ -12351,6 +12399,10 @@
     "exported": true,
     "signature": "receiver=*ServiceRegionModel func() (*ServiceRegionModel, error)"
   },
+  "packages/go/model/service_region.go::ServiceRegionModel.RestoreOrCreate": {
+    "exported": true,
+    "signature": "receiver=*ServiceRegionModel func() (*ServiceRegionModel, error)"
+  },
   "packages/go/model/service_region.go::ServiceRegionModel.Save": {
     "exported": true,
     "signature": "receiver=*ServiceRegionModel func() (*ServiceRegionModel, error)"
@@ -12410,6 +12462,370 @@
   "packages/go/model/service_region.go::oneServiceRegion": {
     "exported": false,
     "signature": "func(c *orm.Core) (*ServiceRegionModel, error)"
+  },
+  "packages/go/model/soft_link.go::SoftLink": {
+    "exported": true,
+    "signature": "func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel": {
+    "exported": true,
+    "signature": "type SoftLinkModel struct { m *orm.Core fSeq int64 fCode string fLabel string fDeletedAt *time.Time }"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel#field.fCode": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel#field.fDeletedAt": {
+    "exported": false,
+    "signature": "*time.Time"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel#field.fLabel": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel#field.fSeq": {
+    "exported": false,
+    "signature": "int64"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel#field.m": {
+    "exported": false,
+    "signature": "*orm.Core"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.AddAllColumns": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.AddColumnCode": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.AddColumnDeletedAt": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.AddColumnLabel": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.AddColumnSeq": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.And": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(args ...any) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.AndNot": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(fn func(*SoftLinkModel)) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.AvgSeq": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.Code": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func[T0 argStringEq](v0 T0) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.Connect": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(db *orm.DB) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.Create": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() (*SoftLinkModel, error)"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.Creates": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(rows []*SoftLinkModel) (int64, error)"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.Delete": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(recursive ...bool) error"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.DeleteLock": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.Duplication": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(m *SoftLinkModel) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.FetchKey": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(fn func(*SoftLinkModel) any) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.FetchValue": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(fn func(*SoftLinkModel) any) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.ForShare": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.ForShareNoWait": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.ForUpdate": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.ForUpdateNoWait": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.Get": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() (*SoftLinkModel, error)"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.GetAvg": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() (float64, error)"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.GetCode": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() string"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.GetCount": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() (int64, error)"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.GetDeletedAt": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *time.Time"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.GetLabel": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() string"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.GetQuery": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() (*orm.Statement, error)"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.GetSeq": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() int64"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.GetSum": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() (float64, error)"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.Gets": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() (*orm.Collection[*SoftLinkModel], error)"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.GetsCount": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() (*orm.GroupRows, error)"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.GetsPage": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(page, perPage int) (*orm.Page[*SoftLinkModel], error)"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.GroupByCode": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.GroupByDeletedAt": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.GroupByLabel": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.GroupBySeq": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.GroupLimit": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(n int) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.KeyNameCode": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.KeyNameDeletedAt": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.KeyNameLabel": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.KeyNameSeq": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.Limit": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(offset, count int) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.MarshalJSON": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() ([]byte, error)"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.MinusSeq": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(n int64) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.Not": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(fn func(*SoftLinkModel)) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.On": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(fn func(*SoftLinkModel)) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.Or": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(args ...any) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.OrNot": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(fn func(*SoftLinkModel)) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.OrderByCodeAsc": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(fn ...orm.Func) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.OrderByCodeDesc": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(fn ...orm.Func) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.OrderByDeletedAtAsc": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(fn ...orm.Func) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.OrderByDeletedAtDesc": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(fn ...orm.Func) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.OrderByLabelAsc": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(fn ...orm.Func) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.OrderByLabelDesc": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(fn ...orm.Func) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.OrderByRandom": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.OrderBySeqAsc": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(fn ...orm.Func) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.OrderBySeqDesc": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(fn ...orm.Func) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.Orm_": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *orm.Core"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.ParentNode": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.PlusSeq": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(n int64) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.Relation": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(child orm.Model) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.Relations": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(child orm.Model) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.RemoveAllColumns": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.RemoveColumnCode": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.RemoveColumnDeletedAt": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.RemoveColumnLabel": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.RemoveColumnSeq": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.Restore": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() (*SoftLinkModel, error)"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.RestoreOrCreate": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() (*SoftLinkModel, error)"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.Save": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() (*SoftLinkModel, error)"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.Seq": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func[T0 argIntEq](v0 T0) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.SetCode": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(v string) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.SetDeletedAt": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(v *string) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.SetLabel": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(v string) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.SetSeq": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(v int64) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.SumSeq": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.ToArray": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func() map[string]any"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.Update": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(optimistic ...bool) (*SoftLinkModel, error)"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.assign": {
+    "exported": false,
+    "signature": "receiver=*SoftLinkModel func(name string, v any) (bool, error)"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.connector": {
+    "exported": false,
+    "signature": "receiver=*SoftLinkModel func(conn string, args []any) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.negated": {
+    "exported": false,
+    "signature": "receiver=*SoftLinkModel func(conn string, fn func(*SoftLinkModel)) *SoftLinkModel"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.value": {
+    "exported": false,
+    "signature": "receiver=*SoftLinkModel func(name string) (any, bool)"
+  },
+  "packages/go/model/soft_link.go::oneSoftLink": {
+    "exported": false,
+    "signature": "func(c *orm.Core) (*SoftLinkModel, error)"
   },
   "packages/go/model/soft_record.go::SoftRecord": {
     "exported": true,
@@ -12688,6 +13104,10 @@
     "signature": "receiver=*SoftRecordModel func() *SoftRecordModel"
   },
   "packages/go/model/soft_record.go::SoftRecordModel.Restore": {
+    "exported": true,
+    "signature": "receiver=*SoftRecordModel func() (*SoftRecordModel, error)"
+  },
+  "packages/go/model/soft_record.go::SoftRecordModel.RestoreOrCreate": {
     "exported": true,
     "signature": "receiver=*SoftRecordModel func() (*SoftRecordModel, error)"
   },
@@ -13008,6 +13428,10 @@
     "signature": "receiver=*TaskModel func() *TaskModel"
   },
   "packages/go/model/task.go::TaskModel.Restore": {
+    "exported": true,
+    "signature": "receiver=*TaskModel func() (*TaskModel, error)"
+  },
+  "packages/go/model/task.go::TaskModel.RestoreOrCreate": {
     "exported": true,
     "signature": "receiver=*TaskModel func() (*TaskModel, error)"
   },
@@ -13339,6 +13763,10 @@
     "exported": true,
     "signature": "receiver=*TimeCellModel func() (*TimeCellModel, error)"
   },
+  "packages/go/model/time_cell.go::TimeCellModel.RestoreOrCreate": {
+    "exported": true,
+    "signature": "receiver=*TimeCellModel func() (*TimeCellModel, error)"
+  },
   "packages/go/model/time_cell.go::TimeCellModel.Save": {
     "exported": true,
     "signature": "receiver=*TimeCellModel func() (*TimeCellModel, error)"
@@ -13667,6 +14095,10 @@
     "exported": true,
     "signature": "receiver=*UpsertCellModel func() (*UpsertCellModel, error)"
   },
+  "packages/go/model/upsert_cell.go::UpsertCellModel.RestoreOrCreate": {
+    "exported": true,
+    "signature": "receiver=*UpsertCellModel func() (*UpsertCellModel, error)"
+  },
   "packages/go/model/upsert_cell.go::UpsertCellModel.Save": {
     "exported": true,
     "signature": "receiver=*UpsertCellModel func() (*UpsertCellModel, error)"
@@ -13987,6 +14419,10 @@
     "exported": true,
     "signature": "receiver=*UserModel func() (*UserModel, error)"
   },
+  "packages/go/model/user.go::UserModel.RestoreOrCreate": {
+    "exported": true,
+    "signature": "receiver=*UserModel func() (*UserModel, error)"
+  },
   "packages/go/model/user.go::UserModel.Save": {
     "exported": true,
     "signature": "receiver=*UserModel func() (*UserModel, error)"
@@ -14272,6 +14708,10 @@
     "signature": "receiver=*UuidCellModel func() *UuidCellModel"
   },
   "packages/go/model/uuid_cell.go::UuidCellModel.Restore": {
+    "exported": true,
+    "signature": "receiver=*UuidCellModel func() (*UuidCellModel, error)"
+  },
+  "packages/go/model/uuid_cell.go::UuidCellModel.RestoreOrCreate": {
     "exported": true,
     "signature": "receiver=*UuidCellModel func() (*UuidCellModel, error)"
   },
@@ -16883,6 +17323,10 @@
     "exported": true,
     "signature": "receiver=*Core func() (Model, error)"
   },
+  "packages/go/orm/model.go::Core.RestoreOrCreate": {
+    "exported": true,
+    "signature": "receiver=*Core func() (Model, error)"
+  },
   "packages/go/orm/model.go::Core.Save": {
     "exported": true,
     "signature": "receiver=*Core func() (Model, error)"
@@ -16942,6 +17386,10 @@
   "packages/go/orm/model.go::Core.relationChild": {
     "exported": false,
     "signature": "receiver=*Core func(name string) (*Core, bool)"
+  },
+  "packages/go/orm/model.go::Core.restoreStep": {
+    "exported": false,
+    "signature": "receiver=*Core func() (int64, *Core, error)"
   },
   "packages/go/orm/model.go::Core.terminal": {
     "exported": false,

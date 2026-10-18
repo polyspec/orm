@@ -135,6 +135,12 @@ impl T {
         polyspec_orm::model::restore(self).await
     }
 
+    /// Restores the soft-deleted row of the set key values, or creates it when no row holds the key; a live row fails
+    /// with ROW_NOT_DELETED.
+    pub async fn restore_or_create(&self) -> polyspec_orm::Result<Self> {
+        polyspec_orm::model::restore_or_create(self).await
+    }
+
     /// Sets the duplicate-key update of the next create.
     pub fn duplication(mut self, m: Self) -> Self {
         self.__orm.duplication(m.__orm);

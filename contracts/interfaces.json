@@ -39,11 +39,11 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:a5c743d9b85ca9195a2854dda378b6059c013a18a891fef383c318edeebf184e",
-    "php": "sha256:c8cc8241e934aedbfa1fc442741943b2efe38d385a3e03d5e3a6326ee74bff5f",
-    "rust": "sha256:e91040a1c92e02c832d27071796c6df5ec0106e3e7d7b8dbfbebc3749161a359",
-    "typescript": "sha256:061cf1b7053f1661e2b79f37254b69600e4a302db02923a0a06c8613457cecb8",
-    "python": "sha256:d12094383da9e2eb3b949513bea445a35a444a0ec1596cd7f841faf6bf20837c"
+    "go": "sha256:f27eb73d2918241a25e3daab6497a49f84a2620ab7a47e999e6e72d38057d16f",
+    "php": "sha256:5d3fad99d329c28c88acf3138337a4308790a023a248f1facf6b7eb8fddd2652",
+    "rust": "sha256:57a655d6114d2f23ec66aaa38246ebcaddbcdcf52f216970ca20ea67ddada3a4",
+    "typescript": "sha256:c92c1daf0ee8ce023fbf8388be8c771501e83a10ddcc463dfa8ea017938af4bf",
+    "python": "sha256:84db7fb2552b8444902ff2bc6b89e44a4523953fad67e0c713aeda2310c9dac3"
   },
   "extensions": {
     "php-extension": {
@@ -137,6 +137,7 @@
         "save",
         "delete",
         "restore",
+        "restoreOrCreate",
         "toArray"
       ],
       "ownership": "Generated per entity. Holds the column values of a new or loaded row and the chain state in its Core.",
@@ -1188,6 +1189,42 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.restore",
           "signature": "def restore(self) -> Self"
+        }
+      }
+    },
+    {
+      "id": "Model.restoreOrCreate",
+      "for": "entity",
+      "inputs": [],
+      "output": "Model",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID",
+        "ROW_NOT_DELETED",
+        "DUPLICATE_KEY",
+        "driver or codec error"
+      ],
+      "state": "In one transaction, restores with the set values the soft-deleted row that holds the key restore picks, or creates the row with the set values when no row holds that key, and returns the row; a row that holds the key and is not deleted fails with ROW_NOT_DELETED and nothing is written",
+      "native": {
+        "go": {
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.RestoreOrCreate",
+          "signature": "receiver=*{Entity}Model func() (*{Entity}Model, error)"
+        },
+        "php": {
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::restoreOrCreate",
+          "signature": "public function restoreOrCreate(): static"
+        },
+        "rust": {
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::restore_or_create",
+          "signature": "pub async fn restore_or_create(&self) -> polyspec_orm::Result<Self>"
+        },
+        "typescript": {
+          "symbol": "packages/ts/src/model.ts::Model.restoreOrCreate",
+          "signature": "public async restoreOrCreate(): Promise<this>"
+        },
+        "python": {
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.restore_or_create",
+          "signature": "def restore_or_create(self) -> Self"
         }
       }
     },
@@ -3321,6 +3358,39 @@
         "select",
         "update",
         "select",
+        "rollback",
+        "select"
+      ],
+      "suite": "tests/conformance"
+    },
+    {
+      "id": "restore_or_create",
+      "expected": {
+        "created": {
+          "code": "roc-2",
+          "label": "new",
+          "seq": "$SEQ"
+        },
+        "left": 0,
+        "live": "ROW_NOT_DELETED",
+        "restored": {
+          "code": "roc-1",
+          "deleted_at": null,
+          "label": "second",
+          "seq": "$SEQ"
+        }
+      },
+      "statements": [
+        "begin",
+        "insert",
+        "update",
+        "update",
+        "select",
+        "update",
+        "select",
+        "update",
+        "select",
+        "insert",
         "rollback",
         "select"
       ],

@@ -11,7 +11,7 @@ import (
 var _ time.Time
 
 // ManifestHash is the manifestHash of the document set the models were generated from.
-const ManifestHash = "sha256:a26e0390c07bd97f6907d6d4588636778e3073086eceb3cd7bcf7e693f875e30"
+const ManifestHash = "sha256:18b7c53c3dd768b76732c743c89659ec5dd7a1cdc2a818b7792d389740e50a88"
 
 // ManifestText is the manifest text of the document set the models were generated from.
 const ManifestText = "dbspec 1 bench\n" +
@@ -143,6 +143,18 @@ const ManifestText = "dbspec 1 bench\n" +
 	"  }\n" +
 	"}\n" +
 	"\n" +
+	"table soft_link {\n" +
+	"  seq i64 identity\n" +
+	"  code varchar(32)\n" +
+	"  label varchar(64)\n" +
+	"  deleted_at datetime(6) null\n" +
+	"  primary key (seq)\n" +
+	"  unique uq_soft_link_code (code)\n" +
+	"  settings {\n" +
+	"    soft_delete deleted_at\n" +
+	"  }\n" +
+	"}\n" +
+	"\n" +
 	"table account {\n" +
 	"  seq i64 identity\n" +
 	"  name varchar(191)\n" +
@@ -239,7 +251,7 @@ func Connect(dsn string, cfg orm.Config) (*orm.DB, error) { return orm.ConnectSc
 
 // ormModel is any generated model; a model value is a subquery.
 type ormModel interface {
-	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *CompositeAccountModel | *CompositeMembershipModel | *SoftRecordModel | *AccountModel | *ProjectModel | *AccountProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel
+	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *CompositeAccountModel | *CompositeMembershipModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *AccountProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel
 }
 
 type argBoolEq interface {
@@ -286,7 +298,7 @@ type hasName interface {
 
 // hasSeq is a model with the column seq.
 type hasSeq interface {
-	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *SoftRecordModel | *AccountModel | *ProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel
+	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel
 	Orm_() *orm.Core
 }
 

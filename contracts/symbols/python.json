@@ -3275,6 +3275,10 @@
     "exported": true,
     "signature": "def restore(self) -\u003e Self"
   },
+  "packages/python/src/polyspec/orm/model.py::Model.restore_or_create": {
+    "exported": true,
+    "signature": "def restore_or_create(self) -\u003e Self"
+  },
   "packages/python/src/polyspec/orm/model.py::Model.save": {
     "exported": true,
     "signature": "def save(self) -\u003e Self"
@@ -3350,6 +3354,10 @@
   "packages/python/src/polyspec/orm/model_exec.py::restore": {
     "exported": true,
     "signature": "def restore(c: Core)"
+  },
+  "packages/python/src/polyspec/orm/model_exec.py::restore_or_create": {
+    "exported": true,
+    "signature": "def restore_or_create(c: Core)"
   },
   "packages/python/src/polyspec/orm/model_exec.py::save": {
     "exported": true,
@@ -6614,6 +6622,178 @@
   "packages/python/src/polyspec/orm/models/models.py::ServiceRegion.sum_service_seq": {
     "exported": true,
     "signature": "def sum_service_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink": {
+    "exported": true,
+    "signature": "class SoftLink(Model)"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.add_column_code": {
+    "exported": true,
+    "signature": "def add_column_code(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.add_column_deleted_at": {
+    "exported": true,
+    "signature": "def add_column_deleted_at(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.add_column_label": {
+    "exported": true,
+    "signature": "def add_column_label(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.add_column_seq": {
+    "exported": true,
+    "signature": "def add_column_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.avg_seq": {
+    "exported": true,
+    "signature": "def avg_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.code": {
+    "exported": true,
+    "signature": "def code(self, value, *compared) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.deleted_at": {
+    "exported": true,
+    "signature": "def deleted_at(self, value, *compared) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.entity_def": {
+    "exported": true,
+    "signature": "@property def entity_def(self)"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.force_index_uq_soft_link_code": {
+    "exported": true,
+    "signature": "def force_index_uq_soft_link_code(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.get_code": {
+    "exported": true,
+    "signature": "def get_code(self) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.get_deleted_at": {
+    "exported": true,
+    "signature": "def get_deleted_at(self) -\u003e str | None"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.get_label": {
+    "exported": true,
+    "signature": "def get_label(self) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.get_seq": {
+    "exported": true,
+    "signature": "def get_seq(self) -\u003e int"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.group_by_code": {
+    "exported": true,
+    "signature": "def group_by_code(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.group_by_deleted_at": {
+    "exported": true,
+    "signature": "def group_by_deleted_at(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.group_by_label": {
+    "exported": true,
+    "signature": "def group_by_label(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.group_by_seq": {
+    "exported": true,
+    "signature": "def group_by_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.key_name_code": {
+    "exported": true,
+    "signature": "def key_name_code(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.key_name_deleted_at": {
+    "exported": true,
+    "signature": "def key_name_deleted_at(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.key_name_label": {
+    "exported": true,
+    "signature": "def key_name_label(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.key_name_seq": {
+    "exported": true,
+    "signature": "def key_name_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.label": {
+    "exported": true,
+    "signature": "def label(self, value, *compared) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.minus_seq": {
+    "exported": true,
+    "signature": "def minus_seq(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.order_by_code_asc": {
+    "exported": true,
+    "signature": "def order_by_code_asc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.order_by_code_desc": {
+    "exported": true,
+    "signature": "def order_by_code_desc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.order_by_deleted_at_asc": {
+    "exported": true,
+    "signature": "def order_by_deleted_at_asc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.order_by_deleted_at_desc": {
+    "exported": true,
+    "signature": "def order_by_deleted_at_desc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.order_by_label_asc": {
+    "exported": true,
+    "signature": "def order_by_label_asc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.order_by_label_desc": {
+    "exported": true,
+    "signature": "def order_by_label_desc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.order_by_seq_asc": {
+    "exported": true,
+    "signature": "def order_by_seq_asc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.order_by_seq_desc": {
+    "exported": true,
+    "signature": "def order_by_seq_desc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.plus_seq": {
+    "exported": true,
+    "signature": "def plus_seq(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.remove_column_code": {
+    "exported": true,
+    "signature": "def remove_column_code(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.remove_column_deleted_at": {
+    "exported": true,
+    "signature": "def remove_column_deleted_at(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.remove_column_label": {
+    "exported": true,
+    "signature": "def remove_column_label(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.remove_column_seq": {
+    "exported": true,
+    "signature": "def remove_column_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.seq": {
+    "exported": true,
+    "signature": "def seq(self, value, *compared) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.set_code": {
+    "exported": true,
+    "signature": "def set_code(self, value: str) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.set_deleted_at": {
+    "exported": true,
+    "signature": "def set_deleted_at(self, value: str | None) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.set_label": {
+    "exported": true,
+    "signature": "def set_label(self, value: str) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.set_seq": {
+    "exported": true,
+    "signature": "def set_seq(self, value: int) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SoftLink.sum_seq": {
+    "exported": true,
+    "signature": "def sum_seq(self) -\u003e Self"
   },
   "packages/python/src/polyspec/orm/models/models.py::SoftRecord": {
     "exported": true,

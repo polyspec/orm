@@ -887,6 +887,47 @@ func run() (status int) {
 		result["left"] = left
 		return result, err
 	})
+	run("restore_or_create", func() (any, error) {
+		// RestoreOrCreate restores the soft-deleted row of its key, refuses a live row with ROW_NOT_DELETED and
+		// creates a missing key (docs/usage.md "Restore or create a row"). The transaction rolls back at the end.
+		boom := errors.New("boom")
+		result := map[string]any{}
+		err := db.Transaction(func() error {
+			created, err := model.SoftLink().SetCode("roc-1").SetLabel("first").Create()
+			if err != nil {
+				return err
+			}
+			mask([]int64{created.GetSeq()})
+			deletedAt := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+			if _, err := created.SetDeletedAt(textPtr(dateTimeText(deletedAt))).Update(); err != nil {
+				return err
+			}
+			restored, err := model.SoftLink().SetCode("roc-1").SetLabel("second").RestoreOrCreate()
+			if err != nil {
+				return err
+			}
+			restoredRow := restored.ToArray()
+			restoredRow["seq"] = "$SEQ"
+			result["restored"] = restoredRow
+			_, live := model.SoftLink().SetCode("roc-1").SetLabel("third").RestoreOrCreate()
+			result["live"] = code(live)
+			made, err := model.SoftLink().SetCode("roc-2").SetLabel("new").RestoreOrCreate()
+			if err != nil {
+				return err
+			}
+			mask([]int64{made.GetSeq()})
+			createdRow := made.ToArray()
+			createdRow["seq"] = "$SEQ"
+			result["created"] = createdRow
+			return boom
+		}, orm.Retry(0))
+		if !errors.Is(err, boom) {
+			return nil, err
+		}
+		left, err := model.SoftLink().Connect(db).GetCount()
+		result["left"] = left
+		return result, err
+	})
 	run("joins_soft_deleted", func() (any, error) {
 		// A joined soft_record row that is soft deleted meets no parent: the inner join drops the
 		// parent and the left join gives it a null child. The transaction rolls back at the end, so

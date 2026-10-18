@@ -8863,6 +8863,10 @@
     "exported": true,
     "signature": "public async restore(): Promise\u003cthis\u003e"
   },
+  "packages/ts/src/model.ts::Model.restoreOrCreate": {
+    "exported": true,
+    "signature": "public async restoreOrCreate(): Promise\u003cthis\u003e"
+  },
   "packages/ts/src/model.ts::Model.save": {
     "exported": true,
     "signature": "public async save(): Promise\u003cthis\u003e"
@@ -9114,6 +9118,14 @@
   "packages/ts/src/model.ts::restoreKeyValue": {
     "exported": false,
     "signature": "function restoreKeyValue(own: ReadonlyMap\u003cnumber, SetSpec\u003e, written: { request: Request; params: readonly unknown[]; }, column: string): unknown"
+  },
+  "packages/ts/src/model.ts::restoreOrCreate": {
+    "exported": false,
+    "signature": "async function restoreOrCreate(c: Core): Promise\u003cModel\u003e"
+  },
+  "packages/ts/src/model.ts::restoreStep": {
+    "exported": false,
+    "signature": "async function restoreStep(c: Core): Promise\u003c{ restored: number; query: Model; }\u003e"
   },
   "packages/ts/src/model.ts::rowText": {
     "exported": false,
@@ -10481,7 +10493,7 @@
   },
   "packages/ts/src/models/models.ts::Author#field.andSuccessCountLtSeq": {
     "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
+    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.andUuid": {
     "exported": true,
@@ -10597,31 +10609,31 @@
   },
   "packages/ts/src/models/models.ts::Author#field.joinNameWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.joinReadCountWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.joinServiceMemberSeqWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.joinServiceSeqWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.joinUserSeqWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.leftJoinServiceRegionSeqWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.leftJoinUserSeqWithSeq": {
     "exported": true,
-    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
+    "signature": "(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.likeCount": {
     "exported": true,
@@ -10641,7 +10653,7 @@
   },
   "packages/ts/src/models/models.ts::Author#field.nameEqSeq": {
     "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
+    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.nePhotoUrl": {
     "exported": true,
@@ -10673,7 +10685,7 @@
   },
   "packages/ts/src/models/models.ts::Author#field.priceEqSeq": {
     "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
+    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.readCount": {
     "exported": true,
@@ -10681,11 +10693,11 @@
   },
   "packages/ts/src/models/models.ts::Author#field.readCountGtSeq": {
     "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
+    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.readCountLtSeq": {
     "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
+    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.seq": {
     "exported": true,
@@ -10713,7 +10725,7 @@
   },
   "packages/ts/src/models/models.ts::Author#field.userSeqEqSeq": {
     "exported": true,
-    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
+    "signature": "(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.uuid": {
     "exported": true,
@@ -14134,6 +14146,222 @@
   "packages/ts/src/models/models.ts::ServiceRegion.sumServiceSeq": {
     "exported": true,
     "signature": "public sumServiceSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink": {
+    "exported": true,
+    "signature": "class SoftLink"
+  },
+  "packages/ts/src/models/models.ts::SoftLink#field.code": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink#field.entity": {
+    "exported": true,
+    "signature": "EntityDef"
+  },
+  "packages/ts/src/models/models.ts::SoftLink#field.getAesHexEmail": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::SoftLink#field.getAuthorModels": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::SoftLink#field.getMembers": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::SoftLink#field.getModule": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::SoftLink#field.getName": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::SoftLink#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::SoftLink#field.getReadTotal": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::SoftLink#field.getRecord": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::SoftLink#field.getServiceMemberModels": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::SoftLink#field.getServiceRegionModel": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::SoftLink#field.getStartMonth": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::SoftLink#field.getUserModel": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::SoftLink#field.getWriter": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::SoftLink#field.seq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.addColumnCode": {
+    "exported": true,
+    "signature": "public addColumnCode(): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.addColumnDeletedAt": {
+    "exported": true,
+    "signature": "public addColumnDeletedAt(): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.addColumnLabel": {
+    "exported": true,
+    "signature": "public addColumnLabel(): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.addColumnSeq": {
+    "exported": true,
+    "signature": "public addColumnSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.avgSeq": {
+    "exported": true,
+    "signature": "public avgSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.forceIndexUqSoftLinkCode": {
+    "exported": true,
+    "signature": "public forceIndexUqSoftLinkCode(): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.getCode": {
+    "exported": true,
+    "signature": "public getCode(): string"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.getDeletedAt": {
+    "exported": true,
+    "signature": "public getDeletedAt(): string | null"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.getLabel": {
+    "exported": true,
+    "signature": "public getLabel(): string"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.getSeq": {
+    "exported": true,
+    "signature": "public getSeq(): number"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.groupByCode": {
+    "exported": true,
+    "signature": "public groupByCode(): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.groupByDeletedAt": {
+    "exported": true,
+    "signature": "public groupByDeletedAt(): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.groupByLabel": {
+    "exported": true,
+    "signature": "public groupByLabel(): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.groupBySeq": {
+    "exported": true,
+    "signature": "public groupBySeq(): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.keyNameCode": {
+    "exported": true,
+    "signature": "public keyNameCode(): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.keyNameDeletedAt": {
+    "exported": true,
+    "signature": "public keyNameDeletedAt(): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.keyNameLabel": {
+    "exported": true,
+    "signature": "public keyNameLabel(): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.keyNameSeq": {
+    "exported": true,
+    "signature": "public keyNameSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.minusSeq": {
+    "exported": true,
+    "signature": "public minusSeq(n: number): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.orderByCodeAsc": {
+    "exported": true,
+    "signature": "public orderByCodeAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.orderByCodeDesc": {
+    "exported": true,
+    "signature": "public orderByCodeDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.orderByDeletedAtAsc": {
+    "exported": true,
+    "signature": "public orderByDeletedAtAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.orderByDeletedAtDesc": {
+    "exported": true,
+    "signature": "public orderByDeletedAtDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.orderByLabelAsc": {
+    "exported": true,
+    "signature": "public orderByLabelAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.orderByLabelDesc": {
+    "exported": true,
+    "signature": "public orderByLabelDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.orderBySeqAsc": {
+    "exported": true,
+    "signature": "public orderBySeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.orderBySeqDesc": {
+    "exported": true,
+    "signature": "public orderBySeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.plusSeq": {
+    "exported": true,
+    "signature": "public plusSeq(n: number): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.removeColumnCode": {
+    "exported": true,
+    "signature": "public removeColumnCode(): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.removeColumnDeletedAt": {
+    "exported": true,
+    "signature": "public removeColumnDeletedAt(): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.removeColumnLabel": {
+    "exported": true,
+    "signature": "public removeColumnLabel(): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.removeColumnSeq": {
+    "exported": true,
+    "signature": "public removeColumnSeq(): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.setCode": {
+    "exported": true,
+    "signature": "public setCode(value: string): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.setDeletedAt": {
+    "exported": true,
+    "signature": "public setDeletedAt(value: string | null): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.setLabel": {
+    "exported": true,
+    "signature": "public setLabel(value: string): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.setSeq": {
+    "exported": true,
+    "signature": "public setSeq(value: number): this"
+  },
+  "packages/ts/src/models/models.ts::SoftLink.sumSeq": {
+    "exported": true,
+    "signature": "public sumSeq(): this"
   },
   "packages/ts/src/models/models.ts::SoftRecord": {
     "exported": true,

@@ -1234,25 +1234,68 @@ func (c *Core) Save() (Model, error) {
 // unchanged and nothing is written; a missing row returns CodeNoRows. Reads
 // never return a soft-deleted row: Restore names it explicitly.
 func (c *Core) Restore() (Model, error) {
+	_, q, err := c.restoreStep()
+	if err != nil {
+		return nil, err
+	}
+	return q.Get()
+}
+
+// RestoreOrCreate restores the soft-deleted row of the key that Restore picks,
+// or creates it with the set values when no row holds the key, in one
+// transaction (docs/usage.md "Restore or create a row"), and returns the row.
+// A row that holds the key and is not deleted returns CodeRowNotDeleted, and
+// nothing is written.
+func (c *Core) RestoreOrCreate() (Model, error) {
+	var row Model
+	err := inTransaction(c.conn, func() error {
+		restored, q, err := c.restoreStep()
+		if err != nil {
+			return err
+		}
+		if restored > 0 {
+			row, err = q.Get()
+			return err
+		}
+		n, err := q.GetCount()
+		if err != nil {
+			return err
+		}
+		if n > 0 {
+			return &ir.Error{Code: CodeRowNotDeleted, Msg: "restoreOrCreate: a row that is not deleted holds the key"}
+		}
+		row, err = c.Create()
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return row, nil
+}
+
+// restoreStep sends the restore request of the set values and returns the
+// number of rows it restored and the query of the row by the values of the key
+// that the planner picked.
+func (c *Core) restoreStep() (int64, *Core, error) {
 	c.ensureStatement()
 	ex, err := c.terminal()
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 	ent, err := c.entityModel(ex.base())
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 	r := NewCore(c.ent).build("restore")
 	if r.err != nil {
-		return nil, r.err
+		return 0, nil, r.err
 	}
 	// own maps the parameter of each value the model sets to that set value; the hook adds parameters after them.
 	own := map[int]setSpec{}
 	for _, s := range c.sets {
 		a, err := r.assign(ent, s)
 		if err != nil {
-			return nil, err
+			return 0, nil, err
 		}
 		if a.P != nil {
 			own[*a.P] = s
@@ -1263,7 +1306,7 @@ func (c *Core) Restore() (Model, error) {
 	// The key is read from the request as the hook left it, before the planner renumbers its parameters.
 	var keys []ChainKey
 	var args []any
-	if _, _, err := writeAfterHook(ex, r, func(hooked *request) error {
+	_, restored, err := writeAfterHook(ex, r, func(hooked *request) error {
 		parts, err := ir.RestoreKey(ent, &hooked.ir)
 		if err != nil {
 			return err
@@ -1280,13 +1323,14 @@ func (c *Core) Restore() (Model, error) {
 			}
 		}
 		return nil
-	}); err != nil {
-		return nil, err
+	})
+	if err != nil {
+		return 0, nil, err
 	}
 	q := NewCore(c.ent)
 	q.conn = c.conn
 	q.Where("", keys, args...)
-	return q.Get()
+	return restored, q, nil
 }
 
 // restoreKeyValue is the value of a key column of the restore request r as the

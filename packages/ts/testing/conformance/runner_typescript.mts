@@ -9,7 +9,7 @@
 // Each --vector selects one vector by name; without one every vector runs.
 // The models embed the manifest of contracts/fixtures/bench/bench.dbs.
 import {
-  AesKeyring, Author, BindCell, CORE, ClockCell, type Collection, type Model, CompositeAccount, HexCell, Service, TimeCell, DayCell, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, UpsertCell, User, UuidCell, connect, orm,
+  AesKeyring, Author, BindCell, CORE, ClockCell, type Collection, type Model, CompositeAccount, HexCell, Service, TimeCell, DayCell, ServiceMember, ServiceRegion, SoftLink, SoftRecord, StyledValue, Task, UpsertCell, User, UuidCell, connect, orm,
 } from '../../dist/index.js';
 import { fixClock, lastAffected } from '../../dist/testing.js';
 import { parseArgs } from 'node:util';
@@ -464,6 +464,33 @@ async function main() {
     } catch (error) { failed = error; }
     if (failed !== boom) throw failed;
     result.left = await new SoftRecord().connect(db).name('restore').getCount();
+    return result;
+  });
+  await run('restore_or_create', async () => {
+    // restoreOrCreate restores the soft-deleted row of its key, refuses a live row with ROW_NOT_DELETED and creates a
+    // missing key (docs/usage.md "Restore or create a row"). The transaction rolls back at the end, so the database is as it was.
+    const boom = new Error('boom');
+    const result: Record<string, unknown> = {};
+    let failed: unknown;
+    try {
+      await db.transaction(async () => {
+        const created = await new SoftLink().setCode('roc-1').setLabel('first').create();
+        mask([created.getSeq()]);
+        await created.setDeletedAt('2026-01-02 03:04:05.000000').update();
+        const restored = (await new SoftLink().setCode('roc-1').setLabel('second').restoreOrCreate()).toArray();
+        restored.seq = '$SEQ';
+        result.restored = restored;
+        result.live = await caught(new SoftLink().setCode('roc-1').setLabel('third').restoreOrCreate());
+        const made = await new SoftLink().setCode('roc-2').setLabel('new').restoreOrCreate();
+        mask([made.getSeq()]);
+        const createdRow = made.toArray();
+        createdRow.seq = '$SEQ';
+        result.created = createdRow;
+        throw boom;
+      }, { retry: 0 });
+    } catch (error) { failed = error; }
+    if (failed !== boom) throw failed;
+    result.left = await new SoftLink().connect(db).getCount();
     return result;
   });
   await run('joins_soft_deleted', async () => {

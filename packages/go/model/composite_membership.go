@@ -244,6 +244,16 @@ func (x *CompositeMembershipModel) Restore() (*CompositeMembershipModel, error) 
 	return m.(*CompositeMembershipModel), nil
 }
 
+// RestoreOrCreate restores the soft-deleted row of the set key values, or creates
+// it when no row holds the key; a live row returns CodeRowNotDeleted.
+func (x *CompositeMembershipModel) RestoreOrCreate() (*CompositeMembershipModel, error) {
+	m, err := x.m.RestoreOrCreate()
+	if err != nil {
+		return nil, err
+	}
+	return m.(*CompositeMembershipModel), nil
+}
+
 // Duplication sets the duplicate-key update of the next Create.
 func (x *CompositeMembershipModel) Duplication(m *CompositeMembershipModel) *CompositeMembershipModel {
 	x.m.Duplication(m)

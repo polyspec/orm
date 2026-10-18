@@ -11,7 +11,7 @@ use Polyspec\Orm\Registry;
 use Polyspec\Orm\Schema;
 
 /** The manifestHash of the document set the models were generated from. */
-const MANIFEST_HASH = 'sha256:a26e0390c07bd97f6907d6d4588636778e3073086eceb3cd7bcf7e693f875e30';
+const MANIFEST_HASH = 'sha256:18b7c53c3dd768b76732c743c89659ec5dd7a1cdc2a818b7792d389740e50a88';
 
 /** The manifest text of the document set the models were generated from. */
 const MANIFEST_TEXT = 'dbspec 1 bench
@@ -143,6 +143,18 @@ table soft_record {
   }
 }
 
+table soft_link {
+  seq i64 identity
+  code varchar(32)
+  label varchar(64)
+  deleted_at datetime(6) null
+  primary key (seq)
+  unique uq_soft_link_code (code)
+  settings {
+    soft_delete deleted_at
+  }
+}
+
 table account {
   seq i64 identity
   name varchar(191)
@@ -250,6 +262,7 @@ Registry::register(ServiceMember::class);
 Registry::register(CompositeAccount::class);
 Registry::register(CompositeMembership::class);
 Registry::register(SoftRecord::class);
+Registry::register(SoftLink::class);
 Registry::register(Account::class);
 Registry::register(Project::class);
 Registry::register(AccountProject::class);

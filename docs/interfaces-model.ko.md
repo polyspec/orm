@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces-model -->
-<!-- source-sha256: e787b1fa0431f83a3d92b7f410261285edb19aa1cf127f9ddd06403d458a68ab -->
+<!-- source-sha256: 3e8129a7f58e1648a2d7a1f565cadc57dcc1d36dc48d1e7d98094693acc5a654 -->
 # 공통 구성요소
 
 <!-- contracts/interfaces.json에서 생성됨. 직접 수정하지 않는다. -->
@@ -29,6 +29,7 @@ classDiagram
         save()
         delete()
         restore()
+        restoreOrCreate()
         toArray()
     }
     class Core {

@@ -373,6 +373,31 @@ const row = await new Membership().connect(master).setTeamId(1).setMemberId(2).s
 
 ---
 
+### Restore or create a row
+
+`restoreOrCreate()` gives a key of a table with a `soft_delete` setting its row whatever state the key is in: set the values of the primary key or of one unique key on a new model, and the other values of the row, as for `restore()`.
+
+```go
+row, err := model.Membership().Connect(master).SetTeamId(1).SetMemberId(2).SetRole("owner").RestoreOrCreate()
+```
+```php
+$row = (new Membership)->connect($master)->setTeamId(1)->setMemberId(2)->setRole('owner')->restoreOrCreate();
+```
+```python
+row = Membership().connect(master).set_team_id(1).set_member_id(2).set_role("owner").restore_or_create()
+```
+```rust
+let row = Membership::new().connect(&master).set_team_id(1).set_member_id(2).set_role("owner").restore_or_create().await?;
+```
+```typescript
+const row = await new Membership().connect(master).setTeamId(1).setMemberId(2).setRole('owner').restoreOrCreate();
+```
+
+- It runs in one transaction, and its key is the one `restore()` picks. A soft-deleted row that holds the key is restored with the set values, as `restore()` restores it, audit included, and returned.
+- A key that no row holds is created with the set values, as `create()` creates a row, and the created row is returned. Another unique key that an existing row already holds fails with `DUPLICATE_KEY`, as for `create()`.
+- A row that holds the key and is not deleted fails with `ROW_NOT_DELETED`, and nothing is written, the set values included: the caller decides whether to update it.
+- Its statements are the restore step, the read of the key and, for a key that no row holds, the insert; the conformance vector `restore_or_create` fixes them and their results on MySQL, PostgreSQL and SQLite. A table without `soft_delete` fails with `IR_INVALID`, as for `restore()`.
+
 ## 8. Styled columns
 
 `gz_*`, `json_*`, `jsons_*`, `base64_*`, and `serialize_*` use **decoded values**, not stored bytes, at the client output

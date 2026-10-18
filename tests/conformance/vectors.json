@@ -2857,6 +2857,172 @@
       }
     },
     {
+      "name": "restore_or_create",
+      "chain": "transaction: SoftLink create code roc-1, set deleted_at; setCode(roc-1)-\u003esetLabel(second)-\u003erestoreOrCreate() restores it; setCode(roc-1)-\u003esetLabel(third)-\u003erestoreOrCreate() on the live row is ROW_NOT_DELETED; setCode(roc-2)-\u003esetLabel(new)-\u003erestoreOrCreate() creates it; rollback",
+      "calls": [
+        "restoreOrCreate"
+      ],
+      "expect": {
+        "result": {
+          "created": {
+            "code": "roc-2",
+            "label": "new",
+            "seq": "$SEQ"
+          },
+          "left": 0,
+          "live": "ROW_NOT_DELETED",
+          "restored": {
+            "code": "roc-1",
+            "deleted_at": null,
+            "label": "second",
+            "seq": "$SEQ"
+          }
+        },
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "START TRANSACTION",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "roc-1",
+              "first"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `soft_link` (`code`, `label`) VALUES (?, ?)",
+            "tables": [
+              "soft_link"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "2026-01-02 03:04:05.000000",
+              "$SEQ"
+            ],
+            "error": null,
+            "kind": "update",
+            "sql": "UPDATE `soft_link` SET `deleted_at` = ? WHERE `soft_link`.`seq` = ? AND `soft_link`.`deleted_at` IS NULL",
+            "tables": [
+              "soft_link"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "second",
+              "roc-1"
+            ],
+            "error": null,
+            "kind": "update",
+            "sql": "UPDATE `soft_link` SET `label` = ?, `deleted_at` = NULL WHERE `soft_link`.`code` = ? AND `soft_link`.`deleted_at` IS NOT NULL",
+            "tables": [
+              "soft_link"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "roc-1"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`code` AS `a__code`, `a`.`label` AS `a__label`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_link` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`code` = ? LIMIT 0, 1",
+            "tables": [
+              "soft_link"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "third",
+              "roc-1"
+            ],
+            "error": null,
+            "kind": "update",
+            "sql": "UPDATE `soft_link` SET `label` = ?, `deleted_at` = NULL WHERE `soft_link`.`code` = ? AND `soft_link`.`deleted_at` IS NOT NULL",
+            "tables": [
+              "soft_link"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "roc-1"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `soft_link` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`code` = ?",
+            "tables": [
+              "soft_link"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "new",
+              "roc-2"
+            ],
+            "error": null,
+            "kind": "update",
+            "sql": "UPDATE `soft_link` SET `label` = ?, `deleted_at` = NULL WHERE `soft_link`.`code` = ? AND `soft_link`.`deleted_at` IS NOT NULL",
+            "tables": [
+              "soft_link"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "roc-2"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `soft_link` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`code` = ?",
+            "tables": [
+              "soft_link"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "roc-2",
+              "new"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `soft_link` (`code`, `label`) VALUES (?, ?)",
+            "tables": [
+              "soft_link"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "rollback",
+            "sql": "ROLLBACK",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `soft_link` AS `a` WHERE `a`.`deleted_at` IS NULL",
+            "tables": [
+              "soft_link"
+            ],
+            "transaction": null
+          }
+        ]
+      }
+    },
+    {
       "name": "joins_soft_deleted",
       "chain": "transaction: create a live and a soft-deleted soft_record beside two services, joinNameWithName(soft_record) and leftJoinNameWithName(soft_record), rollback",
       "calls": [

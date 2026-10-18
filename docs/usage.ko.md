@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 28c219b3ab86c896d641c25f93cd0e7cf0e9fcd8ae4061cb3d191ebbb369673e -->
+<!-- source-sha256: a95a7cfcbf2afa3ce44db0c476d44bc8742ecfade4ebb98919190a24e02425eb -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript·Python 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
@@ -373,6 +373,31 @@ const row = await new Membership().connect(master).setTeamId(1).setMemberId(2).s
 - restore는 soft delete처럼 `updated` 컬럼을 할당하지 않는다. update와 읽기는 문장 두 개이며, 트랜잭션 안에서는 한 상태를 본다.
 
 ---
+
+### 행 되돌리기 또는 만들기 {#restore-or-create-a-row}
+
+`restoreOrCreate()`는 `soft_delete` setting이 있는 테이블의 key에, 그 key가 어떤 상태이든 그 행을 준다. `restore()`처럼 새 모델에 primary key나 unique key 하나의 값과, 행의 다른 값을 지정한다.
+
+```go
+row, err := model.Membership().Connect(master).SetTeamId(1).SetMemberId(2).SetRole("owner").RestoreOrCreate()
+```
+```php
+$row = (new Membership)->connect($master)->setTeamId(1)->setMemberId(2)->setRole('owner')->restoreOrCreate();
+```
+```python
+row = Membership().connect(master).set_team_id(1).set_member_id(2).set_role("owner").restore_or_create()
+```
+```rust
+let row = Membership::new().connect(&master).set_team_id(1).set_member_id(2).set_role("owner").restore_or_create().await?;
+```
+```typescript
+const row = await new Membership().connect(master).setTeamId(1).setMemberId(2).setRole('owner').restoreOrCreate();
+```
+
+- 한 트랜잭션 안에서 실행하며, key는 `restore()`가 고르는 key다. 그 key를 가진 soft delete된 행은 `restore()`가 되돌리듯 지정 값으로 되돌려지고 audit도 함께 쓰이며, 그 행을 반환한다.
+- 어떤 행도 갖지 않은 key는 `create()`가 행을 만들듯 지정 값으로 만들어지고, 만든 행을 반환한다. 이미 있는 행이 가진 다른 unique key는 `create()`처럼 `DUPLICATE_KEY`로 실패한다.
+- 그 key를 가진, 지워지지 않은 행은 `ROW_NOT_DELETED`로 실패하며, 지정 값을 포함해 아무것도 쓰지 않는다. 그 행을 update할지는 호출하는 쪽이 정한다.
+- statement는 restore 단계, key 읽기, 그리고 어떤 행도 갖지 않은 key라면 insert다. conformance vector `restore_or_create`가 MySQL, PostgreSQL, SQLite에서 그것과 결과를 고정한다. `soft_delete`가 없는 테이블은 `restore()`처럼 `IR_INVALID`로 실패한다.
 
 ## 8. 스타일 컬럼
 

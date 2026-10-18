@@ -131,6 +131,18 @@ table soft_record {
   }
 }
 
+table soft_link {
+  seq i64 identity
+  code varchar(32)
+  label varchar(64)
+  deleted_at datetime(6) null
+  primary key (seq)
+  unique uq_soft_link_code (code)
+  settings {
+    soft_delete deleted_at
+  }
+}
+
 table account {
   seq i64 identity
   name varchar(191)
@@ -217,7 +229,7 @@ table bind_cell {
 }
 `;
 
-export const MANIFEST_HASH = 'sha256:a26e0390c07bd97f6907d6d4588636778e3073086eceb3cd7bcf7e693f875e30';
+export const MANIFEST_HASH = 'sha256:18b7c53c3dd768b76732c743c89659ec5dd7a1cdc2a818b7792d389740e50a88';
 
 /** The generated schema value: install takes it to create the tables and register the set. */
 export const SCHEMA: Schema = { manifestText: MANIFEST_TEXT, manifestHash: MANIFEST_HASH };
@@ -608,7 +620,7 @@ export class Author extends Model {
   declare andSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare andServiceSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare andStartDt: (...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) => this;
-  declare andSuccessCountLtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
+  declare andSuccessCountLtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
   declare andUuid: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare betweenReadCount: (v0: readonly [number, number]) => this;
   declare betweenStartDt: (v0: readonly [string | Date, string | Date]) => this;
@@ -625,18 +637,18 @@ export class Author extends Model {
   declare gtStartDt: (...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) => this;
   declare isClose: (v0: boolean | readonly (boolean)[] | ValueFunction | Model) => this;
   declare isDisplay: (v0: boolean | readonly (boolean)[] | ValueFunction | Model) => this;
-  declare joinNameWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
-  declare joinReadCountWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
-  declare joinServiceMemberSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
-  declare joinServiceSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
-  declare joinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
-  declare leftJoinServiceRegionSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
-  declare leftJoinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
+  declare joinNameWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
+  declare joinReadCountWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
+  declare joinServiceMemberSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
+  declare joinServiceSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
+  declare joinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
+  declare leftJoinServiceRegionSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
+  declare leftJoinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
   declare likeCount: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare ltReadCount: (v0: number | ValueFunction) => this;
   declare matchSeqWithUserSeq: () => this;
   declare name: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
-  declare nameEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
+  declare nameEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
   declare nePhotoUrl: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare newLabel: (value: unknown) => this;
   declare orGtReadCount: (v0: number | ValueFunction) => this;
@@ -644,17 +656,17 @@ export class Author extends Model {
   declare orderByReadCountDescAndSeqAsc: () => this;
   declare phoneBlindIndex: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare photoUrl: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
-  declare priceEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
+  declare priceEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
   declare readCount: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
-  declare readCountGtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
-  declare readCountLtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
+  declare readCountGtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
+  declare readCountLtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
   declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare serviceMemberSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare serviceRegionSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare serviceSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare startDt: (...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) => this;
   declare userSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
-  declare userSeqEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
+  declare userSeqEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
   declare uuid: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   /** Returns the author relation result; T is its model type. */
   declare getAuthorModels: <T = unknown>() => T;
@@ -1128,6 +1140,77 @@ export class SoftRecord extends Model {
   declare getMembers: <T = unknown>() => T;
   /** Returns the value or relation result named Module. */
   declare getModule: <T = unknown>() => T;
+  /** Returns the value or relation result named Owner. */
+  declare getOwner: <T = unknown>() => T;
+  /** Returns the value or relation result named ReadTotal. */
+  declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
+  /** Returns the service_member relation result; T is its model type. */
+  declare getServiceMemberModels: <T = unknown>() => T;
+  /** Returns the service_region relation result; T is its model type. */
+  declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the value or relation result named StartMonth. */
+  declare getStartMonth: <T = unknown>() => T;
+  /** Returns the user relation result; T is its model type. */
+  declare getUserModel: <T = unknown>() => T;
+  /** Returns the value or relation result named Writer. */
+  declare getWriter: <T = unknown>() => T;
+}
+
+/** A soft_link model or row. */
+export class SoftLink extends Model {
+  public static readonly entity: EntityDef = { model, entity: modelEntity('soft_link'), create: core => new SoftLink(core) };
+  public getSeq(): number { const value = this[CORE].column('seq'); if (typeof value === 'number') return value; throw new TypeError('soft_link.seq holds a value of type ' + typeof value + ', not number'); }
+  public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
+  public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
+  public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
+  public groupBySeq(): this { this[CORE].groupBy.push('seq'); return this; }
+  public keyNameSeq(): this { this[CORE].keyName = 'seq'; return this; }
+  public orderBySeqAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('seq', false, fn); return this; }
+  public orderBySeqDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('seq', true, fn); return this; }
+  public plusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, plus: true }); return this; }
+  public minusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, minus: true }); return this; }
+  public sumSeq(): this { this[CORE].aggregate('sum', 'seq'); return this; }
+  public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
+  public getCode(): string { const value = this[CORE].column('code'); if (typeof value === 'string') return value; throw new TypeError('soft_link.code holds a value of type ' + typeof value + ', not string'); }
+  public setCode(value: string): this { this[CORE].setValue('code', value); return this; }
+  public addColumnCode(): this { this[CORE].addColumn('code'); return this; }
+  public removeColumnCode(): this { this[CORE].removeColumn('code'); return this; }
+  public groupByCode(): this { this[CORE].groupBy.push('code'); return this; }
+  public keyNameCode(): this { this[CORE].keyName = 'code'; return this; }
+  public orderByCodeAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('code', false, fn); return this; }
+  public orderByCodeDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('code', true, fn); return this; }
+  public getLabel(): string { const value = this[CORE].column('label'); if (typeof value === 'string') return value; throw new TypeError('soft_link.label holds a value of type ' + typeof value + ', not string'); }
+  public setLabel(value: string): this { this[CORE].setValue('label', value); return this; }
+  public addColumnLabel(): this { this[CORE].addColumn('label'); return this; }
+  public removeColumnLabel(): this { this[CORE].removeColumn('label'); return this; }
+  public groupByLabel(): this { this[CORE].groupBy.push('label'); return this; }
+  public keyNameLabel(): this { this[CORE].keyName = 'label'; return this; }
+  public orderByLabelAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('label', false, fn); return this; }
+  public orderByLabelDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('label', true, fn); return this; }
+  public getDeletedAt(): string | null { const value = this[CORE].column('deleted_at'); if (value === null || typeof value === 'string') return value; throw new TypeError('soft_link.deleted_at holds a value of type ' + typeof value + ', not string | null'); }
+  public setDeletedAt(value: string | null): this { this[CORE].setValue('deleted_at', value); return this; }
+  public addColumnDeletedAt(): this { this[CORE].addColumn('deleted_at'); return this; }
+  public removeColumnDeletedAt(): this { this[CORE].removeColumn('deleted_at'); return this; }
+  public groupByDeletedAt(): this { this[CORE].groupBy.push('deleted_at'); return this; }
+  public keyNameDeletedAt(): this { this[CORE].keyName = 'deleted_at'; return this; }
+  public orderByDeletedAtAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('deleted_at', false, fn); return this; }
+  public orderByDeletedAtDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('deleted_at', true, fn); return this; }
+  public forceIndexUqSoftLinkCode(): this { this[CORE].index = 'uq_soft_link_code'; return this; }
+
+  declare code: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
+  declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  /** Returns the value or relation result named AesHexEmail. */
+  declare getAesHexEmail: <T = unknown>() => T;
+  /** Returns the author relation result; T is its model type. */
+  declare getAuthorModels: <T = unknown>() => T;
+  /** Returns the value or relation result named Members. */
+  declare getMembers: <T = unknown>() => T;
+  /** Returns the value or relation result named Module. */
+  declare getModule: <T = unknown>() => T;
+  /** Returns the value or relation result named Name. */
+  declare getName: <T = unknown>() => T;
   /** Returns the value or relation result named Owner. */
   declare getOwner: <T = unknown>() => T;
   /** Returns the value or relation result named ReadTotal. */

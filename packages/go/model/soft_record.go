@@ -235,6 +235,16 @@ func (x *SoftRecordModel) Restore() (*SoftRecordModel, error) {
 	return m.(*SoftRecordModel), nil
 }
 
+// RestoreOrCreate restores the soft-deleted row of the set key values, or creates
+// it when no row holds the key; a live row returns CodeRowNotDeleted.
+func (x *SoftRecordModel) RestoreOrCreate() (*SoftRecordModel, error) {
+	m, err := x.m.RestoreOrCreate()
+	if err != nil {
+		return nil, err
+	}
+	return m.(*SoftRecordModel), nil
+}
+
 // Duplication sets the duplicate-key update of the next Create.
 func (x *SoftRecordModel) Duplication(m *SoftRecordModel) *SoftRecordModel {
 	x.m.Duplication(m)

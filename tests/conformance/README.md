@@ -93,16 +93,19 @@ make run-databases TARGETS=conformance-check RECORD=1
 make test-servers-stop
 ```
 `conformance-check` passes `--vector NAME` for each name to `check run` (and so
-to the five runners and their comparison). With `RECORD=1`, which only a full run takes, a database whose
+to the five runners and their comparison). With `RECORD=1`, a database whose
 comparison failed has its five diagnostic outputs passed to `check record`
 for the same names; recording fails when the outputs disagree or when a runner
 failed before any comparison, and after recording the target runs the same
 vectors again against the new expectations. The state contracts of
 `contracts/interfaces.json` read the outputs of every vector, so a run with
-`VECTOR` does not check them and says so; only a run without it does. `RECORD=1` with `VECTOR` is refused: a run of
-selected vectors also records the first-use statements of each connection,
-such as SQLite's `orm__row_lock` table, which the full run makes in an
-earlier vector. Review the diff of the expectation files before committing it.
+`VECTOR` does not check them and says so; only a run without it does. `RECORD=1` with `VECTOR` records only the named
+vectors. A vector that makes a connection's first use of a statement, such as
+SQLite's `orm__row_lock` table, which the full run makes in an earlier vector,
+records that statement too when it runs alone, and the full run would fail on
+it. Its recorded expectation drops that one statement, and the Python
+conformance case, which runs every vector in one pass, confirms the result; a
+run of that vector alone then differs by exactly that statement. Review the diff of the expectation files before committing it.
 
 The `conformance_verification` coverage case of each client runs its
 runner for the read-only vectors `conditions_values` and `relations` and

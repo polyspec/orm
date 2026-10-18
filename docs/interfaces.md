@@ -153,6 +153,7 @@ The shared vector `terminal_by` in `tests/conformance/vectors.json` runs `getsBy
 | `update` | row | row connection or active transaction |
 | `delete` | row or collection | row connection or active transaction |
 | `restore` | the restored row; `NO_ROWS` when no row has the key | model connection or active transaction |
+| `restoreOrCreate` | the restored or created row; `ROW_NOT_DELETED` when a row that is not deleted has the key | model connection or active transaction |
 
 A terminal without a connection outside a transaction returns `CONFIG`. A connection must carry the schema engine used by the generated request; otherwise the terminal returns `CONFIG`.
 

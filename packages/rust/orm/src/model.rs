@@ -1299,6 +1299,35 @@ pub(crate) async fn insert_audit(ex: &Executor, a: &crate::tx::AuditInsert) -> R
 /// is returned unchanged and nothing is written; a missing row returns NO_ROWS.
 /// Reads never return a soft-deleted row: restore names it explicitly.
 pub async fn restore<M: Model>(m: &M) -> Result<M> {
+    let (_, q) = restore_step(m).await?;
+    get_core(&q).await
+}
+
+/// Restores the soft-deleted row of the key that restore picks, or creates it
+/// with the set values when no row holds the key, in one transaction
+/// (docs/usage.md "Restore or create a row"), and returns the row. A row that
+/// holds the key and is not deleted fails with ROW_NOT_DELETED, and nothing is
+/// written.
+pub async fn restore_or_create<M: Model>(m: &M) -> Result<M> {
+    let conn = m.core().conn.clone();
+    in_transaction(&conn, async || {
+        let (restored, q) = restore_step(m).await?;
+        if restored > 0 {
+            return get_core(&q).await;
+        }
+        if get_count(&q).await? > 0 {
+            return Err(Error::Engine { code: codes::ROW_NOT_DELETED.into(), msg: "restoreOrCreate: a row that is not deleted holds the key".into() });
+        }
+        let mut row = m.clone();
+        create(&mut row).await
+    })
+    .await
+}
+
+/// Sends the restore request of the set values and returns the number of rows
+/// it restored and the query of the row by the values of the key that the
+/// planner picked.
+async fn restore_step<M: Model>(m: &M) -> Result<(u64, Core)> {
     let c = m.core();
     let ex = terminal(c)?;
     let ent = c.ent.entity_schema()?;
@@ -1313,7 +1342,7 @@ pub async fn restore<M: Model>(m: &M) -> Result<M> {
         req.ir.set.push(a);
     }
     req.ir.n_params = req.params.len();
-    write(&ex, &c.conn, &mut req).await?;
+    let (_, restored) = write(&ex, &c.conn, &mut req).await?;
     // req is the request as the hook left it, so its key is the key the planner picked.
     let key = crate::engine::validate::restore_key(&ent, &req.ir)?.key;
     let mut q = Core::new(c.ent);
@@ -1321,7 +1350,7 @@ pub async fn restore<M: Model>(m: &M) -> Result<M> {
     for (i, column) in key.iter().enumerate() {
         q.add_eq(if i == 0 { "" } else { "and" }, column, restore_key_value(&own, &req, column)?);
     }
-    get_core(&q).await
+    Ok((restored, q))
 }
 
 /// The value of a key column of the restore request `req` as the hook left it.

@@ -237,6 +237,16 @@ func (x *DayCellModel) Restore() (*DayCellModel, error) {
 	return m.(*DayCellModel), nil
 }
 
+// RestoreOrCreate restores the soft-deleted row of the set key values, or creates
+// it when no row holds the key; a live row returns CodeRowNotDeleted.
+func (x *DayCellModel) RestoreOrCreate() (*DayCellModel, error) {
+	m, err := x.m.RestoreOrCreate()
+	if err != nil {
+		return nil, err
+	}
+	return m.(*DayCellModel), nil
+}
+
 // Duplication sets the duplicate-key update of the next Create.
 func (x *DayCellModel) Duplication(m *DayCellModel) *DayCellModel { x.m.Duplication(m); return x }
 

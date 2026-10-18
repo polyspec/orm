@@ -1096,8 +1096,9 @@ conformance-python-models: python-venv-check
 
 conformance-check/%: RUN_DIR = $(abspath .runtime/run)/conformance-check-$$PPID
 # VECTOR is a space-separated list of vector names to run; each name is given to the check run as --vector (empty means all vectors).
-# If RECORD=1, in a full run without VECTOR, the diagnostic output (.run-*) of each database whose comparison failed is recorded with check record as that database's expected value
-# (with VECTOR it is refused: a run of only the selected vector also records each connection's first-use statements made by earlier vectors in a full run):
+# If RECORD=1, the diagnostic output (.run-*) of each database whose comparison failed is recorded with check record as that database's expected value,
+# for the vectors that VECTOR names or, without VECTOR, for every vector. A vector that makes a connection's first use of a statement that an earlier
+# vector makes in a full run (SQLite's orm__row_lock table) records it too when run alone; its expectation drops that statement (tests/conformance/README.md).
 # record writes only when all five outputs match, and fails if it cannot record, or if the runner fails and leaves no diagnostic output.
 # After recording, the same vector runs again and is compared with the new expected value. The state contract of contracts/interfaces.json
 # reads the output of every vector, so with VECTOR it does not check and prints that it does not.
@@ -1112,7 +1113,6 @@ conformance-check: conformance-counter-check conformance-result-check conformanc
 conformance-check/python: lease-tool python-venv-check conformance-python-models
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.testcase packages.python.tests.conformance_mysql packages.python.tests.conformance_postgres packages.python.tests.conformance_sqlite
 conformance-check/run: lease-tool conformance-python-models
-	$(if $(and $(VECTOR),$(RECORD)),@echo "conformance-check: RECORD=1 records only a full run; a run of selected vectors also records the first-use statements of each connection that the full run makes in an earlier vector" >&2; exit 2)
 	$(HOLD_TYPESCRIPT)
 	rm -rf $(RUN_DIR)
 	$(WITH_TEST_ENV) export ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) && if $(CONFORMANCE_RUN); then :; \

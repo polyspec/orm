@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 polyspec_orm::models!();
 
 use model::{
-    Author, BindCell, ClockCell, CompositeAccount, DayCell, HexCell, Service, ServiceMember, ServiceRegion, SoftRecord, Task, TimeCell, UpsertCell, User,
+    Author, BindCell, ClockCell, CompositeAccount, DayCell, HexCell, Service, ServiceMember, ServiceRegion, SoftLink, SoftRecord, Task, TimeCell, UpsertCell, User,
     UuidCell,
 };
 use polyspec_orm::{AesKeyring, Collection, Db, Model, Null, Param};
@@ -759,6 +759,40 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             ended?;
         }
         let left = SoftRecord::new().connect(db).name("restore").get_count().await?;
+        let mut result = result.into_inner().unwrap();
+        result.insert("left".into(), json!(left));
+        Ok::<Value, polyspec_orm::Error>(Value::Object(result))
+    });
+    run!("restore_or_create", async {
+        // restore_or_create restores the soft-deleted row of its key, refuses a live row with ROW_NOT_DELETED and creates a
+        // missing key (docs/usage.md "Restore or create a row"). The transaction rolls back at the end.
+        let result = Mutex::new(Map::new());
+        let ended: polyspec_orm::Result<()> = db
+            .transaction(async || {
+                let mut created = SoftLink::new().set_code("roc-1").set_label("first").create().await?;
+                mask(shared, &[created.get_seq().unwrap()], &[]);
+                let deleted_at = chrono::NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(3, 4, 5).unwrap();
+                created = created.set_deleted_at(txt(deleted_at))?;
+                created.update(false).await?;
+                let restored = SoftLink::new().set_code("roc-1").set_label("second").restore_or_create().await?;
+                let mut restored_row = restored.to_array()?;
+                restored_row["seq"] = json!("$SEQ");
+                result.lock().unwrap().insert("restored".into(), restored_row);
+                let live = SoftLink::new().set_code("roc-1").set_label("third").restore_or_create().await;
+                result.lock().unwrap().insert("live".into(), code_of(live));
+                let made = SoftLink::new().set_code("roc-2").set_label("new").restore_or_create().await?;
+                mask(shared, &[made.get_seq().unwrap()], &[]);
+                let mut created_row = made.to_array()?;
+                created_row["seq"] = json!("$SEQ");
+                result.lock().unwrap().insert("created".into(), created_row);
+                Err(polyspec_orm::Error::Config("boom".into()))
+            })
+            .retry(0)
+            .await;
+        if !matches!(&ended, Err(polyspec_orm::Error::Config(m)) if m == "boom") {
+            ended?;
+        }
+        let left = SoftLink::new().connect(db).get_count().await?;
         let mut result = result.into_inner().unwrap();
         result.insert("left".into(), json!(left));
         Ok::<Value, polyspec_orm::Error>(Value::Object(result))

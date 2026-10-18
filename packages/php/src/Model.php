@@ -1964,6 +1964,39 @@ abstract class Model implements \JsonSerializable
      */
     public function restore(): static
     {
+        return $this->restoreStep()[1]->get();
+    }
+
+    /**
+     * Restores the soft-deleted row of the key that restore() picks, or creates it with the set values when no row holds the
+     * key, in one transaction (docs/usage.md "Restore or create a row"), and returns the row. A row that holds the key and is
+     * not deleted fails with ROW_NOT_DELETED, and nothing is written.
+     */
+    public function restoreOrCreate(): static
+    {
+        $row = null;
+        Db::inTransaction($this->conn, function () use (&$row): void {
+            [$restored, $q] = $this->restoreStep();
+            if ($restored > 0) {
+                $row = $q->get();
+                return;
+            }
+            if ($q->getCount() > 0) {
+                throw new OrmException(Code::ROW_NOT_DELETED, 'restoreOrCreate: a row that is not deleted holds the key');
+            }
+            $row = $this->create();
+        });
+        return $row;
+    }
+
+    /**
+     * Sends the restore request of the set values and returns the number of rows it restored and the query of the row by
+     * the values of the key that the planner picked.
+     *
+     * @return array{int, static}
+     */
+    private function restoreStep(): array
+    {
         [$db, $frame] = $this->executor();
         $r = (new static())->build('restore', $db);
         // $own maps the parameter of each value the model sets to its column; the hook adds parameters after them.
@@ -1978,7 +2011,7 @@ abstract class Model implements \JsonSerializable
         $keys = [];
         $args = [];
         // The key is read from the request as the hook left it, before the planner renumbers its parameters, as Go reads it.
-        $db->writeOf($frame, $r, function (Request $hooked) use ($own, &$keys, &$args): void {
+        [, $restored] = $db->writeOf($frame, $r, function (Request $hooked) use ($own, &$keys, &$args): void {
             $key = Validator::restoreKey(static::meta(), $hooked->ir)['key'];
             foreach ($key as $column) {
                 $keys[] = ['conn' => $keys === [] ? '' : 'and', 'op' => '', 'column' => $column, 'columns' => [], 'compare' => ''];
@@ -1988,7 +2021,7 @@ abstract class Model implements \JsonSerializable
         $q = new static();
         $q->conn = $this->conn;
         $q->whereChain('', $keys, $args);
-        return $q->get();
+        return [$restored, $q];
     }
 
     /**

@@ -61,7 +61,7 @@ final class Author extends Model
             ],
             'unique' => ['uq_author_uuid' => ['uuid']],
             'indexes' => ['ik' => ['service_region_seq', 'is_close', 'is_display', 'is_allday'], 'ix_author_service_member' => ['service_member_seq'], 'ix_email_blind_index' => ['email_blind_index'], 'ix_phone_blind_index' => ['phone_blind_index'], 'ix_service' => ['service_seq', 'is_close'], 'ix_user' => ['user_seq', 'is_close']],
-            'manifest_hash' => 'sha256:a26e0390c07bd97f6907d6d4588636778e3073086eceb3cd7bcf7e693f875e30',
+            'manifest_hash' => 'sha256:18b7c53c3dd768b76732c743c89659ec5dd7a1cdc2a818b7792d389740e50a88',
         ];
     }
 

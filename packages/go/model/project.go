@@ -205,6 +205,16 @@ func (x *ProjectModel) Restore() (*ProjectModel, error) {
 	return m.(*ProjectModel), nil
 }
 
+// RestoreOrCreate restores the soft-deleted row of the set key values, or creates
+// it when no row holds the key; a live row returns CodeRowNotDeleted.
+func (x *ProjectModel) RestoreOrCreate() (*ProjectModel, error) {
+	m, err := x.m.RestoreOrCreate()
+	if err != nil {
+		return nil, err
+	}
+	return m.(*ProjectModel), nil
+}
+
 // Duplication sets the duplicate-key update of the next Create.
 func (x *ProjectModel) Duplication(m *ProjectModel) *ProjectModel { x.m.Duplication(m); return x }
 

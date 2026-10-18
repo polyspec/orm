@@ -233,6 +233,16 @@ func (x *ServiceRegionModel) Restore() (*ServiceRegionModel, error) {
 	return m.(*ServiceRegionModel), nil
 }
 
+// RestoreOrCreate restores the soft-deleted row of the set key values, or creates
+// it when no row holds the key; a live row returns CodeRowNotDeleted.
+func (x *ServiceRegionModel) RestoreOrCreate() (*ServiceRegionModel, error) {
+	m, err := x.m.RestoreOrCreate()
+	if err != nil {
+		return nil, err
+	}
+	return m.(*ServiceRegionModel), nil
+}
+
 // Duplication sets the duplicate-key update of the next Create.
 func (x *ServiceRegionModel) Duplication(m *ServiceRegionModel) *ServiceRegionModel {
 	x.m.Duplication(m)

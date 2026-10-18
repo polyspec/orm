@@ -184,6 +184,12 @@ export abstract class Model implements ModelLike {
    * fails with NO_ROWS.
    */
   public async restore(): Promise<this> { return modelOf(this, await restore(this[CORE])); }
+  /**
+   * Restores the soft-deleted row of the key that restore() picks, or creates it with the set values when no row holds the
+   * key, in one transaction (docs/usage.md "Restore or create a row"), and returns the row. A row that holds the key and is
+   * not deleted fails with ROW_NOT_DELETED, and nothing is written.
+   */
+  public async restoreOrCreate(): Promise<this> { return modelOf(this, await restoreOrCreate(this[CORE])); }
 
   public toArray(): Record<string, unknown> { return toArray(this[CORE]); }
   public toJSON(): Record<string, unknown> { return toJson(this[CORE]); }
@@ -843,6 +849,26 @@ async function deleteOne(c: Core, recursive: boolean): Promise<void> {
  * does not read the deleted row.
  */
 async function restore(c: Core): Promise<Model> {
+  return (await restoreStep(c)).query.get();
+}
+
+/** restoreOrCreate of a model: the restore step, then the restored row, ROW_NOT_DELETED for a live row, or the created row. */
+async function restoreOrCreate(c: Core): Promise<Model> {
+  let row: Model | undefined;
+  await inTransaction(c.conn, async () => {
+    const { restored, query } = await restoreStep(c);
+    if (restored > 0) {
+      row = await query.get();
+      return;
+    }
+    if (await query.getCount() > 0) throw new OrmError(codes.ROW_NOT_DELETED, 'restoreOrCreate: a row that is not deleted holds the key');
+    row = await create(c);
+  });
+  return present(row, 'restoreOrCreate row');
+}
+
+/** Sends the restore request of the set values and returns the number of rows it restored and the query of the row by the values of the key the planner picked. */
+async function restoreStep(c: Core): Promise<{ restored: number; query: Model }> {
   const ex = terminal(c);
   const schema = c.ent.entity;
   const r = newModel(c.ent).build('restore');
@@ -855,14 +881,14 @@ async function restore(c: Core): Promise<Model> {
   // The key is read from the request as the hook left it, before the planner renumbers its parameters, as Go reads it.
   let key: readonly string[] = [];
   let args: unknown[] = [];
-  await write(ex, r.finish(), r.params, hooked => {
+  const { affected } = await write(ex, r.finish(), r.params, hooked => {
     key = restoreKey(schema, hooked.request).key;
     args = key.map(column => restoreKeyValue(own, hooked, column));
   });
   const q = newModel(c.ent);
   q.conn = c.conn;
   q.whereChain('', key.map((column, i) => ({ conn: i > 0 ? 'and' : '', op: '', column, columns: [], compare: '' })), args);
-  return asModel(q.self).get();
+  return { restored: affected, query: asModel(q.self) };
 }
 
 /**

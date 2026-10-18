@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- `restoreOrCreate()` restores the soft-deleted row of a key, or creates it, in one transaction, in the five clients; a live row of the key fails with `ROW_NOT_DELETED`. `RECORD=1` of the conformance check also records only the vectors that `VECTOR` names (T200).
 - The element type and behaviour tests read plans.json through the one PHP reader of it (T182-0-1-4).
 - The PHP symbol snapshot records the element type check Graph, whose public symbols are declared as PHP-only (T182-0-1-3).
 - The interface contract test copies every stub of the PHP extension, so the recorded Code class is checked again (T182-1-1).

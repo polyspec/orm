@@ -127,6 +127,20 @@ table soft_record {
   }
 }
 
+# A soft-deleted row keyed by a unique code that is not its identity: restoreOrCreate restores or creates it by the code
+# (conformance vector restore_or_create).
+table soft_link {
+  seq i64 identity
+  code varchar(32)
+  label varchar(64)
+  deleted_at datetime(6) null
+  primary key (seq)
+  unique uq_soft_link_code (code)
+  settings {
+    soft_delete deleted_at
+  }
+}
+
 table account {
   seq i64 identity
   name varchar(191)

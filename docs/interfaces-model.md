@@ -28,6 +28,7 @@ classDiagram
         save()
         delete()
         restore()
+        restoreOrCreate()
         toArray()
     }
     class Core {

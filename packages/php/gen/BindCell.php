@@ -29,7 +29,7 @@ final class BindCell extends Model
             ],
             'unique' => [],
             'indexes' => [],
-            'manifest_hash' => 'sha256:a26e0390c07bd97f6907d6d4588636778e3073086eceb3cd7bcf7e693f875e30',
+            'manifest_hash' => 'sha256:18b7c53c3dd768b76732c743c89659ec5dd7a1cdc2a818b7792d389740e50a88',
         ];
     }
 

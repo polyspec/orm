@@ -1,5 +1,5 @@
 <!-- doc-id: tests-conformance-readme -->
-<!-- source-sha256: ffa8de219beb3cdeaae5dca140bdbe98fedbf29d7a6f5340277ccedb358db4ec -->
+<!-- source-sha256: bca929334f3ef4826091a5e65132f2106b612a33f43e676e10815011e5723b18 -->
 # 적합성 벡터
 
 한 문서와 다섯 실행기를 사용한다. 각 벡터는 Go, PHP, Rust, TypeScript, Python으로 같은 체인을 작성한다. 각 실행기는 데이터베이스에서 체인을 실행하고 다음 JSON을 출력한다.
@@ -57,7 +57,7 @@ make run-databases TARGETS=conformance-check VECTOR="creates_and_save write_cycl
 make run-databases TARGETS=conformance-check RECORD=1
 make test-servers-stop
 ```
-`conformance-check`는 이름마다 `--vector NAME`을 `check run`에 넘긴다(그래서 다섯 실행기와 그 비교에도 넘어간다). 전체 실행만 받는 `RECORD=1`이면 비교가 실패한 데이터베이스의 다섯 진단 출력을 같은 이름으로 `check record`에 넘긴다. 출력이 서로 다르거나 비교 전에 실행기가 실패했으면 기록은 실패하고, 기록한 뒤 target은 같은 vector를 새 기대값으로 다시 실행한다. `contracts/interfaces.json`의 state contract는 모든 vector의 출력을 읽으므로 `VECTOR`가 있는 실행은 그것을 검사하지 않고 그렇다고 출력하며, `VECTOR`가 없는 실행만 검사한다. `VECTOR`와 함께 쓴 `RECORD=1`은 거부한다: 선택한 vector만의 실행은 SQLite의 `orm__row_lock` table처럼 전체 실행이라면 앞의 vector가 만드는 각 연결의 첫 사용 statement도 기록한다. 기대값 파일의 diff는 커밋 전에 검토한다.
+`conformance-check`는 이름마다 `--vector NAME`을 `check run`에 넘긴다(그래서 다섯 실행기와 그 비교에도 넘어간다). `RECORD=1`이면 비교가 실패한 데이터베이스의 다섯 진단 출력을 같은 이름으로 `check record`에 넘긴다. 출력이 서로 다르거나 비교 전에 실행기가 실패했으면 기록은 실패하고, 기록한 뒤 target은 같은 vector를 새 기대값으로 다시 실행한다. `contracts/interfaces.json`의 state contract는 모든 vector의 출력을 읽으므로 `VECTOR`가 있는 실행은 그것을 검사하지 않고 그렇다고 출력하며, `VECTOR`가 없는 실행만 검사한다. `VECTOR`와 함께 쓴 `RECORD=1`은 이름 붙은 vector만 기록한다. SQLite의 `orm__row_lock` table처럼 전체 실행이라면 앞의 vector가 만드는 연결의 첫 사용 statement를 만드는 vector는 그것만 실행하면 그 statement도 기록하고, 전체 실행이 그 vector에서 실패한다. 그 기록된 기대값에서 그 statement 하나를 빼고, 모든 vector를 한 번에 실행하는 Python conformance case가 그 결과를 확인한다. 그러면 그 vector만의 실행은 정확히 그 statement만큼 다르다. 기대값 파일의 diff는 커밋 전에 검토한다.
 
 각 client의 `conformance_verification` coverage case는 자기 실행기로 읽기 전용 vector `conditions_values`와 `relations`를 실행하고 각 결과를 선택된 데이터베이스의 기록된 기대값과 비교한다.
 

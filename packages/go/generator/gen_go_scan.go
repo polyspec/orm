@@ -256,7 +256,7 @@ func (g *goGen) modelOfExpr(info *types.Info, e ast.Expr, modelPath string) *goM
 // query results, and the listed methods end a chain.
 func returnsModel(name string) bool {
 	switch name {
-	case "Orm_", "MarshalJSON", "ToArray", "Create", "Creates", "Update", "Save", "Delete", "Restore":
+	case "Orm_", "MarshalJSON", "ToArray", "Create", "Creates", "Update", "Save", "Delete", "Restore", "RestoreOrCreate":
 		return false
 	}
 	return !strings.HasPrefix(name, "Get")

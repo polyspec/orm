@@ -64,7 +64,7 @@ DSN, MODELS_DIR, SELECTED = None, None, []
 bench = Author = CompositeAccount = Service = ServiceMember = ServiceRegion = None
 User = SoftRecord = Task = HexCell = TimeCell = DayCell = ClockCell = UpsertCell = (
     UuidCell
-) = BindCell = None
+) = BindCell = SoftLink = None
 
 log = []
 transactions = {}
@@ -287,7 +287,8 @@ def load_models():
         ClockCell, \
         UpsertCell, \
         UuidCell, \
-        BindCell
+        BindCell, \
+        SoftLink
     # The models generated from contracts/fixtures/bench/bench.dbs are compiled from their source and
     # registered as models; the client itself is the one installed into the interpreter.
     source = os.path.join(MODELS_DIR, "models.py")
@@ -317,6 +318,7 @@ def load_models():
     UpsertCell = bench.UpsertCell
     UuidCell = bench.UuidCell
     BindCell = bench.BindCell
+    SoftLink = bench.SoftLink
 
 
 def main():
@@ -1020,6 +1022,45 @@ def main():
         return result
 
     run("restore", restore)
+
+    def restore_or_create():
+        # restore_or_create restores the soft-deleted row of its key, refuses a live row with ROW_NOT_DELETED and creates a
+        # missing key (docs/usage.md "Restore or create a row"). The transaction rolls back at the end.
+        class Boom(Exception):
+            pass
+
+        result = {}
+        failed = None
+        try:
+
+            def body():
+                created = SoftLink().set_code("roc-1").set_label("first").create()
+                mask([created.get_seq()])
+                created.set_deleted_at("2026-01-02 03:04:05.000000").update()
+                restored = (
+                    SoftLink().set_code("roc-1").set_label("second").restore_or_create().to_array()
+                )
+                restored["seq"] = "$SEQ"
+                result["restored"] = restored
+                result["live"] = caught(
+                    lambda: SoftLink().set_code("roc-1").set_label("third").restore_or_create()
+                )
+                made = SoftLink().set_code("roc-2").set_label("new").restore_or_create()
+                mask([made.get_seq()])
+                created_row = made.to_array()
+                created_row["seq"] = "$SEQ"
+                result["created"] = created_row
+                raise Boom()
+
+            db.transaction(body, {"retry": 0})
+        except Boom as error:
+            failed = error
+        if failed is None:
+            raise RuntimeError("restore_or_create transaction did not roll back")
+        result["left"] = SoftLink().connect(db).get_count()
+        return result
+
+    run("restore_or_create", restore_or_create)
 
     def joins_soft_deleted():
         # A joined soft_record row that is soft deleted meets no parent: the inner join drops the parent and the left

@@ -239,6 +239,16 @@ func (x *CompositeAccountModel) Restore() (*CompositeAccountModel, error) {
 	return m.(*CompositeAccountModel), nil
 }
 
+// RestoreOrCreate restores the soft-deleted row of the set key values, or creates
+// it when no row holds the key; a live row returns CodeRowNotDeleted.
+func (x *CompositeAccountModel) RestoreOrCreate() (*CompositeAccountModel, error) {
+	m, err := x.m.RestoreOrCreate()
+	if err != nil {
+		return nil, err
+	}
+	return m.(*CompositeAccountModel), nil
+}
+
 // Duplication sets the duplicate-key update of the next Create.
 func (x *CompositeAccountModel) Duplication(m *CompositeAccountModel) *CompositeAccountModel {
 	x.m.Duplication(m)

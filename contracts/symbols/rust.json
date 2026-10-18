@@ -655,6 +655,10 @@
     "exported": false,
     "signature": "pub async fn restore (\u0026 self) -\u003e polyspec_orm :: Result \u003c Self \u003e"
   },
+  "packages/rust/build/src/fixed.rs.txt::T::restore_or_create": {
+    "exported": false,
+    "signature": "pub async fn restore_or_create (\u0026 self) -\u003e polyspec_orm :: Result \u003c Self \u003e"
+  },
   "packages/rust/build/src/fixed.rs.txt::T::save": {
     "exported": false,
     "signature": "pub async fn save (\u0026 mut self) -\u003e polyspec_orm :: Result \u003c Self \u003e"
@@ -6718,6 +6722,14 @@
   "packages/rust/orm/src/model.rs::restore_key_value": {
     "exported": false,
     "signature": " fn restore_key_value (own : \u0026 HashMap \u003c usize , \u0026 SetSpec \u003e , req : \u0026 Req , column : \u0026 str) -\u003e Result \u003c Param \u003e"
+  },
+  "packages/rust/orm/src/model.rs::restore_or_create": {
+    "exported": true,
+    "signature": "pub async fn restore_or_create \u003c M : Model \u003e (m : \u0026 M) -\u003e Result \u003c M \u003e"
+  },
+  "packages/rust/orm/src/model.rs::restore_step": {
+    "exported": false,
+    "signature": " async fn restore_step \u003c M : Model \u003e (m : \u0026 M) -\u003e Result \u003c (u64 , Core) \u003e"
   },
   "packages/rust/orm/src/model.rs::root_in_parts": {
     "exported": false,

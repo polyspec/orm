@@ -18,6 +18,7 @@ use Polyspec\Orm\Tests\Model\TimeCell;
 use Polyspec\Orm\Tests\Model\Service;
 use Polyspec\Orm\Tests\Model\ServiceMember;
 use Polyspec\Orm\Tests\Model\ServiceRegion;
+use Polyspec\Orm\Tests\Model\SoftLink;
 use Polyspec\Orm\Tests\Model\SoftRecord;
 use Polyspec\Orm\Tests\Model\Task;
 use Polyspec\Orm\Tests\Model\UpsertCell;
@@ -515,6 +516,36 @@ vector('restore', function () use ($db): array {
         }
     }
     $result['left'] = (new SoftRecord)($db)->name('restore')->getCount();
+    return $result;
+});
+vector('restore_or_create', function () use ($db): array {
+    // restoreOrCreate restores the soft-deleted row of its key, refuses a live row with ROW_NOT_DELETED and creates a
+    // missing key (docs/usage.md "Restore or create a row"). The transaction ends with a rollback, so the database is unchanged.
+    $boom = new RuntimeException('boom');
+    $result = [];
+    try {
+        $db->transaction(function () use ($boom, &$result): void {
+            $created = (new SoftLink)->setCode('roc-1')->setLabel('first')->create();
+            mask([$created->getSeq()]);
+            $created->setDeletedAt('2026-01-02 03:04:05.000000')->update();
+            $restored = (new SoftLink)->setCode('roc-1')->setLabel('second')->restoreOrCreate()->toArray();
+            $restored['seq'] = '$SEQ';
+            $result['restored'] = $restored;
+            $result['live'] = caught(fn() => (new SoftLink)->setCode('roc-1')->setLabel('third')->restoreOrCreate());
+            $made = (new SoftLink)->setCode('roc-2')->setLabel('new')->restoreOrCreate();
+            mask([$made->getSeq()]);
+            $createdRow = $made->toArray();
+            $createdRow['seq'] = '$SEQ';
+            $result['created'] = $createdRow;
+            throw $boom;
+        }, retry: 0);
+        throw new RuntimeException('the restore_or_create transaction committed');
+    } catch (RuntimeException $e) {
+        if ($e !== $boom) {
+            throw $e;
+        }
+    }
+    $result['left'] = (new SoftLink)($db)->getCount();
     return $result;
 });
 

@@ -513,6 +513,13 @@ class Model:
 
         return restore_row(self.core)
 
+    def restore_or_create(self) -> Self:
+        """Restores the soft-deleted row of the key that restore picks, or creates it when no row holds the key; a live row
+        that holds it fails with ROW_NOT_DELETED and nothing is written (docs/usage.md "Restore or create a row")."""
+        from polyspec.orm.model_exec import restore_or_create
+
+        return restore_or_create(self.core)
+
     def to_array(self) -> dict:
         """The selected columns, new values, and relation values, in row order."""
         out = {}

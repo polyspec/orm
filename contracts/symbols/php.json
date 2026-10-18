@@ -3247,6 +3247,174 @@
     "exported": true,
     "signature": "public function sumServiceSeq(): static"
   },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Tests\\Model\\SoftLink extends Polyspec\\Orm\\Model implements JsonSerializable uses "
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::addColumnCode": {
+    "exported": true,
+    "signature": "public function addColumnCode(): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::addColumnDeletedAt": {
+    "exported": true,
+    "signature": "public function addColumnDeletedAt(): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::addColumnLabel": {
+    "exported": true,
+    "signature": "public function addColumnLabel(): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::addColumnSeq": {
+    "exported": true,
+    "signature": "public function addColumnSeq(): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::avgSeq": {
+    "exported": true,
+    "signature": "public function avgSeq(): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::code": {
+    "exported": true,
+    "signature": "public function code(mixed $value, mixed ...$compared): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::deletedAt": {
+    "exported": true,
+    "signature": "public function deletedAt(mixed $value, mixed ...$compared): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::getCode": {
+    "exported": true,
+    "signature": "public function getCode(): string"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::getDeletedAt": {
+    "exported": true,
+    "signature": "public function getDeletedAt(): ?DateTimeImmutable"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::getLabel": {
+    "exported": true,
+    "signature": "public function getLabel(): string"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::getSeq": {
+    "exported": true,
+    "signature": "public function getSeq(): int"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::groupByCode": {
+    "exported": true,
+    "signature": "public function groupByCode(): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::groupByDeletedAt": {
+    "exported": true,
+    "signature": "public function groupByDeletedAt(): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::groupByLabel": {
+    "exported": true,
+    "signature": "public function groupByLabel(): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::groupBySeq": {
+    "exported": true,
+    "signature": "public function groupBySeq(): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::keyNameCode": {
+    "exported": true,
+    "signature": "public function keyNameCode(): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::keyNameDeletedAt": {
+    "exported": true,
+    "signature": "public function keyNameDeletedAt(): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::keyNameLabel": {
+    "exported": true,
+    "signature": "public function keyNameLabel(): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::keyNameSeq": {
+    "exported": true,
+    "signature": "public function keyNameSeq(): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::label": {
+    "exported": true,
+    "signature": "public function label(mixed $value, mixed ...$compared): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::meta": {
+    "exported": true,
+    "signature": "public static function meta(): array"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::minusSeq": {
+    "exported": true,
+    "signature": "public function minusSeq(int|float $n): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::orderByCodeAsc": {
+    "exported": true,
+    "signature": "public function orderByCodeAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::orderByCodeDesc": {
+    "exported": true,
+    "signature": "public function orderByCodeDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::orderByDeletedAtAsc": {
+    "exported": true,
+    "signature": "public function orderByDeletedAtAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::orderByDeletedAtDesc": {
+    "exported": true,
+    "signature": "public function orderByDeletedAtDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::orderByLabelAsc": {
+    "exported": true,
+    "signature": "public function orderByLabelAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::orderByLabelDesc": {
+    "exported": true,
+    "signature": "public function orderByLabelDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::orderBySeqAsc": {
+    "exported": true,
+    "signature": "public function orderBySeqAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::orderBySeqDesc": {
+    "exported": true,
+    "signature": "public function orderBySeqDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::plusSeq": {
+    "exported": true,
+    "signature": "public function plusSeq(int|float $n): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::removeColumnCode": {
+    "exported": true,
+    "signature": "public function removeColumnCode(): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::removeColumnDeletedAt": {
+    "exported": true,
+    "signature": "public function removeColumnDeletedAt(): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::removeColumnLabel": {
+    "exported": true,
+    "signature": "public function removeColumnLabel(): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::removeColumnSeq": {
+    "exported": true,
+    "signature": "public function removeColumnSeq(): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::seq": {
+    "exported": true,
+    "signature": "public function seq(mixed $value, mixed ...$compared): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::setCode": {
+    "exported": true,
+    "signature": "public function setCode(string $v): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::setDeletedAt": {
+    "exported": true,
+    "signature": "public function setDeletedAt(?string $v): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::setLabel": {
+    "exported": true,
+    "signature": "public function setLabel(string $v): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::setSeq": {
+    "exported": true,
+    "signature": "public function setSeq(int $v): static"
+  },
+  "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink::sumSeq": {
+    "exported": true,
+    "signature": "public function sumSeq(): static"
+  },
   "packages/php/gen/SoftRecord.php::Polyspec\\Orm\\Tests\\Model\\SoftRecord": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Tests\\Model\\SoftRecord extends Polyspec\\Orm\\Model implements JsonSerializable uses "
@@ -9562,6 +9730,14 @@
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::restoreKeyValue": {
     "exported": false,
     "signature": "private function restoreKeyValue(Polyspec\\Orm\\Request $r, array $own, string $column): mixed"
+  },
+  "packages/php/src/Model.php::Polyspec\\Orm\\Model::restoreOrCreate": {
+    "exported": true,
+    "signature": "public function restoreOrCreate(): static"
+  },
+  "packages/php/src/Model.php::Polyspec\\Orm\\Model::restoreStep": {
+    "exported": false,
+    "signature": "private function restoreStep(): array"
   },
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::resultName": {
     "exported": false,

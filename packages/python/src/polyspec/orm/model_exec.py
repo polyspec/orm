@@ -702,6 +702,34 @@ def restore(c: Core):
     1.5): if those cover a primary key, it is used; otherwise, the first unique key in name order. The key column's set value is the condition, and other set
     values are written as new values into the restored row, as in an update. The row is then read by that key's value. A row that was not deleted
     is returned unchanged without writing anything, and a missing row is NO_ROWS."""
+    return _restore_step(c)[1].get()
+
+
+def restore_or_create(c: Core):
+    """Restores the soft-deleted row of the key that restore picks, or creates it with the set values when no row holds the
+    key, in one transaction (docs/usage.md "Restore or create a row"), and returns the row. A row that holds the key and is
+    not deleted fails with ROW_NOT_DELETED, and nothing is written."""
+    found = {}
+
+    def run():
+        restored, q = _restore_step(c)
+        if restored > 0:
+            found["row"] = q.get()
+            return
+        if q.get_count() > 0:
+            raise OrmError(
+                codes.ROW_NOT_DELETED,
+                "restoreOrCreate: a row that is not deleted holds the key",
+            )
+        found["row"] = create(c)
+
+    _in_transaction(c.conn, run)
+    return found["row"]
+
+
+def _restore_step(c: Core):
+    """Sends the restore request of the set values and returns the number of rows it restored and the query of the row
+    by the values of the key that the planner picked."""
     ex = _terminal(c)
     schema = c.ent.entity
     request = _new_model(c.ent).build("restore")
@@ -722,7 +750,7 @@ def restore(c: Core):
         found["key"] = restore_key(schema, hooked)["key"]
         found["args"] = [_restore_key_value(own, written, column) for column in found["key"]]
 
-    write(ex, request.ir, request.params, read_key)
+    restored = write(ex, request.ir, request.params, read_key)["affected"]
     key = found["key"]
     q = _new_model(c.ent)
     q.conn = c.conn
@@ -744,7 +772,7 @@ def restore(c: Core):
         ],
         found["args"],
     )
-    return q.self.get()
+    return restored, q.self
 
 
 def _restore_key_value(own: dict, written: dict, column: str):

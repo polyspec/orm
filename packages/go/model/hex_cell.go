@@ -221,6 +221,16 @@ func (x *HexCellModel) Restore() (*HexCellModel, error) {
 	return m.(*HexCellModel), nil
 }
 
+// RestoreOrCreate restores the soft-deleted row of the set key values, or creates
+// it when no row holds the key; a live row returns CodeRowNotDeleted.
+func (x *HexCellModel) RestoreOrCreate() (*HexCellModel, error) {
+	m, err := x.m.RestoreOrCreate()
+	if err != nil {
+		return nil, err
+	}
+	return m.(*HexCellModel), nil
+}
+
 // Duplication sets the duplicate-key update of the next Create.
 func (x *HexCellModel) Duplication(m *HexCellModel) *HexCellModel { x.m.Duplication(m); return x }
 

@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 41fcaa3485c88b4f296db97cb8c02c7d7424d59e7ee144ad333c2d556db7d7e4 -->
+<!-- source-sha256: 06f3a47bbfa2abcab820a41ea1c82781764d6725aaf8bb4dbd959e36feea7edc -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -154,6 +154,7 @@ classDiagram
 | `update` | 행 | 행 연결 또는 활성 트랜잭션 |
 | `delete` | 행 또는 컬렉션 | 행 연결 또는 활성 트랜잭션 |
 | `restore` | 되돌린 행. 그 key를 가진 행이 없으면 `NO_ROWS` | 모델 연결 또는 활성 트랜잭션 |
+| `restoreOrCreate` | 되돌리거나 만든 행. 지워지지 않은 행이 그 key를 가지면 `ROW_NOT_DELETED` | 모델 연결 또는 활성 트랜잭션 |
 
 트랜잭션 밖에서 연결 없는 종단 작업은 `CONFIG`를 반환한다. 연결은 생성된 요청이 사용하는 스키마 엔진을 가져야 하며, 아니면 종단 작업이 `CONFIG`를 반환한다.
 
