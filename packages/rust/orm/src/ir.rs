@@ -129,8 +129,8 @@ pub struct Relation {
     pub keys: Vec<KeyPair>,
 }
 
-/// relation key의 한 성분: 부모 column `left`와 자식 column `right`가 같다.
-/// composite key의 relation은 성분마다 한 쌍을 key 순서대로 담는다.
+/// One component of a relation key: parent column `left` equals child column `right`.
+/// The relation of a composite key holds one pair per component, in key order.
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct KeyPair {
     pub left: String,

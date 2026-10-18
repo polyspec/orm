@@ -1,6 +1,6 @@
-//! param_uses: 검증한 request의 parameter마다 그 parameter가 채우는 slot의 type과 column이다(docs/protocol.md §5
-//! "Parameters"). Go engine/ir/params_test.go의 TestParamUses와 같은 request와 기대값이다. engine의 함수는
-//! crate 안에서만 보이므로 src/engine/mod.rs가 이 file을 unit test module로 둔다.
+//! param_uses: for each parameter of the validated request, the type and column of the slot the parameter fills (docs/protocol.md §5
+//! "Parameters"). The request and expected values are the same as Go engine/ir/params_test.go's TestParamUses. The engine's function is
+//! visible only inside the crate, so src/engine/mod.rs makes this file a unit test module.
 use super::{param_uses, validate, ParamUse};
 use crate::ir;
 use crate::schema::Manifest;
@@ -32,7 +32,7 @@ fn manifest() -> Manifest {
     Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap()
 }
 
-/// 비교를 쉽게 하려고 ParamUse를 type과 column 이름으로 줄인 것이다.
+/// ParamUse reduced to type and column names to make comparison easy.
 fn uses_of(uses: Vec<Vec<ParamUse<'_>>>) -> Vec<Vec<(String, String)>> {
     uses.into_iter().map(|list| list.into_iter().map(|u| (u.ty, u.column.map(|c| c.name.clone()).unwrap_or_default())).collect()).collect()
 }

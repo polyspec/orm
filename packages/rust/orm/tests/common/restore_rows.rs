@@ -1,6 +1,6 @@
-//! contracts/fixtures/restore.dbs의 membership과 label을 column 이름으로 읽고 쓰는 model과, soft delete한
-//! 행을 restore로 되돌리는 case(packages/go/orm/restore_test.go의 restoreCase와 같은 순서). restore.rs와
-//! coverage_audit_triggers.rs가 함께 쓴다.
+//! The model that reads and writes the membership and label of contracts/fixtures/restore.dbs by column name, and the
+//! case that restores soft-deleted rows (in the same order as restoreCase in packages/go/orm/restore_test.go). restore.rs and
+//! coverage_audit_triggers.rs both use it.
 
 use std::collections::BTreeMap;
 
@@ -11,11 +11,11 @@ use sqlx::Row;
 pub static SCHEMA: Schema =
     Schema::new(include_str!("../../../../../contracts/fixtures/restore.dbs"), "sha256:a00c2b376b166195f8aabc29de2a2dee20313e5d9d253eeb4f601f55e9ba0aaf");
 
-/// restore fixture가 만드는 table.
+/// The tables the restore fixture creates.
 #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub const TABLES: [&str; 4] = ["audit", "label", "membership", "membership_history"];
 
-/// column 이름으로 값을 읽고 쓰는 model.
+/// A model that reads and writes values by column name.
 macro_rules! row_model {
     ($name:ident, $entity:ident, $entity_name:literal, $columns:expr) => {
         static $entity: Entity =
@@ -60,7 +60,7 @@ macro_rules! row_model {
 row_model!(Membership, MEMBERSHIP, "membership", ["seq", "team_id", "member_id", "note", "audit_seq", "deleted_at"]);
 row_model!(Label, LABEL, "label", ["id", "name", "color", "deleted_at"]);
 
-/// 연결하고 값을 정한 model.
+/// A model that is connected and has its values set.
 fn with<M: Model>(db: &Db, values: &[(&str, Param)]) -> M {
     let mut core = Core::new(M::entity());
     core.connect(db);
@@ -77,7 +77,7 @@ fn code<T>(r: polyspec_orm::Result<T>) -> String {
     }
 }
 
-/// model 값의 이름 순서 표기. MySQL driver가 text를 byte로 돌려주므로 UTF-8 byte는 문자열로 적는다.
+/// The name-ordered notation of model values. The MySQL driver returns text as bytes, so UTF-8 bytes are written as strings.
 fn shown(values: &BTreeMap<String, Val>) -> String {
     let text: BTreeMap<&String, Val> = values
         .iter()
@@ -89,7 +89,7 @@ fn shown(values: &BTreeMap<String, Val>) -> String {
     format!("{text:?}")
 }
 
-/// query의 row를 읽는다. 각 값은 문자열이나 NULL이며 NULL은 "NULL"이다.
+/// Reads the rows of a query. Each value is a string or NULL, and NULL is "NULL".
 pub async fn text_rows(db: &Db, query: &str) -> Vec<Vec<String>> {
     macro_rules! read {
         ($pool:expr) => {{
@@ -111,7 +111,7 @@ pub async fn text_rows(db: &Db, query: &str) -> Vec<Vec<String>> {
     }
 }
 
-/// column을 text로 읽는 SQL 식.
+/// A SQL expression that reads a column as text.
 fn cast_text(driver: &str, column: &str) -> String {
     if driver == "mysql" {
         format!("CAST({column} AS CHAR)")
@@ -120,17 +120,17 @@ fn cast_text(driver: &str, column: &str) -> String {
     }
 }
 
-/// dsn의 database에 restore.dbs를 설치하고 soft delete한 행을 restore로 되돌린다. membership은 unique key
-/// (team_id, member_id)와 exclude (note)를 가진 audit table이고 label은 unique key (name)를 가진 audit 없는
-/// table이다. 확인하는 것:
-///   - soft delete한 행의 unique key 값은 남으므로 같은 key의 insert는 DUPLICATE_KEY다.
-///   - 기본 read는 지운 행을 읽지 않는다.
-///   - restore는 primary key나 unique key 하나의 set 값으로 지운 행을 찾아 soft delete column을 NULL로 쓰는
-///     update를 하고, 되돌린 행을 돌려준다. audit table이면 transaction의 audit 기록 key를 쓰고 trigger가
-///     그 update를 기록하며, audit이 없으면 CONFIG다.
-///   - 지워지지 않은 행의 restore는 아무것도 쓰지 않고 그 행을 돌려주며, 없는 행의 restore는 NO_ROWS다.
-///   - key 밖의 set 값은 되돌리는 행에 함께 쓰는 새 값이며, 지워지지 않은 행에는 쓰지 않는다.
-///   - key의 값이 없는 restore와 set 값이 없는 restore는 statement 없이 IR_INVALID다.
+/// Installs restore.dbs in the dsn's database and restores soft-deleted rows. membership has a unique key
+/// (team_id, member_id) and an exclude (note), as an audit table, and label is a table without audit that has a unique key (name),
+/// table. It checks:
+///   - the unique key values of soft-deleted rows remain, so inserting the same key is DUPLICATE_KEY.
+///   - the default read does not read deleted rows.
+///   - restore finds the deleted row by the set values of one primary key or unique key and writes the soft delete column as NULL,
+///     via an update, and returns the restored row. On an audit table it writes the transaction's audit record key, and the trigger
+///     records that update; without audit it is CONFIG.
+///   - restoring a row that is not deleted writes nothing and returns that row; restoring a row that does not exist is NO_ROWS.
+///   - set values outside the key are new values written to the restored row, and are not written to rows that are not deleted.
+///   - a restore with no key value and a restore with no set values are IR_INVALID without any statement.
 pub async fn restore_case(driver: &str, dsn: &str) {
     let source: polyspec_orm::AuditSource = std::sync::Arc::new(|| Ok(vec![("actor".to_owned(), Param::from("default"))]));
     let db = Db::connect(dsn, 2, polyspec_orm::Config { audit_source: Some(source), ..Default::default() })
@@ -176,14 +176,14 @@ pub async fn restore_case(driver: &str, dsn: &str) {
     let without = polyspec_orm::model::restore(&with::<Membership>(&db, &[("team_id", i(1)), ("member_id", i(2))])).await;
     assert_eq!(code(without), polyspec_orm::codes::CONFIG, "{driver}: restore of an audited row without an audit");
 
-    // key 밖의 set 값은 되돌리는 행에 함께 쓰는 새 값이다.
+    // A set value outside the key is a new value written to the restored row.
     let restored = adb
         .transaction(async || polyspec_orm::model::restore(&with::<Membership>(&db, &[("team_id", i(1)), ("member_id", i(2)), ("note", text("n2"))])).await)
         .audit([("actor", "restore")])
         .retry(0)
         .await
         .unwrap_or_else(|e| panic!("{driver}: restore: {e}"));
-    // audit 기록의 key는 실패한 transaction이 쓴 번호를 database마다 다르게 건너뛸 수 있으므로 actor로 찾는다.
+    // The audit record's key can skip numbers that a failed transaction used, differently on each database, so it is found by actor.
     let audit_seq = async |actor: &str| -> String {
         let rows = text_rows(&db, &format!("SELECT {} FROM audit WHERE actor = '{actor}'", cast_text(driver, "seq"))).await;
         assert_eq!(rows.len(), 1, "{driver}: audit records of {actor}: {rows:?}");

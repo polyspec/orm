@@ -21,47 +21,47 @@ use crate::{codes, Error, Result};
 /// One active transaction.
 pub(crate) struct TxShared {
     pub(crate) db: Db,
-    /// 연결에서 이 transaction의 번호다. statement event가 싣는다.
+    /// The number of this transaction on the connection. Statement events carry it.
     pub(crate) number: u64,
     pub(crate) inner: tokio::sync::Mutex<Option<TxInner>>,
     pub(crate) finished: AtomicBool,
     savepoints: AtomicU32,
     pub(crate) locals: Mutex<HashMap<String, String>>,
     pub(crate) locks: Mutex<Vec<String>>,
-    /// transaction이 시작할 때 삽입한 audit 기록이다. audit 대상 table의 insert와 update가 그 key를 audit
-    /// column에 쓴다. audit 값이 없는 transaction이면 None이다.
+    /// The audit record inserted when the transaction starts. Inserts and updates of audit-target tables write its key to the audit
+    /// column. None for a transaction with no audit values.
     pub(crate) audit: Mutex<Option<AuditKey>>,
     sqlite_mode: Mutex<Option<(bool, bool)>>,
 }
 
-/// transaction이 시작할 때 삽입한 audit 기록의 table과 primary key 값.
+/// The table and primary key value of the audit record inserted when the transaction starts.
 #[derive(Clone, Debug)]
 pub(crate) struct AuditKey {
     pub(crate) table: String,
     pub(crate) key: Param,
 }
 
-/// transaction의 audit 값: audit 기록 table의 column 이름과 값.
+/// The transaction's audit values: column names and values of the audit record table.
 type AuditValues = Vec<(String, Param)>;
 
-/// audit 값을 column 이름과 `Param`으로 모은다.
+/// Collects the audit values as column names and `Param`s.
 fn audit_values<K: Into<String>, V: Into<Param>>(values: impl IntoIterator<Item = (K, V)>) -> AuditValues {
     values.into_iter().map(|(k, v)| (k.into(), v.into())).collect()
 }
 
-/// transaction이 삽입할 audit 기록: 기록 table을 entity로 가진 등록한 set의 schema, 그 entity, column
-/// 이름 순서의 값.
+/// The audit record the transaction inserts: the schema of the registered set that has the record table as an entity, that entity, and the column
+/// name-ordered values.
 pub(crate) struct AuditInsert {
     pub(crate) schema: &'static Schema,
     pub(crate) entity: polyspec_orm_schema::dbspec::Entity,
     pub(crate) values: AuditValues,
 }
 
-/// audit source의 값에 transaction의 값을 더한 audit 기록이다. 같은 column이면 transaction의 값이 이긴다.
-/// 기록 table은 연결에 등록한 set의 audit setting이 references로 이름한 table 하나이며, 그 table을 entity로
-/// 가진 set이 연결에 등록되어 있어야 한다. audit source가 없거나, 기록 table이 없거나 여럿이거나, 값의 key가
-/// 그 table의 column이 아니거나, primary key가 column 하나가 아니면 CONFIG이고, source의 오류는 그대로
-/// 돌려준다. source는 여기서 한 번, transaction을 시작하기 전에 부른다.
+/// The audit record made of the audit source's values plus the transaction's values. For the same column, the transaction's value wins.
+/// The record table is the one table named in references by the audit setting of a set registered on the connection, and a registered set that has that table as an entity
+/// must be registered on the connection. If there is no audit source, or no or several record tables, or a value key
+/// is not a column of that table, or the primary key is not a single column, it is CONFIG; a source's error is returned as is.
+/// The source is called here once, before the transaction starts.
 fn audit_record(db: &Db, values: &AuditValues) -> Result<AuditInsert> {
     db.unsupported_on_markdown("a transaction with audit values")?;
     let Some(source) = &db.inner.cfg.audit_source else {
@@ -119,8 +119,8 @@ fn audit_record(db: &Db, values: &AuditValues) -> Result<AuditInsert> {
     Ok(AuditInsert { schema, entity, values: merged })
 }
 
-/// transaction의 audit 기록을 transaction 안에서 삽입하고 그 key를 transaction에 둔다. 시도마다 다시
-/// 삽입한다.
+/// Inserts the transaction's audit record inside the transaction and keeps its key in the transaction; on each attempt
+/// it is inserted again.
 async fn record_audit(tx: &Arc<TxShared>, record: &AuditInsert) -> Result<()> {
     let key = crate::model::insert_audit(&Executor::Tx(tx.clone()), record).await?;
     *tx.audit.lock().unwrap() = Some(key);
@@ -128,7 +128,7 @@ async fn record_audit(tx: &Arc<TxShared>, record: &AuditInsert) -> Result<()> {
 }
 
 impl TxShared {
-    /// transaction의 audit 기록이다. statement를 기다리기 전에 꺼내 쓴다.
+    /// The transaction's audit record. It is taken out and used before waiting for a statement.
     pub(crate) fn audit(&self) -> Option<AuditKey> {
         self.audit.lock().unwrap().clone()
     }
@@ -149,9 +149,9 @@ impl TxShared {
         raw_on(&self.db, inner, Sent::bare(kind, &[], Some(self.number), sql)).await
     }
 
-    /// savepoint `name`의 단계 하나를 실행한다: `kind`가 KIND_SAVEPOINT이면 만들고, KIND_RELEASE이면 풀고,
-    /// KIND_ROLLBACK_TO이면 그 뒤의 작업을 되돌린다. SQL 연결은 그 statement를 보내고 event를 publish하며,
-    /// markdown 연결은 같은 이름의 control message를 보낸다(docs/protocol.md §5 "Session").
+    /// Runs one step of savepoint `name`: if `kind` is KIND_SAVEPOINT it creates it, if KIND_RELEASE it releases it,
+    /// if KIND_ROLLBACK_TO it reverts the work after it. A SQL connection sends that statement and publishes its event, and
+    /// a markdown connection sends a control message of the same name (docs/protocol.md §5 "Session").
     pub(crate) async fn savepoint_step(&self, kind: &str, name: &str) -> Result<()> {
         let (op, statement) = match kind {
             KIND_SAVEPOINT => ("savepoint", format!("SAVEPOINT {name}")),
@@ -168,8 +168,8 @@ impl TxShared {
     }
 }
 
-/// transaction 연결에서 bind 없는 statement를 실행하고 그 event를 publish한다. markdown 연결은 statement를
-/// 보내지 않는다.
+/// Runs a statement without a bind on the transaction connection and publishes its event. A markdown connection
+/// does not send the statement.
 pub(crate) async fn raw_on(db: &Db, inner: &mut TxInner, s: Sent<'_>) -> Result<()> {
     match inner {
         TxInner::MySql(t) => events::raw(db, &mut **t.conn.as_mut().expect("active MySQL transaction connection"), s).await,
@@ -344,14 +344,14 @@ where
     }
 }
 
-/// ORM이 내부에서 기다리는 단계(begin, savepoint, commit, rollback)의 future. 이 단계들은 Send이므로
-/// `TransactionOnceFuture`는 callback, 그 future, 결과와 오류 type이 Send일 때 Send다.
+/// The future of the steps the ORM awaits internally (begin, savepoint, commit, rollback). These steps are Send, so
+/// `TransactionOnceFuture` is Send when the callback, its future, and the result and error types are Send.
 type OnceStep<'a, R> = Pin<Box<dyn Future<Output = R> + Send + 'a>>;
 
-/// transaction의 task-local frame 안에서 panic을 잡으며 실행하는 callback future.
+/// The callback future, which runs inside the transaction's task-local frame and catches panics.
 type OnceCallback<Fut> = futures_util::future::CatchUnwind<std::panic::AssertUnwindSafe<tokio::task::futures::TaskLocalFuture<Vec<Arc<TxShared>>, Fut>>>;
 
-/// callback이 실행되는 곳: 새 transaction이나 바깥 transaction의 savepoint.
+/// Where the callback runs: a new transaction, or a savepoint of the outer transaction.
 enum OnceScope<'a> {
     Transaction { db: &'a Db, tx: Arc<TxShared> },
     Savepoint { tx: Arc<TxShared>, name: String },
@@ -364,7 +364,7 @@ impl<'a> OnceScope<'a> {
         }
     }
 
-    /// callback이 성공한 뒤 transaction을 commit하거나 savepoint를 푼다.
+    /// After the callback succeeds, commits the transaction or releases the savepoint.
     fn close(self) -> OnceStep<'a, Result<()>> {
         match self {
             OnceScope::Transaction { tx, .. } => Box::pin(async move { commit(&tx).await }),
@@ -376,8 +376,8 @@ impl<'a> OnceScope<'a> {
         }
     }
 
-    /// callback이 실패하거나 panic한 뒤 transaction이나 savepoint 뒤의 작업을 되돌린다. transaction의
-    /// rollback은 설정된 test fault를 소비한다.
+    /// After the callback fails or panics, reverts the work after the transaction or savepoint. The transaction's
+    /// rollback consumes the configured test fault.
     fn undo(self, fault: bool) -> OnceStep<'a, Result<()>> {
         match self {
             OnceScope::Transaction { db, tx } => Box::pin(async move {
@@ -397,7 +397,7 @@ impl<'a> OnceScope<'a> {
     }
 }
 
-/// callback의 결과로, scope를 끝낸 뒤 돌려준다.
+/// The callback's result, returned after the scope ends.
 enum OnceOutcome<T, E> {
     Returned(T),
     Failed(E),
@@ -417,7 +417,7 @@ pub struct TransactionOnceFuture<'a, F, Fut, T, E> {
     state: OnceState<'a, F, Fut, T, E>,
 }
 
-// callback future는 Box 안에서만 pin되고, 다른 field(callback, 결과, 오류)는 pin된 적 없이 옮겨진다.
+// The callback future is pinned only inside a Box; the other fields (callback, result, error) are moved without ever being pinned.
 impl<F, Fut, T, E> Unpin for TransactionOnceFuture<'_, F, Fut, T, E> {}
 
 impl<'a, F, Fut, T, E> Future for TransactionOnceFuture<'a, F, Fut, T, E>
@@ -458,8 +458,8 @@ where
                             Box::pin(async move {
                                 let tx = Arc::new(begin(db, None, false, 0).await?);
                                 if let Some(record) = record {
-                                    // audit 기록은 callback 전에 transaction frame 안에서 삽입한다. 실패하면
-                                    // transaction을 되돌리고 그 오류를 돌려준다.
+                                    // The audit record is inserted inside the transaction frame before the callback. If that fails,
+                                    // the transaction is reverted and its error is returned.
                                     let mut stack = frames();
                                     stack.push(tx.clone());
                                     if let Err(error) = FLOW.scope(stack, record_audit(&tx, &record)).await {
@@ -762,15 +762,15 @@ where
     }
 }
 
-/// savepoint를 끝낸 callback의 결과다.
+/// The result of the callback that finished the savepoint.
 enum SavepointEnd<T, E> {
     Returned(std::result::Result<T, (E, Option<Error>)>),
     Panicked(Box<dyn std::any::Any + Send>, Option<Error>),
 }
 
-/// savepoint 안에서 callback을 실행한다. 성공한 callback은 savepoint를 풀고, 실패하거나 panic한
-/// callback은 savepoint 뒤의 작업을 되돌리고 savepoint를 푼다. callback 오류는 끝내지 못한 savepoint의
-/// 오류와 함께 돌려주고, panic은 그 오류가 있으면 transaction과 같은 형식의 오류로 이어 간다.
+/// Runs the callback inside a savepoint. A callback that succeeds releases the savepoint; one that fails or panics
+/// reverts the work after the savepoint and releases it. A callback error is returned together with an error from a savepoint that could not be finished,
+/// and a panic is carried on as an error of the same form as a transaction's when such an error exists.
 async fn run_savepoint<T, E, Fut>(tx: Arc<TxShared>, callback: Fut) -> Result<std::result::Result<T, (E, Option<Error>)>>
 where
     Fut: Future<Output = std::result::Result<T, E>>,
@@ -798,14 +798,14 @@ where
     }
 }
 
-/// savepoint 뒤의 작업을 되돌리고 savepoint를 푼다. 두 statement를 모두 시도하고 실패를 모두 돌려준다.
+/// Reverts the work after the savepoint and releases it. Both statements are attempted and all failures are returned.
 async fn rollback_savepoint(tx: &TxShared, name: &str) -> Result<()> {
     let rolled_back = tx.savepoint_step(KIND_ROLLBACK_TO, name).await;
     let released = tx.savepoint_step(KIND_RELEASE, name).await;
     joined([rolled_back.err(), released.err()].into_iter().flatten().collect())
 }
 
-/// 오류가 없으면 Ok, 하나면 그 오류, 여럿이면 message를 모은 CONFIG다.
+/// Ok if there are no errors, that error if there is one, and CONFIG collecting the messages if there are several.
 fn joined(mut errors: Vec<Error>) -> Result<()> {
     match errors.len() {
         0 => Ok(()),
@@ -822,7 +822,7 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_m
         return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: "transaction timeoutMs is supported only by postgres".into() });
     }
     let level = isolation.map(Isolation::sql);
-    // transaction을 여는 statement다(docs/usage.md "Statement events").
+    // The statement that opens a transaction (docs/usage.md "Statement events").
     let mut opening: Vec<(&str, String)> = Vec::new();
     let mut sqlite_mode = None;
     let inner = match db.pool() {
@@ -849,7 +849,7 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_m
             TxInner::Postgres(CancellableConnection::new(p.acquire().await?))
         }
         Pool::Sqlite(p) => {
-            // SQLite의 row lock table은 연결의 첫 transaction 전에 한 번 만든다.
+            // SQLite's row lock table is created once, before the connection's first transaction.
             ensure_sqlite_lock_table(db).await?;
             // A write transaction holds the write lock from its start and waits
             // for it up to busy_timeout; a read-only one begins deferred.
@@ -883,13 +883,13 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_m
     for (kind, sql) in &opening {
         if let Err(error) = tx.raw(kind, sql).await {
             if began {
-                // 열린 transaction은 되돌린다. 되돌리지 못한 연결은 닫는다.
+                // An open transaction is reverted. A connection that cannot be reverted is closed.
                 return Err(match rollback(&tx).await {
                     Ok(()) => error,
                     Err(rollback) => Error::rollback(error, rollback),
                 });
             }
-            // 열기 전에 실패한 연결은 session에 남은 설정이 다음 사용자에게 가지 않도록 닫는다.
+            // A connection that failed before opening is closed so that leftover session settings do not reach the next user.
             tx.finished.store(true, Ordering::Release);
             return Err(error);
         }
@@ -898,8 +898,8 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_m
     Ok(tx)
 }
 
-/// markdown transaction을 연다: pool의 session 하나를 transaction이 끝날 때까지 잡고 begin을 보낸다. 읽기
-/// 전용 transaction은 read_only를 보낸다(docs/protocol.md §5 "Session"). isolation은 CAPABILITY_UNSUPPORTED다.
+/// Opens a markdown transaction: holds one session from the pool until the transaction ends and sends begin. A read-only
+/// transaction sends read_only (docs/protocol.md §5 "Session"). Isolation is CAPABILITY_UNSUPPORTED.
 async fn begin_markdown(db: &Db, pool: &Arc<MdPool>, isolation: Option<Isolation>, read_only: bool) -> Result<TxShared> {
     if isolation.is_some() {
         db.unsupported_on_markdown("the transaction isolation option")?;
@@ -919,7 +919,7 @@ async fn begin_markdown(db: &Db, pool: &Arc<MdPool>, isolation: Option<Isolation
     })
 }
 
-/// SQLite row lock이 쓰는 table이다.
+/// The table that the SQLite row lock uses.
 pub(crate) const ROW_LOCK_TABLE: &str = "orm__row_lock";
 
 async fn ensure_sqlite_lock_table(db: &Db) -> Result<()> {
@@ -935,14 +935,14 @@ async fn ensure_sqlite_lock_table(db: &Db) -> Result<()> {
     Ok(())
 }
 
-/// panic한 callback의 transaction을 rollback하고 panic을 이어 간다. rollback이 실패하면
-/// panic message가 원인과 실패한 rollback을 함께 담는다(docs/interfaces.md).
+/// Rolls back the transaction of a callback that panicked and continues the panic. If the rollback fails,
+/// the panic message carries both the cause and the failed rollback (docs/interfaces.md).
 async fn rollback_and_resume(tx: &TxShared, payload: Box<dyn std::any::Any + Send>) -> std::convert::Infallible {
     resume_panic(payload, rollback(tx).await.err())
 }
 
-/// panic을 이어 간다. transaction이나 savepoint를 끝내지 못했으면 panic 값은 원인과 그 오류를 담은
-/// ROLLBACK 오류의 text다.
+/// the panic continues. If the transaction or savepoint could not be ended, the panic value carries the cause and
+/// the text of the ROLLBACK error.
 fn resume_panic(payload: Box<dyn std::any::Any + Send>, rollback: Option<Error>) -> ! {
     if let Some(rollback) = rollback {
         let cause = match (payload.downcast_ref::<&str>(), payload.downcast_ref::<String>()) {
@@ -956,9 +956,9 @@ fn resume_panic(payload: Box<dyn std::any::Any + Send>, rollback: Option<Error>)
 }
 
 /// Releases named locks, resets session values, and leaves SQLite modes before
-/// the transaction ends. 이 상태는 COMMIT과 ROLLBACK 뒤에도 connection에 남으므로
-/// 모든 단계를 시도하고 실패를 모두 돌려준다. RELEASE_LOCK 결과가 1이 아니면 이
-/// connection이 lock을 갖고 있지 않았다.
+/// the transaction ends. This state remains on the connection after COMMIT and ROLLBACK, so
+/// every step is attempted and all failures are returned. If the RELEASE_LOCK result is not 1, this
+/// means the connection did not hold the lock.
 async fn finish(tx: &TxShared, inner: &mut TxInner) -> Result<()> {
     let mut errors: Vec<Error> = Vec::new();
     let locks: Vec<String> = std::mem::take(&mut *tx.locks.lock().unwrap());
@@ -977,7 +977,7 @@ async fn finish(tx: &TxShared, inner: &mut TxInner) -> Result<()> {
                 Err(error) => errors.push(error),
             }
         }
-        // 값을 지우는 statement는 key 순서로 실행한다.
+        // Statements that clear values run in key order.
         let mut keys: Vec<String> = tx.locals.lock().unwrap().keys().cloned().collect();
         keys.sort();
         for key in keys {
@@ -1005,9 +1005,9 @@ async fn finish(tx: &TxShared, inner: &mut TxInner) -> Result<()> {
     joined(errors)
 }
 
-/// transaction을 끝내는 statement(COMMIT이나 ROLLBACK)를 실행한다. 성공하고 `clean`이면 연결을 pool에
-/// 돌려주고, 실패하거나 앞의 정리가 실패했으면(`clean`이 아니면) 상태를 알 수 없는 연결을 닫는다. pool에
-/// 돌아가는 연결은 깨끗하거나 버려진다.
+/// Runs the statement that ends the transaction (COMMIT or ROLLBACK). If it succeeds and is `clean`, it returns the connection to the pool;
+/// if it fails or an earlier cleanup failed (not `clean`), it closes the connection of unknown state. Connections returned to the pool
+/// are either clean or discarded.
 async fn end(tx: &TxShared, inner: TxInner, kind: &str, sql: &str, clean: bool) -> Result<()> {
     let s = Sent::bare(kind, &[], Some(tx.number), sql);
     match inner {
@@ -1030,7 +1030,7 @@ async fn end(tx: &TxShared, inner: TxInner, kind: &str, sql: &str, clean: bool) 
                 t.completed();
             }
         }
-        // markdown 연결은 같은 이름의 control message를 보낸다. 실패한 session은 pool이 닫는다.
+        // A markdown connection sends a control message of the same name. The pool closes a failed session.
         TxInner::Markdown(mut session) => {
             let op = match kind {
                 KIND_COMMIT => "commit",
@@ -1053,8 +1053,8 @@ async fn commit(tx: &TxShared) -> Result<()> {
     end(tx, inner, KIND_COMMIT, "COMMIT", true).await
 }
 
-/// transaction이 rollback된 뒤 설정된 test fault를 소비한다: 그 rollback은
-/// `FAULT`로 실패했다고 보고된다 (`polyspec_orm::testing::fail_next_rollback`, feature
+/// After the transaction is rolled back, consumes the configured test fault: that rollback
+/// is reported as failed with `FAULT` (`polyspec_orm::testing::fail_next_rollback`, feature
 /// `test-faults`).
 fn rollback_fault(db: &Db) -> Result<()> {
     if db.inner.rollback_fault.swap(false, Ordering::AcqRel) {
@@ -1177,8 +1177,8 @@ mod tests {
     async fn one_shot_transaction_preserves_callback_error_and_rolls_back() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
         let tmp = Scratch::new("orm-once");
-        // probe table은 공유 test database가 아니라 case 자신의 database에 둔다. 다른 실행이 같은
-        // 이름의 table을 지우거나 panic한 실행이 남긴 table이 이 case를 흔들지 않는다.
+        // The probe table is kept in the case's own database, not a shared test database, so that
+        // another run dropping a table of the same name, or a table left by a panicked run, cannot disturb this case.
         let mysql = polyspec_orm_case_database::CaseDatabase::create("mysql").await;
         let postgres = polyspec_orm_case_database::CaseDatabase::create("postgres").await;
         let targets =
@@ -1259,15 +1259,15 @@ mod tests {
         .unwrap()
     }
 
-    /// `timeout_ms`는 PostgreSQL에서 `SET LOCAL statement_timeout`이므로 server가 오래 걸리는 statement를
-    /// 끝내고 transaction은 rollback된다. MySQL과 SQLite는 그 option을 지원하지 않으므로 transaction은
-    /// 시작하기 전에 CAPABILITY_UNSUPPORTED로 실패하고 callback은 실행되지 않는다(docs/interfaces.md).
-    /// 0은 option을 주지 않은 것과 같다. 각 database의 어긋남을 모아 마지막에 함께 보고한다.
+    /// On PostgreSQL, `timeout_ms` is `SET LOCAL statement_timeout`, so the server ends a long-running statement
+    /// and the transaction is rolled back. MySQL and SQLite do not support that option, so the transaction
+    /// fails with CAPABILITY_UNSUPPORTED before it starts, and the callback does not run (docs/interfaces.md).
+    /// 0 is the same as not giving the option. Mismatches from each database are collected and reported together at the end.
     #[tokio::test]
     async fn transaction_timeout_is_the_postgres_statement_timeout() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
         let tmp = Scratch::new("orm-timeout");
-        // probe table은 case 자신의 database에 둔다(one_shot_transaction_preserves_callback_error_and_rolls_back과 같다).
+        // The probe table is kept in the case's own database (as in one_shot_transaction_preserves_callback_error_and_rolls_back).
         let mysql = polyspec_orm_case_database::CaseDatabase::create("mysql").await;
         let postgres = polyspec_orm_case_database::CaseDatabase::create("postgres").await;
         let targets = [
@@ -1331,10 +1331,10 @@ mod tests {
         assert!(mismatches.is_empty(), "{}", mismatches.join("\n"));
     }
 
-    /// MySQL transaction을 열고 local 값을 둔 뒤 그 connection을 다른 connection에서 끊는다.
-    /// 실제 server는 `SET @`orm.…` = NULL`을 거부하지 않으므로 끊긴 connection으로 reset을 실패시킨다.
-    /// server session을 끊는 test이므로 db는 pooler가 아니라 ORM_TEST_MYSQL_SERVER_DSN의 server에
-    /// 연결한다. ProxySQL은 KILL을 자기 client session의 명령으로 받는다.
+    /// Opens a MySQL transaction, sets a local value, then kills that connection from another connection.
+    /// The real server does not reject `SET @`orm.…` = NULL`, so the reset is made to fail with the killed connection.
+    /// Since this test kills a server session, db connects to the server at ORM_TEST_MYSQL_SERVER_DSN, not through a pooler,
+    /// because ProxySQL takes KILL as a command for its own client session.
     async fn transaction_with_failing_reset(db: &Db) -> TxShared {
         let Pool::MySql(pool) = db.pool() else { panic!("MySQL pool") };
         let tx = begin(db, None, false, 0).await.expect("begin");
@@ -1350,8 +1350,8 @@ mod tests {
         tx
     }
 
-    // transaction 끝의 MySQL RELEASE_LOCK이 lock을 풀지 못하면(결과가 1이 아니면) 그 결과를 보고한다.
-    // 풀리지 않은 named lock은 COMMIT과 ROLLBACK 뒤에도 connection에 남는다.
+    // If the MySQL RELEASE_LOCK at the end of the transaction fails to release the lock (result is not 1), its result is reported.
+    // An unreleased named lock remains on the connection after COMMIT and ROLLBACK.
     #[tokio::test]
     async fn lock_not_held_at_transaction_end_is_reported() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -1360,7 +1360,7 @@ mod tests {
         let result = db
             .transaction(async || {
                 db.utils().lock(&key).await?;
-                // lock을 미리 풀면 transaction 끝의 RELEASE_LOCK은 0을 돌려준다.
+                // If the lock is released early, RELEASE_LOCK at the end of the transaction returns 0.
                 active_for(&db).expect("transaction active").raw(KIND_UTILITY, &format!("DO RELEASE_LOCK('{key}')")).await
             })
             .retry(0)
@@ -1370,11 +1370,11 @@ mod tests {
         db.close().await;
     }
 
-    // transaction 끝의 정리가 실패한 connection은 pool에 돌아가지 않고 닫힌다. 실패한 정리 뒤 session의
-    // 상태는 알 수 없으므로 pool에 돌아가는 connection은 깨끗하거나 버려진다. connection이 하나인 pool의
-    // 다음 사용이 같은 session(CONNECTION_ID)을 받으면 connection이 돌아간 것이다. commit은 실패한 정리 뒤
-    // connection을 닫고, rollback도 그래야 한다. 깨끗하게 끝난 transaction은 같은 session을 다시 쓴다.
-    // session을 보는 test이므로 pooler가 아니라 ORM_TEST_MYSQL_SERVER_DSN의 server에 연결한다.
+    // A connection whose cleanup at the end of the transaction failed is closed and does not return to the pool. After a failed cleanup, the session's
+    // state is unknown, so a connection returned to the pool is either clean or discarded. In a pool with one connection,
+    // if the next use gets the same session (CONNECTION_ID), the connection has come back. After a failed cleanup, commit
+    // closes the connection, and rollback must too. A transaction that finishes cleanly reuses the same session.
+    // This test looks at the session, so it connects to the server at ORM_TEST_MYSQL_SERVER_DSN, not through a pooler.
     #[tokio::test]
     async fn failed_cleanup_discards_the_connection() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -1394,7 +1394,7 @@ mod tests {
             let result = db
                 .transaction(async || {
                     db.utils().lock(&key).await?;
-                    // lock을 미리 풀면 transaction 끝의 RELEASE_LOCK은 0을 돌려주어 정리가 실패한다.
+                    // If the lock is released early, RELEASE_LOCK at the end of the transaction returns 0, and the cleanup fails.
                     active_for(&db).expect("transaction active").raw(KIND_UTILITY, &format!("DO RELEASE_LOCK('{key}')")).await?;
                     if fail {
                         return Err(Error::Config("callback failed".into()));
@@ -1410,7 +1410,7 @@ mod tests {
         db.close().await;
     }
 
-    // RELEASE_LOCK이 실패해도 local 값 reset까지 시도하고 두 실패를 모두 보고한다.
+    // Even if RELEASE_LOCK fails, the local value reset is still attempted, and both failures are reported.
     #[tokio::test]
     async fn every_failed_cleanup_step_is_reported() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -1424,8 +1424,8 @@ mod tests {
         db.close().await;
     }
 
-    // panic한 callback의 transaction은 connection을 닫아 끝난다. server는 그 session의 transaction과
-    // named lock을 끝내므로 다른 connection이 그 lock을 잡는다.
+    // The transaction of a callback that panicked ends by closing the connection. The server ends that session's transaction and
+    // named lock, so another connection takes the lock.
     #[tokio::test]
     async fn panicking_callback_ends_its_transaction() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -1445,7 +1445,7 @@ mod tests {
         assert!(panicked.is_err(), "the callback panics");
         let Pool::MySql(pool) = db.pool() else { panic!("MySQL pool") };
         let mut other = pool.acquire().await.expect("another connection");
-        // 닫힌 session의 lock이 풀릴 때까지 server가 기다린다.
+        // The server waits until the closed session's lock is released.
         let got: Option<i64> = sqlx::query_scalar("SELECT GET_LOCK(?, 5)").bind(&key).fetch_one(&mut *other).await.expect("GET_LOCK");
         assert_eq!(got, Some(1), "the panicked transaction released its lock");
         let released: Option<i64> = sqlx::query_scalar("SELECT RELEASE_LOCK(?)").bind(&key).fetch_one(&mut *other).await.expect("RELEASE_LOCK");
@@ -1454,12 +1454,12 @@ mod tests {
         db.close().await;
     }
 
-    // 끝나지 않은 채 drop된 transaction future는 connection을 닫는다. server는 그 session의
-    // transaction과 lock을 끝내므로 다른 connection이 그 lock을 잡는다. MySQL test server의
-    // connection은 TLS로 연결되며, sqlx의 TLS stream shutdown은 server가 보내지 않는 data를 기다린다.
-    // server session의 끝을 보는 test이므로 pooler가 아니라 ORM_TEST_MYSQL_SERVER_DSN과
-    // ORM_TEST_POSTGRES_SERVER_DSN의 server에 연결한다.
-    // SQLite에서는 닫힌 connection의 write transaction이 끝나 다른 connection이 write lock을 잡는다.
+    // A transaction future dropped before it finished closes the connection. The server ends that session's
+    // transaction and lock, so another connection takes the lock. The MySQL test server's
+    // The connection uses TLS, and sqlx's TLS stream shutdown waits for data the server does not send.
+    // This test watches the end of a server session, so it connects to the servers at ORM_TEST_MYSQL_SERVER_DSN and
+    // ORM_TEST_POSTGRES_SERVER_DSN, not through a pooler.
+    // On SQLite, the write transaction of the closed connection ends, so another connection takes the write lock.
     #[tokio::test]
     async fn dropped_transaction_closes_its_connection() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -1498,7 +1498,7 @@ mod tests {
                 result = transaction => panic!("{driver}: the transaction ended before the drop: {result:?}"),
                 _ = held.notified() => {}
             }
-            // 닫힌 session의 lock이 풀릴 때까지 server가 5초까지 기다린다.
+            // The server waits up to 5 seconds for the closed session's lock to be released.
             match db.pool() {
                 Pool::MySql(pool) => {
                     let mut other = pool.acquire().await.expect("another connection");
@@ -1531,10 +1531,10 @@ mod tests {
         }
     }
 
-    /// sqlite_denied가 고른 statement를 SQLite authorizer가 거부한다. 실제 SQLite는 transaction 끝의
-    /// ROLLBACK과 PRAGMA를 거부하지 않으므로 이렇게 실패를 만든다.
+    /// The SQLite authorizer denies the statement chosen by sqlite_denied. Real SQLite does not reject the end-of-transaction
+    /// ROLLBACK and PRAGMA, so the failure is produced this way.
     static SQLITE_DENIED: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(DENY_NOTHING);
-    /// SQLITE_DENIED는 process에 하나이므로 그것을 쓰는 test는 이 lock을 잡고 하나씩 실행한다.
+    /// SQLITE_DENIED is one per process, so tests that use it hold this lock and run one at a time.
     static SQLITE_DENIAL: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
     const DENY_NOTHING: u8 = 0;
     const DENY_ROLLBACK: u8 = 1;
@@ -1553,7 +1553,7 @@ mod tests {
         _: *const std::ffi::c_char,
         _: *const std::ffi::c_char,
     ) -> std::ffi::c_int {
-        // SAFETY: SQLite는 null이거나 NUL로 끝나는 문자열을 넘긴다.
+        // SAFETY: SQLite passes a null or NUL-terminated string.
         let text = |p: *const std::ffi::c_char| if p.is_null() { "" } else { unsafe { std::ffi::CStr::from_ptr(p) }.to_str().unwrap_or("") };
         let denied = match SQLITE_DENIED.load(Ordering::Acquire) {
             DENY_ROLLBACK => action == libsqlite3_sys::SQLITE_TRANSACTION && text(first) == "ROLLBACK",
@@ -1571,20 +1571,20 @@ mod tests {
         }
     }
 
-    /// pool의 하나뿐인 connection에 authorizer를 두고 denied를 거부하게 한다.
+    /// Puts the authorizer on the pool's only connection so that it denies `denied`.
     #[allow(unsafe_code, reason = "sqlx exposes no safe authorizer, so the test sets it through the C function sqlite3_set_authorizer on the raw handle")]
     async fn deny_on_sqlite(db: &Db, denied: u8) {
         let Pool::Sqlite(pool) = db.pool() else { panic!("SQLite pool") };
         let mut conn = pool.acquire().await.expect("SQLite connection");
         let mut handle = conn.lock_handle().await.expect("SQLite handle");
-        // SAFETY: handle은 열린 connection이고 authorizer는 'static 함수다.
+        // SAFETY: the handle is an open connection, and the authorizer is a 'static function.
         let rc = unsafe { libsqlite3_sys::sqlite3_set_authorizer(handle.as_raw_handle().as_ptr(), Some(sqlite_authorizer), std::ptr::null_mut()) };
         assert_eq!(rc, libsqlite3_sys::SQLITE_OK, "sqlite3_set_authorizer");
         SQLITE_DENIED.store(denied, Ordering::Release);
     }
 
-    // native rollback, SQLite mode 복원, begin의 PRAGMA가 실패하면 transaction이 그 오류를 원인과 함께
-    // 보고하고, 끝나지 않은 transaction의 connection은 닫혀 다음 transaction이 시작한다.
+    // If the native rollback, the SQLite mode restore, or begin's PRAGMA fails, the transaction reports that error along with its cause
+    // , and the connection of an unfinished transaction is closed so that the next transaction starts fresh.
     #[tokio::test]
     async fn sqlite_transaction_end_failures_are_reported() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -1594,7 +1594,7 @@ mod tests {
         let both = |error: &Error, cause: &str| {
             let text = error.to_string();
             assert!(text.starts_with(&format!("ROLLBACK: transaction failed ({cause}) and rollback failed (")) && text.contains("not authorized"), "{text}");
-            // ROLLBACK 오류는 callback 오류와 rollback 오류를 이 순서로 담는다.
+            // The ROLLBACK error holds the callback error and the rollback error, in that order.
             match error {
                 Error::Rollback { callback, rollback } => {
                     assert_eq!(callback.to_string(), cause, "callback error");
@@ -1627,9 +1627,9 @@ mod tests {
         db.close().await;
     }
 
-    // 중첩 transaction의 savepoint를 끝내는 ROLLBACK TO SAVEPOINT나 RELEASE SAVEPOINT가 실패하면 callback
-    // 오류, panic, transaction_send와 transaction_once의 중첩 호출이 그 오류를 함께 보고하고, 성공한
-    // callback은 실패한 RELEASE SAVEPOINT를 돌려준다.
+    // If ROLLBACK TO SAVEPOINT or RELEASE SAVEPOINT, which end a nested transaction's savepoint, fails, the callback
+    // error, panic, and nested calls of transaction_send and transaction_once report that error together, and a successful
+    // callback returns the failed RELEASE SAVEPOINT.
     #[tokio::test]
     async fn savepoint_end_failures_are_reported() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -1680,8 +1680,8 @@ mod tests {
         db.close().await;
     }
 
-    // transaction 끝의 MySQL local 값 reset이 실패하면 그 오류를 보고한다. MySQL user
-    // variable은 COMMIT과 ROLLBACK 뒤에도 남는다(mysql.context.user_variable_session_scope).
+    // If the MySQL local value reset at the end of the transaction fails, that error is reported. The MySQL user
+    // variable remains after COMMIT and ROLLBACK (mysql.context.user_variable_session_scope).
     #[tokio::test]
     async fn failed_local_reset_is_reported() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

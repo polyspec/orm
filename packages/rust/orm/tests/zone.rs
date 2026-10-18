@@ -79,9 +79,9 @@ async fn connections_use_utc() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let start = NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap();
     for driver in ["sqlite", "mysql", "postgres"] {
-        // 시험 server의 MySQL은 SYSTEM(KST), PostgreSQL은 Asia/Seoul이다.
+        // The test server's MySQL is SYSTEM (KST), and PostgreSQL is Asia/Seoul.
         for zone in ["", "UTC", "+00:00"] {
-            // zone마다 schema를 새로 설치하므로 자기 case database를 쓴다.
+            // The schema is installed anew for each zone, so it uses its own case database.
             let database = CaseDatabase::create(driver).await;
             let base = database.dsn().to_owned();
             let sep = if base.contains('?') { '&' } else { '?' };
@@ -95,7 +95,7 @@ async fn connections_use_utc() {
             polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{label}: create: {e}"));
             let got = polyspec_orm::model::get(&event(&db)).await.unwrap_or_else(|e| panic!("{label}: {e}"));
             assert_eq!(got.start_dt, start, "{label}: start_dt");
-            // `default now`는 UTC statement 시각이다.
+            // `default now` is the UTC statement time.
             let skew = (got.created_ts - before).num_seconds().abs();
             assert!(skew < 60, "{label}: created_ts {} is not about {before}", got.created_ts);
             const KEYS: &[ChainKey] = &[ChainKey { conn: "", op: "", column: "start_dt", columns: &[], compare: "" }];
@@ -126,7 +126,7 @@ async fn connections_use_utc() {
     }
 }
 
-/// UTC가 아닌 timezone parameter는 CONFIG로 실패한다.
+/// A timezone parameter that is not UTC fails as CONFIG.
 #[test]
 fn non_utc_time_zones_are_rejected() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -266,15 +266,15 @@ async fn pool_size_bound() {
     }
 }
 
-/// 다른 연결의 열린 transaction이 table의 모든 행을 갱신해 잡고 있는 lock이다(MySQL,
-/// PostgreSQL). `release`가 그 transaction을 rollback한다.
+/// A lock held by an open transaction on another connection that has updated all rows of the table (MySQL,
+/// PostgreSQL). `release` rolls back that transaction.
 enum HeldRows {
     MySql(sqlx::Transaction<'static, sqlx::MySql>),
     Postgres(sqlx::Transaction<'static, sqlx::Postgres>),
 }
 
 impl HeldRows {
-    /// `db`와 다른 연결에서 `table`의 모든 행을 잡는다.
+    /// Takes a lock on all rows of `table` from a connection other than `db`.
     async fn hold(holder: &Db, table: &str) -> HeldRows {
         match holder.pool() {
             Pool::MySql(pool) => {
@@ -300,7 +300,7 @@ impl HeldRows {
     }
 }
 
-/// `db`의 transaction에서 `entity`의 행을 FOR UPDATE로 읽는다. 다른 연결이 그 행을 잡고 있으면 기다린다.
+/// Reads the rows of `entity` FOR UPDATE in a transaction of `db`. If another connection holds those rows, it waits.
 async fn locked_read(db: &Db, entity: &'static Entity) -> polyspec_orm::Result<()> {
     db.transaction(async || {
         let mut core = Core::new(entity);
@@ -343,15 +343,15 @@ async fn statement_timeout() {
 /// connection, so the statement timeout of one connection bounds only the
 /// statements of that connection.
 ///
-/// PgBouncer의 `orm_test_single`은 database가 고정되어 새 case database에 닿지 않는다. 그래서
-/// case는 그 database에 자기 이름(`orm_case_<pid>_<counter>`)의 zone table을 두고, 그 table만
-/// 끝에서(실패해도) 지운다.
+/// PgBouncer's `orm_test_single` has a fixed database and cannot reach a new case database, so
+/// the case keeps a zone table named after itself (`orm_case_<pid>_<counter>`) in that database, and only that table
+/// is dropped at the end (even on failure).
 #[tokio::test]
 async fn statement_timeout_through_a_pooler() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let base = require_dsn("ORM_TEST_POSTGRES_DSN");
     let table = CaseTable::reserve(&base);
-    // zone document의 table 이름만 바꾼 schema와 그 entity다. Schema와 Entity는 'static 값을 받는다.
+    // The schema and its entity, with only the zone document's table name changed. Schema and Entity take 'static values.
     let text = include_str!("../../../../contracts/fixtures/zone.dbs").replace("zone_event", table.name());
     let document =
         polyspec_orm::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("{}: {errors:?}", table.name()));
@@ -466,7 +466,7 @@ async fn dropping_a_transaction_frees_a_single_connection() {
         let database = CaseDatabase::create(driver).await;
         let db = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
-        // MySQL과 PostgreSQL에서는 다른 연결이 미리 만든 행을 잡아 transaction의 locking read가 기다린다.
+        // On MySQL and PostgreSQL, the transaction's locking read waits, holding rows that another connection created in advance.
         let held = if driver == "sqlite" {
             None
         } else {

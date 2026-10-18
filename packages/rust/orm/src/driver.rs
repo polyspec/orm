@@ -212,8 +212,8 @@ pub(crate) fn child_keys(plan: &Plan, id: u32) -> Vec<crate::plan::KeyRef> {
     plan.steps.iter().filter_map(|s| s.assemble.as_deref()).find_map(|a| find(a, id)).expect("relation step without a child spec")
 }
 
-/// step이 보내는 bind 값마다의 dbspec type이다. parent slot은 펼친 parent 값 `n_parent`개에 key
-/// type을 key 순서로 되풀이한다.
+/// The dbspec type of each bind value the step sends. The parent slot covers the `n_parent` expanded parent values with its key
+/// types, repeated in key order.
 pub(crate) fn arg_types(st: &Step, n_parent: usize) -> Vec<&str> {
     let mut out = Vec::with_capacity(st.bind_slots.len() + n_parent);
     for b in &st.bind_slots {
@@ -226,11 +226,11 @@ pub(crate) fn arg_types(st: &Step, n_parent: usize) -> Vec<&str> {
     out
 }
 
-/// PostgreSQL `uuid` 값이다. binary 형식은 16 byte다.
+/// A PostgreSQL `uuid` value. The binary form is 16 bytes.
 struct PgUuid([u8; 16]);
 
 impl PgUuid {
-    /// 하이픈이 있는 canonical text(`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)를 읽는다.
+    /// Reads the canonical text with hyphens (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`).
     fn parse(text: &str) -> Option<PgUuid> {
         let hex: String = text.chars().filter(|c| *c != '-').collect();
         if text.len() != 36 || hex.len() != 32 || [8, 13, 18, 23].iter().any(|&i| text.as_bytes()[i] != b'-') {
@@ -294,8 +294,8 @@ pub(crate) fn parse_datetime(s: &str) -> Option<NaiveDateTime> {
         .or_else(|| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok().map(|d| d.and_hms_opt(0, 0, 0).unwrap()))
 }
 
-/// 값 `p`를 plan이 선언한 dbspec type `ty`로 bind한다. sqlx는 그 Rust type의 PostgreSQL type을
-/// parameter type으로 선언하므로 server에 type을 묻지 않는다. 그 type이 될 수 없는 값은 CONFIG다.
+/// Binds value `p` as the dbspec type `ty` the plan declared. sqlx declares the PostgreSQL type of that Rust type
+/// as the parameter type, so it does not ask the server for the type. A value that cannot be that type is CONFIG.
 pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &str, i: usize) -> Result<PgQuery<'q>> {
     let name = ty;
     let bad = || Error::Config(format!("postgres parameter ${} is {name}: cannot bind {p:?}", i + 1));
@@ -553,7 +553,7 @@ pub(crate) enum TxInner {
     MySql(MySqlOwnedTx),
     Postgres(CancellableConnection<Postgres>),
     Sqlite(CancellableConnection<Sqlite>),
-    /// transaction이 끝날 때까지 잡아 두는 flowmark session이다.
+    /// The flowmark session held until the transaction ends.
     Markdown(crate::markdown::MdLease),
 }
 
@@ -620,10 +620,10 @@ impl<DB: sqlx::Database> Drop for CancellableConnection<DB> {
     fn drop(&mut self) {
         if self.close_on_drop {
             if let Some(connection) = self.connection.take() {
-                // pool에서 떼어낸 connection을 그 자리에서 drop해 socket을 닫는다. server는 EOF를 받고
-                // session의 transaction과 lock을 끝낸다. close_hard는 shutdown 전에 flush하는데, sqlx의 rustls
-                // flush는 보낼 data가 없으면 server가 보내지 않는 data를 읽을 때까지 기다려 끝나지 않는다.
-                // SQLite의 close_hard도 drop이다.
+                // The connection removed from the pool is dropped on the spot to close the socket. The server receives EOF and
+                // ends the session's transaction and lock. close_hard flushes before shutdown, but sqlx's rustls
+                // flush, if there is no data to send, waits until it reads data the server will not send, so it never finishes.
+                // SQLite's close_hard is also a drop.
                 drop(connection.detach());
             }
         }

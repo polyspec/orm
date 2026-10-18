@@ -80,7 +80,7 @@ pub struct Entity {
 }
 
 impl Entity {
-    /// runtime model의 entity.
+    /// An entity of the runtime model.
     pub fn entity_schema(&self) -> Result<dbspec::Entity> {
         Ok(self.schema.manifest()?.entity(self.name)?.clone())
     }
@@ -135,7 +135,7 @@ impl Core {
         let Some(related) = self.row.as_ref().and_then(|r| r.related.get(name)) else { return Ok(None) };
         match &related.value {
             RelatedValue::One(None) => Ok(None),
-            // 다른 model type을 None으로 버리지 않고 보고한다.
+            // Reports another model type rather than discarding it as None.
             RelatedValue::One(Some(m)) => {
                 m.as_any().downcast_ref::<M>().map(Some).ok_or_else(|| related_mismatch::<M>(name, &format!("a row of {}", m.core_dyn().ent.name)))
             }
@@ -157,7 +157,7 @@ impl Core {
     }
 }
 
-/// relation result name에 저장된 값이 요청한 type T와 다를 때의 INTERNAL error.
+/// The INTERNAL error when the value stored under a relation result name differs from the requested type T.
 fn related_mismatch<T>(name: &str, stored: &str) -> Error {
     Error::internal(format!("relation result {name} holds {stored}, not {}", std::any::type_name::<T>()))
 }
@@ -202,14 +202,14 @@ struct QueryResult {
     main: Vec<Vec<Val>>,
     steps: HashMap<u32, StepRows>,
     params: Vec<Param>,
-    /// markdown 답의 행이다: 행마다 그 join과 relation의 행을 가진다. SQL 결과에서는 None이고 `main`과
-    /// `steps`가 그 자리다.
+    /// A row of a markdown reply: each row has the rows of its joins and relations. In SQL results it is None, and `main` and
+    /// `steps` take its place.
     markdown: Option<Vec<MdRow>>,
-    /// markdown paginate 답의 전체 행 수다.
+    /// The total row count of a markdown paginate reply.
     count: Option<i64>,
 }
 
-/// 결과의 행 하나: SQL 결과의 위치 행이거나 markdown 답의 행이다.
+/// One row of a result: a positional row of a SQL result, or a row of a markdown reply.
 #[derive(Clone, Copy)]
 enum RowRef<'r> {
     Sql(&'r [Val]),
@@ -217,7 +217,7 @@ enum RowRef<'r> {
 }
 
 impl<'r> RowRef<'r> {
-    /// node의 column 값이다.
+    /// The node's column values.
     fn vals(self) -> &'r [Val] {
         match self {
             RowRef::Sql(vals) => vals,
@@ -227,7 +227,7 @@ impl<'r> RowRef<'r> {
 }
 
 impl QueryResult {
-    /// root 행들이다.
+    /// The root rows.
     fn rows(&self) -> Vec<RowRef<'_>> {
         match &self.markdown {
             Some(rows) => rows.iter().map(RowRef::Markdown).collect(),
@@ -350,8 +350,8 @@ fn val_param_key(p: &Param) -> String {
     format!("{p:?}")
 }
 
-/// model이 실행되는 handle의 request hook을 plan 전에 req에 적용한다. handle은 model이 연결된 handle이고,
-/// 연결이 없으면 transaction을 시작한 handle이다(docs/usage.md "Request hook").
+/// Applies the request hook of the handle the model runs on to req before planning. The handle is the handle the model is bound to, and
+/// if there is no connection, it is the handle that started the transaction (docs/usage.md "Request hook").
 fn hook_request(conn: &Option<Db>, ex: &Executor, req: &mut Req) -> Result<()> {
     apply_request_hook(conn.as_ref().unwrap_or_else(|| ex.db()), req)
 }
@@ -488,8 +488,8 @@ impl<'a> Assembler<'a> {
                     .map(|j| j.child.as_ref())
                     .ok_or_else(|| Error::internal(format!("join result {} without a model", ch.rel)))?;
                 let casm = ch.assemble.as_ref().expect("join child has an assemble");
-                // SQL 결과에서는 join column이 부모 행에 함께 있고 첫 column이 NULL이면 행이 없다. markdown 답에서는
-                // 부모 행이 join 행을 가진다.
+                // In SQL results the join column is with the parent row, and if the first column is NULL there is no row. In markdown replies
+                // the parent row holds the join row.
                 let joined = match row_ref {
                     RowRef::Sql(vals) => casm.columns.first().is_some_and(|c| !vals[c.index].is_null()).then_some(row_ref),
                     RowRef::Markdown(md) => md.joins.get(&ch.rel).and_then(Option::as_ref).map(RowRef::Markdown),
@@ -507,7 +507,7 @@ impl<'a> Assembler<'a> {
                 .find(|r| result_name(&r.child, r.many) == ch.rel)
                 .map(|r| (r.child.as_ref(), r.many))
                 .ok_or_else(|| Error::internal(format!("relation result {} without a model", ch.rel)))?;
-            // SQL 결과에서는 relation step의 행을 key로 찾고, markdown 답에서는 부모 행이 relation 행을 가진다.
+            // In SQL results the relation step's row is found by key; in markdown replies the parent row holds the relation rows.
             let res = self.res;
             let (rows, casm): (Vec<RowRef<'_>>, Arc<Assemble>) = match row_ref {
                 RowRef::Sql(vals) => (
@@ -620,8 +620,8 @@ fn value_key(v: &Option<Val>) -> Result<String> {
     })
 }
 
-/// model의 relation key 성분 값을 key 순서로 반환한다. 부모 쪽은 `child`가 false,
-/// 자식 쪽은 true다. 성분 하나라도 null이면 None이다.
+/// Returns the model's relation key component values in key order. On the parent side, `child` is false,
+/// on the child side it is true. If any component is null, it is None.
 fn match_values(m: &dyn AnyModel, ch: &Core, child: bool) -> Option<Vec<Val>> {
     ch.matches
         .iter()
@@ -632,7 +632,7 @@ fn match_values(m: &dyn AnyModel, ch: &Core, child: bool) -> Option<Vec<Val>> {
         .collect()
 }
 
-/// relation key 성분 값의 key. 성분 하나는 그 값의 key이고, composite key는 성분 key를 길이와 함께 잇는다.
+/// The key of a relation key component value. One component is the key of its value; a composite key joins the component keys with their lengths.
 fn match_key(values: &[Val]) -> Result<String> {
     if let [v] = values {
         return value_key(&Some(v.clone()));
@@ -675,7 +675,7 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
         q.matches.clear();
         q.alias.clear();
         let rights: Vec<&'static str> = ch.matches.iter().map(|&(_, right)| right).collect();
-        // composite key는 자식 key column 전체를 tuple로 거른다.
+        // A composite key filters on the whole child key column set as a tuple.
         let spec = if rights.len() == 1 {
             PredSpec { column: rights[0].into(), op: "in", value: PredValue::List(values.into_iter().flatten().collect()) }
         } else {
@@ -803,7 +803,7 @@ pub async fn gets_page<M: Model>(m: &M, page: u32, per_page: u32) -> Result<Page
     q.limit = Some((offset, per_page));
     let mut req = build(&q, "paginate");
     let res = select(&ex, &q.conn, &mut req).await?;
-    // markdown 답은 전체 행 수를 함께 답하고, SQL plan은 그것을 count step으로 센다.
+    // A markdown reply also states the total row count, and a SQL plan counts it with a count step.
     let total = match res.count {
         Some(total) => total,
         None => {
@@ -938,9 +938,9 @@ fn assign(r: &mut Req, ent: &dbspec::Entity, s: &SetSpec) -> Result<ir::Assign> 
     Ok(a)
 }
 
-/// insert, update, delete, restore를 실행하고 insert한 행의 key와 바뀐 행 수를 돌려준다: SQL database에서는
-/// 생성된 identity, markdown executor에서는 그것이 답한 첫 key다(identity는 정수, key_prefix key는 text).
-/// key가 없으면 Null이다.
+/// Runs insert, update, delete, and restore, and returns the key of the inserted row and the number of changed rows: on SQL databases
+/// the generated identity; on the markdown executor, the first key it replied with (an integer for identity, text for key_prefix keys).
+/// Null if there is no key.
 async fn write(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<(Val, u64)> {
     let written = write_request(ex, conn, req).await;
     #[cfg(feature = "test-faults")]
@@ -1020,8 +1020,8 @@ pub async fn create<M: Model>(m: &mut M) -> Result<M> {
             _ => {}
         }
     }
-    // 받은 key를 쓰는 column이다: identity, 또는 markdown executor가 정하는 key(key_prefix)로 요청이 값을 주지
-    // 않은 하나뿐인 primary key column이다.
+    // The column that takes the received key: identity, or a key the markdown executor sets (key_prefix) when the request gives no value
+    // is the single primary key column.
     let assigned_key = match (&ent.identity, ent.primary_key.as_slice()) {
         (Some(identity), _) => Some(identity),
         (None, [pk]) if ex.db().is_markdown() && !key.is_null() && !c.sets.iter().any(|s| &s.column == pk) => Some(pk),
@@ -1263,8 +1263,8 @@ pub async fn save<M: Model>(m: &mut M) -> Result<M> {
     create(m).await
 }
 
-/// transaction의 audit 기록을 `ex`에서 삽입하고 그 table과 primary key 값을 돌려준다. 기록 table의 entity에
-/// 대한 insert request이며, primary key가 identity면 생성된 key, 아니면 기록의 값이다.
+/// Inserts the transaction's audit record on `ex` and returns that table and the primary key value. For the entity of the record table
+/// it is an insert request; if the primary key is an identity, it is the generated key; otherwise it is the record's value.
 pub(crate) async fn insert_audit(ex: &Executor, a: &crate::tx::AuditInsert) -> Result<crate::tx::AuditKey> {
     let ent = &a.entity;
     let mut req = Req::new(a.schema, "insert", &ent.name);
@@ -1656,7 +1656,7 @@ mod related_tests {
     test_model!(Left, LEFT);
     test_model!(Right, RIGHT);
 
-    /// one, 빈 one, many relation result를 가진 Left row.
+    /// A Left row with one, empty-one, and many relation results.
     fn parent() -> Core {
         let mut row = RowState::default();
         let mut put = |name: &str, value: RelatedValue| {
@@ -1670,7 +1670,7 @@ mod related_tests {
         core
     }
 
-    /// 저장된 relation 값을 다른 model type이나 다른 relation 종류로 읽으면 INTERNAL이다.
+    /// Reading a stored relation value as another model type or another relation kind is INTERNAL.
     #[test]
     fn relation_results_report_a_mismatched_value() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

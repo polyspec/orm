@@ -81,7 +81,7 @@ async fn soft_delete_filters_reads_and_rewrites_deletes() {
     let config = Config { aes_key: "test-aes-key".into(), blind_index_key: "test-blind-key".into(), ..Default::default() };
     let db = Db::connect(&dsn, 1, config).await.unwrap();
     db.utils().schema().install(&SCHEMA).await.unwrap();
-    // model statement만 모으도록 install 뒤에 구독한다.
+    // Subscribes after install so that only model statements are collected.
     let _logging = db
         .subscribe(move |e: &StatementEvent<'_>| {
             hook.lock().unwrap().push(e.sql.to_owned());

@@ -1,13 +1,13 @@
-//! docs/config.md의 MySQL TLS mode: ssl-ca를 둔 ssl-mode=VERIFY_IDENTITY는 server 인증서를 CA와
-//! host 이름으로 검사하는 TLS로 연결하고, 다른 CA가 서명했거나 다른 host를 이름으로 가진 인증서의
-//! server를 거부한다. Rust client는 다른 MySQL parameter처럼 ssl-mode와 ssl-ca를 그대로 sqlx에
-//! 넘긴다. `make test-servers`의 ORM_TEST_MYSQL_TLS_DSN, ORM_TEST_MYSQL_TLS_OTHER_CA_DSN,
-//! ORM_TEST_MYSQL_TLS_MISMATCH_DSN이 없으면 test가 실패한다.
+//! The MySQL TLS mode of docs/config.md: ssl-mode=VERIFY_IDENTITY with ssl-ca checks the server certificate against the CA and
+//! connects over TLS that checks the host name, and rejects a server whose certificate was signed by another CA or names another host.
+//! The Rust client passes ssl-mode and ssl-ca to sqlx as it does the other MySQL parameters
+//! unchanged. The DSNs from `make test-servers` are ORM_TEST_MYSQL_TLS_DSN, ORM_TEST_MYSQL_TLS_OTHER_CA_DSN,
+//! and ORM_TEST_MYSQL_TLS_MISMATCH_DSN; the test fails if one is missing.
 
 use polyspec_orm::db::Pool;
 use polyspec_orm::Db;
 
-/// `var`의 DSN이다. 없거나 비어 있으면 test가 실패한다.
+/// The DSN of `var`. The test fails if it is missing or empty.
 fn require_dsn(var: &str) -> String {
     match std::env::var(var) {
         Ok(dsn) if !dsn.is_empty() => dsn,
@@ -15,7 +15,7 @@ fn require_dsn(var: &str) -> String {
     }
 }
 
-/// DSN으로 연 session의 TLS version이다.
+/// The TLS version of the session opened with the DSN.
 async fn ssl_version(dsn: &str) -> Result<String, String> {
     let db = Db::connect(dsn, 1, polyspec_orm::Config::default()).await.map_err(|e| e.to_string())?;
     let Pool::MySql(pool) = db.pool().clone() else { panic!("{dsn} is not a MySQL DSN") };

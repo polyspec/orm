@@ -101,9 +101,9 @@ struct Builder {
     d: Dialect,
     binds: Vec<BindSlot>,
     subs: usize,
-    /// statement가 이름으로 쓴 table이다.
+    /// The table the statement uses by name.
     tables: std::collections::BTreeSet<String>,
-    /// type 없는 slot처럼 placeholder를 만들며 생긴 첫 planner 오류다. step을 만드는 곳이 확인한다.
+    /// The first planner error raised while making a placeholder, such as a slot without a type. The place that makes the step checks it.
     error: Option<crate::Error>,
 }
 
@@ -112,7 +112,7 @@ impl Builder {
         Builder { d, binds: Vec::new(), subs: 0, tables: std::collections::BTreeSet::new(), error: None }
     }
 
-    /// placeholder를 만들며 생긴 첫 오류를 돌려준다.
+    /// Returns the first error raised while making placeholders.
     fn checked(&mut self) -> Result<()> {
         match self.error.take() {
             Some(e) => Err(e),
@@ -120,13 +120,13 @@ impl Builder {
         }
     }
 
-    /// table 이름을 quote하고 statement의 table로 기록한다.
+    /// Quotes the table name and records it as a table of the statement.
     fn table(&mut self, table: &str) -> String {
         self.tables.insert(table.to_string());
         self.d.quote(table)
     }
 
-    /// statement가 쓴 table을 정렬해 돌려준다.
+    /// Returns the tables the statement wrote, sorted.
     fn tables(&self) -> Vec<String> {
         self.tables.iter().cloned().collect()
     }
@@ -136,7 +136,7 @@ impl Builder {
         self.d.placeholder(self.binds.len())
     }
 
-    /// type 있는 slot을 더한다. type 없는 slot은 planner 오류다.
+    /// Adds a slot with a type. A slot without a type is a planner error.
     fn slot(&mut self, slot: BindSlot) -> String {
         if slot.col_type.is_empty() && self.error.is_none() {
             self.error = Some(err(codes::IR_INVALID, format!("bind slot {} ({}) has no declared type", self.binds.len(), slot.from)));
@@ -144,15 +144,15 @@ impl Builder {
         self.push(slot)
     }
 
-    /// request 값 Params[i]의 placeholder다. `ty`는 그 값의 dbspec type이다.
+    /// The placeholder for request value Params[i]. `ty` is that value's dbspec type.
     fn param(&mut self, i: usize, ty: &str) -> String {
         // A datetime or time compared with a function's argument or result is text of six fraction digits.
         let precision = if ty == "datetime" || ty == "time" { 6 } else { 0 };
         self.slot(BindSlot { from: "param".into(), param: i, col_type: ty.into(), precision, ..Default::default() })
     }
 
-    /// column `col`과 비교하거나 `col`에 할당하는 값 Params[i]의 placeholder다. type은 `col`의
-    /// type이고 decimal, time, datetime은 그 자릿수를 싣는다.
+    /// The placeholder for value Params[i] compared with or assigned to column `col`. The type is the type of `col`
+    /// and decimal, time, and datetime carry its digit counts.
     fn col_param(&mut self, i: usize, col: &Field, transform: &str) -> String {
         let (precision, scale) = col_digits(col);
         let length = if let Type::Varchar(n) = col.ty { n.into() } else { 0 };
@@ -168,24 +168,24 @@ impl Builder {
         })
     }
 
-    /// executor 설정 값이다. `ty`는 그 값을 쓰는 column의 type이다.
+    /// An executor setting value. `ty` is the type of the column that writes the value.
     fn config(&mut self, name: &str, ty: &str) -> String {
         self.slot(BindSlot { from: "config".into(), name: name.into(), col_type: ty.into(), ..Default::default() })
     }
 
-    /// executor가 주는 시각. `precision`은 slot의 소수 자리다(`clock_precision`).
+    /// The time the executor provides. `precision` is the slot's fractional digits (`clock_precision`).
     fn now(&mut self, precision: u8) -> String {
         self.slot(BindSlot { from: "now".into(), precision: precision.into(), col_type: "datetime".into(), ..Default::default() })
     }
 
-    /// executor가 채우는 transaction의 audit 기록 key다. name은 audit 기록 entity이며, executor는
-    /// transaction의 audit이 그 entity의 행인지 확인한다. type은 audit column의 type이다.
+    /// The audit record key of the transaction that the executor fills. name is the audit record entity, and the executor
+    /// checks that the transaction's audit is a row of that entity. type is the type of the audit column.
     fn audit(&mut self, col: &Field, record: &str) -> String {
         let ph = self.slot(BindSlot { from: "audit".into(), name: record.to_owned(), col_type: col.ty.name().into(), ..Default::default() });
         self.d.write_expr(ph, col.ty, &[])
     }
 
-    /// executor가 parent 값으로 펼치는 placeholder 하나다. `key_types`는 비교하는 key column의 type이다.
+    /// One placeholder the executor expands into parent values. `key_types` are the types of the key columns compared.
     fn parent_list(&mut self, step: usize, key_types: Vec<String>) -> String {
         self.push(BindSlot { from: "parent".into(), step: step as u32, key_types, ..Default::default() })
     }
@@ -202,17 +202,17 @@ fn cmp(op: &str) -> &'static str {
     }
 }
 
-/// AES 값과 함께 쓰는 key version column (`aes_version` setting).
+/// The key version column written with AES values (`aes_version` setting).
 fn aes_version_column(ent: &Entity) -> &str {
     ent.aes_version.as_deref().unwrap_or("")
 }
 
-/// executor가 transaction의 audit 기록 key를 쓰는 audit column.
+/// The audit column to which the executor writes the transaction's audit record key.
 fn audit_column(ent: &Entity) -> &str {
     ent.audit.as_ref().map(|a| a.column.as_str()).unwrap_or("")
 }
 
-/// audit column이 가리키는 audit 기록 entity.
+/// The audit record entity that the audit column points to.
 fn audit_record(ent: &Entity) -> &str {
     ent.audit.as_ref().map(|a| a.record.as_str()).unwrap_or("")
 }
@@ -225,7 +225,7 @@ fn assigns_aes(ent: &Entity, set: &[ir::Assign]) -> bool {
     set.iter().any(|a| ent.field(&a.column).map(Field::aes).unwrap_or(false))
 }
 
-/// executor만 쓰는 audit column을 request가 직접 쓰면 거부한다.
+/// A request that writes an audit column only the executor writes is rejected.
 fn validate_audit_assignment(ent: &Entity, set: &[ir::Assign]) -> Result<()> {
     let audited = audit_column(ent);
     if !audited.is_empty() && assigned(set, audited) {
@@ -234,7 +234,7 @@ fn validate_audit_assignment(ent: &Entity, set: &[ir::Assign]) -> Result<()> {
     Ok(())
 }
 
-/// `datetime(p)` column의 p.
+/// The p of a `datetime(p)` column.
 fn datetime_precision(col: &Field) -> u8 {
     match col.ty {
         Type::DateTime(p) => p,
@@ -242,8 +242,8 @@ fn datetime_precision(col: &Field) -> u8 {
     }
 }
 
-/// column에 쓰는 `now` slot의 소수 자리: `datetime(p)` column은 p, 그 밖의 column은 6이다.
-/// executor는 한 statement의 clock을 slot마다 이 자리로 버린다. 비교하는 clock은 6자리다.
+/// The fractional digits of the `now` slot written to a column: p for a `datetime(p)` column, and 6 for other columns.
+/// The executor truncates a statement's clock to these digits for each slot. A compared clock has six digits.
 fn clock_precision(col: &Field) -> u8 {
     match col.ty {
         Type::DateTime(p) => p,
@@ -272,9 +272,9 @@ fn validate_aes_assignments(ent: &Entity, set: &[ir::Assign], require_complete: 
     Ok(())
 }
 
-/// insert는 필요한 column을 모두 쓴다: default가 없는 NOT NULL column 중 identity,
-/// planner가 쓰는 AES key version, executor가 쓰는 audit column이 아닌 것.
-/// default가 있는 column을 빼면 database default를 쓴다.
+/// An insert writes all the columns it needs: NOT NULL columns without a default, other than the identity,
+/// the AES key version the planner writes, and the audit columns the executor writes.
+/// Columns that have a default are left out, so the database default is used.
 fn validate_required_assignments(ent: &Entity, set: &[ir::Assign]) -> Result<()> {
     let version = aes_version_column(ent);
     let audited = audit_column(ent);
@@ -308,7 +308,7 @@ fn conflict_target(ent: &Entity, set: &[ir::Assign]) -> Vec<String> {
     super::validate::conflict_key(ent, set).unwrap_or_default()
 }
 
-/// column 값 slot이 싣는 precision과 scale이다: decimal(p,s), time(p), datetime(p).
+/// The precision and scale a column value slot carries: decimal(p,s), time(p), datetime(p).
 fn col_digits(col: &Field) -> (i64, i64) {
     match col.ty {
         Type::Decimal(p, s) => (p.into(), s.into()),
@@ -317,7 +317,7 @@ fn col_digits(col: &Field) -> (i64, i64) {
     }
 }
 
-/// SQL 쪽 style 함수가 placeholder에서 받는 값의 type이다. hex는 byte를, ip는 IP 주소 text를 받는다.
+/// The type of the value that a SQL-side style function takes from the placeholder. hex takes bytes, and ip takes IP address text.
 fn style_input_type(style: &str) -> &'static str {
     if style == "ip" {
         "text"
@@ -326,8 +326,8 @@ fn style_input_type(style: &str) -> &'static str {
     }
 }
 
-/// b의 start부터의 param slot을 col의 할당으로 표시하고 sql을 돌려준다: non-null column의 slot은 그 column을 싣고,
-/// executor는 NULL 값을 거부한다.
+/// Marks the param slots from b's start as assignments to col and returns the sql: a slot of a non-null column carries that column,
+/// and the executor rejects NULL values.
 fn mark_assigned(b: &mut Builder, start: usize, col: &Field, sql: String) -> String {
     if !col.nullable {
         for s in b.binds[start..].iter_mut().filter(|s| s.from == "param") {
@@ -406,7 +406,7 @@ impl<'m> Planner<'m> {
         styles.iter().map(String::as_str).filter(|s| self.d.handles_style(s)).collect()
     }
 
-    /// 읽기에서 dialect가 SQL로 푸는 stage다. `client_styles`는 나머지를 executor에 남긴다.
+    /// The stage the dialect decodes in SQL on reads. `client_styles` leaves the rest to the executor.
     fn read_sql_styles<'c>(&self, styles: &'c [String]) -> Vec<&'c str> {
         styles.iter().map(String::as_str).filter(|s| self.d.decodes_style(s)).collect()
     }
@@ -685,7 +685,7 @@ impl<'m> Planner<'m> {
                 .as_deref()
                 .and_then(|name| s.ent.field(name))
                 .ok_or_else(|| err(codes::SCHEMA_INVALID, format!("{}: AES column requires the aes_version setting", s.ent.name)))?;
-            // 고른 version column이 있으면 그것을 쓰고, 없을 때만 숨겨서 읽는다.
+            // If there is a selected version column, it is used; only when there is none is a hidden one read.
             asm.aes_version = asm.columns.iter().position(|c| c.column == version.name && c.styles.is_empty());
             if asm.aes_version.is_none() {
                 sep(sb);
@@ -974,7 +974,7 @@ impl<'m> Planner<'m> {
     fn render_value(&self, b: &mut Builder, col: &Field, i: usize) -> String {
         let styles = self.sql_styles(&col.codec);
         let host: Vec<String> = col.codec.iter().filter(|s| matches!(s.as_str(), "aes" | "hex" | "ip") && !self.d.handles_style(s)).cloned().collect();
-        // SQL 쪽 style 함수가 감싸는 값의 type은 그 함수 입력의 type이다.
+        // The type of the value a SQL-side style function wraps is the type of that function's input.
         let ph = match styles.first() {
             None => b.col_param(i, col, ""),
             Some(style) => b.param(i, style_input_type(style)),
@@ -1100,7 +1100,7 @@ impl<'m> Planner<'m> {
         validate_aes_assignments(ent, &set, false)?;
         validate_audit_assignment(ent, &set)?;
         validate_required_assignments(ent, &set)?;
-        // load은 행을 저장된 key 그대로 쓰므로 identity column의 값을 받고 요구한다.
+        // load writes the row with its stored key as is, so it accepts and requires the identity column value.
         if let Some(identity) = ent.identity.as_deref().filter(|_| r.load) {
             if !set.iter().any(|a| a.column == identity && a.p.is_some()) {
                 return Err(err(codes::IR_INVALID, format!("load of {} needs a value for the identity column {identity}", ent.name)));
@@ -1118,8 +1118,8 @@ impl<'m> Planner<'m> {
             cols.push(self.d.quote(&a.column));
             vals.push(self.render_assign(&mut b, ent, col, a)?);
         }
-        // executor가 관리하는 column은 사용자 assignment 뒤에 AES key version, audit column,
-        // `default now` 순서로 쓴다.
+        // The columns the executor manages are written after the user's assignments, in the order AES key version, audit column,
+        // then `default now`.
         let managed = self.managed_insert_columns(ent, &set)?;
         for c in &managed {
             cols.push(self.d.quote(c.column()));
@@ -1127,7 +1127,7 @@ impl<'m> Planner<'m> {
         }
         let mut sql = format!("INSERT INTO {} ({}) VALUES ({})", b.table(&ent.table), cols.join(", "), vals.join(", "));
         if !r.rows.is_empty() {
-            // 그려진 column은 r.set의 값에 대응한다. 파생된 blind index는 AES source column의 값을 쓴다.
+            // The rendered columns correspond to the values of r.set. A derived blind index uses the value of the AES source column.
             let mut source = Vec::with_capacity(set.len());
             for (i, a) in set.iter().enumerate() {
                 if i < r.set.len() {
@@ -1167,7 +1167,7 @@ impl<'m> Planner<'m> {
                 sets.push(format!("{} = {}", self.d.quote(audited), b.audit(self.column_of(ent, audited)?, audit_record(ent))));
             }
             if let Some(identity) = ent.identity.as_deref().filter(|_| !self.d.insert_returning_id()) {
-                // MySQL: last insert id가 이미 있는 row를 가리키게 한다
+                // MySQL: makes the last insert id point to the row that already exists
                 let identity = self.d.quote(identity);
                 sets.push(format!("{identity} = LAST_INSERT_ID({identity})"));
             }
@@ -1180,8 +1180,8 @@ impl<'m> Planner<'m> {
         Ok(Step { role: "main".into(), sql, tables: b.tables(), bind_slots: b.binds, ..Default::default() })
     }
 
-    /// insert가 사용자 assignment 외에 쓰는 column: AES key version, audit column,
-    /// executor clock을 쓰는 dialect(host_now)에서 assign되지 않은 `default now` column(field 순서).
+    /// Columns an insert writes besides the user's assignments: AES key version, audit column,
+    /// and `default now` columns not assigned in a dialect that uses the executor clock (host_now), in field order.
     fn managed_insert_columns<'e>(&self, ent: &'e Entity, set: &[ir::Assign]) -> Result<Vec<Managed<'e>>> {
         let mut out = Vec::new();
         let version = aes_version_column(ent);
@@ -1192,8 +1192,8 @@ impl<'m> Planner<'m> {
         if !audited.is_empty() {
             out.push(Managed::Audit(self.column_of(ent, audited)?, audit_record(ent)));
         }
-        // SQLite database clock은 millisecond까지만 가지므로 `default now` column에 executor의
-        // microsecond clock을 쓴다. MySQL과 PostgreSQL은 database default에 맡긴다.
+        // The SQLite database clock has only millisecond precision, so for a `default now` column the executor's
+        // microsecond clock is used. MySQL and PostgreSQL leave it to the database default.
         if self.d.host_now() {
             for f in &ent.fields {
                 if matches!(f.default, Some(FieldDefault::Now)) && !assigned(set, &f.name) {
@@ -1204,9 +1204,9 @@ impl<'m> Planner<'m> {
         Ok(out)
     }
 
-    /// updated와 soft delete가 `datetime(p)` column에 쓰는 statement 시각이다.
-    /// executor clock을 쓰는 dialect(host_now)는 column의 소수 자리로 자른 clock을 bind하고,
-    /// MySQL은 CURRENT_TIMESTAMP(p)로 database clock을 쓴다.
+    /// The statement time that updated and soft delete write to a `datetime(p)` column.
+    /// A dialect that uses the executor clock (host_now) binds the clock truncated to the column's fractional digits,
+    /// and MySQL uses the database clock via CURRENT_TIMESTAMP(p).
     fn statement_time(&self, b: &mut Builder, col: &Field) -> String {
         if self.d.host_now() {
             b.now(clock_precision(col))
@@ -1232,7 +1232,7 @@ impl<'m> Planner<'m> {
         if !version.is_empty() && assigns_aes(ent, &set) && !assigned(&set, version) {
             sets.push(format!("{} = {}", self.d.quote(version), b.config("aes_version", self.column_of(ent, version)?.ty.name())));
         }
-        // updated 시각은 항상 명시적으로 쓰므로 모든 dialect와 optimistic locking이 같게 동작한다.
+        // The updated time is always written explicitly, so every dialect and optimistic locking behave the same.
         if let Some(updated) = ent.updated.as_deref().filter(|u| !assigned(&r.set, u)) {
             let now = self.statement_time(&mut b, self.column_of(ent, updated)?);
             sets.push(format!("{} = {now}", self.d.quote(updated)));
@@ -1255,8 +1255,8 @@ impl<'m> Planner<'m> {
         Ok(Step { role: "main".into(), sql, tables: b.tables(), bind_slots: b.binds, ..Default::default() })
     }
 
-    /// soft delete column이 있으면 delete는 그 column을 statement 시각으로 쓰는 update다.
-    /// audit 대상 table의 soft delete도 audit column을 쓴다.
+    /// If there is a soft delete column, delete is an update that writes that column with the statement time.
+    /// A soft delete on an audit target table also writes the audit column.
     fn delete_step(&self, r: &ir::Request) -> Result<Step> {
         let mut b = Builder::new(self.d);
         let ent = self.entity(&r.query.entity)?;
@@ -1283,11 +1283,11 @@ impl<'m> Planner<'m> {
         Ok(Step { role: "main".into(), sql, tables: b.tables(), bind_slots: b.binds, ..Default::default() })
     }
 
-    /// soft delete한 행 하나를 되돌리는 update다. restore_key가 request의 set과 where에서 primary key나 unique
-    /// key 하나를 고르고, 그 key column의 set 값은 조건이 되며 다른 set 값은 되돌리는 행에 함께 쓰는 새 값으로
-    /// update처럼 쓴다. where의 다른 조건은 restore를 더 좁힌다. 지워진 행만 고치므로 지워지지 않은 행과 없는
-    /// 행은 아무것도 바꾸지 않는다. 그 뒤에 AES key version, soft delete column의 NULL, audit table이면 audit
-    /// column을 쓴다. updated column은 쓰지 않는다.
+    /// An update that reverts one soft-deleted row. restore_key takes a primary key or unique
+    /// key from the request's set and where; that key column's set value becomes a condition, and other set values are written to the restored row as new values,
+    /// written like an update. Other where conditions narrow the restore. Since only deleted rows are changed, a row that is not deleted and a row that does not exist
+    /// change nothing. After that, it writes the AES key version, NULL in the soft delete column, and, for an audit table, the audit
+    /// column. It does not write the updated column.
     fn restore_step(&self, r: &ir::Request) -> Result<Step> {
         let ent = self.entity(&r.query.entity)?;
         let parts = super::validate::restore_key(ent, r)?;
@@ -1319,8 +1319,8 @@ impl<'m> Planner<'m> {
         Ok(Step { role: "main".into(), sql, tables: b.tables(), bind_slots: b.binds, ..Default::default() })
     }
 
-    /// entity의 identity를 그 table의 가장 큰 key 다음 값에서 다시 시작하는 statement다: 다음 생성
-    /// key는 가장 큰 key에 1을 더한 값이고, 빈 table이면 1이다. load로 key를 지정해 행을 적재한 뒤 실행한다.
+    /// The statement that restarts an entity's identity from the value after the table's largest key: the next generated
+    /// key is the largest key plus 1, or 1 for an empty table. It runs after rows are loaded with explicit keys via load.
     fn restart_identity_step(&self, r: &ir::Request) -> Result<Step> {
         let ent = self.entity(&r.query.entity)?;
         let Some(identity) = ent.identity.as_deref() else {
@@ -1332,10 +1332,10 @@ impl<'m> Planner<'m> {
     }
 }
 
-/// insert마다 executor가 값을 주는 column과 그 bind slot.
+/// For each insert, the columns the executor supplies values for, and their bind slots.
 enum Managed<'e> {
     AesVersion(&'e Field),
-    /// audit column과 그 audit 기록 entity.
+    /// The audit column and its audit record entity.
     Audit(&'e Field, &'e str),
     Now(&'e Field),
 }

@@ -1,10 +1,10 @@
-//! tests/events/vectors.json의 case를 이 client로 MySQL, PostgreSQL, SQLite에서 실행해
-//! statement event를 비교한다(docs/usage.md "Statement events"). case마다 자기 case
-//! database에 fixture contracts/fixtures/statement_events.dbs를 설치하고(case의 install이
-//! false가 아니면) 기록하는 subscriber 하나를 등록한 뒤 step을 차례로 실행한다. 기록은
-//! sql, binds, kind, tables, transaction(case 안에서 처음 나온 순서로 1부터 다시 센 번호,
-//! transaction 밖이면 null), error(statement 오류의 code, 없으면 null)다. compare가
-//! "tables"이면 table을 가진 event만 비교한다. elapsed는 `Duration`이므로 음수가 될 수 없다.
+//! Runs the cases of tests/events/vectors.json with this client on MySQL, PostgreSQL, and SQLite and
+//! compares the statement events (docs/usage.md "Statement events"). For each case, its own case
+//! database has the fixture contracts/fixtures/statement_events.dbs installed (unless the case's install
+//! is false), registers one recording subscriber, then runs the steps in turn. The record
+//! holds sql, binds, kind, tables, and transaction (a number recounted from 1 in the order first seen within the case,
+//! null outside a transaction), and error (the code of the statement error, or null if none). compare
+//! "tables" compares only events that have tables. elapsed is a `Duration`, so it cannot be negative.
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -64,17 +64,17 @@ impl Model for EventProbe {
     }
 }
 
-/// 실패하는 transaction callback의 오류 message다.
+/// The error message of a failing transaction callback.
 const CALLBACK_FAILED: &str = "statement events test callback failed";
 
-/// 기록하는 subscriber가 모은 event와 transaction 번호의 다시 센 번호다.
+/// The events collected by the recording subscriber and the recounted transaction numbers.
 #[derive(Default)]
 struct Recorded {
     records: Vec<Value>,
     numbers: HashMap<u64, u64>,
 }
 
-/// case 하나를 실행하는 상태다.
+/// The state of running one case.
 struct EventRun {
     driver: &'static str,
     db: Db,
@@ -83,7 +83,7 @@ struct EventRun {
     failing: Mutex<Option<Subscription>>,
 }
 
-/// bind 값을 vector의 JSON 값으로 쓴다.
+/// Writes bind values as the JSON values of the vector.
 fn bind_json(p: &Param) -> Value {
     match p {
         Param::Null => Value::Null,
@@ -95,7 +95,7 @@ fn bind_json(p: &Param) -> Value {
     }
 }
 
-/// event 하나를 기록한다.
+/// Records one event.
 fn record(recorded: &Mutex<Recorded>, e: &StatementEvent<'_>) {
     let mut r = recorded.lock().unwrap();
     let transaction = e.transaction.map(|n| {
@@ -125,7 +125,7 @@ impl EventRun {
         polyspec_orm::model::get_core::<EventProbe>(&filter).await
     }
 
-    /// step 하나를 실행하고 그 결과를 돌려준다.
+    /// Runs one step and returns its result.
     fn step<'a>(&'a self, s: &'a Value) -> Pin<Box<dyn Future<Output = polyspec_orm::Result<()>> + 'a>> {
         Box::pin(async move {
             let label = s["label"].as_str().unwrap_or_default();
@@ -193,9 +193,9 @@ impl EventRun {
         })
     }
 
-    /// step을 실행하고 그 오류가 step이 기대한 것인지 확인한다. 기대한 오류는 삼키지 않고
-    /// 돌려주어 바깥 transaction의 callback이 받게 한다. transaction step이 기대한 callback
-    /// 오류는 바깥 callback에서 처리된 것으로 본다.
+    /// Runs a step and checks whether its error is the one the step expected. The expected error is not swallowed,
+    /// but is returned so that the outer transaction's callback receives it. The callback
+    /// error that a transaction step expected is treated as handled in the outer callback.
     async fn checked(&self, s: &Value) -> polyspec_orm::Result<()> {
         let result = self.step(s).await;
         let op = s["op"].as_str().unwrap_or_default();
@@ -215,7 +215,7 @@ impl EventRun {
     }
 }
 
-/// case 하나를 자기 case database에서 실행하고 기록한 event를 vector와 비교한다.
+/// Runs one case in its own case database and compares the recorded events with the vector.
 async fn run_case(driver: &'static str, case: &Value) {
     let id = case["id"].as_str().expect("case id");
     let database = CaseDatabase::create(driver).await;
@@ -282,8 +282,8 @@ fn statement_events() -> Vec<polyspec_orm_testcase::Trial> {
         .collect()
 }
 
-/// statement_events coverage: feature-check가 고른 database(ORM_FEATURE_DATABASE)에서
-/// vector의 모든 case를 case마다 새 case database로 실행한다. bench database는 읽거나 쓰지 않는다.
+/// statement_events coverage: on the database feature-check chose (ORM_FEATURE_DATABASE),
+/// runs every case of the vector, each in a new case database. The bench database is neither read nor written.
 /// It is an ignored trial, which feature-check runs with --include-ignored.
 async fn coverage_statement_events() {
     let driver = match std::env::var("ORM_FEATURE_DATABASE").as_deref() {
@@ -295,11 +295,11 @@ async fn coverage_statement_events() {
     run_cases(driver).await;
 }
 
-/// vector의 server_transactions를 PostgreSQL case database에서 실행한다. probe가 돌려주는
-/// backend의 local transaction 번호 차이로 page 실행 한 번의 server transaction을 센다. pool size
-/// 1이므로 모든 statement가 한 backend에서 실행된다. probe는 같은 pool에서 sqlx로 보내므로 event가
-/// 없다. sqlx는 연결에서 처음 보내는 statement text를 실행 전에 자기 round trip으로 prepare하므로,
-/// rust가 first_run_prepare_clients에 있으면 첫 실행은 event 수에 statement text 수를 더한다.
+/// Runs the vector's server_transactions in a PostgreSQL case database. The number of server transactions counted for one run of a page, which the probe returns,
+/// counts the server transactions of one page run from the difference in the backend's local transaction numbers. With pool size
+/// 1, all statements run on one backend. The probe sends through sqlx on the same pool, so there are no
+/// events for it. sqlx prepares the first statement text it sends on a connection with its own round trip before running it, so
+/// if rust is in first_run_prepare_clients, the first run adds the number of statement texts to the event count.
 async fn statement_events_server_transactions() {
     let vector: Value = serde_json::from_str(VECTOR).expect("tests/events/vectors.json");
     let spec = &vector["server_transactions"];
@@ -319,8 +319,8 @@ async fn statement_events_server_transactions() {
         let polyspec_orm::db::Pool::Postgres(pool) = db.pool() else { panic!("postgres pool") };
         let (setting, source): (String, String) =
             sqlx::query_as("SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'").fetch_one(pool).await.expect("TimeZone");
-        // pooler를 거치면 pooler가 startup parameter를 server connection에 SET으로 적용하므로
-        // source는 client를 말하지 않는다. source는 server에 바로 닿을 때만 비교한다.
+        // Through a pooler, the pooler applies the startup parameters to the server connection with SET, so
+        // the source does not name the client. The source is compared only when it reaches the server directly.
         let pooled = std::env::var("ORM_TEST_POSTGRES_DSN").ok() != std::env::var("ORM_TEST_POSTGRES_SERVER_DSN").ok();
         assert_eq!(setting, spec["time_zone"]["setting"], "TimeZone setting");
         if !pooled {

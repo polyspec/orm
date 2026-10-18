@@ -1,5 +1,5 @@
-//! generated model의 schema: dbspec document set의 manifest text와 `manifestHash`,
-//! 그리고 그 둘로 만든 runtime model (docs/dbspec.md, "Manifest and hashes",
+//! The schema of a generated model: the manifest text of the dbspec document set and `manifestHash`,
+//! and the runtime model made from those two (docs/dbspec.md, "Manifest and hashes",
 //! "Runtime model").
 
 use std::sync::{Arc, OnceLock};
@@ -8,7 +8,7 @@ use polyspec_orm_schema::dbspec::{self, Document, Entity, RuntimeModel};
 
 use crate::{codes, Error, Result};
 
-/// hash를 확인한 manifest text의 runtime model.
+/// The runtime model of manifest text whose hash has been checked.
 #[derive(Debug, Clone)]
 pub struct Manifest {
     pub manifest_hash: String,
@@ -23,8 +23,8 @@ fn diagnostics(errors: Vec<dbspec::Diagnostic>) -> Error {
     invalid(errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("; "))
 }
 
-/// manifest text와 external text의 document. 외부 문서는 `external`이다. 그 document의 manifest text와 external
-/// text가 두 text 자신이고 hash가 `hash`여야 한다.
+/// A document of manifest text and external text. The external document is `external`. The document's manifest text and external
+/// text are the two texts themselves, and the hash must be `hash`.
 fn documents(text: &str, external: &str, hash: &str) -> Result<Vec<Document>> {
     let documents = dbspec::parse_manifest_set(text, external).map_err(diagnostics)?;
     let refs: Vec<&Document> = documents.iter().collect();
@@ -36,7 +36,7 @@ fn documents(text: &str, external: &str, hash: &str) -> Result<Vec<Document>> {
         return Err(invalid("the embedded external text is not the text of the tables that the set uses from external documents".into()));
     }
     if manifest.manifest_hash != hash {
-        // text는 manifest지만 선언한 hash로 hash되지 않는다 (docs/dbspec.md, "Manifest and hashes").
+        // The text is a manifest but does not hash to the declared hash (docs/dbspec.md, "Manifest and hashes").
         return Err(Error::Engine {
             code: codes::SCHEMA_HASH_MISMATCH.into(),
             msg: format!("models were generated from manifest {hash} but the embedded manifest is {}", manifest.manifest_hash),
@@ -46,13 +46,13 @@ fn documents(text: &str, external: &str, hash: &str) -> Result<Vec<Document>> {
 }
 
 impl Manifest {
-    /// manifest text의 runtime model을 만들고 text의 hash가 `manifest_hash`인지 확인한다.
+    /// Makes the runtime model of the manifest text and checks that the text's hash is `manifest_hash`.
     pub fn load(manifest_text: &str, manifest_hash: &str) -> Result<Manifest> {
         Manifest::load_set(manifest_text, "", manifest_hash)
     }
 
-    /// manifest text와 external text(외부 문서에서 set이 쓰는 table)의 runtime model을 만들고 두 text의 hash가
-    /// `manifest_hash`인지 확인한다. 외부 문서의 table은 entity가 아니다.
+    /// Makes the runtime model of the manifest text and the external text (tables the set uses from external documents), and checks that the hash of the two texts is
+    /// `manifest_hash`. Tables from external documents are not entities.
     pub fn load_set(manifest_text: &str, external_text: &str, manifest_hash: &str) -> Result<Manifest> {
         let documents = documents(manifest_text, external_text, manifest_hash)?;
         let refs: Vec<&Document> = documents.iter().collect();
@@ -65,15 +65,15 @@ impl Manifest {
     }
 }
 
-/// generated model에 들어 있는 schema: manifest text와 그 hash.
-/// runtime model은 처음 쓸 때 한 번 만든다.
+/// The schema contained in a generated model: manifest text and its hash.
+/// The runtime model is built once, on first use.
 pub struct Schema {
     text: &'static str,
-    /// 외부 문서에서 set이 쓰는 table의 text(`dbspec::Manifest::external_text`). 외부 문서를 쓰지 않는 set은
-    /// 비어 있다.
+    /// The text of the tables the set uses from external documents (`dbspec::Manifest::external_text`). A set that uses no external documents
+    /// is empty.
     external: &'static str,
     hash: &'static str,
-    /// 처음 만든 runtime model, 또는 그때 난 오류의 code와 message.
+    /// The runtime model built the first time, or the code and message of the error raised then.
     manifest: OnceLock<std::result::Result<Arc<Manifest>, (String, String)>>,
 }
 
@@ -82,17 +82,17 @@ impl Schema {
         Schema::with_external(manifest_text, "", manifest_hash)
     }
 
-    /// 외부 문서를 쓰는 set의 schema: manifest text, 외부 문서에서 쓰는 table의 text, 두 text의 hash.
+    /// The schema of a set that uses external documents: manifest text, the text of tables used from external documents, and the hash of the two texts.
     pub const fn with_external(manifest_text: &'static str, external_text: &'static str, manifest_hash: &'static str) -> Schema {
         Schema { text: manifest_text, external: external_text, hash: manifest_hash, manifest: OnceLock::new() }
     }
 
-    /// 외부 문서에서 set이 쓰는 table의 text. 외부 문서를 쓰지 않으면 비어 있다.
+    /// The text of the tables the set uses from external documents. Empty if no external documents are used.
     pub fn external(&self) -> &'static str {
         self.external
     }
 
-    /// model을 생성한 `manifestHash`.
+    /// The `manifestHash` that generated the model.
     pub fn hash(&self) -> &'static str {
         self.hash
     }
@@ -102,13 +102,13 @@ impl Schema {
         self.text
     }
 
-    /// statement를 render할 manifest text의 document.
+    /// The document of manifest text from which statements are rendered.
     pub fn documents(&self) -> Result<Vec<Document>> {
         documents(self.text, self.external, self.hash)
     }
 
-    /// 등록할 schema의 runtime model. text가 선언한 hash로 hash되지 않으면 어떤
-    /// statement보다 먼저 CONFIG이고, text가 manifest가 아니면 SCHEMA_INVALID다.
+    /// The runtime model of the schema to register. If the text does not hash to the declared hash, then
+    /// before any statement it is CONFIG; if the text is not a manifest, it is SCHEMA_INVALID.
     pub(crate) fn registered(&self) -> Result<Arc<Manifest>> {
         self.manifest().map_err(|e| match e {
             Error::Engine { code, msg } if code == codes::SCHEMA_HASH_MISMATCH => Error::Config(format!("invalid schema manifest: {msg}")),
@@ -116,8 +116,8 @@ impl Schema {
         })
     }
 
-    /// 같은 manifest text와 hash의 schema 하나. 연결이 등록한 set의 schema를 request에 쓰도록 process에서
-    /// hash마다 한 번 만들고 둔다.
+    /// One schema with the same manifest text and hash. So that requests use the schema of the set the connection registered, the process
+    /// builds one per hash and keeps it.
     pub(crate) fn interned(&self) -> &'static Schema {
         static INTERNED: std::sync::Mutex<Vec<&'static Schema>> = std::sync::Mutex::new(Vec::new());
         let mut interned = INTERNED.lock().unwrap();
@@ -147,7 +147,7 @@ impl Schema {
 mod tests {
     use super::*;
 
-    /// contracts/fixtures/rollback.dbs의 manifest text와 manifestHash.
+    /// The manifest text and manifestHash of contracts/fixtures/rollback.dbs.
     fn rollback_manifest() -> (String, String) {
         let text = include_str!("../../../../contracts/fixtures/rollback.dbs");
         let document = dbspec::parse(text, &Default::default()).map(|parsed| parsed.document).expect("rollback.dbs parses");
@@ -159,7 +159,7 @@ mod tests {
         Box::leak(text.into_boxed_str())
     }
 
-    // 선언한 hash로 hash되지 않는 manifest text는 SCHEMA_HASH_MISMATCH이고, manifest가 아닌 text는 SCHEMA_INVALID다.
+    // Manifest text that does not hash to the declared hash is SCHEMA_HASH_MISMATCH, and text that is not a manifest is SCHEMA_INVALID.
     #[test]
     fn manifest_hash_mismatch_is_reported() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

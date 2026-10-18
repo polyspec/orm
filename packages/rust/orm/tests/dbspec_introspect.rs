@@ -18,16 +18,16 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-/// Go가 단언하는 dialect별 catalog query 수.
+/// The number of catalog queries per dialect that Go asserts.
 const QUERY_COUNTS: [(&str, usize); 3] = [("mysql", 9), ("postgres", 7), ("sqlite", 3)];
 
-/// 한 database에 함께 적용하는 문서 집합.
+/// The document set applied together to one database.
 struct RoundTripSet {
     id: String,
     documents: BTreeMap<String, String>,
 }
 
-/// packages/go/internal/dialects의 schemaDocumentPatterns와 같은 glob 목록.
+/// The glob list, the same as schemaDocumentPatterns in packages/go/internal/dialects.
 const SCHEMA_DOCUMENT_DIRECTORIES: [&str; 2] = ["contracts/fixtures/bench", "contracts/fixtures"];
 
 fn schema_documents(directory: &Path) -> Vec<PathBuf> {
@@ -40,7 +40,7 @@ fn schema_documents(directory: &Path) -> Vec<PathBuf> {
     paths
 }
 
-/// tests/dbspec/ddl.json의 모든 case와 모든 schema 문서.
+/// All cases of tests/dbspec/ddl.json and all schema documents.
 fn round_trip_sets() -> Vec<RoundTripSet> {
     let root = repository();
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(root.join("tests/dbspec/ddl.json")).expect("ddl.json")).expect("ddl.json");
@@ -60,7 +60,7 @@ fn round_trip_sets() -> Vec<RoundTripSet> {
     out
 }
 
-/// 집합의 모든 문서를 이름 순으로 parse한다. 각 문서는 나머지를 문서 집합으로 받는다.
+/// Parses all documents of the set in name order. Each document receives the rest as its document set.
 fn parse_set(id: &str, documents: &BTreeMap<String, String>) -> Vec<Document> {
     documents
         .iter()
@@ -71,9 +71,9 @@ fn parse_set(id: &str, documents: &BTreeMap<String, String>) -> Vec<Document> {
         .collect()
 }
 
-/// 집합의 모든 table을 이름 순으로 담은 문서 introspected의 schema text. 집합의
-/// schema text에서 table 블록(`table <name> {`부터 들여쓰지 않은 `}`까지)을 모아
-/// 한 문서로 parse한다.
+/// The schema text of the introspected document, which holds all tables of the set in name order. Of the set's
+/// schema text, it gathers the table blocks (from `table <name> {` to the `}` that is not indented)
+/// and parses them as one document.
 fn expected_schema_text(id: &str, documents: &[Document]) -> String {
     let refs: Vec<&Document> = documents.iter().collect();
     let schema = dbspec::manifest(&refs).unwrap_or_else(|e| panic!("{id}: {e:?}")).schema_text;
@@ -154,7 +154,7 @@ async fn introspect_round_trip() {
         }
     }
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
-    // 세 database의 round trip은 개발 machine에서 1분 안에 끝난다(T27 측정). 5분이 지나면 멈춘 것이다.
+    // The round trip for three databases finishes within 1 minute on the development machine (T27 measurement). Five minutes means it has stalled.
     if started.elapsed() >= Duration::from_secs(300) {
         polyspec_orm_testcase::warning(format_args!("round trip exceeded 300s"));
     }
@@ -190,7 +190,7 @@ async fn introspect_unsupported_case(index: usize, case: &Value) {
     let documents = parse_set(case_id, &documents_text);
     let refs: Vec<&Document> = documents.iter().collect();
     let statements = dbspec::render(&refs, dialect).unwrap_or_else(|e| panic!("{case_id}: {e:?}"));
-    // {schema}는 이 case의 database 또는 schema 이름이다.
+    // {schema} is this case's database or schema name.
     let schema = servers.name(index);
     let extra: Vec<String> = strings(&case["statements"]).iter().map(|s| s.replace("{schema}", &schema)).collect();
     let want_document = lines(&case["document"]);
@@ -211,7 +211,7 @@ async fn introspect_unsupported_case(index: usize, case: &Value) {
             if got != want_triples {
                 return Err(format!("unsupported differs\nwant {want_unsupported:?}\ngot  {:?}", introspection.unsupported));
             }
-            // 네 번째 원소는 reason이 포함해야 하는 rule이다. 없으면 reason은 비교하지 않는다.
+            // The fourth element is the rule the reason must include. If absent, the reason is not compared.
             for (w, u) in want_unsupported.iter().zip(&introspection.unsupported) {
                 if let Some(rule) = w.get(3) {
                     if !u.reason.contains(rule.as_str()) {

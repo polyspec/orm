@@ -1,7 +1,7 @@
-//! install은 table 이름만이 아니라 database 전체를 set과 비교한다(docs/schema.md "Schema installation").
-//! contracts/fixtures/install/changed_database.json의 case마다 document를 설치한 SQLite, MySQL, PostgreSQL의 case
-//! database를 statement로 ORM 밖에서 바꾸면, 같은 set의 install은 dialect의 message인 CONFIG이고 remaining query는
-//! 바뀐 database를 읽는다. ORM_TEST_MYSQL_DSN이나 ORM_TEST_POSTGRES_DSN이 없으면 실패한다.
+//! install compares the whole database with the set, not just table names (docs/schema.md "Schema installation").
+//! For each case of contracts/fixtures/install/changed_database.json, the case installs the document on SQLite, MySQL, and PostgreSQL;
+//! if the database is changed outside the ORM with statements, install of the same set is CONFIG (the dialect's message), and the remaining query
+//! reads the changed database. It fails if ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is missing.
 
 use std::collections::BTreeMap;
 

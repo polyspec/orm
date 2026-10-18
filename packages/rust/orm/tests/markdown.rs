@@ -1,6 +1,6 @@
-//! markdown IR executor 연결의 단위 case(docs/protocol.md §5, docs/dialects.md "Markdown IR executor"):
-//! markdown DSN, flowmark server 대신 message를 받아 적는 fake server에 보내는 connect와 control message,
-//! error 줄의 해석, 그리고 markdown 연결이 거절하는 SQL 전용 surface다. Go의 markdown_test.go와 같은 case다.
+//! Unit cases for the markdown IR executor connection (docs/protocol.md §5, docs/dialects.md "Markdown IR executor"):
+//! the connect and control messages sent to a fake server that records messages in place of a markdown DSN and the flowmark server,
+//! the interpretation of error lines, and the SQL-only surface that the markdown connection rejects. These are the same cases as Go's markdown_test.go.
 
 use polyspec_orm::db::{parse_dsn, ConnectOptions};
 use polyspec_orm::{Config, Db, Isolation};
@@ -39,8 +39,8 @@ fn parse_markdown_dsn() {
     }
 }
 
-/// flowmark server 대신 한 연결의 message를 받아 적고 `answers`를 차례로 쓰는 server다. 받은 줄은
-/// 연결이 끝난 뒤 `received`로 온다.
+/// A server that, in place of the flowmark server, records one connection's messages and writes `answers` in turn. The lines it receives
+/// come back as `received` after the connection ends.
 struct FakeServer {
     port: u16,
     received: oneshot::Receiver<Vec<String>>,
@@ -75,7 +75,7 @@ impl FakeServer {
     }
 }
 
-/// client가 보내는 connect와 control message, 그리고 error 줄의 해석을 확인한다(docs/protocol.md §5).
+/// Checks the connect and control messages the client sends, and the interpretation of error lines (docs/protocol.md §5).
 #[tokio::test]
 async fn markdown_session_messages() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -107,7 +107,7 @@ async fn markdown_session_messages() {
     assert_eq!(server.received.await.unwrap(), want);
 }
 
-/// server가 connect에 답한 CONFIG가 connect의 오류임을 확인한다.
+/// Checks that the CONFIG the server answers to connect is connect's error.
 #[tokio::test]
 async fn markdown_connect_refused() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -123,7 +123,7 @@ async fn markdown_connect_refused() {
     assert_eq!(server.received.await.unwrap(), [CONNECT_LINE]);
 }
 
-/// markdown 연결이 SQL 전용 surface를 CAPABILITY_UNSUPPORTED로 거절함을 확인한다(docs/dialects.md
+/// Checks that the markdown connection rejects the SQL-only surface with CAPABILITY_UNSUPPORTED (docs/dialects.md
 /// "Markdown IR executor").
 #[tokio::test]
 async fn markdown_rejected_surfaces() {
@@ -149,7 +149,7 @@ async fn markdown_rejected_surfaces() {
     db.close().await;
 }
 
-/// statement timeout은 연결을 열기 전에 CAPABILITY_UNSUPPORTED다: server는 message를 하나도 받지 않는다.
+/// A statement timeout is CAPABILITY_UNSUPPORTED before the connection opens: the server receives no messages at all.
 #[tokio::test]
 async fn markdown_statement_timeout_refused() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -162,7 +162,7 @@ async fn markdown_statement_timeout_refused() {
             panic!("a statement timeout was accepted")
         }
     }
-    // 연결이 없으면 server는 accept에서 기다리므로 그 task를 끝내려고 연결 하나를 열고 바로 닫는다.
+    // If there is no connection, the server waits in accept, so to end that task, one connection is opened and closed immediately.
     drop(tokio::net::TcpStream::connect(("127.0.0.1", server.port)).await.unwrap());
     assert_eq!(server.received.await.unwrap(), Vec::<String>::new());
 }

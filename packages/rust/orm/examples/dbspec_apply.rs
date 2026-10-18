@@ -1,9 +1,9 @@
-//! plans.json(tests/dbspec/plans.json)의 chain(create-from-empty와
-//! rename-table-and-column)을 Rust client로 한 database에 적용한다
-//! (docs/plans.md "Apply"). action은 apply-first(첫 plan만), apply(chain 전체),
-//! stop(둘째 plan의 statement 1이 실행된 뒤 멈춤), recover(중단된 plan을 이어
-//! 끝냄), rollback(history의 마지막 plan을 되돌림) 중 하나다. stdout에는 결과 한 줄을 쓴다: "ok", "stopped" 또는
-//! "error <code>". 그 밖의 error는 stderr에 쓰고 1로 끝난다.
+//! Applies the chain from plans.json (tests/dbspec/plans.json) (create-from-empty and
+//! rename-table-and-column) to one database with the Rust client
+//! (docs/plans.md "Apply"). The action is apply-first (first plan only), apply (whole chain),
+//! stop (halts after statement 1 of the second plan runs), recover (continues an interrupted plan
+//! to the end), rollback (reverts the last plan in history). One result line goes to stdout: "ok", "stopped", or
+//! "error <code>". Any other error is written to stderr and the process exits with 1.
 //!
 //! Usage: dbspec_apply <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
 
@@ -14,7 +14,7 @@ use sqlx::Connection;
 
 type EventError = Box<dyn std::error::Error + Send + Sync>;
 
-/// stop action이 event에서 apply를 멈추는 error.
+/// The error by which the stop action halts apply at an event.
 #[derive(Debug)]
 struct Stop;
 
@@ -58,7 +58,7 @@ async fn run(action: &str, dialect: &str, uri: &str, vectors: &str) -> Result<St
     }
 }
 
-/// path의 plans.json에서 create-from-empty와 rename-table-and-column.
+/// create-from-empty and rename-table-and-column from plans.json at the path.
 fn chain(path: &str) -> Result<Vec<Plan>, String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
     let vectors: Value = serde_json::from_str(&text).map_err(|e| format!("{path}: {e}"))?;
@@ -81,12 +81,12 @@ fn chain(path: &str) -> Result<Vec<Plan>, String> {
     Ok(plans)
 }
 
-/// tool clock: 2026-10-01T00:00:00.123456789Z. history의 applied_at은 소수 여섯 자리로 버린다.
+/// tool clock: 2026-10-01T00:00:00.123456789Z. applied_at in history is truncated to six fractional digits.
 fn fixed_now() -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 10, 1, 0, 0, 0).single().expect("fixed time") + chrono::Duration::nanoseconds(123_456_789)
 }
 
-/// connection에 연결 규칙을 실행한 뒤 action을 실행하고 결과 줄을 돌려준다.
+/// Runs the connection rules on the connection, then runs the action and returns the result line.
 async fn on<C: ApplyConnection + Send>(mut c: C, dialect: Dialect, rules: &[&str], action: &str, plans: &[Plan]) -> Result<String, String> {
     for rule in rules {
         c.execute(rule).await.map_err(|e| format!("{rule}: {e}"))?;

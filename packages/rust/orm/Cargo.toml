@@ -12,15 +12,15 @@ keywords = ["orm", "mysql", "postgres", "sqlite", "sqlx"]
 categories = ["database"]
 
 [features]
-# test entry point polyspec_orm::testing이다. build는 이 feature를 켤 때만 그것을 가지며,
-# 어떤 default feature도 켜지 않는다.
+# The test entry point is polyspec_orm::testing. The build has it only when this feature is enabled,
+# and no default feature enables it.
 test-faults = []
 
 [dependencies]
 polyspec-orm-schema = { version = "=0.0.18", path = "../schema" }
 ordered-json = { package = "polyspec-ordered-json", version = "=0.0.9", git = "https://github.com/polyspec/ordered-json.git", tag = "v0.0.9" }
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite", "tls-rustls-ring-native-roots", "chrono", "rust_decimal", "json", "ipnet"] }
-# sqlx의 bundled SQLite library다. 연결은 그 version을 SQL로 묻지 않고 이 crate에서 읽는다.
+# The SQLite library bundled with sqlx. The connection does not ask for that version via SQL; it reads it from this crate.
 libsqlite3-sys = "0.37"
 rust_decimal = "1"
 regex = "1"
@@ -47,15 +47,15 @@ serde-saphyr = "2.0.0"
 # The fault entry point exists only with the feature test-faults. The integration tests of this crate
 # enable it through their own crate, so a test target runs with the feature and the normal build does not.
 polyspec-orm = { path = ".", features = ["test-faults"] }
-# test case가 시작, 결과, 경과 시간과 자기 기한을 보고한다.
+# The test case reports its start, result, elapsed time, and its own deadline.
 polyspec-orm-testcase = { path = "../testcase" }
-# SQLite authorizer로 transaction 끝의 statement를 거부하는 test에 쓴다. sqlx-sqlite와 같은 version이다.
+# Used by the test that rejects the end-of-transaction statement with the SQLite authorizer. It is the same version as sqlx-sqlite.
 libsqlite3-sys = { version = "0.37", default-features = false }
-# coverage test가 자기 계산의 CPU 시간을 잰다.
+# The coverage test measures the CPU time of its own computation.
 polyspec-orm-case-clock = { path = "../case-clock" }
-# database case가 자기만의 database를 만들고 끝날 때 지운다.
+# The database case creates its own database and deletes it when it ends.
 polyspec-orm-case-database = { path = "../case-database" }
-# 등록 test가 sqlx의 statement log record를 세는 logger를 설치한다. sqlx가 쓰는 version이다.
+# The registration test installs a logger that counts sqlx's statement log records. It is the version sqlx uses.
 log = "0.4"
 
 # These test targets run a shared vector file with one libtest-mimic trial per case id

@@ -1,6 +1,6 @@
-//! bind_message: tests/bind/vectors.json의 message case, IR executor message parameter의 runtime value model JSON
-//! 이다(docs/protocol.md §5 "Parameters"). Go의 TestBindMessageVectors와 같은 case다. markdown_param은 crate 안에서만
-//! 보이므로 src/markdown.rs가 이 file을 unit test module로 둔다.
+//! bind_message: the message cases of tests/bind/vectors.json, the runtime value model JSON of IR executor message parameters
+//! (docs/protocol.md §5 "Parameters"). These are the same cases as Go's TestBindMessageVectors. markdown_param is visible only inside the crate
+//! , so src/markdown.rs makes this file a unit test module.
 use super::{begin_message, markdown_param};
 use crate::db::Zone;
 use crate::engine::ParamUse;

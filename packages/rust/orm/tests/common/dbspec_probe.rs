@@ -13,11 +13,11 @@ use std::time::Duration;
 
 pub const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)];
 
-/// 한 probe(database 생성, 적용, introspect)의 기한. 정리는 기한 밖에서 항상 실행한다.
+/// The deadline for one probe (database creation, apply, introspect). Cleanup always runs outside the deadline.
 const PROBE_DEADLINE: Duration = Duration::from_secs(60);
 
-/// 모든 client가 새 connection에서 실행하는 statement: MySQL과 PostgreSQL은 UTC,
-/// SQLite는 foreign key (docs/dbspec.md "Types", docs/dialects.md "Foreign keys").
+/// Statements every client runs on a new connection: MySQL and PostgreSQL use UTC,
+/// and SQLite turns on foreign keys (docs/dbspec.md "Types", docs/dialects.md "Foreign keys").
 pub fn connection_rules(db: &str) -> &'static [&'static str] {
     match db {
         "mysql" => &["SET time_zone = '+00:00'"],
@@ -37,7 +37,7 @@ pub fn require_dsn(var: &str) -> String {
     }
 }
 
-/// introspection이 보낸 query 수를 센다.
+/// Counts the queries that the introspection sent.
 struct Counting<'c, C> {
     inner: &'c mut C,
     count: usize,
@@ -50,7 +50,7 @@ impl<C: CatalogQuerier + Send> CatalogQuerier for Counting<'_, C> {
     }
 }
 
-/// probe 하나의 connection.
+/// The connection for one probe.
 pub enum Conn {
     MySql(MySqlConnection),
     Postgres(PgConnection),
@@ -75,7 +75,7 @@ impl Conn {
         Ok(())
     }
 
-    /// connection의 dialect로 introspect하고 query 수를 함께 돌려준다.
+    /// Introspects with the connection's dialect and also returns the query count.
     pub async fn introspect(&mut self) -> Result<(Introspection, usize), IntrospectError> {
         async fn counted<C: CatalogQuerier + Send>(inner: &mut C, dialect: Dialect) -> Result<(Introspection, usize), IntrospectError> {
             let mut counter = Counting { inner, count: 0 };
@@ -99,7 +99,7 @@ impl Conn {
     }
 }
 
-/// probe 하나의 database에 connection을 여는 값.
+/// The value that opens a connection to one probe's database.
 #[derive(Clone)]
 pub struct Session {
     db: String,
@@ -109,21 +109,21 @@ pub struct Session {
 }
 
 impl Session {
-    /// probe의 database, schema 또는 file 이름. 이 module은 test crate마다 따로
-    /// compile되며 dbspec_apply만 이 method와 `second`를 쓴다.
+    /// The probe's database, schema, or file name. This module is compiled separately for each test crate,
+    /// and only dbspec_apply uses this method and `second`.
     #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
     pub fn name(&self) -> &str {
         &self.name
     }
 
-    /// 두 번째 database, schema 또는 file `<name>_b`에 connection을 여는 값. probe가
-    /// 그것을 만들고, 정리는 첫 것과 함께 지운다.
+    /// The value that opens a connection to a second database, schema, or file `<name>_b`. The probe
+    /// creates it, and cleanup removes it along with the first.
     #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
     pub fn second(&self) -> Session {
         Session { name: format!("{}_b", self.name), ..self.clone() }
     }
 
-    /// probe의 database(MySQL), schema(PostgreSQL) 또는 file(SQLite)에 connection을 연다.
+    /// Opens a connection to the probe's database (MySQL), schema (PostgreSQL), or file (SQLite).
     pub async fn open(&self) -> Result<Conn, String> {
         let name = &self.name;
         match self.db.as_str() {
@@ -148,7 +148,7 @@ impl Session {
     }
 }
 
-/// probe마다 database, schema 또는 file을 만들고 지우는 관리 connection.
+/// The admin connection that creates and drops a database, schema, or file for each probe.
 pub struct Servers {
     mysql_dsn: String,
     postgres_dsn: String,
@@ -158,9 +158,9 @@ pub struct Servers {
 }
 
 impl Servers {
-    /// probe는 schema 변경과 session 설정(search_path, lock)을 server에서 확인하므로 pooler가 아니라
-    /// ORM_TEST_MYSQL_SERVER_DSN과 ORM_TEST_POSTGRES_SERVER_DSN의 server에 연결한다. transaction
-    /// pooler는 statement마다 server connection을 다시 골라 session 설정을 지키지 않는다.
+    /// The probe checks schema changes and session settings (search_path, lock) on the server, so it connects not through a pooler
+    /// but to the servers at ORM_TEST_MYSQL_SERVER_DSN and ORM_TEST_POSTGRES_SERVER_DSN. A transaction
+    /// pooler picks a server connection again for each statement and so does not keep session settings.
     pub async fn open(run: &str) -> Servers {
         let mysql_dsn = require_dsn("ORM_TEST_MYSQL_SERVER_DSN");
         let postgres_dsn = require_dsn("ORM_TEST_POSTGRES_SERVER_DSN");
@@ -192,13 +192,13 @@ impl Servers {
         result.map_err(|e| format!("{statement}: {e}"))
     }
 
-    /// probe `index`의 database에 새 session을 여는 값. probe가 만든 database를
-    /// 다른 connection에서 쓸 때(lock을 잡는 두 번째 session) body가 가져간다.
+    /// The value that opens a new session on the database of probe `index`. The database the probe made
+    /// is taken by the body when it is used from another connection (a second session that takes a lock).
     pub fn session(&self, db: &str, index: usize) -> Session {
         Session { db: db.to_owned(), mysql_dsn: self.mysql_dsn.clone(), postgres_dsn: self.postgres_dsn.clone(), name: self.name(index) }
     }
 
-    /// 빈 database를 만들고 그 connection을 연다.
+    /// Creates an empty database and opens its connection.
     async fn create(&mut self, session: &Session) -> Result<Conn, String> {
         let name = &session.name;
         match session.db.as_str() {
@@ -214,7 +214,7 @@ impl Servers {
         session.open().await
     }
 
-    /// connection을 닫고 만든 것을 지운 뒤 남지 않았는지 확인한다.
+    /// Closes the connection, drops what was made, and checks that nothing remains.
     async fn drop(&mut self, db: &str, name: &str, conn: Option<Conn>) -> Result<(), String> {
         let mut errors = Vec::new();
         if let Some(conn) = conn {
@@ -224,7 +224,7 @@ impl Servers {
         }
         match db {
             "mysql" => {
-                // 두 번째 database가 필요한 case는 그것을 <database>_b로 만든다.
+                // A case that needs a second database makes it as <database>_b.
                 for database in [format!("{name}_b"), name.to_owned()] {
                     if let Err(e) = self.admin(db, format!("DROP DATABASE IF EXISTS `{database}`")).await {
                         errors.push(e);
@@ -242,7 +242,7 @@ impl Servers {
                 }
             }
             "postgres" => {
-                // 두 번째 schema가 필요한 case는 그것을 <schema>_b로 만든다.
+                // A case that needs a second schema makes it as <schema>_b.
                 if let Err(e) = self.admin(db, format!("DROP SCHEMA IF EXISTS \"{name}_b\" CASCADE")).await {
                     errors.push(e);
                 }
@@ -261,7 +261,7 @@ impl Servers {
                 }
             }
             _ => {
-                // 두 번째 file이 필요한 case는 그것을 <name>_b.sqlite로 만든다.
+                // A case that needs a second file makes it as <name>_b.sqlite.
                 for path in [Self::sqlite_path(name), Self::sqlite_path(&format!("{name}_b"))] {
                     for suffix in ["", "-journal", "-wal", "-shm"] {
                         let file = PathBuf::from(format!("{}{suffix}", path.display()));
@@ -290,8 +290,8 @@ impl Servers {
     }
 }
 
-/// probe 하나를 실행한다: database를 만들고 body를 기한 안에서 실행한 뒤 항상
-/// 지운다. 시작, 결과, 경과 시간을 한 줄씩 쓴다.
+/// Runs one probe: creates the database, runs the body within the deadline, and always
+/// drops it. Writes the start, result, and elapsed time, one line each.
 pub async fn run_probe<T>(
     servers: &mut Servers,
     id: &str,
@@ -299,7 +299,7 @@ pub async fn run_probe<T>(
     index: usize,
     body: impl for<'c> FnOnce(&'c mut Conn) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<T, String>> + 'c>>,
 ) -> Result<T, String> {
-    // probe case의 기한은 probe 자신의 기한과 그 database를 만들고 지우는 일의 같은 시간이다.
+    // The deadline of a probe case is the probe's own deadline plus the same time for creating and dropping its database.
     let mut probe = polyspec_orm_testcase::start(id, PROBE_DEADLINE * 2);
     let session = servers.session(db, index);
     let name = session.name.clone();

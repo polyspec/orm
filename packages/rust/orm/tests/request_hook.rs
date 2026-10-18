@@ -1,10 +1,10 @@
-//! 연결 handle의 request hook (docs/usage.md "Request hook"): `Db::with_request_hook`이 돌려준 handle은
-//! 같은 연결을 쓰고, 그 hook은 handle의 request마다 plan 직전에 request와 `RequestParams`를 받는다.
-//! contracts/fixtures/request_hook.dbs의 공유 case 열 개를 SQLite case database(polyspec-orm-case-database,
-//! 끝나거나 panic하면 file을 지운다)에서 실행한다: without_hook, read_filter, insert_assign,
+//! The request hook of a connection handle (docs/usage.md "Request hook"): the handle returned by `Db::with_request_hook`
+//! uses the same connection, and its hook receives the request and `RequestParams` for each request of the handle, just before planning.
+//! Runs ten shared cases of contracts/fixtures/request_hook.dbs in a SQLite case database (polyspec-orm-case-database,
+//! the file is deleted when it ends or panics): without_hook, read_filter, insert_assign,
 //! loaded_row_writes, invalid_param, restore_key, restore_condition, restore_no_key, restore_rewritten_key,
-//! restore_hook_set_key. `coverage_request_hook_<case>`는 같은 case를 feature-check가 고른
-//! database의 case database에서 실행한다(docs/feature-coverage.md).
+//! restore_hook_set_key. `coverage_request_hook_<case>` runs the same case on the database that feature-check chose,
+//! in that database's case database (docs/feature-coverage.md).
 //!
 //! `cargo test -p polyspec-orm --test request_hook`
 
@@ -153,19 +153,19 @@ fn part_scope_hook(value: &'static str) -> impl Fn(&mut Request, &mut RequestPar
     }
 }
 
-/// db에 연결한 model이다.
+/// A model connected to db.
 fn item(db: &Db) -> HookItem {
     let mut core = Core::new(&HOOK_ITEM);
     core.connect(db);
     HookItem::from_core(core)
 }
 
-/// 연결 없이 transaction에서 실행하는 model이다.
+/// A model that runs in a transaction without a connection.
 fn unconnected() -> HookItem {
     HookItem::from_core(Core::new(&HOOK_ITEM))
 }
 
-/// values를 set한 model이다.
+/// A model with values set.
 fn with_values(mut m: HookItem, values: &[(&str, &str)]) -> HookItem {
     for (column, value) in values {
         m.core_mut().set(column, Param::from(*value));
@@ -173,14 +173,14 @@ fn with_values(mut m: HookItem, values: &[(&str, &str)]) -> HookItem {
     m
 }
 
-/// SQLite case database에 fixture를 설치한 연결이다.
+/// A connection on which the fixture is installed in the SQLite case database.
 async fn installed(database: &CaseDatabase) -> Db {
     let db = Db::connect(database.dsn(), 2, polyspec_orm::Config::default()).await.expect("connect");
     db.utils().schema().install(&HOOK_SCHEMA).await.expect("install");
     db
 }
 
-/// 연결로 행 a1, a2(part a)와 b1(part b)을 넣는다.
+/// Inserts rows a1, a2 (part a) and b1 (part b) through the connection.
 async fn seed(db: &Db) {
     for (part, label) in [("a", "a1"), ("a", "a2"), ("b", "b1")] {
         let mut m = with_values(item(db), &[("part", part), ("label", label)]);
@@ -188,7 +188,7 @@ async fn seed(db: &Db) {
     }
 }
 
-/// request의 root where에 pred를 AND로 붙인다. 이미 있는 where는 group item 하나가 된다.
+/// Attaches pred to the request's root where with AND. An existing where becomes one group item.
 fn and_where(request: &mut Request, mut pred: Pred) {
     match request.query.where_.take() {
         None => request.query.where_ = Some(Group { items: vec![Item::Pred { pred: Box::new(pred) }], ..Default::default() }),
@@ -205,7 +205,7 @@ fn part_eq(p: usize) -> Pred {
 
 const READS: [&str; 7] = ["one", "all", "count", "group_count", "sum", "avg", "paginate"];
 
-/// 읽기 request의 root where에 `part = value`를 붙이는 hook이다.
+/// A hook that attaches `part = value` to the root where of a read request.
 fn read_filter_hook(value: &'static str) -> impl Fn(&mut Request, &mut RequestParams) -> polyspec_orm::Result<()> + Send + Sync + 'static {
     move |request: &mut Request, params: &mut RequestParams| {
         if READS.contains(&request.kind.as_str()) {
@@ -242,7 +242,7 @@ async fn without_hook_case(driver: &str) {
     assert_eq!(count(&db).await, 3);
     let hooked = db.with_request_hook(read_filter_hook("a"));
     assert_eq!(count(&hooked).await, 2, "the hooked handle filters");
-    // hook이 있는 handle을 만든 뒤에도 연결과 그 clone은 hook 없이 모든 행을 읽는다.
+    // Even after a handle with a hook is made, the connection and its clones read all rows without the hook.
     assert_eq!(labels(&db).await, ["a1", "a2", "b1"]);
     assert_eq!(count(&db).await, 3);
     assert_eq!(count(&db.clone()).await, 3);
@@ -260,7 +260,7 @@ async fn read_filter_case(driver: &str) {
     let page = polyspec_orm::model::gets_page(&item(&hooked), 1, 10).await.expect("page");
     assert_eq!(page.total_count, 2);
     assert_eq!(page.items.len(), 2);
-    // 같은 형태의 request는 hook이 더한 값이 달라도 한 plan을 쓴다.
+    // Requests of the same shape use one plan, even if the values the hook adds differ.
     let other = db.with_request_hook(read_filter_hook("b"));
     assert_eq!(labels(&other).await, ["b1"]);
     assert_eq!(count(&other).await, 1);
@@ -341,7 +341,7 @@ async fn loaded_row_writes_case(driver: &str) {
     polyspec_orm::model::delete(&row, false).await.expect("delete");
     assert_eq!(kinds.lock().unwrap().last().map(String::as_str), Some("delete"), "the delete of a loaded row passes the hook");
     assert_eq!(count(&db).await, 3, "the hook predicate kept the delete from matching");
-    // hook이 있는 handle에서 시작한 transaction은 연결 없는 model에도 hook을 준다.
+    // A transaction started on a handle with a hook also applies the hook to models without a connection.
     kinds.lock().unwrap().clear();
     let n = hooked.transaction(async || polyspec_orm::model::get_count(unconnected().core()).await).await.expect("transaction");
     assert_eq!(n, 3);
@@ -500,8 +500,8 @@ async fn coverage_request_hook_restore_rewritten_key_set_scope() {
     restore_rewritten_key_set_scope_case(feature_database()).await;
 }
 
-/// feature-check가 고른 database(ORM_FEATURE_DATABASE)다. coverage case는 그 database에 자기 case database를
-/// 만들고 지우며, ORM_FEATURE_DSN의 database는 읽거나 쓰지 않는다.
+/// The database feature-check chose (ORM_FEATURE_DATABASE). The coverage case creates and drops its own case database on that database,
+/// and does not read or write the database of ORM_FEATURE_DSN.
 fn feature_database() -> &'static str {
     match std::env::var("ORM_FEATURE_DATABASE").as_deref() {
         Ok("mysql") => "mysql",
@@ -647,10 +647,10 @@ async fn coverage_request_hook_restore_hook_set_key() {
     restore_hook_set_key_case(feature_database()).await;
 }
 
-// 여러 행 insert의 부분(docs/protocol.md §2.1, contracts/fixtures/insert_parts.json): creates는 행을 주어진 순서대로
-// 2의 거듭제곱 크기의 부분으로 나눠 한 transaction에서 실행한다. hook 없는 연결에서 확인한다.
+// Parts of a multi-row insert (docs/protocol.md §2.1, contracts/fixtures/insert_parts.json): creates take rows in the given order
+// and split them into parts of power-of-two sizes, run in one transaction. Checked on a connection without a hook.
 
-/// db의 INSERT statement SQL을 실행 순서대로 모으는 구독이다.
+/// A subscription that collects the INSERT statement SQL of db in execution order.
 fn insert_statements(db: &Db) -> (Arc<Mutex<Vec<String>>>, polyspec_orm::Subscription) {
     let seen = Arc::new(Mutex::new(Vec::new()));
     let sink = seen.clone();
@@ -669,7 +669,7 @@ fn labelled(labels: &[String]) -> Vec<HookItem> {
     labels.iter().map(|label| with_values(unconnected(), &[("part", "p"), ("label", label)])).collect()
 }
 
-/// 1..=40행의 creates는 크기 구간 1, 2, 4, 8, 16, 32의 INSERT 여섯 개만 만든다.
+/// Creates of 1..=40 rows make only six INSERTs, of size ranges 1, 2, 4, 8, 16, 32.
 #[tokio::test]
 async fn creates_parts_shapes() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -688,7 +688,7 @@ async fn creates_parts_shapes() {
     database.drop().await;
 }
 
-/// 13행은 8, 4, 1행의 부분으로 주어진 순서대로 삽입되고 key는 그 순서로 오른다.
+/// 13 rows are inserted as parts of 8, 4, and 1 rows in the given order, and the keys rise in that order.
 #[tokio::test]
 async fn creates_parts_order() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -708,7 +708,7 @@ async fn creates_parts_order() {
     database.drop().await;
 }
 
-/// 둘째 부분이 실패하면 첫 부분도 rollback되어 행이 남지 않는다.
+/// If the second part fails, the first part is also rolled back, and no rows remain.
 #[tokio::test]
 async fn creates_parts_rollback() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

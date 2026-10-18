@@ -105,7 +105,7 @@ async fn check_refused(driver: &str, dsn: &str) {
     db.close().await;
 }
 
-/// case를 자기만의 case database에서 기한 안에 실행하고, 끝나면 database를 지운다.
+/// Runs the case within its deadline in its own case database, and drops the database when done.
 async fn bounded(driver: &str, case: &str) {
     let database = CaseDatabase::create(driver).await;
     let run = async {

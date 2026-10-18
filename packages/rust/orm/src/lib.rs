@@ -80,7 +80,7 @@ impl std::fmt::Display for Error {
     }
 }
 
-/// ROLLBACK 오류의 message: 실패한 callback의 오류와 실패한 rollback의 오류를 이 순서로 담는다.
+/// ROLLBACK error message: holds the failed callback's error and the failed rollback's error, in that order.
 pub(crate) fn rollback_message(cause: &dyn std::fmt::Display, rollback: &dyn std::fmt::Display) -> String {
     format!("transaction failed ({cause}) and rollback failed ({rollback})")
 }
@@ -124,7 +124,7 @@ impl From<sqlx::Error> for Error {
                     (1451, _) | (1452, _) => Some((codes::FOREIGN_KEY, m.message().to_owned())),
                     (1290, _) | (1792, _) => Some((codes::READ_ONLY, m.message().to_owned())),
                     (3819, _) | (4025, _) => Some((codes::CONSTRAINT, m.message().to_owned())),
-                    // ER_CLIENT_INTERACTION_TIMEOUT: server가 쉬던 연결을 끝냈다.
+                    // ER_CLIENT_INTERACTION_TIMEOUT: the server ended an idle connection.
                     (4031, _) => Some((codes::CONNECTION_LOST, m.message().to_owned())),
                     (1298, _) => {
                         return Error::Config(format!("dsn timezone: {}; a named zone needs the MySQL time zone tables (mysql_tzinfo_to_sql)", m.message()))
@@ -141,8 +141,8 @@ impl From<sqlx::Error> for Error {
                     "57014" => Some((codes::CANCELED, msg())),
                     "25006" => Some((codes::READ_ONLY, msg())),
                     "23514" => Some((codes::CONSTRAINT, msg())),
-                    // class 08은 connection exception이다. 57P01(admin_shutdown), 57P02(crash_shutdown),
-                    // 57P05(idle_session_timeout)는 server가 session을 끝낼 때 보낸다.
+                    // Class 08 is connection exception. 57P01 (admin_shutdown), 57P02 (crash_shutdown),
+                    // and 57P05 (idle_session_timeout) are sent when the server ends a session.
                     c if c.starts_with("08") || matches!(c, "57P01" | "57P02" | "57P05") => Some((codes::CONNECTION_LOST, msg())),
                     _ => Some((codes::DRIVER, msg())),
                 }
@@ -153,7 +153,7 @@ impl From<sqlx::Error> for Error {
                     (6, _) => Some((codes::DEADLOCK, s.message().to_owned())),
                     (_, 2067) | (_, 1555) => Some((codes::DUPLICATE_KEY, s.message().to_owned())),
                     (_, 787) => Some((codes::FOREIGN_KEY, s.message().to_owned())),
-                    // RESTRICT action의 FK 위반은 CONSTRAINT_TRIGGER(1811)로 온다. trigger RAISE의 1811은 DRIVER다.
+                    // An FK violation from a RESTRICT action arrives as CONSTRAINT_TRIGGER (1811). The 1811 from a trigger RAISE is DRIVER.
                     (_, 1811) if s.message().contains("FOREIGN KEY constraint failed") => Some((codes::FOREIGN_KEY, s.message().to_owned())),
                     (_, 275) => Some((codes::CONSTRAINT, s.message().to_owned())),
                     (5, _) | (9, _) => Some((codes::CANCELED, s.message().to_owned())),
@@ -167,8 +167,8 @@ impl From<sqlx::Error> for Error {
                 return Error::Driver { code: code.into(), msg, source: e };
             }
         }
-        // 연결의 socket이 끊겼다: server가 연결을 끝냈거나 연결이 깨졌다. 연결을 열지 못한
-        // 오류(ConnectionRefused 같은)는 연결을 잃은 오류가 아니다.
+        // The connection's socket was lost: the server ended the connection or the connection broke. An error that failed to open
+        // the connection (such as ConnectionRefused) is not a lost-connection error.
         if let sqlx::Error::Io(io) = &e {
             use std::io::ErrorKind::*;
             if matches!(io.kind(), UnexpectedEof | ConnectionReset | ConnectionAborted | BrokenPipe | NotConnected) {

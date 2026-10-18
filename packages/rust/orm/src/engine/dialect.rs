@@ -38,7 +38,7 @@ fn quote_with(q: &str, ident: &str) -> String {
     ident.split('.').map(|part| format!("{q}{}{q}", part.replace(q, &format!("{q}{q}")))).collect::<Vec<_>>().join(".")
 }
 
-/// text를 SQL 문자열 literal로 quote한다.
+/// Quotes text as a SQL string literal.
 fn literal(text: &str) -> String {
     format!("'{}'", text.replace('\'', "''"))
 }
@@ -117,8 +117,8 @@ impl Dialect {
         }
     }
 
-    /// 쓰기에서 codec stage를 SQL에서 적용하는지 판단한다(MySQL: `ip`). `hex`는 모든 dialect에서 executor가 적용한다. PostgreSQL의 `bytes` column은
-    /// `bytea`라서 `ip`도 executor가 적용한다.
+    /// Decides whether the codec stage is applied in SQL on writes (MySQL: `ip`). `hex` is applied by the executor on all dialects. A PostgreSQL `bytes` column
+    /// is `bytea`, so `ip` is also applied by the executor.
     pub fn handles_style(self, style: &str) -> bool {
         match self {
             Dialect::MySql => style == "ip",
@@ -126,9 +126,9 @@ impl Dialect {
         }
     }
 
-    /// 읽기에서 codec stage를 SQL에서 푸는지 판단한다(MySQL: `ip`). `hex`는 어느 dialect도 SQL에서
-    /// 풀지 않는다: `UNHEX`는 홀수 길이를 받고 공백이 있는 셀에 NULL을 내므로, executor가 `host_decode`로
-    /// 정확히 읽는다(docs/codec.md).
+    /// Decides whether the codec stage is decoded in SQL on reads (MySQL: `ip`). `hex` is not decoded in SQL by any dialect
+    /// because `UNHEX` accepts odd lengths and returns NULL for cells with whitespace, so the executor decodes with `host_decode`
+    /// to read it exactly (docs/codec.md).
     pub fn decodes_style(self, style: &str) -> bool {
         match self {
             Dialect::MySql => style == "ip",
@@ -196,8 +196,8 @@ impl Dialect {
         }
     }
 
-    /// column을 읽는 expression: SQL에서 적용하는 read stage와 text로 읽는 type을 감싼다.
-    /// `time(p)`는 소수 p자리의 `HH:MM:SS` text로, PostgreSQL `uuid`는 text로 읽는다.
+    /// The expression that reads a column: wraps the read stage applied in SQL and the type read as text.
+    /// `time(p)` is read as `HH:MM:SS` text with p fractional digits, and PostgreSQL `uuid` is read as text.
     pub fn read_expr(self, col: &str, ty: Type, styles: &[&str]) -> String {
         match self {
             Dialect::MySql => {
@@ -222,8 +222,8 @@ impl Dialect {
         }
     }
 
-    /// bind 값을 column에 쓰는 expression: SQL에서 적용하는 write stage와 text로
-    /// 보내는 type을 감싼다. PostgreSQL `uuid`와 `time`은 text를 cast한다.
+    /// The expression that writes a bind value to a column: wraps the write stage applied in SQL and the
+    /// type sent as text. PostgreSQL `uuid` and `time` cast the text.
     pub fn write_expr(self, ph: String, ty: Type, styles: &[&str]) -> String {
         match self {
             Dialect::MySql => {
@@ -244,7 +244,7 @@ impl Dialect {
         }
     }
 
-    /// `col`에 적용한 column function을 render한다. column function은 인자를 받지 않는다.
+    /// Renders the column function applied to `col`. A column function takes no arguments.
     pub fn column_function(self, name: &str, col: &str) -> Option<String> {
         Some(match (self, name) {
             (Dialect::MySql, "day_of_week") => format!("DAYOFWEEK({col})"),
@@ -321,16 +321,16 @@ impl Dialect {
         tuple_in(cols, rows, negate, self == Dialect::Sqlite)
     }
 
-    /// table의 identity column을 가장 큰 key 다음 값에서 다시 시작하는 statement다. 빈 table이면
-    /// 다음 key는 1이다.
-    /// - MySQL: InnoDB는 AUTO_INCREMENT를 column의 가장 큰 값 이하로 정하면 가장 큰 값에 1을 더한
-    ///   값으로 정하므로 1은 언제나 가장 큰 key 다음이다. DDL이므로 열린 transaction을 commit한다.
-    /// - PostgreSQL: identity sequence를 가장 큰 key에 1을 더한 값으로 정하고 is_called를 false로 두어
-    ///   다음 nextval이 그 값을 돌려주게 한다. pg_get_serial_sequence의 첫 인자는 identifier로 읽히므로
-    ///   quote한 table 이름이고, 둘째 인자는 column 이름 그대로다.
-    /// - SQLite: AUTOINCREMENT table의 다음 key는 sqlite_sequence의 seq에 1을 더한 값이므로 seq를 가장
-    ///   큰 key로 정한다. table이 아직 행을 받은 적이 없어 sqlite_sequence에 행이 없으면 다음 key는 이미
-    ///   가장 큰 key 다음이다.
+    /// The statement that restarts the table's identity column from the value after the largest key. For an empty table
+    /// the next key is 1.
+    /// - MySQL: if InnoDB sets AUTO_INCREMENT to a value at or below the column's largest value, it sets it to the largest value plus 1,
+    ///   so 1 is always after the largest key. Since it is DDL, it commits an open transaction.
+    /// - PostgreSQL: sets the identity sequence to the largest key plus 1 and leaves is_called false, so
+    ///   the next nextval returns that value. The first argument of pg_get_serial_sequence is read as an identifier, so
+    ///   it is the quoted table name, and the second argument is the column name as is.
+    /// - SQLite: the next key of an AUTOINCREMENT table is the seq in sqlite_sequence plus 1, so it sets seq to the largest
+    ///   key. If the table has never received a row and so has no row in sqlite_sequence, the next key is already
+    ///   after the largest key.
     pub fn restart_identity(self, table: &str, column: &str) -> String {
         match self {
             Dialect::MySql => format!("ALTER TABLE {} AUTO_INCREMENT = 1", quote_with("`", table)),

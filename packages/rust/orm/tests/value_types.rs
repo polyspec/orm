@@ -1,9 +1,9 @@
-//! runtime model의 value type과 select set (docs/dbspec.md, "Runtime model"): `i16`,
-//! `uuid`, `time(p)`, `date` 값이 그대로 돌아오고, `select explicit` column은 default
-//! select set에서 빠지며, default가 있는 column을 빼면 database default를 쓰고 default가
-//! 없는 NOT NULL column을 빼면 실패한다. SQLite, MySQL, PostgreSQL에서 database마다 자기만의
-//! case database(polyspec-orm-case-database)로 실행하며 ORM_TEST_MYSQL_DSN이나
-//! ORM_TEST_POSTGRES_DSN이 없으면 실패한다.
+//! The value types and select sets of the runtime model (docs/dbspec.md, "Runtime model"): `i16`,
+//! `uuid`, `time(p)`, and `date` values come back unchanged; a `select explicit` column is left out of the default
+//! select set; leaving out a column that has a default uses the database default, and leaving out a NOT NULL column that has no default
+//! fails. On SQLite, MySQL, and PostgreSQL, each database uses its own
+//! case database (polyspec-orm-case-database), and it fails if ORM_TEST_MYSQL_DSN or
+//! ORM_TEST_POSTGRES_DSN is missing.
 
 use std::collections::BTreeMap;
 
@@ -27,7 +27,7 @@ table value_record {
 }
 ";
 
-/// test document의 schema. hash는 dbspec manifest에서 계산한다.
+/// The schema of the test document. The hash is computed from the dbspec manifest.
 fn schema() -> &'static Schema {
     static SCHEMA: std::sync::OnceLock<&'static Schema> = std::sync::OnceLock::new();
     SCHEMA.get_or_init(|| {

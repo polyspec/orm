@@ -1,11 +1,11 @@
-//! contracts/fixtures/identity_load.json의 공유 case를 이 client로 실행한다(packages/go/orm/
-//! identity_load_test.go와 같은 case). test 함수 `identity_load` 하나가 파일의 모든 case를 차례로 실행하고
-//! case마다 보고 줄 하나 `PASS identity-load/<case id>`나 `FAIL identity-load/<case id>`를 출력한다(language
-//! parity unit "identity-load"). compile case는 request에 fixture의 manifest_hash를 더해 세 dialect로
-//! `engine::compile`하고 statement나 오류를 비교한다. execute case는 MySQL, PostgreSQL, SQLite마다 case
-//! database 하나에 fixture contracts/fixtures/identity_load.dbs를 설치한 뒤 각 step의 request를 그 database의
-//! dialect로 compile해 `Db::execute`로 실행하고, 마지막에 fixture의 `read` SQL로 load_probe의 행을 driver로
-//! 바로 읽어 비교한다. 실패한 case 뒤에도 나머지 case를 실행하고 끝에서 실패한 case를 모두 적는다.
+//! Runs the shared cases of contracts/fixtures/identity_load.json with this client (packages/go/orm/
+//! identity_load_test.go, the same cases). A single test function, `identity_load`, runs all cases of the file in turn
+//! and prints one report line per case, `PASS identity-load/<case id>` or `FAIL identity-load/<case id>` (language
+//! parity unit "identity-load"). A compile case adds the fixture's manifest_hash to the request, compiles it for the three dialects,
+//! and compares the statement or error with `engine::compile`. An execute case runs against MySQL, PostgreSQL, and SQLite, each in its own case
+//! database with the fixture contracts/fixtures/identity_load.dbs installed; it compiles each step's request for that database's
+//! dialect, runs it with `Db::execute`, and at the end reads load_probe's rows with the fixture's `read` SQL through the driver
+//! and compares them. Even after a failed case, the rest still run, and the failed cases are all listed at the end.
 
 use std::time::Duration;
 
@@ -19,7 +19,7 @@ use sqlx::Row;
 static LOAD_SCHEMA: Schema =
     Schema::new(include_str!("../../../../contracts/fixtures/identity_load.dbs"), "sha256:5b9923a69ed67de11e46bc3b825656d177d6e3664a867ca4d4d779b2677f97de");
 const CASES: &str = include_str!("../../../../contracts/fixtures/identity_load.json");
-/// execute case가 database 하나에서 쓰는 기한이다. 세 database의 합이 case 기한 DATABASE 안에 든다.
+/// The deadline an execute case uses on one database. The sum for three databases fits within the case deadline DATABASE.
 const DATABASE_DEADLINE: Duration = Duration::from_secs(35);
 const DRIVERS: [&str; 3] = ["mysql", "postgres", "sqlite"];
 
@@ -35,7 +35,7 @@ fn index(v: &Value, what: &str) -> usize {
     v.as_u64().unwrap_or_else(|| panic!("{what} is no index: {v}")) as usize
 }
 
-/// case가 쓰는 assignment(`column`, `p`, `null`)다. 다른 key는 case 파일의 오류다.
+/// The assignment the case uses (`column`, `p`, `null`). Any other key is an error in the case file.
 fn assign(v: &Value) -> ir::Assign {
     let mut a = ir::Assign::default();
     for (key, value) in object(v, "assignment") {
@@ -49,7 +49,7 @@ fn assign(v: &Value) -> ir::Assign {
     a
 }
 
-/// case가 쓰는 where group: `pred` item(`column`, `op`, `p`)의 목록이다.
+/// The where group the case uses: a list of `pred` items (`column`, `op`, `p`).
 fn group(v: &Value) -> ir::Group {
     let mut g = ir::Group::default();
     for (key, value) in object(v, "where") {
@@ -74,8 +74,8 @@ fn group(v: &Value) -> ir::Group {
     g
 }
 
-/// case의 request JSON을 IR request로 바꾸고 fixture의 manifest_hash를 더한다. case 파일에
-/// manifest_hash가 이미 있거나 이 runner가 읽지 않는 key가 있으면 실패한다.
+/// Converts the case's request JSON into an IR request and adds the fixture's manifest_hash. If the case file
+/// already has manifest_hash, or has a key this runner does not read, it fails.
 fn request(v: &Value) -> ir::Request {
     let mut r = ir::Request { manifest_hash: LOAD_SCHEMA.hash().to_owned(), ..Default::default() };
     for (key, value) in object(v, "request") {
@@ -97,7 +97,7 @@ fn request(v: &Value) -> ir::Request {
     r
 }
 
-/// plan step의 비교 형태: role, sql, bind slot(from, param slot의 param, dbspec type), table이다.
+/// The comparison form of a plan step: role, sql, bind slots (from, the param of the param slot, dbspec type), and table.
 fn statement(step: &plan::Step) -> Value {
     let slots: Vec<Value> = step
         .bind_slots
@@ -107,12 +107,12 @@ fn statement(step: &plan::Step) -> Value {
     json!({"role": step.role, "sql": step.sql, "slots": slots, "tables": step.tables})
 }
 
-/// 오류가 code와 message(오류 text의 끝)로 기대한 것인지 본다.
+/// Checks whether the error is the expected one by code and message (the end of the error text).
 fn matches_error(e: &polyspec_orm::Error, code: &str, message: &str) -> bool {
     e.code() == code && e.to_string().ends_with(message)
 }
 
-/// compile case 하나를 세 dialect에서 실행한다.
+/// Runs one compile case on the three dialects.
 fn compile_case(m: &Manifest, c: &Value) -> Result<(), String> {
     let r = request(&c["input"]);
     let expected = &c["expected"];
@@ -140,7 +140,7 @@ fn compile_case(m: &Manifest, c: &Value) -> Result<(), String> {
     Ok(())
 }
 
-/// case parameter를 request 값으로 바꾼다: 정수는 i64, 문자열은 text다.
+/// Converts case parameters to request values: integers are i64, strings are text.
 fn param(v: &Value) -> Param {
     match v {
         Value::Number(n) => Param::I64(n.as_i64().unwrap_or_else(|| panic!("parameter {n} is no integer"))),
@@ -149,7 +149,7 @@ fn param(v: &Value) -> Param {
     }
 }
 
-/// fixture의 read SQL로 load_probe의 행을 (seq, label)로 읽는다.
+/// Reads load_probe's rows as (seq, label) with the fixture's read SQL.
 async fn read_rows(db: &Db, query: &str) -> Result<Vec<(i64, String)>, String> {
     macro_rules! read {
         ($pool:expr) => {{
@@ -172,7 +172,7 @@ async fn read_rows(db: &Db, query: &str) -> Result<Vec<(i64, String)>, String> {
     }
 }
 
-/// execute case의 step을 연결 `db`에서 실행하고 행을 비교한다.
+/// Runs the execute case's steps on connection `db` and compares the rows.
 async fn execute_steps(driver: &str, db: &Db, m: &Manifest, read: &str, c: &Value) -> Result<(), String> {
     let dialect = Dialect::parse(driver).expect("driver dialect");
     db.utils().schema().install(&LOAD_SCHEMA).await.map_err(|e| format!("install: {e}"))?;
@@ -200,7 +200,7 @@ async fn execute_steps(driver: &str, db: &Db, m: &Manifest, read: &str, c: &Valu
     Ok(())
 }
 
-/// execute case 하나를 `driver`의 자기 case database에서 실행한다. case database는 결과와 상관없이 지운다.
+/// Runs one execute case in its own case database for `driver`. The case database is dropped regardless of the result.
 async fn execute_on(driver: &'static str, doc: &Value, m: &Manifest, c: &Value) -> Result<(), String> {
     polyspec_orm_testcase::step(format_args!("{driver}: case database"));
     let database = CaseDatabase::create(driver).await;
@@ -218,8 +218,8 @@ async fn execute_on(driver: &'static str, doc: &Value, m: &Manifest, c: &Value) 
     result.map_err(|e| format!("{driver}: {e}"))
 }
 
-// identity_load.json의 case마다 trial `identity_load::<id>` 하나다. compile case의 기한은 COMPUTE, execute case의
-// 기한은 DATABASE다. execute case는 한 database의 실패 뒤에도 나머지 database를 실행해 모든 database의 결과를 적는다.
+// Each case of identity_load.json is one trial, `identity_load::<id>`. A compile case's deadline is COMPUTE, and an execute case's
+// deadline is DATABASE. An execute case runs the remaining databases even after one database fails, and records every database's result.
 fn identity_load() -> Vec<Trial> {
     let doc: Value = serde_json::from_str(CASES).expect("contracts/fixtures/identity_load.json");
     doc["cases"]

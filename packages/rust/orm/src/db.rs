@@ -59,8 +59,8 @@ impl RequestParams {
     }
 }
 
-/// handle의 request hook을 req에 적용한다. hook이 없으면 아무것도 하지 않는다. hook은 request와
-/// parameter를 바꾸고, 그 뒤 n_params는 parameter 수다. hook의 오류는 그대로 돌려준다.
+/// Applies the handle's request hook to req. Does nothing if there is no hook. The hook receives the request and
+/// the parameters and may change them; n_params is then the number of parameters. A hook error is returned as is.
 pub(crate) fn apply_request_hook(handle: &Db, req: &mut Req) -> Result<()> {
     let Some(hook) = &handle.hook else { return Ok(()) };
     req.ir.n_params = req.params.len();
@@ -179,8 +179,8 @@ impl ParsedDsn {
 /// Milliseconds a SQLite connection waits for a lock when the DSN sets no `_pragma=busy_timeout(ms)`.
 const SQLITE_BUSY_TIMEOUT_MS: u64 = 5000;
 
-/// DSN의 path를 UTF-8로 percent-decode한다. 두 hex 자리가 없는 `%`, NUL byte, UTF-8이 아닌 결과는 다른
-/// file이나 corpus를 가리키게 되므로 `CONFIG`다. `scheme`은 오류가 이름하는 DSN이다.
+/// Percent-decodes the DSN path as UTF-8. A `%` without two hex digits, a NUL byte, or a non-UTF-8 result is another
+/// error; it is `CONFIG` because it would point at a file or corpus. `scheme` is the DSN the error names.
 fn decoded_path(raw: &str, scheme: &str) -> Result<String> {
     let bytes = raw.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
@@ -309,33 +309,33 @@ static NEXT_DB: AtomicU64 = AtomicU64::new(1);
 pub(crate) struct DbInner {
     pub(crate) id: u64,
     pub(crate) pool: Pool,
-    /// SQL 연결이 plan하는 dialect다. plan하지 않는 markdown 연결에는 없다.
+    /// The dialect a SQL connection plans for. Markdown connections, which do not plan, have none.
     pub(crate) dialect: Option<Dialect>,
     pub(crate) cfg: Config,
     pub(crate) zone: Zone,
     plans: Mutex<HashMap<u64, Arc<Plan>>>,
     plan_order: Mutex<VecDeque<u64>>,
-    /// 이 연결에 등록된 set의 manifest hash.
+    /// The manifest hash of the set registered on this connection.
     pub(crate) sets: std::sync::RwLock<std::collections::HashSet<String>>,
-    /// 등록한 set의 schema. audit 기록은 그 table을 가진 set으로 삽입한다.
+    /// The schema of the registered set. Audit records are inserted with the set that has that table.
     pub(crate) schemas: std::sync::RwLock<Vec<&'static Schema>>,
     pub(crate) closed: AtomicBool,
     pub(crate) sqlite_lock_ready: AtomicBool,
-    /// 연결의 statement event subscriber와 transaction 번호다. 연결의 모든 clone이 공유한다.
+    /// The connection's statement event subscribers and transaction number. All clones of the connection share them.
     pub(crate) subscribers: Subscribers,
-    /// `polyspec_orm::testing::fail_next_rollback`이 설정하는 test fault다. feature
-    /// `test-faults`가 있는 build만 설정할 수 있다.
+    /// The test fault set by `polyspec_orm::testing::fail_next_rollback`. The feature
+    /// Can be set only in builds with `test-faults`.
     pub(crate) rollback_fault: AtomicBool,
-    /// `polyspec_orm::testing::fail_next_statement`이 설정하는 test fault다. feature
-    /// `test-faults`가 있는 build만 가진다.
+    /// The test fault set by `polyspec_orm::testing::fail_next_statement`. The feature
+    /// Present only in builds with `test-faults`.
     #[cfg(feature = "test-faults")]
     pub(crate) statement_fault: Mutex<Option<crate::testing::StatementFault>>,
-    /// `polyspec_orm::testing::fix_clock`이 고정하는 executor clock이다(`YYYY-MM-DD HH:MM:SS.ffffff`).
-    /// feature `test-faults`가 있는 build만 가진다.
+    /// The executor clock pinned by `polyspec_orm::testing::fix_clock` (`YYYY-MM-DD HH:MM:SS.ffffff`).
+    /// Present only in builds with feature `test-faults`.
     #[cfg(feature = "test-faults")]
     pub(crate) fixed_clock: Mutex<Option<String>>,
-    /// 연결의 마지막 성공한 write 결과의 affected다. `polyspec_orm::testing::last_affected`가 읽는다.
-    /// feature `test-faults`가 있는 build만 가진다.
+    /// The affected count of the connection's last successful write result. Read by `polyspec_orm::testing::last_affected`.
+    /// Present only in builds with feature `test-faults`.
     #[cfg(feature = "test-faults")]
     pub(crate) last_affected: Mutex<Option<u64>>,
 }
@@ -344,7 +344,7 @@ pub(crate) struct DbInner {
 #[derive(Clone)]
 pub struct Db {
     pub(crate) inner: Arc<DbInner>,
-    /// 이 handle의 request hook이다. 연결의 다른 handle과 공유하지 않는다.
+    /// This handle's request hook. Not shared with other handles of the connection.
     pub(crate) hook: Option<RequestHook>,
 }
 
@@ -402,7 +402,7 @@ impl Db {
         Ok(db)
     }
 
-    /// schema의 set을 이 연결에 등록한다. 같은 set을 다시 등록하면 아무것도 바꾸지 않는다.
+    /// Registers a set of the schema on this connection. Registering the same set again changes nothing.
     pub(crate) fn register(&self, schema: &Schema) -> Result<()> {
         schema.registered()?;
         if self.inner.sets.write().unwrap().insert(schema.hash().to_owned()) {
@@ -483,7 +483,7 @@ impl Db {
             ConnectOptions::Sqlite(o) => {
                 let o = if timeout > 0 { o.busy_timeout(std::time::Duration::from_millis(timeout as u64)) } else { o };
                 let pool = pool_options::<sqlx::Sqlite>(pool_size, idle, cfg.pool_lifetime_ms, &owner).connect_with(o.statement_cache_capacity(cache)).await?;
-                // sqlx가 bundle한 SQLite library의 version이다. 그것을 묻는 statement를 보내지 않는다.
+                // The version of the SQLite library bundled by sqlx. No statement asking for it is sent.
                 let version = libsqlite3_sys::SQLITE_VERSION.to_str().map_err(|_| Error::internal("the SQLite library version is not UTF-8"))?;
                 let mut parts = version.split('.').map(|p| p.parse::<u32>().unwrap_or(0));
                 let (major, minor) = (parts.next().unwrap_or(0), parts.next().unwrap_or(0));
@@ -579,11 +579,11 @@ impl Db {
         if let Some(e) = req.error() {
             return Err(e);
         }
-        // plan cache는 manifest_hash로 구분되므로, 같은 hash를 선언하고 다른 text를 가진
-        // generated code가 다른 model의 plan을 쓰지 않게 cache를 보기 전에 그 text를 확인한다.
+        // The plan cache is keyed by manifest_hash, so a model that declares the same hash but has different text
+        // is checked against that text before the cache is consulted, so generated code never uses another model's plan.
         let manifest = req.schema.manifest()?;
-        // 연결은 자기에게 등록된 set만 plan한다. 요청이 실행될 수 있는 대상은 process가
-        // 읽은 code가 아니라 연결이 쓰는 database가 정한다.
+        // A connection plans only the sets registered to it. The targets a request may run against are
+        // decided by the database the connection uses, not by the code the process has read.
         if !self.inner.sets.read().unwrap().contains(req.schema.hash()) {
             return Err(Error::Engine {
                 code: codes::SCHEMA_HASH_MISMATCH.into(),
@@ -627,13 +627,13 @@ impl Db {
     /// Writes a datetime or date value in the text form SQLite stores, so a
     /// string value compares equal to the stored value; every driver binds that
     /// text (docs/dialects.md). A datetime string with
-    /// an offset is converted to the connection time zone. `datetime(p)` text는
-    /// 소수 p자리로 쓰고, p자리 뒤에 0이 아닌 자리가 있으면 CODEC_ENCODE다.
+    /// an offset is converted to the connection time zone. The `datetime(p)` text
+    /// is written with p fractional digits; if a nonzero digit follows the p digits, it is CODEC_ENCODE.
     fn bind_time_value(&self, v: Param, col_type: &str, precision: i64) -> Result<Param> {
         bound_time_value(v, col_type, precision, &self.inner.zone)
     }
 
-    /// step의 bind slot 값을 정한다. `audit`은 step이 실행되는 transaction의 audit 기록이다.
+    /// Sets the bind slot values of the step. `audit` is the audit record of the transaction in which the step runs.
     pub(crate) fn args(&self, st: &Step, params: &[Param], parent_vals: &[Param], audit: Option<&AuditKey>) -> Result<Vec<Param>> {
         let cfg = &self.inner.cfg;
         let sqlite = matches!(self.inner.pool, Pool::Sqlite(_));
@@ -702,8 +702,8 @@ impl Db {
                     let text = clock.get_or_insert_with(|| self.now_text()).clone();
                     out.push(Param::Str(clock_digits(&text, b.precision)));
                 }
-                // audit slot은 transaction이 삽입한 audit 기록의 primary key다. audit이 없거나 audit table이
-                // 다른 entity에 audit을 기록하면 CONFIG다.
+                // The audit slot is the primary key of the audit record the transaction inserted. If there is no audit, or the audit table
+                // records audit for another entity, it is CONFIG.
                 "audit" => out.push(match audit {
                     Some(a) if a.table == b.name => a.key.clone(),
                     Some(a) => {
@@ -727,7 +727,7 @@ impl Db {
         Ok(out)
     }
 
-    /// statement event가 보이는 bind: `secret`과 `now` slot을 가린 값이다.
+    /// The bind as shown in the statement event: the values with the `secret` and `now` slots masked.
     fn shown<'a>(&self, st: &Step, args: &'a [Param], n_parent: usize) -> std::borrow::Cow<'a, [Param]> {
         if st.bind_slots.iter().any(|b| b.from == "secret" || b.from == "now") {
             std::borrow::Cow::Owned(masked(st, args, n_parent))
@@ -736,8 +736,8 @@ impl Db {
         }
     }
 
-    /// step의 statement event를 publish하고 operation이 받을 결과를 돌려준다. `shown`은 event의
-    /// bind이며 subscriber가 있을 때만 만든다.
+    /// Publishes the statement event of the step and returns the result the operation receives. `shown` is the event's
+    /// bind, built only when there is a subscriber.
     fn step_done<'a, T>(
         &self,
         st: &Step,
@@ -759,9 +759,9 @@ impl Db {
         )
     }
 
-    /// SQLite의 row lock을 transaction 연결에서 잡는다. SQLite에는 row lock 절이 없으므로
-    /// transaction에 묶인 lock row 하나가 ORM의 lock 요청을 차례로 세운다. 쓰기 statement는
-    /// 연결의 busy_timeout까지 lock을 기다리고, NOWAIT 요청은 기다림을 0으로 둔다.
+    /// Takes SQLite's row lock on the transaction connection. SQLite has no row lock clause, so
+    /// one lock row bound to the transaction stands in for each ORM lock request in turn. A write statement
+    /// waits for the lock up to the connection's busy_timeout, and a NOWAIT request sets the wait to 0.
     async fn sqlite_row_lock(&self, target: &mut Target<'_>, transaction: Option<u64>, mode: &str) -> Result<()> {
         if mode.is_empty() {
             return Ok(());
@@ -795,7 +795,7 @@ impl Db {
         });
         let result = self.statement_done(Sent::bare(KIND_UTILITY, &tables, transaction, insert), start, result);
         if let Some(previous) = previous {
-            // 기다림을 되돌리는 statement의 실패는 lock 요청의 결과를 바꾸지 않는다.
+            // A failure of the statement that reverts the wait does not change the result of the lock request.
             let restore = format!("PRAGMA busy_timeout={previous}");
             let _ = crate::events::raw(self, &mut **tx, Sent::bare(KIND_UTILITY, &[], transaction, &restore)).await;
         }
@@ -813,7 +813,7 @@ impl Db {
     ) -> Result<Vec<DriverRow>> {
         let (sql, parent_vals) = statement(st, parent_vals, matches!(self.inner.pool, Pool::Postgres(_)));
         let args = self.args(st, params, &parent_vals, audit)?;
-        // 설정된 statement fault는 이 statement를 보내지 않고 끝낸다. 행 잠금 statement도 보내지 않는다.
+        // A configured statement fault ends this statement without sending it. The row lock statement is not sent either.
         #[cfg(feature = "test-faults")]
         if let Some(error) = crate::testing::take_statement_fault(self) {
             return self.step_done(st, origin, &sql, || self.shown(st, &args, parent_vals.len()), std::time::Instant::now(), Err(error));
@@ -912,8 +912,8 @@ impl Db {
                 });
             }
         }
-        // model 쓰기와 같은 경로다: 연결이나 활성 transaction에서 실행하고, transaction의 audit,
-        // statement fault, statement event와 driver 오류 변환을 그대로 쓴다.
+        // This is the same path as model writes: it runs on the connection or the active transaction, and uses the transaction's audit,
+        // statement fault, statement event, and driver error conversion as they are.
         ex.execute(step, params).await.map(drop)
     }
 }
@@ -925,7 +925,7 @@ pub struct Statement {
     pub binds: Vec<Param>,
 }
 
-/// step을 실행한 곳과 event의 출처: kind와 table(없으면 step의 것)과 transaction 번호다.
+/// Where the step ran and the source of the event: kind, table (the step's table if none), and transaction number.
 #[derive(Clone, Copy)]
 pub(crate) struct Origin<'a> {
     kind: Option<&'a str>,
@@ -948,7 +948,7 @@ impl Executor {
         }
     }
 
-    /// statement가 실행되는 transaction의 번호다. transaction 밖이면 None이다.
+    /// The number of the transaction the statement runs in. None if outside a transaction.
     pub(crate) fn transaction(&self) -> Option<u64> {
         match self {
             Executor::Db(_) => None,
@@ -956,12 +956,12 @@ impl Executor {
         }
     }
 
-    /// model plan의 step을 실행하고 행을 돌려준다. event의 kind와 table은 step의 것이다.
+    /// Runs a step of the model plan and returns the row. The event's kind and table are the step's.
     pub(crate) async fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> Result<Vec<DriverRow>> {
         self.query_as(None, None, st, params, parent_vals).await
     }
 
-    /// step을 실행하고 행을 돌려준다. `kind`와 `tables`가 있으면 event는 그것을 싣는다.
+    /// Runs the step and returns the row. If `kind` and `tables` are given, the event carries them.
     pub(crate) async fn query_as(
         &self,
         kind: Option<&str>,
@@ -990,7 +990,7 @@ impl Executor {
         }
     }
 
-    /// SQLite의 row lock을 transaction에서 잡는다. 다른 database에서는 아무것도 보내지 않는다.
+    /// Takes SQLite's row lock in the transaction. On other databases, nothing is sent.
     pub(crate) async fn sqlite_row_lock(&self, mode: &str) -> Result<()> {
         match self {
             Executor::Db(d) => d.sqlite_row_lock(&mut Target::Pool(&d.inner.pool), None, mode).await,
@@ -1002,12 +1002,12 @@ impl Executor {
         }
     }
 
-    /// model plan의 step을 실행하고 (마지막 id, 바뀐 행 수)를 돌려준다.
+    /// Runs a step of the model plan and returns (last id, number of changed rows).
     pub(crate) async fn execute(&self, st: &Step, params: &[Param]) -> Result<(u64, u64)> {
         self.execute_as(None, None, st, params).await
     }
 
-    /// step을 실행한다. `kind`와 `tables`가 있으면 event는 그것을 싣는다.
+    /// Runs the step. If `kind` and `tables` are given, the event carries them.
     pub(crate) async fn execute_as(&self, kind: Option<&str>, tables: Option<&[String]>, st: &Step, params: &[Param]) -> Result<(u64, u64)> {
         let origin = Origin { kind, tables, transaction: self.transaction() };
         match self {
@@ -1100,9 +1100,9 @@ fn sqlite_datetime_text(text: &str, zone: &Zone) -> Option<String> {
     }
 }
 
-/// IR executor message의 date, time, datetime text다(docs/protocol.md §5 "Parameters"): date는 `YYYY-MM-DD`,
-/// time은 `HH:MM:SS.ffffff`, datetime은 연결 시간대의 `YYYY-MM-DD HH:MM:SS.ffffff`로, 값에 없는 소수 자리는 0이다.
-/// 다른 form의 text는 CODEC_ENCODE다.
+/// The date, time, and datetime text of an IR executor message (docs/protocol.md §5 "Parameters"): date is `YYYY-MM-DD`,
+/// time is `HH:MM:SS.ffffff`, and datetime is `YYYY-MM-DD HH:MM:SS.ffffff` in the connection time zone; fractional digits the value lacks are 0.
+/// Text in any other form is CODEC_ENCODE.
 pub(crate) fn message_time_text(text: &str, col_type: &str, zone: &Zone) -> Result<String> {
     match col_type {
         "date" if sqlite_date_text(text) => Ok(text.to_owned()),
@@ -1132,8 +1132,8 @@ pub(crate) fn message_time_text(text: &str, col_type: &str, zone: &Zone) -> Resu
     }
 }
 
-/// 소수 6자리 `YYYY-MM-DD HH:MM:SS.ffffff` text를 소수 p자리로 줄인다. 버리는 자리에
-/// 0이 아닌 숫자가 있으면 값이 바뀌므로 CODEC_ENCODE다.
+/// Shortens a six-fractional-digit `YYYY-MM-DD HH:MM:SS.ffffff` text to p fractional digits. If a nonzero digit
+/// is in the dropped digits, the value changes, so it is CODEC_ENCODE.
 fn datetime_digits(text: &str, precision: i64) -> Result<String> {
     let Some((whole, fraction)) = text.split_once('.') else {
         return Ok(text.to_owned());
@@ -1145,7 +1145,7 @@ fn datetime_digits(text: &str, precision: i64) -> Result<String> {
     Ok(if p == 0 { whole.to_owned() } else { format!("{whole}.{}", &fraction[..p]) })
 }
 
-/// executor 시계의 소수 6자리 text를 `datetime(p)` column의 소수 p자리로 자른다.
+/// Truncates the six-digit fractional text of the executor clock to the p fractional digits of a `datetime(p)` column.
 fn clock_digits(text: &str, precision: i64) -> String {
     let Some((whole, fraction)) = text.split_once('.') else {
         return text.to_owned();
@@ -1158,8 +1158,8 @@ fn clock_digits(text: &str, precision: i64) -> String {
     }
 }
 
-/// `time(p)` 값은 소수 정확히 p자리의 `HH:MM:SS` text다 (docs/dbspec.md, "Runtime model"). 값은 `HH:MM:SS[.f{1,6}]`
-/// text이고, p자리 뒤의 0은 버리며 0이 아닌 자리는 CODEC_ENCODE다.
+/// A `time(p)` value is `HH:MM:SS` text with exactly p fractional digits (docs/dbspec.md, "Runtime model"). The value is `HH:MM:SS[.f{1,6}]`
+/// text; zeros after the p digits are dropped, and a nonzero digit is CODEC_ENCODE.
 pub(crate) fn time_value(v: Param, precision: i64) -> Result<Param> {
     let text = match v {
         Param::Null => return Ok(Param::Null),
