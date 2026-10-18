@@ -2,7 +2,7 @@
 // and declarations of extensions (PHP extension).
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../testcase.mts';
@@ -160,13 +160,15 @@ caseTest('the extension declarations are checked against the contract', PROCESS,
   const m = readManifest(join(root, 'contracts/interfaces.json'));
   const e = m.extensions?.['php-extension'];
   assert.ok(e, 'contracts/interfaces.json declares no php-extension');
-  const stubPath = join(e.roots?.[0] ?? '', 'orm_dbspec.stub.php'), symbolsPath = e.symbols ?? '';
+  // The dbspec stub is the one the cases change; every other stub of the root (code.stub.php) is copied as it is.
+  const stubRoot = e.roots?.[0] ?? '', stubPath = join(stubRoot, 'orm_dbspec.stub.php'), symbolsPath = e.symbols ?? '';
+  const otherStubs = readdirSync(join(root, stubRoot)).filter(name => name.endsWith('.stub.php') && name !== 'orm_dbspec.stub.php').map(name => join(stubRoot, name));
   const stub = readFileSync(join(root, stubPath), 'utf8'), snapshot = readFileSync(join(root, symbolsPath), 'utf8');
   // check verifies the extension in the temporary root where the stub and snapshot were changed. extract runs php.php in that root, so it is kept in the same place.
   const check = async (stubSource: string, snapshotSource: string, manifest: Manifest): Promise<string> => {
     const dir = mkdtempSync(join(tmpdir(), 'orm-interface-test-'));
     try {
-      for (const [path, content] of [[stubPath, stubSource], [symbolsPath, snapshotSource], ['packages/php/testing/interfaces/php.php', readFileSync(join(root, 'packages/php/testing/interfaces/php.php'), 'utf8')]] as const) {
+      for (const [path, content] of [[stubPath, stubSource], [symbolsPath, snapshotSource], ['packages/php/testing/interfaces/php.php', readFileSync(join(root, 'packages/php/testing/interfaces/php.php'), 'utf8')], ...otherStubs.map(path => [path, readFileSync(join(root, path), 'utf8')] as const)]) {
         mkdirSync(dirname(join(dir, path)), { recursive: true });
         writeFileSync(join(dir, path), content);
       }

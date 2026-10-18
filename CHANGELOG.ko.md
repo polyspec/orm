@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 53b22cc95ed2fc5c60c8a194e5bb63fa3600bb8c255ccd31591146992c2304c2 -->
+<!-- source-sha256: aaa1fb9f0c5ce8beb10de782694d87e314d77c968fca525517b79c86257f967c -->
 # 변경 이력
 
 ## Unreleased
+- interface contract test가 PHP extension의 모든 stub을 복사해, 기록된 Code class를 다시 검사한다(T182-1-1).
 - 요소 type 검사, behaviour case, show-create introspection의 PHP test를 parity 선언에 bind했다(T182-0-1-2).
 - Names::column이 문자열이 아닌 column에 대해 extension처럼 자기 TypeError를 밝힌다(T182-0-2-2).
 - 공유 vector가 고정하지 않는 PHP dbspec 동작을 PHP library에서 기록한 결과를 가진 case로 두어, test 하나가 Polyspec\Orm\Dbspec의 각 구현을 자기 process에서 검사한다(T182-0-1).
