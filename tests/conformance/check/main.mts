@@ -503,6 +503,9 @@ function statementChanges(want: Json, got: Json): Change[] {
       const error = fields.get('error');
       let text = `${sql ?? ''} binds ${compact(fields.get('binds'))}`;
       if (error !== undefined && error !== null) text += ` error ${compact(error)}`;
+      // Tables and transaction tell apart two statements of the same SQL and binds.
+      if (fields.has('tables')) text += ` tables ${compact(fields.get('tables') ?? null)}`;
+      if (fields.has('transaction')) text += ` transaction ${compact(fields.get('transaction') ?? null)}`;
       return { kind: kind ?? '', text, key: compact(item) };
     });
   };

@@ -518,6 +518,8 @@ def creates(c: Core, models, batch: int) -> int:
 
     def insert_all():
         nonlocal total
+        # The executor is taken inside the transaction, so every batch runs in it.
+        tx = _terminal(c)
         start = 0
         for size in parts:
             r = _write_request(c, "insert")
@@ -550,7 +552,7 @@ def creates(c: Core, models, batch: int) -> int:
             if rows:
                 r["ir"]["rows"] = rows
             r["ir"]["n_params"] = len(r["params"])
-            total += write(ex, r["ir"], r["params"])["affected"]
+            total += write(tx, r["ir"], r["params"])["affected"]
 
     _in_transaction(c.conn, insert_all)
     return total

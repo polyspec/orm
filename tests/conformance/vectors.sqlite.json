@@ -1873,7 +1873,184 @@
         "getCount",
         "delete"
       ],
-      "expect": null
+      "expect": {
+        "result": {
+          "count": 5,
+          "inserted": 5,
+          "zero": "CONFIG"
+        },
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "BEGIN IMMEDIATE",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              903,
+              1,
+              "a",
+              903,
+              2,
+              "b"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES (?, ?, ?), (?, ?, ?)",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              903,
+              3,
+              "c",
+              903,
+              4,
+              "d"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES (?, ?, ?), (?, ?, ?)",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              903,
+              5,
+              "e"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES (?, ?, ?)",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              903
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"composite_account\" AS \"a\" WHERE \"a\".\"tenant_id\" IN (?)",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              903
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\", \"a\".\"name\" AS \"a__name\" FROM \"composite_account\" AS \"a\" WHERE \"a\".\"tenant_id\" IN (?) ORDER BY \"a\".\"account_id\" ASC",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "BEGIN IMMEDIATE",
+            "tables": [],
+            "transaction": 2
+          },
+          {
+            "binds": [
+              903,
+              1
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"composite_account\" WHERE \"composite_account\".\"tenant_id\" = ? AND \"composite_account\".\"account_id\" = ?",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 2
+          },
+          {
+            "binds": [
+              903,
+              2
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"composite_account\" WHERE \"composite_account\".\"tenant_id\" = ? AND \"composite_account\".\"account_id\" = ?",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 2
+          },
+          {
+            "binds": [
+              903,
+              3
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"composite_account\" WHERE \"composite_account\".\"tenant_id\" = ? AND \"composite_account\".\"account_id\" = ?",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 2
+          },
+          {
+            "binds": [
+              903,
+              4
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"composite_account\" WHERE \"composite_account\".\"tenant_id\" = ? AND \"composite_account\".\"account_id\" = ?",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 2
+          },
+          {
+            "binds": [
+              903,
+              5
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"composite_account\" WHERE \"composite_account\".\"tenant_id\" = ? AND \"composite_account\".\"account_id\" = ?",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 2
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 2
+          }
+        ]
+      }
     },
     {
       "name": "creates_batch_too_large",
@@ -1882,7 +2059,26 @@
         "creates",
         "getCount"
       ],
-      "expect": null
+      "expect": {
+        "result": {
+          "code": "BATCH_TOO_LARGE",
+          "count": 0
+        },
+        "statements": [
+          {
+            "binds": [
+              904
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"composite_account\" AS \"a\" WHERE \"a\".\"tenant_id\" IN (?)",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": null
+          }
+        ]
+      }
     },
     {
       "name": "contains_ascii_fold",
@@ -1958,25 +2154,14 @@
               "Évian",
               902,
               4,
-              "évian"
-            ],
-            "error": null,
-            "kind": "insert",
-            "sql": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?), (?, ?, ?)",
-            "tables": [
-              "composite_account"
-            ],
-            "transaction": 1
-          },
-          {
-            "binds": [
+              "évian",
               902,
               5,
               "x_y"
             ],
             "error": null,
             "kind": "insert",
-            "sql": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES (?, ?, ?)",
+            "sql": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?), (?, ?, ?), (?, ?, ?)",
             "tables": [
               "composite_account"
             ],
@@ -2204,25 +2389,14 @@
               "Évian",
               902,
               4,
-              "évian"
-            ],
-            "error": null,
-            "kind": "insert",
-            "sql": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?), (?, ?, ?)",
-            "tables": [
-              "composite_account"
-            ],
-            "transaction": 1
-          },
-          {
-            "binds": [
+              "évian",
               902,
               5,
               "x_y"
             ],
             "error": null,
             "kind": "insert",
-            "sql": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES (?, ?, ?)",
+            "sql": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?), (?, ?, ?), (?, ?, ?)",
             "tables": [
               "composite_account"
             ],

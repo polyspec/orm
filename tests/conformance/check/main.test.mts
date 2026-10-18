@@ -176,6 +176,18 @@ caseTest('TestDifferenceNamesStatementsAndResult', COMPUTE, () => {
   ]);
 });
 
+// TestDifferenceNamesTheTablesAndTransaction checks that two statements with the same SQL and binds that differ in their
+// tables or transaction are reported with those fields, so the difference is visible.
+caseTest('TestDifferenceNamesTheTablesAndTransaction', COMPUTE, () => {
+  const want = decodeExact('{"statements":[{"binds":[1],"error":null,"kind":"insert","sql":"INSERT a","tables":["a"],"transaction":1}]}');
+  const got = decodeExact('{"statements":[{"binds":[1],"error":null,"kind":"insert","sql":"INSERT a","tables":["a"],"transaction":null}]}');
+  assert.deepEqual(describeDifference(want, got), [
+    'statements: +1 model, -1 model',
+    '  + #1 insert INSERT a binds [1] tables ["a"] transaction null',
+    '  - #1 insert INSERT a binds [1] tables ["a"] transaction 1',
+  ]);
+});
+
 // TestRunLanguagesRunsEveryLanguageAfterAFailure checks that a failed language does not stop the other languages of the
 // database: every language runs, and the error names each language that failed.
 caseTest('TestRunLanguagesRunsEveryLanguageAfterAFailure', COMPUTE, async () => {

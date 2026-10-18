@@ -413,8 +413,8 @@ async function main() {
     const rows = ['a', 'b', 'c', 'd', 'e'].map((name, i) => new CompositeAccount().setTenantId(903).setAccountId(i + 1).setName(name));
     const inserted = await new CompositeAccount().connect(db).creates(rows, 2);
     const zero = await caught(new CompositeAccount().connect(db).creates(rows, 0));
-    const count = await new CompositeAccount().connect(db).tenantId(903).getCount();
-    await (await new CompositeAccount().connect(db).tenantId(903).orderByAccountIdAsc().gets()).delete();
+    const count = await new CompositeAccount().connect(db).tenantId([903]).getCount();
+    await (await new CompositeAccount().connect(db).tenantId([903]).orderByAccountIdAsc().gets()).delete();
     return { inserted, zero, count };
   });
   // A batch whose binds exceed the bind limit is BATCH_TOO_LARGE before any statement: 21846 rows of three columns
@@ -422,7 +422,7 @@ async function main() {
   await run('creates_batch_too_large', async () => {
     const rows = Array.from({ length: 21846 }, (_, i) => new CompositeAccount().setTenantId(904).setAccountId(i + 1).setName('n'));
     const code = await caught(new CompositeAccount().connect(db).creates(rows, rows.length));
-    const count = await new CompositeAccount().connect(db).tenantId(904).getCount();
+    const count = await new CompositeAccount().connect(db).tenantId([904]).getCount();
     return { code, count };
   });
   // Creates the rows Apple, apple, Évian, évian, and x_y for tenant 902, collects the account_id that each pattern selects with cond, then deletes them.
