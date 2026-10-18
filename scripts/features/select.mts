@@ -1,23 +1,23 @@
-// select는 scripts/features/check.mts가 실행할 검증 명령과 helper check를 고른다.
+// select chooses the verify commands and the helper checks that scripts/features/check.mts will run.
 //
-// --feature <id>는 그 기능의 검증 명령만, 함께 준 --command <id>(여럿)는 그 기능의 그 명령만 실행한다. --helper <id>
-// (여럿)는 그 helper의 check만 실행한다. --features는 모든 기능의 검증 명령을 helper 없이 실행하고, 함께 준 --shard <shard>는
-// 검증 명령이 선언한 `shard`가 그것인 명령만 실행한다(make feature-verify-rust, make feature-verify-other). --helpers는 모든
-// helper의 check를 기능 없이 실행하며, 함께 준 --without-helper <id>(여럿)는 그 helper를 뺀다(make feature-helper-check).
-// 아무것도 고르지 않으면 모든 기능의 명령과 모든 helper의 check를 실행한다.
+// --feature <id> runs only that feature's verify commands; --command <id> given with it (multiple) runs only that command of that feature. --helper <id>
+// (multiple) runs only that helper's check. --features runs every feature's verify commands without helpers, and --shard <shard> given with it
+// runs only the commands whose declared `shard` is that shard (make feature-verify-rust, make feature-verify-other). --helpers runs
+// every helper's check without features, and --without-helper <id> given with it (multiple) removes that helper (make feature-helper-check).
+// If nothing is chosen, all features' commands and all helpers' checks run.
 
 import { parseArgs } from 'node:util';
 
 export const USAGE = 'usage: check.mts [--run] [--feature <id> [--command <id>]... | --features [--shard <shard>] | --helpers [--without-helper <id>]...] [--helper <id>]...';
 
-// SHARDS는 검증 명령이 선언하는 `shard`다. rust는 cargo로 Rust를 build하고 실행하는 명령이고 other는 나머지다. make check는
-// 두 shard를 서로 다른 CI group에서 실행한다: 한 job 안의 cargo build는 Rust target directory의 lease로 하나씩 실행되므로,
-// cargo 명령을 한 job에 모으고 나머지 명령을 다른 job에서 함께 실행한다.
+// SHARDS is the `shard` that verify commands declare. rust is the command that builds and runs Rust with cargo, and other is the rest. make check
+// runs the two shards in different CI groups: because a cargo build in one job runs one at a time under the Rust target directory's lease,
+// it gathers the cargo commands into one job and runs the rest in another job together.
 export const SHARDS = ['rust', 'other'];
 
-// parseSelection은 명령 줄 인자에서 고른 것을 읽는다: node:util의 parseArgs가 option과 그 값을 읽고(값이 option처럼 보이면
-// 거부한다), 이 함수는 option의 조합만 본다. 맞지 않는 조합과 읽을 수 없는 인자는 USAGE와 함께 던진다. 위치 인자(node와 script의
-// 경로)는 무시한다.
+// parseSelection reads what was chosen from command-line arguments: node:util's parseArgs reads options and their values (rejects if a value looks like an option),
+// and this function checks only option combinations. Invalid combinations and unreadable arguments throw with USAGE. Positional arguments (node and the script's
+// paths) are ignored.
 /** The selection of a feature check run. */
 export type Selection = { feature: string | undefined; commands: string[]; helpers: string[]; without: string[]; features: boolean; allHelpers: boolean; shard: string | undefined };
 
@@ -51,7 +51,7 @@ export function parseSelection(argv: string[]): Selection {
   return { feature, commands, helpers, without, features, allHelpers, shard };
 }
 
-// selectionErrors는 manifest에 없는 기능, 명령과 helper를 고른 곳마다 오류 하나를 돌려준다.
+// selectionErrors returns one error for each place where a feature, command, or helper not in the manifest was selected.
 /** A verification command of a feature, or the check of a helper. */
 export type Check = { id: string; command: string; shard?: string; cwd?: string };
 /** The features and helpers of contracts/features.json that a selection reads. */
@@ -69,8 +69,8 @@ export function selectionErrors(manifest: SelectManifest, { feature, commands, h
   return errors;
 }
 
-// selectChecks는 실행할 것을 [{ feature, check }]로 돌려준다. helper의 check는 helper를 쓰는 기능 대신 helper 자신을
-// 검사하며 feature id `helpers` 아래에 있다(이름 features/helpers/<id>).
+// selectChecks returns what to run as [{ feature, check }]. A helper's check checks the helper itself, not the feature that uses the helper,
+// and it sits under feature id `helpers` (name features/helpers/<id>).
 export function selectChecks(manifest: SelectManifest, { feature, commands, helpers, without, features, allHelpers, shard }: Selection): { feature: { id: string }; check: Check }[] {
   const chosen = feature !== undefined || helpers.length > 0;
   const featureSelected = (item: { id: string }) => allHelpers ? false : chosen ? item.id === feature : true;

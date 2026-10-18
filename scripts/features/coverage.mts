@@ -13,7 +13,7 @@ import { clientLanguages, featureLanguages } from './languages.mts';
 import { parseGoTestEvent } from '../json/formats.mts';
 import { programEnvironment, readBinaries } from '../../tests/cargo-test.mts';
 
-// cargoTestScript는 lease 아래에서 test binary를 build하고 복사하는 script다.
+// cargoTestScript is the script that builds the test binary under the lease and copies it.
 const cargoTestScript = new URL('../../tests/cargo-test.mts', import.meta.url).pathname;
 
 /** A native test command of a coverage owner or dependent (contracts/features.json). */
@@ -118,16 +118,16 @@ function requirements(feature: Feature, coverage: Coverage, errors: string[]): I
       role: 'dependent', dependent: dependent.id, language: dependent.language, database,
       part: dependent.part, tests: dependent.tests, cases: dependent.cases, command: dependent.commands?.[database] });
   }
-  // selectFeatures가 coverage 단위(--part)를 골랐으면 그 단위의 항목만 요구하고 실행한다.
+  // When selectFeatures chose a coverage unit (--part), only the items of that unit are required and run.
   const selected = selectedParts.get(feature);
   if (selected) return items.filter(item => selected.has(itemPart(item)));
   return items;
 }
 
-// itemPart는 coverage 항목의 단위 이름이다: owner client는 `owner/<language>`, dependent는 `dependent/<id>`
-// (scripts/features/owners.mts의 coverageParts와 같다).
+// itemPart is the unit name of a coverage item: an owner client is `owner/<language>`, a dependent is `dependent/<id>`
+// (same as coverageParts in scripts/features/owners.mts).
 const itemPart = (item: Item): string => item.role === 'owner' ? `owner/${item.language}` : `dependent/${item.dependent}`;
-// selectedParts는 selectFeatures가 만든 기능 항목마다 고른 단위다. manifest의 기능 항목은 바꾸지 않는다.
+// selectedParts is the unit chosen for each feature item made by selectFeatures. It does not change the feature items in the manifest.
 const selectedParts = new WeakMap<Feature, Set<string>>();
 
 /** One database item of a test file: the database, its DSN variable and the DSN the variable holds (null without a database). */
@@ -254,12 +254,12 @@ function validJSON(value: string): boolean {
   catch { return false; }
 }
 
-// run은 program을 실행해 출력을 모은다. step이 있으면 stderr 줄(cargo와 go의 build 진행)을
-// 실행 중에 단계로 내보낸다. stdout은 test event이므로 모아서 읽기만 한다.
-// run은 program을 실행해 출력을 모은다. step이 있으면 stderr 줄(cargo와 go의 build 진행)을
-// 실행 중에 단계로 내보낸다. stdout은 test event이므로 모아서 읽기만 한다. limit은 모으는
-// 출력의 최대 길이다. test 출력은 1000000자를 넘지 않고, build의 JSON message는 의존성마다
-// 한 줄이라 더 길다. timeoutMs는 실행 process의 기한이고, 장기 작업인 build는 null로 기한 없이 실행한다.
+// run executes the program and collects its output. When there is a step, the stderr lines (cargo and go build progress)
+// are sent as steps while it runs. stdout is test events, so it is only collected and read.
+// run executes the program and collects its output. When there is a step, the stderr lines (cargo and go build progress)
+// are sent as steps while it runs. stdout is test events, so it is only collected and read. limit is
+// the maximum length of the output being collected. Test output does not exceed 1000000 characters, but build JSON messages are one line per dependency, so
+// the line is longer. timeoutMs is the deadline of the executed process, and a long-running build runs with null, meaning no deadline.
 function run(program: string, args: string[], cwd: string | undefined, timeoutMs: number | null, env: NodeJS.ProcessEnv = process.env, step?: StepWriter, limit = 1_000_000): Promise<RunResult> {
   return new Promise<RunResult>((finish) => {
     const child = spawn(program, args, { cwd, env, detached: true });
@@ -285,7 +285,7 @@ function run(program: string, args: string[], cwd: string | undefined, timeoutMs
     child.stdout.on('data', (chunk: Buffer) => { stdout += String(chunk); append(chunk); });
     child.stderr.on('data', (chunk: Buffer) => { append(chunk); progress?.write(String(chunk)); });
     child.on('error', error => done(error.message));
-    // child는 자기 group의 leader다. 끝난 뒤 그 group에 남은 process는 실패로 다룬다(endGroup).
+    // The child is the leader of its own group. A process left in that group after it ends is treated as a failure (endGroup).
     const ended = new Promise<string[]>(resolve => child.on('exit', () => endGroup(child.pid).then(resolve, (error: unknown) => resolve([`its group could not be checked: ${error instanceof Error ? error.message : String(error)}`]))));
     child.on('close', async code => {
       progress?.flush();
@@ -295,7 +295,7 @@ function run(program: string, args: string[], cwd: string | undefined, timeoutMs
       if (code !== 0) return done(`exit ${code}: ${output.trim()}`);
       done(null, output);
     });
-    // timeoutMs가 null이면 장기 작업(build)이므로 timer를 두지 않는다.
+    // When timeoutMs is null, it is a long-running build, so no timer is set.
     const timer: NodeJS.Timeout | undefined = timeoutMs === null ? undefined : setTimeout(() => {
       stop();
       done(`timeout after ${timeoutMs} ms`);

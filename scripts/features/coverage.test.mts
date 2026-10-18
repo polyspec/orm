@@ -25,7 +25,7 @@ type SampleManifest = { features: [Feature & { parity: string[]; coverage: Cover
 /** The execution reports of the sample contract, by item key. */
 type Reports = Record<string, Report[]>;
 
-// sample crate는 orm workspace가 아니므로 Makefile이 정한 orm workspace의 test feature를 쓰지 않는다.
+// The sample crate is not the orm workspace, so it does not use the test feature of the orm workspace that the Makefile sets.
 delete process.env.ORM_RUST_TEST_FEATURES;
 
 const ownerTests: Record<string, string> = {
@@ -40,8 +40,8 @@ function defined<T>(value: T | undefined): T {
   return value;
 }
 
-// 각 case의 기한: memory 안의 검사는 1 s, node process 몇 개를 실행하는 case는 8 s, Go test
-// binary, Rust test binary나 state reader를 build하고 실행하는 case는 120 s다.
+// The deadline of each case: a check in memory 1 s, a case that runs several node processes 8 s, Go test
+// binary, a case that builds and runs a Rust test binary or state reader 120 s.
 caseTest('one feature can run without declaring unrelated coverage complete', 1000, () => {
   const manifest = { features: [{ id: 'one' }, { id: 'two' }] };
   assert.deepEqual(selectFeatures(manifest, 'one').features, [{ id: 'one' }]);
@@ -50,7 +50,7 @@ caseTest('one feature can run without declaring unrelated coverage complete', 10
 });
 
 caseTest('selecting one feature requires only the coverage specs of that feature', 1000, async () => {
-  // statement_events는 소유 client마다 세 database에서 두 번 실행한다. 다른 기능의 spec은 없다.
+  // statement_events runs twice in three databases for each owner client. There is no spec for other features.
   const manifest = readFeatures(new URL('../..', import.meta.url).pathname);
   const feature = manifest.features.find(item => item.id === 'statement_events');
   assert.ok(feature?.coverage?.owners);
@@ -63,12 +63,12 @@ caseTest('selecting one feature requires only the coverage specs of that feature
 });
 
 caseTest('selecting coverage parts requires only those parts', 1000, async () => {
-  // owner-check는 바뀐 file이 입력인 단위(--part)만 실행한다. 다른 client의 항목은 요구하지 않는다.
+  // owner-check runs only the units (--part) whose input is a changed file. It does not require items of other clients.
   const manifest = readFeatures(new URL('../..', import.meta.url).pathname);
   const selected = selectFeatures(manifest, 'statement_events', ['owner/php']);
   assert.deepEqual(checkCoverage(selected, {}).toSorted(),
     databases.map(database => `statement_events/owner/php/${database}: no executed report`).toSorted());
-  // statement_events의 manifest는 다섯 owner(go, php, rust, typescript, python)를 가지며 각 owner는 세 database마다 항목이 있다.
+  // The manifest of statement_events has five owners (go, php, rust, typescript, python), and each owner has items for each of the three databases.
   assert.equal(checkCoverage(selectFeatures(manifest, 'statement_events'), {}).length, 5 * databases.length);
   assert.throws(() => selectFeatures(manifest, 'statement_events', ['owner/cobol']),
     { message: 'unknown coverage part owner/cobol of statement_events; valid parts: owner/go, owner/php, owner/rust, owner/typescript, owner/python' });
@@ -258,8 +258,8 @@ caseTest('native owner and dependent files execute twice from their own parts', 
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-// Go test cache가 두 번째 실행을 대신하면 실행 증거가 아니므로, 각 실행이
-// test process를 실제로 실행해 directory를 하나씩 남기는지 확인한다.
+// If the Go test cache substitutes for the second run, it is not execution evidence, so each run
+// actually runs the test process and checks that it leaves one directory each time.
 caseTest('every Go execution runs the test instead of reading the test cache', 120000, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-go-')));
   const owner = 'packages/go/sample/sample_test.go';
@@ -294,8 +294,8 @@ func TestFirst(t *testing.T) {
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-// 느리지만 정상인 build는 기한 없이 끝까지 실행한다. PATH 앞의 go는 1.5초를 쉰 뒤 실제 go를 실행하므로
-// test2json build와 test binary build가 각각 1.5초 이상 걸리고, 두 build와 두 실행이 모두 통과한다.
+// A slow but normal build runs to the end with no deadline. The go in front of PATH waits 1.5 s and then runs the real go, so
+// the test2json build and the test binary build each take 1.5 s or more, and both builds and both runs pass.
 caseTest('a slow but healthy coverage build runs to its end without a deadline', 120000, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-slow-')));
   const owner = 'packages/go/sample/sample_test.go';
@@ -481,7 +481,7 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', 12
     await writeFile(join(root, defined(cases[1]).file), '<?php\n');
     await phpunitStub(root, defined(cases[1]).file, PASSED);
     await writeFile(join(root, 'packages/rust/orm/Cargo.toml'), '[package]\nname = "coverage_probe"\nversion = "0.0.1"\nedition = "2021"\n');
-    // cargo test처럼 실행 시점의 CARGO_MANIFEST_DIR가 test file을 소유하는 package directory다.
+    // Like cargo test, the CARGO_MANIFEST_DIR at run time is the package directory that owns the test file.
     await writeFile(join(root, defined(cases[2]).file), '#[cfg(test)] mod tests { #[test] fn first() { ' +
       'assert_eq!(std::env::var("CARGO_MANIFEST_DIR").as_deref(), Ok(env!("CARGO_MANIFEST_DIR"))); } }\n');
     for (const item of cases) {
@@ -508,8 +508,8 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', 12
         assert.match((await executeCoverage(manifest, root, 30000)).join('\n'), /invalid native test command/);
       }
     }
-    // 선언된 Rust test file을 compile하는 test binary가 없으면 같은 symbol이 다른 file에 있어도
-    // 실행 증거가 아니다.
+    // If there is no test binary that compiles a declared Rust test file, the same symbol in another file
+    // is not execution evidence.
     const unused = 'packages/rust/orm/src/unused.rs';
     await writeFile(join(root, unused), '#[test] fn first() {}\n');
     const uncompiled: SampleManifest = { features: [{ id: 'sample', status: 'partial', parity: parityOf(['rust']),

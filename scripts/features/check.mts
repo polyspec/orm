@@ -11,26 +11,26 @@ import { JsonError, readJsonFile, SchemaError } from '../json/schema.mts';
 import { parseSelection, selectChecks, selectionErrors, SHARDS } from './select.mts';
 
 const root = resolve(new URL('../..', import.meta.url).pathname);
-// 검증 명령 앞의 manifest 검사는 file을 읽고 비교하는 case 하나다.
+// The manifest check before the verify command is one case that reads a file and compares it.
 const log = sections();
 log.begin('features/contracts', COMPUTE);
 const errors: string[] = [];
-// manifest는 schema(scripts/features/schema/features.schema.json)로 읽는다: 모양, 상태 값, 구현된 기능의 test와
-// 문서, 검증 명령의 field는 schema가 확인하고, 아래 검사는 schema가 말할 수 없는 것(VERSION, disk의 path, 유일한 id,
-// shard, fixture)을 본다. schema가 거부하면 그 오류만 적고 끝낸다.
+// The manifest is read with the schema (scripts/features/schema/features.schema.json): its shape, status values, and the tests of implemented features,
+// the doc and verify-command fields are checked by the schema, and the checks below look at what the schema cannot say (VERSION, the path on disk, unique ids,
+// shards, fixtures). If the schema rejects, it reports only that error and stops.
 const manifest = readManifest();
 const ids = new Set<string>();
-// shardOf는 (cwd, command)마다 그것을 처음 선언한 검증 명령과 그 shard다.
+// shardOf is, for each (cwd, command), the verify command that first declared it and its shard.
 const shardOf = new Map<string, { shard: string; name: string }>();
 const clients = clientLanguages();
 const VECTORS_SCHEMA = new URL('../../tests/conformance/schema/vectors.schema.json', import.meta.url).pathname;
 const FIXTURE_SCHEMA = new URL('./schema/fixture.schema.json', import.meta.url).pathname;
 const runVerification = process.argv.includes('--run');
-// 고르는 인자는 scripts/features/select.mts가 읽는다. 검사는 고른 것과 무관하게 모든 기능을 본다.
+// The selecting arguments are read by scripts/features/select.mts. The check looks at all features regardless of the selection.
 const selection = parseSelection(process.argv);
 
-// execute는 명령의 출력 줄을 실행 중에 step으로 내보낸다. 명령이 실행하는 runner가 case마다
-// 시작, 결과, 경과 시간과 기한을 보고한다.
+// execute reports the command's output lines as steps while it runs. The runner that the command runs for each case
+// reports the start, result, elapsed time, and deadline.
 const execute = (command: string, cwd: string, step: Step) => new Promise<{ code: number; output?: string }>((resolveRun) => {
   const child = spawn('/bin/sh', ['-c', command], { cwd, env: process.env });
   const lines = stepLines(step);
@@ -64,7 +64,7 @@ for (const feature of manifest.features) {
   if (feature.status !== 'planned') {
     for (const [index, check] of feature.verification.entries()) {
       if (!SHARDS.includes(check.shard)) errors.push(`${feature.id}: verification ${index} declares the shard ${JSON.stringify(check.shard)}; declare one of ${SHARDS.join(', ')}`);
-      // 같은 directory의 같은 명령은 한 번만 실행되므로(아래 executed) 그 명령을 선언한 모든 기능이 같은 shard에 있어야 한다.
+      // The same command in the same directory runs only once (executed below), so all features that declare that command must be in the same shard.
       const key = JSON.stringify([check.cwd ?? '.', check.command]);
       const first = shardOf.get(key);
       if (first && first.shard !== check.shard) errors.push(`${feature.id}/${check.id}: shard ${check.shard} differs from shard ${first.shard} of ${first.name}, which runs the same command; declare one shard for both`);
@@ -151,9 +151,9 @@ const listedByFeatures = new Set<string>();
 for (const feature of manifest.features) {
   for (const relative of [...feature.fixtures, ...feature.tests]) listedByFeatures.add(relative);
 }
-// helper의 file과 그 unit test도 선언된 test file이다.
+// The helper's file and its unit test are also declared test files.
 for (const helper of manifest.helpers ?? []) for (const relative of [...helper.paths, ...helper.tests]) listedByFeatures.add(relative);
-// 검증 명령, coverage 단위, helper는 owner-check가 고를 입력을 선언한다(scripts/features/owners.mts).
+// Verify commands, coverage units, and helpers declare the inputs that owner-check will select (scripts/features/owners.mts).
 const tracked = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
 errors.push(...manifestInputErrors(manifest, tracked));
 for (const feature of manifest.features) {
@@ -176,19 +176,19 @@ for (const [language, files] of Object.entries(existing)) {
 errors.push(...selectionErrors(manifest, selection));
 log.end(errors.length ? `${errors.length} error(s); each is listed at the end` : undefined);
 if (runVerification && errors.length === 0) {
-  // 검증 명령은 서로 독립이다(database를 쓰는 test는 case마다 자기 database를 만든다). 그래서
-  // ORM_FEATURE_LANES개(기본 4)를 함께 실행한다. 추적되는 file을 다시 쓰는 생성 검사(go-model-check)는
-  // 검증 명령이 아니라 make check의 target이다.
-  // 여러 기능이 같은 directory에서 같은 명령으로 검증하면(decimal, styled value, engine 검사)
-  // 명령은 처음 한 번만 실행하고, 다음 기능은 그 실행의 결과를 자기 결과로 보고한다. 같은
-  // 명령을 같은 tree에서 다시 실행해도 같은 일을 다시 할 뿐이다.
+  // Verify commands are independent of each other (a test that uses a database makes its own database for each case). So
+  // they run together with ORM_FEATURE_LANES (default 4). A generation check that rewrites a tracked file (go-model-check)
+  // is a target of make check, not a verify command.
+  // When several features verify with the same command in the same directory (decimal, styled value, engine checks),
+  // the command runs only once, the first time, and the next feature reports that run's result as its own. The same
+  // command run again in the same tree only does the same work again.
   const lanes = Number(process.env.ORM_FEATURE_LANES ?? 4);
   if (!(Number.isInteger(lanes) && lanes > 0)) throw new Error(`ORM_FEATURE_LANES ${process.env.ORM_FEATURE_LANES} is not a positive integer`);
   const checks = selectChecks(manifest, selection);
   const executed = new Map<string, { name: string; done: Promise<boolean> }>();
-  // environment linux-runner인 명령은 선언된 Linux runner(.github/runner)의 검사다: CI가
-  // 그 runner의 Linux에서 make check로 실행한다. Linux가 아닌
-  // machine에서는 실행하지 않고 그 사실을 RUNNER 줄로 출력한다. 통과로 세지 않는다.
+  // A command whose environment is linux-runner is a check of the declared Linux runner (.github/runner): CI
+  // runs make check on that runner's Linux.
+  // On a machine that is not Linux, it does not run and prints that fact as a RUNNER line. It is not counted as a pass.
   const runner = (await readFile(resolve(root, '.github/runner'), 'utf8')).trim();
   const verify = async ({ feature, check }: { feature: { id: string }; check: Check & { environment?: string } }) => {
     const name = `features/${feature.id}/${check.id}`;
